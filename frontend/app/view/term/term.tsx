@@ -129,6 +129,7 @@ class TermViewModel {
     blockId: string;
     viewIcon: jotai.Atom<string>;
     viewText: jotai.Atom<string>;
+    viewName: jotai.Atom<string>;
 
     constructor(blockId: string) {
         this.blockId = blockId;
@@ -137,7 +138,16 @@ class TermViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:mode"] ?? "term";
         });
-        this.viewIcon = jotai.atom("terminal");
+        this.viewIcon = jotai.atom((get) => {
+            return "terminal";
+        });
+        this.viewName = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            if (blockData.controller == "cmd") {
+                return "Command";
+            }
+            return "Terminal";
+        });
         this.viewText = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.title ?? "";

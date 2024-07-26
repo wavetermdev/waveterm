@@ -257,7 +257,8 @@ const BlockFrame_Default_Component = ({
         });
     });
     let isFocused = jotai.useAtomValue(isFocusedAtom);
-    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? "square";
+    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.view);
+    const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.view);
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
@@ -398,7 +399,7 @@ const BlockFrame_Default_Component = ({
                     {preIconButtonElem}
                     <div className="block-frame-default-header-iconview">
                         {viewIconElem}
-                        <div className="block-frame-view-type">{blockViewToName(blockData?.view)}</div>
+                        <div className="block-frame-view-type">{viewName}</div>
                         {settingsConfig?.blockheader?.showblockids && (
                             <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
                         )}
@@ -440,7 +441,7 @@ function blockViewToIcon(view: string): string {
     if (view == "waveai") {
         return "sparkles";
     }
-    return null;
+    return "square";
 }
 
 function blockViewToName(view: string): string {
@@ -457,31 +458,6 @@ function blockViewToName(view: string): string {
         return "WaveAI";
     }
     return view;
-}
-
-function useBlockIcon(blockId: string): string {
-    const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
-        return jotai.atom<string>(null);
-    });
-    const blockIconAtom = useBlockAtom<string>(blockId, "blockicon", () => {
-        return jotai.atom((get) => {
-            console.log("atom-blockicon", blockId);
-            const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
-            const blockData = get(blockAtom);
-            const metaIcon = blockData?.meta?.icon;
-            if (!util.isBlank(metaIcon)) {
-                console.log("atom-blockicon-meta", metaIcon);
-                return metaIcon;
-            }
-            const overrideVal = get(blockIconOverrideAtom);
-            if (overrideVal != null) {
-                return overrideVal;
-            }
-            return blockViewToIcon(blockData?.view);
-        });
-    });
-    const blockIcon = jotai.useAtomValue(blockIconAtom);
-    return blockIcon;
 }
 
 function getViewElemAndModel(
