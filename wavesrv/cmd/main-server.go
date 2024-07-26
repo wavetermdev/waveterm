@@ -903,7 +903,7 @@ func runWebSocketServer() {
 
 	homeDir := scbase.GetWaveHomeDir()
 
-	if err := os.WriteFile(filepath.Join(homeDir, "wavesrv.ws.port"), []byte(fmt.Sprintf("%d", l.Addr().(*net.TCPAddr).Port)), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(homeDir, "wavesrv.ws.port"), []byte(fmt.Sprintf("%d", l.Addr().(*net.TCPAddr).Port)), 0600); err != nil {
 		log.Printf("[error] writing wsport file: %v\n", err)
 		return
 	}
@@ -1209,7 +1209,7 @@ func main() {
 
 	homeDir := scbase.GetWaveHomeDir()
 
-	if err := os.WriteFile(filepath.Join(homeDir, "wavesrv.port"), []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(homeDir, "wavesrv.port"), []byte(fmt.Sprintf("%d", os.Getpid())), 0600); err != nil {
 		log.Printf("error writing wavesrv.port: %v\n", err)
 		return
 	}
