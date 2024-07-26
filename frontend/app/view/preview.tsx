@@ -3,7 +3,7 @@
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { Markdown } from "@/element/markdown";
-import { globalStore, useBlockAtom } from "@/store/global";
+import { createBlock, globalStore, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -278,6 +278,22 @@ export class PreviewModel implements ViewModel {
                 navigator.clipboard.writeText(baseName);
             },
         });
+        const mimeType = util.jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
+        if (mimeType == "directory") {
+            menuItems.push({
+                label: "Open Terminal in New Block",
+                click: async () => {
+                    const termBlockDef: BlockDef = {
+                        controller: "shell",
+                        view: "term",
+                        meta: {
+                            cwd: globalStore.get(this.fileName),
+                        },
+                    };
+                    await createBlock(termBlockDef);
+                },
+            });
+        }
         return menuItems;
     }
 
@@ -563,4 +579,4 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     );
 }
 
-export { makePreviewModel, PreviewView };
+export { PreviewView, makePreviewModel };

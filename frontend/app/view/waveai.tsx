@@ -132,7 +132,6 @@ export class WaveAiModel implements ViewModel {
                     name: (metadata?.name as string) || "user",
                 },
             ];
-            console.log("opts.apitoken:", opts.apitoken);
             const beMsg: OpenAiStreamRequest = {
                 clientid: clientId,
                 opts: opts,

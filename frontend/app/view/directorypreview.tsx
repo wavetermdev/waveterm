@@ -388,20 +388,10 @@ function TableBody({
     }, [focusIndex, parentHeight]);
 
     const handleFileContextMenu = useCallback(
-        (e, path) => {
+        (e: any, path: string, mimetype: string) => {
             e.preventDefault();
             e.stopPropagation();
             const menu = [
-                {
-                    label: "Open in New Block",
-                    click: async () => {
-                        const blockDef = {
-                            view: "preview",
-                            meta: { file: path },
-                        };
-                        await createBlock(blockDef);
-                    },
-                },
                 {
                     label: "Delete File",
                     click: async () => {
@@ -415,7 +405,32 @@ function TableBody({
                         getApi().downloadFile(path);
                     },
                 },
+                {
+                    label: "Open Preview in New Block",
+                    click: async () => {
+                        const blockDef = {
+                            view: "preview",
+                            meta: { file: path },
+                        };
+                        await createBlock(blockDef);
+                    },
+                },
             ];
+            if (mimetype == "directory") {
+                menu.push({
+                    label: "Open Terminal in New Block",
+                    click: async () => {
+                        const termBlockDef: BlockDef = {
+                            controller: "shell",
+                            view: "term",
+                            meta: {
+                                cwd: path,
+                            },
+                        };
+                        await createBlock(termBlockDef);
+                    },
+                });
+            }
             ContextMenuModel.showContextMenu(menu, e);
         },
         [setRefreshVersion]
@@ -433,7 +448,7 @@ function TableBody({
                     setSearch("");
                 }}
                 onClick={() => setFocusIndex(idx)}
-                onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path"))}
+                onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path"), row.getValue("mimetype"))}
             >
                 {row.getVisibleCells().map((cell) => (
                     <div

@@ -241,6 +241,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
+		cmdOpts.Cwd, _ = blockMeta["cwd"].(string)
+		if cmdOpts.Cwd != "" {
+			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
+		}
 	} else if bc.ControllerType == BlockController_Cmd {
 		if _, ok := blockMeta["cmd"].(string); ok {
 			cmdStr = blockMeta["cmd"].(string)
