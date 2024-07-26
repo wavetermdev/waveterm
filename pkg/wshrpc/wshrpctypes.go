@@ -5,43 +5,75 @@
 package wshrpc
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/wavetermdev/thenextwave/pkg/ijson"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 const (
-	Command_Message      = "message"
-	Command_SetView      = "setview"
-	Command_SetMeta      = "setmeta"
-	Command_GetMeta      = "getmeta"
-	Command_BlockInput   = "controller:input"
-	Command_Restart      = "controller:restart"
-	Command_AppendFile   = "file:append"
-	Command_AppendIJson  = "file:appendijson"
-	Command_ResolveIds   = "resolveids"
-	Command_CreateBlock  = "createblock"
-	Command_DeleteBlock  = "deleteblock"
-	Command_WriteFile    = "file:write"
-	Command_ReadFile     = "file:read"
-	Command_StreamWaveAi = "stream:waveai"
+	RpcType_Call             = "call"             // single response (regular rpc)
+	RpcType_ResponseStream   = "responsestream"   // stream of responses (streaming rpc)
+	RpcType_StreamingRequest = "streamingrequest" // streaming request
+	RpcType_Complex          = "complex"          // streaming request/response
+)
+
+const (
+	Command_Authenticate      = "authenticate"
+	Command_Message           = "message"
+	Command_GetMeta           = "getmeta"
+	Command_SetMeta           = "setmeta"
+	Command_SetView           = "setview"
+	Command_ControllerInput   = "controllerinput"
+	Command_ControllerRestart = "controllerrestart"
+	Command_FileAppend        = "fileappend"
+	Command_FileAppendIJson   = "fileappendijson"
+	Command_ResolveIds        = "resolveids"
+	Command_CreateBlock       = "createblock"
+	Command_DeleteBlock       = "deleteblock"
+	Command_FileWrite         = "filewrite"
+	Command_FileRead          = "fileread"
+	Command_EventPublish      = "eventpublish"
+	Command_EventRecv         = "eventrecv"
+	Command_EventSub          = "eventsub"
+	Command_EventUnsub        = "eventunsub"
+	Command_EventUnsubAll     = "eventunsuball"
+	Command_StreamTest        = "streamtest"
+	Command_StreamWaveAi      = "streamwaveai"
 )
 
 type MetaDataType = map[string]any
 
-var DataTypeMap = map[string]reflect.Type{
-	"meta":          reflect.TypeOf(MetaDataType{}),
-	"resolveidsrtn": reflect.TypeOf(CommandResolveIdsRtnData{}),
-	"oref":          reflect.TypeOf(waveobj.ORef{}),
-}
-
 type RespOrErrorUnion[T any] struct {
 	Response T
 	Error    error
+}
+
+type WshRpcInterface interface {
+	AuthenticateCommand(ctx context.Context, data string) error
+	MessageCommand(ctx context.Context, data CommandMessageData) error
+	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (MetaDataType, error)
+	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
+	SetViewCommand(ctx context.Context, data CommandBlockSetViewData) error
+	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
+	ControllerRestartCommand(ctx context.Context, data CommandBlockRestartData) error
+	FileAppendCommand(ctx context.Context, data CommandFileData) error
+	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
+	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
+	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (waveobj.ORef, error)
+	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
+	FileWriteCommand(ctx context.Context, data CommandFileData) error
+	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
+	EventPublishCommand(ctx context.Context, data WaveEvent) error
+	EventRecvCommand(ctx context.Context, data WaveEvent) error
+	EventSubCommand(ctx context.Context, data SubscriptionRequest) error
+	EventUnsubCommand(ctx context.Context, data SubscriptionRequest) error
+	EventUnsubAllCommand(ctx context.Context) error
+	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
+	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 }
 
 // for frontend
@@ -54,7 +86,13 @@ type WshRpcCommandOpts struct {
 	NoResponse bool `json:"noresponse"`
 }
 
-func HackRpcContextIntoData(dataPtr any, rpcContext wshutil.RpcContext) {
+type RpcContext struct {
+	BlockId  string `json:"blockid,omitempty"`
+	TabId    string `json:"tabid,omitempty"`
+	WindowId string `json:"windowid,omitempty"`
+}
+
+func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 	dataVal := reflect.ValueOf(dataPtr).Elem()
 	dataType := dataVal.Type()
 	for i := 0; i < dataVal.NumField(); i++ {
@@ -140,4 +178,55 @@ type CommandAppendIJsonData struct {
 
 type CommandDeleteBlockData struct {
 	BlockId string `json:"blockid" wshcontext:"BlockId"`
+}
+
+type WaveEvent struct {
+	Event  string   `json:"event"`
+	Scopes []string `json:"scopes,omitempty"`
+	Sender string   `json:"sender,omitempty"`
+	Data   any      `json:"data,omitempty"`
+}
+
+type SubscriptionRequest struct {
+	Event     string   `json:"event"`
+	Scopes    []string `json:"scopes,omitempty"`
+	AllScopes bool     `json:"allscopes,omitempty"`
+}
+
+type OpenAiStreamRequest struct {
+	ClientId string                    `json:"clientid,omitempty"`
+	Opts     *OpenAIOptsType           `json:"opts"`
+	Prompt   []OpenAIPromptMessageType `json:"prompt"`
+}
+
+type OpenAIPromptMessageType struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+	Name    string `json:"name,omitempty"`
+}
+
+type OpenAIOptsType struct {
+	Model      string `json:"model"`
+	APIToken   string `json:"apitoken"`
+	BaseURL    string `json:"baseurl,omitempty"`
+	MaxTokens  int    `json:"maxtokens,omitempty"`
+	MaxChoices int    `json:"maxchoices,omitempty"`
+	Timeout    int    `json:"timeout,omitempty"`
+}
+
+type OpenAIPacketType struct {
+	Type         string           `json:"type"`
+	Model        string           `json:"model,omitempty"`
+	Created      int64            `json:"created,omitempty"`
+	FinishReason string           `json:"finish_reason,omitempty"`
+	Usage        *OpenAIUsageType `json:"usage,omitempty"`
+	Index        int              `json:"index,omitempty"`
+	Text         string           `json:"text,omitempty"`
+	Error        string           `json:"error,omitempty"`
+}
+
+type OpenAIUsageType struct {
+	PromptTokens     int `json:"prompt_tokens,omitempty"`
+	CompletionTokens int `json:"completion_tokens,omitempty"`
+	TotalTokens      int `json:"total_tokens,omitempty"`
 }

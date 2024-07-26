@@ -23,12 +23,6 @@ const OpenAIPacketStr = "openai"
 const OpenAICloudReqStr = "openai-cloudreq"
 const PacketEOFStr = "EOF"
 
-type OpenAIUsageType struct {
-	PromptTokens     int `json:"prompt_tokens,omitempty"`
-	CompletionTokens int `json:"completion_tokens,omitempty"`
-	TotalTokens      int `json:"total_tokens,omitempty"`
-}
-
 type OpenAICmdInfoPacketOutputType struct {
 	Model        string `json:"model,omitempty"`
 	Created      int64  `json:"created,omitempty"`
@@ -37,19 +31,8 @@ type OpenAICmdInfoPacketOutputType struct {
 	Error        string `json:"error,omitempty"`
 }
 
-type OpenAIPacketType struct {
-	Type         string           `json:"type"`
-	Model        string           `json:"model,omitempty"`
-	Created      int64            `json:"created,omitempty"`
-	FinishReason string           `json:"finish_reason,omitempty"`
-	Usage        *OpenAIUsageType `json:"usage,omitempty"`
-	Index        int              `json:"index,omitempty"`
-	Text         string           `json:"text,omitempty"`
-	Error        string           `json:"error,omitempty"`
-}
-
-func MakeOpenAIPacket() *OpenAIPacketType {
-	return &OpenAIPacketType{Type: OpenAIPacketStr}
+func MakeOpenAIPacket() *wshrpc.OpenAIPacketType {
+	return &wshrpc.OpenAIPacketType{Type: OpenAIPacketStr}
 }
 
 type OpenAICmdInfoChatMessage struct {
@@ -60,39 +43,18 @@ type OpenAICmdInfoChatMessage struct {
 	UserEngineeredQuery string                         `json:"userengineeredquery,omitempty"`
 }
 
-type OpenAIPromptMessageType struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-	Name    string `json:"name,omitempty"`
-}
-
 type OpenAICloudReqPacketType struct {
-	Type       string                    `json:"type"`
-	ClientId   string                    `json:"clientid"`
-	Prompt     []OpenAIPromptMessageType `json:"prompt"`
-	MaxTokens  int                       `json:"maxtokens,omitempty"`
-	MaxChoices int                       `json:"maxchoices,omitempty"`
-}
-
-type OpenAIOptsType struct {
-	Model      string `json:"model"`
-	APIToken   string `json:"apitoken"`
-	BaseURL    string `json:"baseurl,omitempty"`
-	MaxTokens  int    `json:"maxtokens,omitempty"`
-	MaxChoices int    `json:"maxchoices,omitempty"`
-	Timeout    int    `json:"timeout,omitempty"`
+	Type       string                           `json:"type"`
+	ClientId   string                           `json:"clientid"`
+	Prompt     []wshrpc.OpenAIPromptMessageType `json:"prompt"`
+	MaxTokens  int                              `json:"maxtokens,omitempty"`
+	MaxChoices int                              `json:"maxchoices,omitempty"`
 }
 
 func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
 	return &OpenAICloudReqPacketType{
 		Type: OpenAICloudReqStr,
 	}
-}
-
-type OpenAiStreamRequest struct {
-	ClientId string                    `json:"clientid,omitempty"`
-	Opts     *OpenAIOptsType           `json:"opts"`
-	Prompt   []OpenAIPromptMessageType `json:"prompt"`
 }
 
 func GetWSEndpoint() string {
@@ -116,18 +78,18 @@ const PCloudWSEndpointVarName = "PCLOUD_WS_ENDPOINT"
 
 const CloudWebsocketConnectTimeout = 1 * time.Minute
 
-func convertUsage(resp openaiapi.ChatCompletionResponse) *OpenAIUsageType {
+func convertUsage(resp openaiapi.ChatCompletionResponse) *wshrpc.OpenAIUsageType {
 	if resp.Usage.TotalTokens == 0 {
 		return nil
 	}
-	return &OpenAIUsageType{
+	return &wshrpc.OpenAIUsageType{
 		PromptTokens:     resp.Usage.PromptTokens,
 		CompletionTokens: resp.Usage.CompletionTokens,
 		TotalTokens:      resp.Usage.TotalTokens,
 	}
 }
 
-func ConvertPrompt(prompt []OpenAIPromptMessageType) []openaiapi.ChatCompletionMessage {
+func ConvertPrompt(prompt []wshrpc.OpenAIPromptMessageType) []openaiapi.ChatCompletionMessage {
 	var rtn []openaiapi.ChatCompletionMessage
 	for _, p := range prompt {
 		msg := openaiapi.ChatCompletionMessage{Role: p.Role, Content: p.Content, Name: p.Name}
@@ -136,31 +98,31 @@ func ConvertPrompt(prompt []OpenAIPromptMessageType) []openaiapi.ChatCompletionM
 	return rtn
 }
 
-func RunCloudCompletionStream(ctx context.Context, request OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[OpenAIPacketType] {
-	rtn := make(chan wshrpc.RespOrErrorUnion[OpenAIPacketType])
+func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
 	go func() {
 		log.Printf("start: %v", request)
 		defer close(rtn)
 		if request.Opts == nil {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("no openai opts found")}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("no openai opts found")}
 			return
 		}
 		websocketContext, dialCancelFn := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
 		defer dialCancelFn()
 		conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, GetWSEndpoint(), nil)
+		if err == context.DeadlineExceeded {
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, timed out connecting to cloud server: %v", err)}
+			return
+		} else if err != nil {
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket connect error: %v", err)}
+			return
+		}
 		defer func() {
 			err = conn.Close()
 			if err != nil {
-				rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("unable to close openai channel: %v", err)}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("unable to close openai channel: %v", err)}
 			}
 		}()
-		if err == context.DeadlineExceeded {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, timed out connecting to cloud server: %v", err)}
-			return
-		} else if err != nil {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket connect error: %v", err)}
-			return
-		}
 		reqPk := MakeOpenAICloudReqPacket()
 		reqPk.ClientId = request.ClientId
 		reqPk.Prompt = request.Prompt
@@ -168,12 +130,12 @@ func RunCloudCompletionStream(ctx context.Context, request OpenAiStreamRequest) 
 		reqPk.MaxChoices = request.Opts.MaxChoices
 		configMessageBuf, err := json.Marshal(reqPk)
 		if err != nil {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, packet marshal error: %v", err)}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, packet marshal error: %v", err)}
 			return
 		}
 		err = conn.WriteMessage(websocket.TextMessage, configMessageBuf)
 		if err != nil {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket write config error: %v", err)}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket write config error: %v", err)}
 			return
 		}
 		for {
@@ -184,14 +146,14 @@ func RunCloudCompletionStream(ctx context.Context, request OpenAiStreamRequest) 
 			}
 			if err != nil {
 				log.Printf("err received: %v", err)
-				rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket error reading message: %v", err)}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket error reading message: %v", err)}
 				break
 			}
-			var streamResp *OpenAIPacketType
+			var streamResp *wshrpc.OpenAIPacketType
 			err = json.Unmarshal(socketMessage, &streamResp)
 			log.Printf("ai resp: %v", streamResp)
 			if err != nil {
-				rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket response json decode error: %v", err)}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket response json decode error: %v", err)}
 				break
 			}
 			if streamResp.Error == PacketEOFStr {
@@ -199,30 +161,30 @@ func RunCloudCompletionStream(ctx context.Context, request OpenAiStreamRequest) 
 				break
 			} else if streamResp.Error != "" {
 				// use error from server directly
-				rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("%v", streamResp.Error)}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("%v", streamResp.Error)}
 				break
 			}
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Response: *streamResp}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *streamResp}
 		}
 	}()
 	return rtn
 }
 
-func RunLocalCompletionStream(ctx context.Context, request OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[OpenAIPacketType] {
-	rtn := make(chan wshrpc.RespOrErrorUnion[OpenAIPacketType])
+func RunLocalCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
 	go func() {
 		log.Printf("start2: %v", request)
 		defer close(rtn)
 		if request.Opts == nil {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("no openai opts found")}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("no openai opts found")}
 			return
 		}
 		if request.Opts.Model == "" {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("no openai model specified")}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("no openai model specified")}
 			return
 		}
 		if request.Opts.BaseURL == "" && request.Opts.APIToken == "" {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("no api token")}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("no api token")}
 			return
 		}
 		clientConfig := openaiapi.DefaultConfig(request.Opts.APIToken)
@@ -241,7 +203,7 @@ func RunLocalCompletionStream(ctx context.Context, request OpenAiStreamRequest) 
 		}
 		apiResp, err := client.CreateChatCompletionStream(ctx, req)
 		if err != nil {
-			rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("error calling openai API: %v", err)}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("error calling openai API: %v", err)}
 			return
 		}
 		sentHeader := false
@@ -253,14 +215,14 @@ func RunLocalCompletionStream(ctx context.Context, request OpenAiStreamRequest) 
 			}
 			if err != nil {
 				log.Printf("err received2: %v", err)
-				rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket error reading message: %v", err)}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket error reading message: %v", err)}
 				break
 			}
 			if streamResp.Model != "" && !sentHeader {
 				pk := MakeOpenAIPacket()
 				pk.Model = streamResp.Model
 				pk.Created = streamResp.Created
-				rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Response: *pk}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
 				sentHeader = true
 			}
 			for _, choice := range streamResp.Choices {
@@ -268,15 +230,15 @@ func RunLocalCompletionStream(ctx context.Context, request OpenAiStreamRequest) 
 				pk.Index = choice.Index
 				pk.Text = choice.Delta.Content
 				pk.FinishReason = string(choice.FinishReason)
-				rtn <- wshrpc.RespOrErrorUnion[OpenAIPacketType]{Response: *pk}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
 			}
 		}
 	}()
 	return rtn
 }
 
-func marshalResponse(resp openaiapi.ChatCompletionResponse) []*OpenAIPacketType {
-	var rtn []*OpenAIPacketType
+func marshalResponse(resp openaiapi.ChatCompletionResponse) []*wshrpc.OpenAIPacketType {
+	var rtn []*wshrpc.OpenAIPacketType
 	headerPk := MakeOpenAIPacket()
 	headerPk.Model = resp.Model
 	headerPk.Created = resp.Created
@@ -292,14 +254,14 @@ func marshalResponse(resp openaiapi.ChatCompletionResponse) []*OpenAIPacketType 
 	return rtn
 }
 
-func CreateErrorPacket(errStr string) *OpenAIPacketType {
+func CreateErrorPacket(errStr string) *wshrpc.OpenAIPacketType {
 	errPk := MakeOpenAIPacket()
 	errPk.FinishReason = "error"
 	errPk.Error = errStr
 	return errPk
 }
 
-func CreateTextPacket(text string) *OpenAIPacketType {
+func CreateTextPacket(text string) *wshrpc.OpenAIPacketType {
 	pk := MakeOpenAIPacket()
 	pk.Text = text
 	return pk

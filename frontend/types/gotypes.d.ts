@@ -187,7 +187,7 @@ declare global {
     // waveobj.ORef
     type ORef = string;
 
-    // waveai.OpenAIOptsType
+    // wshrpc.OpenAIOptsType
     type OpenAIOptsType = {
         model: string;
         apitoken: string;
@@ -197,7 +197,7 @@ declare global {
         timeout?: number;
     };
 
-    // waveai.OpenAIPacketType
+    // wshrpc.OpenAIPacketType
     type OpenAIPacketType = {
         type: string;
         model?: string;
@@ -209,21 +209,21 @@ declare global {
         error?: string;
     };
 
-    // waveai.OpenAIPromptMessageType
+    // wshrpc.OpenAIPromptMessageType
     type OpenAIPromptMessageType = {
         role: string;
         content: string;
         name?: string;
     };
 
-    // waveai.OpenAIUsageType
+    // wshrpc.OpenAIUsageType
     type OpenAIUsageType = {
         prompt_tokens?: number;
         completion_tokens?: number;
         total_tokens?: number;
     };
 
-    // waveai.OpenAiStreamRequest
+    // wshrpc.OpenAiStreamRequest
     type OpenAiStreamRequest = {
         clientid?: string;
         opts: OpenAIOptsType;
@@ -270,6 +270,7 @@ declare global {
         blockheader: BlockHeaderOpts;
         autoupdate: AutoUpdateOpts;
         termthemes: {[key: string]: TermThemeType};
+        window: WindowSettingsType;
     };
 
     // wstore.StickerClickOptsType
@@ -291,6 +292,13 @@ declare global {
         style: MetaType;
         clickopts?: StickerClickOptsType;
         display: StickerDisplayOptsType;
+    };
+
+    // wshrpc.SubscriptionRequest
+    type SubscriptionRequest = {
+        event: string;
+        scopes?: string[];
+        allscopes?: boolean;
     };
 
     // wstore.Tab
@@ -428,6 +436,14 @@ declare global {
         error: string;
     };
 
+    // wshrpc.WaveEvent
+    type WaveEvent = {
+        event: string;
+        scopes?: string[];
+        sender?: string;
+        data?: any;
+    };
+
     // filestore.WaveFile
     type WaveFile = {
         zoneid: string;
@@ -495,6 +511,13 @@ declare global {
     type WinSize = {
         width: number;
         height: number;
+    };
+
+    // wconfig.WindowSettingsType
+    type WindowSettingsType = {
+        transparent: boolean;
+        opacity: number;
+        bgcolor: string;
     };
 
     // wstore.Workspace

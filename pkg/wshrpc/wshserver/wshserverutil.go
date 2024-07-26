@@ -10,9 +10,7 @@ import (
 	"net"
 	"os"
 	"reflect"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
@@ -41,6 +39,7 @@ type WshServerMethodDecl struct {
 
 var WshServerImpl = WshServer{}
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
+var wshCommandDeclMap = wshrpc.GenerateWshCommandDeclMap()
 
 func GetWshServerMethod(command string, commandType string, methodName string, methodFunc any) *WshServerMethodDecl {
 	methodVal := reflect.ValueOf(methodFunc)
@@ -55,12 +54,16 @@ func GetWshServerMethod(command string, commandType string, methodName string, m
 	if methodType.NumOut() > 1 {
 		defResponseType = methodType.Out(0)
 	}
+	var cdataType reflect.Type
+	if methodType.NumIn() > 1 {
+		cdataType = methodType.In(1)
+	}
 	rtn := &WshServerMethodDecl{
 		Command:                 command,
 		CommandType:             commandType,
 		MethodName:              methodName,
 		Method:                  methodVal,
-		CommandDataType:         methodType.In(1),
+		CommandDataType:         cdataType,
 		DefaultResponseDataType: defResponseType,
 	}
 	return rtn
@@ -89,7 +92,7 @@ func decodeRtnVals(rtnVals []reflect.Value) (any, error) {
 
 func mainWshServerHandler(handler *wshutil.RpcResponseHandler) bool {
 	command := handler.GetCommand()
-	methodDecl := WshServerCommandToDeclMap[command]
+	methodDecl := wshCommandDeclMap[command]
 	if methodDecl == nil {
 		handler.SendResponseError(fmt.Errorf("command %q not found", command))
 		return true
@@ -106,8 +109,18 @@ func mainWshServerHandler(handler *wshutil.RpcResponseHandler) bool {
 		wshrpc.HackRpcContextIntoData(commandData, handler.GetRpcContext())
 		callParams = append(callParams, reflect.ValueOf(commandData).Elem())
 	}
-	if methodDecl.CommandType == wshutil.RpcType_Call {
-		rtnVals := methodDecl.Method.Call(callParams)
+	implVal := reflect.ValueOf(&WshServerImpl)
+	implMethod := implVal.MethodByName(methodDecl.MethodName)
+	if !implMethod.IsValid() {
+		if !handler.NeedsResponse() {
+			// we also send an out of band message here since this is likely unexpected and will require debugging
+			handler.SendMessage(fmt.Sprintf("command %q method %q not found", handler.GetCommand(), methodDecl.MethodName))
+		}
+		handler.SendResponseError(fmt.Errorf("method %q not found", methodDecl.MethodName))
+		return true
+	}
+	if methodDecl.CommandType == wshrpc.RpcType_Call {
+		rtnVals := implMethod.Call(callParams)
 		rtnData, rtnErr := decodeRtnVals(rtnVals)
 		if rtnErr != nil {
 			handler.SendResponseError(rtnErr)
@@ -115,8 +128,8 @@ func mainWshServerHandler(handler *wshutil.RpcResponseHandler) bool {
 		}
 		handler.SendResponse(rtnData, true)
 		return true
-	} else if methodDecl.CommandType == wshutil.RpcType_ResponseStream {
-		rtnVals := methodDecl.Method.Call(callParams)
+	} else if methodDecl.CommandType == wshrpc.RpcType_ResponseStream {
+		rtnVals := implMethod.Call(callParams)
 		rtnChVal := rtnVals[0]
 		if rtnChVal.IsNil() {
 			handler.SendResponse(nil, true)
@@ -163,7 +176,7 @@ func runWshRpcWithStream(conn net.Conn) {
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	go wshutil.AdaptMsgChToStream(outputCh, conn)
 	go wshutil.AdaptStreamToMsgCh(conn, inputCh)
-	wshutil.MakeWshRpc(inputCh, outputCh, wshutil.RpcContext{}, mainWshServerHandler)
+	wshutil.MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, mainWshServerHandler)
 }
 
 func RunWshRpcOverListener(listener net.Listener) {
@@ -179,82 +192,6 @@ func RunWshRpcOverListener(listener net.Listener) {
 	}()
 }
 
-func MakeClientJWTToken(rpcCtx wshutil.RpcContext, sockName string) (string, error) {
-	claims := jwt.MapClaims{}
-	claims["iat"] = time.Now().Unix()
-	claims["iss"] = "waveterm"
-	claims["sock"] = sockName
-	claims["exp"] = time.Now().Add(time.Hour * 24 * 365).Unix()
-	if rpcCtx.BlockId != "" {
-		claims["blockid"] = rpcCtx.BlockId
-	}
-	if rpcCtx.TabId != "" {
-		claims["tabid"] = rpcCtx.TabId
-	}
-	if rpcCtx.WindowId != "" {
-		claims["windowid"] = rpcCtx.WindowId
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString([]byte(wavebase.JwtSecret))
-	if err != nil {
-		return "", fmt.Errorf("error signing token: %w", err)
-	}
-	return tokenStr, nil
-}
-
-func ValidateAndExtractRpcContextFromToken(tokenStr string) (wshutil.RpcContext, error) {
-	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
-	token, err := parser.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		return []byte(wavebase.JwtSecret), nil
-	})
-	if err != nil {
-		return wshutil.RpcContext{}, fmt.Errorf("error parsing token: %w", err)
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return wshutil.RpcContext{}, fmt.Errorf("error getting claims from token")
-	}
-	// validate "exp" claim
-	if exp, ok := claims["exp"].(float64); ok {
-		if int64(exp) < time.Now().Unix() {
-			return wshutil.RpcContext{}, fmt.Errorf("token has expired")
-		}
-	} else {
-		return wshutil.RpcContext{}, fmt.Errorf("exp claim is missing or invalid")
-	}
-	// validate "iss" claim
-	if iss, ok := claims["iss"].(string); ok {
-		if iss != "waveterm" {
-			return wshutil.RpcContext{}, fmt.Errorf("unexpected issuer: %s", iss)
-		}
-	} else {
-		return wshutil.RpcContext{}, fmt.Errorf("iss claim is missing or invalid")
-	}
-	rpcCtx := wshutil.RpcContext{}
-	rpcCtx.BlockId = claims["blockid"].(string)
-	rpcCtx.TabId = claims["tabid"].(string)
-	rpcCtx.WindowId = claims["windowid"].(string)
-	return rpcCtx, nil
-}
-
-func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
-	// this happens on the client who does not have access to the secret key
-	// we want to read the claims without validating the signature
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
-	if err != nil {
-		return "", fmt.Errorf("error parsing token: %w", err)
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return "", fmt.Errorf("error getting claims from token")
-	}
-	sockName, ok := claims["sock"].(string)
-	if !ok {
-		return "", fmt.Errorf("sock claim is missing or invalid")
-	}
-	return sockName, nil
-}
-
 func RunDomainSocketWshServer() error {
 	sockName := wavebase.GetDomainSocketName()
 	listener, err := MakeUnixListener(sockName)
@@ -266,6 +203,6 @@ func RunDomainSocketWshServer() error {
 	return nil
 }
 
-func MakeWshServer(inputCh chan []byte, outputCh chan []byte, initialCtx wshutil.RpcContext) {
+func MakeWshServer(inputCh chan []byte, outputCh chan []byte, initialCtx wshrpc.RpcContext) {
 	wshutil.MakeWshRpc(inputCh, outputCh, initialCtx, mainWshServerHandler)
 }

@@ -8,11 +8,10 @@ import (
 	"os"
 
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 )
 
-func genMethod_ResponseStream(fd *os.File, methodDecl *wshserver.WshServerMethodDecl) {
+func genMethod_ResponseStream(fd *os.File, methodDecl *wshrpc.WshRpcMethodDecl) {
 	fmt.Fprintf(fd, "// command %q, wshserver.%s\n", methodDecl.Command, methodDecl.MethodName)
 	var dataType string
 	dataVarName := "nil"
@@ -29,7 +28,7 @@ func genMethod_ResponseStream(fd *os.File, methodDecl *wshserver.WshServerMethod
 	fmt.Fprintf(fd, "}\n\n")
 }
 
-func genMethod_Call(fd *os.File, methodDecl *wshserver.WshServerMethodDecl) {
+func genMethod_Call(fd *os.File, methodDecl *wshrpc.WshRpcMethodDecl) {
 	fmt.Fprintf(fd, "// command %q, wshserver.%s\n", methodDecl.Command, methodDecl.MethodName)
 	var dataType string
 	dataVarName := "nil"
@@ -70,14 +69,14 @@ func main() {
 	fmt.Fprintf(fd, "	\"github.com/wavetermdev/thenextwave/pkg/wshutil\"\n")
 	fmt.Fprintf(fd, "	\"github.com/wavetermdev/thenextwave/pkg/wshrpc\"\n")
 	fmt.Fprintf(fd, "	\"github.com/wavetermdev/thenextwave/pkg/waveobj\"\n")
-	fmt.Fprintf(fd, "	\"github.com/wavetermdev/thenextwave/pkg/waveai\"\n")
 	fmt.Fprintf(fd, ")\n\n")
 
-	for _, key := range utilfn.GetOrderedMapKeys(wshserver.WshServerCommandToDeclMap) {
-		methodDecl := wshserver.WshServerCommandToDeclMap[key]
-		if methodDecl.CommandType == wshutil.RpcType_ResponseStream {
+	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
+	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {
+		methodDecl := wshDeclMap[key]
+		if methodDecl.CommandType == wshrpc.RpcType_ResponseStream {
 			genMethod_ResponseStream(fd, methodDecl)
-		} else if methodDecl.CommandType == wshutil.RpcType_Call {
+		} else if methodDecl.CommandType == wshrpc.RpcType_Call {
 			genMethod_Call(fd, methodDecl)
 		} else {
 			panic("unsupported command type " + methodDecl.CommandType)

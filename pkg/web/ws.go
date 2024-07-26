@@ -23,7 +23,7 @@ import (
 )
 
 // set by main-server.go (for dependency inversion)
-var WshServerFactoryFn func(inputCh chan []byte, outputCh chan []byte, initialCtx wshutil.RpcContext) = nil
+var WshServerFactoryFn func(inputCh chan []byte, outputCh chan []byte, initialCtx wshrpc.RpcContext) = nil
 
 const wsReadWaitTimeout = 15 * time.Second
 const wsWriteWaitTimeout = 10 * time.Second
@@ -104,7 +104,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 			TermSize: &cmd.TermSize,
 		}
 		rpcMsg := wshutil.RpcMessage{
-			Command: wshrpc.Command_BlockInput,
+			Command: wshrpc.Command_ControllerInput,
 			Data:    data,
 		}
 		msgBytes, err := json.Marshal(rpcMsg)
@@ -121,7 +121,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 			InputData64: cmd.InputData64,
 		}
 		rpcMsg := wshutil.RpcMessage{
-			Command: wshrpc.Command_BlockInput,
+			Command: wshrpc.Command_ControllerInput,
 			Data:    data,
 		}
 		msgBytes, err := json.Marshal(rpcMsg)
@@ -281,7 +281,7 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	rpcOutputCh := make(chan []byte, 32)
 	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
 	defer eventbus.UnregisterWSChannel(wsConnId)
-	WshServerFactoryFn(rpcInputCh, rpcOutputCh, wshutil.RpcContext{WindowId: windowId})
+	WshServerFactoryFn(rpcInputCh, rpcOutputCh, wshrpc.RpcContext{WindowId: windowId})
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {

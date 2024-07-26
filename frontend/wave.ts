@@ -27,6 +27,7 @@ loadFonts();
 (window as any).globalWS = globalWS;
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
+(window as any).globalAtoms = atoms;
 (window as any).WshServer = WshServer;
 (window as any).isFullScreen = false;
 

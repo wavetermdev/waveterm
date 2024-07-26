@@ -7,14 +7,19 @@ import * as WOS from "./wos";
 
 // WshServerCommandToDeclMap
 class WshServerType {
-    // command "controller:input" [call]
-	BlockInputCommand(data: CommandBlockInputData, opts?: WshRpcCommandOpts): Promise<void> {
-        return WOS.wshServerRpcHelper_call("controller:input", data, opts);
+    // command "authenticate" [call]
+	AuthenticateCommand(data: string, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("authenticate", data, opts);
     }
 
-    // command "controller:restart" [call]
-	BlockRestartCommand(data: CommandBlockRestartData, opts?: WshRpcCommandOpts): Promise<void> {
-        return WOS.wshServerRpcHelper_call("controller:restart", data, opts);
+    // command "controllerinput" [call]
+	ControllerInputCommand(data: CommandBlockInputData, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("controllerinput", data, opts);
+    }
+
+    // command "controllerrestart" [call]
+	ControllerRestartCommand(data: CommandBlockRestartData, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("controllerrestart", data, opts);
     }
 
     // command "createblock" [call]
@@ -27,24 +32,49 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("deleteblock", data, opts);
     }
 
-    // command "file:append" [call]
-	AppendFileCommand(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<void> {
-        return WOS.wshServerRpcHelper_call("file:append", data, opts);
+    // command "eventpublish" [call]
+	EventPublishCommand(data: WaveEvent, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("eventpublish", data, opts);
     }
 
-    // command "file:appendijson" [call]
-	AppendIJsonCommand(data: CommandAppendIJsonData, opts?: WshRpcCommandOpts): Promise<void> {
-        return WOS.wshServerRpcHelper_call("file:appendijson", data, opts);
+    // command "eventrecv" [call]
+	EventRecvCommand(data: WaveEvent, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("eventrecv", data, opts);
     }
 
-    // command "file:read" [call]
-	ReadFile(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<string> {
-        return WOS.wshServerRpcHelper_call("file:read", data, opts);
+    // command "eventsub" [call]
+	EventSubCommand(data: SubscriptionRequest, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("eventsub", data, opts);
     }
 
-    // command "file:write" [call]
-	WriteFile(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<void> {
-        return WOS.wshServerRpcHelper_call("file:write", data, opts);
+    // command "eventunsub" [call]
+	EventUnsubCommand(data: SubscriptionRequest, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("eventunsub", data, opts);
+    }
+
+    // command "eventunsuball" [call]
+	EventUnsubAllCommand(opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("eventunsuball", null, opts);
+    }
+
+    // command "fileappend" [call]
+	FileAppendCommand(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("fileappend", data, opts);
+    }
+
+    // command "fileappendijson" [call]
+	FileAppendIJsonCommand(data: CommandAppendIJsonData, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("fileappendijson", data, opts);
+    }
+
+    // command "fileread" [call]
+	FileReadCommand(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<string> {
+        return WOS.wshServerRpcHelper_call("fileread", data, opts);
+    }
+
+    // command "filewrite" [call]
+	FileWriteCommand(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("filewrite", data, opts);
     }
 
     // command "getmeta" [call]
@@ -68,18 +98,18 @@ class WshServerType {
     }
 
     // command "setview" [call]
-	BlockSetViewCommand(data: CommandBlockSetViewData, opts?: WshRpcCommandOpts): Promise<void> {
+	SetViewCommand(data: CommandBlockSetViewData, opts?: WshRpcCommandOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("setview", data, opts);
     }
 
-    // command "stream:waveai" [responsestream]
-	RespStreamWaveAi(data: OpenAiStreamRequest, opts?: WshRpcCommandOpts): AsyncGenerator<OpenAIPacketType, void, boolean> {
-        return WOS.wshServerRpcHelper_responsestream("stream:waveai", data, opts);
+    // command "streamtest" [responsestream]
+	StreamTestCommand(opts?: WshRpcCommandOpts): AsyncGenerator<number, void, boolean> {
+        return WOS.wshServerRpcHelper_responsestream("streamtest", null, opts);
     }
 
-    // command "streamtest" [responsestream]
-	RespStreamTest(opts?: WshRpcCommandOpts): AsyncGenerator<number, void, boolean> {
-        return WOS.wshServerRpcHelper_responsestream("streamtest", null, opts);
+    // command "streamwaveai" [responsestream]
+	StreamWaveAiCommand(data: OpenAiStreamRequest, opts?: WshRpcCommandOpts): AsyncGenerator<OpenAIPacketType, void, boolean> {
+        return WOS.wshServerRpcHelper_responsestream("streamwaveai", data, opts);
     }
 
 }

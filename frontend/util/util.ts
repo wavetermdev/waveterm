@@ -34,6 +34,10 @@ function base64ToArray(b64: string): Uint8Array {
     return rtnArr;
 }
 
+function boundNumber(num: number, min: number, max: number): number {
+    return Math.min(Math.max(num, min), max);
+}
+
 // works for json-like objects (arrays, objects, strings, numbers, booleans)
 function jsonDeepEqual(v1: any, v2: any): boolean {
     if (v1 === v2) {
@@ -193,6 +197,7 @@ function getCrypto() {
 export {
     base64ToArray,
     base64ToString,
+    boundNumber,
     fireAndForget,
     getCrypto,
     getPromiseState,

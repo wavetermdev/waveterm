@@ -137,7 +137,7 @@ export class WaveAiModel implements ViewModel {
                 opts: opts,
                 prompt: prompt,
             };
-            const aiGen = WshServer.RespStreamWaveAi(beMsg);
+            const aiGen = WshServer.StreamWaveAiCommand(beMsg);
             let temp = async () => {
                 let fullMsg = "";
                 for await (const msg of aiGen) {

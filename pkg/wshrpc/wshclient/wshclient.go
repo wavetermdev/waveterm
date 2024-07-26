@@ -9,24 +9,29 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/waveai"
 )
 
-// command "controller:input", wshserver.BlockInputCommand
-func BlockInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInputData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestCallHelper[any](w, "controller:input", data, opts)
+// command "authenticate", wshserver.AuthenticateCommand
+func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "authenticate", data, opts)
     return err
 }
 
-// command "controller:restart", wshserver.BlockRestartCommand
-func BlockRestartCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockRestartData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestCallHelper[any](w, "controller:restart", data, opts)
+// command "controllerinput", wshserver.ControllerInputCommand
+func ControllerInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInputData, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "controllerinput", data, opts)
+    return err
+}
+
+// command "controllerrestart", wshserver.ControllerRestartCommand
+func ControllerRestartCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockRestartData, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "controllerrestart", data, opts)
     return err
 }
 
 // command "createblock", wshserver.CreateBlockCommand
-func CreateBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateBlockData, opts *wshrpc.WshRpcCommandOpts) (*waveobj.ORef, error) {
-    resp, err := sendRpcRequestCallHelper[*waveobj.ORef](w, "createblock", data, opts)
+func CreateBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateBlockData, opts *wshrpc.WshRpcCommandOpts) (waveobj.ORef, error) {
+    resp, err := sendRpcRequestCallHelper[waveobj.ORef](w, "createblock", data, opts)
     return resp, err
 }
 
@@ -36,27 +41,57 @@ func DeleteBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, o
     return err
 }
 
-// command "file:append", wshserver.AppendFileCommand
-func AppendFileCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestCallHelper[any](w, "file:append", data, opts)
+// command "eventpublish", wshserver.EventPublishCommand
+func EventPublishCommand(w *wshutil.WshRpc, data wshrpc.WaveEvent, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "eventpublish", data, opts)
     return err
 }
 
-// command "file:appendijson", wshserver.AppendIJsonCommand
-func AppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestCallHelper[any](w, "file:appendijson", data, opts)
+// command "eventrecv", wshserver.EventRecvCommand
+func EventRecvCommand(w *wshutil.WshRpc, data wshrpc.WaveEvent, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "eventrecv", data, opts)
     return err
 }
 
-// command "file:read", wshserver.ReadFile
-func ReadFile(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) (string, error) {
-    resp, err := sendRpcRequestCallHelper[string](w, "file:read", data, opts)
+// command "eventsub", wshserver.EventSubCommand
+func EventSubCommand(w *wshutil.WshRpc, data wshrpc.SubscriptionRequest, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "eventsub", data, opts)
+    return err
+}
+
+// command "eventunsub", wshserver.EventUnsubCommand
+func EventUnsubCommand(w *wshutil.WshRpc, data wshrpc.SubscriptionRequest, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "eventunsub", data, opts)
+    return err
+}
+
+// command "eventunsuball", wshserver.EventUnsubAllCommand
+func EventUnsubAllCommand(w *wshutil.WshRpc, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "eventunsuball", nil, opts)
+    return err
+}
+
+// command "fileappend", wshserver.FileAppendCommand
+func FileAppendCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "fileappend", data, opts)
+    return err
+}
+
+// command "fileappendijson", wshserver.FileAppendIJsonCommand
+func FileAppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonData, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "fileappendijson", data, opts)
+    return err
+}
+
+// command "fileread", wshserver.FileReadCommand
+func FileReadCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) (string, error) {
+    resp, err := sendRpcRequestCallHelper[string](w, "fileread", data, opts)
     return resp, err
 }
 
-// command "file:write", wshserver.WriteFile
-func WriteFile(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestCallHelper[any](w, "file:write", data, opts)
+// command "filewrite", wshserver.FileWriteCommand
+func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "filewrite", data, opts)
     return err
 }
 
@@ -84,20 +119,20 @@ func SetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandSetMetaData, opts *wsh
     return err
 }
 
-// command "setview", wshserver.BlockSetViewCommand
-func BlockSetViewCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockSetViewData, opts *wshrpc.WshRpcCommandOpts) error {
+// command "setview", wshserver.SetViewCommand
+func SetViewCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockSetViewData, opts *wshrpc.WshRpcCommandOpts) error {
     _, err := sendRpcRequestCallHelper[any](w, "setview", data, opts)
     return err
 }
 
-// command "stream:waveai", wshserver.RespStreamWaveAi
-func RespStreamWaveAi(w *wshutil.WshRpc, data waveai.OpenAiStreamRequest, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[waveai.OpenAIPacketType] {
-    return sendRpcRequestResponseStreamHelper[waveai.OpenAIPacketType](w, "stream:waveai", data, opts)
+// command "streamtest", wshserver.StreamTestCommand
+func StreamTestCommand(w *wshutil.WshRpc, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[int] {
+    return sendRpcRequestResponseStreamHelper[int](w, "streamtest", nil, opts)
 }
 
-// command "streamtest", wshserver.RespStreamTest
-func RespStreamTest(w *wshutil.WshRpc, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[int] {
-    return sendRpcRequestResponseStreamHelper[int](w, "streamtest", nil, opts)
+// command "streamwaveai", wshserver.StreamWaveAiCommand
+func StreamWaveAiCommand(w *wshutil.WshRpc, data wshrpc.OpenAiStreamRequest, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
+    return sendRpcRequestResponseStreamHelper[wshrpc.OpenAIPacketType](w, "streamwaveai", data, opts)
 }
 
 

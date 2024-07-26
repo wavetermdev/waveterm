@@ -76,7 +76,7 @@ export class TermWrap {
 
     handleTermData(data: string) {
         const b64data = btoa(data);
-        WshServer.BlockInputCommand({ blockid: this.blockId, inputdata64: b64data });
+        WshServer.ControllerInputCommand({ blockid: this.blockId, inputdata64: b64data });
     }
 
     addFocusListener(focusFn: () => void) {

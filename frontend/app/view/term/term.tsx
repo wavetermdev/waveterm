@@ -214,7 +214,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
-                WshServer.BlockRestartCommand({ blockid: blockId });
+                WshServer.ControllerRestartCommand({ blockid: blockId });
                 return false;
             }
         }
@@ -263,7 +263,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             return false;
         }
         const b64data = btoa(asciiVal);
-        WshServer.BlockInputCommand({ blockid: blockId, inputdata64: b64data });
+        WshServer.ControllerInputCommand({ blockid: blockId, inputdata64: b64data });
         return true;
     };
 

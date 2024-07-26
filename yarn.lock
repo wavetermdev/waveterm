@@ -3546,6 +3546,31 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/color-convert@npm:*":
+  version: 2.0.3
+  resolution: "@types/color-convert@npm:2.0.3"
+  dependencies:
+    "@types/color-name": "npm:*"
+  checksum: 10c0/a5870547660f426cddd76b54e942703e29c3b43fc26b1ba567e10b9707d144b7d8863e0af7affd9c3391815c06582571f43835c71ede270a6c58949155d18b77
+  languageName: node
+  linkType: hard
+
+"@types/color-name@npm:*":
+  version: 1.1.4
+  resolution: "@types/color-name@npm:1.1.4"
+  checksum: 10c0/11a5b67408a53a972fa98e4bbe2b0ff4cb74a3b3abb5f250cb5ec7b055a45aa8e00ddaf39b8327ef683ede9b2ff9b3ee9d25cd708d12b1b6a9aee5e8e6002920
+  languageName: node
+  linkType: hard
+
+"@types/color@npm:^3.0.6":
+  version: 3.0.6
+  resolution: "@types/color@npm:3.0.6"
+  dependencies:
+    "@types/color-convert": "npm:*"
+  checksum: 10c0/79267eeb67f9d11761aecee36bb1503fb8daa699b9ae7e036fc23a74380e5b130c5c0f6d7adafabba89256e46f36ee4d3e28e0ac7e107e8258550eae7d091acf
+  languageName: node
+  linkType: hard
+
 "@types/connect@npm:*":
   version: 3.4.38
   resolution: "@types/connect@npm:3.4.38"
@@ -5258,7 +5283,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"color-string@npm:^1.6.0":
+"color-string@npm:^1.6.0, color-string@npm:^1.9.0":
   version: 1.9.1
   resolution: "color-string@npm:1.9.1"
   dependencies:
@@ -5275,6 +5300,16 @@ __metadata:
     color-convert: "npm:^1.9.3"
     color-string: "npm:^1.6.0"
   checksum: 10c0/39345d55825884c32a88b95127d417a2c24681d8b57069413596d9fcbb721459ef9d9ec24ce3e65527b5373ce171b73e38dbcd9c830a52a6487e7f37bf00e83c
+  languageName: node
+  linkType: hard
+
+"color@npm:^4.2.3":
+  version: 4.2.3
+  resolution: "color@npm:4.2.3"
+  dependencies:
+    color-convert: "npm:^2.0.1"
+    color-string: "npm:^1.9.0"
+  checksum: 10c0/7fbe7cfb811054c808349de19fb380252e5e34e61d7d168ec3353e9e9aacb1802674bddc657682e4e9730c2786592a4de6f8283e7e0d3870b829bb0b7b2f6118
   languageName: node
   linkType: hard
 
@@ -11768,6 +11803,7 @@ __metadata:
     "@table-nav/core": "npm:^0.0.7"
     "@table-nav/react": "npm:^0.0.7"
     "@tanstack/react-table": "npm:^8.19.3"
+    "@types/color": "npm:^3.0.6"
     "@types/electron": "npm:^1.6.10"
     "@types/node": "npm:^20.14.12"
     "@types/papaparse": "npm:^5"
@@ -11783,6 +11819,7 @@ __metadata:
     "@xterm/xterm": "npm:^5.5.0"
     base64-js: "npm:^1.5.1"
     clsx: "npm:^2.1.1"
+    color: "npm:^4.2.3"
     dayjs: "npm:^1.11.12"
     electron: "npm:^31.3.0"
     electron-builder: "npm:^24.13.3"

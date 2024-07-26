@@ -15,18 +15,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 )
 
 const DefaultTimeoutMs = 5000
 const RespChSize = 32
 const DefaultMessageChSize = 32
-
-const (
-	RpcType_Call             = "call"             // single response (regular rpc)
-	RpcType_ResponseStream   = "responsestream"   // stream of responses (streaming rpc)
-	RpcType_StreamingRequest = "streamingrequest" // streaming request
-	RpcType_Complex          = "complex"          // streaming request/response
-)
 
 type ResponseFnType = func(any) error
 
@@ -115,17 +109,12 @@ func (r *RpcMessage) Validate() error {
 	return fmt.Errorf("invalid packet: must have command, reqid, or resid set")
 }
 
-type RpcContext struct {
-	BlockId  string `json:"blockid,omitempty"`
-	TabId    string `json:"tabid,omitempty"`
-	WindowId string `json:"windowid,omitempty"`
-}
-
 type WshRpc struct {
 	Lock       *sync.Mutex
+	clientId   string
 	InputCh    chan []byte
 	OutputCh   chan []byte
-	RpcContext *atomic.Pointer[RpcContext]
+	RpcContext *atomic.Pointer[wshrpc.RpcContext]
 	RpcMap     map[string]*rpcData
 	HandlerFn  CommandHandlerFnType
 
@@ -139,13 +128,14 @@ type rpcData struct {
 
 // oscEsc is the OSC escape sequence to use for *sending* messages
 // closes outputCh when inputCh is closed/done
-func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx RpcContext, commandHandlerFn CommandHandlerFnType) *WshRpc {
+func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, commandHandlerFn CommandHandlerFnType) *WshRpc {
 	rtn := &WshRpc{
 		Lock:               &sync.Mutex{},
+		clientId:           uuid.New().String(),
 		InputCh:            inputCh,
 		OutputCh:           outputCh,
 		RpcMap:             make(map[string]*rpcData),
-		RpcContext:         &atomic.Pointer[RpcContext]{},
+		RpcContext:         &atomic.Pointer[wshrpc.RpcContext]{},
 		HandlerFn:          commandHandlerFn,
 		ResponseHandlerMap: make(map[string]*RpcResponseHandler),
 	}
@@ -154,12 +144,30 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx RpcContext, co
 	return rtn
 }
 
-func (w *WshRpc) GetRpcContext() RpcContext {
+func (w *WshRpc) ClientId() string {
+	return w.clientId
+}
+
+func (w *WshRpc) SendEvent(event wshrpc.WaveEvent) {
+	// for wps compatibility
+	msg := &RpcMessage{
+		Command: wshrpc.Command_EventPublish,
+		Data:    event,
+	}
+	barr, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("error marshalling event: %v\n", err)
+		return
+	}
+	w.OutputCh <- barr
+}
+
+func (w *WshRpc) GetRpcContext() wshrpc.RpcContext {
 	rtnPtr := w.RpcContext.Load()
 	return *rtnPtr
 }
 
-func (w *WshRpc) SetRpcContext(ctx RpcContext) {
+func (w *WshRpc) SetRpcContext(ctx wshrpc.RpcContext) {
 	w.RpcContext.Store(&ctx)
 }
 
@@ -399,7 +407,7 @@ type RpcResponseHandler struct {
 	reqId           string
 	command         string
 	commandData     any
-	rpcCtx          RpcContext
+	rpcCtx          wshrpc.RpcContext
 	canceled        *atomic.Bool // canceled by requestor
 	done            *atomic.Bool
 }
@@ -416,8 +424,23 @@ func (handler *RpcResponseHandler) GetCommandRawData() any {
 	return handler.commandData
 }
 
-func (handler *RpcResponseHandler) GetRpcContext() RpcContext {
+func (handler *RpcResponseHandler) GetRpcContext() wshrpc.RpcContext {
 	return handler.rpcCtx
+}
+
+func (handler *RpcResponseHandler) NeedsResponse() bool {
+	return handler.reqId != ""
+}
+
+func (handler *RpcResponseHandler) SendMessage(msg string) {
+	rpcMsg := &RpcMessage{
+		Command: wshrpc.Command_Message,
+		Data: wshrpc.CommandMessageData{
+			Message: msg,
+		},
+	}
+	msgBytes, _ := json.Marshal(rpcMsg) // will never fail
+	handler.w.OutputCh <- msgBytes
 }
 
 func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {

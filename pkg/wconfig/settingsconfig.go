@@ -72,13 +72,21 @@ type TermThemesConfigType map[string]TermThemeType
 
 // TODO add default term theme settings
 
+// note we pointers so we preserve nulls
+type WindowSettingsType struct {
+	Transparent *bool    `json:"transparent"`
+	Opacity     *float64 `json:"opacity"`
+	BgColor     *string  `json:"bgcolor"`
+}
+
 type SettingsConfigType struct {
-	MimeTypes   map[string]MimeTypeConfigType `json:"mimetypes"`
-	Term        TerminalConfigType            `json:"term"`
-	Widgets     []WidgetsConfigType           `json:"widgets"`
-	BlockHeader BlockHeaderOpts               `json:"blockheader"`
-	AutoUpdate  *AutoUpdateOpts               `json:"autoupdate"`
-	TermThemes  TermThemesConfigType          `json:"termthemes"`
+	MimeTypes      map[string]MimeTypeConfigType `json:"mimetypes"`
+	Term           TerminalConfigType            `json:"term"`
+	Widgets        []WidgetsConfigType           `json:"widgets"`
+	BlockHeader    BlockHeaderOpts               `json:"blockheader"`
+	AutoUpdate     *AutoUpdateOpts               `json:"autoupdate"`
+	TermThemes     TermThemesConfigType          `json:"termthemes"`
+	WindowSettings WindowSettingsType            `json:"window"`
 }
 
 var DefaultTermDarkTheme = TermThemeType{

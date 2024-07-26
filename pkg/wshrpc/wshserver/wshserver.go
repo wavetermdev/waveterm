@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"reflect"
 	"strings"
 	"time"
 
@@ -20,45 +19,26 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/waveai"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
-var RespStreamTest_MethodDecl = &WshServerMethodDecl{
-	Command:                 "streamtest",
-	CommandType:             wshutil.RpcType_ResponseStream,
-	MethodName:              "RespStreamTest",
-	Method:                  reflect.ValueOf(WshServerImpl.RespStreamTest),
-	CommandDataType:         nil,
-	DefaultResponseDataType: reflect.TypeOf((int)(0)),
-}
-
-var RespStreamWaveAi_MethodDecl = &WshServerMethodDecl{
-	Command:                 wshrpc.Command_StreamWaveAi,
-	CommandType:             wshutil.RpcType_ResponseStream,
-	MethodName:              "RespStreamWaveAi",
-	Method:                  reflect.ValueOf(WshServerImpl.RespStreamWaveAi),
-	CommandDataType:         reflect.TypeOf(waveai.OpenAiStreamRequest{}),
-	DefaultResponseDataType: reflect.TypeOf(waveai.OpenAIPacketType{}),
-}
-
-var WshServerCommandToDeclMap = map[string]*WshServerMethodDecl{
-	wshrpc.Command_Message:      GetWshServerMethod(wshrpc.Command_Message, wshutil.RpcType_Call, "MessageCommand", WshServerImpl.MessageCommand),
-	wshrpc.Command_SetView:      GetWshServerMethod(wshrpc.Command_SetView, wshutil.RpcType_Call, "BlockSetViewCommand", WshServerImpl.BlockSetViewCommand),
-	wshrpc.Command_SetMeta:      GetWshServerMethod(wshrpc.Command_SetMeta, wshutil.RpcType_Call, "SetMetaCommand", WshServerImpl.SetMetaCommand),
-	wshrpc.Command_GetMeta:      GetWshServerMethod(wshrpc.Command_GetMeta, wshutil.RpcType_Call, "GetMetaCommand", WshServerImpl.GetMetaCommand),
-	wshrpc.Command_ResolveIds:   GetWshServerMethod(wshrpc.Command_ResolveIds, wshutil.RpcType_Call, "ResolveIdsCommand", WshServerImpl.ResolveIdsCommand),
-	wshrpc.Command_CreateBlock:  GetWshServerMethod(wshrpc.Command_CreateBlock, wshutil.RpcType_Call, "CreateBlockCommand", WshServerImpl.CreateBlockCommand),
-	wshrpc.Command_Restart:      GetWshServerMethod(wshrpc.Command_Restart, wshutil.RpcType_Call, "BlockRestartCommand", WshServerImpl.BlockRestartCommand),
-	wshrpc.Command_BlockInput:   GetWshServerMethod(wshrpc.Command_BlockInput, wshutil.RpcType_Call, "BlockInputCommand", WshServerImpl.BlockInputCommand),
-	wshrpc.Command_AppendFile:   GetWshServerMethod(wshrpc.Command_AppendFile, wshutil.RpcType_Call, "AppendFileCommand", WshServerImpl.AppendFileCommand),
-	wshrpc.Command_AppendIJson:  GetWshServerMethod(wshrpc.Command_AppendIJson, wshutil.RpcType_Call, "AppendIJsonCommand", WshServerImpl.AppendIJsonCommand),
-	wshrpc.Command_DeleteBlock:  GetWshServerMethod(wshrpc.Command_DeleteBlock, wshutil.RpcType_Call, "DeleteBlockCommand", WshServerImpl.DeleteBlockCommand),
-	wshrpc.Command_WriteFile:    GetWshServerMethod(wshrpc.Command_WriteFile, wshutil.RpcType_Call, "WriteFile", WshServerImpl.WriteFile),
-	wshrpc.Command_ReadFile:     GetWshServerMethod(wshrpc.Command_ReadFile, wshutil.RpcType_Call, "ReadFile", WshServerImpl.ReadFile),
-	wshrpc.Command_StreamWaveAi: RespStreamWaveAi_MethodDecl,
-	"streamtest":                RespStreamTest_MethodDecl,
+func (ws *WshServer) AuthenticateCommand(ctx context.Context, data string) error {
+	w := wshutil.GetWshRpcFromContext(ctx)
+	if w == nil {
+		return fmt.Errorf("no wshrpc in context")
+	}
+	newCtx, err := wshutil.ValidateAndExtractRpcContextFromToken(data)
+	if err != nil {
+		return fmt.Errorf("error validating token: %w", err)
+	}
+	if newCtx == nil {
+		return fmt.Errorf("no context found in jwt token")
+	}
+	w.SetRpcContext(*newCtx)
+	return nil
 }
 
 // for testing
@@ -68,7 +48,7 @@ func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMess
 }
 
 // for testing
-func (ws *WshServer) RespStreamTest(ctx context.Context) chan wshrpc.RespOrErrorUnion[int] {
+func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrErrorUnion[int] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[int])
 	go func() {
 		for i := 1; i <= 5; i++ {
@@ -80,7 +60,7 @@ func (ws *WshServer) RespStreamTest(ctx context.Context) chan wshrpc.RespOrError
 	return rtn
 }
 
-func (ws *WshServer) RespStreamWaveAi(ctx context.Context, request waveai.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[waveai.OpenAIPacketType] {
+func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 	if request.Opts.BaseURL == "" && request.Opts.APIToken == "" {
 		return waveai.RunCloudCompletionStream(ctx, request)
 	}
@@ -224,7 +204,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	return &waveobj.ORef{OType: wstore.OType_Block, OID: blockData.OID}, nil
 }
 
-func (ws *WshServer) BlockSetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
+func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
 	log.Printf("SETVIEW: %s | %q\n", data.BlockId, data.View)
 	ctx = wstore.ContextWithUpdates(ctx)
 	block, err := wstore.DBGet[*wstore.Block](ctx, data.BlockId)
@@ -241,7 +221,7 @@ func (ws *WshServer) BlockSetViewCommand(ctx context.Context, data wshrpc.Comman
 	return nil
 }
 
-func (ws *WshServer) BlockRestartCommand(ctx context.Context, data wshrpc.CommandBlockRestartData) error {
+func (ws *WshServer) ControllerRestartCommand(ctx context.Context, data wshrpc.CommandBlockRestartData) error {
 	bc := blockcontroller.GetBlockController(data.BlockId)
 	if bc == nil {
 		return fmt.Errorf("block controller not found for block %q", data.BlockId)
@@ -249,7 +229,7 @@ func (ws *WshServer) BlockRestartCommand(ctx context.Context, data wshrpc.Comman
 	return bc.RestartController()
 }
 
-func (ws *WshServer) BlockInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
+func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
 	bc := blockcontroller.GetBlockController(data.BlockId)
 	if bc == nil {
 		return fmt.Errorf("block controller not found for block %q", data.BlockId)
@@ -269,7 +249,7 @@ func (ws *WshServer) BlockInputCommand(ctx context.Context, data wshrpc.CommandB
 	return bc.SendInput(inputUnion)
 }
 
-func (ws *WshServer) WriteFile(ctx context.Context, data wshrpc.CommandFileData) error {
+func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("error decoding data64: %w", err)
@@ -290,7 +270,7 @@ func (ws *WshServer) WriteFile(ctx context.Context, data wshrpc.CommandFileData)
 	return nil
 }
 
-func (ws *WshServer) ReadFile(ctx context.Context, data wshrpc.CommandFileData) (string, error) {
+func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.CommandFileData) (string, error) {
 	_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
 	if err != nil {
 		return "", fmt.Errorf("error reading blockfile: %w", err)
@@ -298,7 +278,7 @@ func (ws *WshServer) ReadFile(ctx context.Context, data wshrpc.CommandFileData) 
 	return base64.StdEncoding.EncodeToString(dataBuf), nil
 }
 
-func (ws *WshServer) AppendFileCommand(ctx context.Context, data wshrpc.CommandFileData) error {
+func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandFileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("error decoding data64: %w", err)
@@ -320,7 +300,7 @@ func (ws *WshServer) AppendFileCommand(ctx context.Context, data wshrpc.CommandF
 	return nil
 }
 
-func (ws *WshServer) AppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
+func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
 	if data.FileName == blockcontroller.BlockFile_Html && tryCreate {
 		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
@@ -376,5 +356,48 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	blockcontroller.StopBlockController(data.BlockId)
 	updates := wstore.ContextGetUpdatesRtn(ctx)
 	sendWStoreUpdatesToEventBus(updates)
+	return nil
+}
+
+func (ws *WshServer) EventRecvCommand(ctx context.Context, data wshrpc.WaveEvent) error {
+	return nil
+}
+
+func (ws *WshServer) EventPublishCommand(ctx context.Context, data wshrpc.WaveEvent) error {
+	wrpc := wshutil.GetWshRpcFromContext(ctx)
+	if wrpc == nil {
+		return fmt.Errorf("no wshrpc in context")
+	}
+	if data.Sender == "" {
+		data.Sender = wrpc.ClientId()
+	}
+	wps.Broker.Publish(data)
+	return nil
+}
+
+func (ws *WshServer) EventSubCommand(ctx context.Context, data wshrpc.SubscriptionRequest) error {
+	wrpc := wshutil.GetWshRpcFromContext(ctx)
+	if wrpc == nil {
+		return fmt.Errorf("no wshrpc in context")
+	}
+	wps.Broker.Subscribe(wrpc, data)
+	return nil
+}
+
+func (ws *WshServer) EventUnsubCommand(ctx context.Context, data wshrpc.SubscriptionRequest) error {
+	wrpc := wshutil.GetWshRpcFromContext(ctx)
+	if wrpc == nil {
+		return fmt.Errorf("no wshrpc in context")
+	}
+	wps.Broker.Unsubscribe(wrpc, data)
+	return nil
+}
+
+func (ws *WshServer) EventUnsubAllCommand(ctx context.Context) error {
+	wrpc := wshutil.GetWshRpcFromContext(ctx)
+	if wrpc == nil {
+		return fmt.Errorf("no wshrpc in context")
+	}
+	wps.Broker.UnsubscribeAll(wrpc)
 	return nil
 }

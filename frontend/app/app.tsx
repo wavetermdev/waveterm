@@ -16,6 +16,7 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { CenteredDiv } from "./element/quickelems";
 
 import clsx from "clsx";
+import Color from "color";
 import "overlayscrollbars/overlayscrollbars.css";
 import "./app.less";
 
@@ -200,6 +201,31 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
     }
 }
 
+function AppSettingsUpdater() {
+    const settings = jotai.useAtomValue(atoms.settingsConfigAtom);
+    React.useEffect(() => {
+        let isTransparent = settings?.window?.transparent ?? true;
+        let opacity = util.boundNumber(settings?.window?.opacity ?? 0.8, 0, 1);
+        let baseBgColor = settings?.window?.bgcolor;
+        console.log("window settings", settings.window);
+
+        if (isTransparent) {
+            document.body.classList.add("is-transparent");
+            const rootStyles = getComputedStyle(document.documentElement);
+            if (baseBgColor == null) {
+                baseBgColor = rootStyles.getPropertyValue("--main-bg-color").trim();
+            }
+            const color = new Color(baseBgColor);
+            const rgbaColor = color.alpha(opacity).string();
+            document.body.style.backgroundColor = rgbaColor;
+        } else {
+            document.body.classList.remove("is-transparent");
+            document.body.style.opacity = null;
+        }
+    }, [settings?.window]);
+    return null;
+}
+
 const AppInner = () => {
     const client = jotai.useAtomValue(atoms.client);
     const windowData = jotai.useAtomValue(atoms.waveWindow);
@@ -251,6 +277,7 @@ const AppInner = () => {
     const isFullScreen = jotai.useAtomValue(atoms.isFullScreen);
     return (
         <div className={clsx("mainapp", PLATFORM, { fullscreen: isFullScreen })} onContextMenu={handleContextMenu}>
+            <AppSettingsUpdater />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>

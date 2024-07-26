@@ -6,7 +6,9 @@ package blockcontroller
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,12 +23,13 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 // set by main-server.go (for dependency inversion)
-var WshServerFactoryFn func(inputCh chan []byte, outputCh chan []byte, initialCtx wshutil.RpcContext) = nil
+var WshServerFactoryFn func(inputCh chan []byte, outputCh chan []byte, initialCtx wshrpc.RpcContext) = nil
 
 const (
 	BlockController_Shell = "shell"
@@ -205,6 +208,46 @@ func (bc *BlockController) resetTerminalState() {
 	}
 }
 
+func getMetaBool(meta map[string]any, key string, def bool) bool {
+	val, found := meta[key]
+	if !found {
+		return def
+	}
+	if val == nil {
+		return def
+	}
+	if bval, ok := val.(bool); ok {
+		return bval
+	}
+	return def
+}
+
+func getMetaStr(meta map[string]any, key string, def string) string {
+	val, found := meta[key]
+	if !found {
+		return def
+	}
+	if val == nil {
+		return def
+	}
+	if sval, ok := val.(string); ok {
+		return sval
+	}
+	return def
+}
+
+// every byte is 4-bits of randomness
+func randomHexString(numHexDigits int) (string, error) {
+	numBytes := (numHexDigits + 1) / 2 // Calculate the number of bytes needed
+	bytes := make([]byte, numBytes)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+
+	hexStr := hex.EncodeToString(bytes)
+	return hexStr[:numHexDigits], nil // Return the exact number of hex digits
+}
+
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[string]any) error {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
@@ -232,12 +275,35 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	if shellProcErr != nil {
 		return shellProcErr
 	}
+	var remoteDomainSocketName string
+	remoteName := getMetaStr(blockMeta, "connection", "")
+	isRemote := remoteName != ""
+	if isRemote {
+		randStr, err := randomHexString(16) // 64-bits of randomness
+		if err != nil {
+			return fmt.Errorf("error generating random string: %w", err)
+		}
+		remoteDomainSocketName = fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
+	}
 	var cmdStr string
 	cmdOpts := shellexec.CommandOptsType{
 		Env: make(map[string]string),
 	}
-	// temporary for blockid (will switch to a JWT at some point)
-	cmdOpts.Env["LC_WAVETERM_BLOCKID"] = bc.BlockId
+	if !getMetaBool(blockMeta, "nowsh", false) {
+		if isRemote {
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, remoteDomainSocketName)
+			if err != nil {
+				return fmt.Errorf("error making jwt token: %w", err)
+			}
+			cmdOpts.Env["WAVETERM_JWT"] = jwtStr
+		} else {
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
+			if err != nil {
+				return fmt.Errorf("error making jwt token: %w", err)
+			}
+			cmdOpts.Env["WAVETERM_JWT"] = jwtStr
+		}
+	}
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
@@ -284,11 +350,8 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	} else {
 		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
-	// pty buffer equivalent for ssh? i think if i have the ecmd or session i can manage it with output
-	// pty write needs stdin, so if i provide that, i might be able to write that way
-	// need a way to handle setsize???
 	var shellProc *shellexec.ShellProc
-	if remoteName, ok := blockMeta["connection"].(string); ok && remoteName != "" {
+	if remoteName != "" {
 		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, remoteName)
 		if err != nil {
 			return err
@@ -309,7 +372,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	messageCh := make(chan []byte, 32)
 	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Pty, messageCh)
 	outputCh := make(chan []byte, 32)
-	WshServerFactoryFn(messageCh, outputCh, wshutil.RpcContext{BlockId: bc.BlockId, TabId: bc.TabId})
+	WshServerFactoryFn(messageCh, outputCh, wshrpc.RpcContext{BlockId: bc.BlockId, TabId: bc.TabId})
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {

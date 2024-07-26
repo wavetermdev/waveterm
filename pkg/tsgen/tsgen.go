@@ -20,7 +20,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -61,10 +60,13 @@ var uiContextRType = reflect.TypeOf((*wstore.UIContext)(nil)).Elem()
 var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 var updatesRtnRType = reflect.TypeOf(wstore.UpdatesRtnType{})
 var orefRType = reflect.TypeOf((*waveobj.ORef)(nil)).Elem()
+var wshRpcInterfaceRType = reflect.TypeOf((*wshrpc.WshRpcInterface)(nil)).Elem()
 
-func generateTSMethodTypes(method reflect.Method, tsTypesMap map[reflect.Type]string) error {
-	for idx := 1; idx < method.Type.NumIn(); idx++ {
-		// skip receiver
+func generateTSMethodTypes(method reflect.Method, tsTypesMap map[reflect.Type]string, skipFirstArg bool) error {
+	for idx := 0; idx < method.Type.NumIn(); idx++ {
+		if skipFirstArg && idx == 0 {
+			continue
+		}
 		inType := method.Type.In(idx)
 		GenerateTSType(inType, tsTypesMap)
 	}
@@ -159,14 +161,13 @@ var tsRenameMap = map[string]string{
 
 func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]string) (string, []reflect.Type) {
 	var buf bytes.Buffer
-	waveObjType := reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 	tsTypeName := rtype.Name()
 	if tsRename, ok := tsRenameMap[tsTypeName]; ok {
 		tsTypeName = tsRename
 	}
 	var isWaveObj bool
 	buf.WriteString(fmt.Sprintf("// %s\n", rtype.String()))
-	if rtype.Implements(waveObjType) || reflect.PointerTo(rtype).Implements(waveObjType) {
+	if rtype.Implements(waveObjRType) || reflect.PointerTo(rtype).Implements(waveObjRType) {
 		isWaveObj = true
 		buf.WriteString(fmt.Sprintf("type %s = WaveObj & {\n", tsTypeName))
 	} else {
@@ -252,6 +253,9 @@ func generateTSTypeUnionInternal(unionMeta tsgenmeta.TypeUnionMeta) string {
 func GenerateTSType(rtype reflect.Type, tsTypesMap map[reflect.Type]string) {
 	if rtype == nil {
 		return
+	}
+	if rtype.Kind() == reflect.Chan {
+		rtype = rtype.Elem()
 	}
 	if rtype == metaRType {
 		tsTypesMap[metaRType] = GenerateMetaType()
@@ -397,17 +401,17 @@ func GenerateServiceClass(serviceName string, serviceObj any, tsTypesMap map[ref
 	return sb.String()
 }
 
-func GenerateWshServerMethod(methodDecl *wshserver.WshServerMethodDecl, tsTypesMap map[reflect.Type]string) string {
-	if methodDecl.CommandType == wshutil.RpcType_ResponseStream {
+func GenerateWshServerMethod(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMap map[reflect.Type]string) string {
+	if methodDecl.CommandType == wshrpc.RpcType_ResponseStream {
 		return GenerateWshServerMethod_ResponseStream(methodDecl, tsTypesMap)
-	} else if methodDecl.CommandType == wshutil.RpcType_Call {
+	} else if methodDecl.CommandType == wshrpc.RpcType_Call {
 		return GenerateWshServerMethod_Call(methodDecl, tsTypesMap)
 	} else {
 		panic(fmt.Sprintf("cannot generate wshserver commandtype %q", methodDecl.CommandType))
 	}
 }
 
-func GenerateWshServerMethod_ResponseStream(methodDecl *wshserver.WshServerMethodDecl, tsTypesMap map[reflect.Type]string) string {
+func GenerateWshServerMethod_ResponseStream(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMap map[reflect.Type]string) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("    // command %q [%s]\n", methodDecl.Command, methodDecl.CommandType))
 	respType := "any"
@@ -429,7 +433,7 @@ func GenerateWshServerMethod_ResponseStream(methodDecl *wshserver.WshServerMetho
 	return sb.String()
 }
 
-func GenerateWshServerMethod_Call(methodDecl *wshserver.WshServerMethodDecl, tsTypesMap map[reflect.Type]string) string {
+func GenerateWshServerMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMap map[reflect.Type]string) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("    // command %q [%s]\n", methodDecl.Command, methodDecl.CommandType))
 	rtnType := "Promise<void>"
@@ -469,7 +473,7 @@ func GenerateServiceTypes(tsTypesMap map[reflect.Type]string) error {
 		serviceType := reflect.TypeOf(serviceObj)
 		for midx := 0; midx < serviceType.NumMethod(); midx++ {
 			method := serviceType.Method(midx)
-			err := generateTSMethodTypes(method, tsTypesMap)
+			err := generateTSMethodTypes(method, tsTypesMap, true)
 			if err != nil {
 				return fmt.Errorf("error generating TS method types for %s.%s: %v", serviceType, method.Name, err)
 			}
@@ -480,16 +484,12 @@ func GenerateServiceTypes(tsTypesMap map[reflect.Type]string) error {
 
 func GenerateWshServerTypes(tsTypesMap map[reflect.Type]string) error {
 	GenerateTSType(reflect.TypeOf(wshrpc.WshRpcCommandOpts{}), tsTypesMap)
-	for _, methodDecl := range wshserver.WshServerCommandToDeclMap {
-		GenerateTSType(methodDecl.CommandDataType, tsTypesMap)
-		if methodDecl.DefaultResponseDataType != nil {
-			GenerateTSType(methodDecl.DefaultResponseDataType, tsTypesMap)
-		}
-		for _, rtype := range methodDecl.RequestDataTypes {
-			GenerateTSType(rtype, tsTypesMap)
-		}
-		for _, rtype := range methodDecl.ResponseDataTypes {
-			GenerateTSType(rtype, tsTypesMap)
+	rtype := wshRpcInterfaceRType
+	for midx := 0; midx < rtype.NumMethod(); midx++ {
+		method := rtype.Method(midx)
+		err := generateTSMethodTypes(method, tsTypesMap, false)
+		if err != nil {
+			return fmt.Errorf("error generating TS method types for %s.%s: %v", rtype, method.Name, err)
 		}
 	}
 	return nil
