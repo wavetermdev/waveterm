@@ -4,6 +4,22 @@ updates:
       directory: "/"
       schedule:
           interval: "daily"
+      groups:
+          dev-dependencies:
+              dependency-type: "development"
+              exclude-patterns:
+                  - "@storybook/*"
+                  - "*electron*"
+          storybook:
+              patterns:
+                  - "@storybook/*"
+          prod-dependencies:
+              dependency-type: "production"
+              exclude-patterns:
+                  - "*electron*"
+          electron:
+              patterns:
+                  - "*electron*"
     - package-ecosystem: "gomod"
       directory: "/"
       schedule:
