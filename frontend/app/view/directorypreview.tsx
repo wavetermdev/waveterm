@@ -1,6 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useHeight } from "@/app/hook/useHeight";
+import { ContextMenuModel } from "@/app/store/contextmenu";
+import { atoms, createBlock, getApi } from "@/app/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -18,10 +21,10 @@ import {
 import clsx from "clsx";
 import dayjs from "dayjs";
 import * as jotai from "jotai";
-import React from "react";
-import { ContextMenuModel } from "../store/contextmenu";
-import { atoms, createBlock, getApi } from "../store/global";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { OverlayScrollbars } from "overlayscrollbars";
 import "./directorypreview.less";
 
 interface DirectoryTableProps {
@@ -68,30 +71,9 @@ function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): st
     return `${parseFloat(currentValue.toPrecision(sigfig))}${displaySuffixes[currentUnit]}`;
 }
 
-function getSpecificUnit(bytes: number, suffix: string): string {
-    if (bytes < 0) {
-        return "-";
-    }
-
-    const divisors = new Map([
-        ["B", 1],
-        ["kB", 1e3],
-        ["MB", 1e6],
-        ["GB", 1e9],
-        ["TB", 1e12],
-        ["KiB", 0x400],
-        ["MiB", 0x400 ** 2],
-        ["GiB", 0x400 ** 3],
-        ["TiB", 0x400 ** 4],
-    ]);
-    const divisor: number = divisors[suffix] ?? 1;
-
-    return `${bytes / divisor} ${displaySuffixes[suffix]}`;
-}
-
 function getLastModifiedTime(unixMillis: number, column: Column<FileInfo, number>): string {
-    let fileDatetime = dayjs(new Date(unixMillis));
-    let nowDatetime = dayjs(new Date());
+    const fileDatetime = dayjs(new Date(unixMillis));
+    const nowDatetime = dayjs(new Date());
 
     let datePortion: string;
     if (nowDatetime.isSame(fileDatetime, "date")) {
@@ -136,9 +118,6 @@ function getSortIcon(sortType: string | boolean): React.ReactNode {
 }
 
 function cleanMimetype(input: string): string {
-    if (input == "") {
-        return "-";
-    }
     const truncated = input.split(";")[0];
     return truncated.trim();
 }
@@ -153,8 +132,8 @@ function DirectoryTable({
     setSelectedPath,
     setRefreshVersion,
 }: DirectoryTableProps) {
-    let settings = jotai.useAtomValue(atoms.settingsConfigAtom);
-    const getIconFromMimeType = React.useCallback(
+    const settings = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
             while (mimeType.length > 0) {
                 let icon = settings.mimetypes?.[mimeType]?.icon ?? null;
@@ -167,14 +146,14 @@ function DirectoryTable({
         },
         [settings.mimetypes]
     );
-    const getIconColor = React.useCallback(
+    const getIconColor = useCallback(
         (mimeType: string): string => {
             let iconColor = settings.mimetypes?.[mimeType]?.color ?? "inherit";
             return iconColor;
         },
         [settings.mimetypes]
     );
-    const columns = React.useMemo(
+    const columns = useMemo(
         () => [
             columnHelper.accessor("mimetype", {
                 cell: (info) => (
@@ -221,8 +200,8 @@ function DirectoryTable({
             columnHelper.accessor("mimetype", {
                 cell: (info) => <span className="dir-table-type">{cleanMimetype(info.getValue() ?? "")}</span>,
                 header: () => <span className="dir-table-head-type">Type</span>,
-                size: 67,
-                minSize: 67,
+                size: 97,
+                minSize: 97,
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("path", {}),
@@ -256,12 +235,12 @@ function DirectoryTable({
         enableSortingRemoval: false,
     });
 
-    React.useEffect(() => {
+    useEffect(() => {
         setSelectedPath((table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null);
     }, [table, focusIndex, data]);
 
-    React.useEffect(() => {
-        let rows = table.getRowModel()?.flatRows;
+    useEffect(() => {
+        const rows = table.getRowModel()?.flatRows;
         for (const row of rows) {
             if (row.getValue("name") == "..") {
                 row.pin("top");
@@ -269,7 +248,7 @@ function DirectoryTable({
             }
         }
     }, [data]);
-    const columnSizeVars = React.useMemo(() => {
+    const columnSizeVars = useMemo(() => {
         const headers = table.getFlatHeaders();
         const colSizes: { [key: string]: number } = {};
         for (let i = 0; i < headers.length; i++) {
@@ -364,73 +343,88 @@ function TableBody({
     setSelectedPath,
     setRefreshVersion,
 }: TableBodyProps) {
-    const dummyLineRef = React.useRef<HTMLDivElement>(null);
-    const parentRef = React.useRef<HTMLDivElement>(null);
-    const warningBoxRef = React.useRef<HTMLDivElement>(null);
-    const [bodyHeight, setBodyHeight] = React.useState(0);
-    const [containerHeight, setContainerHeight] = React.useState(0);
+    const [bodyHeight, setBodyHeight] = useState(0);
 
-    React.useEffect(() => {
-        if (parentRef.current == null) {
-            return;
-        }
-        const resizeObserver = new ResizeObserver(() => {
-            setContainerHeight(parentRef.current.getBoundingClientRect().height); // 17 is height of breadcrumb
-        });
-        resizeObserver.observe(parentRef.current);
+    const dummyLineRef = useRef<HTMLDivElement>(null);
+    const parentRef = useRef<HTMLDivElement>(null);
+    const warningBoxRef = useRef<HTMLDivElement>(null);
+    const osInstanceRef = useRef<OverlayScrollbars>(null);
+    const rowRefs = useRef<HTMLDivElement[]>([]);
 
-        return () => resizeObserver.disconnect();
-    }, []);
+    const parentHeight = useHeight(parentRef);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (dummyLineRef.current && data && parentRef.current) {
             const rowHeight = dummyLineRef.current.offsetHeight;
             const fullTBodyHeight = rowHeight * data.length;
             const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
-            const maxHeight = containerHeight - 1; // i don't know why, but the -1 makes the resize work
-            const maxHeightLessHeader = maxHeight - warningBoxHeight;
+            const maxHeightLessHeader = parentHeight - warningBoxHeight;
             const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
 
             setBodyHeight(tbodyHeight);
         }
-    }, [data, containerHeight]);
+    }, [data, parentHeight]);
 
-    const handleFileContextMenu = React.useCallback(
-        (e: React.MouseEvent<HTMLDivElement>, path: string) => {
+    useEffect(() => {
+        if (focusIndex !== null && rowRefs.current[focusIndex] && parentRef.current) {
+            const viewport = osInstanceRef.current.elements().viewport;
+            const viewportHeight = viewport.offsetHeight;
+            const rowElement = rowRefs.current[focusIndex];
+            const rowRect = rowElement.getBoundingClientRect();
+            const parentRect = parentRef.current.getBoundingClientRect();
+            const viewportScrollTop = viewport.scrollTop;
+
+            const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewportScrollTop;
+            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top + viewportScrollTop;
+
+            if (rowTopRelativeToViewport < viewportScrollTop) {
+                // Row is above the visible area
+                viewport.scrollTo({ top: rowTopRelativeToViewport });
+            } else if (rowBottomRelativeToViewport > viewportScrollTop + viewportHeight) {
+                // Row is below the visible area
+                viewport.scrollTo({ top: rowBottomRelativeToViewport - viewportHeight });
+            }
+        }
+    }, [focusIndex, parentHeight]);
+
+    const handleFileContextMenu = useCallback(
+        (e, path) => {
             e.preventDefault();
             e.stopPropagation();
-            let menu: ContextMenuItem[] = [];
-            menu.push({
-                label: "Open in New Block",
-                click: async () => {
-                    const blockDef = {
-                        view: "preview",
-                        meta: { file: path },
-                    };
-                    await createBlock(blockDef);
+            const menu = [
+                {
+                    label: "Open in New Block",
+                    click: async () => {
+                        const blockDef = {
+                            view: "preview",
+                            meta: { file: path },
+                        };
+                        await createBlock(blockDef);
+                    },
                 },
-            });
-            menu.push({
-                label: "Delete File",
-                click: async () => {
-                    await services.FileService.DeleteFile(path).catch((e) => console.log(e)); //todo these errors need a popup
-                    setRefreshVersion((current) => current + 1);
+                {
+                    label: "Delete File",
+                    click: async () => {
+                        await services.FileService.DeleteFile(path).catch((e) => console.log(e));
+                        setRefreshVersion((current) => current + 1);
+                    },
                 },
-            });
-            menu.push({
-                label: "Download File",
-                click: async () => {
-                    getApi().downloadFile(path);
+                {
+                    label: "Download File",
+                    click: async () => {
+                        getApi().downloadFile(path);
+                    },
                 },
-            });
+            ];
             ContextMenuModel.showContextMenu(menu, e);
         },
         [setRefreshVersion]
     );
 
-    const displayRow = React.useCallback(
+    const displayRow = useCallback(
         (row: Row<FileInfo>, idx: number) => (
             <div
+                ref={(el) => (rowRefs.current[idx] = el)}
                 className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
                 key={row.id}
                 onDoubleClick={() => {
@@ -439,42 +433,49 @@ function TableBody({
                     setSearch("");
                 }}
                 onClick={() => setFocusIndex(idx)}
-                onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path") as string)}
+                onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path"))}
             >
-                {row.getVisibleCells().map((cell) => {
-                    return (
-                        <div
-                            className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
-                            key={cell.id}
-                            style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
-                        >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                    );
-                })}
+                {row.getVisibleCells().map((cell) => (
+                    <div
+                        className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
+                        key={cell.id}
+                        style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
+                    >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                ))}
             </div>
         ),
         [setSearch, setFileName, handleFileContextMenu, setFocusIndex, focusIndex]
     );
 
+    const handleScrollbarInitialized = (instance) => {
+        osInstanceRef.current = instance;
+    };
+
     return (
         <div className="dir-table-body" ref={parentRef}>
-            {search == "" || (
+            {search !== "" && (
                 <div className="dir-table-body-search-display" ref={warningBoxRef}>
                     <span>Searching for "{search}"</span>
                     <div className="search-display-close-button dir-table-button" onClick={() => setSearch("")}>
                         <i className="fa-solid fa-xmark" />
-                        <input type="text" value={search} onChange={() => {}}></input>
+                        <input type="text" value={search} onChange={() => {}} />
                     </div>
                 </div>
             )}
-            <div className="dir-table-body-scroll-box" style={{ height: bodyHeight }}>
-                <div className="dummy dir-table-body-row" ref={dummyLineRef}>
-                    <div className="dir-table-body-cell">dummy-data</div>
+            <OverlayScrollbarsComponent
+                options={{ scrollbars: { autoHide: "leave" } }}
+                events={{ initialized: handleScrollbarInitialized }}
+            >
+                <div className="dir-table-body-scroll-box" style={{ height: bodyHeight }}>
+                    <div className="dummy dir-table-body-row" ref={dummyLineRef}>
+                        <div className="dir-table-body-cell">dummy-data</div>
+                    </div>
+                    {table.getTopRows().map(displayRow)}
+                    {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
                 </div>
-                {table.getTopRows().map(displayRow)}
-                {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
-            </div>
+            </OverlayScrollbarsComponent>
         </div>
     );
 }
@@ -490,16 +491,16 @@ interface DirectoryPreviewProps {
 }
 
 function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
-    const [searchText, setSearchText] = React.useState("");
-    const [focusIndex, setFocusIndex] = React.useState(0);
-    const [unfilteredData, setUnfilteredData] = React.useState<FileInfo[]>([]);
-    const [filteredData, setFilteredData] = React.useState<FileInfo[]>([]);
+    const [searchText, setSearchText] = useState("");
+    const [focusIndex, setFocusIndex] = useState(0);
+    const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
+    const [filteredData, setFilteredData] = useState<FileInfo[]>([]);
     const [fileName, setFileName] = jotai.useAtom(fileNameAtom);
-    const hideHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
-    const [selectedPath, setSelectedPath] = React.useState("");
+    const showHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
+    const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = jotai.useAtom(model.refreshVersion);
 
-    React.useEffect(() => {
+    useEffect(() => {
         model.refreshCallback = () => {
             setRefreshVersion((refreshVersion) => refreshVersion + 1);
         };
@@ -508,27 +509,27 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
         };
     }, [setRefreshVersion]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const getContent = async () => {
             const file = await services.FileService.ReadFile(fileName);
             const serializedContent = util.base64ToString(file?.data64);
-            let content: FileInfo[] = JSON.parse(serializedContent);
+            const content: FileInfo[] = JSON.parse(serializedContent);
             setUnfilteredData(content);
         };
         getContent();
     }, [fileName, refreshVersion]);
 
-    React.useEffect(() => {
-        let filtered = unfilteredData.filter((fileInfo) => {
-            if (hideHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
+    useEffect(() => {
+        const filtered = unfilteredData.filter((fileInfo) => {
+            if (!showHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
                 return false;
             }
             return fileInfo.name.toLowerCase().includes(searchText);
         });
         setFilteredData(filtered);
-    }, [unfilteredData, hideHiddenFiles, searchText]);
+    }, [unfilteredData, showHiddenFiles, searchText]);
 
-    const handleKeyDown = React.useCallback(
+    const handleKeyDown = useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
             if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                 setSearchText("");
@@ -554,7 +555,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
         [filteredData, setFocusIndex, selectedPath]
     );
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (filteredData.length != 0 && focusIndex > filteredData.length - 1) {
             setFocusIndex(filteredData.length - 1);
         }
@@ -569,7 +570,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
     }, []);
 
     return (
-        <div
+        <OverlayScrollbarsComponent
             className="dir-table-container"
             onChangeCapture={(e) => {
                 const event = e as React.ChangeEvent<HTMLInputElement>;
@@ -577,6 +578,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
             }}
             onKeyDownCapture={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
             onFocusCapture={() => document.getSelection().collapseToEnd()}
+            options={{ scrollbars: { autoHide: "leave" } }}
         >
             <div className="dir-table-search-line">
                 <input
@@ -598,7 +600,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 setSelectedPath={setSelectedPath}
                 setRefreshVersion={setRefreshVersion}
             />
-        </div>
+        </OverlayScrollbarsComponent>
     );
 }
 

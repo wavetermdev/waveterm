@@ -98,6 +98,7 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 		if err == nil && parent != finfo.Path {
 			log.Printf("adding parent")
 			parentFileInfo.Name = ".."
+			parentFileInfo.Size = -1
 			innerFilesInfo = append(innerFilesInfo, *parentFileInfo)
 		}
 		for _, innerFileEntry := range innerFilesEntries {

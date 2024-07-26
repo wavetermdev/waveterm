@@ -1,9 +1,13 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+@import "../mixins.less";
+
 .dir-table-container {
     display: flex;
     flex-direction: column;
     height: 100%;
     .dir-table {
-        overflow-x: auto;
         height: 100%;
         min-width: 600px;
         --col-size-size: 0.2rem;
@@ -76,6 +80,7 @@
             flex: 1 1 auto;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
             .dir-table-body-search-display {
                 display: flex;
                 border-radius: 3px;
@@ -89,8 +94,6 @@
 
             .dir-table-body-scroll-box {
                 position: relative;
-                overflow-y: auto;
-                overflow-x: auto;
                 .dummy {
                     position: absolute;
                     visibility: hidden;
@@ -98,7 +101,7 @@
                 .dir-table-body-row {
                     display: flex;
                     align-items: center;
-                    border-radius: 6px;
+                    border-radius: 5px;
                     padding: 0 6px;
 
                     &.focused {
@@ -156,12 +159,16 @@
                             margin-right: 12px;
                         }
 
+                        .dir-table-type {
+                            .ellipsis();
+                        }
+
                         .dir-table-modestr {
                             font-family: Hack;
                         }
 
                         &:has(.dir-table-name) {
-                            text-overflow: ellipsis;
+                            .ellipsis();
                         }
                         .dir-table-name {
                             font-weight: 500;
