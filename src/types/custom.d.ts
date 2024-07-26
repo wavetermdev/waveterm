@@ -948,6 +948,8 @@ declare global {
         getIsDev: () => boolean;
         getPlatform: () => string;
         getAuthKey: () => string;
+        getBaseHostPort: () => string;
+        getBaseWsHostPort: () => string;
         getWaveSrvStatus: () => boolean;
         getInitialTermFontFamily: () => string;
         getShouldUseDarkColors: () => boolean;
