@@ -8,11 +8,11 @@ updates:
           dev-dependencies:
               dependency-type: "development"
               exclude-patterns:
-                  - "@storybook/*"
+                  - "*storybook*"
                   - "*electron*"
           storybook:
               patterns:
-                  - "@storybook/*"
+                  - "*storybook*"
           prod-dependencies:
               dependency-type: "production"
               exclude-patterns:
