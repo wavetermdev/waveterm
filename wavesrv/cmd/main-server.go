@@ -62,8 +62,6 @@ const HttpTimeoutDuration = 21 * time.Second
 
 const MainServerHost = "127.0.0.1"      // wavesrv
 const WebSocketServerHost = "127.0.0.1" // wavesrv:websocket
-const MainServerDevAddr = "127.0.0.1:8090"
-const WebSocketServerDevAddr = "127.0.0.1:8091"
 const WSStateReconnectTime = 30 * time.Second
 const WSStatePacketChSize = 20
 
@@ -895,7 +893,7 @@ func runWebSocketServer() {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/ws", HandleWs)
 
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:0", WebSocketServerHost))
+	l, err := net.Listen("tcp", net.JoinHostPort(WebSocketServerHost, "0"))
 	if err != nil {
 		log.Printf("[error] trying to start websocket server: %v\n", err)
 		return
@@ -908,17 +906,16 @@ func runWebSocketServer() {
 		return
 	}
 
-	server := &http.Server{
+	httpServer := &http.Server{
 		Addr:           l.Addr().String(),
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        gr,
 	}
-	server.SetKeepAlivesEnabled(false)
+	httpServer.SetKeepAlivesEnabled(false)
 	log.Printf("Running websocket server on %s\n", l.Addr().String())
-	err := server.Serve(l)
-	if err != nil {
+	if err := httpServer.Serve(l); err != nil {
 		log.Printf("[error] trying to run websocket server: %v\n", err)
 	}
 }
@@ -1201,7 +1198,7 @@ func main() {
 	isDirHandler := http.HandlerFunc(configDirHandler)
 	gr.PathPrefix("/config/").Handler(ConfigHandlerCheckIsDir(isDirHandler, isFileHandler))
 
-	l, err := net.Listen("tcp", fmt.Sprintf("%s:0", MainServerHost))
+	l, err := net.Listen("tcp", net.JoinHostPort(MainServerHost, "0"))
 	if err != nil {
 		log.Printf("ERROR: %v\n", err)
 		return
@@ -1214,17 +1211,16 @@ func main() {
 		return
 	}
 
-	server := &http.Server{
+	httpServer := &http.Server{
 		Addr:           l.Addr().String(),
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout"),
 	}
-	server.SetKeepAlivesEnabled(false)
+	httpServer.SetKeepAlivesEnabled(false)
 	log.Printf("Running main server on %s\n", l.Addr().String())
-	err = server.Serve(l)
-	if err != nil {
+	if err := httpServer.Serve(l); err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
 	runtime.KeepAlive(scLock)

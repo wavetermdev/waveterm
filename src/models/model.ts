@@ -419,10 +419,6 @@ class Model {
     }
 
     getBaseHostPort(): string {
-        if (this.isDev) {
-            return appconst.DevServerEndpoint;
-        }
-
         return getApi().getBaseHostPort();
     }
 
@@ -513,9 +509,6 @@ class Model {
     }
 
     getBaseWsHostPort(): string {
-        if (this.isDev) {
-            return appconst.DevServerWsEndpoint;
-        }
         return getApi().getBaseWsHostPort();
     }
 
