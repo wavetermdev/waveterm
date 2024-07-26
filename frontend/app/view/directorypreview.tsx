@@ -23,6 +23,7 @@ import dayjs from "dayjs";
 import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { quote as shellQuote } from "shell-quote";
 
 import { OverlayScrollbars } from "overlayscrollbars";
 import "./directorypreview.less";
@@ -391,19 +392,35 @@ function TableBody({
         (e: any, path: string, mimetype: string) => {
             e.preventDefault();
             e.stopPropagation();
-            const menu = [
+            const fileName = path.split("/").pop();
+            const menu: ContextMenuItem[] = [
                 {
-                    label: "Delete File",
-                    click: async () => {
-                        await services.FileService.DeleteFile(path).catch((e) => console.log(e));
-                        setRefreshVersion((current) => current + 1);
-                    },
+                    label: "Copy File Name",
+                    click: () => navigator.clipboard.writeText(fileName),
+                },
+                {
+                    label: "Copy Full File Name",
+                    click: () => navigator.clipboard.writeText(path),
+                },
+                {
+                    label: "Copy File Name (Shell Quoted)",
+                    click: () => navigator.clipboard.writeText(shellQuote([fileName])),
+                },
+                {
+                    label: "Copy Full File Name (Shell Quoted)",
+                    click: () => navigator.clipboard.writeText(shellQuote([path])),
+                },
+                {
+                    type: "separator",
                 },
                 {
                     label: "Download File",
                     click: async () => {
                         getApi().downloadFile(path);
                     },
+                },
+                {
+                    type: "separator",
                 },
                 {
                     label: "Open Preview in New Block",
@@ -431,6 +448,14 @@ function TableBody({
                     },
                 });
             }
+            menu.push({ type: "separator" });
+            menu.push({
+                label: "Delete File",
+                click: async () => {
+                    await services.FileService.DeleteFile(path).catch((e) => console.log(e));
+                    setRefreshVersion((current) => current + 1);
+                },
+            });
             ContextMenuModel.showContextMenu(menu, e);
         },
         [setRefreshVersion]
