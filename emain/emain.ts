@@ -323,7 +323,7 @@ function createBrowserWindow(
         show: false,
         autoHideMenuBar: true,
     };
-    const isTransparent = settings?.window?.transparent ?? true;
+    const isTransparent = settings?.window?.transparent ?? false;
     if (isTransparent) {
         winOpts.transparent = true;
     } else {

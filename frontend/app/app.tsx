@@ -204,7 +204,7 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
 function AppSettingsUpdater() {
     const settings = jotai.useAtomValue(atoms.settingsConfigAtom);
     React.useEffect(() => {
-        let isTransparent = settings?.window?.transparent ?? true;
+        let isTransparent = settings?.window?.transparent ?? false;
         let opacity = util.boundNumber(settings?.window?.opacity ?? 0.8, 0, 1);
         let baseBgColor = settings?.window?.bgcolor;
         console.log("window settings", settings.window);
