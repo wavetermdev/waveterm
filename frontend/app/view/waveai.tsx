@@ -3,7 +3,7 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { WOS, atoms } from "@/store/global";
+import { WOS, atoms, globalStore } from "@/store/global";
 import { WshServer } from "@/store/wshserver";
 import * as jotai from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
@@ -25,17 +25,18 @@ interface ChatMessageType {
 
 const outline = "2px solid var(--accent-color)";
 
-const defaultMessage: ChatMessageType = {
-    id: uuidv4(),
-    user: "assistant",
-    text: `<p>Hello, how may I help you with this command?<br>
-(Cmd-Shift-Space: open/close, Ctrl+L: clear chat buffer, Up/Down: select code blocks, Enter: to copy a selected code block to the command input)</p>`,
-    isAssistant: true,
-};
-
 interface ChatItemProps {
     chatItem: ChatMessageType;
     itemCount: number;
+}
+
+function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
+    return {
+        id: uuidv4(),
+        user: prompt.role,
+        text: prompt.content,
+        isAssistant: prompt.role == "assistant",
+    };
 }
 
 export class WaveAiModel implements ViewModel {
@@ -49,7 +50,7 @@ export class WaveAiModel implements ViewModel {
     messagesAtom: jotai.PrimitiveAtom<Array<ChatMessageType>>;
     addMessageAtom: jotai.WritableAtom<unknown, [message: ChatMessageType], void>;
     updateLastMessageAtom: jotai.WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
-    simulateAssistantResponseAtom: jotai.WritableAtom<unknown, [userMessage: ChatMessageType], void>;
+    simulateAssistantResponseAtom: jotai.WritableAtom<unknown, [userMessage: ChatMessageType], Promise<void>>;
 
     constructor(blockId: string) {
         this.blockId = blockId;
@@ -57,8 +58,12 @@ export class WaveAiModel implements ViewModel {
         this.viewIcon = jotai.atom((get) => {
             return "sparkles"; // should not be hardcoded
         });
-        this.viewName = jotai.atom("Ai");
-        this.messagesAtom = jotai.atom([defaultMessage]);
+        this.viewName = jotai.atom("Wave Ai");
+        this.messagesAtom = jotai.atom(
+            globalStore
+                .get(this.blockAtom)
+                .meta?.history?.map((prompt: OpenAIPromptMessageType) => promptToMsg(prompt)) ?? []
+        );
 
         this.addMessageAtom = jotai.atom(null, (get, set, message: ChatMessageType) => {
             const messages = get(this.messagesAtom);
@@ -73,7 +78,7 @@ export class WaveAiModel implements ViewModel {
                 set(this.messagesAtom, [...messages.slice(0, -1), updatedMessage]);
             }
         });
-        this.simulateAssistantResponseAtom = jotai.atom(null, (get, set, userMessage: ChatMessageType) => {
+        this.simulateAssistantResponseAtom = jotai.atom(null, async (get, set, userMessage: ChatMessageType) => {
             const typingMessage: ChatMessageType = {
                 id: uuidv4(),
                 user: "assistant",
@@ -106,8 +111,10 @@ export class WaveAiModel implements ViewModel {
         const [messages] = jotai.useAtom(this.messagesAtom);
         const [, addMessage] = jotai.useAtom(this.addMessageAtom);
         const [, simulateResponse] = jotai.useAtom(this.simulateAssistantResponseAtom);
-        const metadata = jotai.useAtomValue(this.blockAtom).meta;
+        const block = jotai.useAtomValue(this.blockAtom);
+        const metadata = block.meta;
         const clientId = jotai.useAtomValue(atoms.clientId);
+        const blockId = this.blockId;
 
         const sendMessage = (text: string, user: string = "user") => {
             const newMessage: ChatMessageType = {
@@ -119,23 +126,23 @@ export class WaveAiModel implements ViewModel {
             addMessage(newMessage);
             // send message to backend and get response
             const opts: OpenAIOptsType = {
-                model: "gpt-3.5-turbo",
+                model: "gpt-4o-mini",
                 apitoken: metadata?.apitoken as string,
                 maxtokens: 1000,
                 timeout: 10,
                 baseurl: metadata?.baseurl as string,
             };
-            const prompt: Array<OpenAIPromptMessageType> = [
-                {
-                    role: "user",
-                    content: text,
-                    name: (metadata?.name as string) || "user",
-                },
-            ];
+            const newPrompt: OpenAIPromptMessageType = {
+                role: "user",
+                content: text,
+                name: (metadata?.name as string) || "user",
+            };
+            const updatedHistory: Array<OpenAIPromptMessageType> = metadata?.history || [];
+            updatedHistory.push(newPrompt);
             const beMsg: OpenAiStreamRequest = {
                 clientid: clientId,
                 opts: opts,
-                prompt: prompt,
+                prompt: updatedHistory,
             };
             const aiGen = WshServer.StreamWaveAiCommand(beMsg);
             let temp = async () => {
@@ -149,7 +156,18 @@ export class WaveAiModel implements ViewModel {
                     text: fullMsg,
                     isAssistant: true,
                 };
-                simulateResponse(response);
+
+                const responsePrompt: OpenAIPromptMessageType = {
+                    role: "assistant",
+                    content: fullMsg,
+                };
+                updatedHistory.push(responsePrompt);
+                const writeToHistory = WshServer.SetMetaCommand({
+                    oref: WOS.makeORef("block", blockId),
+                    meta: { ...metadata, history: updatedHistory },
+                });
+                const typeResponse = simulateResponse(response);
+                Promise.all([writeToHistory, typeResponse]);
             };
             temp();
         };

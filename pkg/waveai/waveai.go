@@ -51,6 +51,16 @@ type OpenAICloudReqPacketType struct {
 	MaxChoices int                              `json:"maxchoices,omitempty"`
 }
 
+type OpenAIOptsType struct {
+	Model      string `json:"model"`
+	APIToken   string `json:"apitoken"`
+	BaseURL    string `json:"baseurl,omitempty"`
+	MaxTokens  int    `json:"maxtokens,omitempty"`
+	MaxChoices int    `json:"maxchoices,omitempty"`
+	Timeout    int    `json:"timeout,omitempty"`
+	BlockId    string `json:"blockid"`
+}
+
 func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
 	return &OpenAICloudReqPacketType{
 		Type: OpenAICloudReqStr,
@@ -71,7 +81,7 @@ func GetWSEndpoint() string {
 }
 
 const DefaultMaxTokens = 1000
-const DefaultModel = "gpt-3.5-turbo"
+const DefaultModel = "gpt-4o-mini"
 const DefaultStreamChanSize = 10
 const PCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
 const PCloudWSEndpointVarName = "PCLOUD_WS_ENDPOINT"
@@ -101,7 +111,6 @@ func ConvertPrompt(prompt []wshrpc.OpenAIPromptMessageType) []openaiapi.ChatComp
 func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
 	go func() {
-		log.Printf("start: %v", request)
 		defer close(rtn)
 		if request.Opts == nil {
 			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("no openai opts found")}
@@ -139,7 +148,6 @@ func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 			return
 		}
 		for {
-			log.Printf("loop")
 			_, socketMessage, err := conn.ReadMessage()
 			if err == io.EOF {
 				break
@@ -173,7 +181,6 @@ func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 func RunLocalCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
 	go func() {
-		log.Printf("start2: %v", request)
 		defer close(rtn)
 		if request.Opts == nil {
 			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("no openai opts found")}
@@ -208,7 +215,6 @@ func RunLocalCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 		}
 		sentHeader := false
 		for {
-			log.Printf("loop2")
 			streamResp, err := apiResp.Recv()
 			if err == io.EOF {
 				break
