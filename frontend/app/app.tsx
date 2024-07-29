@@ -8,6 +8,7 @@ import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as layoututil from "@/util/layoututil";
 import * as util from "@/util/util";
+import * as csstree from "css-tree";
 import { getLayoutStateAtomForTab, globalLayoutTransformsMap } from "frontend/layout/lib/layoutAtom";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -15,6 +16,8 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { CenteredDiv } from "./element/quickelems";
 
+import { useWaveObjectValue } from "@/app/store/wos";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import clsx from "clsx";
 import Color from "color";
 import "overlayscrollbars/overlayscrollbars.css";
@@ -208,7 +211,6 @@ function AppSettingsUpdater() {
         const opacity = util.boundNumber(settings?.window?.opacity ?? 0.8, 0, 1);
         let baseBgColor = settings?.window?.bgcolor;
         console.log("window settings", settings.window);
-
         if (isTransparentOrBlur) {
             document.body.classList.add("is-transparent");
             const rootStyles = getComputedStyle(document.documentElement);
@@ -226,6 +228,76 @@ function AppSettingsUpdater() {
     return null;
 }
 
+function encodeFileURL(file: string) {
+    const webEndpoint = getWebServerEndpoint();
+    return webEndpoint + `/wave/stream-file?path=${encodeURIComponent(file)}&no404=1`;
+}
+
+(window as any).csstree = csstree;
+
+function processBackgroundUrls(cssText: string): string {
+    if (util.isBlank(cssText)) {
+        return null;
+    }
+    cssText = cssText.trim();
+    if (cssText.endsWith(";")) {
+        cssText = cssText.slice(0, -1);
+    }
+    const attrRe = /^background(-image):\s*/;
+    cssText = cssText.replace(attrRe, "");
+    const ast = csstree.parse("background: " + cssText, {
+        context: "declaration",
+    });
+    let hasJSUrl = false;
+    csstree.walk(ast, {
+        visit: "Url",
+        enter(node) {
+            const originalUrl = node.value.trim();
+            if (originalUrl.startsWith("javascript:")) {
+                hasJSUrl = true;
+                return;
+            }
+            const newUrl = encodeFileURL(originalUrl);
+            node.value = newUrl;
+        },
+    });
+    if (hasJSUrl) {
+        console.log("invalid background, contains a 'javascript' protocol url which is not allowed");
+        return null;
+    }
+    const rtnStyle = csstree.generate(ast);
+    if (rtnStyle == null) {
+        return null;
+    }
+    return rtnStyle.replace(/^background:\s*/, "");
+}
+
+const backgroundAttr = "url(/Users/mike/Downloads/wave-logo_appicon.png) repeat-x fixed";
+
+function AppBackground() {
+    const tabId = jotai.useAtomValue(atoms.activeTabId);
+    const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
+    const bgAttr = tabData?.meta?.bg;
+    const style: React.CSSProperties = {};
+    if (!util.isBlank(bgAttr)) {
+        try {
+            const processedBg = processBackgroundUrls(bgAttr);
+            if (!util.isBlank(processedBg)) {
+                const opacity = util.boundNumber(tabData?.meta?.["bg:opacity"], 0, 1) ?? 0.5;
+                style.opacity = opacity;
+                style.background = processedBg;
+                const blendMode = tabData?.meta?.["bg:blendmode"];
+                if (!util.isBlank(blendMode)) {
+                    style.backgroundBlendMode = blendMode;
+                }
+            }
+        } catch (e) {
+            console.error("error processing background", e);
+        }
+    }
+    return <div className="app-background" style={style} />;
+}
+
 const AppInner = () => {
     const client = jotai.useAtomValue(atoms.client);
     const windowData = jotai.useAtomValue(atoms.waveWindow);
@@ -233,6 +305,7 @@ const AppInner = () => {
     if (client == null || windowData == null) {
         return (
             <div className="mainapp">
+                <AppBackground />
                 <CenteredDiv>invalid configuration, client or window was not loaded</CenteredDiv>
             </div>
         );
@@ -277,6 +350,7 @@ const AppInner = () => {
     const isFullScreen = jotai.useAtomValue(atoms.isFullScreen);
     return (
         <div className={clsx("mainapp", PLATFORM, { fullscreen: isFullScreen })} onContextMenu={handleContextMenu}>
+            <AppBackground />
             <AppSettingsUpdater />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />

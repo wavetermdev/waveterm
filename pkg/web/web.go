@@ -27,6 +27,8 @@ import (
 
 type WebFnType = func(http.ResponseWriter, *http.Request)
 
+const TransparentGif64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+
 // Header constants
 const (
 	CacheControlHeaderKey     = "Cache-Control"
@@ -53,6 +55,45 @@ const WSStatePacketChSize = 20
 type WebFnOpts struct {
 	AllowCaching bool
 	JsonErrors   bool
+}
+
+func copyHeaders(dst, src http.Header) {
+	for key, values := range src {
+		for _, value := range values {
+			dst.Add(key, value)
+		}
+	}
+}
+
+type notFoundBlockingResponseWriter struct {
+	w       http.ResponseWriter
+	status  int
+	headers http.Header
+}
+
+func (rw *notFoundBlockingResponseWriter) Header() http.Header {
+	return rw.headers
+}
+
+func (rw *notFoundBlockingResponseWriter) WriteHeader(status int) {
+	if status == http.StatusNotFound {
+		rw.status = status
+		return
+	}
+	rw.status = status
+	copyHeaders(rw.w.Header(), rw.headers)
+	rw.w.WriteHeader(status)
+}
+
+func (rw *notFoundBlockingResponseWriter) Write(b []byte) (int, error) {
+	if rw.status == http.StatusNotFound {
+		// Block the write if it's a 404
+		return len(b), nil
+	}
+	if rw.status == 0 {
+		rw.WriteHeader(http.StatusOK)
+	}
+	return rw.w.Write(b)
 }
 
 func handleService(w http.ResponseWriter, r *http.Request) {
@@ -160,14 +201,36 @@ func handleWaveFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func serveTransparentGIF(w http.ResponseWriter) {
+	gifBytes, _ := base64.StdEncoding.DecodeString(TransparentGif64)
+	w.Header().Set("Content-Type", "image/gif")
+	w.WriteHeader(http.StatusOK)
+	w.Write(gifBytes)
+}
+
 func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	fileName := r.URL.Query().Get("path")
 	if fileName == "" {
 		http.Error(w, "path is required", http.StatusBadRequest)
 		return
 	}
-	fileName = wavebase.ExpandHomeDir(fileName)
-	http.ServeFile(w, r, fileName)
+	no404 := r.URL.Query().Get("no404")
+	log.Printf("got no404: %q\n", no404)
+	if no404 != "" {
+		log.Printf("streaming file w/no404: %q\n", fileName)
+		// use the custom response writer
+		rw := &notFoundBlockingResponseWriter{w: w, headers: http.Header{}}
+		// Serve the file using http.ServeFile
+		http.ServeFile(rw, r, fileName)
+		// if the file was not found, serve the transparent GIF
+		log.Printf("got streamfile status: %d\n", rw.status)
+		if rw.status == http.StatusNotFound {
+			serveTransparentGIF(w)
+		}
+	} else {
+		fileName = wavebase.ExpandHomeDir(fileName)
+		http.ServeFile(w, r, fileName)
+	}
 }
 
 func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {

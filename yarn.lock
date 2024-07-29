@@ -3589,6 +3589,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/css-tree@npm:^2":
+  version: 2.3.8
+  resolution: "@types/css-tree@npm:2.3.8"
+  checksum: 10c0/fafa7ad516b64481a031aceb3c30762074e1e0bfd67e0f0655e46b8c1b7b3c39660f8285811ca6aac11229ef477c65ca61ee118d2f9264145d5db8fe26f1a721
+  languageName: node
+  linkType: hard
+
 "@types/debug@npm:^4.0.0, @types/debug@npm:^4.1.6":
   version: 4.1.12
   resolution: "@types/debug@npm:4.1.12"
@@ -5507,6 +5514,16 @@ __metadata:
   dependencies:
     type-fest: "npm:^1.0.1"
   checksum: 10c0/16e11a3c8140398f5408b7fded35a961b9423c5dac39a60cbbd08bd3f0e07d7de130e87262adea7db03ec1a7a4b7551054e0db07ee5408b012bac5400cfc07a5
+  languageName: node
+  linkType: hard
+
+"css-tree@npm:^2.3.1":
+  version: 2.3.1
+  resolution: "css-tree@npm:2.3.1"
+  dependencies:
+    mdn-data: "npm:2.0.30"
+    source-map-js: "npm:^1.0.1"
+  checksum: 10c0/6f8c1a11d5e9b14bf02d10717fc0351b66ba12594166f65abfbd8eb8b5b490dd367f5c7721db241a3c792d935fc6751fbc09f7e1598d421477ad9fadc30f4f24
   languageName: node
   linkType: hard
 
@@ -9080,6 +9097,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mdn-data@npm:2.0.30":
+  version: 2.0.30
+  resolution: "mdn-data@npm:2.0.30"
+  checksum: 10c0/a2c472ea16cee3911ae742593715aa4c634eb3d4b9f1e6ada0902aa90df13dcbb7285d19435f3ff213ebaa3b2e0c0265c1eb0e3fb278fda7f8919f046a410cd9
+  languageName: node
+  linkType: hard
+
 "media-typer@npm:0.3.0":
   version: 0.3.0
   resolution: "media-typer@npm:0.3.0"
@@ -11434,7 +11458,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"source-map-js@npm:^1.2.0":
+"source-map-js@npm:^1.0.1, source-map-js@npm:^1.2.0":
   version: 1.2.0
   resolution: "source-map-js@npm:1.2.0"
   checksum: 10c0/7e5f896ac10a3a50fe2898e5009c58ff0dc102dcb056ed27a354623a0ece8954d4b2649e1a1b2b52ef2e161d26f8859c7710350930751640e71e374fe2d321a4
@@ -11818,6 +11842,7 @@ __metadata:
     "@table-nav/react": "npm:^0.0.7"
     "@tanstack/react-table": "npm:^8.19.3"
     "@types/color": "npm:^3.0.6"
+    "@types/css-tree": "npm:^2"
     "@types/electron": "npm:^1.6.10"
     "@types/node": "npm:^20.14.12"
     "@types/papaparse": "npm:^5"
@@ -11835,6 +11860,7 @@ __metadata:
     base64-js: "npm:^1.5.1"
     clsx: "npm:^2.1.1"
     color: "npm:^4.2.3"
+    css-tree: "npm:^2.3.1"
     dayjs: "npm:^1.11.12"
     electron: "npm:^31.3.0"
     electron-builder: "npm:^24.13.3"

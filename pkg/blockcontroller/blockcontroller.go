@@ -307,7 +307,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
-		cmdOpts.Cwd, _ = blockMeta["cwd"].(string)
+		cmdOpts.Cwd, _ = blockMeta["cmd:cwd"].(string)
 		if cmdOpts.Cwd != "" {
 			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
 		}
@@ -317,8 +317,8 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 		} else {
 			return fmt.Errorf("missing cmd in block meta")
 		}
-		if _, ok := blockMeta["cwd"].(string); ok {
-			cmdOpts.Cwd = blockMeta["cwd"].(string)
+		if _, ok := blockMeta["cmd:cwd"].(string); ok {
+			cmdOpts.Cwd = blockMeta["cmd:cwd"].(string)
 			if cmdOpts.Cwd != "" {
 				cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
 			}

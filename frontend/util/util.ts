@@ -35,6 +35,9 @@ function base64ToArray(b64: string): Uint8Array {
 }
 
 function boundNumber(num: number, min: number, max: number): number {
+    if (num == null || typeof num != "number" || isNaN(num)) {
+        return null;
+    }
     return Math.min(Math.max(num, min), max);
 }
 

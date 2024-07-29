@@ -28,9 +28,37 @@ const (
 	MetaKey_CmdRunOnStart            = "cmd:runonstart"
 	MetaKey_CmdClearOnStart          = "cmd:clearonstart"
 	MetaKey_CmdClearOnRestart        = "cmd:clearonrestart"
-	MetaKey_CmdEnv                   = "env"
-	MetaKey_CmdCwd                   = "cwd"
+	MetaKey_CmdEnv                   = "cmd:env"
+	MetaKey_CmdCwd                   = "cmd:cwd"
 )
+
+type MetaType struct {
+	View       string `json:"view,omitempty"`
+	Controller string `json:"controller,omitempty"`
+	Title      string `json:"title,omitempty"`
+	File       string `json:"file,omitempty"`
+	Url        string `json:"url,omitempty"`
+
+	Icon      string `json:"icon,omitempty"`
+	IconColor string `json:"icon:color,omitempty"`
+
+	Frame                    bool   `json:"frame,omitempty"`
+	FrameBorderColor         string `json:"frame:bordercolor,omitempty"`
+	FrameBorderColor_Focused string `json:"frame:bordercolor:focused,omitempty"`
+
+	Cmd               string            `json:"cmd,omitempty"`
+	CmdInteractive    bool              `json:"cmd:interactive,omitempty"`
+	CmdLogin          bool              `json:"cmd:login,omitempty"`
+	CmdRunOnStart     bool              `json:"cmd:runonstart,omitempty"`
+	CmdClearOnStart   bool              `json:"cmd:clearonstart,omitempty"`
+	CmdClearOnRestart bool              `json:"cmd:clearonrestart,omitempty"`
+	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
+	CmdCwd            string            `json:"cmd:cwd,omitempty"`
+
+	Bg          string  `json:"bg,omitempty"`
+	BgOpacity   float64 `json:"bg:opacity,omitempty"`
+	BgBlendMode string  `json:"bg:blendmode,omitempty"`
+}
 
 type UIContext struct {
 	WindowId    string `json:"windowid"`

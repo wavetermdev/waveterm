@@ -7,7 +7,7 @@ import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as React from "react";
 
-import { CenteredDiv, CenteredLoadingDiv } from "@/element/quickelems";
+import { CenteredDiv } from "@/element/quickelems";
 import { TileLayout } from "frontend/layout/index";
 import { getLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { useAtomValue } from "jotai";
@@ -56,7 +56,11 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     }, []);
 
     if (tabLoading) {
-        return <CenteredLoadingDiv />;
+        return (
+            <div className="tabcontent">
+                <CenteredDiv>Tab Loading</CenteredDiv>
+            </div>
+        );
     }
 
     if (!tabData) {
