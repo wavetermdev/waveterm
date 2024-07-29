@@ -16,7 +16,7 @@ require (
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/sashabaranov/go-openai v1.27.0
+	github.com/sashabaranov/go-openai v1.27.1
 	github.com/sawka/txwrap v0.2.0
 	github.com/spf13/cobra v1.8.1
 	github.com/wavetermdev/htmltoken v0.1.0
