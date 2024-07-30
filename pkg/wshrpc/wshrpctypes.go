@@ -45,8 +45,6 @@ const (
 	Command_StreamWaveAi      = "streamwaveai"
 )
 
-type MetaDataType = map[string]any
-
 type RespOrErrorUnion[T any] struct {
 	Response T
 	Error    error
@@ -55,7 +53,7 @@ type RespOrErrorUnion[T any] struct {
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) error
 	MessageCommand(ctx context.Context, data CommandMessageData) error
-	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (MetaDataType, error)
+	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (wstore.MetaMapType, error)
 	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
 	SetViewCommand(ctx context.Context, data CommandBlockSetViewData) error
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
@@ -130,8 +128,8 @@ type CommandGetMetaData struct {
 }
 
 type CommandSetMetaData struct {
-	ORef waveobj.ORef `json:"oref" wshcontext:"BlockORef"`
-	Meta MetaDataType `json:"meta"`
+	ORef waveobj.ORef       `json:"oref" wshcontext:"BlockORef"`
+	Meta wstore.MetaMapType `json:"meta"`
 }
 
 type CommandResolveIdsData struct {

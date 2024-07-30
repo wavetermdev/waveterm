@@ -186,7 +186,7 @@ func (bc *BlockController) resetTerminalState() {
 	var shouldTruncate bool
 	blockData, getBlockDataErr := wstore.DBMustGet[*wstore.Block](ctx, bc.BlockId)
 	if getBlockDataErr == nil {
-		shouldTruncate = getBoolFromMeta(blockData.Meta, wstore.MetaKey_CmdClearOnRestart, false)
+		shouldTruncate = blockData.Meta.GetBool(wstore.MetaKey_CmdClearOnRestart, false)
 	}
 	if shouldTruncate {
 		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Main)
@@ -208,34 +208,6 @@ func (bc *BlockController) resetTerminalState() {
 	}
 }
 
-func getMetaBool(meta map[string]any, key string, def bool) bool {
-	val, found := meta[key]
-	if !found {
-		return def
-	}
-	if val == nil {
-		return def
-	}
-	if bval, ok := val.(bool); ok {
-		return bval
-	}
-	return def
-}
-
-func getMetaStr(meta map[string]any, key string, def string) string {
-	val, found := meta[key]
-	if !found {
-		return def
-	}
-	if val == nil {
-		return def
-	}
-	if sval, ok := val.(string); ok {
-		return sval
-	}
-	return def
-}
-
 // every byte is 4-bits of randomness
 func randomHexString(numHexDigits int) (string, error) {
 	numBytes := (numHexDigits + 1) / 2 // Calculate the number of bytes needed
@@ -248,7 +220,7 @@ func randomHexString(numHexDigits int) (string, error) {
 	return hexStr[:numHexDigits], nil // Return the exact number of hex digits
 }
 
-func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[string]any) error {
+func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
@@ -276,7 +248,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 		return shellProcErr
 	}
 	var remoteDomainSocketName string
-	remoteName := getMetaStr(blockMeta, "connection", "")
+	remoteName := blockMeta.GetString(wstore.MetaKey_Connection, "")
 	isRemote := remoteName != ""
 	if isRemote {
 		randStr, err := randomHexString(16) // 64-bits of randomness
@@ -289,7 +261,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	cmdOpts := shellexec.CommandOptsType{
 		Env: make(map[string]string),
 	}
-	if !getMetaBool(blockMeta, "nowsh", false) {
+	if !blockMeta.GetBool(wstore.MetaKey_CmdNoWsh, false) {
 		if isRemote {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, remoteDomainSocketName)
 			if err != nil {
@@ -307,44 +279,31 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
-		cmdOpts.Cwd, _ = blockMeta["cmd:cwd"].(string)
+		cmdOpts.Cwd = blockMeta.GetString(wstore.MetaKey_CmdCwd, "")
 		if cmdOpts.Cwd != "" {
 			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
 		}
 	} else if bc.ControllerType == BlockController_Cmd {
-		if _, ok := blockMeta["cmd"].(string); ok {
-			cmdStr = blockMeta["cmd"].(string)
-		} else {
+		cmdStr = blockMeta.GetString(wstore.MetaKey_Cmd, "")
+		if cmdStr == "" {
 			return fmt.Errorf("missing cmd in block meta")
 		}
-		if _, ok := blockMeta["cmd:cwd"].(string); ok {
-			cmdOpts.Cwd = blockMeta["cmd:cwd"].(string)
-			if cmdOpts.Cwd != "" {
-				cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
-			}
+		cmdOpts.Cwd = blockMeta.GetString(wstore.MetaKey_CmdCwd, "")
+		if cmdOpts.Cwd != "" {
+			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
 		}
-		if _, ok := blockMeta["cmd:interactive"]; ok {
-			if blockMeta["cmd:interactive"].(bool) {
-				cmdOpts.Interactive = true
+		cmdOpts.Interactive = blockMeta.GetBool(wstore.MetaKey_CmdInteractive, false)
+		cmdOpts.Login = blockMeta.GetBool(wstore.MetaKey_CmdLogin, false)
+		cmdEnv := blockMeta.GetMap(wstore.MetaKey_CmdEnv)
+		for k, v := range cmdEnv {
+			if v == nil {
+				continue
 			}
-		}
-		if _, ok := blockMeta["cmd:login"]; ok {
-			if blockMeta["cmd:login"].(bool) {
-				cmdOpts.Login = true
+			if _, ok := v.(string); ok {
+				cmdOpts.Env[k] = v.(string)
 			}
-		}
-		if _, ok := blockMeta["cmd:env"].(map[string]any); ok {
-			cmdEnv := blockMeta["cmd:env"].(map[string]any)
-			for k, v := range cmdEnv {
-				if v == nil {
-					continue
-				}
-				if _, ok := v.(string); ok {
-					cmdOpts.Env[k] = v.(string)
-				}
-				if _, ok := v.(float64); ok {
-					cmdOpts.Env[k] = fmt.Sprintf("%v", v)
-				}
+			if _, ok := v.(float64); ok {
+				cmdOpts.Env[k] = fmt.Sprintf("%v", v)
 			}
 		}
 	} else {
@@ -477,8 +436,9 @@ func (bc *BlockController) run(bdata *wstore.Block, blockMeta map[string]any) {
 		bc.Status = Status_Running
 		return true
 	})
-	if bdata.Controller != BlockController_Shell && bdata.Controller != BlockController_Cmd {
-		log.Printf("unknown controller %q\n", bdata.Controller)
+	controllerName := bdata.Meta.GetString(wstore.MetaKey_Controller, "")
+	if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
+		log.Printf("unknown controller %q\n", controllerName)
 		return
 	}
 	if getBoolFromMeta(blockMeta, wstore.MetaKey_CmdClearOnStart, false) {
@@ -527,12 +487,13 @@ func StartBlockController(ctx context.Context, tabId string, blockId string) err
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
-	if blockData.Controller == "" {
+	controllerName := blockData.Meta.GetString(wstore.MetaKey_Controller, "")
+	if controllerName == "" {
 		// nothing to start
 		return nil
 	}
-	if blockData.Controller != BlockController_Shell && blockData.Controller != BlockController_Cmd {
-		return fmt.Errorf("unknown controller %q", blockData.Controller)
+	if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
+		return fmt.Errorf("unknown controller %q", controllerName)
 	}
 	globalLock.Lock()
 	defer globalLock.Unlock()
@@ -542,7 +503,7 @@ func StartBlockController(ctx context.Context, tabId string, blockId string) err
 	}
 	bc := &BlockController{
 		Lock:            &sync.Mutex{},
-		ControllerType:  blockData.Controller,
+		ControllerType:  controllerName,
 		TabId:           tabId,
 		BlockId:         blockId,
 		Status:          Status_Init,

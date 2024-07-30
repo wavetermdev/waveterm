@@ -47,9 +47,9 @@ func viewRun(cmd *cobra.Command, args []string) {
 	wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 	viewWshCmd := &wshrpc.CommandCreateBlockData{
 		BlockDef: &wstore.BlockDef{
-			View: "preview",
 			Meta: map[string]interface{}{
-				"file": absFile,
+				wstore.MetaKey_View: "preview",
+				wstore.MetaKey_File: absFile,
 			},
 		},
 	}

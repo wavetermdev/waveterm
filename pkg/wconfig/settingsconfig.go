@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -98,6 +99,9 @@ type SettingsConfigType struct {
 	AutoUpdate     *AutoUpdateOpts               `json:"autoupdate"`
 	TermThemes     TermThemesConfigType          `json:"termthemes"`
 	WindowSettings WindowSettingsType            `json:"window"`
+
+	DefaultMeta *waveobj.MetaMapType            `json:"defaultmeta,omitempty"`
+	Presets     map[string]*waveobj.MetaMapType `json:"presets,omitempty"`
 }
 
 var DefaultTermDarkTheme = TermThemeType{
@@ -181,30 +185,38 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 			Icon:  "files",
 			Label: "files",
 			BlockDef: wstore.BlockDef{
-				View: "preview",
-				Meta: map[string]any{"file": wavebase.GetHomeDir()},
+				Meta: map[string]any{
+					wstore.MetaKey_View: "preview",
+					wstore.MetaKey_File: wavebase.GetHomeDir(),
+				},
 			},
 		},
 		{
 			Icon:  "chart-simple",
 			Label: "chart",
 			BlockDef: wstore.BlockDef{
-				View: "plot",
+				Meta: map[string]any{
+					wstore.MetaKey_View: "plot",
+				},
 			},
 		},
 		{
 			Icon:  "globe",
 			Label: "web",
 			BlockDef: wstore.BlockDef{
-				View: "web",
-				Meta: map[string]any{"url": "https://waveterm.dev/"},
+				Meta: map[string]any{
+					wstore.MetaKey_View: "web",
+					wstore.MetaKey_Url:  "https://waveterm.dev/",
+				},
 			},
 		},
 		{
 			Icon:  "sparkles",
 			Label: "waveai",
 			BlockDef: wstore.BlockDef{
-				View: "waveai",
+				Meta: map[string]any{
+					wstore.MetaKey_View: "waveai",
+				},
 			},
 		},
 	}

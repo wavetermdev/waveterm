@@ -66,8 +66,9 @@ func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, hist
 	if err != nil {
 		return err
 	}
-	if block.View != "waveai" {
-		return fmt.Errorf("invalid view type: %s", block.View)
+	viewName := block.Meta.GetString(wstore.MetaKey_View, "")
+	if viewName != "waveai" {
+		return fmt.Errorf("invalid view type: %s", viewName)
 	}
 	historyBytes, err := json.Marshal(history)
 	if err != nil {

@@ -747,7 +747,7 @@ func ReUnmarshal(out any, in any) error {
 }
 
 // does a mapstructure using "json" tags
-func DoMapStucture(out any, input any) error {
+func DoMapStructure(out any, input any) error {
 	dconfig := &mapstructure.DecoderConfig{
 		Result:  out,
 		TagName: "json",
@@ -825,4 +825,15 @@ func StarMatchString(pattern string, s string, delimiter string) bool {
 	}
 	// Check if both pattern and string are fully matched
 	return pLen == sLen
+}
+
+func MergeStrMaps[T any](m1 map[string]T, m2 map[string]T) map[string]T {
+	rtn := make(map[string]T)
+	for key, val := range m1 {
+		rtn[key] = val
+	}
+	for key, val := range m2 {
+		rtn[key] = val
+	}
+	return rtn
 }

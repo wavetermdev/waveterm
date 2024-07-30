@@ -236,8 +236,6 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *BlockDef, rtOpts *
 		blockData := &Block{
 			OID:         blockId,
 			BlockDef:    blockDef,
-			Controller:  blockDef.Controller,
-			View:        blockDef.View,
 			RuntimeOpts: rtOpts,
 			Meta:        blockDef.Meta,
 		}
@@ -299,36 +297,21 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 	})
 }
 
-func UpdateMeta(ctx context.Context, oref waveobj.ORef, meta map[string]any) error {
+func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta MetaMapType) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		obj, _ := DBGetORef(tx.Context(), oref)
-		if obj == nil {
-			return fmt.Errorf("object not found: %q", oref)
+		if oref.IsEmpty() {
+			return fmt.Errorf("empty object reference")
 		}
-		// obj.SetMeta(meta)
-		DBUpdate(tx.Context(), obj)
-		return nil
-	})
-}
-
-func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta map[string]any) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
 		obj, _ := DBGetORef(tx.Context(), oref)
 		if obj == nil {
-			return fmt.Errorf("object not found: %q", oref)
+			return ErrNotFound
 		}
 		objMeta := waveobj.GetMeta(obj)
 		if objMeta == nil {
 			objMeta = make(map[string]any)
 		}
-		for k, v := range meta {
-			if v == nil {
-				delete(objMeta, k)
-				continue
-			}
-			objMeta[k] = v
-		}
-		waveobj.SetMeta(obj, objMeta)
+		newMeta := MergeMeta(objMeta, meta)
+		waveobj.SetMeta(obj, newMeta)
 		DBUpdate(tx.Context(), obj)
 		return nil
 	})
@@ -439,19 +422,6 @@ func EnsureInitialData() error {
 		client, err = CreateClient(ctx)
 		if err != nil {
 			return fmt.Errorf("error creating client: %w", err)
-		}
-	}
-	if client.MainWindowId != "" {
-		// convert to windowIds
-		client.WindowIds = []string{client.MainWindowId}
-		client.MainWindowId = ""
-		err = DBUpdate(ctx, client)
-		if err != nil {
-			return fmt.Errorf("error updating client: %w", err)
-		}
-		client, err = DBGetSingleton[*Client](ctx)
-		if err != nil {
-			return fmt.Errorf("error getting client (after main window update): %w", err)
 		}
 	}
 	if len(client.WindowIds) > 0 {

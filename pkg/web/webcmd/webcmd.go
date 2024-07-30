@@ -72,21 +72,21 @@ func ParseWSCommandMap(cmdMap map[string]any) (WSCommandType, error) {
 	switch cmdType {
 	case WSCommand_SetBlockTermSize:
 		var cmd SetBlockTermSizeWSCommand
-		err := utilfn.DoMapStucture(&cmd, cmdMap)
+		err := utilfn.DoMapStructure(&cmd, cmdMap)
 		if err != nil {
 			return nil, fmt.Errorf("error decoding SetBlockTermSizeWSCommand: %w", err)
 		}
 		return &cmd, nil
 	case WSCommand_BlockInput:
 		var cmd BlockInputWSCommand
-		err := utilfn.DoMapStucture(&cmd, cmdMap)
+		err := utilfn.DoMapStructure(&cmd, cmdMap)
 		if err != nil {
 			return nil, fmt.Errorf("error decoding BlockInputWSCommand: %w", err)
 		}
 		return &cmd, nil
 	case WSCommand_Rpc:
 		var cmd WSRpcCommand
-		err := utilfn.DoMapStucture(&cmd, cmdMap)
+		err := utilfn.DoMapStructure(&cmd, cmdMap)
 		if err != nil {
 			return nil, fmt.Errorf("error decoding WSRpcCommand: %w", err)
 		}

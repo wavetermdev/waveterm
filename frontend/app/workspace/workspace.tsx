@@ -20,16 +20,18 @@ const Widgets = React.memo(() => {
     const newWidgetModalVisible = React.useState(false);
     async function clickTerminal() {
         const termBlockDef: BlockDef = {
-            controller: "shell",
-            view: "term",
+            meta: {
+                controller: "shell",
+                view: "term",
+            },
         };
         createBlock(termBlockDef);
     }
 
     async function clickHome() {
         const editDef: BlockDef = {
-            view: "preview",
             meta: {
+                view: "preview",
                 file: "~",
             },
         };
@@ -37,8 +39,8 @@ const Widgets = React.memo(() => {
     }
     async function clickWeb() {
         const editDef: BlockDef = {
-            view: "web",
             meta: {
+                view: "web",
                 url: "https://waveterm.dev/",
             },
         };

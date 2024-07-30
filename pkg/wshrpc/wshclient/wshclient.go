@@ -96,8 +96,8 @@ func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshr
 }
 
 // command "getmeta", wshserver.GetMetaCommand
-func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wshrpc.WshRpcCommandOpts) (map[string]interface {}, error) {
-    resp, err := sendRpcRequestCallHelper[map[string]interface {}](w, "getmeta", data, opts)
+func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wshrpc.WshRpcCommandOpts) (waveobj.MetaMapType, error) {
+    resp, err := sendRpcRequestCallHelper[waveobj.MetaMapType](w, "getmeta", data, opts)
     return resp, err
 }
 

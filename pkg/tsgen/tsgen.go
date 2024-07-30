@@ -45,6 +45,7 @@ var ExtraTypes = []any{
 	vdom.Elem{},
 	vdom.VDomFuncType{},
 	vdom.VDomRefType{},
+	wstore.MetaTSType{},
 }
 
 // add extra type unions to generate here
@@ -55,7 +56,7 @@ var TypeUnions = []tsgenmeta.TypeUnionMeta{
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
 var anyRType = reflect.TypeOf((*interface{})(nil)).Elem()
-var metaRType = reflect.TypeOf((*map[string]any)(nil)).Elem()
+var metaRType = reflect.TypeOf((*wstore.MetaMapType)(nil)).Elem()
 var uiContextRType = reflect.TypeOf((*wstore.UIContext)(nil)).Elem()
 var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 var updatesRtnRType = reflect.TypeOf(wstore.UpdatesRtnType{})
@@ -85,6 +86,9 @@ func getTSFieldName(field reflect.StructField) string {
 		if namePart != "" {
 			if namePart == "-" {
 				return ""
+			}
+			if strings.Contains(namePart, ":") {
+				return "\"" + namePart + "\""
 			}
 			return namePart
 		}
@@ -155,8 +159,9 @@ func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, [
 }
 
 var tsRenameMap = map[string]string{
-	"Window": "WaveWindow",
-	"Elem":   "VDomElem",
+	"Window":     "WaveWindow",
+	"Elem":       "VDomElem",
+	"MetaTSType": "MetaType",
 }
 
 func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]string) (string, []reflect.Type) {
@@ -183,7 +188,7 @@ func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]stri
 		if fieldName == "" {
 			continue
 		}
-		if isWaveObj && (fieldName == waveobj.OTypeKeyName || fieldName == waveobj.OIDKeyName || fieldName == waveobj.VersionKeyName) {
+		if isWaveObj && (fieldName == waveobj.OTypeKeyName || fieldName == waveobj.OIDKeyName || fieldName == waveobj.VersionKeyName || fieldName == waveobj.MetaKeyName) {
 			continue
 		}
 		optMarker := ""
@@ -192,6 +197,9 @@ func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]stri
 		}
 		tsTypeTag := field.Tag.Get("tstype")
 		if tsTypeTag != "" {
+			if tsTypeTag == "-" {
+				continue
+			}
 			buf.WriteString(fmt.Sprintf("    %s%s: %s;\n", fieldName, optMarker, tsTypeTag))
 			continue
 		}
@@ -216,12 +224,9 @@ func GenerateWaveObjTSType() string {
 	buf.WriteString("    otype: string;\n")
 	buf.WriteString("    oid: string;\n")
 	buf.WriteString("    version: number;\n")
+	buf.WriteString("    meta: MetaType;\n")
 	buf.WriteString("};\n")
 	return buf.String()
-}
-
-func GenerateMetaType() string {
-	return "type MetaType = {[key: string]: any}\n"
 }
 
 func GenerateTSTypeUnion(unionMeta tsgenmeta.TypeUnionMeta, tsTypeMap map[reflect.Type]string) {
@@ -256,10 +261,6 @@ func GenerateTSType(rtype reflect.Type, tsTypesMap map[reflect.Type]string) {
 	}
 	if rtype.Kind() == reflect.Chan {
 		rtype = rtype.Elem()
-	}
-	if rtype == metaRType {
-		tsTypesMap[metaRType] = GenerateMetaType()
-		return
 	}
 	if rtype == contextRType || rtype == errorRType || rtype == anyRType {
 		return

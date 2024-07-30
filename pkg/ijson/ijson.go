@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // ijson values are built out of standard go building blocks:
@@ -54,6 +55,45 @@ func MakeAppendCommand(path Path, value any) Command {
 		"path": path,
 		"data": value,
 	}
+}
+
+var pathPartKeyRe = regexp.MustCompile(`^[a-zA-Z0-9:_#-]+`)
+
+func ParseSimplePath(input string) ([]any, error) {
+	var path []any
+	// Scan the input string character by character
+	for i := 0; i < len(input); {
+		if input[i] == '[' {
+			// Handle the index
+			end := strings.Index(input[i:], "]")
+			if end == -1 {
+				return nil, fmt.Errorf("unmatched bracket at position %d", i)
+			}
+			index, err := strconv.Atoi(input[i+1 : i+end])
+			if err != nil {
+				return nil, fmt.Errorf("invalid index at position %d: %v", i, err)
+			}
+			path = append(path, index)
+			i += end + 1
+		} else {
+			// Handle the key
+			j := i
+			for j < len(input) && input[j] != '.' && input[j] != '[' {
+				j++
+			}
+			key := input[i:j]
+			if !pathPartKeyRe.MatchString(key) {
+				return nil, fmt.Errorf("invalid key at position %d: %s", i, key)
+			}
+			path = append(path, key)
+			i = j
+		}
+		if i < len(input) && input[i] == '.' {
+			i++
+		}
+	}
+
+	return path, nil
 }
 
 type PathError struct {

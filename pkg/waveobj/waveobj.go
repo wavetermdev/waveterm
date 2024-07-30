@@ -106,6 +106,7 @@ type waveObjDesc struct {
 
 var waveObjMap = sync.Map{}
 var waveObjRType = reflect.TypeOf((*WaveObj)(nil)).Elem()
+var metaMapRType = reflect.TypeOf(MetaMapType{})
 
 func RegisterType(rtype reflect.Type) {
 	if rtype.Kind() != reflect.Ptr {
@@ -143,10 +144,8 @@ func RegisterType(rtype reflect.Type) {
 	if !found {
 		panic(fmt.Sprintf("missing Meta field for %v", rtype))
 	}
-	if metaField.Type.Kind() != reflect.Map ||
-		metaField.Type.Elem().Kind() != reflect.Interface ||
-		metaField.Type.Key().Kind() != reflect.String {
-		panic(fmt.Sprintf("Meta field must be map[string]any for %v", rtype))
+	if metaField.Type != metaMapRType {
+		panic(fmt.Sprintf("Meta field must be MetaMapType for %v", rtype))
 	}
 	_, found = waveObjMap.Load(otype)
 	if found {
@@ -200,12 +199,16 @@ func SetVersion(waveObj WaveObj, version int) {
 	reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.VersionField.Index).SetInt(int64(version))
 }
 
-func GetMeta(waveObj WaveObj) map[string]any {
+func GetMeta(waveObj WaveObj) MetaMapType {
 	desc := getWaveObjDesc(waveObj.GetOType())
 	if desc == nil {
 		return nil
 	}
-	return reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.MetaField.Index).Interface().(map[string]any)
+	mval := reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.MetaField.Index).Interface()
+	if mval == nil {
+		return nil
+	}
+	return mval.(MetaMapType)
 }
 
 func SetMeta(waveObj WaveObj, meta map[string]any) {

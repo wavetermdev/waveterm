@@ -284,10 +284,10 @@ export class PreviewModel implements ViewModel {
                 label: "Open Terminal in New Block",
                 click: async () => {
                     const termBlockDef: BlockDef = {
-                        controller: "shell",
-                        view: "term",
                         meta: {
-                            cwd: globalStore.get(this.fileName),
+                            view: "term",
+                            controller: "shell",
+                            "cmd:cwd": globalStore.get(this.fileName),
                         },
                     };
                     await createBlock(termBlockDef);
@@ -579,4 +579,4 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     );
 }
 
-export { PreviewView, makePreviewModel };
+export { makePreviewModel, PreviewView };

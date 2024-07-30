@@ -189,7 +189,8 @@ func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wsto
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating block: %w", err)
 	}
-	if blockData.Controller != "" {
+	controllerName := blockData.Meta.GetString(wstore.MetaKey_Controller, "")
+	if controllerName != "" {
 		err = blockcontroller.StartBlockController(ctx, uiContext.ActiveTabId, blockData.OID)
 		if err != nil {
 			return "", nil, fmt.Errorf("error starting block controller: %w", err)
@@ -228,7 +229,7 @@ func (svc *ObjectService) UpdateObjectMeta_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr string, meta map[string]any) (wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr string, meta wstore.MetaMapType) (wstore.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)

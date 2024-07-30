@@ -89,7 +89,7 @@ func convertNumber(argType reflect.Type, jsonArg float64) (any, error) {
 
 func convertComplex(argType reflect.Type, jsonArg any) (any, error) {
 	nativeArgVal := reflect.New(argType)
-	err := utilfn.DoMapStucture(nativeArgVal.Interface(), jsonArg)
+	err := utilfn.DoMapStructure(nativeArgVal.Interface(), jsonArg)
 	if err != nil {
 		return nil, err
 	}

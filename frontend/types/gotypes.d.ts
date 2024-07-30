@@ -24,11 +24,8 @@ declare global {
     // wstore.Block
     type Block = WaveObj & {
         blockdef: BlockDef;
-        controller: string;
-        view: string;
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
-        meta: MetaType;
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
@@ -40,8 +37,6 @@ declare global {
 
     // wstore.BlockDef
     type BlockDef = {
-        controller?: string;
-        view?: string;
         files?: {[key: string]: FileDef};
         meta?: MetaType;
     };
@@ -60,9 +55,7 @@ declare global {
 
     // wstore.Client
     type Client = WaveObj & {
-        mainwindowid: string;
         windowids: string[];
-        meta: MetaType;
         tosagreed?: number;
     };
 
@@ -70,7 +63,7 @@ declare global {
     type CommandAppendIJsonData = {
         zoneid: string;
         filename: string;
-        data: MetaType;
+        data: {[key: string]: any};
     };
 
     // wshrpc.CommandBlockInputData
@@ -144,7 +137,7 @@ declare global {
         path?: string;
         url?: string;
         content?: string;
-        meta?: MetaType;
+        meta?: {[key: string]: any};
     };
 
     // fileservice.FileInfo
@@ -178,10 +171,42 @@ declare global {
     type LayoutNode = WaveObj & {
         node?: any;
         magnifiednodeid?: string;
-        meta?: MetaType;
     };
 
-    type MetaType = {[key: string]: any}
+    // wstore.MetaTSType
+    type MetaType = {
+        view?: string;
+        controller?: string;
+        title?: string;
+        file?: string;
+        url?: string;
+        connection?: string;
+        icon?: string;
+        "icon:color"?: string;
+        frame?: boolean;
+        "frame:*"?: boolean;
+        "frame:bordercolor"?: string;
+        "frame:bordercolor:focused"?: string;
+        cmd?: string;
+        "cmd:*"?: boolean;
+        "cmd:interactive"?: boolean;
+        "cmd:login"?: boolean;
+        "cmd:runonstart"?: boolean;
+        "cmd:clearonstart"?: boolean;
+        "cmd:clearonrestart"?: boolean;
+        "cmd:env"?: {[key: string]: string};
+        "cmd:cwd"?: string;
+        "cmd:nowsh"?: boolean;
+        bg?: string;
+        "bg:*"?: boolean;
+        "bg:opacity"?: number;
+        "bg:blendmode"?: string;
+        "term:*"?: boolean;
+        "term:fontsize"?: number;
+        "term:fontfamily"?: string;
+        "term:mode"?: string;
+        "term:theme"?: string;
+    };
 
     // tsgenmeta.MethodMeta
     type MethodMeta = {
@@ -284,6 +309,8 @@ declare global {
         autoupdate: AutoUpdateOpts;
         termthemes: {[key: string]: TermThemeType};
         window: WindowSettingsType;
+        defaultmeta?: MetaType;
+        presets?: {[key: string]: MetaType};
     };
 
     // wstore.StickerClickOptsType
@@ -302,7 +329,7 @@ declare global {
     // wstore.StickerType
     type StickerType = {
         stickertype: string;
-        style: MetaType;
+        style: {[key: string]: any};
         clickopts?: StickerClickOptsType;
         display: StickerDisplayOptsType;
     };
@@ -319,7 +346,6 @@ declare global {
         name: string;
         layoutnode: string;
         blockids: string[];
-        meta: MetaType;
     };
 
     // shellexec.TermSize
@@ -392,7 +418,7 @@ declare global {
     type VDomElem = {
         id?: string;
         tag: string;
-        props?: MetaType;
+        props?: {[key: string]: any};
         children?: VDomElem[];
         text?: string;
     };
@@ -465,7 +491,7 @@ declare global {
         createdts: number;
         size: number;
         modts: number;
-        meta: MetaType;
+        meta: {[key: string]: any};
     };
 
     // waveobj.WaveObj
@@ -473,6 +499,7 @@ declare global {
         otype: string;
         oid: string;
         version: number;
+        meta: MetaType;
     };
 
     // wstore.WaveObjUpdate
@@ -492,7 +519,6 @@ declare global {
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;
-        meta: MetaType;
     };
 
     // service.WebCallType
@@ -538,7 +564,6 @@ declare global {
     type Workspace = WaveObj & {
         name: string;
         tabids: string[];
-        meta: MetaType;
     };
 
     // wshrpc.WshRpcCommandOpts

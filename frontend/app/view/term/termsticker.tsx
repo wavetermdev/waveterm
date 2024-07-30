@@ -99,7 +99,7 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
             console.log("clickHandler", sticker.clickcmd, sticker.clickblockdef);
             if (sticker.clickcmd) {
                 const b64data = btoa(sticker.clickcmd);
-                WshServer.BlockInputCommand({ blockid: config.blockId, inputdata64: b64data });
+                WshServer.ControllerInputCommand({ blockid: config.blockId, inputdata64: b64data });
             }
             if (sticker.clickblockdef) {
                 createBlock(sticker.clickblockdef);
@@ -183,7 +183,7 @@ export function TermStickers({ config }: { config: StickerTermConfig }) {
             imgsrc: "~/Downloads/natureicon.png",
             opacity: 0.8,
             pointerevents: true,
-            clickblockdef: { view: "preview", meta: { file: "~/" } },
+            clickblockdef: { meta: { file: "~/", view: "preview" } },
         });
         stickers.push({
             position: "absolute",

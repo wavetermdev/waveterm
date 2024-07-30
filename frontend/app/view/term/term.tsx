@@ -143,7 +143,7 @@ class TermViewModel {
         });
         this.viewName = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
-            if (blockData.controller == "cmd") {
+            if (blockData?.meta?.controller == "cmd") {
                 return "Command";
             }
             return "Terminal";
@@ -219,7 +219,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             }
         }
         const settings = globalStore.get(atoms.settingsConfigAtom);
-        const termTheme = computeTheme(settings, blockData?.meta?.termtheme);
+        const termTheme = computeTheme(settings, blockData?.meta?.["term:theme"]);
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,

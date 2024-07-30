@@ -313,11 +313,11 @@ const AppInner = () => {
 
     function handleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
         // global key handler for now (refactor later)
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:]")) {
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:]") || keyutil.checkKeyPressed(waveEvent, "Shift:Cmd:]")) {
             switchTab(1);
             return true;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:[")) {
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:[") || keyutil.checkKeyPressed(waveEvent, "Shift:Cmd:[")) {
             switchTab(-1);
             return true;
         }

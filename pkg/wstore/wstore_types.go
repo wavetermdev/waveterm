@@ -12,54 +12,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
-// well known meta keys
-const (
-	MetaKey_Title                    = "title"
-	MetaKey_File                     = "file"
-	MetaKey_Url                      = "url"
-	MetaKey_Icon                     = "icon"
-	MetaKey_IconColor                = "icon:color"
-	MetaKey_Frame                    = "frame"
-	MetaKey_FrameBorderColor         = "frame:bordercolor"
-	MetaKey_FrameBorderColor_Focused = "frame:bordercolor:focused"
-	MetaKey_Cmd                      = "cmd"
-	MetaKey_CmdInteractive           = "cmd:interactive"
-	MetaKey_CmdLogin                 = "cmd:login"
-	MetaKey_CmdRunOnStart            = "cmd:runonstart"
-	MetaKey_CmdClearOnStart          = "cmd:clearonstart"
-	MetaKey_CmdClearOnRestart        = "cmd:clearonrestart"
-	MetaKey_CmdEnv                   = "cmd:env"
-	MetaKey_CmdCwd                   = "cmd:cwd"
-)
-
-type MetaType struct {
-	View       string `json:"view,omitempty"`
-	Controller string `json:"controller,omitempty"`
-	Title      string `json:"title,omitempty"`
-	File       string `json:"file,omitempty"`
-	Url        string `json:"url,omitempty"`
-
-	Icon      string `json:"icon,omitempty"`
-	IconColor string `json:"icon:color,omitempty"`
-
-	Frame                    bool   `json:"frame,omitempty"`
-	FrameBorderColor         string `json:"frame:bordercolor,omitempty"`
-	FrameBorderColor_Focused string `json:"frame:bordercolor:focused,omitempty"`
-
-	Cmd               string            `json:"cmd,omitempty"`
-	CmdInteractive    bool              `json:"cmd:interactive,omitempty"`
-	CmdLogin          bool              `json:"cmd:login,omitempty"`
-	CmdRunOnStart     bool              `json:"cmd:runonstart,omitempty"`
-	CmdClearOnStart   bool              `json:"cmd:clearonstart,omitempty"`
-	CmdClearOnRestart bool              `json:"cmd:clearonrestart,omitempty"`
-	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
-	CmdCwd            string            `json:"cmd:cwd,omitempty"`
-
-	Bg          string  `json:"bg,omitempty"`
-	BgOpacity   float64 `json:"bg:opacity,omitempty"`
-	BgBlendMode string  `json:"bg:blendmode,omitempty"`
-}
-
 type UIContext struct {
 	WindowId    string `json:"windowid"`
 	ActiveTabId string `json:"activetabid"`
@@ -161,12 +113,11 @@ func (update *WaveObjUpdate) UnmarshalJSON(data []byte) error {
 }
 
 type Client struct {
-	OID          string         `json:"oid"`
-	Version      int            `json:"version"`
-	MainWindowId string         `json:"mainwindowid"` // deprecated
-	WindowIds    []string       `json:"windowids"`
-	Meta         map[string]any `json:"meta"`
-	TosAgreed    int64          `json:"tosagreed,omitempty"`
+	OID       string      `json:"oid"`
+	Version   int         `json:"version"`
+	WindowIds []string    `json:"windowids"`
+	Meta      MetaMapType `json:"meta"`
+	TosAgreed int64       `json:"tosagreed,omitempty"`
 }
 
 func (*Client) GetOType() string {
@@ -185,7 +136,7 @@ type Window struct {
 	Pos            Point             `json:"pos"`
 	WinSize        WinSize           `json:"winsize"`
 	LastFocusTs    int64             `json:"lastfocusts"`
-	Meta           map[string]any    `json:"meta"`
+	Meta           MetaMapType       `json:"meta"`
 }
 
 func (*Window) GetOType() string {
@@ -193,11 +144,11 @@ func (*Window) GetOType() string {
 }
 
 type Workspace struct {
-	OID     string         `json:"oid"`
-	Version int            `json:"version"`
-	Name    string         `json:"name"`
-	TabIds  []string       `json:"tabids"`
-	Meta    map[string]any `json:"meta"`
+	OID     string      `json:"oid"`
+	Version int         `json:"version"`
+	Name    string      `json:"name"`
+	TabIds  []string    `json:"tabids"`
+	Meta    MetaMapType `json:"meta"`
 }
 
 func (*Workspace) GetOType() string {
@@ -205,12 +156,12 @@ func (*Workspace) GetOType() string {
 }
 
 type Tab struct {
-	OID        string         `json:"oid"`
-	Version    int            `json:"version"`
-	Name       string         `json:"name"`
-	LayoutNode string         `json:"layoutnode"`
-	BlockIds   []string       `json:"blockids"`
-	Meta       map[string]any `json:"meta"`
+	OID        string      `json:"oid"`
+	Version    int         `json:"version"`
+	Name       string      `json:"name"`
+	LayoutNode string      `json:"layoutnode"`
+	BlockIds   []string    `json:"blockids"`
+	Meta       MetaMapType `json:"meta"`
 }
 
 func (*Tab) GetOType() string {
@@ -226,11 +177,11 @@ func (t *Tab) GetBlockORefs() []waveobj.ORef {
 }
 
 type LayoutNode struct {
-	OID             string         `json:"oid"`
-	Version         int            `json:"version"`
-	Node            any            `json:"node,omitempty"`
-	MagnifiedNodeId string         `json:"magnifiednodeid,omitempty"`
-	Meta            map[string]any `json:"meta,omitempty"`
+	OID             string      `json:"oid"`
+	Version         int         `json:"version"`
+	Node            any         `json:"node,omitempty"`
+	MagnifiedNodeId string      `json:"magnifiednodeid,omitempty"`
+	Meta            MetaMapType `json:"meta,omitempty"`
 }
 
 func (*LayoutNode) GetOType() string {
@@ -246,10 +197,8 @@ type FileDef struct {
 }
 
 type BlockDef struct {
-	Controller string              `json:"controller,omitempty"`
-	View       string              `json:"view,omitempty"`
-	Files      map[string]*FileDef `json:"files,omitempty"`
-	Meta       map[string]any      `json:"meta,omitempty"`
+	Files map[string]*FileDef `json:"files,omitempty"`
+	Meta  MetaMapType         `json:"meta,omitempty"`
 }
 
 type StickerClickOptsType struct {
@@ -289,11 +238,9 @@ type Block struct {
 	OID         string         `json:"oid"`
 	Version     int            `json:"version"`
 	BlockDef    *BlockDef      `json:"blockdef"`
-	Controller  string         `json:"controller"`
-	View        string         `json:"view"`
 	RuntimeOpts *RuntimeOpts   `json:"runtimeopts,omitempty"`
 	Stickers    []*StickerType `json:"stickers,omitempty"`
-	Meta        map[string]any `json:"meta"`
+	Meta        MetaMapType    `json:"meta"`
 }
 
 func (*Block) GetOType() string {

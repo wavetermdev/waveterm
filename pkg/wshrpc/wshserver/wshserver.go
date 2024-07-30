@@ -67,7 +67,7 @@ func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.Ope
 	return waveai.RunLocalCompletionStream(ctx, request)
 }
 
-func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetMetaData) (wshrpc.MetaDataType, error) {
+func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetMetaData) (waveobj.MetaMapType, error) {
 	log.Printf("calling meta: %s\n", data.ORef)
 	obj, err := wstore.DBGetORef(ctx, data.ORef)
 	if err != nil {
@@ -82,31 +82,9 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
 	log.Printf("SETMETA: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef
-	if oref.IsEmpty() {
-		return fmt.Errorf("no oref")
-	}
-	obj, err := wstore.DBGetORef(ctx, oref)
+	err := wstore.UpdateObjectMeta(ctx, oref, data.Meta)
 	if err != nil {
-		return fmt.Errorf("error getting object: %w", err)
-	}
-	if obj == nil {
-		return nil
-	}
-	meta := waveobj.GetMeta(obj)
-	if meta == nil {
-		meta = make(map[string]any)
-	}
-	for k, v := range data.Meta {
-		if v == nil {
-			delete(meta, k)
-			continue
-		}
-		meta[k] = v
-	}
-	waveobj.SetMeta(obj, meta)
-	err = wstore.DBUpdate(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("error updating block: %w", err)
+		return fmt.Errorf("error updating object meta: %w", err)
 	}
 	sendWaveObjUpdate(oref)
 	return nil
@@ -177,7 +155,8 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	if blockData.Controller != "" {
+	controllerName := blockData.Meta.GetString(wstore.MetaKey_Controller, "")
+	if controllerName != "" {
 		// TODO
 		err = blockcontroller.StartBlockController(ctx, data.TabId, blockData.OID)
 		if err != nil {
@@ -211,7 +190,7 @@ func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBloc
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
-	block.View = data.View
+	block.Meta[wstore.MetaKey_View] = data.View
 	err = wstore.DBUpdate(ctx, block)
 	if err != nil {
 		return fmt.Errorf("error updating block: %w", err)

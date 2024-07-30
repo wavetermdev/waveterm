@@ -153,8 +153,8 @@ function getBlockHeaderText(blockIcon: string, blockData: Block, settings: Setti
             return [blockIconElem, blockData.meta.title + blockIdStr];
         }
     }
-    let viewString = blockData?.view;
-    if (blockData.controller == "cmd") {
+    let viewString = blockData?.meta?.view;
+    if (blockData?.meta?.controller == "cmd") {
         viewString = "cmd";
     }
     return [blockIconElem, viewString + blockIdStr];
@@ -259,8 +259,8 @@ const BlockFrame_Default_Component = ({
         });
     });
     let isFocused = jotai.useAtomValue(isFocusedAtom);
-    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.view);
-    const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.view);
+    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.meta?.view);
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
@@ -377,6 +377,10 @@ const BlockFrame_Default_Component = ({
         headerTextElems.push(...renderHeaderElements(headerTextUnion));
     }
 
+    function handleDoubleClick() {
+        layoutModel?.onMagnifyToggle();
+    }
+
     return (
         <div
             className={clsx(
@@ -397,6 +401,7 @@ const BlockFrame_Default_Component = ({
                 <div
                     className="block-frame-default-header"
                     ref={layoutModel?.dragHandleRef}
+                    onDoubleClick={handleDoubleClick}
                     onContextMenu={(e) =>
                         handleHeaderContextMenu(
                             e,
@@ -456,6 +461,9 @@ function blockViewToIcon(view: string): string {
 }
 
 function blockViewToName(view: string): string {
+    if (util.isBlank(view)) {
+        return "(No View)";
+    }
     if (view == "term") {
         return "Terminal";
     }
@@ -476,12 +484,12 @@ function getViewElemAndModel(
     blockView: string,
     blockRef: React.RefObject<HTMLDivElement>
 ): { viewModel: ViewModel; viewElem: JSX.Element } {
-    if (blockView == null) {
-        return { viewElem: null, viewModel: null };
-    }
     let viewElem: JSX.Element = null;
     let viewModel: ViewModel = null;
-    if (blockView === "term") {
+    if (util.isBlank(blockView)) {
+        viewElem = <CenteredDiv>No View</CenteredDiv>;
+        viewModel = makeDefaultViewModel(blockId);
+    } else if (blockView === "term") {
         const termViewModel = makeTerminalModel(blockId);
         viewElem = <TerminalView key={blockId} blockId={blockId} model={termViewModel} />;
         viewModel = termViewModel;
@@ -501,6 +509,7 @@ function getViewElemAndModel(
         viewModel = waveAiModel;
     }
     if (viewModel == null) {
+        viewElem = <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
         viewModel = makeDefaultViewModel(blockId);
     }
     return { viewElem, viewModel };
@@ -511,11 +520,11 @@ function makeDefaultViewModel(blockId: string): ViewModel {
     let viewModel: ViewModel = {
         viewIcon: jotai.atom((get) => {
             const blockData = get(blockDataAtom);
-            return blockViewToIcon(blockData?.view);
+            return blockViewToIcon(blockData?.meta?.view);
         }),
         viewName: jotai.atom((get) => {
             const blockData = get(blockDataAtom);
-            return blockViewToName(blockData?.view);
+            return blockViewToName(blockData?.meta?.view);
         }),
         viewText: jotai.atom((get) => {
             const blockData = get(blockDataAtom);
@@ -532,7 +541,7 @@ const BlockPreview = React.memo(({ blockId, layoutModel }: BlockProps) => {
     if (!blockData) {
         return null;
     }
-    let { viewModel } = getViewElemAndModel(blockId, blockData?.view, null);
+    let { viewModel } = getViewElemAndModel(blockId, blockData?.meta?.view, null);
     return (
         <BlockFrame
             key={blockId}
@@ -588,8 +597,8 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
     }, []);
 
     let { viewElem, viewModel } = React.useMemo(
-        () => getViewElemAndModel(blockId, blockData?.view, blockRef),
-        [blockId, blockData?.view, blockRef]
+        () => getViewElemAndModel(blockId, blockData?.meta?.view, blockRef),
+        [blockId, blockData?.meta?.view, blockRef]
     );
 
     const determineFocusedChild = React.useCallback(
