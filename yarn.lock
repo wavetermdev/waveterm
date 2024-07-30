@@ -2420,13 +2420,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@juggle/resize-observer@npm:^3.3.1":
-  version: 3.4.0
-  resolution: "@juggle/resize-observer@npm:3.4.0"
-  checksum: 10c0/12930242357298c6f2ad5d4ec7cf631dfb344ca7c8c830ab7f64e6ac11eb1aae486901d8d880fd08fb1b257800c160a0da3aee1e7ed9adac0ccbb9b7c5d93347
-  languageName: node
-  linkType: hard
-
 "@malept/cross-spawn-promise@npm:^1.1.0":
   version: 1.1.1
   resolution: "@malept/cross-spawn-promise@npm:1.1.1"
@@ -2590,16 +2583,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-hook/resize-observer@npm:^2.0.1":
-  version: 2.0.1
-  resolution: "@react-hook/resize-observer@npm:2.0.1"
+"@react-hook/resize-observer@npm:^2.0.2":
+  version: 2.0.2
+  resolution: "@react-hook/resize-observer@npm:2.0.2"
   dependencies:
-    "@juggle/resize-observer": "npm:^3.3.1"
     "@react-hook/latest": "npm:^1.0.2"
     "@react-hook/passive-layout-effect": "npm:^1.2.0"
   peerDependencies:
     react: ">=18"
-  checksum: 10c0/f36b181b1faecbe3894a23e3ad9d1206afc64287d60fa55f3018679a03161a2ecefc857575ee2a2dc2008cc6d3ded760d45bf6b4bf2102d5da6460aa349317db
+  checksum: 10c0/a88f088bd5b87fea80daca391bdea9823dc38651bd112f0c607b057d9c8381f37395cf5a01a79ba7ab24369c4b48acf912cfef0244e6610d72ea3074415e9c32
   languageName: node
   linkType: hard
 
@@ -12069,7 +12061,7 @@ __metadata:
     "@monaco-editor/loader": "npm:^1.4.0"
     "@monaco-editor/react": "npm:^4.6.0"
     "@observablehq/plot": "npm:^0.6.15"
-    "@react-hook/resize-observer": "npm:^2.0.1"
+    "@react-hook/resize-observer": "npm:^2.0.2"
     "@storybook/addon-essentials": "npm:^8.2.6"
     "@storybook/addon-interactions": "npm:^8.2.6"
     "@storybook/addon-links": "npm:^8.2.6"
