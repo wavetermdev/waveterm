@@ -3,7 +3,10 @@ updates:
     - package-ecosystem: "npm"
       directory: "/"
       schedule:
-          interval: "daily"
+          interval: "weekly"
+          day: "friday"
+          time: "09:00"
+          timezone: "America/Los_Angeles"
       groups:
           dev-dependencies:
               dependency-type: "development"
@@ -23,8 +26,14 @@ updates:
     - package-ecosystem: "gomod"
       directory: "/"
       schedule:
-          interval: "daily"
+          interval: "weekly"
+          day: "friday"
+          time: "09:00"
+          timezone: "America/Los_Angeles"
     - package-ecosystem: "github-actions"
       directory: "/.github/workflows"
       schedule:
-          interval: "daily"
+          interval: "weekly"
+          day: "friday"
+          time: "09:00"
+          timezone: "America/Los_Angeles"
