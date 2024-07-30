@@ -5,12 +5,14 @@ package blockservice
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -55,6 +57,27 @@ func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, s
 	err = filestore.WFS.WriteMeta(ctx, blockId, "cache:term:"+stateType, filestore.FileMeta{"ptyoffset": ptyOffset}, true)
 	if err != nil {
 		return fmt.Errorf("cannot save terminal state meta: %w", err)
+	}
+	return nil
+}
+
+func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, history []wshrpc.OpenAIPromptMessageType) error {
+	block, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	if err != nil {
+		return err
+	}
+	if block.View != "waveai" {
+		return fmt.Errorf("invalid view type: %s", block.View)
+	}
+	historyBytes, err := json.Marshal(history)
+	if err != nil {
+		return fmt.Errorf("unable to serialize ai history: %v", err)
+	}
+	// ignore MakeFile error (already exists is ok)
+	filestore.WFS.MakeFile(ctx, blockId, "aidata", nil, filestore.FileOptsType{})
+	err = filestore.WFS.WriteFile(ctx, blockId, "aidata", historyBytes)
+	if err != nil {
+		return fmt.Errorf("cannot save terminal state: %w", err)
 	}
 	return nil
 }

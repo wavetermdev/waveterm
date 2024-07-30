@@ -8,18 +8,11 @@ import (
 	"path/filepath"
 
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 const termThemesDir = "terminal-themes"
 const settingsFile = "settings.json"
-
-var defaultAiMessage = wshrpc.OpenAIPromptMessageType{
-	Role: "assistant",
-	Content: `<p>Hello, how may I help you?<br>
-(Cmd-Shift-Space: open/close, Ctrl+L: clear chat buffer, Up/Down: select code blocks, Enter: to copy a selected code block to the command input)</p>`,
-}
 
 var settingsAbsPath = filepath.Join(configDirAbsPath, settingsFile)
 
@@ -34,6 +27,15 @@ type WidgetsConfigType struct {
 type TerminalConfigType struct {
 	FontSize   int    `json:"fontsize,omitempty"`
 	FontFamily string `json:"fontfamily,omitempty"`
+}
+
+type AiConfigType struct {
+	BaseURL   string `json:"baseurl"`
+	ApiToken  string `json:"apitoken"`
+	Name      string `json:"name"`
+	Model     string `json:"model"`
+	MaxTokens uint32 `json:"maxtokens"`
+	TimeoutMs uint32 `json:"timeoutms"`
 }
 
 type MimeTypeConfigType struct {
@@ -90,6 +92,7 @@ type WindowSettingsType struct {
 type SettingsConfigType struct {
 	MimeTypes      map[string]MimeTypeConfigType `json:"mimetypes"`
 	Term           TerminalConfigType            `json:"term"`
+	Ai             *AiConfigType                 `json:"ai"`
 	Widgets        []WidgetsConfigType           `json:"widgets"`
 	BlockHeader    BlockHeaderOpts               `json:"blockheader"`
 	AutoUpdate     *AutoUpdateOpts               `json:"autoupdate"`
@@ -165,6 +168,14 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 	} else {
 		userName = currentUser.Username
 	}
+	if settings.Ai == nil {
+		settings.Ai = &AiConfigType{
+			Name:      userName,
+			Model:     "gpt-4o-mini",
+			MaxTokens: 1000,
+			TimeoutMs: 10 * 1000,
+		}
+	}
 	defaultWidgets := []WidgetsConfigType{
 		{
 			Icon:  "files",
@@ -194,7 +205,6 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 			Label: "waveai",
 			BlockDef: wstore.BlockDef{
 				View: "waveai",
-				Meta: map[string]any{"name": userName, "baseurl": "", "apitoken": "", "history": []wshrpc.OpenAIPromptMessageType{defaultAiMessage}},
 			},
 		},
 	}

@@ -13,6 +13,9 @@ class BlockServiceType {
     SaveTerminalState(arg2: string, arg3: string, arg4: string, arg5: number): Promise<void> {
         return WOS.callBackendService("block", "SaveTerminalState", Array.from(arguments))
     }
+    SaveWaveAiData(arg2: string, arg3: OpenAIPromptMessageType[]): Promise<void> {
+        return WOS.callBackendService("block", "SaveWaveAiData", Array.from(arguments))
+    }
 }
 
 export const BlockService = new BlockServiceType();

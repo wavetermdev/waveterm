@@ -5,6 +5,16 @@
 
 declare global {
 
+    // wconfig.AiConfigType
+    type AiConfigType = {
+        baseurl: string;
+        apitoken: string;
+        name: string;
+        model: string;
+        maxtokens: number;
+        timeoutms: number;
+    };
+
     // wconfig.AutoUpdateOpts
     type AutoUpdateOpts = {
         enabled: boolean;
@@ -266,6 +276,7 @@ declare global {
     type SettingsConfigType = {
         mimetypes: {[key: string]: MimeTypeConfigType};
         term: TerminalConfigType;
+        ai: AiConfigType;
         widgets: WidgetsConfigType[];
         blockheader: BlockHeaderOpts;
         autoupdate: AutoUpdateOpts;
