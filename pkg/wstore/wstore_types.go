@@ -207,7 +207,7 @@ type Tab struct {
 	OID        string         `json:"oid"`
 	Version    int            `json:"version"`
 	Name       string         `json:"name"`
-	LayoutNode string         `json:"layoutNode"`
+	LayoutNode string         `json:"layoutnode"`
 	BlockIds   []string       `json:"blockids"`
 	Meta       map[string]any `json:"meta"`
 }
@@ -225,10 +225,11 @@ func (t *Tab) GetBlockORefs() []waveobj.ORef {
 }
 
 type LayoutNode struct {
-	OID     string         `json:"oid"`
-	Version int            `json:"version"`
-	Node    any            `json:"node,omitempty"`
-	Meta    map[string]any `json:"meta,omitempty"`
+	OID             string         `json:"oid"`
+	Version         int            `json:"version"`
+	Node            any            `json:"node,omitempty"`
+	MagnifiedNodeId string         `json:"magnifiednodeid,omitempty"`
+	Meta            map[string]any `json:"meta,omitempty"`
 }
 
 func (*LayoutNode) GetOType() string {

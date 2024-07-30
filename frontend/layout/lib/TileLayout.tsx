@@ -40,7 +40,7 @@ import {
 } from "./model";
 import { NodeRefMap } from "./nodeRefMap";
 import "./tilelayout.less";
-import { Dimensions, FlexDirection, setTransform as createTransform, determineDropDirection } from "./utils";
+import { Dimensions, FlexDirection, determineDropDirection, setTransform } from "./utils";
 
 /**
  * contains callbacks and information about the contents (or styling) of of the TileLayout
@@ -181,14 +181,28 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                     const leafRef = nodeRefs.get(leaf.id);
                     // console.log("current leafRef", leafRef.current);
                     if (leafRef?.current) {
+                        if (leaf.id === layoutTreeState.magnifiedNodeId) {
+                            const transform = setTransform(
+                                {
+                                    top: displayBoundingRect.height * 0.05,
+                                    left: displayBoundingRect.width * 0.05,
+                                    width: displayBoundingRect.width * 0.9,
+                                    height: displayBoundingRect.height * 0.9,
+                                },
+                                true
+                            );
+                            newLayoutLeafTransforms[leaf.id] = transform;
+                            continue;
+                        }
+
                         const leafBounding = leafRef.current.getBoundingClientRect();
-                        const transform = createTransform({
+                        const transform = setTransform({
                             top: leafBounding.top - overlayBoundingRect.top,
                             left: leafBounding.left - overlayBoundingRect.left,
                             width: leafBounding.width,
                             height: leafBounding.height,
                         });
-                        newLayoutLeafTransforms[leafRef.current.id] = transform;
+                        newLayoutLeafTransforms[leaf.id] = transform;
                     } else {
                         console.warn("missing leaf", leaf.id);
                     }
@@ -199,7 +213,7 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                 const newOverlayOffset = displayBoundingRect.top + 2 * displayBoundingRect.height;
                 // console.log("overlayOffset", newOverlayOffset);
                 setOverlayTransform(
-                    createTransform(
+                    setTransform(
                         {
                             top: activeDrag || showOverlay ? 0 : newOverlayOffset,
                             left: 0,
@@ -246,6 +260,18 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
         [contents.onNodeDelete, dispatch]
     );
 
+    const onLeafMagnifyToggle = useCallback(
+        (node: LayoutNode<T>) => {
+            const action = {
+                type: LayoutTreeActionType.MagnifyNodeToggle,
+                nodeId: node.id,
+            };
+
+            dispatch(action);
+        },
+        [dispatch]
+    );
+
     return (
         <Suspense>
             <div className={clsx("tile-layout", contents.className, { animate })} onPointerOver={onPointerOver}>
@@ -253,6 +279,7 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                     <DisplayNodesWrapper
                         contents={contents}
                         ready={animate}
+                        onLeafMagnifyToggle={onLeafMagnifyToggle}
                         onLeafClose={onLeafClose}
                         layoutTreeState={layoutTreeState}
                         layoutLeafTransforms={layoutLeafTransforms}
@@ -303,6 +330,13 @@ interface DisplayNodesWrapperProps<T> {
      * @param node The node that is closed.
      */
     onLeafClose: (node: LayoutNode<T>) => void;
+
+    /**
+     * A callback that is called when a leaf's magnification is being toggled.
+     * @param node The node that is being magnified or un-magnified.
+     */
+    onLeafMagnifyToggle: (node: LayoutNode<T>) => void;
+
     /**
      * A series of CSS properties used to display a leaf node with the correct dimensions and position, as determined from its corresponding OverlayNode.
      */
@@ -314,18 +348,27 @@ interface DisplayNodesWrapperProps<T> {
 }
 
 const DisplayNodesWrapper = memo(
-    <T,>({ layoutTreeState, contents, onLeafClose, layoutLeafTransforms, ready }: DisplayNodesWrapperProps<T>) => {
+    <T,>({
+        layoutTreeState,
+        contents,
+        onLeafClose,
+        onLeafMagnifyToggle,
+        layoutLeafTransforms,
+        ready,
+    }: DisplayNodesWrapperProps<T>) => {
         if (!layoutLeafTransforms) {
             return null;
         }
         return layoutTreeState.leafs.map((leaf) => {
             return (
                 <DisplayNode
+                    className={clsx({ magnified: layoutTreeState.magnifiedNodeId === leaf.id })}
                     key={leaf.id}
                     layoutNode={leaf}
                     contents={contents}
                     transform={layoutLeafTransforms[leaf.id]}
                     onLeafClose={onLeafClose}
+                    onLeafMagnifyToggle={onLeafMagnifyToggle}
                     ready={ready}
                 />
             );
@@ -345,6 +388,12 @@ interface DisplayNodeProps<T> {
     contents: TileLayoutContents<T>;
 
     /**
+     * A callback that is called when a leaf's magnification is being toggled.
+     * @param node The node that is being magnified or unmagnified.
+     */
+    onLeafMagnifyToggle: (node: LayoutNode<T>) => void;
+
+    /**
      * A callback that is called when a leaf node gets closed.
      * @param node The node that is closed.
      */
@@ -353,6 +402,12 @@ interface DisplayNodeProps<T> {
      * Determines whether a leaf's contents should be displayed to the user.
      */
     ready: boolean;
+
+    /**
+     * Any class names to add to the component.
+     */
+    className?: string;
+
     /**
      * A series of CSS properties used to display a leaf node with the correct dimensions and position, as determined from its corresponding OverlayNode.
      */
@@ -364,104 +419,118 @@ const dragItemType = "TILE_ITEM";
 /**
  * The draggable and displayable portion of a leaf node in a layout tree.
  */
-const DisplayNode = memo(<T,>({ layoutNode, contents, transform, onLeafClose, ready }: DisplayNodeProps<T>) => {
-    const tileNodeRef = useRef<HTMLDivElement>(null);
-    const dragHandleRef = useRef<HTMLDivElement>(null);
-    const previewRef = useRef<HTMLDivElement>(null);
+const DisplayNode = memo(
+    <T,>({
+        layoutNode,
+        contents,
+        transform,
+        onLeafMagnifyToggle,
+        onLeafClose,
+        ready,
+        className,
+    }: DisplayNodeProps<T>) => {
+        const tileNodeRef = useRef<HTMLDivElement>(null);
+        const dragHandleRef = useRef<HTMLDivElement>(null);
+        const previewRef = useRef<HTMLDivElement>(null);
 
-    const devicePixelRatio = useDevicePixelRatio();
+        const devicePixelRatio = useDevicePixelRatio();
 
-    const [{ isDragging }, drag, dragPreview] = useDrag(
-        () => ({
-            type: dragItemType,
-            item: () => layoutNode,
-            collect: (monitor) => ({
-                isDragging: monitor.isDragging(),
+        const [{ isDragging }, drag, dragPreview] = useDrag(
+            () => ({
+                type: dragItemType,
+                item: () => layoutNode,
+                collect: (monitor) => ({
+                    isDragging: monitor.isDragging(),
+                }),
             }),
-        }),
-        [layoutNode]
-    );
+            [layoutNode]
+        );
 
-    const [previewElementGeneration, setPreviewElementGeneration] = useState(0);
-    const previewElement = useMemo(() => {
-        setPreviewElementGeneration(previewElementGeneration + 1);
-        return (
-            <div key="preview" className="tile-preview-container">
-                <div
-                    className="tile-preview"
-                    ref={previewRef}
-                    style={{
-                        width: DragPreviewWidth,
-                        height: DragPreviewHeight,
-                        transform: `scale(${1 / devicePixelRatio})`,
-                    }}
-                >
-                    {contents.renderPreview?.(layoutNode.data)}
+        const [previewElementGeneration, setPreviewElementGeneration] = useState(0);
+        const previewElement = useMemo(() => {
+            setPreviewElementGeneration(previewElementGeneration + 1);
+            return (
+                <div key="preview" className="tile-preview-container">
+                    <div
+                        className="tile-preview"
+                        ref={previewRef}
+                        style={{
+                            width: DragPreviewWidth,
+                            height: DragPreviewHeight,
+                            transform: `scale(${1 / devicePixelRatio})`,
+                        }}
+                    >
+                        {contents.renderPreview?.(layoutNode.data)}
+                    </div>
                 </div>
+            );
+        }, [contents.renderPreview, devicePixelRatio]);
+
+        const [previewImage, setPreviewImage] = useState<HTMLImageElement>(null);
+        const [previewImageGeneration, setPreviewImageGeneration] = useState(0);
+        const generatePreviewImage = useCallback(() => {
+            const offsetX = (DragPreviewWidth * devicePixelRatio - DragPreviewWidth) / 2 + 10;
+            const offsetY = (DragPreviewHeight * devicePixelRatio - DragPreviewHeight) / 2 + 10;
+            if (previewImage !== null && previewElementGeneration === previewImageGeneration) {
+                dragPreview(previewImage, { offsetY, offsetX });
+            } else if (previewRef.current) {
+                setPreviewImageGeneration(previewElementGeneration);
+                toPng(previewRef.current).then((url) => {
+                    const img = new Image();
+                    img.src = url;
+                    setPreviewImage(img);
+                    dragPreview(img, { offsetY, offsetX });
+                });
+            }
+        }, [
+            dragPreview,
+            previewRef.current,
+            previewElementGeneration,
+            previewImageGeneration,
+            previewImage,
+            devicePixelRatio,
+        ]);
+
+        // Register the tile item as a draggable component
+        useEffect(() => {
+            drag(dragHandleRef);
+        }, [drag, dragHandleRef.current]);
+
+        const onClose = useCallback(() => {
+            onLeafClose(layoutNode);
+        }, [layoutNode, onLeafClose]);
+
+        const onMagnifyToggle = useCallback(() => {
+            onLeafMagnifyToggle(layoutNode);
+        }, [layoutNode, onLeafMagnifyToggle]);
+
+        const leafContent = useMemo(() => {
+            return (
+                layoutNode.data && (
+                    <div key="leaf" className="tile-leaf">
+                        {contents.renderContent(layoutNode.data, ready, onMagnifyToggle, onClose, dragHandleRef)}
+                    </div>
+                )
+            );
+        }, [layoutNode.data, ready, onClose]);
+
+        return (
+            <div
+                className={clsx("tile-node", className, { dragging: isDragging })}
+                ref={tileNodeRef}
+                id={layoutNode.id}
+                style={{
+                    ...transform,
+                }}
+                onPointerEnter={generatePreviewImage}
+                onPointerOver={(event) => event.stopPropagation()}
+            >
+                {leafContent}
+                {previewElement}
             </div>
         );
-    }, [contents.renderPreview, devicePixelRatio]);
-
-    const [previewImage, setPreviewImage] = useState<HTMLImageElement>(null);
-    const [previewImageGeneration, setPreviewImageGeneration] = useState(0);
-    const generatePreviewImage = useCallback(() => {
-        const offsetX = (DragPreviewWidth * devicePixelRatio - DragPreviewWidth) / 2 + 10;
-        const offsetY = (DragPreviewHeight * devicePixelRatio - DragPreviewHeight) / 2 + 10;
-        if (previewImage !== null && previewElementGeneration === previewImageGeneration) {
-            dragPreview(previewImage, { offsetY, offsetX });
-        } else if (previewRef.current) {
-            setPreviewImageGeneration(previewElementGeneration);
-            toPng(previewRef.current).then((url) => {
-                const img = new Image();
-                img.src = url;
-                setPreviewImage(img);
-                dragPreview(img, { offsetY, offsetX });
-            });
-        }
-    }, [
-        dragPreview,
-        previewRef.current,
-        previewElementGeneration,
-        previewImageGeneration,
-        previewImage,
-        devicePixelRatio,
-    ]);
-
-    // Register the tile item as a draggable component
-    useEffect(() => {
-        drag(dragHandleRef);
-    }, [drag, dragHandleRef.current]);
-
-    const onClose = useCallback(() => {
-        onLeafClose(layoutNode);
-    }, [layoutNode, onLeafClose]);
-
-    const leafContent = useMemo(() => {
-        return (
-            layoutNode.data && (
-                <div key="leaf" className="tile-leaf">
-                    {contents.renderContent(layoutNode.data, ready, onClose, dragHandleRef)}
-                </div>
-            )
-        );
-    }, [layoutNode.data, ready, onClose]);
-
-    return (
-        <div
-            className={clsx("tile-node", { dragging: isDragging })}
-            ref={tileNodeRef}
-            id={layoutNode.id}
-            style={{
-                ...transform,
-            }}
-            onPointerEnter={generatePreviewImage}
-            onPointerOver={(event) => event.stopPropagation()}
-        >
-            {leafContent}
-            {previewElement}
-        </div>
-    );
-});
+    }
+);
 
 interface OverlayNodeProps<T> {
     /**
@@ -886,7 +955,7 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefsAtom, s
                                 }
                             }
 
-                            const placeholderTransform = createTransform(placeholderDimensions);
+                            const placeholderTransform = setTransform(placeholderDimensions);
                             newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
                         }
                     }
@@ -907,7 +976,7 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefsAtom, s
                             width: targetBoundingRect.width,
                         };
 
-                        const placeholderTransform = createTransform(placeholderDimensions);
+                        const placeholderTransform = setTransform(placeholderDimensions);
                         newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
                     }
                     break;

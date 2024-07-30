@@ -66,8 +66,16 @@
     }
 
     .tile-node {
+        border-radius: var(--block-border-radius);
+        overflow: hidden;
+
         &.dragging {
             filter: blur(8px);
+        }
+
+        &.magnified {
+            background-color: var(--block-bg-solid-color);
+            z-index: 10;
         }
 
         .tile-preview-container {
@@ -89,7 +97,7 @@
         .placeholder {
             transition-duration: 0.15s;
             transition-timing-function: ease-in;
-            transition-property: transform, width, height;
+            transition-property: transform, width, height, background-color;
         }
     }
 
@@ -106,6 +114,6 @@
     .placeholder {
         background-color: var(--accent-color);
         opacity: 0.5;
-        border-radius: 5px;
+        border-radius: calc(var(--block-border-radius) + 2px);
     }
 }

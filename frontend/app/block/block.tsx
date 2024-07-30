@@ -21,8 +21,9 @@ import * as React from "react";
 
 import "./block.less";
 
-interface LayoutComponentModel {
+export interface LayoutComponentModel {
     onClose?: () => void;
+    onMagnifyToggle?: () => void;
     dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
 
@@ -163,51 +164,52 @@ function handleHeaderContextMenu(
     e: React.MouseEvent<HTMLDivElement>,
     blockData: Block,
     viewModel: ViewModel,
+    onMagnifyToggle: () => void,
     onClose: () => void
 ) {
     e.preventDefault();
     e.stopPropagation();
-    let menu: ContextMenuItem[] = [];
-    menu.push({
-        label: "Focus Block",
-        click: () => {
-            alert("Not Implemented");
+    let menu: ContextMenuItem[] = [
+        {
+            label: "Magnify Block",
+            click: () => {
+                onMagnifyToggle();
+            },
         },
-    });
-    menu.push({
-        label: "Minimize",
-        click: () => {
-            alert("Not Implemented");
+        {
+            label: "Minimize",
+            click: () => {
+                alert("Not Implemented");
+            },
         },
-    });
-    menu.push({
-        label: "Move to New Window",
-        click: () => {
-            let currentTabId = globalStore.get(atoms.activeTabId);
-            try {
-                services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
-            } catch (e) {
-                console.error("error moving block to new window", e);
-            }
+        {
+            label: "Move to New Window",
+            click: () => {
+                const currentTabId = globalStore.get(atoms.activeTabId);
+                try {
+                    services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
+                } catch (e) {
+                    console.error("error moving block to new window", e);
+                }
+            },
         },
-    });
-    menu.push({ type: "separator" });
-    menu.push({
-        label: "Copy BlockId",
-        click: () => {
-            navigator.clipboard.writeText(blockData.oid);
+        { type: "separator" },
+        {
+            label: "Copy BlockId",
+            click: () => {
+                navigator.clipboard.writeText(blockData.oid);
+            },
         },
-    });
+    ];
     const extraItems = viewModel?.getSettingsMenuItems?.();
-    if (extraItems && extraItems.length > 0) {
-        menu.push({ type: "separator" });
-        menu.push(...extraItems);
-    }
-    menu.push({ type: "separator" });
-    menu.push({
-        label: "Close Block",
-        click: onClose,
-    });
+    if (extraItems && extraItems.length > 0) menu.push({ type: "separator" }, ...extraItems);
+    menu.push(
+        { type: "separator" },
+        {
+            label: "Close Block",
+            click: onClose,
+        }
+    );
     ContextMenuModel.showContextMenu(menu, e);
 }
 
@@ -294,7 +296,8 @@ const BlockFrame_Default_Component = ({
         elemtype: "iconbutton",
         icon: "cog",
         title: "Settings",
-        click: (e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose),
+        click: (e) =>
+            handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onMagnifyToggle, layoutModel?.onClose),
     };
     endIconsElem.push(
         <IconButton key="settings" decl={settingsDecl} className="block-frame-endicon-button block-frame-settings" />
@@ -394,7 +397,15 @@ const BlockFrame_Default_Component = ({
                 <div
                     className="block-frame-default-header"
                     ref={layoutModel?.dragHandleRef}
-                    onContextMenu={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
+                    onContextMenu={(e) =>
+                        handleHeaderContextMenu(
+                            e,
+                            blockData,
+                            viewModel,
+                            layoutModel?.onMagnifyToggle,
+                            layoutModel?.onClose
+                        )
+                    }
                 >
                     {preIconButtonElem}
                     <div className="block-frame-default-header-iconview">

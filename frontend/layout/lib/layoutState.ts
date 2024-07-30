@@ -19,6 +19,7 @@ import {
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
     LayoutTreeInsertNodeAction,
+    LayoutTreeMagnifyNodeToggleAction,
     LayoutTreeMoveNodeAction,
     LayoutTreeResizeNodeAction,
     LayoutTreeSetPendingAction,
@@ -106,6 +107,10 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
             break;
         case LayoutTreeActionType.ResizeNode:
             resizeNode(layoutTreeState, action as LayoutTreeResizeNodeAction);
+            layoutTreeState.generation++;
+            break;
+        case LayoutTreeActionType.MagnifyNodeToggle:
+            magnifyNodeToggle(layoutTreeState, action as LayoutTreeMagnifyNodeToggleAction);
             layoutTreeState.generation++;
             break;
         default: {
@@ -458,5 +463,22 @@ function resizeNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeRe
         }
         const node = findNode(layoutTreeState.rootNode, resize.nodeId);
         node.size = resize.size;
+    }
+}
+
+function magnifyNodeToggle<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMagnifyNodeToggleAction) {
+    console.log("magnifyNodeToggle", layoutTreeState, action);
+    if (!action.nodeId) {
+        console.error("invalid magnifyNodeToggle operation. nodeId must be defined.");
+        return;
+    }
+    if (layoutTreeState.rootNode.id === action.nodeId) {
+        console.warn(`cannot toggle magnification of node ${action.nodeId} because it is the root node.`);
+        return;
+    }
+    if (layoutTreeState.magnifiedNodeId === action.nodeId) {
+        layoutTreeState.magnifiedNodeId = undefined;
+    } else {
+        layoutTreeState.magnifiedNodeId = action.nodeId;
     }
 }

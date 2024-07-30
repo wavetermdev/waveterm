@@ -176,6 +176,7 @@ declare global {
     // wstore.LayoutNode
     type LayoutNode = WaveObj & {
         node?: any;
+        magnifiednodeid?: string;
         meta?: MetaType;
     };
 
@@ -315,7 +316,7 @@ declare global {
     // wstore.Tab
     type Tab = WaveObj & {
         name: string;
-        layoutNode: string;
+        layoutnode: string;
         blockids: string[];
         meta: MetaType;
     };

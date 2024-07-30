@@ -42,6 +42,7 @@ export enum LayoutTreeActionType {
     ResizeNode = "resize",
     InsertNode = "insert",
     DeleteNode = "delete",
+    MagnifyNodeToggle = "magnify",
 }
 
 /**
@@ -164,6 +165,18 @@ export interface LayoutTreeResizeNodeAction extends LayoutTreeAction {
 }
 
 /**
+ * Action for toggling magnification of a node from the layout tree.
+ */
+export interface LayoutTreeMagnifyNodeToggleAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.MagnifyNodeToggle;
+
+    /**
+     * The id of the node to maximize;
+     */
+    nodeId: string;
+}
+
+/**
  * Represents the state of a layout tree.
  *
  * @template T The type of data associated with the nodes of the tree.
@@ -173,6 +186,7 @@ export type LayoutTreeState<T> = {
     leafs: LayoutNode<T>[];
     pendingAction: LayoutTreeAction;
     generation: number;
+    magnifiedNodeId?: string;
 };
 
 /**
@@ -200,6 +214,7 @@ export type WritableLayoutTreeStateAtom<T> = WritableAtom<LayoutTreeState<T>, [v
 export type ContentRenderer<T> = (
     data: T,
     ready: boolean,
+    onMagnifyToggle: () => void,
     onClose: () => void,
     dragHandleRef: React.RefObject<HTMLDivElement>
 ) => React.ReactNode;
@@ -208,6 +223,7 @@ export type PreviewRenderer<T> = (data: T) => React.ReactElement;
 
 export interface LayoutNodeWaveObj<T> extends WaveObj {
     node: LayoutNode<T>;
+    magnifiednodeid: string;
 }
 
 export const DefaultNodeSize = 10;

@@ -1,7 +1,7 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block } from "@/app/block/block";
+import { Block, LayoutComponentModel } from "@/app/block/block";
 import { getApi } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
@@ -26,14 +26,16 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
         function renderBlock(
             tabData: TabLayoutData,
             ready: boolean,
+            onMagnifyToggle: () => void,
             onClose: () => void,
             dragHandleRef: React.RefObject<HTMLDivElement>
         ) {
             if (!tabData.blockId || !ready) {
                 return null;
             }
-            const layoutModel = {
+            const layoutModel: LayoutComponentModel = {
                 onClose: onClose,
+                onMagnifyToggle: onMagnifyToggle,
                 dragHandleRef: dragHandleRef,
             };
             return <Block key={tabData.blockId} blockId={tabData.blockId} layoutModel={layoutModel} preview={false} />;

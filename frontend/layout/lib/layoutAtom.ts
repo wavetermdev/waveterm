@@ -78,7 +78,7 @@ function getLayoutNodeWaveObjAtomFromTab<T>(
     const tabValue = get(tabAtom);
     // console.log("getLayoutNodeWaveObjAtomFromTab tabValue", tabValue);
     if (!tabValue) return;
-    const layoutNodeOref = WOS.makeORef("layout", tabValue.layoutNode);
+    const layoutNodeOref = WOS.makeORef("layout", tabValue.layoutnode);
     // console.log("getLayoutNodeWaveObjAtomFromTab oref", layoutNodeOref);
     return WOS.getWaveObjectAtom<LayoutNodeWaveObj<T>>(layoutNodeOref);
 }
@@ -86,13 +86,16 @@ function getLayoutNodeWaveObjAtomFromTab<T>(
 export function withLayoutStateAtomFromTab<T>(tabAtom: Atom<Tab>): WritableLayoutTreeStateAtom<T> {
     const pendingActionAtom = atom<LayoutTreeAction>(null) as PrimitiveAtom<LayoutTreeAction>;
     const generationAtom = atom(0) as PrimitiveAtom<number>;
+
     return atom(
         (get) => {
             const waveObjAtom = getLayoutNodeWaveObjAtomFromTab<T>(tabAtom, get);
             if (!waveObjAtom) return null;
-            const layoutState = newLayoutTreeState(get(waveObjAtom)?.node);
+            const waveObj = get(waveObjAtom);
+            const layoutState = newLayoutTreeState(waveObj?.node);
             layoutState.pendingAction = get(pendingActionAtom);
             layoutState.generation = get(generationAtom);
+            layoutState.magnifiedNodeId = waveObj?.magnifiednodeid;
             return layoutState;
         },
         (get, set, value) => {
@@ -100,7 +103,11 @@ export function withLayoutStateAtomFromTab<T>(tabAtom: Atom<Tab>): WritableLayou
             if (get(generationAtom) !== value.generation) {
                 const waveObjAtom = getLayoutNodeWaveObjAtomFromTab<T>(tabAtom, get);
                 if (!waveObjAtom) return;
-                const newWaveObj = { ...get(waveObjAtom), node: value.rootNode };
+                const newWaveObj = {
+                    ...get(waveObjAtom),
+                    node: value.rootNode,
+                    magnifiednodeid: value.magnifiedNodeId,
+                };
                 set(generationAtom, value.generation);
                 set(waveObjAtom, newWaveObj);
             }
