@@ -16,6 +16,7 @@ import * as layoututil from "@/util/layoututil";
 import { produce } from "immer";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
+import { modalsModel } from "./modalmodel";
 import * as services from "./services";
 import * as WOS from "./wos";
 import { WSControl } from "./ws";
@@ -101,7 +102,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         }
         return windowData.activetabid;
     });
-    const userInputAtom = jotai.atom([]) as jotai.PrimitiveAtom<Array<UserInputRequest>>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         windowId: windowIdAtom,
@@ -113,7 +113,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         settingsConfigAtom: settingsConfigAtom,
         tabAtom: tabAtom,
         activeTabId: activeTabIdAtom,
-        userInput: userInputAtom,
         isFullScreen: isFullScreenAtom,
     };
 }
@@ -229,10 +228,8 @@ function handleWSEventMessage(msg: WSEventType) {
         return;
     }
     if (msg.eventtype == "userinput") {
-        // handle user input
         const data: UserInputRequest = msg.data;
-        console.log(data);
-        globalStore.set(atoms.userInput, (prev) => [...prev, data]);
+        modalsModel.pushModal("UserInputModal", { ...data });
         return;
     }
     if (msg.eventtype == "blockfile") {

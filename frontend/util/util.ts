@@ -197,6 +197,16 @@ function getCrypto() {
     }
 }
 
+/**
+ * Generates an external link by appending the given URL to the "https://extern?" endpoint.
+ *
+ * @param {string} url - The URL to be encoded and appended to the external link.
+ * @return {string} The generated external link.
+ */
+function makeExternLink(url: string): string {
+    return "https://extern?" + encodeURIComponent(url);
+}
+
 export {
     base64ToArray,
     base64ToString,
@@ -209,6 +219,7 @@ export {
     jotaiLoadableValue,
     jsonDeepEqual,
     lazy,
+    makeExternLink,
     makeIconClass,
     stringToBase64,
     useAtomValueSafe,

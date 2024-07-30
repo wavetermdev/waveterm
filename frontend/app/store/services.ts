@@ -22,6 +22,10 @@ export const BlockService = new BlockServiceType();
 
 // clientservice.ClientService (client)
 class ClientServiceType {
+    // @returns object updates
+    AgreeTos(): Promise<void> {
+        return WOS.callBackendService("client", "AgreeTos", Array.from(arguments))
+    }
     FocusWindow(arg2: string): Promise<void> {
         return WOS.callBackendService("client", "FocusWindow", Array.from(arguments))
     }

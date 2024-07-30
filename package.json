@@ -67,6 +67,7 @@
         "vite": "^5.3.5",
         "vite-plugin-image-optimizer": "^1.1.8",
         "vite-plugin-static-copy": "^1.0.6",
+        "vite-plugin-svgr": "^4.2.0",
         "vite-tsconfig-paths": "^4.3.2",
         "vitest": "^2.0.4"
     },

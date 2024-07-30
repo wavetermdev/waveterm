@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { UserInputModal } from "@/element/userinputmodal";
 import { atoms, createBlock } from "@/store/global";
 import * as services from "@/store/services";
 import * as util from "@/util/util";
@@ -107,11 +107,10 @@ const Widgets = React.memo(() => {
 const WorkspaceElem = React.memo(() => {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const activeTabId = windowData?.activetabid;
-    const modals = jotai.useAtomValue(atoms.userInput);
     const ws = jotai.useAtomValue(atoms.workspace);
+
     return (
         <div className="workspace">
-            {modals.length > 0 && <UserInputModal {...modals[modals.length - 1]} />}
             <TabBar key={ws.oid} workspace={ws} />
             <div className="workspace-tabcontent">
                 {activeTabId == "" ? (
@@ -120,6 +119,7 @@ const WorkspaceElem = React.memo(() => {
                     <>
                         <TabContent key={activeTabId} tabId={activeTabId} />
                         <Widgets />
+                        <ModalsRenderer />
                     </>
                 )}
             </div>

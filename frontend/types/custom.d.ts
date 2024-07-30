@@ -15,7 +15,6 @@ declare global {
         settingsConfigAtom: jotai.PrimitiveAtom<SettingsConfigType>; // driven from WOS, settings -- updated via WebSocket
         tabAtom: jotai.Atom<Tab>; // driven from WOS
         activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
-        userInput: jotai.PrimitiveAtom<Array<UserInputRequest>>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
     };
 

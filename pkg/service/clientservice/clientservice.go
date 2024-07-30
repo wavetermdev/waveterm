@@ -73,3 +73,18 @@ func (cs *ClientService) FocusWindow(ctx context.Context, windowId string) error
 	client.WindowIds = utilfn.MoveSliceIdxToFront(client.WindowIds, winIdx)
 	return wstore.DBUpdate(ctx, client)
 }
+
+func (cs *ClientService) AgreeTos(ctx context.Context) (wstore.UpdatesRtnType, error) {
+	ctx = wstore.ContextWithUpdates(ctx)
+	clientData, err := wstore.DBGetSingleton[*wstore.Client](ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting client data: %w", err)
+	}
+	timestamp := time.Now().UnixMilli()
+	clientData.TosAgreed = timestamp
+	err = wstore.DBUpdate(ctx, clientData)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client data: %w", err)
+	}
+	return wstore.ContextGetUpdatesRtn(ctx), nil
+}

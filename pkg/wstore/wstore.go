@@ -349,8 +349,8 @@ func CreateWindow(ctx context.Context) (*Window, error) {
 			Y: 100,
 		},
 		WinSize: WinSize{
-			Width:  800,
-			Height: 600,
+			Width:  1200,
+			Height: 800,
 		},
 	}
 	err := DBInsert(ctx, window)

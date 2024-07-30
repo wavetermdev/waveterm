@@ -63,6 +63,7 @@ declare global {
         mainwindowid: string;
         windowids: string[];
         meta: MetaType;
+        tosagreed?: number;
     };
 
     // wshrpc.CommandAppendIJsonData

@@ -1,18 +1,16 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Modal } from "@/app/modals/modal";
 import { Markdown } from "@/element/markdown";
-import { WaveModal } from "@/element/modal";
-import { atoms } from "@/store/global";
+import { modalsModel } from "@/store/modalmodel";
 import * as keyutil from "@/util/keyutil";
-import * as jotai from "jotai";
 import * as React from "react";
 import { UserInputService } from "../store/services";
 
 import "./userinputmodal.less";
 
-export const UserInputModal = (userInputRequest: UserInputRequest) => {
-    const setModals = jotai.useSetAtom(atoms.userInput);
+const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = React.useState("");
     const [countdown, setCountdown] = React.useState(Math.floor(userInputRequest.timeoutms / 1000));
     const checkboxStatus = React.useRef(false);
@@ -23,10 +21,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
             requestid: userInputRequest.requestid,
             errormsg: "Canceled by the user",
         });
-        setModals((prev) => {
-            prev.pop();
-            return [...prev];
-        });
+        modalsModel.popModal();
     }, [responseText, userInputRequest]);
 
     const handleSendText = React.useCallback(() => {
@@ -36,10 +31,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
             text: responseText,
             checkboxstat: checkboxStatus.current,
         });
-        setModals((prev) => {
-            prev.pop();
-            return [...prev];
-        });
+        modalsModel.popModal();
     }, [responseText, userInputRequest]);
 
     const handleSendConfirm = React.useCallback(() => {
@@ -49,10 +41,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
             confirm: true,
             checkboxstat: checkboxStatus.current,
         });
-        setModals((prev) => {
-            prev.pop();
-            return [...prev];
-        });
+        modalsModel.popModal();
     }, [userInputRequest]);
 
     const handleSubmit = React.useCallback(() => {
@@ -119,15 +108,19 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
     }, [countdown]);
 
     return (
-        <WaveModal
+        <Modal
             title={userInputRequest.title + ` (${countdown}s)`}
-            onSubmit={() => handleSubmit()}
+            onOk={() => handleSubmit()}
             onCancel={() => handleSendCancel()}
         >
             <div className="userinput-body">
                 {queryText}
                 {inputBox}
             </div>
-        </WaveModal>
+        </Modal>
     );
 };
+
+UserInputModal.displayName = "UserInputModal";
+
+export { UserInputModal };

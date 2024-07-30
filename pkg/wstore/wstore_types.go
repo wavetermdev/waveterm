@@ -166,6 +166,7 @@ type Client struct {
 	MainWindowId string         `json:"mainwindowid"` // deprecated
 	WindowIds    []string       `json:"windowids"`
 	Meta         map[string]any `json:"meta"`
+	TosAgreed    int64          `json:"tosagreed,omitempty"`
 }
 
 func (*Client) GetOType() string {
