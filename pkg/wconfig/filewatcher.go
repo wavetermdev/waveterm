@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -245,12 +246,27 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 	defer w.mutex.Unlock()
 
 	fileName := filepath.ToSlash(event.Name)
-
+	if event.Op == fsnotify.Chmod {
+		return
+	}
+	if !isValidSubSettingsFileName(fileName) {
+		return
+	}
 	if isInDirectory(fileName, termThemesDirAbsPath) {
 		w.handleTermThemesEvent(event, fileName)
 	} else if filepath.Base(fileName) == filepath.Base(settingsAbsPath) {
 		w.handleSettingsFileEvent(event, fileName)
 	}
+}
+
+var validFileRe = regexp.MustCompile(`^[a-zA-Z0-9_@.-]+\.json$`)
+
+func isValidSubSettingsFileName(fileName string) bool {
+	if filepath.Ext(fileName) != ".json" {
+		return false
+	}
+	baseName := filepath.Base(fileName)
+	return validFileRe.MatchString(baseName)
 }
 
 func (w *Watcher) handleTermThemesEvent(event fsnotify.Event, fileName string) {
