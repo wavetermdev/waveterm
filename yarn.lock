@@ -9977,10 +9977,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"overlayscrollbars@npm:^2.9.2":
-  version: 2.9.2
-  resolution: "overlayscrollbars@npm:2.9.2"
-  checksum: 10c0/f62b445a393c6921a81e82fbf05755adae6ef1c1db292ab86ea1fd344680eb569f140f0c83436e7d485e66a6889e25d5757d4c01f8550cbb742c05c994f158c0
+"overlayscrollbars@npm:^2.10.0":
+  version: 2.10.0
+  resolution: "overlayscrollbars@npm:2.10.0"
+  checksum: 10c0/d8eead54a8459cade66cac347524858a41f2d207737ea7bbb9df690c242cfd6804023bac85d245168893284cae32e11ed19acf236fad5e8e47116018d7e7d43a
   languageName: node
   linkType: hard
 
@@ -11873,7 +11873,7 @@ __metadata:
     jotai: "npm:^2.9.1"
     less: "npm:^4.2.0"
     monaco-editor: "npm:^0.50.0"
-    overlayscrollbars: "npm:^2.9.2"
+    overlayscrollbars: "npm:^2.10.0"
     overlayscrollbars-react: "npm:^0.5.6"
     papaparse: "npm:^5.4.1"
     prettier: "npm:^3.3.3"
