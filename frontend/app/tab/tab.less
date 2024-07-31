@@ -81,3 +81,18 @@
         visibility: visible;
     }
 }
+
+@keyframes expandWidthAndFadeIn {
+    from {
+        width: var(--initial-tab-width);
+        opacity: 0;
+    }
+    to {
+        width: var(--final-tab-width);
+        opacity: 1;
+    }
+}
+
+.tab.new-tab {
+    animation: expandWidthAndFadeIn 0.1s forwards;
+}

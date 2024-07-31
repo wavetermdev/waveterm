@@ -7,10 +7,6 @@
 }
 
 .darwin:not(.fullscreen) .tab-bar-wrapper {
-    .tab-bar {
-        margin-left: var(--darwin-not-fullscreen-indent);
-    }
-
     .window-drag.left {
         width: var(--darwin-not-fullscreen-indent);
     }
@@ -18,20 +14,18 @@
 
 .tab-bar-wrapper {
     position: relative;
-    // border-bottom: 1px solid var(--border-color);
     user-select: none;
     display: flex;
     flex-direction: row;
 
+    .tabs-wrapper {
+        transition: var(--tabs-wrapper-transition);
+        height: 32px;
+    }
+
     .tab-bar {
         position: relative; // Needed for absolute positioning of child tabs
-        margin-left: var(--default-indent);
         height: 33px;
-        // 36 is the width of add tab button
-        // 100 is offset from the left, for macOS window controls and dragging
-        // 50 right offset for dragging
-        // minus 1px for last tab right border
-        width: calc(100vw - 185px);
     }
 
     .add-tab-btn {
@@ -58,8 +52,14 @@
     }
 
     .window-drag {
-        position: absolute;
         height: 100%;
+        width: var(--default-indent);
+        flex-shrink: 0;
+
+        &.right {
+            flex-grow: 1;
+            min-width: 74px;
+        }
     }
 
     // Customize scrollbar styles

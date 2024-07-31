@@ -16,6 +16,7 @@ import "./tabbar.less";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
+const DRAGGER_RIGHT_MIN_WIDTH = 74;
 const OS_OPTIONS = {
     overflow: {
         x: "scroll",
@@ -44,13 +45,16 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const [tabsLoaded, setTabsLoaded] = useState({});
     // const [scrollable, setScrollable] = useState(false);
     // const [tabWidth, setTabWidth] = useState(TAB_DEFAULT_WIDTH);
+    const [newTabId, setNewTabId] = useState<string | null>(null);
 
+    const tabbarWrapperRef = useRef<HTMLDivElement>(null);
     const tabBarRef = useRef<HTMLDivElement>(null);
     const tabsWrapperRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<React.RefObject<HTMLDivElement>[]>([]);
     const addBtnRef = useRef<HTMLDivElement>(null);
     const draggingTimeoutIdRef = useRef<NodeJS.Timeout>(null);
     const scrollToNewTabTimeoutIdRef = useRef<NodeJS.Timeout>(null);
+    const newTabIdTimeoutIdRef = useRef<NodeJS.Timeout>(null);
     const draggingRemovedRef = useRef(false);
     const draggingTabDataRef = useRef({
         tabId: "",
@@ -63,6 +67,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
     const draggerRightRef = useRef<HTMLDivElement>(null);
+    const draggerLeftRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
 
@@ -94,7 +99,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         }
     }, [workspace, tabIds]);
 
-    const updateTabPositions = useCallback(() => {
+    const saveTabsPosition = useCallback(() => {
         const tabs = tabRefs.current;
         if (tabs === null) return;
 
@@ -111,16 +116,17 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         setDragStartPositions(newStartPositions);
     }, []);
 
-    // const debouncedSetTabWidth = debounce((width) => setTabWidth(width), 100);
-    // const debouncedSetScrollable = debounce((scrollable) => setScrollable(scrollable), 100);
-    const debouncedUpdateTabPositions = debounce(100, () => updateTabPositions());
+    const debouncedSaveTabsPosition = debounce(100, () => saveTabsPosition());
 
-    const handleResizeTabs = useCallback(() => {
+    const updateSizeAndPosition = (animate?: boolean) => {
         const tabBar = tabBarRef.current;
         if (tabBar === null) return;
 
-        const tabBarRect = tabBar.getBoundingClientRect();
-        const tabBarWidth = tabBarRect.width;
+        const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
+        const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
+        const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
+        const spaceForTabs = tabbarWrapperWidth - (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth);
+
         const numberOfTabs = tabIds.length;
         const totalDefaultTabWidth = numberOfTabs * TAB_DEFAULT_WIDTH;
         const minTotalTabWidth = numberOfTabs * TAB_MIN_WIDTH;
@@ -129,13 +135,15 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         let newTabWidth = tabWidth;
         let newScrollable = scrollable;
 
-        if (minTotalTabWidth > tabBarWidth) {
+        console.log("spaceForTabs", spaceForTabs, minTotalTabWidth);
+
+        if (minTotalTabWidth > spaceForTabs) {
             // Case where tabs cannot shrink further, make the tab bar scrollable
             newTabWidth = TAB_MIN_WIDTH;
             newScrollable = true;
-        } else if (totalDefaultTabWidth > tabBarWidth) {
+        } else if (totalDefaultTabWidth > spaceForTabs) {
             // Case where resizing is needed due to limited container width
-            newTabWidth = tabBarWidth / numberOfTabs;
+            newTabWidth = spaceForTabs / numberOfTabs;
             newScrollable = false;
         } else {
             // Case where tabs were previously shrunk or there is enough space for default width tabs
@@ -146,6 +154,11 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         // Apply the calculated width and position to all tabs
         tabRefs.current.forEach((ref, index) => {
             if (ref.current) {
+                if (animate) {
+                    ref.current.classList.add("animate");
+                } else {
+                    ref.current.classList.remove("animate");
+                }
                 ref.current.style.width = `${newTabWidth}px`;
                 ref.current.style.transform = `translate3d(${index * newTabWidth}px,0,0)`;
             }
@@ -167,30 +180,12 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 osInstanceRef.current.destroy();
             }
         }
+    };
 
-        // Update Add Tab button position if needed
-        const addButton = addBtnRef.current;
-        const lastTabRef = tabRefs.current[tabRefs.current.length - 1];
-        if (addButton && lastTabRef && lastTabRef.current) {
-            const lastTabRect = lastTabRef.current.getBoundingClientRect();
-            addButton.style.position = "absolute";
-            if (newScrollable) {
-                addButton.style.transform = `translate3d(${tabBarRect.left + tabBarWidth + 1}px,0,0)`;
-            } else {
-                addButton.style.transform = `translate3d(${lastTabRect.right + 1}px,0,0)`;
-            }
-        }
-        // Update dragger right position if needed
-        const draggerRight = draggerRightRef.current;
-        if (draggerRight && addButton) {
-            const addButtonRect = addButton.getBoundingClientRect();
-            const targetPos = addButtonRect.left + addButtonRect.width;
-            draggerRight.style.transform = `translate3d(${targetPos}px,0,0)`;
-            draggerRight.style.width = `${document.documentElement.offsetWidth - targetPos}px`;
-        }
-
-        debouncedUpdateTabPositions();
-    }, [tabIds, isFullScreen]);
+    const handleResizeTabs = useCallback(() => {
+        updateSizeAndPosition();
+        debouncedSaveTabsPosition();
+    }, [tabIds, newTabId, isFullScreen]);
 
     useEffect(() => {
         window.addEventListener("resize", () => handleResizeTabs());
@@ -203,10 +198,10 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);
         if (allLoaded) {
-            updateTabPositions();
-            handleResizeTabs();
+            updateSizeAndPosition(newTabId === null);
+            saveTabsPosition();
         }
-    }, [tabIds, tabsLoaded, handleResizeTabs, updateTabPositions]);
+    }, [tabIds, tabsLoaded, newTabId, handleResizeTabs, saveTabsPosition]);
 
     // Make sure timeouts are cleared when component is unmounted
     useEffect(() => {
@@ -216,6 +211,9 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
             }
             if (scrollToNewTabTimeoutIdRef.current) {
                 clearTimeout(scrollToNewTabTimeoutIdRef.current);
+            }
+            if (newTabIdTimeoutIdRef.current) {
+                clearTimeout(newTabIdTimeoutIdRef.current);
             }
         };
     }, []);
@@ -402,10 +400,10 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     };
 
     const handleDragStart = useCallback(
-        (event: React.MouseEvent<HTMLDivElement, MouseEvent>, name: string, ref: React.RefObject<HTMLDivElement>) => {
+        (event: React.MouseEvent<HTMLDivElement, MouseEvent>, tabId: string, ref: React.RefObject<HTMLDivElement>) => {
             if (event.button !== 0) return;
 
-            const tabIndex = tabIds.indexOf(name);
+            const tabIndex = tabIds.indexOf(tabId);
             const tabStartX = dragStartPositions[tabIndex]; // Starting X position of the tab
 
             if (ref.current) {
@@ -438,8 +436,13 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const handleAddTab = () => {
         const newTabName = `T${tabIds.length + 1}`;
-        setTabIds([...tabIds, newTabName]);
-        services.ObjectService.AddTabToWorkspace(newTabName, true);
+        services.ObjectService.AddTabToWorkspace(newTabName, true).then((tabId) => {
+            setTabIds([...tabIds, tabId]);
+            setNewTabId(tabId);
+        });
+        services.ObjectService.GetObject;
+        tabsWrapperRef.current.style.transition;
+        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
         scrollToNewTabTimeoutIdRef.current = setTimeout(() => {
             if (scrollableRef.current) {
@@ -447,11 +450,16 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 viewport.scrollLeft = tabIds.length * tabWidthRef.current;
             }
         }, 30);
+
+        newTabIdTimeoutIdRef.current = setTimeout(() => {
+            setNewTabId(null);
+        }, 100);
     };
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
         services.WindowService.CloseTab(tabId);
+        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutStateAtomForTab(tabId);
     };
 
@@ -470,27 +478,32 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     };
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
+    console.log;
 
     return (
-        <div className="tab-bar-wrapper">
-            <WindowDrag className="left" />
+        <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
+            <WindowDrag ref={draggerLeftRef} className="left" />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
-                <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: tabsWrapperWidth }}>
-                    {tabIds.map((tabId, index) => (
-                        <Tab
-                            key={tabId}
-                            ref={tabRefs.current[index]}
-                            id={tabId}
-                            isFirst={index === 0}
-                            onSelect={() => handleSelectTab(tabId)}
-                            active={activetabid === tabId}
-                            onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
-                            onClose={(event) => handleCloseTab(event, tabId)}
-                            onLoaded={() => handleTabLoaded(tabId)}
-                            isBeforeActive={isBeforeActive(tabId)}
-                            isDragging={draggingTab === tabId}
-                        />
-                    ))}
+                <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
+                    {tabIds.map((tabId, index) => {
+                        return (
+                            <Tab
+                                key={tabId}
+                                ref={tabRefs.current[index]}
+                                id={tabId}
+                                isFirst={index === 0}
+                                onSelect={() => handleSelectTab(tabId)}
+                                active={activetabid === tabId}
+                                onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
+                                onClose={(event) => handleCloseTab(event, tabId)}
+                                onLoaded={() => handleTabLoaded(tabId)}
+                                isBeforeActive={isBeforeActive(tabId)}
+                                isDragging={draggingTab === tabId}
+                                tabWidth={tabWidthRef.current}
+                                isNew={tabId === newTabId}
+                            />
+                        );
+                    })}
                 </div>
             </div>
             <div ref={addBtnRef} className="add-tab-btn" onClick={handleAddTab}>

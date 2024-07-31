@@ -7,7 +7,7 @@ import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
 import * as React from "react";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import { atoms, globalStore } from "@/app/store/global";
 import "./tab.less";
@@ -18,6 +18,8 @@ interface TabProps {
     isFirst: boolean;
     isBeforeActive: boolean;
     isDragging: boolean;
+    tabWidth: number;
+    isNew: boolean;
     onSelect: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -26,7 +28,22 @@ interface TabProps {
 
 const Tab = React.memo(
     forwardRef<HTMLDivElement, TabProps>(
-        ({ id, active, isFirst, isBeforeActive, isDragging, onLoaded, onSelect, onClose, onDragStart }, ref) => {
+        (
+            {
+                id,
+                active,
+                isFirst,
+                isBeforeActive,
+                isDragging,
+                tabWidth,
+                isNew,
+                onLoaded,
+                onSelect,
+                onClose,
+                onDragStart,
+            },
+            ref
+        ) => {
             const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
@@ -34,6 +51,9 @@ const Tab = React.memo(
             const editableRef = useRef<HTMLDivElement>(null);
             const editableTimeoutRef = useRef<NodeJS.Timeout>();
             const loadedRef = useRef(false);
+            const tabRef = useRef<HTMLDivElement>(null);
+
+            useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 
             useEffect(() => {
                 if (tabData?.name) {
@@ -103,6 +123,14 @@ const Tab = React.memo(
                 }
             }, [onLoaded]);
 
+            useEffect(() => {
+                if (tabRef.current && isNew) {
+                    const initialWidth = `${(tabWidth / 3) * 2}px`;
+                    tabRef.current.style.setProperty("--initial-tab-width", initialWidth);
+                    tabRef.current.style.setProperty("--final-tab-width", `${tabWidth}px`);
+                }
+            }, [isNew, tabWidth]);
+
             // Prevent drag from being triggered on mousedown
             const handleMouseDownOnClose = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
                 event.stopPropagation();
@@ -149,8 +177,13 @@ const Tab = React.memo(
 
             return (
                 <div
-                    ref={ref}
-                    className={clsx("tab", { active, isDragging, "before-active": isBeforeActive })}
+                    ref={tabRef}
+                    className={clsx("tab", {
+                        active,
+                        isDragging,
+                        "before-active": isBeforeActive,
+                        "new-tab": isNew,
+                    })}
                     onMouseDown={onDragStart}
                     onClick={onSelect}
                     onContextMenu={handleContextMenu}
