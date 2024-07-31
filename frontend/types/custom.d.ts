@@ -166,6 +166,7 @@ declare global {
         viewText?: jotai.Atom<string | HeaderElem[]>;
         preIconButton?: jotai.Atom<HeaderIconButton>;
         endIconButtons?: jotai.Atom<HeaderIconButton[]>;
+        blockBg?: jotai.Atom<MetaType>;
 
         onBack?: () => void;
         onForward?: () => void;

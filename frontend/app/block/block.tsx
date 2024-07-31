@@ -264,6 +264,7 @@ const BlockFrame_Default_Component = ({
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
+    const customBg = util.useAtomValueSafe(viewModel.blockBg);
     if (preview) {
         isFocused = true;
     }
@@ -381,6 +382,16 @@ const BlockFrame_Default_Component = ({
         layoutModel?.onMagnifyToggle();
     }
 
+    const innerStyle: React.CSSProperties = {};
+    if (customBg?.bg != null) {
+        innerStyle.background = customBg.bg;
+        if (customBg["bg:opacity"] != null) {
+            innerStyle.opacity = customBg["bg:opacity"];
+        }
+        if (customBg["bg:blendmode"] != null) {
+            innerStyle.backgroundBlendMode = customBg["bg:blendmode"];
+        }
+    }
     return (
         <div
             className={clsx(
@@ -397,7 +408,7 @@ const BlockFrame_Default_Component = ({
             style={style}
         >
             <div className="block-mask"></div>
-            <div className="block-frame-default-inner">
+            <div className="block-frame-default-inner" style={innerStyle}>
                 <div
                     className="block-frame-default-header"
                     ref={layoutModel?.dragHandleRef}

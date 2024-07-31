@@ -125,8 +125,58 @@ var DefaultTermDarkTheme = TermThemeType{
 	CmdText:             "#f0f0f0",
 	Foreground:          "#c1c1c1",
 	SelectionBackground: "",
-	Background:          "#00000000",
+	Background:          "#00000077",
 	CursorAccent:        "",
+}
+
+var DraculaTheme = TermThemeType{
+	Black:               "#21222C", // AnsiBlack
+	Red:                 "#FF5555", // AnsiRed
+	Green:               "#50FA7B", // AnsiGreen
+	Yellow:              "#F1FA8C", // AnsiYellow
+	Blue:                "#BD93F9", // AnsiBlue
+	Magenta:             "#FF79C6", // AnsiMagenta
+	Cyan:                "#8BE9FD", // AnsiCyan
+	White:               "#F8F8F2", // AnsiWhite
+	BrightBlack:         "#6272A4", // AnsiBrightBlack
+	BrightRed:           "#FF6E6E", // AnsiBrightRed
+	BrightGreen:         "#69FF94", // AnsiBrightGreen
+	BrightYellow:        "#FFFFA5", // AnsiBrightYellow
+	BrightBlue:          "#D6ACFF", // AnsiBrightBlue
+	BrightMagenta:       "#FF92DF", // AnsiBrightMagenta
+	BrightCyan:          "#A4FFFF", // AnsiBrightCyan
+	BrightWhite:         "#FFFFFF", // AnsiBrightWhite
+	Gray:                "#6272A4", // Comment or closest approximation
+	CmdText:             "#F8F8F2", // Foreground
+	Foreground:          "#F8F8F2", // Foreground
+	SelectionBackground: "#44475a", // Selection
+	Background:          "#282a36", // Background
+	CursorAccent:        "#f8f8f2", // Foreground (used for cursor accent)
+}
+
+var CampbellTheme = TermThemeType{
+	Black:               "#0C0C0C", // Black
+	Red:                 "#C50F1F", // Red
+	Green:               "#13A10E", // Green
+	Yellow:              "#C19C00", // Yellow
+	Blue:                "#0037DA", // Blue
+	Magenta:             "#881798", // Purple (used as Magenta)
+	Cyan:                "#3A96DD", // Cyan
+	White:               "#CCCCCC", // White
+	BrightBlack:         "#767676", // BrightBlack
+	BrightRed:           "#E74856", // BrightRed
+	BrightGreen:         "#16C60C", // BrightGreen
+	BrightYellow:        "#F9F1A5", // BrightYellow
+	BrightBlue:          "#3B78FF", // BrightBlue
+	BrightMagenta:       "#B4009E", // BrightPurple (used as BrightMagenta)
+	BrightCyan:          "#61D6D6", // BrightCyan
+	BrightWhite:         "#F2F2F2", // BrightWhite
+	Gray:                "#767676", // BrightBlack or closest approximation
+	CmdText:             "#CCCCCC", // Foreground
+	Foreground:          "#CCCCCC", // Foreground
+	SelectionBackground: "#3A96DD", // Cyan (chosen for selection background)
+	Background:          "#0C0C0C", // Background
+	CursorAccent:        "#CCCCCC", // Foreground (used for cursor accent)
 }
 
 func applyDefaultSettings(settings *SettingsConfigType) {
@@ -228,5 +278,11 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 	}
 	if _, found := settings.TermThemes["default-dark"]; !found {
 		settings.TermThemes["default-dark"] = DefaultTermDarkTheme
+	}
+	if _, found := settings.TermThemes["dracula"]; !found {
+		settings.TermThemes["dracula"] = DraculaTheme
+	}
+	if _, found := settings.TermThemes["campbell"]; !found {
+		settings.TermThemes["campbell"] = CampbellTheme
 	}
 }

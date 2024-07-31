@@ -6,30 +6,16 @@ import { VDomView } from "@/app/view/term/vdom";
 import { WOS, atoms, getEventORefSubject, globalStore, useBlockAtom, useSettingsAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import * as util from "@/util/util";
 import clsx from "clsx";
 import { produce } from "immer";
 import * as jotai from "jotai";
 import * as React from "react";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
+import { computeTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
 
 import "public/xterm.css";
-
-function computeTheme(settings: SettingsConfigType, themeName: string) {
-    let defaultThemeName = "default-dark";
-    themeName = themeName ?? "default-dark";
-    const defaultTheme: TermThemeType = settings?.termthemes?.[defaultThemeName] || ({} as any);
-    const theme: TermThemeType = settings?.termthemes?.[themeName] || ({} as any);
-    const combinedTheme = { ...defaultTheme };
-    for (const key in theme) {
-        if (!util.isBlank(theme[key])) {
-            combinedTheme[key] = theme[key];
-        }
-    }
-    return combinedTheme;
-}
 
 const keyMap = {
     Enter: "\r",
@@ -130,6 +116,7 @@ class TermViewModel {
     viewIcon: jotai.Atom<string>;
     viewText: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
+    blockBg: jotai.Atom<MetaType>;
 
     constructor(blockId: string) {
         this.blockId = blockId;
@@ -152,6 +139,15 @@ class TermViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.title ?? "";
         });
+        this.blockBg = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const settings = globalStore.get(atoms.settingsConfigAtom);
+            const theme = computeTheme(settings, blockData?.meta?.["term:theme"]);
+            if (theme != null && theme.background != null) {
+                return { bg: theme.background };
+            }
+            return null;
+        });
     }
 
     giveFocus(): boolean {
@@ -168,6 +164,23 @@ class TermViewModel {
             }
         }
         return false;
+    }
+
+    setTerminalTheme(themeName: string) {
+        WshServer.SetMetaCommand({ oref: WOS.makeORef("block", this.blockId), meta: { "term:theme": themeName } });
+    }
+
+    getSettingsMenuItems(): ContextMenuItem[] {
+        return [
+            {
+                label: "Themes",
+                submenu: [
+                    { label: "Default Dark", click: () => this.setTerminalTheme("default") },
+                    { label: "Dracula", click: () => this.setTerminalTheme("dracula") },
+                    { label: "Campbell", click: () => this.setTerminalTheme("campbell") },
+                ],
+            },
+        ];
     }
 }
 
@@ -220,11 +233,13 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         }
         const settings = globalStore.get(atoms.settingsConfigAtom);
         const termTheme = computeTheme(settings, blockData?.meta?.["term:theme"]);
+        const themeCopy = { ...termTheme };
+        themeCopy.background = "#00000000";
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
             {
-                theme: termTheme,
+                theme: themeCopy,
                 fontSize: termSettings?.fontsize ?? 12,
                 fontFamily: termSettings?.fontfamily ?? "Hack",
                 drawBoldTextInBrightColors: false,

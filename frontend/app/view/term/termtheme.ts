@@ -29,7 +29,9 @@ const TermThemeUpdater = ({ blockId, termRef }: TermThemeProps) => {
             }
         }
         if (termRef.current?.terminal) {
-            termRef.current.terminal.options.theme = combinedTheme;
+            let themeCopy = { ...combinedTheme };
+            themeCopy.background = "#00000000";
+            termRef.current.terminal.options.theme = themeCopy;
         }
     }, [defaultTheme, theme]);
 
