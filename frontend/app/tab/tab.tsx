@@ -79,7 +79,8 @@ const Tab = React.memo(
                     }
                     return;
                 }
-
+                // this counts glyphs, not characters
+                const curLen = Array.from(editableRef.current.innerText).length;
                 if (event.key === "Enter") {
                     event.preventDefault();
                     if (editableRef.current.innerText.trim() === "") {
@@ -89,10 +90,7 @@ const Tab = React.memo(
                 } else if (event.key === "Escape") {
                     editableRef.current.innerText = originalName;
                     editableRef.current.blur();
-                } else if (
-                    editableRef.current.innerText.length >= 8 &&
-                    !["Backspace", "Delete", "ArrowLeft", "ArrowRight"].includes(event.key)
-                ) {
+                } else if (curLen >= 10 && !["Backspace", "Delete", "ArrowLeft", "ArrowRight"].includes(event.key)) {
                     event.preventDefault();
                 }
             };
