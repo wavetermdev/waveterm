@@ -10,7 +10,6 @@
     height: 100%;
     overflow: hidden;
     min-height: 0;
-    position: relative;
     border-radius: var(--block-border-radius);
 
     .block-frame-icon {
@@ -150,20 +149,8 @@
                         width: 100%;
                         height: 100%;
                         justify-content: space-between;
-                        border-radius: 3px;
                         align-items: center;
                         padding-left: 7px;
-
-                        &.hovered {
-                            background: rgba(255, 255, 255, 0.2);
-                            cursor: text;
-                            transition: background 0.2s ease;
-                        }
-
-                        &.focused {
-                            outline: 2px solid rgba(88, 193, 66, 0.5);
-                            background: #181818;
-                        }
 
                         .input-wrapper {
                             flex-grow: 1;
@@ -278,9 +265,8 @@
             border: 2px solid transparent;
             pointer-events: none;
             padding: 2px;
-            border-radius: var(--block-border-radius);
+            border-radius: calc(var(--block-border-radius) + 2px);
         }
-
         &.block-focused {
             .block-mask {
                 border: 2px solid var(--accent-color);
