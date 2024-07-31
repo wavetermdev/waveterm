@@ -8,6 +8,7 @@ import * as WOS from "@/store/wos";
 import * as React from "react";
 
 import { CenteredDiv } from "@/element/quickelems";
+import { ContentRenderer } from "@/layout/lib/model";
 import { TileLayout } from "frontend/layout/index";
 import { getLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { useAtomValue } from "jotai";
@@ -23,23 +24,25 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     const tabData = useAtomValue(tabAtom);
 
     const tileLayoutContents = useMemo(() => {
-        function renderBlock(
+        const renderBlock: ContentRenderer<TabLayoutData> = (
             tabData: TabLayoutData,
             ready: boolean,
+            disablePointerEvents: boolean,
             onMagnifyToggle: () => void,
             onClose: () => void,
             dragHandleRef: React.RefObject<HTMLDivElement>
-        ) {
+        ) => {
             if (!tabData.blockId || !ready) {
                 return null;
             }
             const layoutModel: LayoutComponentModel = {
-                onClose: onClose,
-                onMagnifyToggle: onMagnifyToggle,
-                dragHandleRef: dragHandleRef,
+                disablePointerEvents,
+                onClose,
+                onMagnifyToggle,
+                dragHandleRef,
             };
             return <Block key={tabData.blockId} blockId={tabData.blockId} layoutModel={layoutModel} preview={false} />;
-        }
+        };
 
         function renderPreview(tabData: TabLayoutData) {
             return <Block key={tabData.blockId} blockId={tabData.blockId} layoutModel={null} preview={true} />;

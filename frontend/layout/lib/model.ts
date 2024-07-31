@@ -214,6 +214,7 @@ export type WritableLayoutTreeStateAtom<T> = WritableAtom<LayoutTreeState<T>, [v
 export type ContentRenderer<T> = (
     data: T,
     ready: boolean,
+    disablePointerEvents: boolean,
     onMagnifyToggle: () => void,
     onClose: () => void,
     dragHandleRef: React.RefObject<HTMLDivElement>

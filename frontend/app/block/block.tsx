@@ -22,6 +22,7 @@ import * as React from "react";
 import "./block.less";
 
 export interface LayoutComponentModel {
+    disablePointerEvents: boolean;
     onClose?: () => void;
     onMagnifyToggle?: () => void;
     dragHandleRef?: React.RefObject<HTMLDivElement>;
@@ -268,7 +269,7 @@ const BlockFrame_Default_Component = ({
     if (preview) {
         isFocused = true;
     }
-    let style: React.CSSProperties = {};
+    const style: React.CSSProperties = {};
     if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
         style.borderColor = blockData.meta["frame:bordercolor"];
     }
@@ -286,12 +287,13 @@ const BlockFrame_Default_Component = ({
     if (preIconButton) {
         preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;
     }
-    let endIconsElem: JSX.Element[] = [];
+    const endIconsElem: JSX.Element[] = [];
     if (endIconButtons && endIconButtons.length > 0) {
-        for (let idx = 0; idx < endIconButtons.length; idx++) {
-            const button = endIconButtons[idx];
-            endIconsElem.push(<IconButton key={idx} decl={button} className="block-frame-endicon-button" />);
-        }
+        endIconsElem.push(
+            ...endIconButtons.map((button, idx) => (
+                <IconButton key={idx} decl={button} className="block-frame-endicon-button" />
+            ))
+        );
     }
     const settingsDecl: HeaderIconButton = {
         elemtype: "iconbutton",
@@ -549,7 +551,7 @@ function makeDefaultViewModel(blockId: string): ViewModel {
 }
 
 const BlockPreview = React.memo(({ blockId, layoutModel }: BlockProps) => {
-    const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     if (!blockData) {
         return null;
     }
@@ -578,7 +580,7 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
             return winData.activeblockid === blockId;
         });
     });
-    let isFocused = jotai.useAtomValue(isFocusedAtom);
+    const isFocused = jotai.useAtomValue(isFocusedAtom);
 
     React.useLayoutEffect(() => {
         setBlockClicked(isFocused);
@@ -651,7 +653,11 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
             <div key="focuselem" className="block-focuselem">
                 <input type="text" value="" ref={focusElemRef} id={`${blockId}-dummy-focus`} onChange={() => {}} />
             </div>
-            <div key="content" className="block-content">
+            <div
+                key="content"
+                className="block-content"
+                style={{ pointerEvents: layoutModel?.disablePointerEvents ? "none" : undefined }}
+            >
                 <ErrorBoundary>
                     <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</React.Suspense>
                 </ErrorBoundary>

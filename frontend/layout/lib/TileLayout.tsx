@@ -17,7 +17,7 @@ import React, {
     useRef,
     useState,
 } from "react";
-import { DropTargetMonitor, useDrag, useDragLayer, useDrop } from "react-dnd";
+import { DropTargetMonitor, XYCoord, useDrag, useDragLayer, useDrop } from "react-dnd";
 import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
 import { globalLayoutTransformsMap } from "./layoutAtom";
@@ -132,11 +132,9 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
         dragClientOffset: monitor.getClientOffset(),
     }));
 
-    // Effect to detect when the cursor leaves the TileLayout hit trap so we can remove any placeholders. This cannot be done using pointer capture
-    // because that conflicts with the DnD layer.
-    useEffect(
-        debounce(100, () => {
-            const cursorPoint = getCursorPoint?.() ?? dragClientOffset;
+    const checkForCursorBounds = useCallback(
+        debounce(100, (dragClientOffset: XYCoord) => {
+            const cursorPoint = dragClientOffset ?? getCursorPoint?.();
             if (cursorPoint && displayContainerRef.current) {
                 const displayContainerRect = displayContainerRef.current.getBoundingClientRect();
                 const normalizedX = cursorPoint.x - displayContainerRect.x;
@@ -151,8 +149,12 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                 }
             }
         }),
-        [dragClientOffset]
+        [getCursorPoint, displayContainerRef, dispatch]
     );
+
+    // Effect to detect when the cursor leaves the TileLayout hit trap so we can remove any placeholders. This cannot be done using pointer capture
+    // because that conflicts with the DnD layer.
+    useEffect(() => checkForCursorBounds(dragClientOffset), [dragClientOffset]);
 
     /**
      * Callback to update the transforms on the displayed leafs and move the overlay over the display layer when dragging.
@@ -279,6 +281,7 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                     <DisplayNodesWrapper
                         contents={contents}
                         ready={animate}
+                        activeDrag={activeDrag}
                         onLeafMagnifyToggle={onLeafMagnifyToggle}
                         onLeafClose={onLeafClose}
                         layoutTreeState={layoutTreeState}
@@ -345,6 +348,11 @@ interface DisplayNodesWrapperProps<T> {
      * Determines whether the leaf nodes are ready to be displayed to the user.
      */
     ready: boolean;
+
+    /**
+     * Determines if a drag operation is in progress.
+     */
+    activeDrag: boolean;
 }
 
 const DisplayNodesWrapper = memo(
@@ -355,6 +363,7 @@ const DisplayNodesWrapper = memo(
         onLeafMagnifyToggle,
         layoutLeafTransforms,
         ready,
+        activeDrag,
     }: DisplayNodesWrapperProps<T>) => {
         if (!layoutLeafTransforms) {
             return null;
@@ -366,6 +375,7 @@ const DisplayNodesWrapper = memo(
                     key={leaf.id}
                     layoutNode={leaf}
                     contents={contents}
+                    activeDrag={activeDrag}
                     transform={layoutLeafTransforms[leaf.id]}
                     onLeafClose={onLeafClose}
                     onLeafMagnifyToggle={onLeafMagnifyToggle}
@@ -398,10 +408,16 @@ interface DisplayNodeProps<T> {
      * @param node The node that is closed.
      */
     onLeafClose: (node: LayoutNode<T>) => void;
+
     /**
      * Determines whether a leaf's contents should be displayed to the user.
      */
     ready: boolean;
+
+    /**
+     * Determines if a drag operation is in progress.
+     */
+    activeDrag: boolean;
 
     /**
      * Any class names to add to the component.
@@ -427,6 +443,7 @@ const DisplayNode = memo(
         onLeafMagnifyToggle,
         onLeafClose,
         ready,
+        activeDrag,
         className,
     }: DisplayNodeProps<T>) => {
         const tileNodeRef = useRef<HTMLDivElement>(null);
@@ -508,11 +525,18 @@ const DisplayNode = memo(
             return (
                 layoutNode.data && (
                     <div key="leaf" className="tile-leaf">
-                        {contents.renderContent(layoutNode.data, ready, onMagnifyToggle, onClose, dragHandleRef)}
+                        {contents.renderContent(
+                            layoutNode.data,
+                            ready,
+                            activeDrag,
+                            onMagnifyToggle,
+                            onClose,
+                            dragHandleRef
+                        )}
                     </div>
                 )
             );
-        }, [layoutNode.data, ready, onClose]);
+        }, [layoutNode.data, ready, activeDrag, onClose]);
 
         return (
             <div
@@ -885,113 +909,123 @@ interface PlaceholderProps<T> {
 /**
  * An overlay to preview pending actions on the layout tree.
  */
-const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefsAtom, style }: PlaceholderProps<T>) => {
+const Placeholder = memo(<T,>({ layoutTreeState, overlayContainerRef, nodeRefsAtom, style }: PlaceholderProps<T>) => {
     const [placeholderOverlay, setPlaceholderOverlay] = useState<ReactNode>(null);
 
     const nodeRefs = useAtomValue(nodeRefsAtom);
 
-    useEffect(() => {
-        let newPlaceholderOverlay: ReactNode;
-        if (overlayContainerRef?.current) {
-            switch (layoutTreeState?.pendingAction?.type) {
-                case LayoutTreeActionType.Move: {
-                    const action = layoutTreeState.pendingAction as LayoutTreeMoveNodeAction<T>;
-                    let parentId: string;
-                    if (action.insertAtRoot) {
-                        parentId = layoutTreeState.rootNode.id;
-                    } else {
-                        parentId = action.parentId;
-                    }
-
-                    const parentNode = findNode(layoutTreeState.rootNode, parentId);
-                    if (action.index !== undefined && parentNode) {
-                        const targetIndex = Math.min(
-                            parentNode.children ? parentNode.children.length - 1 : 0,
-                            Math.max(0, action.index - 1)
-                        );
-                        let targetNode = parentNode?.children?.at(targetIndex);
-                        let targetRef: React.RefObject<HTMLElement>;
-                        if (targetNode) {
-                            targetRef = nodeRefs.get(targetNode.id);
+    const updatePlaceholder = useCallback(
+        throttle(10, (pendingAction: LayoutTreeAction) => {
+            let newPlaceholderOverlay: ReactNode;
+            if (overlayContainerRef?.current) {
+                switch (pendingAction?.type) {
+                    case LayoutTreeActionType.Move: {
+                        const action = pendingAction as LayoutTreeMoveNodeAction<T>;
+                        let parentId: string;
+                        if (action.insertAtRoot) {
+                            parentId = layoutTreeState.rootNode.id;
                         } else {
-                            targetRef = nodeRefs.get(parentNode.id);
-                            targetNode = parentNode;
+                            parentId = action.parentId;
                         }
+
+                        const parentNode = findNode(layoutTreeState.rootNode, parentId);
+                        if (action.index !== undefined && parentNode) {
+                            const targetIndex = Math.min(
+                                parentNode.children ? parentNode.children.length - 1 : 0,
+                                Math.max(0, action.index - 1)
+                            );
+                            let targetNode = parentNode?.children?.at(targetIndex);
+                            let targetRef: React.RefObject<HTMLElement>;
+                            if (targetNode) {
+                                targetRef = nodeRefs.get(targetNode.id);
+                            } else {
+                                targetRef = nodeRefs.get(parentNode.id);
+                                targetNode = parentNode;
+                            }
+                            if (targetRef?.current) {
+                                const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
+                                const targetBoundingRect = targetRef.current.getBoundingClientRect();
+
+                                // Placeholder should be either half the height or half the width of the targetNode, depending on the flex direction of the targetNode's parent.
+                                // Default to placing the placeholder in the first half of the target node.
+                                const placeholderDimensions: Dimensions = {
+                                    height:
+                                        parentNode.flexDirection === FlexDirection.Column
+                                            ? targetBoundingRect.height / 2
+                                            : targetBoundingRect.height,
+                                    width:
+                                        parentNode.flexDirection === FlexDirection.Row
+                                            ? targetBoundingRect.width / 2
+                                            : targetBoundingRect.width,
+                                    top: targetBoundingRect.top - overlayBoundingRect.top,
+                                    left: targetBoundingRect.left - overlayBoundingRect.left,
+                                };
+
+                                if (action.index > targetIndex) {
+                                    if (action.index >= (parentNode.children?.length ?? 1)) {
+                                        // If there are no more nodes after the specified index, place the placeholder in the second half of the target node (either right or bottom).
+                                        placeholderDimensions.top +=
+                                            parentNode.flexDirection === FlexDirection.Column &&
+                                            targetBoundingRect.height / 2;
+                                        placeholderDimensions.left +=
+                                            parentNode.flexDirection === FlexDirection.Row &&
+                                            targetBoundingRect.width / 2;
+                                    } else {
+                                        // Otherwise, place the placeholder between the target node (the one after which it will be inserted) and the next node
+                                        placeholderDimensions.top +=
+                                            parentNode.flexDirection === FlexDirection.Column &&
+                                            (3 * targetBoundingRect.height) / 4;
+                                        placeholderDimensions.left +=
+                                            parentNode.flexDirection === FlexDirection.Row &&
+                                            (3 * targetBoundingRect.width) / 4;
+                                    }
+                                }
+
+                                const placeholderTransform = setTransform(placeholderDimensions);
+                                newPlaceholderOverlay = (
+                                    <div className="placeholder" style={{ ...placeholderTransform }} />
+                                );
+                            }
+                        }
+                        break;
+                    }
+                    case LayoutTreeActionType.Swap: {
+                        const action = pendingAction as LayoutTreeSwapNodeAction;
+                        // console.log("placeholder for swap", action);
+                        const targetNodeId = action.node1Id;
+                        const targetRef = nodeRefs.get(targetNodeId);
                         if (targetRef?.current) {
                             const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
                             const targetBoundingRect = targetRef.current.getBoundingClientRect();
-
-                            // Placeholder should be either half the height or half the width of the targetNode, depending on the flex direction of the targetNode's parent.
-                            // Default to placing the placeholder in the first half of the target node.
                             const placeholderDimensions: Dimensions = {
-                                height:
-                                    parentNode.flexDirection === FlexDirection.Column
-                                        ? targetBoundingRect.height / 2
-                                        : targetBoundingRect.height,
-                                width:
-                                    parentNode.flexDirection === FlexDirection.Row
-                                        ? targetBoundingRect.width / 2
-                                        : targetBoundingRect.width,
                                 top: targetBoundingRect.top - overlayBoundingRect.top,
                                 left: targetBoundingRect.left - overlayBoundingRect.left,
+                                height: targetBoundingRect.height,
+                                width: targetBoundingRect.width,
                             };
-
-                            if (action.index > targetIndex) {
-                                if (action.index >= (parentNode.children?.length ?? 1)) {
-                                    // If there are no more nodes after the specified index, place the placeholder in the second half of the target node (either right or bottom).
-                                    placeholderDimensions.top +=
-                                        parentNode.flexDirection === FlexDirection.Column &&
-                                        targetBoundingRect.height / 2;
-                                    placeholderDimensions.left +=
-                                        parentNode.flexDirection === FlexDirection.Row && targetBoundingRect.width / 2;
-                                } else {
-                                    // Otherwise, place the placeholder between the target node (the one after which it will be inserted) and the next node
-                                    placeholderDimensions.top +=
-                                        parentNode.flexDirection === FlexDirection.Column &&
-                                        (3 * targetBoundingRect.height) / 4;
-                                    placeholderDimensions.left +=
-                                        parentNode.flexDirection === FlexDirection.Row &&
-                                        (3 * targetBoundingRect.width) / 4;
-                                }
-                            }
 
                             const placeholderTransform = setTransform(placeholderDimensions);
                             newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
                         }
+                        break;
                     }
-                    break;
+                    default:
+                        // No-op
+                        break;
                 }
-                case LayoutTreeActionType.Swap: {
-                    const action = layoutTreeState.pendingAction as LayoutTreeSwapNodeAction;
-                    // console.log("placeholder for swap", action);
-                    const targetNodeId = action.node1Id;
-                    const targetRef = nodeRefs.get(targetNodeId);
-                    if (targetRef?.current) {
-                        const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
-                        const targetBoundingRect = targetRef.current.getBoundingClientRect();
-                        const placeholderDimensions: Dimensions = {
-                            top: targetBoundingRect.top - overlayBoundingRect.top,
-                            left: targetBoundingRect.left - overlayBoundingRect.left,
-                            height: targetBoundingRect.height,
-                            width: targetBoundingRect.width,
-                        };
-
-                        const placeholderTransform = setTransform(placeholderDimensions);
-                        newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
-                    }
-                    break;
-                }
-                default:
-                    // No-op
-                    break;
             }
-        }
-        setPlaceholderOverlay(newPlaceholderOverlay);
-    }, [layoutTreeState.pendingAction, nodeRefs, overlayContainerRef]);
+            setPlaceholderOverlay(newPlaceholderOverlay);
+        }),
+        [nodeRefs, overlayContainerRef, layoutTreeState.rootNode]
+    );
+
+    useEffect(() => {
+        updatePlaceholder(layoutTreeState.pendingAction);
+    }, [layoutTreeState.pendingAction, updatePlaceholder]);
 
     return (
         <div className="placeholder-container" style={style}>
             {placeholderOverlay}
         </div>
     );
-};
+});
