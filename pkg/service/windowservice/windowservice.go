@@ -52,26 +52,37 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext wstore.UIConte
 	if err != nil {
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
+	ws, err := wstore.DBMustGet[*wstore.Workspace](ctx, window.WorkspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting workspace: %w", err)
+	}
+	tabIndex := -1
+	for i, id := range ws.TabIds {
+		if id == tabId {
+			tabIndex = i
+			break
+		}
+	}
 	for _, blockId := range tab.BlockIds {
 		blockcontroller.StopBlockController(blockId)
 	}
-	err = wstore.DeleteTab(ctx, window.WorkspaceId, tabId)
-	if err != nil {
+	if err := wstore.DeleteTab(ctx, window.WorkspaceId, tabId); err != nil {
 		return nil, fmt.Errorf("error closing tab: %w", err)
 	}
-	if window.ActiveTabId == tabId {
-		ws, err := wstore.DBMustGet[*wstore.Workspace](ctx, window.WorkspaceId)
-		if err != nil {
-			return nil, fmt.Errorf("error getting workspace: %w", err)
-		}
-		if len(ws.TabIds) > 0 {
-			newActiveTabId := ws.TabIds[0]
-			wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
-		} else {
+	if window.ActiveTabId == tabId && tabIndex != -1 {
+		if len(ws.TabIds) == 1 {
 			eventbus.SendEventToElectron(eventbus.WSEventType{
 				EventType: eventbus.WSEvent_ElectronCloseWindow,
 				Data:      uiContext.WindowId,
 			})
+		} else {
+			if tabIndex < len(ws.TabIds)-1 {
+				newActiveTabId := ws.TabIds[tabIndex+1]
+				wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
+			} else {
+				newActiveTabId := ws.TabIds[tabIndex-1]
+				wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
+			}
 		}
 	}
 	return wstore.ContextGetUpdatesRtn(ctx), nil
