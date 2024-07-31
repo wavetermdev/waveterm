@@ -383,7 +383,7 @@ const BlockFrame_Default_Component = ({
     }
 
     const innerStyle: React.CSSProperties = {};
-    if (customBg?.bg != null) {
+    if (!preview && customBg?.bg != null) {
         innerStyle.background = customBg.bg;
         if (customBg["bg:opacity"] != null) {
             innerStyle.opacity = customBg["bg:opacity"];
