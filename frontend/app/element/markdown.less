@@ -6,10 +6,7 @@
     font-family: var(--markdown-font);
     font-size: 14px;
     overflow-wrap: break-word;
-
-    &.bottom-margin {
-        margin-bottom: 10px;
-    }
+    margin-bottom: 10px;
 
     .title {
         color: var(--app-text-color);
@@ -65,7 +62,8 @@
         }
 
         .codeblock-actions {
-            display: none;
+            visibility: hidden;
+            display: flex;
             position: absolute;
             top: 4px;
             right: 4px;
@@ -74,8 +72,6 @@
             justify-content: flex-end;
             padding-left: 4px;
             padding-right: 4px;
-            background-color: var(--line-actions-bg-color);
-            backdrop-filter: blur(8px);
 
             i {
                 color: var(--line-actions-inactive-color);
@@ -100,7 +96,7 @@
         }
 
         &:hover .codeblock-actions {
-            display: flex;
+            visibility: visible;
         }
     }
 
