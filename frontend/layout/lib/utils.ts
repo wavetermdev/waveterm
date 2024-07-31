@@ -83,10 +83,10 @@ export function determineDropDirection(dimensions?: Dimensions, offset?: XYCoord
 
 export function setTransform({ top, left, width, height }: Dimensions, setSize: boolean = true): CSSProperties {
     // Replace unitless items with px
-    const topRounded = Math.round(top);
-    const leftRounded = Math.round(left);
-    const widthRounded = Math.round(width);
-    const heightRounded = Math.round(height);
+    const topRounded = Math.floor(top);
+    const leftRounded = Math.floor(left);
+    const widthRounded = Math.ceil(width);
+    const heightRounded = Math.ceil(height);
     const translate = `translate3d(${leftRounded}px,${topRounded}px, 0)`;
     return {
         top: 0,
