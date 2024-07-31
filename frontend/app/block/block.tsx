@@ -392,6 +392,7 @@ const BlockFrame_Default_Component = ({
             innerStyle.backgroundBlendMode = customBg["bg:blendmode"];
         }
     }
+    const previewElem = <div className="block-frame-preview">{viewIconElem}</div>;
     return (
         <div
             className={clsx(
@@ -434,7 +435,7 @@ const BlockFrame_Default_Component = ({
                     <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
                     <div className="block-frame-end-icons">{endIconsElem}</div>
                 </div>
-                {preview ? <div className="block-frame-preview" /> : children}
+                {preview ? previewElem : children}
             </div>
         </div>
     );
