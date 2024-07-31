@@ -131,6 +131,17 @@ declare global {
         meta: MetaType;
     };
 
+    // wshrpc.CpuDataRequest
+    type CpuDataRequest = {
+        id: string;
+    };
+
+    // wshrpc.CpuDataType
+    type CpuDataType = {
+        time: number;
+        value: number;
+    };
+
     // wstore.FileDef
     type FileDef = {
         filetype?: string;

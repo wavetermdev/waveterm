@@ -43,6 +43,7 @@ const (
 	Command_EventUnsubAll     = "eventunsuball"
 	Command_StreamTest        = "streamtest"
 	Command_StreamWaveAi      = "streamwaveai"
+	Command_StreamCpuData     = "streamcpudata"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -72,6 +73,7 @@ type WshRpcInterface interface {
 	EventUnsubAllCommand(ctx context.Context) error
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
+	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[CpuDataType]
 }
 
 // for frontend
@@ -227,4 +229,13 @@ type OpenAIUsageType struct {
 	PromptTokens     int `json:"prompt_tokens,omitempty"`
 	CompletionTokens int `json:"completion_tokens,omitempty"`
 	TotalTokens      int `json:"total_tokens,omitempty"`
+}
+
+type CpuDataRequest struct {
+	Id string `json:"id"`
+}
+
+type CpuDataType struct {
+	Time  int64   `json:"time"`
+	Value float64 `json:"value"`
 }

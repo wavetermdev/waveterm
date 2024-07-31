@@ -426,8 +426,10 @@ function TableBody({
                     label: "Open Preview in New Block",
                     click: async () => {
                         const blockDef = {
-                            view: "preview",
-                            meta: { file: path },
+                            meta: {
+                                view: "preview",
+                                file: path,
+                            },
                         };
                         await createBlock(blockDef);
                     },
@@ -438,10 +440,10 @@ function TableBody({
                     label: "Open Terminal in New Block",
                     click: async () => {
                         const termBlockDef: BlockDef = {
-                            controller: "shell",
-                            view: "term",
                             meta: {
-                                cwd: path,
+                                controller: "shell",
+                                view: "term",
+                                "cmd:cwd": path,
                             },
                         };
                         await createBlock(termBlockDef);

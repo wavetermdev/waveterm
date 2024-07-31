@@ -7934,6 +7934,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"htl@npm:^0.3.1":
+  version: 0.3.1
+  resolution: "htl@npm:0.3.1"
+  checksum: 10c0/36a22e10e0f11982c4e142c8c7bd389b3e9e7d70379c12f7572140a668a2a0328198f53fcb582281be761db91240ffb60261840256ebb10131739454baf82560
+  languageName: node
+  linkType: hard
+
 "html-escaper@npm:^2.0.0":
   version: 2.0.2
   resolution: "html-escaper@npm:2.0.2"
@@ -12099,6 +12106,7 @@ __metadata:
     electron-vite: "npm:^2.3.0"
     eslint: "npm:^9.8.0"
     eslint-config-prettier: "npm:^9.1.0"
+    htl: "npm:^0.3.1"
     html-to-image: "npm:^1.11.11"
     immer: "npm:^10.1.1"
     jotai: "npm:^2.9.1"

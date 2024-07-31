@@ -89,6 +89,7 @@
         "css-tree": "^2.3.1",
         "dayjs": "^1.11.12",
         "electron-updater": "6.3.1",
+        "htl": "^0.3.1",
         "html-to-image": "^1.11.11",
         "immer": "^10.1.1",
         "jotai": "^2.9.1",

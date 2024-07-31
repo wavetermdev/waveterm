@@ -10,6 +10,7 @@ import { atoms, globalStore, setBlockFocus, useBlockAtom } from "@/store/global"
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
+import { CpuPlotView, makeCpuPlotViewModel } from "@/view/cpuplot";
 import { PlotView } from "@/view/plotview";
 import { PreviewView, makePreviewModel } from "@/view/preview";
 import { TerminalView, makeTerminalModel } from "@/view/term/term";
@@ -521,6 +522,10 @@ function getViewElemAndModel(
         const waveAiModel = makeWaveAiViewModel(blockId);
         viewElem = <WaveAi key={blockId} model={waveAiModel} />;
         viewModel = waveAiModel;
+    } else if (blockView === "cpuplot") {
+        const cpuPlotModel = makeCpuPlotViewModel(blockId);
+        viewElem = <CpuPlotView key={blockId} model={cpuPlotModel} />;
+        viewModel = cpuPlotModel;
     }
     if (viewModel == null) {
         viewElem = <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;

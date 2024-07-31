@@ -8,12 +8,14 @@ package wshserver
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
@@ -65,6 +67,71 @@ func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.Ope
 		return waveai.RunCloudCompletionStream(ctx, request)
 	}
 	return waveai.RunLocalCompletionStream(ctx, request)
+}
+
+func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.CpuDataRequest) chan wshrpc.RespOrErrorUnion[wshrpc.CpuDataType] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.CpuDataType])
+	go func() {
+		defer close(rtn)
+		MakePlotData(ctx, request.Id)
+		// we can use the err from MakePlotData to determine if a routine is already running
+		// but we still need a way to close it or get data from it
+		for {
+			now := time.Now()
+			percent, err := cpu.Percent(0, false)
+			if err != nil {
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: err}
+			}
+			var value float64
+			if len(percent) > 0 {
+				value = percent[0]
+			} else {
+				value = 0.0
+			}
+			cpuData := wshrpc.CpuDataType{Time: now.UnixMilli() / 1000, Value: value}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Response: cpuData}
+			time.Sleep(time.Second * 1)
+			// this will end the goroutine if the block is closed
+			err = SavePlotData(ctx, request.Id, "")
+			if err != nil {
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: err}
+				return
+			}
+		}
+	}()
+
+	return rtn
+}
+
+func MakePlotData(ctx context.Context, blockId string) error {
+	block, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	if err != nil {
+		return err
+	}
+	viewName := block.Meta.GetString(wstore.MetaKey_View, "")
+	if viewName != "cpuplot" {
+		return fmt.Errorf("invalid view type: %s", viewName)
+	}
+	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, filestore.FileOptsType{})
+}
+
+func SavePlotData(ctx context.Context, blockId string, history string) error {
+	block, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	if err != nil {
+		return err
+	}
+	viewName := block.Meta.GetString(wstore.MetaKey_View, "")
+	if viewName != "cpuplot" {
+		return fmt.Errorf("invalid view type: %s", viewName)
+	}
+	// todo: interpret the data being passed
+	// for now, this is just to throw an error if the block was closed
+	historyBytes, err := json.Marshal(history)
+	if err != nil {
+		return fmt.Errorf("unable to serialize plot data: %v", err)
+	}
+	// ignore MakeFile error (already exists is ok)
+	return filestore.WFS.WriteFile(ctx, blockId, "cpuplotdata", historyBytes)
 }
 
 func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetMetaData) (waveobj.MetaMapType, error) {

@@ -304,6 +304,15 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 				},
 			},
 		},
+		{
+			Icon:  "chart-line",
+			Label: "cpu",
+			BlockDef: wstore.BlockDef{
+				Meta: map[string]any{
+					wstore.MetaKey_View: "cpuplot",
+				},
+			},
+		},
 	}
 	if settings.Widgets == nil {
 		settings.Widgets = defaultWidgets

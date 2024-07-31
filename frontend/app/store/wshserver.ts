@@ -102,6 +102,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("setview", data, opts);
     }
 
+    // command "streamcpudata" [responsestream]
+	StreamCpuDataCommand(data: CpuDataRequest, opts?: WshRpcCommandOpts): AsyncGenerator<CpuDataType, void, boolean> {
+        return WOS.wshServerRpcHelper_responsestream("streamcpudata", data, opts);
+    }
+
     // command "streamtest" [responsestream]
 	StreamTestCommand(opts?: WshRpcCommandOpts): AsyncGenerator<number, void, boolean> {
         return WOS.wshServerRpcHelper_responsestream("streamtest", null, opts);

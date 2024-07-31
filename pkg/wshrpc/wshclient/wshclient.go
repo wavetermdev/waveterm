@@ -125,6 +125,11 @@ func SetViewCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockSetViewData, opts
     return err
 }
 
+// command "streamcpudata", wshserver.StreamCpuDataCommand
+func StreamCpuDataCommand(w *wshutil.WshRpc, data wshrpc.CpuDataRequest, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[wshrpc.CpuDataType] {
+    return sendRpcRequestResponseStreamHelper[wshrpc.CpuDataType](w, "streamcpudata", data, opts)
+}
+
 // command "streamtest", wshserver.StreamTestCommand
 func StreamTestCommand(w *wshutil.WshRpc, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[int] {
     return sendRpcRequestResponseStreamHelper[int](w, "streamtest", nil, opts)
