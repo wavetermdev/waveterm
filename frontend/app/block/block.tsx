@@ -625,7 +625,7 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
         if (ok) {
             return;
         }
-        focusElemRef.current.focus({ preventScroll: true });
+        focusElemRef.current?.focus({ preventScroll: true });
     }, []);
 
     if (!blockId || !blockData) return null;
