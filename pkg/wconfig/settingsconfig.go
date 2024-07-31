@@ -179,6 +179,41 @@ var CampbellTheme = TermThemeType{
 	CursorAccent:        "#CCCCCC", // Foreground (used for cursor accent)
 }
 
+var BgDefaultPreset = waveobj.MetaMapType{
+	wstore.MetaKey_DisplayName:  "Default",
+	wstore.MetaKey_DisplayOrder: -1,
+	wstore.MetaKey_BgClear:      true,
+}
+
+var BgRainbowPreset = waveobj.MetaMapType{
+	wstore.MetaKey_DisplayName:  "Rainbow",
+	wstore.MetaKey_DisplayOrder: 1,
+	wstore.MetaKey_BgClear:      true,
+	wstore.MetaKey_Bg:           "linear-gradient( 226.4deg,  rgba(255,26,1,1) 28.9%, rgba(254,155,1,1) 33%, rgba(255,241,0,1) 48.6%, rgba(34,218,1,1) 65.3%, rgba(0,141,254,1) 80.6%, rgba(113,63,254,1) 100.1% );",
+	wstore.MetaKey_BgOpacity:    0.3,
+}
+
+var BgGreenPreset = waveobj.MetaMapType{
+	wstore.MetaKey_DisplayName: "Green",
+	wstore.MetaKey_BgClear:     true,
+	wstore.MetaKey_Bg:          "green",
+	wstore.MetaKey_BgOpacity:   0.3,
+}
+
+var BgBluePreset = waveobj.MetaMapType{
+	wstore.MetaKey_DisplayName: "Blue",
+	wstore.MetaKey_BgClear:     true,
+	wstore.MetaKey_Bg:          "blue",
+	wstore.MetaKey_BgOpacity:   0.3,
+}
+
+var BgRedPreset = waveobj.MetaMapType{
+	wstore.MetaKey_DisplayName: "Red",
+	wstore.MetaKey_BgClear:     true,
+	wstore.MetaKey_Bg:          "red",
+	wstore.MetaKey_BgOpacity:   0.3,
+}
+
 func applyDefaultSettings(settings *SettingsConfigType) {
 	defaultMimeTypes := map[string]MimeTypeConfigType{
 		"audio":            {Icon: "file-audio"},
@@ -284,5 +319,23 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 	}
 	if _, found := settings.TermThemes["campbell"]; !found {
 		settings.TermThemes["campbell"] = CampbellTheme
+	}
+	if settings.Presets == nil {
+		settings.Presets = make(map[string]*waveobj.MetaMapType)
+	}
+	if _, found := settings.Presets["bg@default"]; !found {
+		settings.Presets["bg@default"] = &BgDefaultPreset
+	}
+	if _, found := settings.Presets["bg@rainbow"]; !found {
+		settings.Presets["bg@rainbow"] = &BgRainbowPreset
+	}
+	if _, found := settings.Presets["bg@green"]; !found {
+		settings.Presets["bg@green"] = &BgGreenPreset
+	}
+	if _, found := settings.Presets["bg@blue"]; !found {
+		settings.Presets["bg@blue"] = &BgBluePreset
+	}
+	if _, found := settings.Presets["bg@red"]; !found {
+		settings.Presets["bg@red"] = &BgRedPreset
 	}
 }

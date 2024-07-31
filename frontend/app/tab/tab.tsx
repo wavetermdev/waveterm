@@ -9,6 +9,7 @@ import { clsx } from "clsx";
 import * as React from "react";
 import { forwardRef, useEffect, useRef, useState } from "react";
 
+import { atoms, globalStore } from "@/app/store/global";
 import "./tab.less";
 
 interface TabProps {
@@ -110,8 +111,38 @@ const Tab = React.memo(
             function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
                 e.preventDefault();
                 let menu: ContextMenuItem[] = [];
+                const settings = globalStore.get(atoms.settingsConfigAtom);
+                console.log("settings", settings);
+                const bgPresets: string[] = [];
+                for (const key in settings?.presets ?? {}) {
+                    if (key.startsWith("bg@")) {
+                        bgPresets.push(key);
+                    }
+                }
+                bgPresets.sort((a, b) => {
+                    const aOrder = settings.presets[a]["display:order"] ?? 0;
+                    const bOrder = settings.presets[b]["display:order"] ?? 0;
+                    return aOrder - bOrder;
+                });
+                console.log("bgPresets", bgPresets);
                 menu.push({ label: "Copy TabId", click: () => navigator.clipboard.writeText(id) });
                 menu.push({ type: "separator" });
+                if (bgPresets.length > 0) {
+                    const submenu: ContextMenuItem[] = [];
+                    const oref = WOS.makeORef("tab", id);
+                    for (const presetName of bgPresets) {
+                        const preset = settings.presets[presetName];
+                        if (preset == null) {
+                            continue;
+                        }
+                        submenu.push({
+                            label: preset["display:name"] ?? presetName,
+                            click: () => services.ObjectService.UpdateObjectMeta(oref, preset),
+                        });
+                    }
+                    menu.push({ label: "Backgrounds", type: "submenu", submenu });
+                    menu.push({ type: "separator" });
+                }
                 menu.push({ label: "Close Tab", click: () => onClose(null) });
                 ContextMenuModel.showContextMenu(menu, e);
             }

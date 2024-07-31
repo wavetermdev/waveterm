@@ -18,6 +18,9 @@ type MetaMapType = waveobj.MetaMapType
 // TODO: will code generate one side of this so we don't need to add the keys in two places
 // will probably drive this off the meta decls so we can add more information and validate the keys/values
 const (
+	MetaKey_DisplayName  = "display:name"  // special, does not get merged
+	MetaKey_DisplayOrder = "display:order" // special, does not get merged
+
 	MetaKey_View       = "view"
 	MetaKey_Controller = "controller"
 	MetaKey_Title      = "title"
@@ -43,6 +46,7 @@ const (
 	MetaKey_CmdNoWsh          = "cmd:nowsh"
 
 	MetaKey_Bg          = "bg"
+	MetaKey_BgClear     = "bg:*"
 	MetaKey_BgOpacity   = "bg:opacity"
 	MetaKey_BgBlendMode = "bg:blendmode"
 
@@ -140,6 +144,9 @@ func MergeMeta(meta MetaMapType, metaUpdate MetaMapType) MetaMapType {
 	}
 	// now deal with regular keys
 	for k, v := range metaUpdate {
+		if strings.HasPrefix(k, "display:") {
+			continue
+		}
 		if strings.HasSuffix(k, ":*") {
 			continue
 		}
