@@ -5,15 +5,19 @@ package shellutil
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 )
 
@@ -26,6 +30,55 @@ var macUserShellOnce = &sync.Once{}
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 
 const DefaultShellPath = "/bin/bash"
+
+const WaveAppPathVarName = "WAVETERM_APP_PATH"
+const AppPathBinDir = "bin"
+
+const (
+	ZshIntegrationDir  = "zsh-integration"
+	BashIntegrationDir = "bash-integration"
+	WaveHomeBinDir     = "bin"
+
+	ZshStartup_Zprofile = `
+# Source the original zprofile
+[ -f ~/.zprofile ] && source ~/.zprofile
+`
+
+	ZshStartup_Zshrc = `
+# Source the original zshrc
+[ -f ~/.zshrc ] && source ~/.zshrc
+
+export PATH=$WAVETERM_HOME/bin:$PATH
+`
+
+	ZshStartup_Zlogin = `
+# Source the original zlogin
+[ -f ~/.zlogin ] && source ~/.zlogin
+`
+
+	ZshStartup_Zshenv = `
+[ -f ~/.zshenv ] && source ~/.zshenv
+`
+
+	BashStartup_Bashrc = `
+# Source /etc/profile if it exists
+if [ -f /etc/profile ]; then
+    . /etc/profile
+fi
+
+# Source the first of ~/.bash_profile, ~/.bash_login, or ~/.profile that exists
+if [ -f ~/.bash_profile ]; then
+    . ~/.bash_profile
+elif [ -f ~/.bash_login ]; then
+    . ~/.bash_login
+elif [ -f ~/.profile ]; then
+    . ~/.profile
+fi
+
+set -i
+export PATH=$WAVETERM_HOME/bin:$PATH
+`
+)
 
 func DetectLocalShellPath() string {
 	shellPath := GetMacUserShell()
@@ -48,7 +101,7 @@ func GetMacUserShell() string {
 	return cachedMacUserShell
 }
 
-// dscl . -read /User/[username] UserShell
+// dscl . -read /Users/[username] UserShell
 // defaults to /bin/bash
 func internalMacUserShell() string {
 	osUser, err := user.Current()
@@ -70,13 +123,15 @@ func internalMacUserShell() string {
 	return m[1]
 }
 
-func WaveshellEnvVars(termType string) map[string]string {
+func WaveshellLocalEnvVars(termType string) map[string]string {
 	rtn := make(map[string]string)
 	if termType != "" {
 		rtn["TERM"] = termType
 	}
+	rtn["TERM_PROGRAM"] = "waveterm"
 	rtn["WAVETERM"], _ = os.Executable()
 	rtn["WAVETERM_VERSION"] = wavebase.WaveVersion
+	rtn["WAVETERM_HOME"] = wavebase.GetWaveHomeDir()
 	return rtn
 }
 
@@ -114,4 +169,94 @@ func GetEnvStrKey(envStr string) string {
 		return envStr
 	}
 	return envStr[0:eqIdx]
+}
+
+var initStartupFilesOnce = &sync.Once{}
+
+// in a Once block so it can be called multiple times
+// we run it at startup, but also before launching local shells so we know everything is initialized before starting the shell
+func InitCustomShellStartupFiles() error {
+	var err error
+	initStartupFilesOnce.Do(func() {
+		err = initCustomShellStartupFilesInternal()
+	})
+	return err
+}
+
+func GetBashRcFileOverride() string {
+	return filepath.Join(wavebase.GetWaveHomeDir(), BashIntegrationDir, ".bashrc")
+}
+
+func GetZshZDotDir() string {
+	return filepath.Join(wavebase.GetWaveHomeDir(), ZshIntegrationDir)
+}
+
+func initCustomShellStartupFilesInternal() error {
+	log.Printf("initializing wsh and shell startup files\n")
+	waveHome := wavebase.GetWaveHomeDir()
+	zshDir := filepath.Join(waveHome, ZshIntegrationDir)
+	err := wavebase.CacheEnsureDir(zshDir, ZshIntegrationDir, 0755, ZshIntegrationDir)
+	if err != nil {
+		return err
+	}
+	bashDir := filepath.Join(waveHome, BashIntegrationDir)
+	err = wavebase.CacheEnsureDir(bashDir, BashIntegrationDir, 0755, BashIntegrationDir)
+	if err != nil {
+		return err
+	}
+	binDir := filepath.Join(waveHome, WaveHomeBinDir)
+	err = wavebase.CacheEnsureDir(binDir, WaveHomeBinDir, 0755, WaveHomeBinDir)
+	if err != nil {
+		return err
+	}
+
+	zprofilePath := filepath.Join(zshDir, ".zprofile")
+	err = os.WriteFile(zprofilePath, []byte(ZshStartup_Zprofile), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing zsh-integration .zprofile: %v", err)
+	}
+	zshrcPath := filepath.Join(zshDir, ".zshrc")
+	err = os.WriteFile(zshrcPath, []byte(ZshStartup_Zshrc), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing zsh-integration .zshrc: %v", err)
+	}
+	zloginPath := filepath.Join(zshDir, ".zlogin")
+	err = os.WriteFile(zloginPath, []byte(ZshStartup_Zlogin), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing zsh-integration .zlogin: %v", err)
+	}
+	zshenvPath := filepath.Join(zshDir, ".zshenv")
+	err = os.WriteFile(zshenvPath, []byte(ZshStartup_Zshenv), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing zsh-integration .zshenv: %v", err)
+	}
+	bashrcPath := filepath.Join(bashDir, ".bashrc")
+	err = os.WriteFile(bashrcPath, []byte(BashStartup_Bashrc), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing bash-integration .bashrc: %v", err)
+	}
+
+	// copy the correct binary to bin
+	appPath := os.Getenv(WaveAppPathVarName)
+	if appPath == "" {
+		return fmt.Errorf("no app path set")
+	}
+	appBinPath := filepath.Join(appPath, AppPathBinDir)
+	wshBaseName := computeWshBaseName()
+	wshFullPath := filepath.Join(appBinPath, wshBaseName)
+	if _, err := os.Stat(wshFullPath); err != nil {
+		log.Printf("error (non-fatal), could not resolve wsh binary %q: %v\n", wshFullPath, err)
+		return nil
+	}
+	wshDstPath := filepath.Join(binDir, "wsh")
+	err = utilfn.AtomicRenameCopy(wshDstPath, wshFullPath, 0755)
+	if err != nil {
+		return fmt.Errorf("error copying wsh binary to bin: %v", err)
+	}
+	log.Printf("wsh binary successfully %q copied to %q\n", wshBaseName, wshDstPath)
+	return nil
+}
+
+func computeWshBaseName() string {
+	return fmt.Sprintf("wsh-%s-%s.%s", wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
 }

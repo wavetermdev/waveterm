@@ -19,12 +19,17 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
+	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
+
+// these are set at build time
+var WaveVersion = "0.0.0"
+var BuildTime = "0"
 
 const ReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID"
 
@@ -81,6 +86,7 @@ func main() {
 	log.SetPrefix("[wavesrv] ")
 	blockcontroller.WshServerFactoryFn = wshserver.MakeWshServer
 	web.WshServerFactoryFn = wshserver.MakeWshServer
+	wavebase.WaveVersion = WaveVersion
 
 	err := service.ValidateServiceMap()
 	if err != nil {
@@ -104,6 +110,7 @@ func main() {
 		}
 	}()
 
+	log.Printf("wave version: %s (%s)\n", WaveVersion, BuildTime)
 	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
 	err = filestore.InitFilestore()
 	if err != nil {
@@ -115,13 +122,18 @@ func main() {
 		log.Printf("error initializing wstore: %v\n", err)
 		return
 	}
+	go func() {
+		err := shellutil.InitCustomShellStartupFiles()
+		if err != nil {
+			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
+		}
+	}()
 	err = wstore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
 	}
 	installShutdownSignalHandlers()
-
 	go stdinReadWatch()
 	configWatcher()
 	webListener, err := web.MakeTCPListener("web")

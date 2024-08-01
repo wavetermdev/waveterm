@@ -837,3 +837,35 @@ func MergeStrMaps[T any](m1 map[string]T, m2 map[string]T) map[string]T {
 	}
 	return rtn
 }
+
+func AtomicRenameCopy(dstPath string, srcPath string, perms os.FileMode) error {
+	// first copy the file to dstPath.new, then rename into place
+	srcFd, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFd.Close()
+	tempName := dstPath + ".new"
+	dstFd, err := os.Create(tempName)
+	if err != nil {
+		return err
+	}
+	defer dstFd.Close()
+	_, err = io.Copy(dstFd, srcFd)
+	if err != nil {
+		return err
+	}
+	err = dstFd.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(tempName, perms)
+	if err != nil {
+		return err
+	}
+	err = os.Rename(tempName, dstPath)
+	if err != nil {
+		return err
+	}
+	return nil
+}

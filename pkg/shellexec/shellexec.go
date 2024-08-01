@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -192,31 +193,60 @@ func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsT
 	return &ShellProc{Cmd: sessionWrap, Pty: cmdPty, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
+func isZshShell(shellPath string) bool {
+	// get the base path, and then check contains
+	shellBase := filepath.Base(shellPath)
+	return strings.Contains(shellBase, "zsh")
+}
+
+func isBashShell(shellPath string) bool {
+	// get the base path, and then check contains
+	shellBase := filepath.Base(shellPath)
+	return strings.Contains(shellBase, "bash")
+}
+
 func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (*ShellProc, error) {
+	shellutil.InitCustomShellStartupFiles()
 	var ecmd *exec.Cmd
 	var shellOpts []string
-	if cmdOpts.Login {
-		shellOpts = append(shellOpts, "-l")
-	}
-	if cmdOpts.Interactive {
-		shellOpts = append(shellOpts, "-i")
-	}
+
+	shellPath := shellutil.DetectLocalShellPath()
 	if cmdStr == "" {
-		shellPath := shellutil.DetectLocalShellPath()
+		if isBashShell(shellPath) {
+			// add --rcfile
+			// cant set -l or -i with --rcfile
+			shellOpts = append(shellOpts, "--rcfile", shellutil.GetBashRcFileOverride())
+		} else {
+			if cmdOpts.Login {
+				shellOpts = append(shellOpts, "-l")
+			}
+			if cmdOpts.Interactive {
+				shellOpts = append(shellOpts, "-i")
+			}
+		}
 		ecmd = exec.Command(shellPath, shellOpts...)
+		ecmd.Env = os.Environ()
+		if isZshShell(shellPath) {
+			shellutil.UpdateCmdEnv(ecmd, map[string]string{"ZDOTDIR": shellutil.GetZshZDotDir()})
+		}
 	} else {
-		shellPath := shellutil.DetectLocalShellPath()
+		if cmdOpts.Login {
+			shellOpts = append(shellOpts, "-l")
+		}
+		if cmdOpts.Interactive {
+			shellOpts = append(shellOpts, "-i")
+		}
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		ecmd = exec.Command(shellPath, shellOpts...)
+		ecmd.Env = os.Environ()
 	}
-	ecmd.Env = os.Environ()
 	if cmdOpts.Cwd != "" {
 		ecmd.Dir = cmdOpts.Cwd
 	}
 	if cwdErr := checkCwd(ecmd.Dir); cwdErr != nil {
 		ecmd.Dir = wavebase.GetHomeDir()
 	}
-	envToAdd := shellutil.WaveshellEnvVars(shellutil.DefaultTermType)
+	envToAdd := shellutil.WaveshellLocalEnvVars(shellutil.DefaultTermType)
 	if os.Getenv("LANG") == "" {
 		envToAdd["LANG"] = wavebase.DetermineLang()
 	}
@@ -250,7 +280,7 @@ func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (
 
 func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize TermSize) ([]byte, error) {
 	ecmd.Env = os.Environ()
-	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellEnvVars(shellutil.DefaultTermType))
+	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellLocalEnvVars(shellutil.DefaultTermType))
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
 		return nil, fmt.Errorf("opening new pty: %w", err)

@@ -20,7 +20,9 @@ import (
 	"github.com/alexflint/go-filemutex"
 )
 
-const WaveVersion = "v0.1.0"
+// set by main-server.go
+var WaveVersion = "0.0.0"
+
 const DefaultWaveHome = "~/.w2"
 const DevWaveHome = "~/.w2-dev"
 const WaveHomeVarName = "WAVETERM_HOME"
