@@ -259,7 +259,7 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 	if settings.Ai == nil {
 		settings.Ai = &AiConfigType{
 			Name:      userName,
-			Model:     "gpt-4o-mini",
+			Model:     "gpt-3.5-turbo",
 			MaxTokens: 1000,
 			TimeoutMs: 10 * 1000,
 		}

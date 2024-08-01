@@ -134,6 +134,7 @@ declare global {
     // wshrpc.CpuDataRequest
     type CpuDataRequest = {
         id: string;
+        count: number;
     };
 
     // wshrpc.CpuDataType
@@ -217,6 +218,7 @@ declare global {
         "term:fontfamily"?: string;
         "term:mode"?: string;
         "term:theme"?: string;
+        count?: number;
     };
 
     // tsgenmeta.MethodMeta

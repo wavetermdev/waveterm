@@ -107,7 +107,7 @@ export class WaveAiModel implements ViewModel {
             const viewTextChildren: HeaderElem[] = [
                 {
                     elemtype: "text",
-                    text: get(atoms.settingsConfigAtom).ai?.model ?? "gpt-4o-mini",
+                    text: get(atoms.settingsConfigAtom).ai?.model ?? "gpt-3.5-turbo",
                 },
             ];
             return viewTextChildren;

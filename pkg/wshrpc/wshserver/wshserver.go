@@ -97,6 +97,17 @@ func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.Cp
 				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: err}
 				return
 			}
+			blockData, getBlockDataErr := wstore.DBMustGet[*wstore.Block](ctx, request.Id)
+			if getBlockDataErr != nil {
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: getBlockDataErr}
+				return
+			}
+			count := blockData.Meta.GetInt(wstore.MetaKey_Count, 0)
+			if count != request.Count {
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: fmt.Errorf("new instance created. canceling old goroutine")}
+				return
+			}
+
 		}
 	}()
 

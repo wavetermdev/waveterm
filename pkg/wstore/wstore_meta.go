@@ -54,6 +54,7 @@ const (
 	MetaKey_TermFontFamily = "term:fontfamily"
 	MetaKey_TermMode       = "term:mode"
 	MetaKey_TermTheme      = "term:theme"
+	MetaKey_Count          = "count" // temp for cpu plot. will remove later
 )
 
 // for typescript typing
@@ -96,6 +97,7 @@ type MetaTSType struct {
 	TermFontFamily string `json:"term:fontfamily,omitempty"`
 	TermMode       string `json:"term:mode,omitempty"`
 	TermTheme      string `json:"term:theme,omitempty"`
+	Count          int    `json:"count,omitempty"` // temp for cpu plot. will remove later
 }
 
 type MetaDataDecl struct {

@@ -3,6 +3,7 @@
 
 import { useHeight } from "@/app/hook/useHeight";
 import { useWidth } from "@/app/hook/useWidth";
+import { WOS } from "@/store/global";
 import { WshServer } from "@/store/wshserver";
 import * as Plot from "@observablehq/plot";
 import dayjs from "dayjs";
@@ -28,9 +29,11 @@ class CpuPlotViewModel {
     dataAtom: jotai.PrimitiveAtom<Array<Point>>;
     addDataAtom: jotai.WritableAtom<unknown, [Point], void>;
     width: number;
+    incrementCount: jotai.WritableAtom<unknown, [], Promise<void>>;
 
     constructor(blockId: string) {
         this.blockId = blockId;
+        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.width = 100;
         this.dataAtom = jotai.atom(this.getDefaultData());
         this.addDataAtom = jotai.atom(null, (get, set, point) => {
@@ -44,6 +47,11 @@ class CpuPlotViewModel {
         });
         this.viewName = jotai.atom((get) => {
             return "CPU %"; // should not be hardcoded
+        });
+        this.incrementCount = jotai.atom(null, async (get, set) => {
+            const meta = get(this.blockAtom).meta;
+            const count = meta.count ?? 0;
+            await WshServer.SetMetaCommand({ oref: WOS.makeORef("block", this.blockId), meta: { count: count + 1 } });
         });
     }
 
@@ -69,6 +77,8 @@ function CpuPlotView({ model }: { model: CpuPlotViewModel }) {
     const addPlotData = jotai.useSetAtom(model.addDataAtom);
     const parentHeight = useHeight(containerRef);
     const parentWidth = useWidth(containerRef);
+    const block = jotai.useAtomValue(model.blockAtom);
+    const incrementCount = jotai.useSetAtom(model.incrementCount); // temporary
 
     React.useEffect(() => {
         console.log("plotData:", plotData);
@@ -76,8 +86,9 @@ function CpuPlotView({ model }: { model: CpuPlotViewModel }) {
 
     React.useEffect(() => {
         const temp = async () => {
+            await incrementCount();
             const dataGen = WshServer.StreamCpuDataCommand(
-                { id: model.blockId },
+                { id: model.blockId, count: (block.meta?.count ?? 0) + 1 },
                 { timeout: 999999999, noresponse: false }
             );
             try {

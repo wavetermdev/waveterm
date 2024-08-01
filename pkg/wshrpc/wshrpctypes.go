@@ -232,7 +232,8 @@ type OpenAIUsageType struct {
 }
 
 type CpuDataRequest struct {
-	Id string `json:"id"`
+	Id    string `json:"id"`
+	Count int    `json:"count"`
 }
 
 type CpuDataType struct {
