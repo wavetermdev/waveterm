@@ -11,6 +11,7 @@ import { getLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { layoutTreeStateReducer } from "frontend/layout/lib/layoutState";
 
 import { handleIncomingRpcMessage } from "@/app/store/wshrpc";
+import { LayoutTreeInsertNodeAtIndexAction } from "@/layout/lib/model";
 import { getWSServerEndpoint, getWebServerEndpoint } from "@/util/endpoints";
 import * as layoututil from "@/util/layoututil";
 import { produce } from "immer";
@@ -247,28 +248,49 @@ function handleWSEventMessage(msg: WSEventType) {
     }
     if (msg.eventtype == "layoutaction") {
         const layoutAction: WSLayoutActionData = msg.data;
-        if (layoutAction.actiontype == LayoutTreeActionType.InsertNode) {
-            const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
-                type: LayoutTreeActionType.InsertNode,
-                node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, {
-                    blockId: layoutAction.blockid,
-                }),
-            };
-            runLayoutAction(layoutAction.tabid, insertNodeAction);
-        } else if (layoutAction.actiontype == LayoutTreeActionType.DeleteNode) {
-            const layoutStateAtom = getLayoutStateAtomForTab(
-                layoutAction.tabid,
-                WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", layoutAction.tabid))
-            );
-            const curState = globalStore.get(layoutStateAtom);
-            const leafId = layoututil.findLeafIdFromBlockId(curState, layoutAction.blockid);
-            const deleteNodeAction = {
-                type: LayoutTreeActionType.DeleteNode,
-                nodeId: leafId,
-            };
-            runLayoutAction(layoutAction.tabid, deleteNodeAction);
-        } else {
-            console.log("unsupported layout action", layoutAction);
+        switch (layoutAction.actiontype) {
+            case LayoutTreeActionType.InsertNode: {
+                const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
+                    type: LayoutTreeActionType.InsertNode,
+                    node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, {
+                        blockId: layoutAction.blockid,
+                    }),
+                };
+                runLayoutAction(layoutAction.tabid, insertNodeAction);
+                break;
+            }
+            case LayoutTreeActionType.DeleteNode: {
+                const layoutStateAtom = getLayoutStateAtomForTab(
+                    layoutAction.tabid,
+                    WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", layoutAction.tabid))
+                );
+                const curState = globalStore.get(layoutStateAtom);
+                const leafId = layoututil.findLeafIdFromBlockId(curState, layoutAction.blockid);
+                const deleteNodeAction = {
+                    type: LayoutTreeActionType.DeleteNode,
+                    nodeId: leafId,
+                };
+                runLayoutAction(layoutAction.tabid, deleteNodeAction);
+                break;
+            }
+            case LayoutTreeActionType.InsertNodeAtIndex: {
+                if (!layoutAction.indexarr) {
+                    console.error("Cannot apply eventbus layout action InsertNodeAtIndex, indexarr field is missing.");
+                    break;
+                }
+                const insertAction: LayoutTreeInsertNodeAtIndexAction<TabLayoutData> = {
+                    type: LayoutTreeActionType.InsertNodeAtIndex,
+                    node: newLayoutNode<TabLayoutData>(undefined, layoutAction.nodesize, undefined, {
+                        blockId: layoutAction.blockid,
+                    }),
+                    indexArr: layoutAction.indexarr,
+                };
+                runLayoutAction(layoutAction.tabid, insertAction);
+                break;
+            }
+            default:
+                console.log("unsupported layout action", layoutAction);
+                break;
         }
         return;
     }

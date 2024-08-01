@@ -6,6 +6,7 @@ import {
     addChildAt,
     addIntermediateNode,
     balanceNode,
+    findInsertLocationFromIndexArr,
     findNextInsertLocation,
     findNode,
     findParent,
@@ -19,6 +20,7 @@ import {
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
     LayoutTreeInsertNodeAction,
+    LayoutTreeInsertNodeAtIndexAction,
     LayoutTreeMagnifyNodeToggleAction,
     LayoutTreeMoveNodeAction,
     LayoutTreeResizeNodeAction,
@@ -95,6 +97,10 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
             break;
         case LayoutTreeActionType.InsertNode:
             insertNode(layoutTreeState, action as LayoutTreeInsertNodeAction<T>);
+            layoutTreeState.generation++;
+            break;
+        case LayoutTreeActionType.InsertNodeAtIndex:
+            insertNodeAtIndex(layoutTreeState, action as LayoutTreeInsertNodeAtIndexAction<T>);
             layoutTreeState.generation++;
             break;
         case LayoutTreeActionType.DeleteNode:
@@ -370,7 +376,7 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
 
 function insertNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeInsertNodeAction<T>) {
     if (!action?.node) {
-        console.error("no insert node action provided");
+        console.error("insertNode cannot run, no insert node action provided");
         return;
     }
     if (!layoutTreeState.rootNode) {
@@ -381,6 +387,28 @@ function insertNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeIn
     }
     const insertLoc = findNextInsertLocation(layoutTreeState.rootNode, 5);
     addChildAt(insertLoc.node, insertLoc.index, action.node);
+    const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
+    layoutTreeState.rootNode = newRootNode;
+    layoutTreeState.leafs = leafs;
+}
+
+function insertNodeAtIndex<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeInsertNodeAtIndexAction<T>) {
+    if (!action?.node || !action?.indexArr) {
+        console.error("insertNodeAtIndex cannot run, either node or indexArr field is missing");
+        return;
+    }
+    if (!layoutTreeState.rootNode) {
+        const { node: balancedNode, leafs } = balanceNode(action.node);
+        layoutTreeState.rootNode = balancedNode;
+        layoutTreeState.leafs = leafs;
+        return;
+    }
+    const insertLoc = findInsertLocationFromIndexArr(layoutTreeState.rootNode, action.indexArr);
+    if (!insertLoc) {
+        console.error("insertNodeAtIndex unable to find insert location");
+        return;
+    }
+    addChildAt(insertLoc.node, insertLoc.index + 1, action.node);
     const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
     layoutTreeState.rootNode = newRootNode;
     layoutTreeState.leafs = leafs;

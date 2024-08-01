@@ -26,6 +26,9 @@ class ClientServiceType {
     AgreeTos(): Promise<void> {
         return WOS.callBackendService("client", "AgreeTos", Array.from(arguments))
     }
+    BootstrapStarterLayout(): Promise<void> {
+        return WOS.callBackendService("client", "BootstrapStarterLayout", Array.from(arguments))
+    }
     FocusWindow(arg2: string): Promise<void> {
         return WOS.callBackendService("client", "FocusWindow", Array.from(arguments))
     }
@@ -88,6 +91,9 @@ class ObjectServiceType {
     // @returns blockId (and object updates)
     CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<string> {
         return WOS.callBackendService("object", "CreateBlock", Array.from(arguments))
+    }
+    CreateBlock_NoUI(arg2: string, arg3: BlockDef, arg4: RuntimeOpts): Promise<Block> {
+        return WOS.callBackendService("object", "CreateBlock_NoUI", Array.from(arguments))
     }
 
     // @returns object updates

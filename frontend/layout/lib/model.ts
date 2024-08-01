@@ -41,6 +41,7 @@ export enum LayoutTreeActionType {
     ClearPendingAction = "clearpending",
     ResizeNode = "resize",
     InsertNode = "insert",
+    InsertNodeAtIndex = "insertatindex",
     DeleteNode = "delete",
     MagnifyNodeToggle = "magnify",
 }
@@ -102,6 +103,22 @@ export interface LayoutTreeSwapNodeAction extends LayoutTreeAction {
 export interface LayoutTreeInsertNodeAction<T> extends LayoutTreeAction {
     type: LayoutTreeActionType.InsertNode;
     node: LayoutNode<T>;
+}
+
+/**
+ * Action for inserting a node into the layout tree at the specified index.
+ */
+export interface LayoutTreeInsertNodeAtIndexAction<T> extends LayoutTreeAction {
+    type: LayoutTreeActionType.InsertNodeAtIndex;
+    /**
+     * The node to insert.
+     */
+    node: LayoutNode<T>;
+    /**
+     * The array of indices to traverse when inserting the node.
+     * The last index is the index within the parent node where the node should be inserted.
+     */
+    indexArr: number[];
 }
 
 /**

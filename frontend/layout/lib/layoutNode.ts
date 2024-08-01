@@ -226,6 +226,34 @@ export function findNextInsertLocation<T>(
     return { node: insertLoc?.node, index: insertLoc?.index };
 }
 
+/**
+ * Traverse the layout tree using the supplied index array to find the node to insert at.
+ * @param node The node to start the search from.
+ * @param indexArr The array of indices to aid in the traversal.
+ * @returns The node to insert into and the index at which to insert.
+ */
+export function findInsertLocationFromIndexArr<T>(
+    node: LayoutNode<T>,
+    indexArr: number[]
+): { node: LayoutNode<T>; index: number } {
+    function normalizeIndex(index: number) {
+        const childrenLength = node.children?.length ?? 1;
+        const lastChildIndex = childrenLength - 1;
+        if (index < 0) {
+            return childrenLength - Math.max(index, -childrenLength);
+        }
+        return Math.min(index, lastChildIndex);
+    }
+    if (indexArr.length == 0) {
+        return;
+    }
+    const nextIndex = normalizeIndex(indexArr.shift());
+    if (indexArr.length == 0 || !node.children) {
+        return { node, index: nextIndex };
+    }
+    return findInsertLocationFromIndexArr<T>(node.children[nextIndex], indexArr);
+}
+
 function findNextInsertLocationHelper<T>(
     node: LayoutNode<T>,
     maxChildren: number,

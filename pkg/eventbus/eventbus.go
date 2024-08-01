@@ -60,6 +60,8 @@ type WSLayoutActionData struct {
 	TabId      string `json:"tabid"`
 	ActionType string `json:"actiontype"`
 	BlockId    string `json:"blockid"`
+	NodeSize   uint   `json:"nodesize,omitempty"`
+	IndexArr   []int  `json:"indexarr,omitempty"`
 }
 
 var globalLock = &sync.Mutex{}

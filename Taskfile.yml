@@ -149,6 +149,7 @@ tasks:
             - "pkg/wstore/*.go"
             - "pkg/wshrpc/**/*.go"
             - "pkg/tsgen/**/*.go"
+            - "pkg/eventbus/eventbus.go"
         generates:
             - frontend/types/gotypes.d.ts
             - pkg/wshrpc/wshclient/wshclient.go

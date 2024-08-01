@@ -472,6 +472,8 @@ declare global {
         tabid: string;
         actiontype: string;
         blockid: string;
+        nodesize?: number;
+        indexarr?: number[];
     };
 
     // webcmd.WSRpcCommand

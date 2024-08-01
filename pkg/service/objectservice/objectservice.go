@@ -178,6 +178,22 @@ func (svc *ObjectService) CreateBlock_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
+func (svc *ObjectService) CreateBlock_NoUI(ctx context.Context, tabId string, blockDef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (*wstore.Block, error) {
+	blockData, err := wstore.CreateBlock(ctx, tabId, blockDef, rtOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error creating block: %w", err)
+	}
+	controllerName := blockData.Meta.GetString(wstore.MetaKey_Controller, "")
+	if controllerName != "" {
+		err = blockcontroller.StartBlockController(ctx, tabId, blockData.OID)
+		if err != nil {
+			return nil, fmt.Errorf("error starting block controller: %w", err)
+		}
+	}
+
+	return blockData, nil
+}
+
 func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (string, wstore.UpdatesRtnType, error) {
 	if uiContext.ActiveTabId == "" {
 		return "", nil, fmt.Errorf("no active tab")
@@ -185,17 +201,12 @@ func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wsto
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
-	blockData, err := wstore.CreateBlock(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
+
+	blockData, err := svc.CreateBlock_NoUI(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
 	if err != nil {
-		return "", nil, fmt.Errorf("error creating block: %w", err)
+		return "", nil, err
 	}
-	controllerName := blockData.Meta.GetString(wstore.MetaKey_Controller, "")
-	if controllerName != "" {
-		err = blockcontroller.StartBlockController(ctx, uiContext.ActiveTabId, blockData.OID)
-		if err != nil {
-			return "", nil, fmt.Errorf("error starting block controller: %w", err)
-		}
-	}
+
 	return blockData.OID, wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
