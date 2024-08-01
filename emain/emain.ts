@@ -1,8 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { initGlobal } from "../frontend/app/store/global";
-import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
+import { initGlobal } from "@/app/store/global";
+import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
 import * as electron from "electron";
 import { autoUpdater } from "electron-updater";
 import fs from "fs";
@@ -34,6 +34,7 @@ const waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
 });
 let globalIsQuitting = false;
 let globalIsStarting = true;
+let globalIsRelaunching = false;
 
 const isDev = !electronApp.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
@@ -214,7 +215,8 @@ async function handleWSEvent(evtMsg: WSEventType) {
             return;
         }
         const clientData = await services.ClientService.GetClientData();
-        const newWin = createBrowserWindow(clientData.oid, windowData);
+        const settings = await services.FileService.GetSettingsConfig();
+        const newWin = createBrowserWindow(clientData.oid, windowData, settings);
         await newWin.readyPromise;
         newWin.show();
     } else if (evtMsg.eventtype == "electron:closewindow") {
@@ -290,15 +292,39 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
 
 // note, this does not *show* the window.
 // to show, await win.readyPromise and then win.show()
-function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrowserWindow {
+function createBrowserWindow(
+    clientId: string,
+    waveWindow: WaveWindow,
+    settings: SettingsConfigType
+): WaveBrowserWindow {
+    let winWidth = waveWindow?.winsize?.width;
+    let winHeight = waveWindow?.winsize?.height;
+    let winPosX = waveWindow.pos.x;
+    let winPosY = waveWindow.pos.y;
+    if (winWidth == null || winWidth == 0) {
+        const primaryDisplay = electron.screen.getPrimaryDisplay();
+        const { width } = primaryDisplay.workAreaSize;
+        winWidth = width - winPosX - 100;
+        if (winWidth > 2000) {
+            winWidth = 2000;
+        }
+    }
+    if (winHeight == null || winHeight == 0) {
+        const primaryDisplay = electron.screen.getPrimaryDisplay();
+        const { height } = primaryDisplay.workAreaSize;
+        winHeight = height - winPosY - 100;
+        if (winHeight > 1200) {
+            winHeight = 1200;
+        }
+    }
     let winBounds = {
-        x: waveWindow.pos.x,
-        y: waveWindow.pos.y,
-        width: waveWindow.winsize.width,
-        height: waveWindow.winsize.height,
+        x: winPosX,
+        y: winPosY,
+        width: winWidth,
+        height: winHeight,
     };
     winBounds = ensureBoundsAreVisible(winBounds);
-    const bwin = new electron.BrowserWindow({
+    const winOpts: Electron.BrowserWindowConstructorOptions = {
         titleBarStyle: "hiddenInset",
         x: winBounds.x,
         y: winBounds.y,
@@ -316,8 +342,26 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrow
         },
         show: false,
         autoHideMenuBar: true,
-        backgroundColor: "#000000",
-    });
+    };
+    const isTransparent = settings?.window?.transparent ?? false;
+    const isBlur = !isTransparent && (settings?.window?.blur ?? false);
+    if (isTransparent) {
+        winOpts.transparent = true;
+    } else if (isBlur) {
+        switch (unamePlatform) {
+            case "win32": {
+                winOpts.backgroundMaterial = "acrylic";
+                break;
+            }
+            case "darwin": {
+                winOpts.vibrancy = "fullscreen-ui";
+                break;
+            }
+        }
+    } else {
+        winOpts.backgroundColor = "#222222";
+    }
+    const bwin = new electron.BrowserWindow(winOpts);
     (bwin as any).waveWindowId = waveWindow.oid;
     let readyResolve: (value: void) => void;
     (bwin as any).readyPromise = new Promise((resolve, _) => {
@@ -519,7 +563,8 @@ electron.ipcMain.on("getEnv", (event, varName) => {
 async function createNewWaveWindow() {
     const clientData = await services.ClientService.GetClientData();
     const newWindow = await services.ClientService.MakeWindow();
-    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow);
+    const settings = await services.FileService.GetSettingsConfig();
+    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, settings);
     newBrowserWindow.show();
 }
 
@@ -563,6 +608,7 @@ function makeAppMenu() {
         },
         {
             role: "close",
+            accelerator: "", // clear the accelerator
             click: () => {
                 electron.BrowserWindow.getFocusedWindow()?.close();
             },
@@ -617,6 +663,12 @@ function makeAppMenu() {
             role: "forceReload",
         },
         {
+            label: "Relaunch All Windows",
+            click: () => {
+                relaunchBrowserWindows();
+            },
+        },
+        {
             role: "toggleDevTools",
         },
         {
@@ -638,6 +690,14 @@ function makeAppMenu() {
             role: "togglefullscreen",
         },
     ];
+    const windowMenu: Electron.MenuItemConstructorOptions[] = [
+        { role: "minimize", accelerator: "" },
+        { role: "zoom" },
+        { type: "separator" },
+        { role: "front" },
+        { type: "separator" },
+        { role: "window" },
+    ];
     const menuTemplate: Electron.MenuItemConstructorOptions[] = [
         {
             role: "appMenu",
@@ -656,6 +716,7 @@ function makeAppMenu() {
         },
         {
             role: "windowMenu",
+            submenu: windowMenu,
         },
     ];
     const menu = electron.Menu.buildFromTemplate(menuTemplate);
@@ -663,6 +724,9 @@ function makeAppMenu() {
 }
 
 electronApp.on("window-all-closed", () => {
+    if (globalIsRelaunching) {
+        return;
+    }
     if (unamePlatform !== "darwin") {
         electronApp.quit();
     }
@@ -857,6 +921,36 @@ async function configureAutoUpdater() {
 }
 // ====== AUTO-UPDATER ====== //
 
+async function relaunchBrowserWindows() {
+    globalIsRelaunching = true;
+    const windows = electron.BrowserWindow.getAllWindows();
+    for (const window of windows) {
+        window.removeAllListeners();
+        window.close();
+    }
+    globalIsRelaunching = false;
+
+    const clientData = await services.ClientService.GetClientData();
+    const settings = await services.FileService.GetSettingsConfig();
+    const wins: WaveBrowserWindow[] = [];
+    for (const windowId of clientData.windowids.slice().reverse()) {
+        const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+        if (windowData == null) {
+            services.WindowService.CloseWindow(windowId).catch((e) => {
+                /* ignore */
+            });
+            continue;
+        }
+        const win = createBrowserWindow(clientData.oid, windowData, settings);
+        wins.push(win);
+    }
+    for (const win of wins) {
+        await win.readyPromise;
+        console.log("show", win.waveWindowId);
+        win.show();
+    }
+}
+
 async function appMain() {
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
@@ -877,27 +971,8 @@ async function appMain() {
     }
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
-    console.log("get client data");
-    const clientData = await services.ClientService.GetClientData();
-    console.log("client data ready");
     await electronApp.whenReady();
-    const wins: WaveBrowserWindow[] = [];
-    for (const windowId of clientData.windowids.slice().reverse()) {
-        const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
-        if (windowData == null) {
-            services.WindowService.CloseWindow(windowId).catch((e) => {
-                /* ignore */
-            });
-            continue;
-        }
-        const win = createBrowserWindow(clientData.oid, windowData);
-        wins.push(win);
-    }
-    for (const win of wins) {
-        await win.readyPromise;
-        console.log("show", win.waveWindowId);
-        win.show();
-    }
+    relaunchBrowserWindows();
     configureAutoUpdater();
     globalIsStarting = false;
 
