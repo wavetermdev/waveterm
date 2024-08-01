@@ -128,6 +128,27 @@ export function CodeEditor({
         }
     }
 
+    function handleEditorOnMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) {
+        // bind Cmd:e
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyE, () => {
+            if (onEdit) {
+                onEdit();
+            }
+        });
+        // bind Cmd:s
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            if (onSave) {
+                onSave();
+            }
+        });
+        // bind Cmd:r
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR, () => {
+            if (onCancel) {
+                onCancel();
+            }
+        });
+    }
+
     const editorOpts = defaultEditorOptions();
     editorOpts.readOnly = readonly;
 
@@ -140,6 +161,7 @@ export function CodeEditor({
                     value={text}
                     options={editorOpts}
                     onChange={handleEditorChange}
+                    onMount={handleEditorOnMount}
                     path={filename}
                     language={language}
                 />
