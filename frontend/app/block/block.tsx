@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useLongClick } from "@/app/hook/useLongClick";
+import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { Button } from "@/element/button";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -11,12 +12,11 @@ import { atoms, globalStore, setBlockFocus, useBlockAtom } from "@/store/global"
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
-import { CpuPlotView, makeCpuPlotViewModel } from "@/view/cpuplot";
-import { HelpView } from "@/view/helpview";
-import { PlotView } from "@/view/plotview";
+import { CpuPlotView, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
+import { HelpView } from "@/view/helpview/helpview";
 import { TerminalView, makeTerminalModel } from "@/view/term/term";
-import { WaveAi, makeWaveAiViewModel } from "@/view/waveai";
-import { WebView, makeWebViewModel } from "@/view/webview";
+import { WaveAi, makeWaveAiViewModel } from "@/view/waveai/waveai";
+import { WebView, makeWebViewModel } from "@/view/webview/webview";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";

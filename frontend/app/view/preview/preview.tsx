@@ -14,7 +14,7 @@ import { loadable } from "jotai/utils";
 import { useEffect, useRef } from "react";
 import { CenteredDiv } from "../../element/quickelems";
 import { CodeEditor } from "../codeeditor/codeeditor";
-import { CSVView } from "../csvview";
+import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
 
 import "./preview.less";

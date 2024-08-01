@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Markdown } from "../element/markdown";
+import { Markdown } from "@/app/element/markdown";
 
 import "./helpview.less";
 
