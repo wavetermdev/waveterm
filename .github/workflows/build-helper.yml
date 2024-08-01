@@ -2,7 +2,7 @@ name: "Build Helper"
 on: workflow_dispatch
 env:
     GO_VERSION: "1.22.5"
-    NODE_VERSION: "21.5.0"
+    NODE_VERSION: "22.5.1"
 jobs:
     runbuild:
         strategy:
