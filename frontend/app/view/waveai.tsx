@@ -52,6 +52,7 @@ export class WaveAiModel implements ViewModel {
     addMessageAtom: jotai.WritableAtom<unknown, [message: ChatMessageType], void>;
     updateLastMessageAtom: jotai.WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
     simulateAssistantResponseAtom: jotai.WritableAtom<unknown, [userMessage: ChatMessageType], Promise<void>>;
+    textAreaRef: React.RefObject<HTMLTextAreaElement>;
 
     constructor(blockId: string) {
         this.blockId = blockId;
@@ -125,6 +126,14 @@ export class WaveAiModel implements ViewModel {
         }
         const history: Array<OpenAIPromptMessageType> = JSON.parse(new TextDecoder().decode(data));
         return history;
+    }
+
+    giveFocus(): boolean {
+        if (this?.textAreaRef?.current) {
+            this.textAreaRef.current?.focus();
+            return true;
+        }
+        return false;
     }
 
     useWaveAi() {
@@ -341,18 +350,17 @@ interface ChatInputProps {
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+    model: WaveAiModel;
 }
 
 const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
-    ({ value, onChange, onKeyDown, onMouseDown, termFontSize }, ref) => {
+    ({ value, onChange, onKeyDown, onMouseDown, termFontSize, model }, ref) => {
         const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
         useImperativeHandle(ref, () => textAreaRef.current as HTMLTextAreaElement);
 
         useEffect(() => {
-            if (textAreaRef.current) {
-                textAreaRef.current.focus();
-            }
+            model.textAreaRef = textAreaRef;
         }, []);
 
         const adjustTextAreaHeight = () => {
@@ -586,6 +594,7 @@ const WaveAi = ({ model }: { model: WaveAiModel }) => {
                 <ChatInput
                     ref={inputRef}
                     value={value}
+                    model={model}
                     onChange={handleTextAreaChange}
                     onKeyDown={handleTextAreaKeyDown}
                     onMouseDown={handleTextAreaMouseDown}

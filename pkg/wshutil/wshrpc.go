@@ -363,6 +363,12 @@ func (handler *RpcRequestHandler) Context() context.Context {
 }
 
 func (handler *RpcRequestHandler) SendCancel() {
+	defer func() {
+		if r := recover(); r != nil {
+			// this is likely a write to closed channel
+			log.Printf("panic in SendCancel: %v\n", r)
+		}
+	}()
 	msg := &RpcMessage{
 		Cancel: true,
 		ReqId:  handler.reqId,
@@ -444,6 +450,13 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 }
 
 func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
+	defer func() {
+		if r := recover(); r != nil {
+			// this is likely a write to closed channel
+			log.Printf("panic in SendResponse: %v\n", r)
+			handler.close()
+		}
+	}()
 	if handler.reqId == "" {
 		return nil // no response expected
 	}
@@ -467,6 +480,13 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 }
 
 func (handler *RpcResponseHandler) SendResponseError(err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			// this is likely a write to closed channel
+			log.Printf("panic in SendResponseError: %v\n", r)
+			handler.close()
+		}
+	}()
 	if handler.reqId == "" || handler.done.Load() {
 		return
 	}
@@ -506,7 +526,13 @@ func (handler *RpcResponseHandler) IsDone() bool {
 	return handler.done.Load()
 }
 
-func (w *WshRpc) SendComplexRequest(command string, data any, expectsResponse bool, timeoutMs int) (*RpcRequestHandler, error) {
+func (w *WshRpc) SendComplexRequest(command string, data any, expectsResponse bool, timeoutMs int) (rtnHandler *RpcRequestHandler, rtnErr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in SendComplexRequest: %v\n", r)
+			rtnErr = fmt.Errorf("panic: %v", r)
+		}
+	}()
 	if command == "" {
 		return nil, fmt.Errorf("command cannot be empty")
 	}
