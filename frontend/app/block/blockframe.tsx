@@ -13,7 +13,7 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
-import { BlockFrameProps } from "./blocktypes";
+import { BlockFrameProps, LayoutComponentModel } from "./blocktypes";
 
 function handleHeaderContextMenu(
     e: React.MouseEvent<HTMLDivElement>,
@@ -62,55 +62,22 @@ function handleHeaderContextMenu(
     ContextMenuModel.showContextMenu(menu, e);
 }
 
-const BlockFrame_Default_Component = ({
-    blockId,
-    layoutModel,
-    viewModel,
-    blockModel,
-    preview,
-    numBlocksInTab,
-    children,
-}: BlockFrameProps) => {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
-    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
-        return jotai.atom((get) => {
-            const winData = get(atoms.waveWindow);
-            return winData?.activeblockid === blockId;
-        });
-    });
-    let isFocused = jotai.useAtomValue(isFocusedAtom);
-    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
-    const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.meta?.view);
-    const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
-    const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
+function getViewIconElem(viewIconUnion: string | HeaderIconButton, blockData: Block): JSX.Element {
+    if (viewIconUnion == null || typeof viewIconUnion === "string") {
+        const viewIcon = viewIconUnion as string;
+        return <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>;
+    } else {
+        return <IconButton decl={viewIconUnion} className="block-frame-view-icon" />;
+    }
+}
+
+function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: LayoutComponentModel): JSX.Element[] {
+    const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
-    const customBg = util.useAtomValueSafe(viewModel.blockBg);
     const tabId = globalStore.get(atoms.activeTabId);
     const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
     const layoutTreeState = util.useAtomValueSafe(getLayoutStateAtomForTab(tabId, tabAtom));
-    if (preview) {
-        isFocused = true;
-    }
-    const style: React.CSSProperties = {};
-    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
-        style.borderColor = blockData.meta["frame:bordercolor"];
-    }
-    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
-        style.borderColor = blockData.meta["frame:bordercolor:focused"];
-    }
-    let viewIconElem: JSX.Element = null;
-    if (viewIconUnion == null || typeof viewIconUnion === "string") {
-        const viewIcon = viewIconUnion as string;
-        viewIconElem = <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>;
-    } else {
-        viewIconElem = <IconButton decl={viewIconUnion} className="block-frame-view-icon" />;
-    }
-    let preIconButtonElem: JSX.Element = null;
-    if (preIconButton) {
-        preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;
-    }
-    const endIconsElem: JSX.Element[] = [];
+
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(
             ...endIconButtons.map((button, idx) => (
@@ -128,7 +95,7 @@ const BlockFrame_Default_Component = ({
     endIconsElem.push(
         <IconButton key="settings" decl={settingsDecl} className="block-frame-endicon-button block-frame-settings" />
     );
-    if (isBlockMagnified(layoutTreeState, blockId)) {
+    if (isBlockMagnified(layoutTreeState, blockData.oid)) {
         const magnifyDecl: HeaderIconButton = {
             elemtype: "iconbutton",
             icon: "regular@magnifying-glass-minus",
@@ -148,57 +115,27 @@ const BlockFrame_Default_Component = ({
     endIconsElem.push(
         <IconButton key="close" decl={closeDecl} className="block-frame-endicon-button block-frame-default-close" />
     );
+    return endIconsElem;
+}
 
-    function renderHeaderElements(headerTextUnion: HeaderElem[]): JSX.Element[] {
-        const headerTextElems: JSX.Element[] = [];
+const BlockFrame_Header = ({ blockId, layoutModel, viewModel }: BlockFrameProps) => {
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.meta?.view);
+    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
+    const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
 
-        function renderElement(elem: HeaderElem, key: number): JSX.Element {
-            if (elem.elemtype == "iconbutton") {
-                return (
-                    <IconButton
-                        key={key}
-                        decl={elem}
-                        className={clsx("block-frame-header-iconbutton", elem.className)}
-                    />
-                );
-            } else if (elem.elemtype == "input") {
-                return <Input key={key} decl={elem} className={clsx("block-frame-input", elem.className)} />;
-            } else if (elem.elemtype == "text") {
-                return (
-                    <div key={key} className="block-frame-text">
-                        {elem.text}
-                    </div>
-                );
-            } else if (elem.elemtype == "textbutton") {
-                return (
-                    <Button key={key} className={elem.className} onClick={(e) => elem.onClick(e)}>
-                        {elem.text}
-                    </Button>
-                );
-            } else if (elem.elemtype == "div") {
-                return (
-                    <div
-                        key={key}
-                        className={clsx("block-frame-div", elem.className)}
-                        onMouseOver={elem.onMouseOver}
-                        onMouseOut={elem.onMouseOut}
-                    >
-                        {elem.children.map((child, childIdx) => renderElement(child, childIdx))}
-                    </div>
-                );
-            }
-            return null;
-        }
+    const endIconsElem = computeEndIcons(blockData, viewModel, layoutModel);
 
-        for (let idx = 0; idx < headerTextUnion.length; idx++) {
-            const elem = headerTextUnion[idx];
-            const renderedElement = renderElement(elem, idx);
-            if (renderedElement) {
-                headerTextElems.push(renderedElement);
-            }
-        }
+    const viewIconElem = getViewIconElem(viewIconUnion, blockData);
+    let preIconButtonElem: JSX.Element = null;
+    if (preIconButton) {
+        preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;
+    }
 
-        return headerTextElems;
+    function handleDoubleClick() {
+        layoutModel?.onMagnifyToggle();
     }
 
     const headerTextElems: JSX.Element[] = [];
@@ -214,9 +151,100 @@ const BlockFrame_Default_Component = ({
         headerTextElems.push(...renderHeaderElements(headerTextUnion));
     }
 
-    function handleDoubleClick() {
-        layoutModel?.onMagnifyToggle();
+    return (
+        <div
+            className="block-frame-default-header"
+            ref={layoutModel?.dragHandleRef}
+            onDoubleClick={handleDoubleClick}
+            onContextMenu={(e) =>
+                handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onMagnifyToggle, layoutModel?.onClose)
+            }
+        >
+            {preIconButtonElem}
+            <div className="block-frame-default-header-iconview">
+                {viewIconElem}
+                <div className="block-frame-view-type">{viewName}</div>
+                {settingsConfig?.blockheader?.showblockids && (
+                    <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
+                )}
+            </div>
+            <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
+            <div className="block-frame-end-icons">{endIconsElem}</div>
+        </div>
+    );
+};
+
+function renderHeaderElements(headerTextUnion: HeaderElem[]): JSX.Element[] {
+    const headerTextElems: JSX.Element[] = [];
+
+    function renderElement(elem: HeaderElem, key: number): JSX.Element {
+        if (elem.elemtype == "iconbutton") {
+            return (
+                <IconButton key={key} decl={elem} className={clsx("block-frame-header-iconbutton", elem.className)} />
+            );
+        } else if (elem.elemtype == "input") {
+            return <Input key={key} decl={elem} className={clsx("block-frame-input", elem.className)} />;
+        } else if (elem.elemtype == "text") {
+            return (
+                <div key={key} className="block-frame-text">
+                    {elem.text}
+                </div>
+            );
+        } else if (elem.elemtype == "textbutton") {
+            return (
+                <Button key={key} className={elem.className} onClick={(e) => elem.onClick(e)}>
+                    {elem.text}
+                </Button>
+            );
+        } else if (elem.elemtype == "div") {
+            return (
+                <div
+                    key={key}
+                    className={clsx("block-frame-div", elem.className)}
+                    onMouseOver={elem.onMouseOver}
+                    onMouseOut={elem.onMouseOut}
+                >
+                    {elem.children.map((child, childIdx) => renderElement(child, childIdx))}
+                </div>
+            );
+        }
+        return null;
     }
+
+    for (let idx = 0; idx < headerTextUnion.length; idx++) {
+        const elem = headerTextUnion[idx];
+        const renderedElement = renderElement(elem, idx);
+        if (renderedElement) {
+            headerTextElems.push(renderedElement);
+        }
+    }
+
+    return headerTextElems;
+}
+
+const BlockFrame_Default_Component = (props: BlockFrameProps) => {
+    const { blockId, layoutModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
+        return jotai.atom((get) => {
+            const winData = get(atoms.waveWindow);
+            return winData?.activeblockid === blockId;
+        });
+    });
+    let isFocused = jotai.useAtomValue(isFocusedAtom);
+    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    const customBg = util.useAtomValueSafe(viewModel.blockBg);
+    if (preview) {
+        isFocused = true;
+    }
+    const style: React.CSSProperties = {};
+    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
+        style.borderColor = blockData.meta["frame:bordercolor"];
+    }
+    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
+        style.borderColor = blockData.meta["frame:bordercolor:focused"];
+    }
+    const viewIconElem = getViewIconElem(viewIconUnion, blockData);
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
         const waveEvent = adaptFromReactOrNativeKeyEvent(e);
@@ -256,31 +284,7 @@ const BlockFrame_Default_Component = ({
         >
             <div className="block-mask"></div>
             <div className="block-frame-default-inner" style={innerStyle}>
-                <div
-                    className="block-frame-default-header"
-                    ref={layoutModel?.dragHandleRef}
-                    onDoubleClick={handleDoubleClick}
-                    onContextMenu={(e) =>
-                        handleHeaderContextMenu(
-                            e,
-                            blockData,
-                            viewModel,
-                            layoutModel?.onMagnifyToggle,
-                            layoutModel?.onClose
-                        )
-                    }
-                >
-                    {preIconButtonElem}
-                    <div className="block-frame-default-header-iconview">
-                        {viewIconElem}
-                        <div className="block-frame-view-type">{viewName}</div>
-                        {settingsConfig?.blockheader?.showblockids && (
-                            <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
-                        )}
-                    </div>
-                    <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
-                    <div className="block-frame-end-icons">{endIconsElem}</div>
-                </div>
+                <BlockFrame_Header {...props} />
                 {preview ? previewElem : children}
             </div>
         </div>
