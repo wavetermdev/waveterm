@@ -181,7 +181,7 @@ func (svc *WindowService) CloseWindow(ctx context.Context, windowId string) erro
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
 	}
-	utilfn.RemoveElemFromSlice(client.WindowIds, windowId)
+	client.WindowIds = utilfn.RemoveElemFromSlice(client.WindowIds, windowId)
 	err = wstore.DBUpdate(ctx, client)
 	if err != nil {
 		return fmt.Errorf("error updating client: %w", err)
