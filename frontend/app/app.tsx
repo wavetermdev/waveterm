@@ -9,7 +9,11 @@ import * as keyutil from "@/util/keyutil";
 import * as layoututil from "@/util/layoututil";
 import * as util from "@/util/util";
 import * as csstree from "css-tree";
-import { getLayoutStateAtomForTab, globalLayoutTransformsMap } from "frontend/layout/lib/layoutAtom";
+import {
+    deleteLayoutStateAtomForTab,
+    getLayoutStateAtomForTab,
+    globalLayoutTransformsMap,
+} from "frontend/layout/lib/layoutAtom";
 import * as jotai from "jotai";
 import * as React from "react";
 import { DndProvider } from "react-dnd";
@@ -17,6 +21,8 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { CenteredDiv } from "./element/quickelems";
 
 import { useWaveObjectValue } from "@/app/store/wos";
+import { LayoutTreeActionType, LayoutTreeDeleteNodeAction } from "@/layout/index";
+import { layoutTreeStateReducer } from "@/layout/lib/layoutState";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import clsx from "clsx";
 import Color from "color";
@@ -81,7 +87,6 @@ function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
 }
 
 function switchTab(offset: number) {
-    console.log("switch tab!", offset);
     const ws = globalStore.get(atoms.workspace);
     const activeTabId = globalStore.get(atoms.tabAtom).oid;
     let tabIdx = -1;
@@ -298,6 +303,35 @@ function AppBackground() {
     return <div className="app-background" style={style} />;
 }
 
+function genericClose(tabId: string) {
+    const tabORef = WOS.makeORef("tab", tabId);
+    const tabAtom = WOS.getWaveObjectAtom<Tab>(tabORef);
+    const tabData = globalStore.get(tabAtom);
+    if (tabData == null) {
+        return;
+    }
+    if (tabData.blockids == null || tabData.blockids.length == 0) {
+        // close tab
+        services.WindowService.CloseTab(tabId);
+        deleteLayoutStateAtomForTab(tabId);
+        return;
+    }
+    // close block
+    const activeBlockId = globalStore.get(atoms.waveWindow)?.activeblockid;
+    if (activeBlockId == null) {
+        return;
+    }
+    const layoutStateAtom = getLayoutStateAtomForTab(tabId, tabAtom);
+    const layoutTreeState = globalStore.get(layoutStateAtom);
+    const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutTreeState, activeBlockId);
+    const deleteAction: LayoutTreeDeleteNodeAction = {
+        type: LayoutTreeActionType.DeleteNode,
+        nodeId: curBlockLeafId,
+    };
+    globalStore.set(layoutStateAtom, layoutTreeStateReducer(layoutTreeState, deleteAction));
+    services.ObjectService.DeleteBlock(activeBlockId);
+}
+
 const AppInner = () => {
     const client = jotai.useAtomValue(atoms.client);
     const windowData = jotai.useAtomValue(atoms.waveWindow);
@@ -335,6 +369,11 @@ const AppInner = () => {
         }
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowRight")) {
             switchBlock(tabId, 1, 0);
+            return true;
+        }
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:w")) {
+            // close block, if no more blocks, close tab
+            genericClose(tabId);
             return true;
         }
         return false;

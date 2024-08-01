@@ -588,6 +588,7 @@ function makeAppMenu() {
         },
         {
             role: "close",
+            accelerator: "", // clear the accelerator
             click: () => {
                 electron.BrowserWindow.getFocusedWindow()?.close();
             },
