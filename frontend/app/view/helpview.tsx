@@ -17,7 +17,7 @@ Blocks can be closed by clicking the &#x2715; button on the right side of the he
 
 ### How to Navigate Blocks
 At most, it is possible to have one block be focused. Depending on the type of block, this allows you to directly interact with the content in that block. A focused block is always outlined with a distinct border. A block may be focused by clicking on it. Alternatively, you can change the focused block by pressing <code>Cmd + &uarr;</code>, <code>Cmd + &darr;</code>, <code>Cmd + &larr;</code>, or <code>Cmd + &rarr;</code>to navigate relative to the currently selected block.
-
+1
 ### How to Magnify Blocks
 Magnifying a block will pop the block out in front of everything else. To magnify a block, simply double click the header. To un-magnify the block, double click the header again. Alternatively, you can magnify and un-magnify with \`Cmd + m\`.
 
@@ -34,6 +34,7 @@ The usual terminal you know and love. We add a few plugins via the \`wsh\` comma
 
 ### Preview
 Preview is the generic type of block used for viewing files. This can take many different forms based on the type of file being viewed.
+You can use \`wsh view [path]\` from any Wave terminal window to open a preview block with the contents of the specified path (e.g. \`wsh view .\` or \`wsh view ~/myimage.jpg\`).
 
 #### Directory
 When looking at a directory, preview will show a file viewer much like MacOS' *Finder* application or Windows' *File Explorer* application. This variant is slightly more geared toward software development with the focus on seeing what is shown by the \`ls -alh\` command.
@@ -76,15 +77,20 @@ Opening a picture will bring up the image of that picture. Opening a video will 
 
 ### Codeedit
 Opening most text files will open Codeedit to either view or edit the file. It is technically part of the Preview block, but it is important enough to be singled out.
+After opening a codeedit block, it is often useful to magnify it (\`Cmd + m\`) to get a larger view.  You can then
+use the hotkeys below to switch to edit mode, make your edits, save, and then use \`Cmd + w\` to close the block (all without using the mouse!).
 
 #### Switch to Edit Mode
 To switch to edit mode, click the edit button to the right of the header. This lets you edit the file contents with a regular monaco editor.
+You can also switch to edit mode by pressing \`Cmd + e\`.
 
 #### Save an Edit
 Once an edit has been made in **edit mode**, click the save button to the right of the header to save the contents.
+You can also save by pressing \`Cmd + s\`.
 
 #### Exit Edit Mode Without Saving
 To exit **edit mode** without saving, click the cancel button to the right of the header.
+You can also exit without saving by pressing \`Cmd + r\`.
 
 ### AI
 
@@ -96,6 +102,7 @@ See *settings help* for more info on how to configure your model.
 
 ### Web
 The Web block is basically a simple web browser. The forward and backwards navigation have been added to the header.
+You can use \`wsh\` to interact with the web block's URL (see the wsh section below).
 
 ### Cpu %
 A small plot displaying the % of CPU in use over time. This is an example of a block that is capable of plotting streamed data. We plan to make this more generic in the future.
@@ -120,13 +127,45 @@ It is possible to style each tab individually. This is most-easily done by right
 
 It is possible to get more fine-grained control of the styles as well. See *settings help* for more info.
 
-## Wsh
+## wsh command
+
+The wsh command is always available from wave terminal windows.  It is a powerful tool for interacting with Wave blocks and can bridge data between your CLI and the widget GUIs.
 
 ### view
+You can open a preview block with the contents of any file or directory by running:
+
+\`\`\`
+wsh view [path]
+\`\`\`
+
+You can use this command to easily preview images, markdown files, and directories.  For code/text files this will open
+a codeedit block which you can use to quickly edit the file using Wave's embedded graphical editor.
 
 ### getmeta
 
+You can view the metadata of any block by running:
+
+\`\`\`
+wsh getmeta [blockid]
+\`\`\`
+
+This is especially useful for preview and web blocks as you can see the file or url that they are pointing to and use that in your CLI scripts.
+
 ### setmeta
+
+You can update any metadata key value pair for blocks (and tabs) by using the setmeta command:
+
+\`\`\`
+wsh setmeta [blockid] [key]=[value]
+wsh setmeta [blockid] file=~/myfile.txt
+wsh setmeta [blockid] url=https://waveterm.dev/
+\`\`\`
+
+You can get block and tab ids by right clicking on the appropriate block and selecting "Copy BlockId".  When you
+update the metadata for a preview or web block you'll see the changes reflected instantly in the block.
+
+Other useful metadata values to override block titles, icons, colors, themes, etc. can be found in the documentation.
+
 `;
 
 function HelpView() {
