@@ -94,6 +94,9 @@
                     align-items: center;
                     gap: 8px;
                     color: var(--main-text-color);
+                    flex: 1 1 auto;
+                    overflow-x: hidden;
+                    min-width: 0;
 
                     .block-frame-view-icon {
                         font-size: var(--header-icon-size);
@@ -122,7 +125,9 @@
 
                 .block-frame-textelems-wrapper {
                     display: flex;
-                    flex-grow: 1;
+                    flex: 1 100 auto;
+                    overflow-x: hidden;
+                    min-width: 0;
                     gap: 8px;
                     height: 20px;
                     align-items: center;

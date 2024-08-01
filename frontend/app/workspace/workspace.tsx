@@ -99,9 +99,6 @@ const Widgets = React.memo(() => {
                     {!util.isBlank(data.label) ? <div className="widget-label">{data.label}</div> : null}
                 </div>
             ))}
-            <div className="widget no-hover">
-                <i className="fa fa-solid fa-plus fa-fw" />
-            </div>
         </div>
     );
 });

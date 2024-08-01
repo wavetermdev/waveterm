@@ -6,8 +6,6 @@ import { Markdown } from "../element/markdown";
 import "./helpview.less";
 
 const helpText = `
-# Help
-
 ## Blocks
 Every individual Component is contained in its own block. These can be added, removed, moved and resized. Each block has its own header which can be right clicked to reveal more operations you can do with that block.
 

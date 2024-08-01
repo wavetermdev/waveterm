@@ -147,8 +147,7 @@ func (cs *ClientService) BootstrapStarterLayout(ctx context.Context) error {
 		}},
 		{IndexArr: []int{2}, BlockDef: &wstore.BlockDef{
 			Meta: wstore.MetaMapType{
-				wstore.MetaKey_View:       "term",
-				wstore.MetaKey_Controller: "shell",
+				wstore.MetaKey_View: "help",
 			},
 		}},
 		{IndexArr: []int{2, 1}, BlockDef: &wstore.BlockDef{

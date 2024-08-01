@@ -7,7 +7,6 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -266,25 +265,6 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 		}
 	}
 	defaultWidgets := []WidgetsConfigType{
-		{
-			Icon:  "files",
-			Label: "files",
-			BlockDef: wstore.BlockDef{
-				Meta: map[string]any{
-					wstore.MetaKey_View: "preview",
-					wstore.MetaKey_File: wavebase.GetHomeDir(),
-				},
-			},
-		},
-		{
-			Icon:  "chart-simple",
-			Label: "chart",
-			BlockDef: wstore.BlockDef{
-				Meta: map[string]any{
-					wstore.MetaKey_View: "plot",
-				},
-			},
-		},
 		{
 			Icon:  "globe",
 			Label: "web",
