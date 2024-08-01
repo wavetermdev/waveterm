@@ -81,10 +81,6 @@ function CpuPlotView({ model }: { model: CpuPlotViewModel }) {
     const incrementCount = jotai.useSetAtom(model.incrementCount); // temporary
 
     React.useEffect(() => {
-        console.log("plotData:", plotData);
-    }, [plotData]);
-
-    React.useEffect(() => {
         const temp = async () => {
             await incrementCount();
             const dataGen = WshServer.StreamCpuDataCommand(

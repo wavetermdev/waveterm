@@ -71,12 +71,29 @@ function getViewIconElem(viewIconUnion: string | HeaderIconButton, blockData: Bl
     }
 }
 
+const OptMagnifyButton = React.memo(
+    ({ blockData, layoutModel }: { blockData: Block; layoutModel: LayoutComponentModel }) => {
+        const tabId = globalStore.get(atoms.activeTabId);
+        const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
+        const layoutTreeState = util.useAtomValueSafe(getLayoutStateAtomForTab(tabId, tabAtom));
+        if (!isBlockMagnified(layoutTreeState, blockData.oid)) {
+            return null;
+        }
+        const magnifyDecl: HeaderIconButton = {
+            elemtype: "iconbutton",
+            icon: "regular@magnifying-glass-minus",
+            title: "Minimize",
+            click: layoutModel?.onMagnifyToggle,
+        };
+        return (
+            <IconButton key="magnify" decl={magnifyDecl} className="block-frame-endicon-button block-frame-magnify" />
+        );
+    }
+);
+
 function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: LayoutComponentModel): JSX.Element[] {
     const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
-    const tabId = globalStore.get(atoms.activeTabId);
-    const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
-    const layoutTreeState = util.useAtomValueSafe(getLayoutStateAtomForTab(tabId, tabAtom));
 
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(
@@ -95,17 +112,7 @@ function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: La
     endIconsElem.push(
         <IconButton key="settings" decl={settingsDecl} className="block-frame-endicon-button block-frame-settings" />
     );
-    if (isBlockMagnified(layoutTreeState, blockData.oid)) {
-        const magnifyDecl: HeaderIconButton = {
-            elemtype: "iconbutton",
-            icon: "regular@magnifying-glass-minus",
-            title: "Minimize",
-            click: layoutModel?.onMagnifyToggle,
-        };
-        endIconsElem.push(
-            <IconButton key="magnify" decl={magnifyDecl} className="block-frame-endicon-button block-frame-magnify" />
-        );
-    }
+    endIconsElem.push(<OptMagnifyButton key="unmagnify" blockData={blockData} layoutModel={layoutModel} />);
     const closeDecl: HeaderIconButton = {
         elemtype: "iconbutton",
         icon: "xmark-large",
@@ -127,7 +134,6 @@ const BlockFrame_Header = ({ blockId, layoutModel, viewModel }: BlockFrameProps)
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
 
     const endIconsElem = computeEndIcons(blockData, viewModel, layoutModel);
-
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
     let preIconButtonElem: JSX.Element = null;
     if (preIconButton) {
@@ -174,51 +180,44 @@ const BlockFrame_Header = ({ blockId, layoutModel, viewModel }: BlockFrameProps)
     );
 };
 
+const HeaderTextElem = React.memo(({ elem }: { elem: HeaderElem }) => {
+    if (elem.elemtype == "iconbutton") {
+        return <IconButton decl={elem} className={clsx("block-frame-header-iconbutton", elem.className)} />;
+    } else if (elem.elemtype == "input") {
+        return <Input decl={elem} className={clsx("block-frame-input", elem.className)} />;
+    } else if (elem.elemtype == "text") {
+        return <div className="block-frame-text">{elem.text}</div>;
+    } else if (elem.elemtype == "textbutton") {
+        return (
+            <Button className={elem.className} onClick={(e) => elem.onClick(e)}>
+                {elem.text}
+            </Button>
+        );
+    } else if (elem.elemtype == "div") {
+        return (
+            <div
+                className={clsx("block-frame-div", elem.className)}
+                onMouseOver={elem.onMouseOver}
+                onMouseOut={elem.onMouseOut}
+            >
+                {elem.children.map((child, childIdx) => (
+                    <HeaderTextElem elem={child} key={childIdx} />
+                ))}
+            </div>
+        );
+    }
+    return null;
+});
+
 function renderHeaderElements(headerTextUnion: HeaderElem[]): JSX.Element[] {
     const headerTextElems: JSX.Element[] = [];
-
-    function renderElement(elem: HeaderElem, key: number): JSX.Element {
-        if (elem.elemtype == "iconbutton") {
-            return (
-                <IconButton key={key} decl={elem} className={clsx("block-frame-header-iconbutton", elem.className)} />
-            );
-        } else if (elem.elemtype == "input") {
-            return <Input key={key} decl={elem} className={clsx("block-frame-input", elem.className)} />;
-        } else if (elem.elemtype == "text") {
-            return (
-                <div key={key} className="block-frame-text">
-                    {elem.text}
-                </div>
-            );
-        } else if (elem.elemtype == "textbutton") {
-            return (
-                <Button key={key} className={elem.className} onClick={(e) => elem.onClick(e)}>
-                    {elem.text}
-                </Button>
-            );
-        } else if (elem.elemtype == "div") {
-            return (
-                <div
-                    key={key}
-                    className={clsx("block-frame-div", elem.className)}
-                    onMouseOver={elem.onMouseOver}
-                    onMouseOut={elem.onMouseOut}
-                >
-                    {elem.children.map((child, childIdx) => renderElement(child, childIdx))}
-                </div>
-            );
-        }
-        return null;
-    }
-
     for (let idx = 0; idx < headerTextUnion.length; idx++) {
         const elem = headerTextUnion[idx];
-        const renderedElement = renderElement(elem, idx);
+        const renderedElement = <HeaderTextElem elem={elem} key={idx} />;
         if (renderedElement) {
             headerTextElems.push(renderedElement);
         }
     }
-
     return headerTextElems;
 }
 
