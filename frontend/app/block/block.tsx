@@ -180,12 +180,6 @@ function handleHeaderContextMenu(
             },
         },
         {
-            label: "Minimize",
-            click: () => {
-                alert("Not Implemented");
-            },
-        },
-        {
             label: "Move to New Window",
             click: () => {
                 const currentTabId = globalStore.get(atoms.activeTabId);
