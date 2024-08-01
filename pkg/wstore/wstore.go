@@ -317,11 +317,17 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta MetaMapType) 
 	})
 }
 
-func CreateWindow(ctx context.Context) (*Window, error) {
+func CreateWindow(ctx context.Context, winSize *WinSize) (*Window, error) {
 	windowId := uuid.NewString()
 	workspaceId := uuid.NewString()
 	tabId := uuid.NewString()
 	layoutNodeId := uuid.NewString()
+	if winSize == nil {
+		winSize = &WinSize{
+			Width:  1200,
+			Height: 800,
+		}
+	}
 	window := &Window{
 		OID:            windowId,
 		WorkspaceId:    workspaceId,
@@ -331,10 +337,7 @@ func CreateWindow(ctx context.Context) (*Window, error) {
 			X: 100,
 			Y: 100,
 		},
-		WinSize: WinSize{
-			Width:  1200,
-			Height: 800,
-		},
+		WinSize: *winSize,
 	}
 	err := DBInsert(ctx, window)
 	if err != nil {
@@ -427,7 +430,7 @@ func EnsureInitialData() error {
 	if len(client.WindowIds) > 0 {
 		return nil
 	}
-	_, err = CreateWindow(ctx)
+	_, err = CreateWindow(ctx, &WinSize{0, 0})
 	if err != nil {
 		return fmt.Errorf("error creating window: %w", err)
 	}

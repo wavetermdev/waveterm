@@ -297,11 +297,31 @@ function createBrowserWindow(
     waveWindow: WaveWindow,
     settings: SettingsConfigType
 ): WaveBrowserWindow {
+    let winWidth = waveWindow?.winsize?.width;
+    let winHeight = waveWindow?.winsize?.height;
+    let winPosX = waveWindow.pos.x;
+    let winPosY = waveWindow.pos.y;
+    if (winWidth == null || winWidth == 0) {
+        const primaryDisplay = electron.screen.getPrimaryDisplay();
+        const { width } = primaryDisplay.workAreaSize;
+        winWidth = width - winPosX - 100;
+        if (winWidth > 2000) {
+            winWidth = 2000;
+        }
+    }
+    if (winHeight == null || winHeight == 0) {
+        const primaryDisplay = electron.screen.getPrimaryDisplay();
+        const { height } = primaryDisplay.workAreaSize;
+        winHeight = height - winPosY - 100;
+        if (winHeight > 1200) {
+            winHeight = 1200;
+        }
+    }
     let winBounds = {
-        x: waveWindow.pos.x,
-        y: waveWindow.pos.y,
-        width: waveWindow.winsize.width,
-        height: waveWindow.winsize.height,
+        x: winPosX,
+        y: winPosY,
+        width: winWidth,
+        height: winHeight,
     };
     winBounds = ensureBoundsAreVisible(winBounds);
     const winOpts: Electron.BrowserWindowConstructorOptions = {

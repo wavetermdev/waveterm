@@ -117,7 +117,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	if !foundBlock {
 		return nil, fmt.Errorf("block not found in current tab")
 	}
-	newWindow, err := wstore.CreateWindow(ctx)
+	newWindow, err := wstore.CreateWindow(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating window: %w", err)
 	}

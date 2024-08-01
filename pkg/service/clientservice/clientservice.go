@@ -60,7 +60,7 @@ func (cs *ClientService) GetWindow(windowId string) (*wstore.Window, error) {
 }
 
 func (cs *ClientService) MakeWindow(ctx context.Context) (*wstore.Window, error) {
-	return wstore.CreateWindow(ctx)
+	return wstore.CreateWindow(ctx, nil)
 }
 
 // moves the window to the front of the windowId stack
@@ -155,12 +155,12 @@ func (cs *ClientService) BootstrapStarterLayout(ctx context.Context) error {
 				wstore.MetaKey_View: "waveai",
 			},
 		}},
-		{IndexArr: []int{2, 2}, BlockDef: &wstore.BlockDef{
-			Meta: wstore.MetaMapType{
-				wstore.MetaKey_View: "web",
-				wstore.MetaKey_Url:  "https://www.youtube.com/embed/cKqsw_sAsU8",
-			},
-		}},
+		// {IndexArr: []int{2, 2}, BlockDef: &wstore.BlockDef{
+		// 	Meta: wstore.MetaMapType{
+		// 		wstore.MetaKey_View: "web",
+		// 		wstore.MetaKey_Url:  "https://www.youtube.com/embed/cKqsw_sAsU8",
+		// 	},
+		// }},
 	}
 
 	objsvc := &objectservice.ObjectService{}
