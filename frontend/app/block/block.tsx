@@ -20,6 +20,7 @@ import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
 
+import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import "./block.less";
 
 export interface LayoutComponentModel {
@@ -385,6 +386,15 @@ const BlockFrame_Default_Component = ({
         layoutModel?.onMagnifyToggle();
     }
 
+    function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Cmd:m")) {
+            e.preventDefault();
+            layoutModel?.onMagnifyToggle();
+            return;
+        }
+    }
+
     const innerStyle: React.CSSProperties = {};
     if (!preview && customBg?.bg != null) {
         innerStyle.background = customBg.bg;
@@ -410,6 +420,7 @@ const BlockFrame_Default_Component = ({
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
             style={style}
+            onKeyDown={handleKeyDown}
         >
             <div className="block-mask"></div>
             <div className="block-frame-default-inner" style={innerStyle}>

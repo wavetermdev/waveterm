@@ -670,6 +670,14 @@ function makeAppMenu() {
             role: "togglefullscreen",
         },
     ];
+    const windowMenu: Electron.MenuItemConstructorOptions[] = [
+        { role: "minimize", accelerator: "" },
+        { role: "zoom" },
+        { type: "separator" },
+        { role: "front" },
+        { type: "separator" },
+        { role: "window" },
+    ];
     const menuTemplate: Electron.MenuItemConstructorOptions[] = [
         {
             role: "appMenu",
@@ -688,6 +696,7 @@ function makeAppMenu() {
         },
         {
             role: "windowMenu",
+            submenu: windowMenu,
         },
     ];
     const menu = electron.Menu.buildFromTemplate(menuTemplate);
