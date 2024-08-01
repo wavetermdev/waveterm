@@ -313,6 +313,15 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 				},
 			},
 		},
+		{
+			Icon:  "circle-question",
+			Label: "help",
+			BlockDef: wstore.BlockDef{
+				Meta: map[string]any{
+					wstore.MetaKey_View: "help",
+				},
+			},
+		},
 	}
 	if settings.Widgets == nil {
 		settings.Widgets = defaultWidgets

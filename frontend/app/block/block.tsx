@@ -11,6 +11,7 @@ import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
 import { CpuPlotView, makeCpuPlotViewModel } from "@/view/cpuplot";
+import { HelpView } from "@/view/helpview";
 import { PlotView } from "@/view/plotview";
 import { PreviewView, makePreviewModel } from "@/view/preview";
 import { TerminalView, makeTerminalModel } from "@/view/term/term";
@@ -477,6 +478,9 @@ function blockViewToIcon(view: string): string {
     if (view == "waveai") {
         return "sparkles";
     }
+    if (view == "help") {
+        return "circle-question";
+    }
     return "square";
 }
 
@@ -495,6 +499,9 @@ function blockViewToName(view: string): string {
     }
     if (view == "waveai") {
         return "WaveAI";
+    }
+    if (view == "help") {
+        return "Help";
     }
     return view;
 }
@@ -531,6 +538,9 @@ function getViewElemAndModel(
         const cpuPlotModel = makeCpuPlotViewModel(blockId);
         viewElem = <CpuPlotView key={blockId} model={cpuPlotModel} />;
         viewModel = cpuPlotModel;
+    } else if (blockView == "help") {
+        viewElem = <HelpView key={blockId} />;
+        viewModel = makeDefaultViewModel(blockId);
     }
     if (viewModel == null) {
         viewElem = <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
