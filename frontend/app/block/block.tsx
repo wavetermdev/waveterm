@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useLongClick } from "@/app/hook/useLongClick";
+import { PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { Button } from "@/element/button";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
@@ -13,7 +14,6 @@ import * as util from "@/util/util";
 import { CpuPlotView, makeCpuPlotViewModel } from "@/view/cpuplot";
 import { HelpView } from "@/view/helpview";
 import { PlotView } from "@/view/plotview";
-import { PreviewView, makePreviewModel } from "@/view/preview";
 import { TerminalView, makeTerminalModel } from "@/view/term/term";
 import { WaveAi, makeWaveAiViewModel } from "@/view/waveai";
 import { WebView, makeWebViewModel } from "@/view/webview";

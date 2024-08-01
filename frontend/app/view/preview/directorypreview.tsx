@@ -4,10 +4,10 @@
 import { useHeight } from "@/app/hook/useHeight";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, createBlock, getApi } from "@/app/store/global";
+import type { PreviewModel } from "@/app/view/preview/preview";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
-import type { PreviewModel } from "@/view/preview";
 import {
     Column,
     Row,
