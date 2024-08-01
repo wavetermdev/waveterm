@@ -48,7 +48,7 @@ const (
 # Source the original zshrc
 [ -f ~/.zshrc ] && source ~/.zshrc
 
-export PATH=$WAVETERM_HOME/bin:$PATH
+export PATH=$WAVETERM_WSHBINDIR:$PATH
 `
 
 	ZshStartup_Zlogin = `
@@ -76,7 +76,7 @@ elif [ -f ~/.profile ]; then
 fi
 
 set -i
-export PATH=$WAVETERM_HOME/bin:$PATH
+export PATH=$WAVETERM_WSHBINDIR:$PATH
 `
 )
 
@@ -131,7 +131,7 @@ func WaveshellLocalEnvVars(termType string) map[string]string {
 	rtn["TERM_PROGRAM"] = "waveterm"
 	rtn["WAVETERM"], _ = os.Executable()
 	rtn["WAVETERM_VERSION"] = wavebase.WaveVersion
-	rtn["WAVETERM_HOME"] = wavebase.GetWaveHomeDir()
+	rtn["WAVETERM_WSHBINDIR"] = filepath.Join(wavebase.GetWaveHomeDir(), WaveHomeBinDir)
 	return rtn
 }
 
