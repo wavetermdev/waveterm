@@ -1,7 +1,8 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block, LayoutComponentModel } from "@/app/block/block";
+import { Block } from "@/app/block/block";
+import { LayoutComponentModel } from "@/app/block/blocktypes";
 import { getApi } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
