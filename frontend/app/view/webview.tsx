@@ -301,6 +301,15 @@ interface WebViewProps {
 
 const WebView = memo(({ parentRef, model }: WebViewProps) => {
     const url = model.getUrl();
+    const blockData = jotai.useAtomValue(model.blockAtom);
+    const metaUrl = blockData?.meta?.url;
+    const metaUrlRef = React.useRef(metaUrl);
+    useEffect(() => {
+        if (metaUrlRef.current != metaUrl) {
+            metaUrlRef.current = metaUrl;
+            model.navigateTo(metaUrl);
+        }
+    }, [metaUrl]);
 
     useEffect(() => {
         const webview = model.webviewRef.current;
