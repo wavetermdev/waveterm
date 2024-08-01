@@ -15,4 +15,16 @@ function findLeafIdFromBlockId(layoutTree: LayoutTreeState<TabLayoutData>, block
     return null;
 }
 
-export { findLeafIdFromBlockId };
+function isBlockMagnified(layoutTree: LayoutTreeState<TabLayoutData>, blockId: string): boolean {
+    if (layoutTree?.leafs == null || layoutTree.magnifiedNodeId == null) {
+        return false;
+    }
+    for (let leaf of layoutTree.leafs) {
+        if (leaf.data.blockId == blockId) {
+            return layoutTree.magnifiedNodeId == leaf.id;
+        }
+    }
+    return false;
+}
+
+export { findLeafIdFromBlockId, isBlockMagnified };

@@ -4,6 +4,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
+    getIsDev: () => ipcRenderer.sendSync("getIsDev"),
     getPlatform: () => ipcRenderer.sendSync("getPlatform"),
     getCursorPoint: () => ipcRenderer.sendSync("getCursorPoint"),
     openNewWindow: () => ipcRenderer.send("openNewWindow"),

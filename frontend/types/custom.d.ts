@@ -30,6 +30,7 @@ declare global {
     };
 
     type ElectronApi = {
+        getIsDev(): boolean;
         getCursorPoint: () => Electron.Point;
 
         getPlatform: () => NodeJS.Platform;

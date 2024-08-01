@@ -413,6 +413,15 @@ function getObjectId(obj: any): number {
     return objectIdWeakMap.get(obj);
 }
 
+let cachedIsDev: boolean = null;
+
+function isDev() {
+    if (cachedIsDev == null) {
+        cachedIsDev = getApi().getIsDev();
+    }
+    return cachedIsDev;
+}
+
 export {
     PLATFORM,
     WOS,
@@ -428,6 +437,7 @@ export {
     globalWS,
     initGlobal,
     initWS,
+    isDev,
     sendWSCommand,
     setBlockFocus,
     setPlatform,

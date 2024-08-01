@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WindowDrag } from "@/element/windowdrag";
-import { atoms } from "@/store/global";
+import { atoms, isDev } from "@/store/global";
 import * as services from "@/store/services";
 import { deleteLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { useAtomValue } from "jotai";
@@ -478,11 +478,19 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     };
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    console.log;
+    let devLabel: React.ReactNode = null;
+    if (isDev()) {
+        devLabel = (
+            <div className="dev-label">
+                <i className="fa fa-brands fa-dev fa-fw" />
+            </div>
+        );
+    }
 
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
+            {devLabel}
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {

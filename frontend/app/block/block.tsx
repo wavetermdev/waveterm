@@ -21,7 +21,9 @@ import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
 
+import { getLayoutStateAtomForTab } from "@/layout/lib/layoutAtom";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import { isBlockMagnified } from "@/util/layoututil";
 import "./block.less";
 
 export interface LayoutComponentModel {
@@ -263,6 +265,9 @@ const BlockFrame_Default_Component = ({
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
     const customBg = util.useAtomValueSafe(viewModel.blockBg);
+    const tabId = globalStore.get(atoms.activeTabId);
+    const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
+    const layoutTreeState = util.useAtomValueSafe(getLayoutStateAtomForTab(tabId, tabAtom));
     if (preview) {
         isFocused = true;
     }
@@ -302,6 +307,17 @@ const BlockFrame_Default_Component = ({
     endIconsElem.push(
         <IconButton key="settings" decl={settingsDecl} className="block-frame-endicon-button block-frame-settings" />
     );
+    if (isBlockMagnified(layoutTreeState, blockId)) {
+        const magnifyDecl: HeaderIconButton = {
+            elemtype: "iconbutton",
+            icon: "regular@magnifying-glass-minus",
+            title: "Minimize",
+            click: layoutModel?.onMagnifyToggle,
+        };
+        endIconsElem.push(
+            <IconButton key="magnify" decl={magnifyDecl} className="block-frame-endicon-button block-frame-magnify" />
+        );
+    }
     const closeDecl: HeaderIconButton = {
         elemtype: "iconbutton",
         icon: "xmark-large",

@@ -525,6 +525,9 @@ function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rectangle 
     return bounds;
 }
 
+electron.ipcMain.on("getIsDev", (event) => {
+    event.returnValue = isDev;
+});
 electron.ipcMain.on("getPlatform", (event, url) => {
     event.returnValue = unamePlatform;
 });
