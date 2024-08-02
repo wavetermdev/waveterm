@@ -273,6 +273,11 @@
             border-radius: calc(var(--block-border-radius) + 2px);
             z-index: var(--zindex-block-mask-inner);
 
+            &.is-layoutmode {
+                user-select: none;
+                pointer-events: auto;
+            }
+
             &.is-layoutmode .block-mask-inner {
                 margin-top: 35px; // TODO fix this magic
                 background-color: rgba(0, 0, 0, 0.5);
