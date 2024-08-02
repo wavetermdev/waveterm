@@ -86,6 +86,16 @@ function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     ContextMenuModel.showContextMenu(menu, e);
 }
 
+function switchTabAbs(index: number) {
+    const ws = globalStore.get(atoms.workspace);
+    const newTabIdx = index - 1;
+    if (newTabIdx < 0 || newTabIdx >= ws.tabids.length) {
+        return;
+    }
+    const newActiveTabId = ws.tabids[newTabIdx];
+    services.ObjectService.SetActiveTab(newActiveTabId);
+}
+
 function switchTab(offset: number) {
     const ws = globalStore.get(atoms.workspace);
     const activeTabId = globalStore.get(atoms.tabAtom).oid;
@@ -158,6 +168,24 @@ function findBlockAtPoint(m: Map<string, Bounds>, p: Point): string {
         }
     }
     return null;
+}
+
+function switchBlockIdx(index: number) {
+    const tabId = globalStore.get(atoms.activeTabId);
+    const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
+    const layoutTreeState = globalStore.get(getLayoutStateAtomForTab(tabId, tabAtom));
+    if (layoutTreeState?.leafs == null) {
+        return;
+    }
+    const newLeafIdx = index - 1;
+    if (newLeafIdx < 0 || newLeafIdx >= layoutTreeState.leafs.length) {
+        return;
+    }
+    const leaf = layoutTreeState.leafs[newLeafIdx];
+    if (leaf?.data?.blockId == null) {
+        return;
+    }
+    setBlockFocus(leaf.data.blockId);
 }
 
 function switchBlock(tabId: string, offsetX: number, offsetY: number) {
@@ -339,14 +367,14 @@ const AppKeyHandlers = () => {
 
     function handleKeyUp(event: KeyboardEvent) {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
-        if (waveEvent.key == "Meta" || waveEvent.key == "Shift") {
+        if (waveEvent.key == "Control" || waveEvent.key == "Shift") {
             globalStore.set(simpleCmdShiftAtom, false);
             globalStore.set(atoms.cmdShiftDelayAtom, false);
         }
     }
 
     function handleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
-        if ((waveEvent.key == "Meta" || waveEvent.key == "Shift") && waveEvent.cmd && waveEvent.shift) {
+        if ((waveEvent.key == "Control" || waveEvent.key == "Shift") && waveEvent.control && waveEvent.shift) {
             globalStore.set(simpleCmdShiftAtom, true);
             setTimeout(() => {
                 const simpleState = globalStore.get(simpleCmdShiftAtom);
@@ -365,6 +393,21 @@ const AppKeyHandlers = () => {
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:[") || keyutil.checkKeyPressed(waveEvent, "Shift:Cmd:[")) {
             switchTab(-1);
             return true;
+        }
+        for (let idx = 1; idx <= 9; idx++) {
+            if (keyutil.checkKeyPressed(waveEvent, `Cmd:${idx}`)) {
+                switchTabAbs(idx);
+                return true;
+            }
+        }
+        for (let idx = 1; idx <= 9; idx++) {
+            if (
+                keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Digit${idx}}`) ||
+                keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Numpad${idx}}`)
+            ) {
+                switchBlockIdx(idx);
+                return true;
+            }
         }
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
             switchBlock(tabId, 0, -1);
