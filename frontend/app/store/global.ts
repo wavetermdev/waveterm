@@ -103,6 +103,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         }
         return windowData.activetabid;
     });
+    const cmdShiftDelayAtom = jotai.atom(false);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         windowId: windowIdAtom,
@@ -115,6 +116,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         tabAtom: tabAtom,
         activeTabId: activeTabIdAtom,
         isFullScreen: isFullScreenAtom,
+        cmdShiftDelayAtom: cmdShiftDelayAtom,
     };
 }
 

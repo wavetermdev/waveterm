@@ -16,6 +16,7 @@ declare global {
         tabAtom: jotai.Atom<Tab>; // driven from WOS
         activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
         isFullScreen: jotai.PrimitiveAtom<boolean>;
+        cmdShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
     };
 
     type TabLayoutData = {

@@ -271,7 +271,26 @@
             pointer-events: none;
             padding: 2px;
             border-radius: calc(var(--block-border-radius) + 2px);
+            z-index: var(--zindex-block-mask-inner);
+
+            &.is-layoutmode .block-mask-inner {
+                margin-top: 35px; // TODO fix this magic
+                background-color: rgba(0, 0, 0, 0.5);
+                height: 100%;
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                .bignum {
+                    margin-top: -15%;
+                    font-size: 60px;
+                    font-weight: bold;
+                    opacity: 0.7;
+                }
+            }
         }
+
         &.block-focused {
             .block-mask {
                 border: 2px solid var(--accent-color);

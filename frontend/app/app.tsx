@@ -332,20 +332,31 @@ function genericClose(tabId: string) {
     services.ObjectService.DeleteBlock(activeBlockId);
 }
 
-const AppInner = () => {
-    const client = jotai.useAtomValue(atoms.client);
-    const windowData = jotai.useAtomValue(atoms.waveWindow);
+const simpleCmdShiftAtom = jotai.atom(false);
+
+const AppKeyHandlers = () => {
     const tabId = jotai.useAtomValue(atoms.activeTabId);
-    if (client == null || windowData == null) {
-        return (
-            <div className="mainapp">
-                <AppBackground />
-                <CenteredDiv>invalid configuration, client or window was not loaded</CenteredDiv>
-            </div>
-        );
+
+    function handleKeyUp(event: KeyboardEvent) {
+        const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
+        if (waveEvent.key == "Meta" || waveEvent.key == "Shift") {
+            globalStore.set(simpleCmdShiftAtom, false);
+            globalStore.set(atoms.cmdShiftDelayAtom, false);
+        }
     }
 
     function handleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
+        if ((waveEvent.key == "Meta" || waveEvent.key == "Shift") && waveEvent.cmd && waveEvent.shift) {
+            globalStore.set(simpleCmdShiftAtom, true);
+            setTimeout(() => {
+                const simpleState = globalStore.get(simpleCmdShiftAtom);
+                if (simpleState) {
+                    globalStore.set(atoms.cmdShiftDelayAtom, true);
+                }
+            }, 400);
+            return false;
+        }
+
         // global key handler for now (refactor later)
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:]") || keyutil.checkKeyPressed(waveEvent, "Shift:Cmd:]")) {
             switchTab(1);
@@ -381,15 +392,34 @@ const AppInner = () => {
     React.useEffect(() => {
         const staticKeyDownHandler = keyutil.keydownWrapper(handleKeyDown);
         document.addEventListener("keydown", staticKeyDownHandler);
+        const savedKeyUpHandler = handleKeyUp;
+        document.addEventListener("keyup", savedKeyUpHandler);
+
         return () => {
             document.removeEventListener("keydown", staticKeyDownHandler);
+            document.removeEventListener("keyup", savedKeyUpHandler);
         };
     }, []);
+    return null;
+};
+
+const AppInner = () => {
+    const client = jotai.useAtomValue(atoms.client);
+    const windowData = jotai.useAtomValue(atoms.waveWindow);
+    if (client == null || windowData == null) {
+        return (
+            <div className="mainapp">
+                <AppBackground />
+                <CenteredDiv>invalid configuration, client or window was not loaded</CenteredDiv>
+            </div>
+        );
+    }
 
     const isFullScreen = jotai.useAtomValue(atoms.isFullScreen);
     return (
         <div className={clsx("mainapp", PLATFORM, { fullscreen: isFullScreen })} onContextMenu={handleContextMenu}>
             <AppBackground />
+            <AppKeyHandlers />
             <AppSettingsUpdater />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />

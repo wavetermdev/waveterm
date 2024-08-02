@@ -6,6 +6,7 @@ import { Button } from "@/app/element/button";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, globalStore, useBlockAtom, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
+import { LayoutTreeState } from "@/layout/index";
 import { getLayoutStateAtomForTab } from "@/layout/lib/layoutAtom";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { isBlockMagnified } from "@/util/layoututil";
@@ -221,6 +222,50 @@ function renderHeaderElements(headerTextUnion: HeaderElem[]): JSX.Element[] {
     return headerTextElems;
 }
 
+function BlockNum({ blockId }: { blockId: string }) {
+    const tabId = jotai.useAtomValue(atoms.activeTabId);
+    const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
+    const layoutTreeState: LayoutTreeState<TabLayoutData> = globalStore.get(getLayoutStateAtomForTab(tabId, tabAtom));
+    if (!layoutTreeState || !layoutTreeState.leafs) {
+        return null;
+    }
+    for (let idx = 0; idx < layoutTreeState.leafs.length; idx++) {
+        const leaf = layoutTreeState.leafs[idx];
+        if (leaf?.data?.blockId == blockId) {
+            return String(idx + 1);
+        }
+    }
+    return null;
+}
+
+const BlockMask = ({ blockId, preview, isFocused }: { blockId: string; preview: boolean; isFocused: boolean }) => {
+    const isLayoutMode = jotai.useAtomValue(atoms.cmdShiftDelayAtom);
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+
+    const style: React.CSSProperties = {};
+    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
+        style.borderColor = blockData.meta["frame:bordercolor"];
+    }
+    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
+        style.borderColor = blockData.meta["frame:bordercolor:focused"];
+    }
+    let innerElem = null;
+    if (isLayoutMode) {
+        innerElem = (
+            <div className="block-mask-inner">
+                <div className="bignum">
+                    <BlockNum blockId={blockId} />
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className={clsx("block-mask", { "is-layoutmode": isLayoutMode })} style={style}>
+            {innerElem}
+        </div>
+    );
+};
+
 const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const { blockId, layoutModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
@@ -230,19 +275,14 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             return winData?.activeblockid === blockId;
         });
     });
-    let isFocused = jotai.useAtomValue(isFocusedAtom);
     const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const customBg = util.useAtomValueSafe(viewModel.blockBg);
+
+    let isFocused = jotai.useAtomValue(isFocusedAtom);
     if (preview) {
         isFocused = true;
     }
-    const style: React.CSSProperties = {};
-    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
-        style.borderColor = blockData.meta["frame:bordercolor"];
-    }
-    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
-        style.borderColor = blockData.meta["frame:bordercolor:focused"];
-    }
+
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -253,7 +293,6 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             return;
         }
     }
-
     const innerStyle: React.CSSProperties = {};
     if (!preview && customBg?.bg != null) {
         innerStyle.background = customBg.bg;
@@ -278,10 +317,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
-            style={style}
             onKeyDown={handleKeyDown}
         >
-            <div className="block-mask"></div>
+            <BlockMask blockId={blockId} preview={preview} isFocused={isFocused} />
             <div className="block-frame-default-inner" style={innerStyle}>
                 <BlockFrame_Header {...props} />
                 {preview ? previewElem : children}
