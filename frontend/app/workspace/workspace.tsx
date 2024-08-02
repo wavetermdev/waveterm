@@ -82,9 +82,9 @@ const Widgets = React.memo(() => {
             </div>
             <div className="widget" onClick={() => clickHome()}>
                 <div className="widget-icon">
-                    <i className="fa-sharp fa-solid fa-home"></i>
+                    <i className="fa-sharp fa-solid fa-folder"></i>
                 </div>
-                <div className="widget-label">home</div>
+                <div className="widget-label">files</div>
             </div>
             {settingsConfig?.widgets?.map((data, idx) => (
                 <div
