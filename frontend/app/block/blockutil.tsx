@@ -163,7 +163,7 @@ export const IconButton = React.memo(({ decl, className }: { decl: HeaderIconBut
     useLongClick(buttonRef, decl.click, decl.longClick);
     return (
         <div ref={buttonRef} className={clsx("iconbutton", className)} title={decl.title}>
-            <i className={util.makeIconClass(decl.icon, true)} />
+            {typeof decl.icon === "string" ? <i className={util.makeIconClass(decl.icon, true)} /> : decl.icon}
         </div>
     );
 });

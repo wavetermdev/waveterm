@@ -70,6 +70,8 @@
             flex-direction: column;
 
             .block-frame-default-header {
+                max-height: var(--header-height);
+                min-height: var(--header-height);
                 display: flex;
                 padding: 4px 5px 4px 10px;
                 align-items: center;
@@ -90,8 +92,10 @@
 
                 .block-frame-default-header-iconview {
                     display: flex;
+                    flex-shrink: 1;
                     align-items: center;
                     gap: 8px;
+                    overflow-x: hidden;
 
                     .block-frame-view-icon {
                         font-size: var(--header-icon-size);
@@ -103,10 +107,9 @@
                     }
 
                     .block-frame-view-type {
-                        line-height: 12px;
                         font-weight: 700;
-                        text-wrap: nowrap;
                         overflow-x: hidden;
+                        text-wrap: nowrap;
                         text-overflow: ellipsis;
                     }
 
@@ -119,8 +122,8 @@
                     font: var(--fixed-font);
                     font-size: 11px;
                     opacity: 0.7;
-                    text-wrap: nowrap;
                     overflow-x: hidden;
+                    text-wrap: nowrap;
                     text-overflow: ellipsis;
                 }
 
@@ -148,6 +151,7 @@
                     min-width: 0;
                     gap: 8px;
                     align-items: center;
+                    overflow-x: hidden;
 
                     .block-frame-div {
                         display: flex;
@@ -200,12 +204,26 @@
 
                 .block-frame-end-icons {
                     display: flex;
+                    flex-shrink: 0;
 
                     .iconbutton {
                         display: flex;
                         width: 24px;
                         padding: 4px 6px;
                         align-items: center;
+                    }
+
+                    .block-frame-magnify {
+                        justify-content: center;
+                        align-items: center;
+                        padding: 0;
+
+                        svg {
+                            #arrow1,
+                            #arrow2 {
+                                fill: var(--main-text-color);
+                            }
+                        }
                     }
                 }
             }
@@ -220,7 +238,7 @@
                 align-items: center;
                 justify-content: center;
 
-                i {
+                .iconbutton {
                     opacity: 0.7;
                     font-size: 45px;
                     margin: -30px 0 0 0;

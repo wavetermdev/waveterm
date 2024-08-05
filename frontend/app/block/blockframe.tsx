@@ -6,6 +6,7 @@ import { Button } from "@/app/element/button";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, globalStore, useBlockAtom, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
+import { MagnifyIcon } from "@/element/magnify";
 import { LayoutTreeState } from "@/layout/index";
 import { getLayoutStateAtomForTab } from "@/layout/lib/layoutAtom";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -77,13 +78,11 @@ const OptMagnifyButton = React.memo(
         const tabId = globalStore.get(atoms.activeTabId);
         const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
         const layoutTreeState = util.useAtomValueSafe(getLayoutStateAtomForTab(tabId, tabAtom));
-        if (!isBlockMagnified(layoutTreeState, blockData.oid)) {
-            return null;
-        }
+        const isMagnified = isBlockMagnified(layoutTreeState, blockData.oid);
         const magnifyDecl: HeaderIconButton = {
             elemtype: "iconbutton",
-            icon: "regular@magnifying-glass-minus",
-            title: "Minimize",
+            icon: <MagnifyIcon enabled={isMagnified} />,
+            title: isMagnified ? "Minimize" : "Magnify",
             click: layoutModel?.onMagnifyToggle,
         };
         return <IconButton key="magnify" decl={magnifyDecl} className="block-frame-magnify" />;

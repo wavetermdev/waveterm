@@ -61,14 +61,14 @@ export default defineConfig({
         plugins: [
             ViteImageOptimizer(),
             tsconfigPaths(),
+            svgr({
+                svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
+                include: "**/*.svg",
+            }),
             react({}),
             flow(),
             viteStaticCopy({
                 targets: [{ src: "node_modules/monaco-editor/min/vs/*", dest: "monaco" }],
-            }),
-            svgr({
-                svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
-                include: "**/*.svg",
             }),
         ],
     },

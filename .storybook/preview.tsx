@@ -3,7 +3,6 @@ import type { Preview } from "@storybook/react";
 import React from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-
 import "./global.css";
 
 const preview: Preview = {

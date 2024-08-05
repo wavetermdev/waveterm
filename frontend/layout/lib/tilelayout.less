@@ -117,3 +117,16 @@
         border-radius: calc(var(--block-border-radius) + 2px);
     }
 }
+
+@media (prefers-reduced-motion) {
+    .tile-layout {
+        &.animate {
+            .tile-node,
+            .placeholder {
+                transition-duration: none;
+                transition-timing-function: none;
+                transition-property: none;
+            }
+        }
+    }
+}

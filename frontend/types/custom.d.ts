@@ -123,7 +123,7 @@ declare global {
 
     type HeaderIconButton = {
         elemtype: "iconbutton";
-        icon: string;
+        icon: string | React.ReactNode;
         className?: string;
         title?: string;
         click?: (e: React.MouseEvent<any>) => void;
