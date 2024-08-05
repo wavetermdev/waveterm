@@ -57,8 +57,8 @@ github.com/sashabaranov/go-openai v1.27.1 h1:7Nx6db5NXbcoutNmAUQulEQZEpHG/Skzfex
 github.com/sashabaranov/go-openai v1.27.1/go.mod h1:lj5b/K+zjTSFxVLijLSTDZuP7adOgerWeFyZLUhAKRg=
 github.com/sawka/txwrap v0.2.0 h1:V3LfvKVLULxcYSxdMguLwFyQFMEU9nFDJopg0ZkL+94=
 github.com/sawka/txwrap v0.2.0/go.mod h1:wwQ2SQiN4U+6DU/iVPhbvr7OzXAtgZlQCIGuvOswEfA=
-github.com/shirou/gopsutil/v4 v4.24.6 h1:9qqCSYF2pgOU+t+NgJtp7Co5+5mHF/HyKBUckySQL64=
-github.com/shirou/gopsutil/v4 v4.24.6/go.mod h1:aoebb2vxetJ/yIDZISmduFvVNPHqXQ9SEJwRXxkf0RA=
+github.com/shirou/gopsutil/v4 v4.24.7 h1:V9UGTK4gQ8HvcnPKf6Zt3XHyQq/peaekfxpJ2HSocJk=
+github.com/shirou/gopsutil/v4 v4.24.7/go.mod h1:0uW/073rP7FYLOkvxolUQM5rMOLTNmRXnFKafpb71rw=
 github.com/shoenig/go-m1cpu v0.1.6 h1:nxdKQNcEB6vzgA2E2bvzKIYRuNj7XNJ4S/aRSwKzFtM=
 github.com/shoenig/go-m1cpu v0.1.6/go.mod h1:1JJMcUBvfNwpq05QDQVAnx3gUHr9IYF7GNg9SUEw2VQ=
 github.com/shoenig/test v0.6.4 h1:kVTaSd7WLz5WZ2IaoM0RSzRsUD+m8wRR+5qvntpn4LU=

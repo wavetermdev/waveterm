@@ -18,7 +18,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sashabaranov/go-openai v1.27.1
 	github.com/sawka/txwrap v0.2.0
-	github.com/shirou/gopsutil/v4 v4.24.6
+	github.com/shirou/gopsutil/v4 v4.24.7
 	github.com/spf13/cobra v1.8.1
 	github.com/wavetermdev/htmltoken v0.1.0
 	github.com/wavetermdev/waveterm/wavesrv v0.0.0-20240508181017-d07068c09d94
