@@ -162,7 +162,7 @@ export const IconButton = React.memo(({ decl, className }: { decl: HeaderIconBut
     const buttonRef = React.useRef<HTMLDivElement>(null);
     useLongClick(buttonRef, decl.click, decl.longClick);
     return (
-        <div ref={buttonRef} className={clsx(className)} title={decl.title}>
+        <div ref={buttonRef} className={clsx("iconbutton", className)} title={decl.title}>
             <i className={util.makeIconClass(decl.icon, true)} />
         </div>
     );

@@ -86,9 +86,7 @@ const OptMagnifyButton = React.memo(
             title: "Minimize",
             click: layoutModel?.onMagnifyToggle,
         };
-        return (
-            <IconButton key="magnify" decl={magnifyDecl} className="block-frame-endicon-button block-frame-magnify" />
-        );
+        return <IconButton key="magnify" decl={magnifyDecl} className="block-frame-magnify" />;
     }
 );
 
@@ -97,11 +95,7 @@ function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: La
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
 
     if (endIconButtons && endIconButtons.length > 0) {
-        endIconsElem.push(
-            ...endIconButtons.map((button, idx) => (
-                <IconButton key={idx} decl={button} className="block-frame-endicon-button" />
-            ))
-        );
+        endIconsElem.push(...endIconButtons.map((button, idx) => <IconButton key={idx} decl={button} />));
     }
     const settingsDecl: HeaderIconButton = {
         elemtype: "iconbutton",
@@ -110,9 +104,7 @@ function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: La
         click: (e) =>
             handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onMagnifyToggle, layoutModel?.onClose),
     };
-    endIconsElem.push(
-        <IconButton key="settings" decl={settingsDecl} className="block-frame-endicon-button block-frame-settings" />
-    );
+    endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
     endIconsElem.push(<OptMagnifyButton key="unmagnify" blockData={blockData} layoutModel={layoutModel} />);
     const closeDecl: HeaderIconButton = {
         elemtype: "iconbutton",
@@ -120,9 +112,7 @@ function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: La
         title: "Close",
         click: layoutModel?.onClose,
     };
-    endIconsElem.push(
-        <IconButton key="close" decl={closeDecl} className="block-frame-endicon-button block-frame-default-close" />
-    );
+    endIconsElem.push(<IconButton key="close" decl={closeDecl} className="block-frame-default-close" />);
     return endIconsElem;
 }
 
