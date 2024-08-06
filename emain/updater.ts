@@ -113,7 +113,7 @@ export class Updater {
                 };
                 electron.dialog.showMessageBox(electron.BrowserWindow.getFocusedWindow(), dialogOpts);
             }
-            this.lastUpdateCheck = now;
+            if (!userInput) this.lastUpdateCheck = now;
         }
     }
 
