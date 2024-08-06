@@ -66,7 +66,7 @@ export class Updater {
 
     /**
      * Sets the app update status and sends it to the main window
-     * @param value The AppUpdateStatus to set, either "ready" or "unavailable"
+     * @param value The status to set
      */
     private set status(value: UpdaterStatus) {
         this._status = value;
@@ -105,17 +105,15 @@ export class Updater {
             !this.lastUpdateCheck ||
             Math.abs(now.getTime() - this.lastUpdateCheck.getTime()) > autoUpdateOpts.intervalms
         ) {
-            fireAndForget(() =>
-                autoUpdater.checkForUpdates().then(() => {
-                    if (userInput && this.status === "up-to-date") {
-                        const dialogOpts: Electron.MessageBoxOptions = {
-                            type: "info",
-                            message: "There are currently no updates available.",
-                        };
-                        electron.dialog.showMessageBox(electron.BrowserWindow.getFocusedWindow(), dialogOpts);
-                    }
-                })
-            );
+            const result = await autoUpdater.checkForUpdates();
+            console.log("check for updates result:", result.updateInfo.version, result);
+            if (userInput && !result.downloadPromise) {
+                const dialogOpts: Electron.MessageBoxOptions = {
+                    type: "info",
+                    message: "There are currently no updates available.",
+                };
+                electron.dialog.showMessageBox(electron.BrowserWindow.getFocusedWindow(), dialogOpts);
+            }
             this.lastUpdateCheck = now;
         }
     }
