@@ -19,6 +19,7 @@ declare global {
     type AutoUpdateOpts = {
         enabled: boolean;
         intervalms: number;
+        installonquit: boolean;
     };
 
     // wstore.Block

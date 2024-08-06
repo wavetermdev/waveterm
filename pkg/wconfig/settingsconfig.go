@@ -48,8 +48,9 @@ type BlockHeaderOpts struct {
 }
 
 type AutoUpdateOpts struct {
-	Enabled    bool   `json:"enabled"`
-	IntervalMs uint32 `json:"intervalms"`
+	Enabled       bool   `json:"enabled"`
+	IntervalMs    uint32 `json:"intervalms"`
+	InstallOnQuit bool   `json:"installonquit"`
 }
 
 type TermThemeType struct {
@@ -245,8 +246,9 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 	}
 	if settings.AutoUpdate == nil {
 		settings.AutoUpdate = &AutoUpdateOpts{
-			Enabled:    true,
-			IntervalMs: 3600000,
+			Enabled:       true,
+			InstallOnQuit: true,
+			IntervalMs:    3600000,
 		}
 	}
 	var userName string

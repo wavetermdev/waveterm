@@ -187,23 +187,24 @@ export async function configureAutoUpdater() {
 
     autoUpdateLock = true;
 
-    const autoUpdateEnabled = (await services.FileService.GetSettingsConfig()).autoupdate.enabled;
+    const autoUpdateOpts = (await services.FileService.GetSettingsConfig()).autoupdate;
 
     try {
         console.log("Configuring updater");
         updater = new Updater();
+        autoUpdater.autoInstallOnAppQuit = autoUpdateOpts.installonquit;
     } catch (e) {
         console.warn("error configuring updater", e.toString());
     }
 
-    if (autoUpdateEnabled && updater?.interval == null) {
+    if (autoUpdateOpts.enabled && updater?.interval == null) {
         try {
             console.log("configuring auto update interval");
             updater?.startInterval();
         } catch (e) {
             console.log("error configuring auto update interval", e.toString());
         }
-    } else if (!autoUpdateEnabled && updater?.interval != null) {
+    } else if (!autoUpdateOpts.enabled && updater?.interval != null) {
         console.log("disabling auto updater");
         clearInterval(updater.interval);
         updater = null;
