@@ -106,6 +106,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const cmdShiftDelayAtom = jotai.atom(false);
     const updateStatusAtom = jotai.atom<UpdaterStatus>("up-to-date") as jotai.PrimitiveAtom<UpdaterStatus>;
     try {
+        globalStore.set(updateStatusAtom, getApi().getUpdaterStatus());
         getApi().onUpdaterStatusChange((status) => {
             console.log("updater status change", status);
             globalStore.set(updateStatusAtom, status);

@@ -47,7 +47,7 @@ export class Updater {
                 body: "A new version of Wave Terminal is ready to install.",
             });
             updateNotification.on("click", () => {
-                fireAndForget(() => this.installAppUpdate());
+                fireAndForget(() => this.promptToInstallUpdate());
             });
             updateNotification.show();
         });
@@ -130,7 +130,7 @@ export class Updater {
     /**
      * Prompts the user to install the downloaded application update and restarts the application
      */
-    async installAppUpdate() {
+    async promptToInstallUpdate() {
         const dialogOpts: Electron.MessageBoxOptions = {
             type: "info",
             buttons: ["Restart", "Later"],
@@ -145,15 +145,24 @@ export class Updater {
                 .showMessageBox(electron.BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
                 .then(({ response }) => {
                     if (response === 0) {
-                        this.status = "installing";
-                        autoUpdater.quitAndInstall();
+                        this.installUpdate();
                     }
                 });
         }
     }
+
+    /**
+     * Restarts the app and installs an update if it is available.
+     */
+    installUpdate() {
+        if (this.status == "ready") {
+            this.status = "installing";
+            autoUpdater.quitAndInstall();
+        }
+    }
 }
 
-electron.ipcMain.on("install-app-update", () => fireAndForget(() => updater?.installAppUpdate()));
+electron.ipcMain.on("install-app-update", () => fireAndForget(() => updater?.promptToInstallUpdate()));
 electron.ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = updater?.status;
 });

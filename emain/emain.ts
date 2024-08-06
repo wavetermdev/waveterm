@@ -731,6 +731,7 @@ electronApp.on("window-all-closed", () => {
 });
 electronApp.on("before-quit", () => {
     globalIsQuitting = true;
+    updater?.installUpdate();
 });
 process.on("SIGINT", () => {
     console.log("Caught SIGINT, shutting down");
