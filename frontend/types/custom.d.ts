@@ -182,7 +182,7 @@ declare global {
         giveFocus?: () => boolean;
     }
 
-    type UpdaterStatus = "up-to-date" | "checking" | "downloading" | "ready" | "error";
+    type UpdaterStatus = "up-to-date" | "checking" | "downloading" | "ready" | "error" | "installing";
 
     // jotai doesn't export this type :/
     type Loadable<T> = { state: "loading" } | { state: "hasData"; data: T } | { state: "hasError"; error: unknown };

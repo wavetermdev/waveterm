@@ -153,7 +153,7 @@ function runWaveSrv(): Promise<boolean> {
         env: envCopy,
     });
     proc.on("exit", (e) => {
-        if (globalIsQuitting) {
+        if (globalIsQuitting || updater?.status == "installing") {
             return;
         }
         console.log("wavesrv exited, shutting down");
@@ -412,7 +412,7 @@ function createBrowserWindow(
         win.webContents.send("fullscreen-change", false);
     });
     win.on("close", (e) => {
-        if (globalIsQuitting) {
+        if (globalIsQuitting || updater?.status == "installing") {
             return;
         }
         const choice = electron.dialog.showMessageBoxSync(win, {
@@ -426,7 +426,7 @@ function createBrowserWindow(
         }
     });
     win.on("closed", () => {
-        if (globalIsQuitting) {
+        if (globalIsQuitting || updater?.status == "installing") {
             return;
         }
         services.WindowService.CloseWindow(waveWindow.oid);
@@ -623,8 +623,8 @@ function makeAppMenu() {
         },
         {
             label: "Check for Updates",
-            click: () => {
-                fireAndForget(() => updater?.checkForUpdates(true));
+            click: async () => {
+                await updater?.checkForUpdates(true);
             },
         },
         {
@@ -807,7 +807,7 @@ async function appMain() {
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
     relaunchBrowserWindows();
-    configureAutoUpdater();
+    await configureAutoUpdater();
     globalIsStarting = false;
 
     electronApp.on("activate", () => {

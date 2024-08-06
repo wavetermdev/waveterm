@@ -4,15 +4,13 @@ import { autoUpdater } from "electron-updater";
 import * as services from "../frontend/app/store/services";
 import { fireAndForget } from "../frontend/util/util";
 
-let autoUpdateLock = false;
-
 export let updater: Updater;
 
 export class Updater {
     interval: NodeJS.Timeout | null;
     availableUpdateReleaseName: string | null;
     availableUpdateReleaseNotes: string | null;
-    _status: UpdaterStatus;
+    private _status: UpdaterStatus;
     lastUpdateCheck: Date;
 
     constructor() {
@@ -102,6 +100,7 @@ export class Updater {
         }
         const now = new Date();
         if (
+            userInput ||
             !this.lastUpdateCheck ||
             Math.abs(now.getTime() - this.lastUpdateCheck.getTime()) > autoUpdateOpts.intervalms
         ) {
@@ -135,7 +134,10 @@ export class Updater {
             await electron.dialog
                 .showMessageBox(electron.BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
                 .then(({ response }) => {
-                    if (response === 0) autoUpdater.quitAndInstall();
+                    if (response === 0) {
+                        this.status = "installing";
+                        autoUpdater.quitAndInstall();
+                    }
                 });
         }
     }
@@ -146,6 +148,8 @@ electron.ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = updater?.status;
 });
 
+let autoUpdateLock = false;
+
 /**
  * Configures the auto-updater based on the user's preference
  * @param enabled Whether the auto-updater should be enabled
@@ -153,7 +157,7 @@ electron.ipcMain.on("get-app-update-status", (event) => {
 export async function configureAutoUpdater() {
     if (isDev()) {
         console.log("skipping auto-updater in dev mode");
-        return null;
+        return;
     }
 
     // simple lock to prevent multiple auto-update configuration attempts, this should be very rare
