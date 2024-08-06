@@ -70,7 +70,6 @@
 
         &.right {
             flex-grow: 1;
-            min-width: 74px;
         }
     }
 
@@ -84,5 +83,20 @@
         --os-track-border-radius: 2px;
         --os-handle-interactive-area-offset: 0px;
         --os-handle-border-radius: 2px;
+    }
+
+    .update-available-label {
+        height: 80%;
+        opacity: 0.7;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: auto 4px;
+        color: black;
+        background-color: var(--accent-color);
+        padding: 0 5px;
+        border-radius: var(--block-border-radius);
+        flex: 0 0 fit-content;
     }
 }

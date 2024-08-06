@@ -1,10 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { initGlobal } from "@/app/store/global";
-import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
 import * as electron from "electron";
-import { autoUpdater } from "electron-updater";
 import fs from "fs";
 import * as child_process from "node:child_process";
 import os from "os";
@@ -14,10 +11,13 @@ import { sprintf } from "sprintf-js";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
+import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
+import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
+import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
 
@@ -624,12 +624,7 @@ function makeAppMenu() {
         {
             label: "Check for Updates",
             click: () => {
-                const checkingNotification = new electron.Notification({
-                    title: "Wave Terminal",
-                    body: "Checking for updates.",
-                });
-                checkingNotification.show();
-                fireAndForget(() => checkForUpdates());
+                fireAndForget(() => updater?.checkForUpdates(true));
             },
         },
         {
@@ -759,170 +754,6 @@ process.on("uncaughtException", (error) => {
     // Optionally, handle cleanup or exit the app
     electronApp.quit();
 });
-
-// ====== AUTO-UPDATER ====== //
-let autoUpdateLock = false;
-let autoUpdateInterval: NodeJS.Timeout | null = null;
-let availableUpdateReleaseName: string | null = null;
-let availableUpdateReleaseNotes: string | null = null;
-let appUpdateStatus = "unavailable";
-let lastUpdateCheck: Date = null;
-
-/**
- * Sets the app update status and sends it to the main window
- * @param status The AppUpdateStatus to set, either "ready" or "unavailable"
- */
-function setAppUpdateStatus(status: string) {
-    appUpdateStatus = status;
-    electron.BrowserWindow.getAllWindows().forEach((window) => {
-        window.webContents.send("app-update-status", appUpdateStatus);
-    });
-}
-
-/**
- * Checks if an hour has passed since the last update check, and if so, checks for updates using the `autoUpdater` object
- */
-async function checkForUpdates() {
-    const autoUpdateOpts = (await services.FileService.GetSettingsConfig()).autoupdate;
-
-    if (!autoUpdateOpts.enabled) {
-        console.log("Auto update is disabled in settings. Removing the auto update interval.");
-        clearInterval(autoUpdateInterval);
-        autoUpdateInterval = null;
-        return;
-    }
-    const now = new Date();
-    if (!lastUpdateCheck || Math.abs(now.getTime() - lastUpdateCheck.getTime()) > autoUpdateOpts.intervalms) {
-        fireAndForget(() => autoUpdater.checkForUpdates());
-        lastUpdateCheck = now;
-    }
-}
-
-/**
- * Initializes the updater and sets up event listeners
- */
-function initUpdater() {
-    if (isDev) {
-        console.log("skipping auto-updater in dev mode");
-        return null;
-    }
-
-    setAppUpdateStatus("unavailable");
-
-    autoUpdater.removeAllListeners();
-
-    autoUpdater.on("error", (err) => {
-        console.log("updater error");
-        console.log(err);
-    });
-
-    autoUpdater.on("checking-for-update", () => {
-        console.log("checking-for-update");
-    });
-
-    autoUpdater.on("update-available", () => {
-        console.log("update-available; downloading...");
-    });
-
-    autoUpdater.on("update-not-available", () => {
-        console.log("update-not-available");
-    });
-
-    autoUpdater.on("update-downloaded", (event) => {
-        console.log("update-downloaded", [event]);
-        availableUpdateReleaseName = event.releaseName;
-        availableUpdateReleaseNotes = event.releaseNotes as string | null;
-
-        // Display the update banner and create a system notification
-        setAppUpdateStatus("ready");
-        const updateNotification = new electron.Notification({
-            title: "Wave Terminal",
-            body: "A new version of Wave Terminal is ready to install.",
-        });
-        updateNotification.on("click", () => {
-            fireAndForget(() => installAppUpdate());
-        });
-        updateNotification.show();
-    });
-}
-
-/**
- * Starts the auto update check interval.
- * @returns The timeout object for the auto update checker.
- */
-function startAutoUpdateInterval(): NodeJS.Timeout {
-    // check for updates right away and keep checking later
-    checkForUpdates();
-    return setInterval(() => {
-        checkForUpdates();
-    }, 600000); // intervals are unreliable when an app is suspended so we will check every 10 mins if an hour has passed.
-}
-
-/**
- * Prompts the user to install the downloaded application update and restarts the application
- */
-async function installAppUpdate() {
-    const dialogOpts: Electron.MessageBoxOptions = {
-        type: "info",
-        buttons: ["Restart", "Later"],
-        title: "Application Update",
-        message: process.platform === "win32" ? availableUpdateReleaseNotes : availableUpdateReleaseName,
-        detail: "A new version has been downloaded. Restart the application to apply the updates.",
-    };
-
-    const allWindows = electron.BrowserWindow.getAllWindows();
-    if (allWindows.length > 0) {
-        await electron.dialog
-            .showMessageBox(electron.BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
-            .then(({ response }) => {
-                if (response === 0) autoUpdater.quitAndInstall();
-            });
-    }
-}
-
-electron.ipcMain.on("install-app-update", () => fireAndForget(() => installAppUpdate()));
-electron.ipcMain.on("get-app-update-status", (event) => {
-    event.returnValue = appUpdateStatus;
-});
-
-/**
- * Configures the auto-updater based on the user's preference
- * @param enabled Whether the auto-updater should be enabled
- */
-async function configureAutoUpdater() {
-    // simple lock to prevent multiple auto-update configuration attempts, this should be very rare
-    if (autoUpdateLock) {
-        console.log("auto-update configuration already in progress, skipping");
-        return;
-    }
-
-    autoUpdateLock = true;
-
-    const autoUpdateEnabled = (await services.FileService.GetSettingsConfig()).autoupdate.enabled;
-
-    try {
-        console.log("Configuring updater");
-        initUpdater();
-    } catch (e) {
-        console.warn("error configuring updater", e.toString());
-    }
-
-    if (autoUpdateEnabled && autoUpdateInterval == null) {
-        lastUpdateCheck = null;
-        try {
-            console.log("configuring auto update interval");
-            autoUpdateInterval = startAutoUpdateInterval();
-        } catch (e) {
-            console.log("error configuring auto update interval", e.toString());
-        }
-    } else if (!autoUpdateEnabled && autoUpdateInterval != null) {
-        console.log("disabling auto updater");
-        clearInterval(autoUpdateInterval);
-        autoUpdateInterval = null;
-    }
-    autoUpdateLock = false;
-}
-// ====== AUTO-UPDATER ====== //
 
 async function relaunchBrowserWindows() {
     globalIsRelaunching = true;

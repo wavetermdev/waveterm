@@ -17,6 +17,7 @@ declare global {
         activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         cmdShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
+        updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
     };
 
     type TabLayoutData = {
@@ -44,6 +45,9 @@ declare global {
         downloadFile: (path: string) => void;
         openExternal: (url: string) => void;
         onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void;
+        onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void;
+        getUpdaterStatus: () => UpdaterStatus;
+        installAppUpdate: () => void;
     };
 
     type ElectronContextMenuItem = {
@@ -177,6 +181,8 @@ declare global {
         getSettingsMenuItems?: () => ContextMenuItem[];
         giveFocus?: () => boolean;
     }
+
+    type UpdaterStatus = "up-to-date" | "checking" | "downloading" | "ready" | "error";
 
     // jotai doesn't export this type :/
     type Loadable<T> = { state: "loading" } | { state: "hasData"; data: T } | { state: "hasError"; error: unknown };

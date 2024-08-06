@@ -104,6 +104,15 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return windowData.activetabid;
     });
     const cmdShiftDelayAtom = jotai.atom(false);
+    const updateStatusAtom = jotai.atom<UpdaterStatus>("up-to-date") as jotai.PrimitiveAtom<UpdaterStatus>;
+    try {
+        getApi().onUpdaterStatusChange((status) => {
+            console.log("updater status change", status);
+            globalStore.set(updateStatusAtom, status);
+        });
+    } catch (_) {
+        // do nothing
+    }
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         windowId: windowIdAtom,
@@ -117,6 +126,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         activeTabId: activeTabIdAtom,
         isFullScreen: isFullScreenAtom,
         cmdShiftDelayAtom: cmdShiftDelayAtom,
+        updaterStatusAtom: updateStatusAtom,
     };
 }
 

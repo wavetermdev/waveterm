@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WindowDrag } from "@/element/windowdrag";
-import { atoms, isDev } from "@/store/global";
+import { atoms, getApi, isDev } from "@/store/global";
 import * as services from "@/store/services";
 import { deleteLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { useAtomValue } from "jotai";
@@ -70,11 +70,14 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
+    const updateStatusLabelRef = useRef<HTMLDivElement>(null);
 
     const windowData = useAtomValue(atoms.waveWindow);
     const { activetabid } = windowData;
 
     const isFullScreen = useAtomValue(atoms.isFullScreen);
+
+    const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -125,7 +128,9 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
-        const spaceForTabs = tabbarWrapperWidth - (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth);
+        const updateStatusLabelWidth = updateStatusLabelRef.current?.getBoundingClientRect().width ?? 0;
+        const spaceForTabs =
+            tabbarWrapperWidth - (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth + updateStatusLabelWidth);
 
         const numberOfTabs = tabIds.length;
         const totalDefaultTabWidth = numberOfTabs * TAB_DEFAULT_WIDTH;
@@ -137,7 +142,9 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
         console.log("spaceForTabs", spaceForTabs, minTotalTabWidth);
 
-        if (minTotalTabWidth > spaceForTabs) {
+        if (spaceForTabs < totalDefaultTabWidth && spaceForTabs > minTotalTabWidth) {
+            newTabWidth = TAB_MIN_WIDTH;
+        } else if (minTotalTabWidth > spaceForTabs) {
             // Case where tabs cannot shrink further, make the tab bar scrollable
             newTabWidth = TAB_MIN_WIDTH;
             newScrollable = true;
@@ -487,6 +494,19 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         );
     }
 
+    function onUpdateAvailableClick() {
+        getApi().installAppUpdate();
+    }
+
+    let updateAvailableLabel: React.ReactNode = null;
+    if (appUpdateStatus === "ready") {
+        updateAvailableLabel = (
+            <div ref={updateStatusLabelRef} className="update-available-label" onClick={onUpdateAvailableClick}>
+                Update Available: Click to Install
+            </div>
+        );
+    }
+
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
@@ -518,6 +538,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>
             <WindowDrag ref={draggerRightRef} className="right" />
+            {updateAvailableLabel}
         </div>
     );
 });

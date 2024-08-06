@@ -1,0 +1,191 @@
+import * as electron from "electron";
+import { autoUpdater } from "electron-updater";
+import * as services from "../frontend/app/store/services";
+import { isDev } from "../frontend/util/isdev";
+import { fireAndForget } from "../frontend/util/util";
+
+let autoUpdateLock = false;
+
+export let updater: Updater;
+
+export class Updater {
+    interval: NodeJS.Timeout | null;
+    availableUpdateReleaseName: string | null;
+    availableUpdateReleaseNotes: string | null;
+    _status: UpdaterStatus;
+    lastUpdateCheck: Date;
+
+    constructor() {
+        if (isDev) {
+            console.log("skipping auto-updater in dev mode");
+            return null;
+        }
+
+        autoUpdater.removeAllListeners();
+
+        autoUpdater.on("error", (err) => {
+            console.log("updater error");
+            console.log(err);
+            this.status = "error";
+        });
+
+        autoUpdater.on("checking-for-update", () => {
+            console.log("checking-for-update");
+            this.status = "checking";
+        });
+
+        autoUpdater.on("update-available", () => {
+            console.log("update-available; downloading...");
+        });
+
+        autoUpdater.on("update-not-available", () => {
+            console.log("update-not-available");
+        });
+
+        autoUpdater.on("update-downloaded", (event) => {
+            console.log("update-downloaded", [event]);
+            this.availableUpdateReleaseName = event.releaseName;
+            this.availableUpdateReleaseNotes = event.releaseNotes as string | null;
+
+            // Display the update banner and create a system notification
+            this.status = "ready";
+            const updateNotification = new electron.Notification({
+                title: "Wave Terminal",
+                body: "A new version of Wave Terminal is ready to install.",
+            });
+            updateNotification.on("click", () => {
+                fireAndForget(() => this.installAppUpdate());
+            });
+            updateNotification.show();
+        });
+
+        this._status = "up-to-date";
+        this.lastUpdateCheck = new Date(0);
+        this.interval = null;
+        this.availableUpdateReleaseName = null;
+    }
+
+    get status(): UpdaterStatus {
+        return this._status;
+    }
+
+    /**
+     * Sets the app update status and sends it to the main window
+     * @param value The AppUpdateStatus to set, either "ready" or "unavailable"
+     */
+    private set status(value: UpdaterStatus) {
+        this._status = value;
+        electron.BrowserWindow.getAllWindows().forEach((window) => {
+            window.webContents.send("app-update-status", value);
+        });
+    }
+
+    /**
+     * Starts the auto update check interval.
+     * @returns The timeout object for the auto update checker.
+     */
+    startAutoUpdateInterval(): NodeJS.Timeout {
+        // check for updates right away and keep checking later
+        this.checkForUpdates(false);
+        return setInterval(() => {
+            this.checkForUpdates(false);
+        }, 600000); // intervals are unreliable when an app is suspended so we will check every 10 mins if an hour has passed.
+    }
+
+    /**
+     * Checks if an hour has passed since the last update check, and if so, checks for updates using the `autoUpdater` object
+     * @param userInput Whether the user is requesting this. If so, an alert will report the result of the check.
+     */
+    async checkForUpdates(userInput: boolean) {
+        const autoUpdateOpts = (await services.FileService.GetSettingsConfig()).autoupdate;
+
+        if (!autoUpdateOpts.enabled) {
+            console.log("Auto update is disabled in settings. Removing the auto update interval.");
+            clearInterval(this.interval);
+            this.interval = null;
+            return;
+        }
+        const now = new Date();
+        if (
+            !this.lastUpdateCheck ||
+            Math.abs(now.getTime() - this.lastUpdateCheck.getTime()) > autoUpdateOpts.intervalms
+        ) {
+            fireAndForget(() =>
+                autoUpdater.checkForUpdates().then(() => {
+                    if (userInput && this.status === "up-to-date") {
+                        const dialogOpts: Electron.MessageBoxOptions = {
+                            type: "info",
+                            message: "There are currently no updates available.",
+                        };
+                        electron.dialog.showMessageBox(electron.BrowserWindow.getFocusedWindow(), dialogOpts);
+                    }
+                })
+            );
+            this.lastUpdateCheck = now;
+        }
+    }
+
+    /**
+     * Prompts the user to install the downloaded application update and restarts the application
+     */
+    async installAppUpdate() {
+        const dialogOpts: Electron.MessageBoxOptions = {
+            type: "info",
+            buttons: ["Restart", "Later"],
+            title: "Application Update",
+            message: process.platform === "win32" ? this.availableUpdateReleaseNotes : this.availableUpdateReleaseName,
+            detail: "A new version has been downloaded. Restart the application to apply the updates.",
+        };
+
+        const allWindows = electron.BrowserWindow.getAllWindows();
+        if (allWindows.length > 0) {
+            await electron.dialog
+                .showMessageBox(electron.BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
+                .then(({ response }) => {
+                    if (response === 0) autoUpdater.quitAndInstall();
+                });
+        }
+    }
+}
+
+electron.ipcMain.on("install-app-update", () => fireAndForget(() => updater?.installAppUpdate()));
+electron.ipcMain.on("get-app-update-status", (event) => {
+    event.returnValue = updater?.status;
+});
+
+/**
+ * Configures the auto-updater based on the user's preference
+ * @param enabled Whether the auto-updater should be enabled
+ */
+export async function configureAutoUpdater() {
+    // simple lock to prevent multiple auto-update configuration attempts, this should be very rare
+    if (autoUpdateLock) {
+        console.log("auto-update configuration already in progress, skipping");
+        return;
+    }
+
+    autoUpdateLock = true;
+
+    const autoUpdateEnabled = (await services.FileService.GetSettingsConfig()).autoupdate.enabled;
+
+    try {
+        console.log("Configuring updater");
+        updater = new Updater();
+    } catch (e) {
+        console.warn("error configuring updater", e.toString());
+    }
+
+    if (autoUpdateEnabled && updater?.interval == null) {
+        try {
+            console.log("configuring auto update interval");
+            updater?.startAutoUpdateInterval();
+        } catch (e) {
+            console.log("error configuring auto update interval", e.toString());
+        }
+    } else if (!autoUpdateEnabled && updater?.interval != null) {
+        console.log("disabling auto updater");
+        clearInterval(updater.interval);
+        updater = null;
+    }
+    autoUpdateLock = false;
+}

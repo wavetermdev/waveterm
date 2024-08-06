@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld("api", {
     getEnv: (varName) => ipcRenderer.sendSync("getEnv", varName),
     onFullScreenChange: (callback) =>
         ipcRenderer.on("fullscreen-change", (_event, isFullScreen) => callback(isFullScreen)),
+    onUpdaterStatusChange: (callback) => ipcRenderer.on("app-update-status", (_event, status) => callback(status)),
+    getUpdaterStatus: () => ipcRenderer.sendSync("get-app-update-status"),
+    installAppUpdate: () => ipcRenderer.send("install-app-update"),
 });
 
 // Custom event for "new-window"
