@@ -86,7 +86,7 @@ export class Updater {
     }
 
     /**
-     * Checks if an hour has passed since the last update check, and if so, checks for updates using the `autoUpdater` object
+     * Checks if the configured interval time has passed since the last update check, and if so, checks for updates using the `autoUpdater` object
      * @param userInput Whether the user is requesting this. If so, an alert will report the result of the check.
      */
     async checkForUpdates(userInput: boolean) {
