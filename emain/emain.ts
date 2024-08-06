@@ -806,13 +806,13 @@ async function appMain() {
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
-    relaunchBrowserWindows();
+    await relaunchBrowserWindows();
     await configureAutoUpdater();
     globalIsStarting = false;
 
-    electronApp.on("activate", () => {
+    electronApp.on("activate", async () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
-            createNewWaveWindow();
+            await createNewWaveWindow();
         }
     });
 }
