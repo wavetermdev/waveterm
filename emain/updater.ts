@@ -92,20 +92,25 @@ export class Updater {
     async checkForUpdates(userInput: boolean) {
         const autoUpdateOpts = (await services.FileService.GetSettingsConfig()).autoupdate;
 
-        if (!autoUpdateOpts.enabled) {
+        // If there's an active update check interval, check that the user still has auto update checks enabled. If not, remove the interval.
+        if (this.interval && !autoUpdateOpts.enabled) {
             console.log("Auto update is disabled in settings. Removing the auto update interval.");
             clearInterval(this.interval);
             this.interval = null;
-            return;
         }
+
         const now = new Date();
+
+        // Run an update check always if the user requests it, otherwise only if there's an active update check interval and enough time has elapsed.
         if (
             userInput ||
-            !this.lastUpdateCheck ||
-            Math.abs(now.getTime() - this.lastUpdateCheck.getTime()) > autoUpdateOpts.intervalms
+            (this.interval &&
+                (!this.lastUpdateCheck ||
+                    Math.abs(now.getTime() - this.lastUpdateCheck.getTime()) > autoUpdateOpts.intervalms))
         ) {
             const result = await autoUpdater.checkForUpdates();
-            console.log("check for updates result:", result.updateInfo.version, result);
+
+            // If the user requested this check and we do not have an available update, let them know with a popup dialog. No need to tell them if there is an update, because we show a banner once the update is ready to install.
             if (userInput && !result.downloadPromise) {
                 const dialogOpts: Electron.MessageBoxOptions = {
                     type: "info",
@@ -113,6 +118,8 @@ export class Updater {
                 };
                 electron.dialog.showMessageBox(electron.BrowserWindow.getFocusedWindow(), dialogOpts);
             }
+
+            // Only update the last check time if this is an automatic check. This ensures the interval remains consistent.
             if (!userInput) this.lastUpdateCheck = now;
         }
     }
