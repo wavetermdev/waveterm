@@ -12,6 +12,7 @@ import React, { createRef, useCallback, useEffect, useRef, useState } from "reac
 import { Tab } from "./tab";
 
 import { debounce } from "throttle-debounce";
+import { Button } from "../element/button";
 import "./tabbar.less";
 
 const TAB_DEFAULT_WIDTH = 130;
@@ -70,7 +71,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
-    const updateStatusLabelRef = useRef<HTMLDivElement>(null);
+    const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
 
     const windowData = useAtomValue(atoms.waveWindow);
     const { activetabid } = windowData;
@@ -128,7 +129,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
-        const updateStatusLabelWidth = updateStatusLabelRef.current?.getBoundingClientRect().width ?? 0;
+        const updateStatusLabelWidth = updateStatusButtonRef.current?.getBoundingClientRect().width ?? 0;
         const spaceForTabs =
             tabbarWrapperWidth - (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth + updateStatusLabelWidth);
 
@@ -507,9 +508,14 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     let updateAvailableLabel: React.ReactNode = null;
     if (appUpdateStatus === "ready") {
         updateAvailableLabel = (
-            <div ref={updateStatusLabelRef} className="update-available-label" onClick={onUpdateAvailableClick}>
-                Update Available: Click to Install
-            </div>
+            <Button
+                forwardedRef={updateStatusButtonRef}
+                className="update-available-button"
+                title="Click to Install Update"
+                onClick={onUpdateAvailableClick}
+            >
+                Update Available
+            </Button>
         );
     }
 

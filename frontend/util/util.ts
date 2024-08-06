@@ -102,7 +102,7 @@ function makeIconClass(icon: string, fw: boolean): string {
  * @param f The promise to run
  */
 function fireAndForget(f: () => Promise<any>) {
-    f().catch((e) => {
+    f()?.catch((e) => {
         console.log("fireAndForget error", e);
     });
 }

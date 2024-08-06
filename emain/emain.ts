@@ -623,8 +623,8 @@ function makeAppMenu() {
         },
         {
             label: "Check for Updates",
-            click: async () => {
-                await updater?.checkForUpdates(true);
+            click: () => {
+                fireAndForget(() => updater?.checkForUpdates(true));
             },
         },
         {
