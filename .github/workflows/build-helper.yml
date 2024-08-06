@@ -16,6 +16,10 @@ jobs:
                       arch: "amd64"
                       runner: "ubuntu-latest"
                       scripthaus: "build-package-linux"
+                    - platform: "linux"
+                      arch: "arm64"
+                      runner: "ubuntu-latest"
+                      scripthaus: "build-package-linux"
         runs-on: ${{ matrix.runner }}
         steps:
             - uses: actions/checkout@v4
