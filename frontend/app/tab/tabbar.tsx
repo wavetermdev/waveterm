@@ -485,11 +485,17 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     };
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    let devLabel: React.ReactNode = null;
+    let waveLabel: React.ReactNode = null;
     if (isDev()) {
-        devLabel = (
+        waveLabel = (
             <div className="dev-label">
                 <i className="fa fa-brands fa-dev fa-fw" />
+            </div>
+        );
+    } else {
+        waveLabel = (
+            <div className="prod-label">
+                <img src="/public/logos/wave-logo.png" />
             </div>
         );
     }
@@ -510,7 +516,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
-            {devLabel}
+            {waveLabel}
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
