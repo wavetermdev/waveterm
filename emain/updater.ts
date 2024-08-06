@@ -1,7 +1,7 @@
+import { isDev } from "@/util/isdev";
 import * as electron from "electron";
 import { autoUpdater } from "electron-updater";
 import * as services from "../frontend/app/store/services";
-import { isDev } from "../frontend/util/isdev";
 import { fireAndForget } from "../frontend/util/util";
 
 let autoUpdateLock = false;
@@ -16,11 +16,6 @@ export class Updater {
     lastUpdateCheck: Date;
 
     constructor() {
-        if (isDev) {
-            console.log("skipping auto-updater in dev mode");
-            return null;
-        }
-
         autoUpdater.removeAllListeners();
 
         autoUpdater.on("error", (err) => {
@@ -158,6 +153,11 @@ electron.ipcMain.on("get-app-update-status", (event) => {
  * @param enabled Whether the auto-updater should be enabled
  */
 export async function configureAutoUpdater() {
+    if (isDev()) {
+        console.log("skipping auto-updater in dev mode");
+        return null;
+    }
+
     // simple lock to prevent multiple auto-update configuration attempts, this should be very rare
     if (autoUpdateLock) {
         console.log("auto-update configuration already in progress, skipping");
