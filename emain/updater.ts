@@ -75,14 +75,15 @@ export class Updater {
 
     /**
      * Starts the auto update check interval.
+     * @param [runCheckNow=true] Determines whether the update check should run immediately. Defaults to true.
      * @returns The timeout object for the auto update checker.
      */
-    startAutoUpdateInterval(): NodeJS.Timeout {
+    startInterval(runCheckNow = true): NodeJS.Timeout {
         // check for updates right away and keep checking later
-        this.checkForUpdates(false);
+        if (runCheckNow) this.checkForUpdates(false);
         return setInterval(() => {
             this.checkForUpdates(false);
-        }, 600000); // intervals are unreliable when an app is suspended so we will check every 10 mins if an hour has passed.
+        }, 600000); // intervals are unreliable when an app is suspended so we will check every 10 mins if the interval has passed.
     }
 
     /**
@@ -97,6 +98,8 @@ export class Updater {
             console.log("Auto update is disabled in settings. Removing the auto update interval.");
             clearInterval(this.interval);
             this.interval = null;
+        } else if (!this.interval && autoUpdateOpts.enabled) {
+            this.startInterval(false);
         }
 
         const now = new Date();
@@ -187,7 +190,7 @@ export async function configureAutoUpdater() {
     if (autoUpdateEnabled && updater?.interval == null) {
         try {
             console.log("configuring auto update interval");
-            updater?.startAutoUpdateInterval();
+            updater?.startInterval();
         } catch (e) {
             console.log("error configuring auto update interval", e.toString());
         }
