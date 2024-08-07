@@ -91,6 +91,7 @@ export class Updater {
      * @param userInput Whether the user is requesting this. If so, an alert will report the result of the check.
      */
     async checkForUpdates(userInput: boolean) {
+        console.log("checkForUpdates");
         const autoUpdateOpts = (await services.FileService.GetSettingsConfig()).autoupdate;
 
         // If there's an active update check interval, check that the user still has auto update checks enabled. If not, remove the interval.
@@ -185,6 +186,7 @@ export async function configureAutoUpdater() {
         return;
     }
 
+    console.log("configureAutoUpdater");
     autoUpdateLock = true;
 
     const autoUpdateOpts = (await services.FileService.GetSettingsConfig()).autoupdate;

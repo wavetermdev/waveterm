@@ -208,6 +208,7 @@ function runWaveSrv(): Promise<boolean> {
 }
 
 async function handleWSEvent(evtMsg: WSEventType) {
+    console.log("handleWSEvent", evtMsg?.eventtype);
     if (evtMsg.eventtype == "electron:newwindow") {
         const windowId: string = evtMsg.data;
         const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
