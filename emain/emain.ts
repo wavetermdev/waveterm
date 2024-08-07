@@ -390,6 +390,9 @@ function createBrowserWindow(
             return { action: "deny" };
         });
     });
+    win.webContents.on("before-input-event", (e, input) => {
+        // console.log("before-input-event", input);
+    });
     win.on(
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
@@ -673,13 +676,34 @@ function makeAppMenu() {
             type: "separator",
         },
         {
-            role: "resetZoom",
+            label: "Actual Size",
+            accelerator: "CommandOrControl+0",
+            click: (_, window) => {
+                window.webContents.setZoomFactor(1);
+            },
         },
         {
-            role: "zoomIn",
+            label: "Zoom In",
+            accelerator: "CommandOrControl+=",
+            click: (_, window) => {
+                window.webContents.setZoomFactor(window.webContents.getZoomFactor() + 0.2);
+            },
         },
         {
-            role: "zoomOut",
+            label: "Zoom In (hidden)",
+            accelerator: "CommandOrControl+Shift+=",
+            click: (_, window) => {
+                window.webContents.setZoomFactor(window.webContents.getZoomFactor() + 0.2);
+            },
+            visible: false,
+            acceleratorWorksWhenHidden: true,
+        },
+        {
+            label: "Zoom Out",
+            accelerator: "CommandOrControl+-",
+            click: (_, window) => {
+                window.webContents.setZoomFactor(window.webContents.getZoomFactor() - 0.2);
+            },
         },
         {
             type: "separator",
