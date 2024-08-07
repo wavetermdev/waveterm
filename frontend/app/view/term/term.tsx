@@ -9,13 +9,12 @@ import * as keyutil from "@/util/keyutil";
 import clsx from "clsx";
 import { produce } from "immer";
 import * as jotai from "jotai";
+import "public/xterm.css";
 import * as React from "react";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
 import { computeTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
-
-import "public/xterm.css";
 
 const keyMap = {
     Enter: "\r",
@@ -248,6 +247,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             },
             {
                 keydownHandler: handleTerminalKeydown,
+                useWebGl: !termSettings?.disablewebgl,
             }
         );
         (window as any).term = termWrap;

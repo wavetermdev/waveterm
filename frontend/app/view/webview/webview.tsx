@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi } from "@/app/store/global";
+import { openLink } from "@/app/store/global";
 import { WOS, globalStore } from "@/store/global";
 import * as services from "@/store/services";
 import clsx from "clsx";
@@ -336,7 +336,7 @@ const WebView = memo(({ parentRef, model }: WebViewProps) => {
             webview.addEventListener("new-window", (e: any) => {
                 e.preventDefault();
                 const newUrl = e.detail.url;
-                getApi().openExternal(newUrl);
+                openLink(newUrl);
             });
 
             // Suppress errors

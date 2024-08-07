@@ -2,14 +2,35 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WshServer } from "@/app/store/wshserver";
-import { PLATFORM, fetchWaveFile, getFileSubject, sendWSCommand } from "@/store/global";
+import { PLATFORM, fetchWaveFile, getFileSubject, openLink, sendWSCommand } from "@/store/global";
 import * as services from "@/store/services";
-import { base64ToArray } from "@/util/util";
+import { base64ToArray, fireAndForget } from "@/util/util";
 import { SerializeAddon } from "@xterm/addon-serialize";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import { WebglAddon } from "@xterm/addon-webgl";
 import * as TermTypes from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
+
+// detect webgl support
+function detectWebGLSupport(): boolean {
+    try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("webgl");
+        return !!ctx;
+    } catch (e) {
+        return false;
+    }
+}
+
+const WebGLSupported = detectWebGLSupport();
+let loggedWebGL = false;
+
+type TermWrapOptions = {
+    keydownHandler?: (e: KeyboardEvent) => void;
+    useWebGl?: boolean;
+};
 
 export class TermWrap {
     blockId: string;
@@ -30,7 +51,7 @@ export class TermWrap {
         blockId: string,
         connectElem: HTMLDivElement,
         options: TermTypes.ITerminalOptions & TermTypes.ITerminalInitOnlyOptions,
-        waveOptions: { keydownHandler?: (e: KeyboardEvent) => void }
+        waveOptions: TermWrapOptions
     ) {
         this.blockId = blockId;
         this.ptyOffset = 0;
@@ -41,6 +62,35 @@ export class TermWrap {
         this.serializeAddon = new SerializeAddon();
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
+
+        this.terminal.loadAddon(
+            new WebLinksAddon((e, uri) => {
+                e.preventDefault();
+                switch (PLATFORM) {
+                    case "darwin":
+                        if (e.metaKey) {
+                            fireAndForget(() => openLink(uri));
+                        }
+                        break;
+                    default:
+                        if (e.ctrlKey) {
+                            fireAndForget(() => openLink(uri));
+                        }
+                        break;
+                }
+            })
+        );
+        if (WebGLSupported && waveOptions.useWebGl) {
+            const webglAddon = new WebglAddon();
+            webglAddon.onContextLoss(() => {
+                webglAddon.dispose();
+            });
+            this.terminal.loadAddon(webglAddon);
+            if (!loggedWebGL) {
+                console.log("loaded webgl!");
+                loggedWebGL = true;
+            }
+        }
         this.connectElem = connectElem;
         this.mainFileSubject = null;
         this.loaded = false;

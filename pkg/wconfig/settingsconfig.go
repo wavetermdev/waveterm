@@ -25,8 +25,13 @@ type WidgetsConfigType struct {
 }
 
 type TerminalConfigType struct {
-	FontSize   int    `json:"fontsize,omitempty"`
-	FontFamily string `json:"fontfamily,omitempty"`
+	FontSize     int    `json:"fontsize,omitempty"`
+	FontFamily   string `json:"fontfamily,omitempty"`
+	DisableWebGl bool   `json:"disablewebgl"`
+}
+
+type WebConfigType struct {
+	OpenLinksInternally bool `json:"openlinksinternally"`
 }
 
 type AiConfigType struct {
@@ -99,6 +104,7 @@ type SettingsConfigType struct {
 	AutoUpdate     *AutoUpdateOpts               `json:"autoupdate"`
 	TermThemes     TermThemesConfigType          `json:"termthemes"`
 	WindowSettings WindowSettingsType            `json:"window"`
+	Web            WebConfigType                 `json:"web"`
 
 	DefaultMeta *waveobj.MetaMapType            `json:"defaultmeta,omitempty"`
 	Presets     map[string]*waveobj.MetaMapType `json:"presets,omitempty"`

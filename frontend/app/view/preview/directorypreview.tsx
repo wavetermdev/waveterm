@@ -425,7 +425,7 @@ function TableBody({
                 {
                     label: "Open Preview in New Block",
                     click: async () => {
-                        const blockDef = {
+                        const blockDef: BlockDef = {
                             meta: {
                                 view: "preview",
                                 file: path,

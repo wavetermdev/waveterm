@@ -323,6 +323,7 @@ declare global {
         autoupdate: AutoUpdateOpts;
         termthemes: {[key: string]: TermThemeType};
         window: WindowSettingsType;
+        web: WebConfigType;
         defaultmeta?: MetaType;
         presets?: {[key: string]: MetaType};
     };
@@ -398,6 +399,7 @@ declare global {
     type TerminalConfigType = {
         fontsize?: number;
         fontfamily?: string;
+        disablewebgl: boolean;
     };
 
     // wstore.UIContext
@@ -543,6 +545,11 @@ declare global {
         method: string;
         uicontext?: UIContext;
         args: any[];
+    };
+
+    // wconfig.WebConfigType
+    type WebConfigType = {
+        openlinksinternally: boolean;
     };
 
     // service.WebReturnType

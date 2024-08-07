@@ -435,6 +435,20 @@ function isDev() {
     return cachedIsDev;
 }
 
+async function openLink(uri: string) {
+    if (globalStore.get(atoms.settingsConfigAtom)?.web?.openlinksinternally) {
+        const blockDef: BlockDef = {
+            meta: {
+                view: "web",
+                url: uri,
+            },
+        };
+        await createBlock(blockDef);
+    } else {
+        getApi().openExternal(uri);
+    }
+}
+
 export {
     PLATFORM,
     WOS,
@@ -451,6 +465,7 @@ export {
     initGlobal,
     initWS,
     isDev,
+    openLink,
     sendWSCommand,
     setBlockFocus,
     setPlatform,
