@@ -8,11 +8,10 @@ import { deleteLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
-
-import { Tab } from "./tab";
-
 import { debounce } from "throttle-debounce";
+import logoPng from "../../../public/logos/wave-logo.png";
 import { Button } from "../element/button";
+import { Tab } from "./tab";
 import "./tabbar.less";
 
 const TAB_DEFAULT_WIDTH = 130;
@@ -496,7 +495,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     } else {
         waveLabel = (
             <div className="prod-label">
-                <img src="/public/logos/wave-logo.png" />
+                <img src={logoPng} />
             </div>
         );
     }
