@@ -64,6 +64,7 @@ jobs:
               run: scripthaus run ${{ matrix.scripthaus }}
               env:
                   GOARCH: ${{ matrix.arch }}
+                  USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
                   CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE}}
                   CSC_KEY_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE_PWD }}
                   APPLE_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
