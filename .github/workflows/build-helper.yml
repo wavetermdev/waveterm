@@ -18,7 +18,7 @@ jobs:
                       scripthaus: "build-package-linux"
                     - platform: "linux"
                       arch: "arm64"
-                      runner: "ubuntu-latest"
+                      runner: ubuntu-24.04-arm64-16core
                       scripthaus: "build-package-linux"
         runs-on: ${{ matrix.runner }}
         steps:
@@ -32,6 +32,8 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm
+            - name: Install FPM # The version of FPM that comes bundled with electron-builder doesn't include a Linux ARM target. Installing Gems onto the runner is super quick so we'll just do this for all targets.
+              run: sudo gem install fpm
             - uses: actions/setup-go@v5
               with:
                   go-version: ${{env.GO_VERSION}}
