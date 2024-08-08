@@ -199,14 +199,30 @@ export class WebViewModel implements ViewModel {
     }
 
     ensureUrlScheme(url: string) {
-        if (/^(localhost|(\d{1,3}\.){3}\d{1,3})(:\d+)?/.test(url)) {
-            // If the URL starts with localhost or an IP address (with optional port)
+        if (/^(http|https):/.test(url)) {
+            // If the URL starts with http: or https:, return it as is
+            return url;
+        }
+
+        // Check if the URL looks like a local URL
+        const isLocal = /^(localhost|(\d{1,3}\.){3}\d{1,3})(:\d+)?$/.test(url.split("/")[0]);
+
+        if (isLocal) {
+            // If it is a local URL, ensure it has http:// scheme
             return `http://${url}`;
-        } else if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url)) {
-            // If the URL doesn't start with a protocol
+        }
+
+        // Check if the URL looks like a domain
+        const domainRegex = /^[a-z0-9.-]+\.[a-z]{2,}$/i;
+        const isDomain = domainRegex.test(url.split("/")[0]);
+
+        if (isDomain) {
+            // If it looks like a domain, ensure it has https:// scheme
             return `https://${url}`;
         }
-        return url;
+
+        // Otherwise, treat it as a search query
+        return `https://www.google.com/search?q=${encodeURIComponent(url)}`;
     }
 
     normalizeUrl(url: string) {
