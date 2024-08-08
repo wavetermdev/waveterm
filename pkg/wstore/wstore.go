@@ -320,8 +320,6 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta MetaMapType) 
 func CreateWindow(ctx context.Context, winSize *WinSize) (*Window, error) {
 	windowId := uuid.NewString()
 	workspaceId := uuid.NewString()
-	tabId := uuid.NewString()
-	layoutNodeId := uuid.NewString()
 	if winSize == nil {
 		winSize = &WinSize{
 			Width:  1200,
@@ -331,7 +329,6 @@ func CreateWindow(ctx context.Context, winSize *WinSize) (*Window, error) {
 	window := &Window{
 		OID:            windowId,
 		WorkspaceId:    workspaceId,
-		ActiveTabId:    tabId,
 		ActiveBlockMap: make(map[string]string),
 		Pos: Point{
 			X: 100,
@@ -344,31 +341,20 @@ func CreateWindow(ctx context.Context, winSize *WinSize) (*Window, error) {
 		return nil, fmt.Errorf("error inserting window: %w", err)
 	}
 	ws := &Workspace{
-		OID:    workspaceId,
-		Name:   "w" + workspaceId[0:8],
-		TabIds: []string{tabId},
+		OID:  workspaceId,
+		Name: "w" + workspaceId[0:8],
 	}
 	err = DBInsert(ctx, ws)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
-	tab := &Tab{
-		OID:        tabId,
-		Name:       "T1",
-		BlockIds:   []string{},
-		LayoutNode: layoutNodeId,
-	}
-	err = DBInsert(ctx, tab)
+	tab, err := CreateTab(ctx, ws.OID, "T1")
 	if err != nil {
 		return nil, fmt.Errorf("error inserting tab: %w", err)
 	}
-
-	layoutNode := &LayoutNode{
-		OID: layoutNodeId,
-	}
-	err = DBInsert(ctx, layoutNode)
+	err = SetActiveTab(ctx, window.OID, tab.OID)
 	if err != nil {
-		return nil, fmt.Errorf("error inserting layout node: %w", err)
+		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}
 	client, err := DBGetSingleton[*Client](ctx)
 	if err != nil {
