@@ -6,6 +6,7 @@ package releasechecker
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/google/go-github/v60/github"
 	"golang.org/x/mod/semver"
@@ -53,7 +54,7 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 		return Failure, fmt.Errorf("error getting latest release: %w", err)
 	}
 
-	if rsp.StatusCode != 200 {
+	if rsp.StatusCode != http.StatusOK {
 		return Failure, fmt.Errorf("response from Github is not success: %v", rsp)
 	}
 

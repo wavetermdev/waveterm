@@ -16,8 +16,8 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 )
 
-var MainUpdateBus *UpdateBus = MakeUpdateBus()
-var MainRpcBus *RpcBus = MakeRpcBus()
+var MainUpdateBus = MakeUpdateBus()
+var MainRpcBus = MakeRpcBus()
 
 // The default channel size
 const ChSize = 100

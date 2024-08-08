@@ -46,66 +46,13 @@ func getUtf8Literal(ch rune) string {
 	return buf.String()
 }
 
-func (w *WordType) writeString(s string) {
-	for _, ch := range s {
-		w.writeRune(ch)
-	}
-}
-
-func (w *WordType) writeRune(ch rune) {
-	wmeta := wordMetaMap[w.Type]
-	if w.Complete && wmeta.SuffixLen == 1 {
-		w.Raw = append(w.Raw[0:len(w.Raw)-1], ch, w.Raw[len(w.Raw)-1])
-		return
-	}
-	if w.Complete && wmeta.SuffixLen == 2 {
-		w.Raw = append(w.Raw[0:len(w.Raw)-2], ch, w.Raw[len(w.Raw)-2], w.Raw[len(w.Raw)-1])
-		return
-	}
-	// not complete or SuffixLen == 0 (2+ is not supported)
-	w.Raw = append(w.Raw, ch)
-	return
-}
-
-type extendContext struct {
-	Input     []*WordType
-	InputPos  int
-	QC        QuoteContext
-	Rtn       []*WordType
-	CurWord   *WordType
-	Intention string
-}
-
-func makeExtendContext(qc QuoteContext, word *WordType) *extendContext {
-	rtn := &extendContext{QC: qc}
-	if word == nil {
-		rtn.Intention = WordTypeLit
-		return rtn
-	} else {
-		rtn.Intention = word.Type
-		rtn.Rtn = []*WordType{word}
-		rtn.CurWord = word
-		return rtn
-	}
-}
-
-func (ec *extendContext) appendWord(w *WordType) {
-	ec.Rtn = append(ec.Rtn, w)
-	ec.CurWord = w
-}
-
-func (ec *extendContext) ensureCurWord() {
-	if ec.CurWord == nil || ec.CurWord.Type != ec.Intention {
-		ec.CurWord = MakeEmptyWord(ec.Intention, ec.QC, 0, true)
-		ec.Rtn = append(ec.Rtn, ec.CurWord)
-	}
-}
-
 // grp, dq, ddq
 func extendWithSubs(word *WordType, wordPos int, extStr string, complete bool) utilfn.StrWithPos {
 	wmeta := wordMetaMap[word.Type]
-	if word.Type == WordTypeGroup {
-		atEnd := (wordPos == len(word.Raw))
+
+	switch word.Type {
+	case WordTypeGroup:
+		atEnd := wordPos == len(word.Raw)
 		subWord := findCompletionWordAtPos(word.Subs, wordPos, true)
 		if subWord == nil {
 			strPos := Extend(MakeEmptyWord(WordTypeLit, word.QC, 0, true), 0, extStr, atEnd)
@@ -119,11 +66,11 @@ func extendWithSubs(word *WordType, wordPos int, extStr string, complete bool) u
 			strPos = strPos.Append(string(word.Raw[subWord.Offset+len(subWord.Raw):]))
 			return strPos
 		}
-	} else if word.Type == WordTypeDQ || word.Type == WordTypeDDQ {
+	case WordTypeDQ, WordTypeDDQ:
 		if wordPos < word.contentStartPos() {
 			wordPos = word.contentStartPos()
 		}
-		atEnd := (wordPos >= len(word.Raw)-wmeta.SuffixLen)
+		atEnd := wordPos >= len(word.Raw)-wmeta.SuffixLen
 		subWord := findCompletionWordAtPos(word.Subs, wordPos-wmeta.PrefixLen, true)
 		quoteBalance := !atEnd
 		if subWord == nil {
@@ -167,7 +114,7 @@ func extendWithSubs(word *WordType, wordPos int, extStr string, complete bool) u
 			strPos = strPos.Append(string(word.Raw[realOffset+len(subWord.Raw):]))
 			return strPos
 		}
-	} else {
+	default:
 		return utilfn.StrWithPos{Str: string(word.Raw), Pos: wordPos}
 	}
 }
@@ -273,13 +220,6 @@ func Extend(word *WordType, wordPos int, extStr string, complete bool) utilfn.St
 	return rtn
 }
 
-func (ec *extendContext) extend(ch rune) {
-	if ch == 0 {
-		return
-	}
-	return
-}
-
 func isVarNameChar(ch rune) bool {
 	return ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
 }
@@ -333,7 +273,6 @@ func extendLit(buf *bytes.Buffer, ch rune) {
 	}
 	buf.WriteRune('\\')
 	buf.WriteRune(ch)
-	return
 }
 
 func extendDSQ(buf *bytes.Buffer, wordOpen *bool, ch rune) {
@@ -355,7 +294,6 @@ func extendDSQ(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 		return
 	}
 	buf.WriteRune(ch)
-	return
 }
 
 func extendSQ(buf *bytes.Buffer, wordOpen *bool, ch rune) {
@@ -384,7 +322,6 @@ func extendSQ(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 		*wordOpen = true
 	}
 	buf.WriteRune(ch)
-	return
 }
 
 func extendDQLit(buf *bytes.Buffer, wordOpen *bool, ch rune) {
@@ -409,5 +346,4 @@ func extendDQLit(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 		return
 	}
 	buf.WriteRune(ch)
-	return
 }

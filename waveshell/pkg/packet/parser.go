@@ -226,8 +226,8 @@ func MakePacketParser(input io.Reader, opts *PacketParserOpts) *PacketParser {
 				continue
 			}
 			ignoreUntilValid = false
-			packetLen := -1
 			if line[2:bracePos] != "N" {
+				var packetLen int
 				packetLen, err = strconv.Atoi(line[2:bracePos])
 				if err != nil || packetLen != len(line)-bracePos-1 {
 					parser.MainCh <- MakeRawPacket(line[:len(line)-1])

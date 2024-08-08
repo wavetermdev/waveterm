@@ -51,9 +51,9 @@ var ensureDirCache = make(map[string]bool)
 var baseLock = &sync.Mutex{}
 var DebugLogEnabled = false
 var DebugLogger *log.Logger
-var BuildTime string = "0"
+var BuildTime = "0"
 
-var ProcessType string = ProcessType_Unknown
+var ProcessType = ProcessType_Unknown
 
 type CommandFileNames struct {
 	PtyOutFile    string
@@ -248,7 +248,7 @@ func GoArchOptFile(version string, goos string, goarch string) string {
 		versionStr = "unknown"
 	}
 	binBaseName := fmt.Sprintf("mshell-%s-%s.%s", versionStr, goos, goarch)
-	return fmt.Sprintf(path.Join(installBinDir, binBaseName))
+	return path.Join(installBinDir, binBaseName)
 }
 
 func GetRemoteId() (string, error) {
@@ -277,21 +277,22 @@ func GetRemoteId() (string, error) {
 			return "", fmt.Errorf("cannot write remoteid to '%s': %w", remoteIdFile, err)
 		}
 		return remoteId, nil
-	} else if err != nil {
-		return "", fmt.Errorf("cannot read remoteid file '%s': %w", remoteIdFile, err)
-	} else {
-		defer fd.Close()
-		contents, err := io.ReadAll(fd)
-		if err != nil {
-			return "", fmt.Errorf("cannot read remoteid file '%s': %w", remoteIdFile, err)
-		}
-		uuidStr := string(contents)
-		_, err = uuid.Parse(uuidStr)
-		if err != nil {
-			return "", fmt.Errorf("invalid uuid read from '%s': %w", remoteIdFile, err)
-		}
-		return uuidStr, nil
 	}
+	if err != nil {
+		return "", fmt.Errorf("cannot read remoteid file '%s': %w", remoteIdFile, err)
+	}
+
+	defer fd.Close()
+	contents, err := io.ReadAll(fd)
+	if err != nil {
+		return "", fmt.Errorf("cannot read remoteid file '%s': %w", remoteIdFile, err)
+	}
+	uuidStr := string(contents)
+	_, err = uuid.Parse(uuidStr)
+	if err != nil {
+		return "", fmt.Errorf("invalid uuid read from '%s': %w", remoteIdFile, err)
+	}
+	return uuidStr, nil
 }
 
 func BoundInt(ival int, minVal int, maxVal int) int {

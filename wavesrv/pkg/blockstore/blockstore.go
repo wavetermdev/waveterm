@@ -60,7 +60,7 @@ type CacheBlock struct {
 }
 
 func MakeCacheEntry(info *FileInfo) *CacheEntry {
-	rtn := &CacheEntry{Lock: &sync.Mutex{}, CacheTs: int64(time.Now().UnixMilli()), Info: info, DataBlocks: []*CacheBlock{}, Refs: 0}
+	rtn := &CacheEntry{Lock: &sync.Mutex{}, CacheTs: time.Now().UnixMilli(), Info: info, DataBlocks: []*CacheBlock{}, Refs: 0}
 	return rtn
 }
 
@@ -81,9 +81,9 @@ type BlockStore interface {
 	GetAllBlockIds(ctx context.Context) []string
 }
 
-var blockstoreCache map[string]*CacheEntry = make(map[string]*CacheEntry)
-var globalLock *sync.Mutex = &sync.Mutex{}
-var appendLock *sync.Mutex = &sync.Mutex{}
+var blockstoreCache = make(map[string]*CacheEntry)
+var globalLock = &sync.Mutex{}
+var appendLock = &sync.Mutex{}
 var flushTimeout = DefaultFlushTimeout
 var lastWriteTime time.Time
 
@@ -180,7 +180,7 @@ func WriteToCacheBlockNum(ctx context.Context, blockId string, name string, p []
 			return int64(b), b, err
 		}
 		numLeftPad = int64(b)
-		cacheEntry.Info.Size += (int64(cacheNum) * MaxBlockSize)
+		cacheEntry.Info.Size += int64(cacheNum) * MaxBlockSize
 	}
 	b, writeErr := WriteToCacheBuf(&block.data, p, pos, length, maxWriteSize)
 	bytesWritten += b
@@ -319,23 +319,22 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 			curCacheEntry.DataBlocks = append(curCacheEntry.DataBlocks, nil)
 		}
 	}
-	if curCacheEntry.DataBlocks[cacheNum] == nil {
-		var curCacheBlock *CacheBlock
-		if pullFromDB {
-			cacheData, err := GetCacheFromDB(ctx, blockId, name, 0, MaxBlockSize, int64(cacheNum))
-			if err != nil {
-				return nil, err
-			}
-			curCacheBlock = &CacheBlock{data: *cacheData, size: len(*cacheData), dirty: false}
-			curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
-		} else {
-			curCacheBlock = &CacheBlock{data: []byte{}, size: 0, dirty: false}
-			curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
-		}
-		return curCacheBlock, nil
-	} else {
+	if curCacheEntry.DataBlocks[cacheNum] != nil {
 		return curCacheEntry.DataBlocks[cacheNum], nil
 	}
+	var curCacheBlock *CacheBlock
+	if pullFromDB {
+		cacheData, err := GetCacheFromDB(ctx, blockId, name, 0, MaxBlockSize, int64(cacheNum))
+		if err != nil {
+			return nil, err
+		}
+		curCacheBlock = &CacheBlock{data: *cacheData, size: len(*cacheData), dirty: false}
+		curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
+	} else {
+		curCacheBlock = &CacheBlock{data: []byte{}, size: 0, dirty: false}
+		curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
+	}
+	return curCacheBlock, nil
 }
 
 func DeepCopyFileInfo(fInfo *FileInfo) *FileInfo {
@@ -405,7 +404,7 @@ func WriteAtHelper(ctx context.Context, blockId string, name string, p []byte, o
 	}
 	if off > fInfo.Opts.MaxSize && fInfo.Opts.Circular {
 		numOver := off / fInfo.Opts.MaxSize
-		off = off - (numOver * fInfo.Opts.MaxSize)
+		off -= numOver * fInfo.Opts.MaxSize
 	}
 	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
 		cacheOffset := off - (int64(index) * MaxBlockSize)
@@ -419,18 +418,18 @@ func WriteAtHelper(ctx context.Context, blockId string, name string, p []byte, o
 		bytesToWrite -= b
 		off += int64(b)
 		if err != nil {
-			if err.Error() == MaxSizeError {
-				if fInfo.Opts.Circular {
-					p = p[int64(b):]
-					b, err := WriteAtHelper(ctx, blockId, name, p, 0, false)
-					bytesWritten += b
-					if err != nil {
-						return bytesWritten, fmt.Errorf("write to cache error: %v", err)
-					}
-					break
-				}
-			} else {
+			if err.Error() != MaxSizeError {
 				return bytesWritten, fmt.Errorf("write to cache error: %v", err)
+			}
+
+			if fInfo.Opts.Circular {
+				p = p[int64(b):]
+				b, err := WriteAtHelper(ctx, blockId, name, p, 0, false)
+				bytesWritten += b
+				if err != nil {
+					return bytesWritten, fmt.Errorf("write to cache error: %v", err)
+				}
+				break
 			}
 		}
 		if len(p) == b {
@@ -498,7 +497,7 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 	}
 	if off > fInfo.Opts.MaxSize && fInfo.Opts.Circular {
 		numOver := off / fInfo.Opts.MaxSize
-		off = off - (numOver * fInfo.Opts.MaxSize)
+		off -= numOver * fInfo.Opts.MaxSize
 	}
 	if off > fInfo.Size {
 		return 0, fmt.Errorf("ReadAt error: tried to read past the end of the file")
@@ -508,7 +507,7 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 	curCacheNum := int(math.Floor(float64(off) / float64(MaxBlockSize)))
 	numCaches := int(math.Ceil(float64(bytesToRead) / float64(MaxBlockSize)))
 	cacheOffset := off - (int64(curCacheNum) * MaxBlockSize)
-	if (cacheOffset + int64(bytesToRead)) > MaxBlockSize {
+	if (cacheOffset + bytesToRead) > MaxBlockSize {
 		numCaches += 1
 	}
 	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
@@ -537,19 +536,19 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 		off += int64(b)
 
 		if err != nil {
-			if err.Error() == MaxSizeError {
-				if fInfo.Opts.Circular {
-					off = 0
-					newP := (*p)[b:]
-					b, err := ReadAt(ctx, blockId, name, &newP, off)
-					bytesRead += b
-					if err != nil {
-						return bytesRead, err
-					}
-					break
-				}
-			} else {
+			if err.Error() != MaxSizeError {
 				return bytesRead, fmt.Errorf("read from cache error: %v", err)
+			}
+
+			if fInfo.Opts.Circular {
+				off = 0
+				newP := (*p)[b:]
+				b, err := ReadAt(ctx, blockId, name, &newP, off)
+				bytesRead += b
+				if err != nil {
+					return bytesRead, err
+				}
+				break
 			}
 		}
 	}

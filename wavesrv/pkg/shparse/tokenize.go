@@ -46,7 +46,7 @@ func (state *tokenizeOutputState) appendWord(word *WordType) {
 		return
 	}
 	state.ensureGroupWord()
-	word.Offset = word.Offset - state.CurWord.Offset
+	word.Offset -= state.CurWord.Offset
 	state.CurWord.Subs = append(state.CurWord.Subs, word)
 	state.CurWord.Raw = append(state.CurWord.Raw, word.Raw...)
 }
@@ -84,7 +84,7 @@ func ungroupWord(groupWord *WordType) []*WordType {
 		rtn[0].Prefix = newPrefix
 	}
 	for _, word := range rtn {
-		word.Offset = word.Offset + groupWord.Offset
+		word.Offset += groupWord.Offset
 	}
 	return rtn
 }
@@ -106,7 +106,7 @@ func (state *tokenizeOutputState) ensureLitCurWord(pc *parseContext) {
 			panic("invalid state, there can be no saved prefix")
 		}
 		litWord := pc.makeWord(WordTypeLit, 0, true)
-		litWord.Offset = litWord.Offset - state.CurWord.Offset
+		litWord.Offset -= state.CurWord.Offset
 		state.CurWord.Subs = append(state.CurWord.Subs, litWord)
 	}
 }
@@ -125,16 +125,17 @@ func (state *tokenizeOutputState) delimitWithSpace(spaceCh rune) {
 
 func (state *tokenizeOutputState) appendLiteral(pc *parseContext, ch rune) {
 	state.ensureLitCurWord(pc)
-	if state.CurWord.Type == WordTypeLit {
+	switch state.CurWord.Type {
+	case WordTypeLit:
 		state.CurWord.Raw = append(state.CurWord.Raw, ch)
-	} else if state.CurWord.Type == WordTypeGroup {
+	case WordTypeGroup:
 		lastWord := state.CurWord.Subs[len(state.CurWord.Subs)-1]
 		if lastWord.Type != WordTypeLit {
 			panic(fmt.Sprintf("invalid curword type (group) %q", state.CurWord.Type))
 		}
 		lastWord.Raw = append(lastWord.Raw, ch)
 		state.CurWord.Raw = append(state.CurWord.Raw, ch)
-	} else {
+	default:
 		panic(fmt.Sprintf("invalid curword type %q", state.CurWord.Type))
 	}
 }
@@ -351,10 +352,6 @@ func (c *parseContext) at(offset int) rune {
 	return c.Input[pos]
 }
 
-func (c *parseContext) eof() bool {
-	return c.Pos >= len(c.Input)
-}
-
 func (c *parseContext) cur() rune {
 	return c.at(0)
 }
@@ -386,6 +383,7 @@ func (c *parseContext) makeWord(t string, length int, complete bool) *WordType {
 // possible to maybe add ;;& &>> &> |& ;&
 func (c *parseContext) parseOp(offset int) (bool, int) {
 	ch := c.at(offset)
+
 	if ch == '(' || ch == ')' || ch == '<' || ch == '>' || ch == ';' || ch == '&' || ch == '|' {
 		ch2 := c.at(offset + 1)
 		if ch2 == 0 {

@@ -160,28 +160,6 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	state.RunWSRead()
 }
 
-// todo: sync multiple writes to the same fifoName into a single go-routine and do liveness checking on fifo
-// if this returns an error, likely the fifo is dead and the cmd should be marked as 'done'
-func writeToFifo(fifoName string, data []byte) error {
-	rwfd, err := os.OpenFile(fifoName, os.O_RDWR, 0600)
-	if err != nil {
-		return err
-	}
-	defer rwfd.Close()
-	fifoWriter, err := os.OpenFile(fifoName, os.O_WRONLY, 0600) // blocking open (open won't block because of rwfd)
-	if err != nil {
-		return err
-	}
-	defer fifoWriter.Close()
-	// this *could* block if the fifo buffer is full
-	// unlikely because if the reader is dead, and len(data) < pipe size, then the buffer will be empty and will clear after rwfd is closed
-	_, err = fifoWriter.Write(data)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
 	cdata, err := sstore.EnsureClientData(r.Context())
 	if err != nil {

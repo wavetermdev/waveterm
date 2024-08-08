@@ -33,17 +33,6 @@ const RunBashSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c
 var localBashMajorVersionOnce = &sync.Once{}
 var localBashMajorVersion = ""
 
-// the "exec 2>" line also adds an extra printf at the *beginning* to strip out spurious rc file output
-var GetBashShellStateCmds = []string{
-	"exec 2> /dev/null;",
-	BashShellVersionCmdStr + ";",
-	`pwd;`,
-	`declare -p $(compgen -A variable);`,
-	`alias -p;`,
-	`declare -f;`,
-	GetGitBranchCmdStr + ";",
-}
-
 type bashShellApi struct{}
 
 func (b bashShellApi) GetShellType() string {
@@ -68,7 +57,7 @@ func (b bashShellApi) GetRemoteShellPath() string {
 
 func (b bashShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
 	if !opts.Sudo {
-		return fmt.Sprintf(RunCommandFmt, cmdStr)
+		return cmdStr
 	}
 	if opts.SudoWithPass {
 		return fmt.Sprintf(RunBashSudoPasswordCommandFmt, opts.PwFdNum, opts.MaxFdNum+1, opts.PwFdNum, opts.CommandFdNum, opts.CommandStdinFdNum)
@@ -155,7 +144,7 @@ func execGetLocalBashShellVersion() string {
 		return ""
 	}
 	versionStr := strings.TrimSpace(string(out))
-	if strings.Index(versionStr, "bash ") == -1 {
+	if !strings.Contains(versionStr, "bash ") {
 		// invalid shell version (only bash is supported)
 		return ""
 	}
@@ -201,7 +190,7 @@ func GetBashShellState(ctx context.Context, outCh chan ShellStateOutput, stdinDa
 func GetLocalBashPath() string {
 	if runtime.GOOS == "darwin" {
 		macShell := GetMacUserShell()
-		if strings.Index(macShell, "bash") != -1 {
+		if strings.Contains(macShell, "bash") {
 			return shellescape.Quote(macShell)
 		}
 	}
@@ -211,7 +200,7 @@ func GetLocalBashPath() string {
 func GetLocalZshPath() string {
 	if runtime.GOOS == "darwin" {
 		macShell := GetMacUserShell()
-		if strings.Index(macShell, "zsh") != -1 {
+		if strings.Contains(macShell, "zsh") {
 			return shellescape.Quote(macShell)
 		}
 	}

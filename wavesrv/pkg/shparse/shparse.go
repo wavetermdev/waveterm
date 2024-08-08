@@ -187,13 +187,6 @@ func (qc QuoteContext) cur() string {
 	return qc[len(qc)-1]
 }
 
-func (qc QuoteContext) clone() QuoteContext {
-	if len(qc) == 0 {
-		return nil
-	}
-	return append([]string(nil), qc...)
-}
-
 func makeRepeatStr(ch byte, slen int) string {
 	if slen == 0 {
 		return ""
@@ -203,10 +196,6 @@ func makeRepeatStr(ch byte, slen int) string {
 		rtn[i] = ch
 	}
 	return string(rtn)
-}
-
-func (w *WordType) isBlank() bool {
-	return w.Type == WordTypeLit && len(w.Raw) == 0
 }
 
 func (w *WordType) contentEndPos() int {
@@ -363,13 +352,6 @@ func (state *parseCmdState) curWord() *WordType {
 		return nil
 	}
 	return state.Input[state.InputPos]
-}
-
-func (state *parseCmdState) lastCmd() *CmdType {
-	if len(state.Rtn) == 0 {
-		return nil
-	}
-	return state.Rtn[len(state.Rtn)-1]
 }
 
 func (state *parseCmdState) makeNoneCmd(sep bool) {

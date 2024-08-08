@@ -65,7 +65,6 @@ func runFn(fn func()) {
 		}
 		log.Printf("[error] panic in MQEntry runFn: %v\n", r)
 		debug.PrintStack()
-		return
 	}()
 	fn()
 }

@@ -1,4 +1,5 @@
-ALTER TABLE remote ADD COLUMN remotesudo;
+ALTER TABLE remote
+    ADD COLUMN remotesudo;
 
 UPDATE remote
 SET remotesudo = 1
@@ -9,6 +10,7 @@ UPDATE remote
 SET sshopts = json_remove(sshopts, '$.issudo')
 ;
 
-ALTER TABLE remote ADD COLUMN physicalid varchar(36) NOT NULL DEFAULT '';
+ALTER TABLE remote
+    ADD COLUMN physicalid varchar(36) NOT NULL DEFAULT '';
 
 ALTER TABLE remote DROP COLUMN openaiopts;

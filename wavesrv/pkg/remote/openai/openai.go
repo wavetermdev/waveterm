@@ -97,6 +97,9 @@ func RunCloudCompletionStream(ctx context.Context, clientId string, opts *sstore
 	reqPk.MaxTokens = opts.MaxTokens
 	reqPk.MaxChoices = opts.MaxChoices
 	configMessageBuf, err := json.Marshal(reqPk)
+	if err != nil {
+		return nil, nil, fmt.Errorf("OpenAI request, json marshal error: %v", err)
+	}
 	err = conn.WriteMessage(websocket.TextMessage, configMessageBuf)
 	if err != nil {
 		return nil, nil, fmt.Errorf("OpenAI request, websocket write config error: %v", err)

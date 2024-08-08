@@ -459,10 +459,6 @@ func writeZshOptions(rcBuf *bytes.Buffer, declArr []*shellenv.DeclareDeclType) {
 	}
 }
 
-func writeZshId(buf *bytes.Buffer, idStr string) {
-	buf.WriteString(shellescape.Quote(idStr))
-}
-
 const numRandomBytes = 4
 
 // returns (cmd-string, endbytes)
@@ -568,7 +564,7 @@ func execGetLocalZshShellVersion() string {
 		return ""
 	}
 	versionStr := strings.TrimSpace(string(out))
-	if strings.Index(versionStr, "zsh ") == -1 {
+	if !strings.Contains(versionStr, "zsh ") {
 		return ""
 	}
 	return versionStr
@@ -716,14 +712,6 @@ func ParseZshFunctions(fpathArr []string, fnBytes []byte, partSeparator []byte) 
 	return fnBody
 }
 
-func makeZshFuncsStrForShellState(fnMap map[ZshParamKey]string) string {
-	var buf bytes.Buffer
-	for fnKey, fnValue := range fnMap {
-		buf.WriteString(fmt.Sprintf("%s %s %s\x00", fnKey.ParamType, fnKey.ParamName, fnValue))
-	}
-	return buf.String()
-}
-
 func (zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, *packet.ShellStateStats, error) {
 	if scbase.IsDevMode() && DebugState {
 		writeStateToFile(packet.ShellType_zsh, outputBytes)
@@ -764,7 +752,7 @@ func (zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState
 	}
 	aliasMap := parseZshAliasStateOutput(sections[ZshSection_Aliases], partSeparator)
 	rtn.Aliases = string(EncodeZshMap(aliasMap))
-	fpathStr := stripNewLineChars(string(string(sections[ZshSection_Fpath])))
+	fpathStr := stripNewLineChars(string(sections[ZshSection_Fpath]))
 	fpathArr := strings.Split(fpathStr, ":")
 	zshFuncs := ParseZshFunctions(fpathArr, sections[ZshSection_Funcs], partSeparator)
 	rtn.Funcs = string(EncodeZshMap(zshFuncs))
@@ -773,10 +761,10 @@ func (zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
 	stats := &packet.ShellStateStats{
 		Version:    rtn.Version,
-		AliasCount: int(len(aliasMap)),
-		FuncCount:  int(len(zshFuncs)),
-		VarCount:   int(len(zshDecls)),
-		EnvCount:   int(len(zshEnv)),
+		AliasCount: len(aliasMap),
+		FuncCount:  len(zshFuncs),
+		VarCount:   len(zshDecls),
+		EnvCount:   len(zshEnv),
 		HashVal:    rtn.GetHashVal(false),
 		OutputSize: int64(len(outputBytes)),
 		StateSize:  rtn.ApproximateSize(),
@@ -849,7 +837,7 @@ func parseZshDeclArgs(declStr string, isExport bool) (string, string, error) {
 			return "", "", fmt.Errorf("invalid zsh export line: %q", origDeclStr)
 		}
 		newArgsStr := strings.TrimSpace(declStr[1:spaceIdx])
-		argsStr = argsStr + newArgsStr
+		argsStr += newArgsStr
 		declStr = declStr[spaceIdx+1:]
 		declStr = strings.TrimLeft(declStr, " ")
 	}
@@ -875,24 +863,31 @@ func parseZshDeclLine(line string) (*DeclareDeclType, error) {
 	if strings.HasPrefix(line, "export ") {
 		exportLine := line[7:]
 		assignLine, exportArgs, err := parseZshDeclArgs(exportLine, true)
+		if err != nil {
+			return nil, err
+		}
 		rtn := &DeclareDeclType{IsZshDecl: true, Args: exportArgs}
 		err = parseZshDeclAssignment(assignLine, rtn)
 		if err != nil {
 			return nil, err
 		}
 		return rtn, nil
-	} else if strings.HasPrefix(line, "typeset ") {
+	}
+	if strings.HasPrefix(line, "typeset ") {
 		typesetLine := line[8:]
 		assignLine, typesetArgs, err := parseZshDeclArgs(typesetLine, false)
+		if err != nil {
+			return nil, err
+		}
 		rtn := &DeclareDeclType{IsZshDecl: true, Args: typesetArgs}
 		err = parseZshDeclAssignment(assignLine, rtn)
 		if err != nil {
 			return nil, err
 		}
 		return rtn, nil
-	} else {
-		return nil, fmt.Errorf("invalid zsh decl line: %q", line)
 	}
+
+	return nil, fmt.Errorf("invalid zsh decl line: %q", line)
 }
 
 // combine decl2 INTO decl1

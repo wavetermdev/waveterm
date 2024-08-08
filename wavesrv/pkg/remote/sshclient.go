@@ -4,7 +4,6 @@
 package remote
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -251,15 +250,6 @@ func createCombinedKbdInteractiveChallenge(connCtx context.Context, password str
 	}
 }
 
-func openKnownHostsForEdit(knownHostsFilename string) (*os.File, error) {
-	path, _ := filepath.Split(knownHostsFilename)
-	err := os.MkdirAll(path, 0700)
-	if err != nil {
-		return nil, err
-	}
-	return os.OpenFile(knownHostsFilename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-}
-
 func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerification func() (*userinput.UserInputResponsePacketType, error)) error {
 	if getUserVerification == nil {
 		getUserVerification = func() (*userinput.UserInputResponsePacketType, error) {
@@ -345,15 +335,6 @@ func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, rem
 		defer cancelFn()
 		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	}
-}
-
-func lineContainsMatch(line []byte, matches [][]byte) bool {
-	for _, match := range matches {
-		if bytes.Contains(line, match) {
-			return true
-		}
-	}
-	return false
 }
 
 func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
@@ -682,26 +663,26 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.BatchMode = (strings.ToLower(batchModeRaw) == "yes")
+	sshKeywords.BatchMode = strings.ToLower(batchModeRaw) == "yes"
 
 	// we currently do not support host-bound or unbound but will use yes when they are selected
 	pubkeyAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "PubkeyAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.PubkeyAuthentication = (strings.ToLower(pubkeyAuthenticationRaw) != "no")
+	sshKeywords.PubkeyAuthentication = strings.ToLower(pubkeyAuthenticationRaw) != "no"
 
 	passwordAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "PasswordAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.PasswordAuthentication = (strings.ToLower(passwordAuthenticationRaw) != "no")
+	sshKeywords.PasswordAuthentication = strings.ToLower(passwordAuthenticationRaw) != "no"
 
 	kbdInteractiveAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "KbdInteractiveAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.KbdInteractiveAuthentication = (strings.ToLower(kbdInteractiveAuthenticationRaw) != "no")
+	sshKeywords.KbdInteractiveAuthentication = strings.ToLower(kbdInteractiveAuthenticationRaw) != "no"
 
 	// these are parsed as a single string and must be separated
 	// these are case sensitive in openssh so they are here too

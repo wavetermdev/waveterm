@@ -29,7 +29,6 @@ import (
 	"github.com/creack/pty"
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/mpio"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
@@ -53,27 +52,11 @@ const MinMaxPtySize = 16 * 1024
 const MaxMaxPtySize = 100 * 1024 * 1024
 const MaxRunDataSize = 1024 * 1024
 const MaxTotalRunDataSize = 10 * MaxRunDataSize
-const ShellVarName = "SHELL"
 const SigKillWaitTime = 2 * time.Second
 const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
 const ForceDebugRcFile = false
 const ForceDebugReturnState = false
-
-const ClientCommandFmt = `
-PATH=$PATH:~/.mshell;
-which mshell > /dev/null;
-if [[ "$?" -ne 0 ]]
-then
-  printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s|%s\"}\n" "$(uname -s)" "$(uname -m)"
-else
-  mshell-[%VERSION%] --single
-fi
-`
-
-func MakeClientCommandStr() string {
-	return strings.ReplaceAll(ClientCommandFmt, "[%VERSION%]", semver.MajorMinor(base.WaveshellVersion))
-}
 
 const InstallCommandFmt = `
 printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s|%s\"}\n" "$(uname -s)" "$(uname -m)";
@@ -193,7 +176,7 @@ func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType
 		if signal == 0 {
 			return fmt.Errorf("error signal %q not found, cannot send", pk.SigName)
 		}
-		s.SendSignal(syscall.Signal(signal))
+		s.SendSignal(signal)
 	}
 	return nil
 }
@@ -279,98 +262,6 @@ func (c *ShExecType) MakeCmdStartPacket(reqId string) *packet.CmdStartPacketType
 	startPacket.Pid = c.Cmd.Process.Pid
 	startPacket.WaveshellPid = os.Getpid()
 	return startPacket
-}
-
-// returns (pr, err)
-func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-	go func() {
-		defer pw.Close()
-		pw.Write(data)
-	}()
-	return pr, err
-}
-
-func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
-	msPath, err := base.GetWaveshellPath()
-	if err != nil {
-		return nil, err
-	}
-	ecmd := exec.Command(msPath, string(ck))
-	return ecmd, nil
-}
-
-func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
-	sapi, err := shellapi.MakeShellApi(pk.ShellType)
-	if err != nil {
-		return nil, err
-	}
-	state := pk.State
-	if state == nil {
-		state = &packet.ShellState{}
-	}
-	ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", pk.Command)
-	if !pk.StateComplete {
-		ecmd.Env = os.Environ()
-	}
-	shellutil.UpdateCmdEnv(ecmd, shellenv.EnvMapFromState(state))
-	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellEnvVars(getTermType(pk)))
-	if state.Cwd != "" {
-		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
-	}
-	if HasDupStdin(pk.Fds) {
-		return nil, fmt.Errorf("cannot detach command with dup stdin")
-	}
-	ecmd.Stdin = cmdTty
-	ecmd.Stdout = cmdTty
-	ecmd.Stderr = cmdTty
-	ecmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid:  true,
-		Setctty: true,
-	}
-	extraFiles := make([]*os.File, 0, MaxFdNum+1)
-	if len(pk.Fds) > 0 {
-		return nil, fmt.Errorf("invalid fd %d passed to detached command", pk.Fds[0].FdNum)
-	}
-	for _, runData := range pk.RunData {
-		if runData.FdNum >= len(extraFiles) {
-			extraFiles = extraFiles[:runData.FdNum+1]
-		}
-		var err error
-		extraFiles[runData.FdNum], err = MakeSimpleStaticWriterPipe(runData.Data)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(extraFiles) > FirstExtraFilesFdNum {
-		ecmd.ExtraFiles = extraFiles[FirstExtraFilesFdNum:]
-	}
-	return ecmd, nil
-}
-
-// this will never return (unless there is an error creating/opening the file), as fifoFile will never EOF
-func MakeAndCopyStdinFifo(dst *os.File, fifoName string) error {
-	os.Remove(fifoName)
-	err := syscall.Mkfifo(fifoName, 0600) // only read/write from user for security
-	if err != nil {
-		return fmt.Errorf("cannot make stdin-fifo '%s': %v", fifoName, err)
-	}
-	// rw is non-blocking, will keep the fifo "open" for the blocking reader
-	rwfd, err := os.OpenFile(fifoName, os.O_RDWR, 0600)
-	if err != nil {
-		return fmt.Errorf("cannot open stdin-fifo(1) '%s': %v", fifoName, err)
-	}
-	defer rwfd.Close()
-	fifoReader, err := os.Open(fifoName) // blocking open/reads (open won't block because of rwfd)
-	if err != nil {
-		return fmt.Errorf("cannot open stdin-fifo(2) '%s': %w", fifoName, err)
-	}
-	defer fifoReader.Close()
-	io.Copy(dst, fifoReader)
-	return nil
 }
 
 func ValidateRunPacket(pk *packet.RunPacketType) error {
@@ -722,7 +613,7 @@ func SendRunPacketAndRunData(ctx context.Context, sender *packet.PacketSender, r
 			dataPk.CK = runPacket.CK
 			dataPk.FdNum = runData.FdNum
 			dataPk.Data64 = base64.StdEncoding.EncodeToString(chunk)
-			dataPk.Eof = (len(chunk) == len(sendBuf))
+			dataPk.Eof = len(chunk) == len(sendBuf)
 			sendBuf = sendBuf[chunkSize:]
 			err = sender.SendPacketCtx(ctx, dataPk)
 			if err != nil {
@@ -865,7 +756,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	var isOldBashVersion bool
 	if sapi.GetShellType() == packet.ShellType_bash {
 		bashVersion := sapi.GetLocalMajorVersion()
-		isOldBashVersion = (semver.Compare(bashVersion, "v4") < 0)
+		isOldBashVersion = semver.Compare(bashVersion, "v4") < 0
 	}
 	var rcFileName string
 	var zdotdir string
@@ -910,7 +801,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	fullCmdStr := pk.Command
 	if pk.ReturnState {
 		// this ensures that the last command is a shell buitin so we always get our exit trap to run
-		fullCmdStr = fullCmdStr + "\nexit $? 2> /dev/null"
+		fullCmdStr += "\nexit $? 2> /dev/null"
 	}
 
 	var sudoKey uuid.UUID
@@ -1008,8 +899,8 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			chunk := make([]byte, 1024)
 			firstAttempt := true
 			for {
-				len, _ := reader.Read(chunk)
-				buffer.Write(chunk[:len])
+				length, _ := reader.Read(chunk)
+				buffer.Write(chunk[:length])
 				if bytes.Contains(buffer.Bytes(), []byte(sudoKey.String())) {
 					buffer.Reset()
 
@@ -1048,7 +939,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		if 7 >= len(extraFiles) {
 			extraFiles = extraFiles[:7+1]
 		}
-		extraFiles[6] = readToSudo    //todo - make a constant for the 6
+		extraFiles[6] = readToSudo    // todo - make a constant for the 6
 		extraFiles[7] = writeFromSudo // todo - same
 	}
 	for _, rfd := range pk.Fds {
@@ -1128,18 +1019,6 @@ func (rs *ReturnStateBuf) Run() {
 
 // in detached run mode, we don't want waveshell to die from signals since
 // we want waveshell to persist even if the waveshell --server is terminated
-func SetupSignalsForDetach() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGPIPE)
-	go func() {
-		for range sigCh {
-			// do nothing
-		}
-	}()
-}
-
-// in detached run mode, we don't want waveshell to die from signals since
-// we want waveshell to persist even if the waveshell --server is terminated
 func IgnoreSigPipe() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGPIPE)
@@ -1148,26 +1027,6 @@ func IgnoreSigPipe() {
 			base.Logf("ignoring signal %v\n", sig)
 		}
 	}()
-}
-
-func copyToCirFile(dest *cirfile.File, src io.Reader) error {
-	buf := make([]byte, 64*1024)
-	for {
-		var appendErr error
-		nr, readErr := src.Read(buf)
-		if nr > 0 {
-			appendErr = dest.AppendData(context.Background(), buf[0:nr])
-		}
-		if readErr != nil && readErr != io.EOF {
-			return readErr
-		}
-		if appendErr != nil {
-			return appendErr
-		}
-		if readErr == io.EOF {
-			return nil
-		}
-	}
 }
 
 func (c *ShExecType) ProcWait() error {
@@ -1237,48 +1096,4 @@ func MakeServerInitPacket() (*packet.InitPacketType, error) {
 		return nil, err
 	}
 	return initPacket, nil
-}
-
-func ParseEnv0(env []byte) map[string]string {
-	envLines := bytes.Split(env, []byte{0})
-	rtn := make(map[string]string)
-	for _, envLine := range envLines {
-		if len(envLine) == 0 {
-			continue
-		}
-		eqIdx := bytes.Index(envLine, []byte{'='})
-		if eqIdx == -1 {
-			continue
-		}
-		varName := string(envLine[0:eqIdx])
-		varVal := string(envLine[eqIdx+1:])
-		rtn[varName] = varVal
-	}
-	return rtn
-}
-
-func MakeEnv0(envMap map[string]string) []byte {
-	var buf bytes.Buffer
-	for envName, envVal := range envMap {
-		buf.WriteString(envName)
-		buf.WriteByte('=')
-		buf.WriteString(envVal)
-		buf.WriteByte(0)
-	}
-	return buf.Bytes()
-}
-
-func getStderr(err error) string {
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok {
-		return ""
-	}
-	if len(exitErr.Stderr) == 0 {
-		return ""
-	}
-	lines := strings.SplitN(string(exitErr.Stderr), "\n", 2)
-	if len(lines[0]) > 100 {
-		return lines[0][0:100]
-	}
-	return lines[0]
 }

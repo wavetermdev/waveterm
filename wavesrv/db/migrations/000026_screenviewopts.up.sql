@@ -1,1 +1,2 @@
-ALTER TABLE screen ADD COLUMN screenviewopts json DEFAULT '{}';
+ALTER TABLE screen
+    ADD COLUMN screenviewopts json DEFAULT '{}';

@@ -19,29 +19,6 @@ func parseToSP(s string) utilfn.StrWithPos {
 	return utilfn.StrWithPos{Str: s[0:idx] + s[idx+3:], Pos: idx}
 }
 
-func testParse(cmdStr string, pos int) {
-	fmt.Printf("cmd: %s\n", utilfn.StrWithPos{Str: cmdStr, Pos: pos})
-	p := ParseCompPoint(utilfn.StrWithPos{Str: cmdStr, Pos: pos})
-	p.dump()
-}
-
-func _Test1(t *testing.T) {
-	testParse("ls ", 3)
-	testParse("ls    ", 4)
-	testParse("ls       -l foo", 4)
-	testParse("ls foo; cd h", 12)
-	testParse("ls foo; cd h;", 13)
-	testParse("ls & foo; cd h", 12)
-	testParse("ls \"he", 6)
-	testParse("ls;", 3)
-	testParse("ls;", 2)
-	testParse("ls; cd x; ls", 8)
-	testParse("cd \"foo ", 8)
-	testParse("ls; { ls f", 10)
-	testParse("ls; { ls -l; ls f", 17)
-	testParse("ls $(ls f", 9)
-}
-
 func testMiniExtend(t *testing.T, p *CompPoint, newWord string, complete bool, expectedStr string) {
 	newSP := p.extendWord(newWord, complete)
 	expectedSP := parseToSP(expectedStr)

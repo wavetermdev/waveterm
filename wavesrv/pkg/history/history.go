@@ -137,16 +137,6 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 
 const HistoryQueryChunkSize = 1000
 
-func _getNextHistoryItem(items []*HistoryItemType, index int, filterFn func(*HistoryItemType) bool) (*HistoryItemType, int) {
-	for ; index < len(items); index++ {
-		item := items[index]
-		if filterFn(item) {
-			return item, index
-		}
-	}
-	return nil, index
-}
-
 // returns true if done, false if we still need to process more items
 func (result *HistoryQueryResult) processItem(item *HistoryItemType, rawOffset int) bool {
 	if result.prevItems < result.Offset {
@@ -225,16 +215,18 @@ func runHistoryQuery(tx *sstore.TxWrap, opts HistoryQueryOpts, realOffset int, i
 	}
 	whereClause := "WHERE 1"
 	var queryArgs []interface{}
-	hNumStr := ""
-	if opts.SessionId != "" && opts.ScreenId != "" {
-		whereClause += fmt.Sprintf(" AND h.sessionid = '%s' AND h.screenid = '%s'", opts.SessionId, opts.ScreenId)
-		hNumStr = ""
-	} else if opts.SessionId != "" {
-		whereClause += fmt.Sprintf(" AND h.sessionid = '%s'", opts.SessionId)
-		hNumStr = "s"
+	var hNumStr string
+	if opts.SessionId != "" {
+		if opts.ScreenId != "" {
+			whereClause += fmt.Sprintf(" AND h.sessionid = '%s' AND h.screenid = '%s'", opts.SessionId, opts.ScreenId)
+		} else {
+			whereClause += fmt.Sprintf(" AND h.sessionid = '%s'", opts.SessionId)
+			hNumStr = "s"
+		}
 	} else {
 		hNumStr = "g"
 	}
+
 	if opts.SearchText != "" {
 		whereClause += " AND h.cmdstr LIKE ? ESCAPE '\\'"
 		likeArg := opts.SearchText

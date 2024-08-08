@@ -410,7 +410,7 @@ func TestReadAt(t *testing.T) {
 	log.Printf("Got stat: %v", fInfo)
 	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
 
-	var read []byte = make([]byte, 16)
+	var read = make([]byte, 16)
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &read, 0)
 	if err != nil {
 		t.Errorf("Read error: %v", err)
@@ -464,7 +464,7 @@ func TestFlushCache(t *testing.T) {
 
 	FlushCache(ctx)
 
-	var read []byte = make([]byte, 32)
+	var read = make([]byte, 32)
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &read, 0)
 	if err != nil {
 		t.Errorf("Read error: %v", err)
@@ -480,7 +480,7 @@ func TestFlushCache(t *testing.T) {
 	SimpleAssert(t, bytesRead == (11-4), "Correct num bytes read")
 	log.Printf("bytes read: %v string: %s", read, string(read))
 	dbData, txErr := WithTxRtn(ctx, func(tx *TxWrap) ([]byte, error) {
-		var cacheData *[]byte = &[]byte{}
+		var cacheData = &[]byte{}
 		query := `SELECT data from block_data where blockid = 'test-block-id' and name = 'file-1'`
 		tx.Get(&cacheData, query)
 		return *cacheData, nil
@@ -583,7 +583,7 @@ func TestWriteAtMaxSizeMultipleBlocks(t *testing.T) {
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(MaxBlockSize * 2), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: MaxBlockSize * 2, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -821,7 +821,7 @@ func TestWriteFile(t *testing.T) {
 		t.Errorf("write at error: %v", err)
 	}
 	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
-	var read []byte = make([]byte, len(testBytesToWrite))
+	var read = make([]byte, len(testBytesToWrite))
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &read, 0)
 	if err != nil {
 		t.Errorf("Read error: %v", err)
@@ -957,7 +957,7 @@ func TestFlushTimer(t *testing.T) {
 	log.Printf("Got stat: %v", fInfo)
 	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
 	time.Sleep(testFlushTimeout)
-	var read []byte = make([]byte, 32)
+	var read = make([]byte, 32)
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &read, 0)
 	if err != nil {
 		t.Errorf("Read error: %v", err)
@@ -973,7 +973,7 @@ func TestFlushTimer(t *testing.T) {
 	SimpleAssert(t, bytesRead == (11-4), "Correct num bytes read")
 	log.Printf("bytes read: %v string: %s", read, string(read))
 	dbData, txErr := WithTxRtn(ctx, func(tx *TxWrap) ([]byte, error) {
-		var cacheData *[]byte = &[]byte{}
+		var cacheData = &[]byte{}
 		query := `SELECT data from block_data where blockid = 'test-block-id' and name = 'file-1'`
 		tx.Get(&cacheData, query)
 		return *cacheData, nil

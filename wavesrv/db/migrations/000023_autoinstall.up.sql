@@ -1,1 +1,2 @@
-UPDATE remote SET autoinstall = 1;
+UPDATE remote
+SET autoinstall = 1;

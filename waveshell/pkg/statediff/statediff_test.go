@@ -69,8 +69,8 @@ func TestLineDiff(t *testing.T) {
 }
 
 func TestLineDiff0(t *testing.T) {
-	var str1Arr []string = []string{"a", "b", "c", "d", "e"}
-	var str2Arr []string = []string{"a", "e"}
+	var str1Arr = []string{"a", "b", "c", "d", "e"}
+	var str2Arr = []string{"a", "e"}
 	str1 := strings.Join(str1Arr, "\x00")
 	str2 := strings.Join(str2Arr, "\x00")
 	diffBytes := MakeLineDiff(str1, str2, "\x00")
@@ -106,8 +106,8 @@ func TestLineDiff0(t *testing.T) {
 }
 
 func TestLineDiffVersion0(t *testing.T) {
-	var str1Arr []string = []string{"a", "b", "c", "d", "e"}
-	var str2Arr []string = []string{"a", "e"}
+	var str1Arr = []string{"a", "b", "c", "d", "e"}
+	var str2Arr = []string{"a", "e"}
 	str1 := strings.Join(str1Arr, "\n")
 	str2 := strings.Join(str2Arr, "\n")
 

@@ -319,14 +319,6 @@ func resolveLine(ctx context.Context, sessionId string, screenId string, lineArg
 	return genericResolve(lineArg, curLineArg, lines, true, "line")
 }
 
-func getSessionIds(sarr []*sstore.SessionType) []string {
-	rtn := make([]string, len(sarr))
-	for idx, s := range sarr {
-		rtn[idx] = s.SessionId
-	}
-	return rtn
-}
-
 var partialUUIDRe = regexp.MustCompile("^[0-9a-f]{8}$")
 
 func isPartialUUID(s string) bool {
@@ -336,18 +328,6 @@ func isPartialUUID(s string) bool {
 func isUUID(s string) bool {
 	_, err := uuid.Parse(s)
 	return err == nil
-}
-
-func getResolveItemById(id string, items []ResolveItem) *ResolveItem {
-	if id == "" {
-		return nil
-	}
-	for _, item := range items {
-		if item.Id == id {
-			return &item
-		}
-	}
-	return nil
 }
 
 func genericResolve(arg string, curArg string, items []ResolveItem, isNumeric bool, typeStr string) (*ResolveItem, error) {
@@ -390,17 +370,6 @@ func genericResolve(arg string, curArg string, items []ResolveItem, isNumeric bo
 	return nil, fmt.Errorf("could not resolve %s '%s' (name/id/pos not found)", typeStr, arg)
 }
 
-func resolveSessionId(pk *scpacket.FeCommandPacketType) (string, error) {
-	sessionId := pk.Kwargs["session"]
-	if sessionId == "" {
-		return "", nil
-	}
-	if _, err := uuid.Parse(sessionId); err != nil {
-		return "", fmt.Errorf("invalid sessionid '%s'", sessionId)
-	}
-	return sessionId, nil
-}
-
 func resolveSessionArg(sessionArg string) (string, error) {
 	if sessionArg == "" {
 		return "", nil
@@ -419,24 +388,6 @@ func resolveScreenArg(sessionId string, screenArg string) (string, error) {
 		return "", fmt.Errorf("invalid screen arg specified (must be screenid) '%s'", screenArg)
 	}
 	return screenArg, nil
-}
-
-func resolveScreenId(ctx context.Context, pk *scpacket.FeCommandPacketType, sessionId string) (string, error) {
-	screenArg := pk.Kwargs["screen"]
-	if screenArg == "" {
-		return "", nil
-	}
-	if _, err := uuid.Parse(screenArg); err == nil {
-		return screenArg, nil
-	}
-	if sessionId == "" {
-		return "", fmt.Errorf("cannot resolve screen without session")
-	}
-	ritem, err := resolveSessionScreen(ctx, sessionId, screenArg, "")
-	if err != nil {
-		return "", err
-	}
-	return ritem.Id, nil
 }
 
 // returns (remoteuserref, remoteref, name, error)

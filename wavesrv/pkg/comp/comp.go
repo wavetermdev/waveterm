@@ -102,7 +102,7 @@ func init() {
 	specialEsc[0x1b] = "\\E"
 }
 
-func compQuoteDQString(s string, close bool) string {
+func compQuoteDQString(s string, shouldClose bool) string {
 	var buf bytes.Buffer
 	buf.WriteByte('"')
 	for _, ch := range s {
@@ -113,28 +113,10 @@ func compQuoteDQString(s string, close bool) string {
 		}
 		buf.WriteRune(ch)
 	}
-	if close {
+	if shouldClose {
 		buf.WriteByte('"')
 	}
 	return buf.String()
-}
-
-func hasGlob(s string) bool {
-	var lastExtGlob bool
-	for _, ch := range s {
-		if ch == '*' || ch == '?' || ch == '[' || ch == '{' {
-			return true
-		}
-		if ch == '+' || ch == '@' || ch == '!' {
-			lastExtGlob = true
-			continue
-		}
-		if lastExtGlob && ch == '(' {
-			return true
-		}
-		lastExtGlob = false
-	}
-	return false
 }
 
 func writeUtf8Literal(buf *bytes.Buffer, ch rune) {
@@ -183,36 +165,7 @@ func compQuoteLiteralString(s string) string {
 	return buf.String()
 }
 
-func compQuoteSQString(s string) string {
-	var buf bytes.Buffer
-	for _, ch := range s {
-		if ch == 0 {
-			break
-		}
-		if ch == '\'' {
-			buf.WriteString("'\\''")
-			continue
-		}
-		var bch byte
-		if ch <= unicode.MaxASCII {
-			bch = byte(ch)
-		}
-		if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-			buf.WriteByte('\'')
-			if bch != 0 && specialEsc[bch] != "" {
-				buf.WriteString(specialEsc[bch])
-			} else {
-				writeUtf8Literal(&buf, ch)
-			}
-			buf.WriteByte('\'')
-			continue
-		}
-		buf.WriteByte(bch)
-	}
-	return buf.String()
-}
-
-func compQuoteString(s string, quoteType string, close bool) string {
+func compQuoteString(s string, quoteType string, shouldClose bool) string {
 	if quoteType != QuoteTypeANSI && quoteType != QuoteTypeLiteral {
 		for _, ch := range s {
 			if ch > unicode.MaxASCII || !unicode.IsPrint(ch) || ch == '!' {
@@ -230,8 +183,8 @@ func compQuoteString(s string, quoteType string, close bool) string {
 	if quoteType == QuoteTypeANSI {
 		rtn := strconv.QuoteToASCII(s)
 		rtn = "$'" + strings.ReplaceAll(rtn[1:len(rtn)-1], "'", "\\'")
-		if close {
-			rtn = rtn + "'"
+		if shouldClose {
+			rtn += "'"
 		}
 		return rtn
 	}
@@ -241,15 +194,15 @@ func compQuoteString(s string, quoteType string, close bool) string {
 	if quoteType == QuoteTypeSQ {
 		rtn := utilfn.ShellQuote(s, false, MaxCompQuoteLen)
 		if len(rtn) > 0 && rtn[0] != '\'' {
-			rtn = "'" + rtn + "'"
+			rtn = fmt.Sprintf("'%s'", rtn)
 		}
-		if !close {
+		if !shouldClose {
 			rtn = rtn[0 : len(rtn)-1]
 		}
 		return rtn
 	}
 	// QuoteTypeDQ
-	return compQuoteDQString(s, close)
+	return compQuoteDQString(s, shouldClose)
 }
 
 func (p *CompPoint) wordAsStr(w ParsedWord) string {
@@ -305,7 +258,7 @@ func (p *CompPoint) extendWord(newWord string, newWordComplete bool) utilfn.StrW
 	wordSuffix := wordStr[p.CompWordPos:]
 	newQuotedStr := compQuoteString(newWord, quotePref, needsClose)
 	if needsClose && wordSuffix == "" && !strings.HasSuffix(newWord, "/") {
-		newQuotedStr = newQuotedStr + " "
+		newQuotedStr += " "
 	}
 	newPos := len(newQuotedStr)
 	return utilfn.StrWithPos{Str: newQuotedStr + wordSuffix, Pos: newPos}
@@ -321,7 +274,7 @@ func computeCompExtension(compPrefix string, crtn *CompReturn) (string, bool) {
 	if lcp == compPrefix || len(lcp) < len(compPrefix) || !strings.HasPrefix(lcp, compPrefix) {
 		return "", false
 	}
-	return lcp[len(compPrefix):], (utilfn.ContainsStr(compStrs, lcp) && !utilfn.IsPrefix(compStrs, lcp))
+	return lcp[len(compPrefix):], utilfn.ContainsStr(compStrs, lcp) && !utilfn.IsPrefix(compStrs, lcp)
 }
 
 func (p *CompPoint) FullyExtend(crtn *CompReturn) utilfn.StrWithPos {
@@ -351,30 +304,6 @@ func (p *CompPoint) FullyExtend(crtn *CompReturn) utilfn.StrWithPos {
 	newPos := len(p.Prefix) + compWord.Offset + len(compWord.Prefix) + newStr.Pos
 	return utilfn.StrWithPos{Str: buf.String(), Pos: newPos}
 }
-
-func (p *CompPoint) dump() {
-	if p.Prefix != "" {
-		fmt.Printf("prefix: %s\n", p.Prefix)
-	}
-	fmt.Printf("cpos: %d %d\n", p.CompWord, p.CompWordPos)
-	for idx, w := range p.Words {
-		fmt.Printf("w[%d]: ", idx)
-		if w.Prefix != "" {
-			fmt.Printf("{%s}", w.Prefix)
-		}
-		if idx == p.CompWord {
-			fmt.Printf("%s\n", utilfn.StrWithPos{Str: p.wordAsStr(w), Pos: p.CompWordPos})
-		} else {
-			fmt.Printf("%s\n", p.wordAsStr(w))
-		}
-	}
-	if p.Suffix != "" {
-		fmt.Printf("suffix: %s\n", p.Suffix)
-	}
-	fmt.Printf("\n")
-}
-
-var SimpleCompGenFns map[string]SimpleCompGenFnType
 
 func isWhitespace(str string) bool {
 	return strings.TrimSpace(str) == ""
