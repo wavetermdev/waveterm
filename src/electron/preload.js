@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("api", {
     getPlatform: () => ipcRenderer.sendSync("get-platform"),
     getIsDev: () => ipcRenderer.sendSync("get-isdev"),
     getAuthKey: () => ipcRenderer.sendSync("get-authkey"),
+    getBaseHostPort: () => ipcRenderer.sendSync("get-base-host-port"),
+    getBaseWsHostPort: () => ipcRenderer.sendSync("get-base-ws-host-port"),
     getWaveSrvStatus: () => ipcRenderer.sendSync("wavesrv-status"),
     getLastLogs: (numberOfLines, callback) => {
         ipcRenderer.send("get-last-logs", numberOfLines);

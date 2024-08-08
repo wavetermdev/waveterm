@@ -419,10 +419,7 @@ class Model {
     }
 
     getBaseHostPort(): string {
-        if (this.isDev) {
-            return appconst.DevServerEndpoint;
-        }
-        return appconst.ProdServerEndpoint;
+        return getApi().getBaseHostPort();
     }
 
     getTermFontFamily(): string {
@@ -512,10 +509,7 @@ class Model {
     }
 
     getBaseWsHostPort(): string {
-        if (this.isDev) {
-            return appconst.DevServerWsEndpoint;
-        }
-        return appconst.ProdServerWsEndpoint;
+        return getApi().getBaseWsHostPort();
     }
 
     getFetchHeaders(): Record<string, string> {

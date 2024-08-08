@@ -20,8 +20,8 @@ import { platform } from "os";
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
 const AuthKeyFile = "waveterm.authkey";
-const DevServerEndpoint = "http://127.0.0.1:8090";
-const ProdServerEndpoint = "http://127.0.0.1:1619";
+const ServerEndpoint = "http://127.0.0.1";
+const ServerWsEndpoint = "ws://127.0.0.1";
 
 const isDev = process.env[WaveDevVarName] != null;
 const waveHome = getWaveHomeDir();
@@ -154,10 +154,17 @@ function getGoAppBasePath(): string {
 }
 
 function getBaseHostPort(): string {
-    if (isDev) {
-        return DevServerEndpoint;
-    }
-    return ProdServerEndpoint;
+    const waveHome = getWaveHomeDir();
+    const portFile = path.join(waveHome, "wavesrv.port");
+
+    return ServerEndpoint + ":" + fs.readFileSync(portFile, "utf8").trim();
+}
+
+function getBaseWsHostPort(): string {
+    const waveHome = getWaveHomeDir();
+    const portFile = path.join(waveHome, "wavesrv.ws.port");
+
+    return ServerWsEndpoint + ":" + fs.readFileSync(portFile, "utf8").trim();
 }
 
 function getWaveSrvPath(): string {
@@ -531,6 +538,14 @@ electron.ipcMain.on("get-isdev", (event) => {
 
 electron.ipcMain.on("get-authkey", (event) => {
     event.returnValue = GlobalAuthKey;
+});
+
+electron.ipcMain.on("get-base-host-port", (event) => {
+    event.returnValue = getBaseHostPort();
+});
+
+electron.ipcMain.on("get-base-ws-host-port", (event) => {
+    event.returnValue = getBaseWsHostPort();
 });
 
 electron.ipcMain.on("wavesrv-status", (event) => {
