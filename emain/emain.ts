@@ -20,6 +20,8 @@ import { fireAndForget } from "../frontend/util/util";
 import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
+let WaveVersion = "unknown"; // set by WAVESRV-ESTART
+let WaveBuildTime = 0; // set by WAVESRV-ESTART
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
@@ -113,13 +115,12 @@ function getGoAppBasePath(): string {
 const wavesrvBinName = `wavesrv.${unameArch}`;
 
 function getWaveSrvPath(): string {
+    if (process.platform === "win32") {
+        const winBinName = `${wavesrvBinName}.exe`;
+        const appPath = path.join(getGoAppBasePath(), "bin", winBinName);
+        return `& "${appPath}"`;
+    }
     return path.join(getGoAppBasePath(), "bin", wavesrvBinName);
-}
-
-function getWaveSrvPathWin(): string {
-    const winBinName = `${wavesrvBinName}.exe`;
-    const appPath = path.join(getGoAppBasePath(), "bin", winBinName);
-    return `& "${appPath}"`;
 }
 
 function getWaveSrvCwd(): string {
@@ -141,12 +142,7 @@ function runWaveSrv(): Promise<boolean> {
     const envCopy = { ...process.env };
     envCopy[WaveAppPathVarName] = getGoAppBasePath();
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
-    let waveSrvCmd: string;
-    if (process.platform === "win32") {
-        waveSrvCmd = getWaveSrvPathWin();
-    } else {
-        waveSrvCmd = getWaveSrvPath();
-    }
+    const waveSrvCmd = getWaveSrvPath();
     console.log("trying to run local server", waveSrvCmd);
     const proc = child_process.spawn(getWaveSrvPath(), {
         cwd: getWaveSrvCwd(),
@@ -181,14 +177,20 @@ function runWaveSrv(): Promise<boolean> {
     });
     rlStderr.on("line", (line) => {
         if (line.includes("WAVESRV-ESTART")) {
-            const addrs = /ws:([a-z0-9.:]+) web:([a-z0-9.:]+)/gm.exec(line);
-            if (addrs == null) {
+            const startParams = /ws:([a-z0-9.:]+) web:([a-z0-9.:]+) version:([a-z0-9.]+) buildtime:(\d+)/gm.exec(line);
+            if (startParams == null) {
                 console.log("error parsing WAVESRV-ESTART line", line);
                 electronApp.quit();
                 return;
             }
-            process.env[WSServerEndpointVarName] = addrs[1];
-            process.env[WebServerEndpointVarName] = addrs[2];
+            process.env[WSServerEndpointVarName] = startParams[1];
+            process.env[WebServerEndpointVarName] = startParams[2];
+            WaveVersion = startParams[3];
+            WaveBuildTime = parseInt(startParams[4]);
+            electron.app.setAboutPanelOptions({
+                applicationVersion: "v" + WaveVersion,
+                version: (isDev ? "dev-" : "") + String(WaveBuildTime),
+            });
             waveSrvReadyResolve(true);
             return;
         }

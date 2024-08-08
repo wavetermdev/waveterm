@@ -158,7 +158,7 @@ func main() {
 			_, err := strconv.Atoi(pidStr)
 			if err == nil {
 				// use fmt instead of log here to make sure it goes directly to stderr
-				fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s\n", wsListener.Addr(), webListener.Addr())
+				fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime)
 			}
 		}
 	}()
