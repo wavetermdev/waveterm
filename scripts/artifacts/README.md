@@ -19,6 +19,12 @@ script. When you are ready to publish the artifacts to the public release feed, 
 [`publish-from-staging.sh`](./publish-from-staging.sh) script to directly copy the artifacts from
 the staging bucket to the releases bucket.
 
+You will need to configure an AWS CLI profile with write permissions for the S3 buckets in order for the script to work. You should invoke the script as follows:
+
+```bash
+AWS_PROFILE=<profile> <script>
+```
+
 ## Automatic updates
 
 Thanks to `electron-updater`, we are able to provide automatic app updates for macOS and Linux,
@@ -45,5 +51,5 @@ by NodeJS because they are not seen as files and therefore cannot be executed vi
 command. More information can be found
 [here](https://www.electronjs.org/docs/latest/tutorial/asar-archives#executing-binaries-inside-asar-archive).
 
-We also exclude most of our `node_modules` from packaging, as WebPack handles packaging
+We also exclude most of our `node_modules` from packaging, as Vite handles packaging
 of any dependencies for us. The one exception is `monaco-editor`.
