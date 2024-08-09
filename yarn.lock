@@ -2878,14 +2878,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@observablehq/plot@npm:^0.6.15":
-  version: 0.6.15
-  resolution: "@observablehq/plot@npm:0.6.15"
+"@observablehq/plot@npm:^0.6.16":
+  version: 0.6.16
+  resolution: "@observablehq/plot@npm:0.6.16"
   dependencies:
     d3: "npm:^7.9.0"
     interval-tree-1d: "npm:^1.0.0"
     isoformat: "npm:^0.2.0"
-  checksum: 10c0/ed05ea3708b1b44fbfbc67006158bd1ede4a4caaaaf995d44932d7d0f0ad9fe779f2daaf6d84949218a5aa3dee3791a784b1db1447c214d38dd2d67bc671e26b
+  checksum: 10c0/e4a1f6b9b16fe0b17abc592e50de80ec1edbf3b8447ce3951068dc7e321fd2f5b8079e2fa169628bcbf605b2ca2ac5222991f3ff477b269bdae530ef6d700108
   languageName: node
   linkType: hard
 
@@ -3826,22 +3826,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-table@npm:^8.19.3":
-  version: 8.19.3
-  resolution: "@tanstack/react-table@npm:8.19.3"
+"@tanstack/react-table@npm:^8.20.1":
+  version: 8.20.1
+  resolution: "@tanstack/react-table@npm:8.20.1"
   dependencies:
-    "@tanstack/table-core": "npm:8.19.3"
+    "@tanstack/table-core": "npm:8.20.1"
   peerDependencies:
     react: ">=16.8"
     react-dom: ">=16.8"
-  checksum: 10c0/c3835d84f13874482d7e646c67d6b213065cf7b39e6d1ba4fe9a6876ad913a4863bbfbc9f93e4cc59a86ab292d228b16be4c27cf4786bc9f49366c4f9895b616
+  checksum: 10c0/dc0bac56425de05bb51dca32d488a6ca4f2395375f8c02b1c0082ee0f654841efa1263b357c62864f7c44ed39c0be1fb547aa7350ee7e39be5c7dd19b4155260
   languageName: node
   linkType: hard
 
-"@tanstack/table-core@npm:8.19.3":
-  version: 8.19.3
-  resolution: "@tanstack/table-core@npm:8.19.3"
-  checksum: 10c0/c88a37ac4733b64c4466c42703ae4cff84e07ff0d46948e2938a050fa2d058c730ed80f36765394f505b1ccc5e0cc331b72af9e9fa6549897c8d145cfaebae20
+"@tanstack/table-core@npm:8.20.1":
+  version: 8.20.1
+  resolution: "@tanstack/table-core@npm:8.20.1"
+  checksum: 10c0/540a4df688cad9261f77ca454aab62720615569805b5396bd012b411bb65dbb3fdf38f2a0b91a60b2e0def139d1517ad9a3f28f2cede5317d70ad1ad0dd1c5a3
   languageName: node
   linkType: hard
 
@@ -8997,9 +8997,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jotai@npm:^2.9.1":
-  version: 2.9.1
-  resolution: "jotai@npm:2.9.1"
+"jotai@npm:^2.9.2":
+  version: 2.9.2
+  resolution: "jotai@npm:2.9.2"
   peerDependencies:
     "@types/react": ">=17.0.0"
     react: ">=17.0.0"
@@ -9008,7 +9008,7 @@ __metadata:
       optional: true
     react:
       optional: true
-  checksum: 10c0/cf3eb74d3400098d65d24f8ded83535917624c8048e2f92a73de3189a2f697f5058542cc95bd1961ca22ef721a908db580daac659c16cc18173b80b3563e4d7c
+  checksum: 10c0/a54e708d192f18c4a4e26920ad63aead67469345f18a6cb87349a0d6cd73ccbaacb150f3c7f8cf1a162f1ea7d0da80885d57ac2554ea2f9818b54aa0c3a37b63
   languageName: node
   linkType: hard
 
@@ -12594,7 +12594,7 @@ __metadata:
     "@eslint/js": "npm:^9.8.0"
     "@monaco-editor/loader": "npm:^1.4.0"
     "@monaco-editor/react": "npm:^4.6.0"
-    "@observablehq/plot": "npm:^0.6.15"
+    "@observablehq/plot": "npm:^0.6.16"
     "@react-hook/resize-observer": "npm:^2.0.2"
     "@storybook/addon-essentials": "npm:^8.2.8"
     "@storybook/addon-interactions": "npm:^8.2.8"
@@ -12605,7 +12605,7 @@ __metadata:
     "@storybook/test": "npm:^8.2.8"
     "@table-nav/core": "npm:^0.0.7"
     "@table-nav/react": "npm:^0.0.7"
-    "@tanstack/react-table": "npm:^8.19.3"
+    "@tanstack/react-table": "npm:^8.20.1"
     "@types/color": "npm:^3.0.6"
     "@types/css-tree": "npm:^2"
     "@types/electron": "npm:^1.6.10"
@@ -12638,7 +12638,7 @@ __metadata:
     htl: "npm:^0.3.1"
     html-to-image: "npm:^1.11.11"
     immer: "npm:^10.1.1"
-    jotai: "npm:^2.9.1"
+    jotai: "npm:^2.9.2"
     less: "npm:^4.2.0"
     monaco-editor: "npm:^0.50.0"
     overlayscrollbars: "npm:^2.10.0"
@@ -12677,7 +12677,7 @@ __metadata:
     vite-plugin-svgr: "npm:^4.2.0"
     vite-tsconfig-paths: "npm:^5.0.1"
     vitest: "npm:^2.0.5"
-    winston: "npm:^3.13.1"
+    winston: "npm:^3.14.1"
   languageName: unknown
   linkType: soft
 
@@ -13687,9 +13687,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"winston@npm:^3.13.1":
-  version: 3.13.1
-  resolution: "winston@npm:3.13.1"
+"winston@npm:^3.14.1":
+  version: 3.14.1
+  resolution: "winston@npm:3.14.1"
   dependencies:
     "@colors/colors": "npm:^1.6.0"
     "@dabh/diagnostics": "npm:^2.0.2"
@@ -13702,7 +13702,7 @@ __metadata:
     stack-trace: "npm:0.0.x"
     triple-beam: "npm:^1.3.0"
     winston-transport: "npm:^4.7.0"
-  checksum: 10c0/986a542f17b71935b88c14465939bf7eaf64d8d13c18792f74b0eb19b31abdaf472df92049a1d7882405076aba95de13cdb5b3243d0c04c4f9632fac85f57788
+  checksum: 10c0/2d0f75a8110c00be97f71adee9f1afdba40a329659b98c6169062171304e34fe78877a9983a9dbd5755bbed3515a51f91cf582004e3781f1eb54de5b507e5207
   languageName: node
   linkType: hard
 
