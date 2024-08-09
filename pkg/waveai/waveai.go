@@ -14,6 +14,7 @@ import (
 
 	openaiapi "github.com/sashabaranov/go-openai"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wcloud"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 
 	"github.com/gorilla/websocket"
@@ -108,28 +109,37 @@ func ConvertPrompt(prompt []wshrpc.OpenAIPromptMessageType) []openaiapi.ChatComp
 	return rtn
 }
 
+func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
+	return wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: err}
+}
+
 func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
+	wsEndpoint := wcloud.GetWSEndpoint()
 	go func() {
 		defer close(rtn)
+		if wsEndpoint == "" {
+			rtn <- makeAIError(fmt.Errorf("no cloud ws endpoint found"))
+			return
+		}
 		if request.Opts == nil {
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("no openai opts found")}
+			rtn <- makeAIError(fmt.Errorf("no openai opts found"))
 			return
 		}
 		websocketContext, dialCancelFn := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
 		defer dialCancelFn()
-		conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, GetWSEndpoint(), nil)
+		conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, wsEndpoint, nil)
 		if err == context.DeadlineExceeded {
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, timed out connecting to cloud server: %v", err)}
+			rtn <- makeAIError(fmt.Errorf("OpenAI request, timed out connecting to cloud server: %v", err))
 			return
 		} else if err != nil {
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket connect error: %v", err)}
+			rtn <- makeAIError(fmt.Errorf("OpenAI request, websocket connect error: %v", err))
 			return
 		}
 		defer func() {
 			err = conn.Close()
 			if err != nil {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("unable to close openai channel: %v", err)}
+				rtn <- makeAIError(fmt.Errorf("unable to close openai channel: %v", err))
 			}
 		}()
 		reqPk := MakeOpenAICloudReqPacket()
@@ -139,12 +149,12 @@ func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 		reqPk.MaxChoices = request.Opts.MaxChoices
 		configMessageBuf, err := json.Marshal(reqPk)
 		if err != nil {
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, packet marshal error: %v", err)}
+			rtn <- makeAIError(fmt.Errorf("OpenAI request, packet marshal error: %v", err))
 			return
 		}
 		err = conn.WriteMessage(websocket.TextMessage, configMessageBuf)
 		if err != nil {
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket write config error: %v", err)}
+			rtn <- makeAIError(fmt.Errorf("OpenAI request, websocket write config error: %v", err))
 			return
 		}
 		for {
@@ -154,14 +164,13 @@ func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 			}
 			if err != nil {
 				log.Printf("err received: %v", err)
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket error reading message: %v", err)}
+				rtn <- makeAIError(fmt.Errorf("OpenAI request, websocket error reading message: %v", err))
 				break
 			}
 			var streamResp *wshrpc.OpenAIPacketType
 			err = json.Unmarshal(socketMessage, &streamResp)
-			log.Printf("ai resp: %v", streamResp)
 			if err != nil {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("OpenAI request, websocket response json decode error: %v", err)}
+				rtn <- makeAIError(fmt.Errorf("OpenAI request, websocket response json decode error: %v", err))
 				break
 			}
 			if streamResp.Error == PacketEOFStr {
@@ -169,7 +178,7 @@ func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 				break
 			} else if streamResp.Error != "" {
 				// use error from server directly
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: fmt.Errorf("%v", streamResp.Error)}
+				rtn <- makeAIError(fmt.Errorf("%v", streamResp.Error))
 				break
 			}
 			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *streamResp}

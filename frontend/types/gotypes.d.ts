@@ -324,6 +324,7 @@ declare global {
         termthemes: {[key: string]: TermThemeType};
         window: WindowSettingsType;
         web: WebConfigType;
+        telemetry: TelemetrySettingsType;
         defaultmeta?: MetaType;
         presets?: {[key: string]: MetaType};
     };
@@ -361,6 +362,11 @@ declare global {
         name: string;
         layoutnode: string;
         blockids: string[];
+    };
+
+    // wconfig.TelemetrySettingsType
+    type TelemetrySettingsType = {
+        enabled: boolean;
     };
 
     // shellexec.TermSize

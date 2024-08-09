@@ -38,6 +38,10 @@ let globalIsQuitting = false;
 let globalIsStarting = true;
 let globalIsRelaunching = false;
 
+// for activity updates
+let wasActive = true;
+let wasInFg = true;
+
 const isDev = !electronApp.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
 if (isDev) {
@@ -394,7 +398,9 @@ function createBrowserWindow(
         });
     });
     win.webContents.on("before-input-event", (e, input) => {
-        // console.log("before-input-event", input);
+        if (win.isFocused()) {
+            wasActive = true;
+        }
     });
     win.on(
         "resize",
@@ -405,6 +411,8 @@ function createBrowserWindow(
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
     win.on("focus", () => {
+        wasInFg = true;
+        wasActive = true;
         if (globalIsStarting) {
             return;
         }
@@ -587,6 +595,30 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuI
     menu.popup({ x, y });
     event.returnValue = true;
 });
+
+async function logActiveState() {
+    const activeState = { fg: wasInFg, active: wasActive, open: true };
+    const url = new URL(getWebServerEndpoint() + "/wave/log-active-state");
+    try {
+        const resp = await fetch(url, { method: "post", body: JSON.stringify(activeState) });
+        if (!resp.ok) {
+            console.log("error logging active state", resp.status, resp.statusText);
+            return;
+        }
+    } catch (e) {
+        console.log("error logging active state", e);
+    } finally {
+        // for next iteration
+        wasInFg = electron.BrowserWindow.getFocusedWindow()?.isFocused() ?? false;
+        wasActive = false;
+    }
+}
+
+// this isn't perfect, but gets the job done without being complicated
+function runActiveTimer() {
+    logActiveState();
+    setTimeout(runActiveTimer, 60000);
+}
 
 function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electron.Menu {
     const menuItems: electron.MenuItem[] = [];
@@ -836,6 +868,7 @@ async function appMain() {
     await electronApp.whenReady();
     await relaunchBrowserWindows();
     await configureAutoUpdater();
+    setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
 
     globalIsStarting = false;
 

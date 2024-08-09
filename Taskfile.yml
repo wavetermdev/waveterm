@@ -17,6 +17,9 @@ tasks:
         deps:
             - build:server
             - build:wsh
+        env:
+            WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
+            WCLOUD_WS_ENDPOINT: "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
 
     electron:start:
         desc: Run the Electron application directly.

@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strconv"
 
 	"runtime"
@@ -19,8 +20,10 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
+	"github.com/wavetermdev/thenextwave/pkg/telemetry"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wcloud"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
@@ -31,6 +34,10 @@ import (
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
+const InitialTelemetryWait = 30 * time.Second
+const TelemetryTick = 10 * time.Minute
+const TelemetryInterval = 4 * time.Hour
+
 const ReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID"
 
 var shutdownOnce sync.Once
@@ -40,6 +47,8 @@ func doShutdown(reason string) {
 		log.Printf("shutting down: %s\n", reason)
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
+		shutdownActivityUpdate()
+		sendTelemetryWrapper()
 		// TODO deal with flush in progress
 		filestore.WFS.FlushCache(ctx)
 		watcher := wconfig.GetWatcher()
@@ -81,12 +90,70 @@ func configWatcher() {
 	}
 }
 
+func telemetryLoop() {
+	var nextSend int64
+	time.Sleep(InitialTelemetryWait)
+	for {
+		if time.Now().Unix() > nextSend {
+			nextSend = time.Now().Add(TelemetryInterval).Unix()
+			sendTelemetryWrapper()
+		}
+		time.Sleep(TelemetryTick)
+	}
+}
+
+func sendTelemetryWrapper() {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[error] in sendTelemetryWrapper: %v\n", r)
+		debug.PrintStack()
+	}()
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	client, err := wstore.DBGetSingleton[*wstore.Client](ctx)
+	if err != nil {
+		log.Printf("[error] getting client data for telemetry: %v\n", err)
+		return
+	}
+	err = wcloud.SendTelemetry(ctx, client.OID)
+	if err != nil {
+		log.Printf("[error] sending telemetry: %v\n", err)
+	}
+}
+
+func startupActivityUpdate() {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	activity := telemetry.ActivityUpdate{
+		Startup: 1,
+	}
+	activity.NumTabs, _ = wstore.DBGetCount[*wstore.Tab](ctx)
+	err := telemetry.UpdateActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
+	if err != nil {
+		log.Printf("error updating startup activity: %v\n", err)
+	}
+}
+
+func shutdownActivityUpdate() {
+	activity := telemetry.ActivityUpdate{Shutdown: 1}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFn()
+	err := telemetry.UpdateActivity(ctx, activity) // do NOT use the go routine wrap here (this needs to be synchronous)
+	if err != nil {
+		log.Printf("error updating shutdown activity: %v\n", err)
+	}
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
 	blockcontroller.WshServerFactoryFn = wshserver.MakeWshServer
 	web.WshServerFactoryFn = wshserver.MakeWshServer
 	wavebase.WaveVersion = WaveVersion
+	wavebase.BuildTime = BuildTime
 
 	err := service.ValidateServiceMap()
 	if err != nil {
@@ -134,7 +201,9 @@ func main() {
 		return
 	}
 	installShutdownSignalHandlers()
+	startupActivityUpdate()
 	go stdinReadWatch()
+	go telemetryLoop()
 	configWatcher()
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {

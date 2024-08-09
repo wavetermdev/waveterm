@@ -95,6 +95,10 @@ type WindowSettingsType struct {
 	BgColor     *string  `json:"bgcolor"`
 }
 
+type TelemetrySettingsType struct {
+	Enabled *bool `json:"enabled"`
+}
+
 type SettingsConfigType struct {
 	MimeTypes      map[string]MimeTypeConfigType `json:"mimetypes"`
 	Term           TerminalConfigType            `json:"term"`
@@ -105,6 +109,7 @@ type SettingsConfigType struct {
 	TermThemes     TermThemesConfigType          `json:"termthemes"`
 	WindowSettings WindowSettingsType            `json:"window"`
 	Web            WebConfigType                 `json:"web"`
+	Telemetry      *TelemetrySettingsType        `json:"telemetry"`
 
 	DefaultMeta *waveobj.MetaMapType            `json:"defaultmeta,omitempty"`
 	Presets     map[string]*waveobj.MetaMapType `json:"presets,omitempty"`

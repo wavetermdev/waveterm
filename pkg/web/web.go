@@ -22,7 +22,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
+	"github.com/wavetermdev/thenextwave/pkg/telemetry"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 type WebFnType = func(http.ResponseWriter, *http.Request)
@@ -233,6 +235,65 @@ func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func WriteJsonError(w http.ResponseWriter, errVal error) {
+	w.Header().Set(ContentTypeHeaderKey, ContentTypeJson)
+	w.WriteHeader(http.StatusOK)
+	errMap := make(map[string]interface{})
+	errMap["error"] = errVal.Error()
+	barr, _ := json.Marshal(errMap)
+	w.Write(barr)
+}
+
+func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
+	w.Header().Set(ContentTypeHeaderKey, ContentTypeJson)
+	rtnMap := make(map[string]interface{})
+	rtnMap["success"] = true
+	if data != nil {
+		rtnMap["data"] = data
+	}
+	barr, err := json.Marshal(rtnMap)
+	if err != nil {
+		WriteJsonError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(barr)
+}
+
+type ClientActiveState struct {
+	Fg     bool `json:"fg"`
+	Active bool `json:"active"`
+	Open   bool `json:"open"`
+}
+
+// params: fg, active, open
+func handleLogActiveState(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var activeState ClientActiveState
+	err := decoder.Decode(&activeState)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error decoding json: %v", err))
+		return
+	}
+	activity := telemetry.ActivityUpdate{}
+	if activeState.Fg {
+		activity.FgMinutes = 1
+	}
+	if activeState.Active {
+		activity.ActiveMinutes = 1
+	}
+	if activeState.Open {
+		activity.OpenMinutes = 1
+	}
+	activity.NumTabs, _ = wstore.DBGetCount[*wstore.Tab](r.Context())
+	err = telemetry.UpdateActivity(r.Context(), activity)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
+		return
+	}
+	WriteJsonSuccess(w, true)
+}
+
 func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -300,6 +361,7 @@ func RunWebServer(listener net.Listener) {
 	gr.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
+	gr.HandleFunc("/wave/log-active-state", WebFnWrap(WebFnOpts{JsonErrors: true}, handleLogActiveState))
 	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
 	if wavebase.IsDevMode() {
 		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)

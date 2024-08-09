@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ import (
 
 // set by main-server.go
 var WaveVersion = "0.0.0"
+var BuildTime = "0"
 
 const DefaultWaveHome = "~/.w2"
 const DevWaveHome = "~/.w2-dev"
@@ -178,4 +180,36 @@ func AcquireWaveLock() (*filemutex.FileMutex, error) {
 
 	err = m.TryLock()
 	return m, err
+}
+
+func ClientArch() string {
+	return fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+}
+
+var releaseRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)`)
+var osReleaseOnce = &sync.Once{}
+var osRelease string
+
+func unameKernelRelease() string {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	out, err := exec.CommandContext(ctx, "uname", "-r").CombinedOutput()
+	if err != nil {
+		log.Printf("error executing uname -r: %v\n", err)
+		return "-"
+	}
+	releaseStr := strings.TrimSpace(string(out))
+	m := releaseRegex.FindStringSubmatch(releaseStr)
+	if m == nil || len(m) < 2 {
+		log.Printf("invalid uname -r output: [%s]\n", releaseStr)
+		return "-"
+	}
+	return m[1]
+}
+
+func UnameKernelRelease() string {
+	osReleaseOnce.Do(func() {
+		osRelease = unameKernelRelease()
+	})
+	return osRelease
 }

@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"unicode/utf8"
@@ -868,4 +869,12 @@ func AtomicRenameCopy(dstPath string, srcPath string, perms os.FileMode) error {
 		return err
 	}
 	return nil
+}
+
+func AtoiNoErr(str string) int {
+	val, err := strconv.Atoi(str)
+	if err != nil {
+		return 0
+	}
+	return val
 }

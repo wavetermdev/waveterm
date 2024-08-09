@@ -21,7 +21,6 @@ require (
 	github.com/shirou/gopsutil/v4 v4.24.7
 	github.com/spf13/cobra v1.8.1
 	github.com/wavetermdev/htmltoken v0.1.0
-	github.com/wavetermdev/waveterm/wavesrv v0.0.0-20240508181017-d07068c09d94
 	golang.org/x/crypto v0.25.0
 	golang.org/x/term v0.22.0
 )

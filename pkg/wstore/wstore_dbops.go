@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
+	"github.com/wavetermdev/thenextwave/pkg/util/dbutil"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
 
 var ErrNotFound = fmt.Errorf("not found")

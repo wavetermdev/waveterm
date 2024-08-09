@@ -229,8 +229,6 @@ func (w *Watcher) broadcast(message WatcherUpdate) {
 
 	if message.Error != "" {
 		log.Printf("watcher: error processing update: %v. error: %s", message.Settings, message.Error)
-	} else {
-		log.Printf("watcher: update: %v", message.Settings)
 	}
 }
 
