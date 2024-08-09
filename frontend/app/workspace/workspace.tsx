@@ -116,8 +116,8 @@ const WorkspaceElem = React.memo(() => {
                     <CenteredDiv>No Active Tab</CenteredDiv>
                 ) : (
                     <>
-                        <TabContent key={activeTabId} tabId={activeTabId} />
                         <Widgets />
+                        <TabContent key={activeTabId} tabId={activeTabId} />
                         <ModalsRenderer />
                     </>
                 )}
