@@ -81,6 +81,9 @@ export PATH=$WAVETERM_WSHBINDIR:$PATH
 )
 
 func DetectLocalShellPath() string {
+	if runtime.GOOS == "windows" {
+		return "powershell.exe"
+	}
 	shellPath := GetMacUserShell()
 	if shellPath == "" {
 		shellPath = os.Getenv("SHELL")

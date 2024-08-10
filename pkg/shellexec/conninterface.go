@@ -2,9 +2,9 @@ package shellexec
 
 import (
 	"io"
-	"os"
 	"os/exec"
 
+	"github.com/creack/pty"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -16,10 +16,12 @@ type ConnInterface interface {
 	StdoutPipe() (io.ReadCloser, error)
 	StderrPipe() (io.ReadCloser, error)
 	SetSize(w int, h int) error
+	pty.Pty
 }
 
 type CmdWrap struct {
 	Cmd *exec.Cmd
+	pty.Pty
 }
 
 func (cw CmdWrap) Kill() {
@@ -54,13 +56,18 @@ func (cw CmdWrap) StderrPipe() (io.ReadCloser, error) {
 }
 
 func (cw CmdWrap) SetSize(w int, h int) error {
+	err := pty.Setsize(cw.Pty, &pty.Winsize{Rows: uint16(w), Cols: uint16(h)})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 type SessionWrap struct {
 	Session  *ssh.Session
 	StartCmd string
-	Tty      *os.File
+	Tty      pty.Tty
+	pty.Pty
 }
 
 func (sw SessionWrap) Kill() {

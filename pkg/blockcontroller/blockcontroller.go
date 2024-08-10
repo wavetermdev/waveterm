@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/creack/pty"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
@@ -329,7 +328,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
 	messageCh := make(chan []byte, 32)
-	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Pty, messageCh)
+	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Cmd, messageCh)
 	outputCh := make(chan []byte, 32)
 	WshServerFactoryFn(messageCh, outputCh, wshrpc.RpcContext{BlockId: bc.BlockId, TabId: bc.TabId})
 	go func() {
@@ -368,17 +367,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		// handles input from the shellInputCh, sent to pty
 		for ic := range shellInputCh {
 			if len(ic.InputData) > 0 {
-				bc.ShellProc.Pty.Write(ic.InputData)
+				bc.ShellProc.Cmd.Write(ic.InputData)
 			}
 			if ic.TermSize != nil {
 				log.Printf("SETTERMSIZE: %dx%d\n", ic.TermSize.Rows, ic.TermSize.Cols)
-				err := pty.Setsize(bc.ShellProc.Pty, &pty.Winsize{Rows: uint16(ic.TermSize.Rows), Cols: uint16(ic.TermSize.Cols)})
-				if err != nil {
-					log.Printf("error setting term size: %v\n", err)
-				}
 				err = bc.ShellProc.Cmd.SetSize(ic.TermSize.Rows, ic.TermSize.Cols)
 				if err != nil {
-					log.Printf("error setting remote SIGWINCH: %v\n", err)
+					log.Printf("error setting pty size: %v\n", err)
 				}
 			}
 		}

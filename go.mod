@@ -44,3 +44,5 @@ require (
 )
 
 replace github.com/kevinburke/ssh_config => github.com/wavetermdev/ssh_config v0.0.0-20240306041034-17e2087ebde2
+
+replace github.com/creack/pty => github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b

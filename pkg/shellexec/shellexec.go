@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,7 +25,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/remote"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"golang.org/x/term"
 )
 
 type TermSize struct {
@@ -41,7 +41,6 @@ type CommandOptsType struct {
 
 type ShellProc struct {
 	Cmd       ConnInterface
-	Pty       *os.File
 	CloseOnce *sync.Once
 	DoneCh    chan any // closed after proc.Wait() returns
 	WaitErr   error    // WaitErr is synchronized by DoneCh (written before DoneCh is closed) and CloseOnce
@@ -52,7 +51,13 @@ func (sp *ShellProc) Close() {
 	go func() {
 		waitErr := sp.Cmd.Wait()
 		sp.SetWaitErrorAndSignalDone(waitErr)
-		sp.Pty.Close()
+
+		// windows cannot handle the pty being
+		// closed twice, so we let the pty
+		// close itself instead
+		if runtime.GOOS != "windows" {
+			sp.Cmd.Close()
+		}
 	}()
 }
 
@@ -115,6 +120,41 @@ func checkCwd(cwd string) error {
 
 var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
 
+type PipePty struct {
+	remoteStdinWrite *os.File
+	remoteStdoutRead *os.File
+}
+
+func (pp *PipePty) Fd() uintptr {
+	return pp.remoteStdinWrite.Fd()
+}
+
+func (pp *PipePty) Name() string {
+	return "pipe-pty"
+}
+
+func (pp *PipePty) Read(p []byte) (n int, err error) {
+	return pp.remoteStdoutRead.Read(p)
+}
+
+func (pp *PipePty) Write(p []byte) (n int, err error) {
+	return pp.remoteStdinWrite.Write(p)
+}
+
+func (pp *PipePty) Close() error {
+	err1 := pp.remoteStdinWrite.Close()
+	err2 := pp.remoteStdoutRead.Close()
+
+	if err1 != nil {
+		return err1
+	}
+	return err2
+}
+
+func (pp *PipePty) WriteString(s string) (n int, err error) {
+	return pp.Write([]byte(s))
+}
+
 func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType, remoteName string) (*ShellProc, error) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFunc()
@@ -158,14 +198,21 @@ func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsT
 	if err != nil {
 		return nil, err
 	}
-	// todo: connect pty output, etc
-	// redirect to fake pty???
 
-	cmdPty, cmdTty, err := pty.Open()
+	remoteStdinRead, remoteStdinWriteOurs, err := os.Pipe()
 	if err != nil {
-		return nil, fmt.Errorf("opening new pty: %w", err)
+		return nil, err
 	}
-	term.MakeRaw(int(cmdTty.Fd()))
+
+	remoteStdoutReadOurs, remoteStdoutWrite, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+
+	pipePty := &PipePty{
+		remoteStdinWrite: remoteStdinWriteOurs,
+		remoteStdoutRead: remoteStdoutReadOurs,
+	}
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
 		termSize.Cols = shellutil.DefaultTermCols
@@ -173,10 +220,9 @@ func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsT
 	if termSize.Rows <= 0 || termSize.Cols <= 0 {
 		return nil, fmt.Errorf("invalid term size: %v", termSize)
 	}
-	pty.Setsize(cmdPty, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
-	session.Stdin = cmdTty
-	session.Stdout = cmdTty
-	session.Stderr = cmdTty
+	session.Stdin = remoteStdinRead
+	session.Stdout = remoteStdoutWrite
+	session.Stderr = remoteStdoutWrite
 	for envKey, envVal := range cmdOpts.Env {
 		// note these might fail depending on server settings, but we still try
 		session.Setenv(envKey, envVal)
@@ -184,13 +230,13 @@ func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsT
 
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 
-	sessionWrap := SessionWrap{session, cmdCombined, cmdTty}
+	sessionWrap := SessionWrap{session, cmdCombined, pipePty, pipePty}
 	err = sessionWrap.Start()
 	if err != nil {
-		cmdPty.Close()
+		pipePty.Close()
 		return nil, err
 	}
-	return &ShellProc{Cmd: sessionWrap, Pty: cmdPty, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	return &ShellProc{Cmd: sessionWrap, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func isZshShell(shellPath string) bool {
@@ -216,7 +262,7 @@ func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (
 			// add --rcfile
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", shellutil.GetBashRcFileOverride())
-		} else {
+		} else if runtime.GOOS != "windows" {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
 			}
@@ -252,10 +298,6 @@ func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (
 	}
 	shellutil.UpdateCmdEnv(ecmd, envToAdd)
 	shellutil.UpdateCmdEnv(ecmd, cmdOpts.Env)
-	cmdPty, cmdTty, err := pty.Open()
-	if err != nil {
-		return nil, fmt.Errorf("opening new pty: %w", err)
-	}
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
 		termSize.Cols = shellutil.DefaultTermCols
@@ -263,28 +305,17 @@ func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (
 	if termSize.Rows <= 0 || termSize.Cols <= 0 {
 		return nil, fmt.Errorf("invalid term size: %v", termSize)
 	}
-	pty.Setsize(cmdPty, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
-	ecmd.Stdin = cmdTty
-	ecmd.Stdout = cmdTty
-	ecmd.Stderr = cmdTty
-	ecmd.SysProcAttr = &syscall.SysProcAttr{}
-	setSysProcAttrs(ecmd)
-	err = ecmd.Start()
-	cmdTty.Close()
+	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
 	if err != nil {
 		cmdPty.Close()
 		return nil, err
 	}
-	return &ShellProc{Cmd: CmdWrap{ecmd}, Pty: cmdPty, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	return &ShellProc{Cmd: CmdWrap{ecmd, cmdPty}, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize TermSize) ([]byte, error) {
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellLocalEnvVars(shellutil.DefaultTermType))
-	cmdPty, cmdTty, err := pty.Open()
-	if err != nil {
-		return nil, fmt.Errorf("opening new pty: %w", err)
-	}
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
 		termSize.Cols = shellutil.DefaultTermCols
@@ -292,19 +323,14 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize TermSize) ([]byte, error) {
 	if termSize.Rows <= 0 || termSize.Cols <= 0 {
 		return nil, fmt.Errorf("invalid term size: %v", termSize)
 	}
-	pty.Setsize(cmdPty, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
-	ecmd.Stdin = cmdTty
-	ecmd.Stdout = cmdTty
-	ecmd.Stderr = cmdTty
-	ecmd.SysProcAttr = &syscall.SysProcAttr{}
-	setSysProcAttrs(ecmd)
-	err = ecmd.Start()
-	cmdTty.Close()
+	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
 	if err != nil {
 		cmdPty.Close()
 		return nil, err
 	}
-	defer cmdPty.Close()
+	if runtime.GOOS != "windows" {
+		defer cmdPty.Close()
+	}
 	ioDone := make(chan bool)
 	var outputBuf bytes.Buffer
 	go func() {

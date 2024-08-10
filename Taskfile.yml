@@ -8,6 +8,8 @@ vars:
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
+    RM: '{{if eq OS "windows"}}powershell Remove-Item{{else}}rm{{end}}'
+    DATE: '{{if eq OS "windows"}}powershell date -UFormat{{else}}date{{end}}'
 
 tasks:
     electron:dev:
@@ -50,7 +52,7 @@ tasks:
         status:
             - exit {{if eq OS "darwin"}}1{{else}}0{{end}}
         cmds:
-            - cmd: rm dist/bin/wavesrv*
+            - cmd: '{{.RM}} "dist/bin/wavesrv*"'
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -64,7 +66,7 @@ tasks:
         status:
             - exit {{if eq OS "darwin"}}0{{else}}1{{end}}
         cmds:
-            - cmd: rm dist/bin/wavesrv*
+            - cmd: '{{.RM}} "dist/bin/wavesrv*"'
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -77,7 +79,7 @@ tasks:
             vars:
                 - GOARCH
         cmds:
-            - CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{.GOARCH}}{{exeExt}} cmd/server/main-server.go
+            - CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{.GOARCH}}{{exeExt}} cmd/server/main-server.go
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
@@ -133,7 +135,7 @@ tasks:
         generates:
             - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}}
         cmds:
-            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M')" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         deps:
             - generate
             - go:mod:tidy

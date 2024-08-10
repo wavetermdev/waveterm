@@ -122,7 +122,7 @@ function getWaveSrvPath(): string {
     if (process.platform === "win32") {
         const winBinName = `${wavesrvBinName}.exe`;
         const appPath = path.join(getGoAppBasePath(), "bin", winBinName);
-        return `& "${appPath}"`;
+        return `${appPath}`;
     }
     return path.join(getGoAppBasePath(), "bin", wavesrvBinName);
 }

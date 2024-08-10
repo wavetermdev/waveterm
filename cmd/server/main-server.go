@@ -226,6 +226,9 @@ func main() {
 		if pidStr != "" {
 			_, err := strconv.Atoi(pidStr)
 			if err == nil {
+				if BuildTime == "" {
+					BuildTime = "0"
+				}
 				// use fmt instead of log here to make sure it goes directly to stderr
 				fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime)
 			}
