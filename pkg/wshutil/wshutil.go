@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"sync"
@@ -34,6 +35,11 @@ const HexChars = "0123456789ABCDEF"
 const BEL = 0x07
 const ST = 0x9c
 const ESC = 0x1b
+
+const DefaultOutputChSize = 32
+const DefaultInputChSize = 32
+
+const WaveJwtTokenVarName = "WAVETERM_JWT"
 
 // OSC escape types
 // OSC 23198 ; (JSON | base64-JSON) ST
@@ -181,8 +187,8 @@ func RestoreTermState() {
 
 // returns (wshRpc, wrappedStdin)
 func SetupTerminalRpcClient(handlerFn func(*RpcResponseHandler) bool) (*WshRpc, io.Reader) {
-	messageCh := make(chan []byte, 32)
-	outputCh := make(chan []byte, 32)
+	messageCh := make(chan []byte, DefaultInputChSize)
+	outputCh := make(chan []byte, DefaultOutputChSize)
 	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
 	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, handlerFn)
 	go func() {
@@ -192,6 +198,42 @@ func SetupTerminalRpcClient(handlerFn func(*RpcResponseHandler) bool) (*WshRpc, 
 		}
 	}()
 	return rpcClient, ptyBuf
+}
+
+func SetupConnRpcClient(conn net.Conn, handlerFn func(*RpcResponseHandler) bool) (*WshRpc, chan error, error) {
+	inputCh := make(chan []byte, DefaultInputChSize)
+	outputCh := make(chan []byte, DefaultOutputChSize)
+	writeErrCh := make(chan error, 1)
+	go func() {
+		writeErr := AdaptOutputChToStream(outputCh, conn)
+		if writeErr != nil {
+			writeErrCh <- writeErr
+			close(writeErrCh)
+		}
+	}()
+	go func() {
+		// when input is closed, close the connection
+		defer conn.Close()
+		AdaptStreamToMsgCh(conn, inputCh)
+	}()
+	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, handlerFn)
+	return rtn, writeErrCh, nil
+}
+
+func SetupDomainSocketRpcClient(sockName string, handlerFn func(*RpcResponseHandler) bool) (*WshRpc, error) {
+	conn, err := net.Dial("unix", sockName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Unix domain socket: %w", err)
+	}
+	rtn, errCh, err := SetupConnRpcClient(conn, handlerFn)
+	go func() {
+		defer conn.Close()
+		err := <-errCh
+		if err != nil && err != io.EOF {
+			log.Printf("error in domain socket connection: %v\n", err)
+		}
+	}()
+	return rtn, err
 }
 
 func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, error) {
@@ -246,9 +288,21 @@ func ValidateAndExtractRpcContextFromToken(tokenStr string) (*wshrpc.RpcContext,
 		return nil, fmt.Errorf("iss claim is missing or invalid")
 	}
 	rpcCtx := &wshrpc.RpcContext{}
-	rpcCtx.BlockId = claims["blockid"].(string)
-	rpcCtx.TabId = claims["tabid"].(string)
-	rpcCtx.WindowId = claims["windowid"].(string)
+	if claims["blockid"] != nil {
+		if blockId, ok := claims["blockid"].(string); ok {
+			rpcCtx.BlockId = blockId
+		}
+	}
+	if claims["tabid"] != nil {
+		if tabId, ok := claims["tabid"].(string); ok {
+			rpcCtx.TabId = tabId
+		}
+	}
+	if claims["windowid"] != nil {
+		if windowId, ok := claims["windowid"].(string); ok {
+			rpcCtx.WindowId = windowId
+		}
+	}
 	return rpcCtx, nil
 }
 

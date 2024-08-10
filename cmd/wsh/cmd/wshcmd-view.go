@@ -5,13 +5,11 @@ package cmd
 
 import (
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -33,18 +31,18 @@ func viewRun(cmd *cobra.Command, args []string) {
 	fileArg := args[0]
 	absFile, err := filepath.Abs(fileArg)
 	if err != nil {
-		log.Printf("error getting absolute path: %v\n", err)
+		WriteStderr("[error] getting absolute path: %v\n", err)
 		return
 	}
 	_, err = os.Stat(absFile)
 	if err == fs.ErrNotExist {
-		log.Printf("file does not exist: %q\n", absFile)
+		WriteStderr("[error] file does not exist: %q\n", absFile)
 		return
 	}
 	if err != nil {
-		log.Printf("error getting file info: %v\n", err)
+		WriteStderr("[error] getting file info: %v\n", err)
+		return
 	}
-	wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 	viewWshCmd := &wshrpc.CommandCreateBlockData{
 		BlockDef: &wstore.BlockDef{
 			Meta: map[string]interface{}{
@@ -55,7 +53,7 @@ func viewRun(cmd *cobra.Command, args []string) {
 	}
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, viewWshCmd, 2000)
 	if err != nil {
-		log.Printf("error running view command: %v\r\n", err)
+		WriteStderr("[error] running view command: %v\r\n", err)
 		return
 	}
 }

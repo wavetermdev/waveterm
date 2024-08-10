@@ -94,6 +94,9 @@ type RpcContext struct {
 
 func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 	dataVal := reflect.ValueOf(dataPtr).Elem()
+	if dataVal.Kind() != reflect.Struct {
+		return
+	}
 	dataType := dataVal.Type()
 	for i := 0; i < dataVal.NumField(); i++ {
 		field := dataVal.Field(i)

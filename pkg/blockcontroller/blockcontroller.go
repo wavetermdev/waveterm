@@ -267,13 +267,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}
-			cmdOpts.Env["WAVETERM_JWT"] = jwtStr
+			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		} else {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}
-			cmdOpts.Env["WAVETERM_JWT"] = jwtStr
+			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 	}
 	if bc.ControllerType == BlockController_Shell {

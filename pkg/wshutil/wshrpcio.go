@@ -43,28 +43,32 @@ func streamToLines_processBuf(lineBuf *lineBuf, readBuf []byte, lineFn func([]by
 	}
 }
 
-func streamToLines(input io.Reader, lineFn func([]byte)) {
+func streamToLines(input io.Reader, lineFn func([]byte)) error {
 	var lineBuf lineBuf
 	readBuf := make([]byte, 16*1024)
 	for {
 		n, err := input.Read(readBuf)
 		streamToLines_processBuf(&lineBuf, readBuf[:n], lineFn)
 		if err != nil {
-			break
+			return err
 		}
 	}
 }
 
-func AdaptStreamToMsgCh(input io.Reader, output chan []byte) {
-	streamToLines(input, func(line []byte) {
+func AdaptStreamToMsgCh(input io.Reader, output chan []byte) error {
+	return streamToLines(input, func(line []byte) {
 		output <- line
 	})
 }
 
-func AdaptMsgChToStream(outputCh chan []byte, output io.Writer) error {
+func AdaptOutputChToStream(outputCh chan []byte, output io.Writer) error {
 	for msg := range outputCh {
 		if _, err := output.Write(msg); err != nil {
-			return fmt.Errorf("error writing to output: %w", err)
+			return fmt.Errorf("error writing to output (AdaptOutputChToStream): %w", err)
+		}
+		// write trailing newline
+		if _, err := output.Write([]byte{'\n'}); err != nil {
+			return fmt.Errorf("error writing trailing newline to output (AdaptOutputChToStream): %w", err)
 		}
 	}
 	return nil

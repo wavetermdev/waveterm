@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"reflect"
 
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
@@ -159,48 +157,18 @@ func mainWshServerHandler(handler *wshutil.RpcResponseHandler) bool {
 	}
 }
 
-func MakeUnixListener(sockName string) (net.Listener, error) {
-	os.Remove(sockName) // ignore error
-	rtn, err := net.Listen("unix", sockName)
-	if err != nil {
-		return nil, fmt.Errorf("error creating listener at %v: %v", sockName, err)
-	}
-	os.Chmod(sockName, 0700)
-	log.Printf("Server listening on %s\n", sockName)
-	return rtn, nil
-}
-
-func runWshRpcWithStream(conn net.Conn) {
-	defer conn.Close()
-	inputCh := make(chan []byte, DefaultInputChSize)
-	outputCh := make(chan []byte, DefaultOutputChSize)
-	go wshutil.AdaptMsgChToStream(outputCh, conn)
-	go wshutil.AdaptStreamToMsgCh(conn, inputCh)
-	wshutil.MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, mainWshServerHandler)
-}
-
 func RunWshRpcOverListener(listener net.Listener) {
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Printf("error accepting connection: %v\n", err)
-				continue
-			}
-			go runWshRpcWithStream(conn)
+	defer log.Printf("domain socket listener shutting down\n")
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("error accepting connection: %v\n", err)
+			continue
 		}
-	}()
-}
-
-func RunDomainSocketWshServer() error {
-	sockName := wavebase.GetDomainSocketName()
-	listener, err := MakeUnixListener(sockName)
-	if err != nil {
-		return fmt.Errorf("error starging unix listener for wsh-server: %w", err)
+		log.Print("got domain socket connection\n")
+		// TODO deal with closing connection
+		go wshutil.SetupConnRpcClient(conn, mainWshServerHandler)
 	}
-	defer listener.Close()
-	RunWshRpcOverListener(listener)
-	return nil
 }
 
 func MakeWshServer(inputCh chan []byte, outputCh chan []byte, initialCtx wshrpc.RpcContext) {

@@ -231,7 +231,7 @@ func main() {
 			}
 		}
 	}()
-	go web.RunWebServer(unixListener)
+	go wshserver.RunWshRpcOverListener(unixListener)
 	web.RunWebServer(webListener) // blocking
 	runtime.KeepAlive(waveLock)
 }

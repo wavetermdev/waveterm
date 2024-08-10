@@ -11,7 +11,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
 var setMetaCmd = &cobra.Command{
@@ -62,23 +61,22 @@ func setMetaRun(cmd *cobra.Command, args []string) {
 	oref := args[0]
 	metaSetsStrs := args[1:]
 	if oref == "" {
-		fmt.Println("oref is required")
+		WriteStderr("[error] oref is required\n")
 		return
 	}
 	err := validateEasyORef(oref)
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		WriteStderr("[error] %v\n", err)
 		return
 	}
 	meta, err := parseMetaSets(metaSetsStrs)
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		WriteStderr("[error] %v\n", err)
 		return
 	}
-	wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
-		fmt.Printf("error resolving oref: %v\n", err)
+		WriteStderr("[error] resolving oref: %v\n", err)
 		return
 	}
 	setMetaWshCmd := &wshrpc.CommandSetMetaData{
@@ -87,8 +85,8 @@ func setMetaRun(cmd *cobra.Command, args []string) {
 	}
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_SetMeta, setMetaWshCmd, 2000)
 	if err != nil {
-		fmt.Printf("error setting metadata: %v\n", err)
+		WriteStderr("[error] setting metadata: %v\n", err)
 		return
 	}
-	fmt.Print("metadata set\r\n")
+	WriteStdout("metadata set\n")
 }

@@ -4,11 +4,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
 var deleteBlockCmd = &cobra.Command{
@@ -25,22 +22,21 @@ func init() {
 func deleteBlockRun(cmd *cobra.Command, args []string) {
 	oref := args[0]
 	if oref == "" {
-		fmt.Println("oref is required")
+		WriteStderr("[error] oref is required\n")
 		return
 	}
 	err := validateEasyORef(oref)
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		WriteStderr("[error]%v\n", err)
 		return
 	}
-	wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
-		fmt.Printf("error resolving oref: %v\r\n", err)
+		WriteStderr("[error] resolving oref: %v\n", err)
 		return
 	}
 	if fullORef.OType != "block" {
-		fmt.Printf("oref is not a block\r\n")
+		WriteStderr("[error] oref is not a block\n")
 		return
 	}
 	deleteBlockData := &wshrpc.CommandDeleteBlockData{
@@ -48,8 +44,8 @@ func deleteBlockRun(cmd *cobra.Command, args []string) {
 	}
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_DeleteBlock, deleteBlockData, 2000)
 	if err != nil {
-		fmt.Printf("error deleting block: %v\r\n", err)
+		WriteStderr("[error] deleting block: %v\n", err)
 		return
 	}
-	fmt.Print("block deleted\r\n")
+	WriteStdout("block deleted\n")
 }

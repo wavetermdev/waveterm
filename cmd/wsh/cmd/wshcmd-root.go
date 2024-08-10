@@ -29,8 +29,9 @@ var (
 )
 
 var usingHtmlMode bool
-var WrappedStdin io.Reader
+var WrappedStdin io.Reader = os.Stdin
 var RpcClient *wshutil.WshRpc
+var UsingTermWshMode bool
 
 func extraShutdownFn() {
 	if usingHtmlMode {
@@ -42,15 +43,46 @@ func extraShutdownFn() {
 	}
 }
 
+func WriteStderr(fmtStr string, args ...interface{}) {
+	output := fmt.Sprintf(fmtStr, args...)
+	if UsingTermWshMode {
+		output = strings.ReplaceAll(output, "\n", "\r\n")
+	}
+	fmt.Fprint(os.Stderr, output)
+}
+
+func WriteStdout(fmtStr string, args ...interface{}) {
+	output := fmt.Sprintf(fmtStr, args...)
+	if UsingTermWshMode {
+		output = strings.ReplaceAll(output, "\n", "\r\n")
+	}
+	fmt.Print(output)
+}
+
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
-func setupRpcClient(handlerFn wshutil.CommandHandlerFnType) {
-	log.Printf("setup rpc client\r\n")
-	RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(handlerFn)
+func setupRpcClient(handlerFn wshutil.CommandHandlerFnType) error {
+	jwtToken := os.Getenv("WAVETERM_JWT")
+	if jwtToken == "" {
+		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
+		UsingTermWshMode = true
+		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(handlerFn)
+		return nil
+	}
+	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
+	if err != nil {
+		return fmt.Errorf("error extracting socket name from WAVETERM_JWT: %v", err)
+	}
+	RpcClient, err = wshutil.SetupDomainSocketRpcClient(sockName, handlerFn)
+	if err != nil {
+		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
+	}
+	wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.WshRpcCommandOpts{NoResponse: true})
+	// note we don't modify WrappedStdin here (just use os.Stdin)
+	return nil
 }
 
 func setTermHtmlMode() {
 	wshutil.SetExtraShutdownFunc(extraShutdownFn)
-	wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 	cmd := &wshrpc.CommandSetMetaData{
 		Meta: map[string]any{"term:mode": "html"},
 	}
@@ -109,8 +141,18 @@ func resolveSimpleId(id string) (*waveobj.ORef, error) {
 }
 
 // Execute executes the root command.
-func Execute() error {
+func Execute() {
 	defer wshutil.DoShutdown("", 0, false)
-	setupRpcClient(nil)
-	return rootCmd.Execute()
+	err := setupRpcClient(nil)
+	if err != nil {
+		log.Printf("[error] %v\n", err)
+		wshutil.DoShutdown("", 1, true)
+		return
+	}
+	err = rootCmd.Execute()
+	if err != nil {
+		log.Printf("[error] %v\n", err)
+		wshutil.DoShutdown("", 1, true)
+		return
+	}
 }
