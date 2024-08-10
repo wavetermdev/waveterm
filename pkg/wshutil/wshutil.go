@@ -287,6 +287,10 @@ func ValidateAndExtractRpcContextFromToken(tokenStr string) (*wshrpc.RpcContext,
 	} else {
 		return nil, fmt.Errorf("iss claim is missing or invalid")
 	}
+	return mapClaimsToRpcContext(claims), nil
+}
+
+func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
 	rpcCtx := &wshrpc.RpcContext{}
 	if claims["blockid"] != nil {
 		if blockId, ok := claims["blockid"].(string); ok {
@@ -303,9 +307,25 @@ func ValidateAndExtractRpcContextFromToken(tokenStr string) (*wshrpc.RpcContext,
 			rpcCtx.WindowId = windowId
 		}
 	}
-	return rpcCtx, nil
+	return rpcCtx
 }
 
+// only for use on client
+func ExtractUnverifiedRpcContext(tokenStr string) (*wshrpc.RpcContext, error) {
+	// this happens on the client who does not have access to the secret key
+	// we want to read the claims without validating the signature
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
+	if err != nil {
+		return nil, fmt.Errorf("error parsing token: %w", err)
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("error getting claims from token")
+	}
+	return mapClaimsToRpcContext(claims), nil
+}
+
+// only for use on client
 func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	// this happens on the client who does not have access to the secret key
 	// we want to read the claims without validating the signature

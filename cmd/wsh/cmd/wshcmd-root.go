@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -96,6 +97,12 @@ func setTermHtmlMode() {
 var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
 
 func validateEasyORef(oref string) error {
+	if oref == "this" {
+		return nil
+	}
+	if num, err := strconv.Atoi(oref); err == nil && num >= 1 {
+		return nil
+	}
 	if strings.Contains(oref, ":") {
 		_, err := waveobj.ParseORef(oref)
 		if err != nil {

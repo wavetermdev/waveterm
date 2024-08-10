@@ -27,6 +27,8 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
+const SimpleId_This = "this"
+
 func (ws *WshServer) AuthenticateCommand(ctx context.Context, data string) error {
 	w := wshutil.GetWshRpcFromContext(ctx)
 	if w == nil {
@@ -190,6 +192,17 @@ func sendWaveObjUpdate(oref waveobj.ORef) {
 }
 
 func resolveSimpleId(ctx context.Context, simpleId string) (*waveobj.ORef, error) {
+	if simpleId == SimpleId_This {
+		wshRpc := wshutil.GetWshRpcFromContext(ctx)
+		if wshRpc == nil {
+			return nil, fmt.Errorf("no wshrpc in context")
+		}
+		rpcCtx := wshRpc.GetRpcContext()
+		if rpcCtx.BlockId == "" {
+			return nil, fmt.Errorf("no blockid in rpc context")
+		}
+		return &waveobj.ORef{OType: wstore.OType_Block, OID: rpcCtx.BlockId}, nil
+	}
 	if strings.Contains(simpleId, ":") {
 		rtn, err := waveobj.ParseORef(simpleId)
 		if err != nil {
