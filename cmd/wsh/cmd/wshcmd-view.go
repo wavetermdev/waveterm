@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
@@ -29,29 +30,41 @@ func init() {
 
 func viewRun(cmd *cobra.Command, args []string) {
 	fileArg := args[0]
-	absFile, err := filepath.Abs(fileArg)
-	if err != nil {
-		WriteStderr("[error] getting absolute path: %v\n", err)
-		return
-	}
-	_, err = os.Stat(absFile)
-	if err == fs.ErrNotExist {
-		WriteStderr("[error] file does not exist: %q\n", absFile)
-		return
-	}
-	if err != nil {
-		WriteStderr("[error] getting file info: %v\n", err)
-		return
-	}
-	viewWshCmd := &wshrpc.CommandCreateBlockData{
-		BlockDef: &wstore.BlockDef{
-			Meta: map[string]interface{}{
-				wstore.MetaKey_View: "preview",
-				wstore.MetaKey_File: absFile,
+	var wshCmd *wshrpc.CommandCreateBlockData
+	if strings.HasPrefix(fileArg, "http://") || strings.HasPrefix(fileArg, "https://") {
+		wshCmd = &wshrpc.CommandCreateBlockData{
+			BlockDef: &wstore.BlockDef{
+				Meta: map[string]interface{}{
+					wstore.MetaKey_View: "web",
+					wstore.MetaKey_Url:  fileArg,
+				},
 			},
-		},
+		}
+	} else {
+		absFile, err := filepath.Abs(fileArg)
+		if err != nil {
+			WriteStderr("[error] getting absolute path: %v\n", err)
+			return
+		}
+		_, err = os.Stat(absFile)
+		if err == fs.ErrNotExist {
+			WriteStderr("[error] file does not exist: %q\n", absFile)
+			return
+		}
+		if err != nil {
+			WriteStderr("[error] getting file info: %v\n", err)
+			return
+		}
+		wshCmd = &wshrpc.CommandCreateBlockData{
+			BlockDef: &wstore.BlockDef{
+				Meta: map[string]interface{}{
+					wstore.MetaKey_View: "preview",
+					wstore.MetaKey_File: absFile,
+				},
+			},
+		}
 	}
-	_, err = RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, viewWshCmd, 2000)
+	_, err := RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, 2000)
 	if err != nil {
 		WriteStderr("[error] running view command: %v\r\n", err)
 		return
