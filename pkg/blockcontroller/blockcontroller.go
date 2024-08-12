@@ -36,7 +36,7 @@ const (
 )
 
 const (
-	BlockFile_Main = "main" // used for main pty output
+	BlockFile_Term = "term" // used for main pty output
 	BlockFile_Html = "html" // used for alt html layout
 )
 
@@ -188,9 +188,9 @@ func (bc *BlockController) resetTerminalState() {
 		shouldTruncate = blockData.Meta.GetBool(wstore.MetaKey_CmdClearOnRestart, false)
 	}
 	if shouldTruncate {
-		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Main)
+		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Term)
 		if err != nil {
-			log.Printf("error truncating main blockfile: %v\n", err)
+			log.Printf("error truncating term blockfile: %v\n", err)
 		}
 		return
 	}
@@ -201,7 +201,7 @@ func (bc *BlockController) resetTerminalState() {
 	buf.WriteString("\x1b[?25h")   // show cursor
 	buf.WriteString("\x1b[?1000l") // disable mouse tracking
 	buf.WriteString("\r\n\r\n(restored terminal state)\r\n\r\n")
-	err := filestore.WFS.AppendData(ctx, bc.BlockId, "main", buf.Bytes())
+	err := filestore.WFS.AppendData(ctx, bc.BlockId, BlockFile_Term, buf.Bytes())
 	if err != nil {
 		log.Printf("error appending to blockfile (terminal reset): %v\n", err)
 	}
@@ -223,7 +223,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	err := filestore.WFS.MakeFile(ctx, bc.BlockId, "main", nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
+	err := filestore.WFS.MakeFile(ctx, bc.BlockId, BlockFile_Term, nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
 	if err != nil && err != fs.ErrExist {
 		err = fs.ErrExist
 		return fmt.Errorf("error creating blockfile: %w", err)
@@ -346,7 +346,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		for {
 			nr, err := ptyBuffer.Read(buf)
 			if nr > 0 {
-				err := HandleAppendBlockFile(bc.BlockId, BlockFile_Main, buf[:nr])
+				err := HandleAppendBlockFile(bc.BlockId, BlockFile_Term, buf[:nr])
 				if err != nil {
 					log.Printf("error appending to blockfile: %v\n", err)
 				}
@@ -398,7 +398,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		shellProc.SetWaitErrorAndSignalDone(waitErr)
 		exitCode := shellexec.ExitCodeFromWaitErr(waitErr)
 		termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
-		HandleAppendBlockFile(bc.BlockId, BlockFile_Main, []byte(termMsg))
+		HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte(termMsg))
 	}()
 	return nil
 }
@@ -437,9 +437,9 @@ func (bc *BlockController) run(bdata *wstore.Block, blockMeta map[string]any) {
 		return
 	}
 	if getBoolFromMeta(blockMeta, wstore.MetaKey_CmdClearOnStart, false) {
-		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Main)
+		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Term)
 		if err != nil {
-			log.Printf("error truncating main blockfile: %v\n", err)
+			log.Printf("error truncating term blockfile: %v\n", err)
 		}
 	}
 	runOnStart := getBoolFromMeta(blockMeta, wstore.MetaKey_CmdRunOnStart, true)

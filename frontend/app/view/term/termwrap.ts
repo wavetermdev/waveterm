@@ -13,6 +13,9 @@ import { Terminal } from "@xterm/xterm";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
 
+const TermFileName = "term";
+const TermCacheFileName = "cache:term:full";
+
 // detect webgl support
 function detectWebGLSupport(): boolean {
     try {
@@ -105,7 +108,7 @@ export class TermWrap {
     async initTerminal() {
         this.connectElem.addEventListener("keydown", this.keydownHandler, true);
         this.terminal.onData(this.handleTermData.bind(this));
-        this.mainFileSubject = getFileSubject(this.blockId, "main");
+        this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
         try {
             await this.loadInitialTerminalData();
@@ -169,7 +172,7 @@ export class TermWrap {
 
     async loadInitialTerminalData(): Promise<void> {
         let startTs = Date.now();
-        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(this.blockId, "cache:term:full");
+        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(this.blockId, TermCacheFileName);
         let ptyOffset = 0;
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
@@ -177,7 +180,7 @@ export class TermWrap {
                 this.doTerminalWrite(cacheData, ptyOffset);
             }
         }
-        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(this.blockId, "main", ptyOffset);
+        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(this.blockId, TermFileName, ptyOffset);
         console.log(
             `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes, ${Date.now() - startTs}ms`
         );

@@ -11,10 +11,9 @@ import (
 )
 
 const (
-	Mode_Normal    = "normal"
-	Mode_Esc       = "esc"
-	Mode_WaveEsc   = "waveesc"
-	BlockFile_Main = "main" // Assuming this is defined elsewhere
+	Mode_Normal  = "normal"
+	Mode_Esc     = "esc"
+	Mode_WaveEsc = "waveesc"
 )
 
 const MaxBufferedDataSize = 256 * 1024
