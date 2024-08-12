@@ -10,7 +10,6 @@ import (
 	"net"
 	"reflect"
 
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
@@ -23,6 +22,8 @@ const (
 )
 
 type WshServer struct{}
+
+func (*WshServer) WshServerImpl() {}
 
 type WshServerMethodDecl struct {
 	Command                 string
@@ -88,75 +89,6 @@ func decodeRtnVals(rtnVals []reflect.Value) (any, error) {
 	}
 }
 
-func mainWshServerHandler(handler *wshutil.RpcResponseHandler) bool {
-	command := handler.GetCommand()
-	methodDecl := wshCommandDeclMap[command]
-	if methodDecl == nil {
-		handler.SendResponseError(fmt.Errorf("command %q not found", command))
-		return true
-	}
-	var callParams []reflect.Value
-	callParams = append(callParams, reflect.ValueOf(handler.Context()))
-	if methodDecl.CommandDataType != nil {
-		commandData := reflect.New(methodDecl.CommandDataType).Interface()
-		err := utilfn.ReUnmarshal(commandData, handler.GetCommandRawData())
-		if err != nil {
-			handler.SendResponseError(fmt.Errorf("error re-marshalling command data: %w", err))
-			return true
-		}
-		wshrpc.HackRpcContextIntoData(commandData, handler.GetRpcContext())
-		callParams = append(callParams, reflect.ValueOf(commandData).Elem())
-	}
-	implVal := reflect.ValueOf(&WshServerImpl)
-	implMethod := implVal.MethodByName(methodDecl.MethodName)
-	if !implMethod.IsValid() {
-		if !handler.NeedsResponse() {
-			// we also send an out of band message here since this is likely unexpected and will require debugging
-			handler.SendMessage(fmt.Sprintf("command %q method %q not found", handler.GetCommand(), methodDecl.MethodName))
-		}
-		handler.SendResponseError(fmt.Errorf("method %q not found", methodDecl.MethodName))
-		return true
-	}
-	if methodDecl.CommandType == wshrpc.RpcType_Call {
-		rtnVals := implMethod.Call(callParams)
-		rtnData, rtnErr := decodeRtnVals(rtnVals)
-		if rtnErr != nil {
-			handler.SendResponseError(rtnErr)
-			return true
-		}
-		handler.SendResponse(rtnData, true)
-		return true
-	} else if methodDecl.CommandType == wshrpc.RpcType_ResponseStream {
-		rtnVals := implMethod.Call(callParams)
-		rtnChVal := rtnVals[0]
-		if rtnChVal.IsNil() {
-			handler.SendResponse(nil, true)
-			return true
-		}
-		go func() {
-			defer handler.Finalize()
-			// must use reflection here because we don't know the generic type of RespOrErrorUnion
-			for {
-				respVal, ok := rtnChVal.Recv()
-				if !ok {
-					break
-				}
-				errorVal := respVal.FieldByName("Error")
-				if !errorVal.IsNil() {
-					handler.SendResponseError(errorVal.Interface().(error))
-					break
-				}
-				respData := respVal.FieldByName("Response").Interface()
-				handler.SendResponse(respData, false)
-			}
-		}()
-		return false
-	} else {
-		handler.SendResponseError(fmt.Errorf("unsupported command type %q", methodDecl.CommandType))
-		return true
-	}
-}
-
 func RunWshRpcOverListener(listener net.Listener) {
 	defer log.Printf("domain socket listener shutting down\n")
 	for {
@@ -167,10 +99,10 @@ func RunWshRpcOverListener(listener net.Listener) {
 		}
 		log.Print("got domain socket connection\n")
 		// TODO deal with closing connection
-		go wshutil.SetupConnRpcClient(conn, mainWshServerHandler)
+		go wshutil.SetupConnRpcClient(conn, &WshServerImpl)
 	}
 }
 
 func MakeWshServer(inputCh chan []byte, outputCh chan []byte, initialCtx wshrpc.RpcContext) {
-	wshutil.MakeWshRpc(inputCh, outputCh, initialCtx, mainWshServerHandler)
+	wshutil.MakeWshRpc(inputCh, outputCh, initialCtx, &WshServerImpl)
 }

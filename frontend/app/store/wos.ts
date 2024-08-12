@@ -168,7 +168,6 @@ function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boo
     const localPromise = GetObject<T>(oref);
     wov.pendingPromise = localPromise;
     localPromise.then((val) => {
-        console.log("GetObject resolved", oref, val);
         if (wov.pendingPromise != localPromise) {
             return;
         }

@@ -6,6 +6,7 @@ package wshrpc
 
 import (
 	"context"
+	"os"
 	"reflect"
 
 	"github.com/wavetermdev/thenextwave/pkg/ijson"
@@ -44,6 +45,9 @@ const (
 	Command_StreamTest        = "streamtest"
 	Command_StreamWaveAi      = "streamwaveai"
 	Command_StreamCpuData     = "streamcpudata"
+	Command_Test              = "test"
+	Command_RemoteStreamFile  = "remotestreamfile"
+	Command_RemoteFileInfo    = "remotefileinfo"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -74,6 +78,11 @@ type WshRpcInterface interface {
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[CpuDataType]
+	TestCommand(ctx context.Context, data string) error
+
+	// remotes
+	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[CommandRemoteStreamFileRtnData]
+	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 }
 
 // for frontend
@@ -242,4 +251,26 @@ type CpuDataRequest struct {
 type CpuDataType struct {
 	Time  int64   `json:"time"`
 	Value float64 `json:"value"`
+}
+
+type FileInfo struct {
+	Path     string      `json:"path"` // cleaned path
+	Name     string      `json:"name"`
+	NotFound bool        `json:"notfound,omitempty"`
+	Size     int64       `json:"size"`
+	Mode     os.FileMode `json:"mode"`
+	ModeStr  string      `json:"modestr"`
+	ModTime  int64       `json:"modtime"`
+	IsDir    bool        `json:"isdir,omitempty"`
+	MimeType string      `json:"mimetype,omitempty"`
+}
+
+type CommandRemoteStreamFileData struct {
+	Path      string `json:"path"`
+	ByteRange string `json:"byterange,omitempty"`
+}
+
+type CommandRemoteStreamFileRtnData struct {
+	FileInfo *FileInfo `json:"fileinfo,omitempty"`
+	Data64   string    `json:"data64,omitempty"`
 }

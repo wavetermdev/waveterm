@@ -116,6 +116,18 @@ declare global {
         message: string;
     };
 
+    // wshrpc.CommandRemoteStreamFileData
+    type CommandRemoteStreamFileData = {
+        path: string;
+        byterange?: string;
+    };
+
+    // wshrpc.CommandRemoteStreamFileRtnData
+    type CommandRemoteStreamFileRtnData = {
+        fileinfo?: FileInfo;
+        data64?: string;
+    };
+
     // wshrpc.CommandResolveIdsData
     type CommandResolveIdsData = {
         ids: string[];
@@ -153,7 +165,7 @@ declare global {
         meta?: {[key: string]: any};
     };
 
-    // fileservice.FileInfo
+    // wshrpc.FileInfo
     type FileInfo = {
         path: string;
         name: string;

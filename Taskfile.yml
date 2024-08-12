@@ -120,6 +120,18 @@ tasks:
                   GOOS: windows
                   GOARCH: arm64
 
+    dev:installwsh:
+        desc: quick shortcut to rebuild wsh and install for macos arm64
+        requires:
+            vars:
+                - VERSION
+        cmds:
+            - task: build:wsh:internal
+              vars:
+                  GOOS: darwin
+                  GOARCH: arm64
+            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/.w2-dev/bin/wsh
+
     build:wsh:internal:
         vars:
             EXT:

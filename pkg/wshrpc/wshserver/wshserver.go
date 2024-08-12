@@ -23,11 +23,48 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 const SimpleId_This = "this"
+
+func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in TestCommand: %v", r)
+		}
+	}()
+	rpc := wshutil.GetWshRpcFromContext(ctx)
+	if rpc == nil {
+		return nil
+	}
+	go func() {
+		wshclient.MessageCommand(rpc, wshrpc.CommandMessageData{Message: "test message"}, &wshrpc.WshRpcCommandOpts{NoResponse: true})
+		resp, err := wshclient.RemoteFileInfoCommand(rpc, "~/work/wails/thenextwave/README.md", nil)
+		if err != nil {
+			log.Printf("error getting remote file info: %v", err)
+			return
+		}
+		log.Printf("remote file info: %#v\n", resp)
+
+		rch := wshclient.RemoteStreamFileCommand(rpc, wshrpc.CommandRemoteStreamFileData{Path: "~/work/wails/thenextwave/README.md"}, nil)
+		for msg := range rch {
+			if msg.Error != nil {
+				log.Printf("error in stream: %v", msg.Error)
+				break
+			}
+			if msg.Response.FileInfo != nil {
+				log.Printf("stream resp (fileinfo): %v\n", msg.Response.FileInfo)
+			}
+			if msg.Response.Data64 != "" {
+				log.Printf("stream resp (data): %v\n", len(msg.Response.Data64))
+			}
+		}
+	}()
+	return nil
+}
 
 func (ws *WshServer) AuthenticateCommand(ctx context.Context, data string) error {
 	w := wshutil.GetWshRpcFromContext(ctx)

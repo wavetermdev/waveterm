@@ -61,19 +61,19 @@ func WriteStdout(fmtStr string, args ...interface{}) {
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
-func setupRpcClient(handlerFn wshutil.CommandHandlerFnType) error {
+func setupRpcClient(serverImpl wshutil.ServerImpl) error {
 	jwtToken := os.Getenv("WAVETERM_JWT")
 	if jwtToken == "" {
 		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 		UsingTermWshMode = true
-		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(handlerFn)
+		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(serverImpl)
 		return nil
 	}
 	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
 	if err != nil {
 		return fmt.Errorf("error extracting socket name from WAVETERM_JWT: %v", err)
 	}
-	RpcClient, err = wshutil.SetupDomainSocketRpcClient(sockName, handlerFn)
+	RpcClient, err = wshutil.SetupDomainSocketRpcClient(sockName, serverImpl)
 	if err != nil {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
@@ -149,7 +149,15 @@ func resolveSimpleId(id string) (*waveobj.ORef, error) {
 
 // Execute executes the root command.
 func Execute() {
-	defer wshutil.DoShutdown("", 0, false)
+	defer func() {
+		r := recover()
+		if r != nil {
+			WriteStderr("[panic] %v\n", r)
+			wshutil.DoShutdown("", 1, true)
+		} else {
+			wshutil.DoShutdown("", 0, false)
+		}
+	}()
 	err := setupRpcClient(nil)
 	if err != nil {
 		log.Printf("[error] %v\n", err)

@@ -186,11 +186,11 @@ func RestoreTermState() {
 }
 
 // returns (wshRpc, wrappedStdin)
-func SetupTerminalRpcClient(handlerFn func(*RpcResponseHandler) bool) (*WshRpc, io.Reader) {
+func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 	messageCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, handlerFn)
+	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	go func() {
 		for msg := range outputCh {
 			barr := EncodeWaveOSCBytes(WaveOSC, msg)
@@ -200,7 +200,7 @@ func SetupTerminalRpcClient(handlerFn func(*RpcResponseHandler) bool) (*WshRpc, 
 	return rpcClient, ptyBuf
 }
 
-func SetupConnRpcClient(conn net.Conn, handlerFn func(*RpcResponseHandler) bool) (*WshRpc, chan error, error) {
+func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan error, error) {
 	inputCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	writeErrCh := make(chan error, 1)
@@ -216,16 +216,16 @@ func SetupConnRpcClient(conn net.Conn, handlerFn func(*RpcResponseHandler) bool)
 		defer conn.Close()
 		AdaptStreamToMsgCh(conn, inputCh)
 	}()
-	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, handlerFn)
+	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	return rtn, writeErrCh, nil
 }
 
-func SetupDomainSocketRpcClient(sockName string, handlerFn func(*RpcResponseHandler) bool) (*WshRpc, error) {
+func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc, error) {
 	conn, err := net.Dial("unix", sockName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Unix domain socket: %w", err)
 	}
-	rtn, errCh, err := SetupConnRpcClient(conn, handlerFn)
+	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl)
 	go func() {
 		defer conn.Close()
 		err := <-errCh

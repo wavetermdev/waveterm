@@ -107,6 +107,17 @@ func MessageCommand(w *wshutil.WshRpc, data wshrpc.CommandMessageData, opts *wsh
     return err
 }
 
+// command "remotefileinfo", wshserver.RemoteFileInfoCommand
+func RemoteFileInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.WshRpcCommandOpts) (*wshrpc.FileInfo, error) {
+    resp, err := sendRpcRequestCallHelper[*wshrpc.FileInfo](w, "remotefileinfo", data, opts)
+    return resp, err
+}
+
+// command "remotestreamfile", wshserver.RemoteStreamFileCommand
+func RemoteStreamFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamFileData, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData] {
+    return sendRpcRequestResponseStreamHelper[wshrpc.CommandRemoteStreamFileRtnData](w, "remotestreamfile", data, opts)
+}
+
 // command "resolveids", wshserver.ResolveIdsCommand
 func ResolveIdsCommand(w *wshutil.WshRpc, data wshrpc.CommandResolveIdsData, opts *wshrpc.WshRpcCommandOpts) (wshrpc.CommandResolveIdsRtnData, error) {
     resp, err := sendRpcRequestCallHelper[wshrpc.CommandResolveIdsRtnData](w, "resolveids", data, opts)
@@ -138,6 +149,12 @@ func StreamTestCommand(w *wshutil.WshRpc, opts *wshrpc.WshRpcCommandOpts) chan w
 // command "streamwaveai", wshserver.StreamWaveAiCommand
 func StreamWaveAiCommand(w *wshutil.WshRpc, data wshrpc.OpenAiStreamRequest, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
     return sendRpcRequestResponseStreamHelper[wshrpc.OpenAIPacketType](w, "streamwaveai", data, opts)
+}
+
+// command "test", wshserver.TestCommand
+func TestCommand(w *wshutil.WshRpc, data string, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "test", data, opts)
+    return err
 }
 
 

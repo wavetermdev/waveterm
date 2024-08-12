@@ -10,6 +10,9 @@ import (
 )
 
 func sendRpcRequestCallHelper[T any](w *wshutil.WshRpc, command string, data interface{}, opts *wshrpc.WshRpcCommandOpts) (T, error) {
+	if opts == nil {
+		opts = &wshrpc.WshRpcCommandOpts{}
+	}
 	var respData T
 	if opts.NoResponse {
 		err := w.SendCommand(command, data)
@@ -30,6 +33,9 @@ func sendRpcRequestCallHelper[T any](w *wshutil.WshRpc, command string, data int
 }
 
 func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string, data interface{}, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[T] {
+	if opts == nil {
+		opts = &wshrpc.WshRpcCommandOpts{}
+	}
 	respChan := make(chan wshrpc.RespOrErrorUnion[T])
 	reqHandler, err := w.SendComplexRequest(command, data, true, opts.Timeout)
 	if err != nil {

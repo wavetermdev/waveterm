@@ -87,6 +87,16 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("message", data, opts);
     }
 
+    // command "remotefileinfo" [call]
+	RemoteFileInfoCommand(data: string, opts?: WshRpcCommandOpts): Promise<FileInfo> {
+        return WOS.wshServerRpcHelper_call("remotefileinfo", data, opts);
+    }
+
+    // command "remotestreamfile" [responsestream]
+	RemoteStreamFileCommand(data: CommandRemoteStreamFileData, opts?: WshRpcCommandOpts): AsyncGenerator<CommandRemoteStreamFileRtnData, void, boolean> {
+        return WOS.wshServerRpcHelper_responsestream("remotestreamfile", data, opts);
+    }
+
     // command "resolveids" [call]
 	ResolveIdsCommand(data: CommandResolveIdsData, opts?: WshRpcCommandOpts): Promise<CommandResolveIdsRtnData> {
         return WOS.wshServerRpcHelper_call("resolveids", data, opts);
@@ -115,6 +125,11 @@ class WshServerType {
     // command "streamwaveai" [responsestream]
 	StreamWaveAiCommand(data: OpenAiStreamRequest, opts?: WshRpcCommandOpts): AsyncGenerator<OpenAIPacketType, void, boolean> {
         return WOS.wshServerRpcHelper_responsestream("streamwaveai", data, opts);
+    }
+
+    // command "test" [call]
+	TestCommand(data: string, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("test", data, opts);
     }
 
 }

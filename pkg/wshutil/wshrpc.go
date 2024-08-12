@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -26,6 +27,22 @@ type ResponseFnType = func(any) error
 
 // returns true if handler is complete, false for an async handler
 type CommandHandlerFnType = func(*RpcResponseHandler) bool
+
+type ServerImpl interface {
+	WshServerImpl()
+}
+
+type WshRpc struct {
+	Lock       *sync.Mutex
+	clientId   string
+	InputCh    chan []byte
+	OutputCh   chan []byte
+	RpcContext *atomic.Pointer[wshrpc.RpcContext]
+	RpcMap     map[string]*rpcData
+	ServerImpl ServerImpl
+
+	ResponseHandlerMap map[string]*RpcResponseHandler // reqId => handler
+}
 
 type wshRpcContextKey struct{}
 
@@ -109,26 +126,25 @@ func (r *RpcMessage) Validate() error {
 	return fmt.Errorf("invalid packet: must have command, reqid, or resid set")
 }
 
-type WshRpc struct {
-	Lock       *sync.Mutex
-	clientId   string
-	InputCh    chan []byte
-	OutputCh   chan []byte
-	RpcContext *atomic.Pointer[wshrpc.RpcContext]
-	RpcMap     map[string]*rpcData
-	HandlerFn  CommandHandlerFnType
-
-	ResponseHandlerMap map[string]*RpcResponseHandler // reqId => handler
-}
-
 type rpcData struct {
 	ResCh chan *RpcMessage
 	Ctx   context.Context
 }
 
+func validateServerImpl(serverImpl ServerImpl) {
+	if serverImpl == nil {
+		return
+	}
+	serverType := reflect.TypeOf(serverImpl)
+	if serverType.Kind() != reflect.Pointer && serverType.Elem().Kind() != reflect.Struct {
+		panic(fmt.Sprintf("serverImpl must be a pointer to struct, got %v", serverType))
+	}
+}
+
 // oscEsc is the OSC escape sequence to use for *sending* messages
 // closes outputCh when inputCh is closed/done
-func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, commandHandlerFn CommandHandlerFnType) *WshRpc {
+func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl) *WshRpc {
+	validateServerImpl(serverImpl)
 	rtn := &WshRpc{
 		Lock:               &sync.Mutex{},
 		clientId:           uuid.New().String(),
@@ -136,7 +152,7 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 		OutputCh:           outputCh,
 		RpcMap:             make(map[string]*rpcData),
 		RpcContext:         &atomic.Pointer[wshrpc.RpcContext]{},
-		HandlerFn:          commandHandlerFn,
+		ServerImpl:         serverImpl,
 		ResponseHandlerMap: make(map[string]*RpcResponseHandler),
 	}
 	rtn.RpcContext.Store(&rpcCtx)
@@ -243,9 +259,8 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 			respHandler.Finalize()
 		}
 	}()
-	if w.HandlerFn != nil {
-		isAsync = !w.HandlerFn(respHandler)
-	}
+	handlerFn := serverImplAdapter(w.ServerImpl)
+	isAsync = !handlerFn(respHandler)
 }
 
 func (w *WshRpc) runServer() {
@@ -291,10 +306,11 @@ func (w *WshRpc) getResponseCh(resId string) chan *RpcMessage {
 	return rd.ResCh
 }
 
-func (w *WshRpc) SetHandler(handler CommandHandlerFnType) {
+func (w *WshRpc) SetServerImpl(serverImpl ServerImpl) {
+	validateServerImpl(serverImpl)
 	w.Lock.Lock()
 	defer w.Lock.Unlock()
-	w.HandlerFn = handler
+	w.ServerImpl = serverImpl
 }
 
 func (w *WshRpc) registerRpc(ctx context.Context, reqId string) chan *RpcMessage {
@@ -356,6 +372,7 @@ type RpcRequestHandler struct {
 	ctxCancelFn *atomic.Pointer[context.CancelFunc]
 	reqId       string
 	respCh      chan *RpcMessage
+	cachedResp  *RpcMessage
 }
 
 func (handler *RpcRequestHandler) Context() context.Context {
@@ -379,16 +396,32 @@ func (handler *RpcRequestHandler) SendCancel() {
 }
 
 func (handler *RpcRequestHandler) ResponseDone() bool {
+	if handler.cachedResp != nil {
+		return false
+	}
 	select {
-	case _, more := <-handler.respCh:
-		return !more
+	case msg, more := <-handler.respCh:
+		if !more {
+			return true
+		}
+		handler.cachedResp = msg
+		return false
 	default:
 		return false
 	}
 }
 
 func (handler *RpcRequestHandler) NextResponse() (any, error) {
-	resp := <-handler.respCh
+	var resp *RpcMessage
+	if handler.cachedResp != nil {
+		resp = handler.cachedResp
+		handler.cachedResp = nil
+	} else {
+		resp = <-handler.respCh
+	}
+	if resp == nil {
+		return nil, errors.New("response channel closed")
+	}
 	if resp.Error != "" {
 		return nil, errors.New(resp.Error)
 	}
@@ -527,6 +560,9 @@ func (handler *RpcResponseHandler) IsDone() bool {
 }
 
 func (w *WshRpc) SendComplexRequest(command string, data any, expectsResponse bool, timeoutMs int) (rtnHandler *RpcRequestHandler, rtnErr error) {
+	if timeoutMs <= 0 {
+		timeoutMs = DefaultTimeoutMs
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("panic in SendComplexRequest: %v\n", r)
@@ -540,13 +576,9 @@ func (w *WshRpc) SendComplexRequest(command string, data any, expectsResponse bo
 		w:           w,
 		ctxCancelFn: &atomic.Pointer[context.CancelFunc]{},
 	}
-	if timeoutMs < 0 {
-		handler.ctx = context.Background()
-	} else {
-		var cancelFn context.CancelFunc
-		handler.ctx, cancelFn = context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
-		handler.ctxCancelFn.Store(&cancelFn)
-	}
+	var cancelFn context.CancelFunc
+	handler.ctx, cancelFn = context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
+	handler.ctxCancelFn.Store(&cancelFn)
 	if expectsResponse {
 		handler.reqId = uuid.New().String()
 	}

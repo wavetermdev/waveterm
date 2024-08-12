@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 )
 
 const MaxFileSize = 10 * 1024 * 1024 // 10M
@@ -21,21 +22,9 @@ const DefaultTimeout = 2 * time.Second
 
 type FileService struct{}
 
-type FileInfo struct {
-	Path     string      `json:"path"` // cleaned path
-	Name     string      `json:"name"`
-	NotFound bool        `json:"notfound,omitempty"`
-	Size     int64       `json:"size"`
-	Mode     os.FileMode `json:"mode"`
-	ModeStr  string      `json:"modestr"`
-	ModTime  int64       `json:"modtime"`
-	IsDir    bool        `json:"isdir,omitempty"`
-	MimeType string      `json:"mimetype,omitempty"`
-}
-
 type FullFile struct {
-	Info   *FileInfo `json:"info"`
-	Data64 string    `json:"data64"` // base64 encoded
+	Info   *wshrpc.FileInfo `json:"info"`
+	Data64 string           `json:"data64"` // base64 encoded
 }
 
 func (fs *FileService) SaveFile(path string, data64 string) error {
@@ -51,17 +40,17 @@ func (fs *FileService) SaveFile(path string, data64 string) error {
 	return nil
 }
 
-func (fs *FileService) StatFile(path string) (*FileInfo, error) {
+func (fs *FileService) StatFile(path string) (*wshrpc.FileInfo, error) {
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
 	finfo, err := os.Stat(cleanedPath)
 	if os.IsNotExist(err) {
-		return &FileInfo{Path: wavebase.ReplaceHomeDir(path), NotFound: true}, nil
+		return &wshrpc.FileInfo{Path: wavebase.ReplaceHomeDir(path), NotFound: true}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
 	mimeType := utilfn.DetectMimeType(cleanedPath)
-	return &FileInfo{
+	return &wshrpc.FileInfo{
 		Path:     cleanedPath,
 		Name:     finfo.Name(),
 		Size:     finfo.Size(),
@@ -92,7 +81,7 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 		if len(innerFilesEntries) > 1000 {
 			innerFilesEntries = innerFilesEntries[:1000]
 		}
-		var innerFilesInfo []FileInfo
+		var innerFilesInfo []wshrpc.FileInfo
 		parent := filepath.Dir(finfo.Path)
 		parentFileInfo, err := fs.StatFile(parent)
 		if err == nil && parent != finfo.Path {
@@ -114,7 +103,7 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 			} else {
 				fileSize = innerFileInfoInt.Size()
 			}
-			innerFileInfo := FileInfo{
+			innerFileInfo := wshrpc.FileInfo{
 				Path:     filepath.Join(finfo.Path, innerFileInfoInt.Name()),
 				Name:     innerFileInfoInt.Name(),
 				Size:     fileSize,
