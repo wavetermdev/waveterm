@@ -414,6 +414,17 @@ func getBoolFromMeta(meta map[string]any, key string, def bool) bool {
 	return def
 }
 
+func getTermSize(bdata *wstore.Block) shellexec.TermSize {
+	if bdata.RuntimeOpts != nil {
+		return bdata.RuntimeOpts.TermSize
+	} else {
+		return shellexec.TermSize{
+			Rows: 25,
+			Cols: 80,
+		}
+	}
+}
+
 func (bc *BlockController) run(bdata *wstore.Block, blockMeta map[string]any) {
 	defer func() {
 		bc.UpdateControllerAndSendUpdate(func() bool {
@@ -445,7 +456,7 @@ func (bc *BlockController) run(bdata *wstore.Block, blockMeta map[string]any) {
 	runOnStart := getBoolFromMeta(blockMeta, wstore.MetaKey_CmdRunOnStart, true)
 	if runOnStart {
 		go func() {
-			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: bdata.RuntimeOpts.TermSize}, bdata.Meta)
+			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: getTermSize(bdata)}, bdata.Meta)
 			if err != nil {
 				log.Printf("error running shell: %v\n", err)
 			}
@@ -469,7 +480,7 @@ func (bc *BlockController) RestartController() error {
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
-	err = bc.DoRunShellCommand(&RunShellOpts{TermSize: bdata.RuntimeOpts.TermSize}, bdata.Meta)
+	err = bc.DoRunShellCommand(&RunShellOpts{TermSize: getTermSize(bdata)}, bdata.Meta)
 	if err != nil {
 		log.Printf("error running shell command: %v\n", err)
 	}
