@@ -83,7 +83,7 @@ func setMetaRun(cmd *cobra.Command, args []string) {
 		ORef: *fullORef,
 		Meta: meta,
 	}
-	_, err = RpcClient.SendRpcRequest(wshrpc.Command_SetMeta, setMetaWshCmd, 2000)
+	_, err = RpcClient.SendRpcRequest(wshrpc.Command_SetMeta, setMetaWshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		WriteStderr("[error] setting metadata: %v\n", err)
 		return

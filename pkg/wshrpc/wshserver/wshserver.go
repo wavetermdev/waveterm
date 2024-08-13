@@ -30,26 +30,33 @@ import (
 
 const SimpleId_This = "this"
 
+type WshServer struct{}
+
+func (*WshServer) WshServerImpl() {}
+
+var WshServerImpl = WshServer{}
+
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("panic in TestCommand: %v", r)
 		}
 	}()
-	rpc := wshutil.GetWshRpcFromContext(ctx)
-	if rpc == nil {
+	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
+	log.Printf("TEST src:%s | %s\n", rpcSource, data)
+	if rpcSource == "" {
 		return nil
 	}
 	go func() {
-		wshclient.MessageCommand(rpc, wshrpc.CommandMessageData{Message: "test message"}, &wshrpc.WshRpcCommandOpts{NoResponse: true})
-		resp, err := wshclient.RemoteFileInfoCommand(rpc, "~/work/wails/thenextwave/README.md", nil)
+		mainClient := GetMainRpcClient()
+		wshclient.MessageCommand(mainClient, wshrpc.CommandMessageData{Message: "test message"}, &wshrpc.RpcOpts{NoResponse: true, Route: rpcSource})
+		resp, err := wshclient.RemoteFileInfoCommand(mainClient, "~/work/wails/thenextwave/README.md", &wshrpc.RpcOpts{Route: rpcSource})
 		if err != nil {
 			log.Printf("error getting remote file info: %v", err)
 			return
 		}
 		log.Printf("remote file info: %#v\n", resp)
-
-		rch := wshclient.RemoteStreamFileCommand(rpc, wshrpc.CommandRemoteStreamFileData{Path: "~/work/wails/thenextwave/README.md"}, nil)
+		rch := wshclient.RemoteStreamFileCommand(mainClient, wshrpc.CommandRemoteStreamFileData{Path: "~/work/wails/thenextwave/README.md"}, &wshrpc.RpcOpts{Route: rpcSource})
 		for msg := range rch {
 			if msg.Error != nil {
 				log.Printf("error in stream: %v", msg.Error)
@@ -63,22 +70,6 @@ func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 			}
 		}
 	}()
-	return nil
-}
-
-func (ws *WshServer) AuthenticateCommand(ctx context.Context, data string) error {
-	w := wshutil.GetWshRpcFromContext(ctx)
-	if w == nil {
-		return fmt.Errorf("no wshrpc in context")
-	}
-	newCtx, err := wshutil.ValidateAndExtractRpcContextFromToken(data)
-	if err != nil {
-		return fmt.Errorf("error validating token: %w", err)
-	}
-	if newCtx == nil {
-		return fmt.Errorf("no context found in jwt token")
-	}
-	w.SetRpcContext(*newCtx)
 	return nil
 }
 
@@ -228,17 +219,12 @@ func sendWaveObjUpdate(oref waveobj.ORef) {
 	})
 }
 
-func resolveSimpleId(ctx context.Context, simpleId string) (*waveobj.ORef, error) {
+func resolveSimpleId(ctx context.Context, data wshrpc.CommandResolveIdsData, simpleId string) (*waveobj.ORef, error) {
 	if simpleId == SimpleId_This {
-		wshRpc := wshutil.GetWshRpcFromContext(ctx)
-		if wshRpc == nil {
-			return nil, fmt.Errorf("no wshrpc in context")
+		if data.BlockId == "" {
+			return nil, fmt.Errorf("no blockid in request")
 		}
-		rpcCtx := wshRpc.GetRpcContext()
-		if rpcCtx.BlockId == "" {
-			return nil, fmt.Errorf("no blockid in rpc context")
-		}
-		return &waveobj.ORef{OType: wstore.OType_Block, OID: rpcCtx.BlockId}, nil
+		return &waveobj.ORef{OType: wstore.OType_Block, OID: data.BlockId}, nil
 	}
 	if strings.Contains(simpleId, ":") {
 		rtn, err := waveobj.ParseORef(simpleId)
@@ -254,7 +240,7 @@ func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandR
 	rtn := wshrpc.CommandResolveIdsRtnData{}
 	rtn.ResolvedIds = make(map[string]waveobj.ORef)
 	for _, simpleId := range data.Ids {
-		oref, err := resolveSimpleId(ctx, simpleId)
+		oref, err := resolveSimpleId(ctx, data, simpleId)
 		if err != nil || oref == nil {
 			continue
 		}
@@ -471,40 +457,40 @@ func (ws *WshServer) EventRecvCommand(ctx context.Context, data wshrpc.WaveEvent
 }
 
 func (ws *WshServer) EventPublishCommand(ctx context.Context, data wshrpc.WaveEvent) error {
-	wrpc := wshutil.GetWshRpcFromContext(ctx)
-	if wrpc == nil {
-		return fmt.Errorf("no wshrpc in context")
+	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
+	if rpcSource == "" {
+		return fmt.Errorf("no rpc source set")
 	}
 	if data.Sender == "" {
-		data.Sender = wrpc.ClientId()
+		data.Sender = rpcSource
 	}
 	wps.Broker.Publish(data)
 	return nil
 }
 
 func (ws *WshServer) EventSubCommand(ctx context.Context, data wshrpc.SubscriptionRequest) error {
-	wrpc := wshutil.GetWshRpcFromContext(ctx)
-	if wrpc == nil {
-		return fmt.Errorf("no wshrpc in context")
+	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
+	if rpcSource == "" {
+		return fmt.Errorf("no rpc source set")
 	}
-	wps.Broker.Subscribe(wrpc, data)
+	wps.Broker.Subscribe(rpcSource, data)
 	return nil
 }
 
 func (ws *WshServer) EventUnsubCommand(ctx context.Context, data wshrpc.SubscriptionRequest) error {
-	wrpc := wshutil.GetWshRpcFromContext(ctx)
-	if wrpc == nil {
-		return fmt.Errorf("no wshrpc in context")
+	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
+	if rpcSource == "" {
+		return fmt.Errorf("no rpc source set")
 	}
-	wps.Broker.Unsubscribe(wrpc, data)
+	wps.Broker.Unsubscribe(rpcSource, data)
 	return nil
 }
 
 func (ws *WshServer) EventUnsubAllCommand(ctx context.Context) error {
-	wrpc := wshutil.GetWshRpcFromContext(ctx)
-	if wrpc == nil {
-		return fmt.Errorf("no wshrpc in context")
+	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
+	if rpcSource == "" {
+		return fmt.Errorf("no rpc source set")
 	}
-	wps.Broker.UnsubscribeAll(wrpc)
+	wps.Broker.UnsubscribeAll(rpcSource)
 	return nil
 }

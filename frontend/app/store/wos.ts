@@ -111,7 +111,7 @@ function callBackendService(service: string, method: string, args: any[], noUICo
 function wshServerRpcHelper_responsestream(
     command: string,
     data: any,
-    opts: WshRpcCommandOpts
+    opts: RpcOpts
 ): AsyncGenerator<any, void, boolean> {
     if (opts?.noresponse) {
         throw new Error("noresponse not supported for responsestream calls");
@@ -124,11 +124,14 @@ function wshServerRpcHelper_responsestream(
     if (opts?.timeout) {
         msg.timeout = opts.timeout;
     }
+    if (opts?.route) {
+        msg.route = opts.route;
+    }
     const rpcGen = sendRpcCommand(msg);
     return rpcGen;
 }
 
-function wshServerRpcHelper_call(command: string, data: any, opts: WshRpcCommandOpts): Promise<any> {
+function wshServerRpcHelper_call(command: string, data: any, opts: RpcOpts): Promise<any> {
     const msg: RpcMessage = {
         command: command,
         data: data,
@@ -138,6 +141,9 @@ function wshServerRpcHelper_call(command: string, data: any, opts: WshRpcCommand
     }
     if (opts?.timeout) {
         msg.timeout = opts.timeout;
+    }
+    if (opts?.route) {
+        msg.route = opts.route;
     }
     const rpcGen = sendRpcCommand(msg);
     if (rpcGen == null) {

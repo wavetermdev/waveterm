@@ -9,19 +9,19 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
-func sendRpcRequestCallHelper[T any](w *wshutil.WshRpc, command string, data interface{}, opts *wshrpc.WshRpcCommandOpts) (T, error) {
+func sendRpcRequestCallHelper[T any](w *wshutil.WshRpc, command string, data interface{}, opts *wshrpc.RpcOpts) (T, error) {
 	if opts == nil {
-		opts = &wshrpc.WshRpcCommandOpts{}
+		opts = &wshrpc.RpcOpts{}
 	}
 	var respData T
 	if opts.NoResponse {
-		err := w.SendCommand(command, data)
+		err := w.SendCommand(command, data, opts)
 		if err != nil {
 			return respData, err
 		}
 		return respData, nil
 	}
-	resp, err := w.SendRpcRequest(command, data, opts.Timeout)
+	resp, err := w.SendRpcRequest(command, data, opts)
 	if err != nil {
 		return respData, err
 	}
@@ -32,12 +32,12 @@ func sendRpcRequestCallHelper[T any](w *wshutil.WshRpc, command string, data int
 	return respData, nil
 }
 
-func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string, data interface{}, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[T] {
+func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string, data interface{}, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[T] {
 	if opts == nil {
-		opts = &wshrpc.WshRpcCommandOpts{}
+		opts = &wshrpc.RpcOpts{}
 	}
 	respChan := make(chan wshrpc.RespOrErrorUnion[T])
-	reqHandler, err := w.SendComplexRequest(command, data, true, opts.Timeout)
+	reqHandler, err := w.SendComplexRequest(command, data, opts)
 	if err != nil {
 		go func() {
 			respChan <- wshrpc.RespOrErrorUnion[T]{Error: err}

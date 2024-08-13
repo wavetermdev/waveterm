@@ -22,9 +22,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
-// set by main-server.go (for dependency inversion)
-var WshServerFactoryFn func(inputCh chan []byte, outputCh chan []byte, initialCtx wshrpc.RpcContext) = nil
-
 const wsReadWaitTimeout = 15 * time.Second
 const wsWriteWaitTimeout = 10 * time.Second
 const wsPingPeriodTickTime = 10 * time.Second
@@ -148,31 +145,10 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 
 func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
 	wsCommand := getStringFromMap(jmsg, "wscommand")
-	if wsCommand != "" {
-		processWSCommand(jmsg, outputCh, rpcInputCh)
+	if wsCommand == "" {
 		return
 	}
-	msgType := getMessageType(jmsg)
-	if msgType != "rpc" {
-		return
-	}
-	reqId := getStringFromMap(jmsg, "reqid")
-	var rtnErr error
-	defer func() {
-		r := recover()
-		if r != nil {
-			rtnErr = fmt.Errorf("panic: %v", r)
-			log.Printf("panic in processMessage: %v\n", r)
-			debug.PrintStack()
-		}
-		if rtnErr == nil {
-			return
-		}
-		rtn := map[string]any{"type": "rpcresp", "reqid": reqId, "error": rtnErr.Error()}
-		outputCh <- rtn
-	}()
-	method := getStringFromMap(jmsg, "method")
-	rtnErr = fmt.Errorf("unknown method %q", method)
+	processWSCommand(jmsg, outputCh, rpcInputCh)
 }
 
 func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan []byte) {
@@ -277,17 +253,23 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	log.Printf("New websocket connection: windowid:%s connid:%s\n", windowId, wsConnId)
 	outputCh := make(chan any, 100)
 	closeCh := make(chan any)
-	rpcInputCh := make(chan []byte, 32)
-	rpcOutputCh := make(chan []byte, 32)
 	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
 	defer eventbus.UnregisterWSChannel(wsConnId)
-	WshServerFactoryFn(rpcInputCh, rpcOutputCh, wshrpc.RpcContext{WindowId: windowId})
+	// we create a wshproxy to handle rpc messages to/from the window
+	wproxy := wshutil.MakeRpcProxy()
+	rpcRouteId := "window:" + windowId
+	wshutil.DefaultRouter.RegisterRoute(rpcRouteId, wproxy)
+	defer func() {
+		wshutil.DefaultRouter.UnregisterRoute(rpcRouteId)
+		close(wproxy.ToRemoteCh)
+	}()
+	// WshServerFactoryFn(rpcInputCh, rpcOutputCh, wshrpc.RpcContext{})
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
 		// no waitgroup add here
 		// move values from rpcOutputCh to outputCh
-		for msgBytes := range rpcOutputCh {
+		for msgBytes := range wproxy.ToRemoteCh {
 			rpcWSMsg := map[string]any{
 				"eventtype": "rpc", // TODO don't hard code this (but def is in eventbus)
 				"data":      json.RawMessage(msgBytes),
@@ -298,7 +280,7 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	go func() {
 		// read loop
 		defer wg.Done()
-		ReadLoop(conn, outputCh, closeCh, rpcInputCh)
+		ReadLoop(conn, outputCh, closeCh, wproxy.FromRemoteCh)
 	}()
 	go func() {
 		// write loop
@@ -306,6 +288,6 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 		WriteLoop(conn, outputCh, closeCh)
 	}()
 	wg.Wait()
-	close(rpcInputCh)
+	close(wproxy.FromRemoteCh)
 	return nil
 }

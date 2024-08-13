@@ -425,9 +425,9 @@ func GenerateWshServerMethod_ResponseStream(methodDecl *wshrpc.WshRpcMethodDecl,
 	}
 	genRespType := fmt.Sprintf("AsyncGenerator<%s, void, boolean>", respType)
 	if methodDecl.CommandDataType != nil {
-		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: WshRpcCommandOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), genRespType))
+		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), genRespType))
 	} else {
-		sb.WriteString(fmt.Sprintf("	%s(opts?: WshRpcCommandOpts): %s {\n", methodDecl.MethodName, genRespType))
+		sb.WriteString(fmt.Sprintf("	%s(opts?: RpcOpts): %s {\n", methodDecl.MethodName, genRespType))
 	}
 	sb.WriteString(fmt.Sprintf("        return WOS.wshServerRpcHelper_responsestream(%q, %s, opts);\n", methodDecl.Command, dataName))
 	sb.WriteString("    }\n")
@@ -447,9 +447,9 @@ func GenerateWshServerMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMa
 		dataName = "data"
 	}
 	if methodDecl.CommandDataType != nil {
-		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: WshRpcCommandOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), rtnType))
+		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), rtnType))
 	} else {
-		sb.WriteString(fmt.Sprintf("	%s(opts?: WshRpcCommandOpts): %s {\n", methodDecl.MethodName, rtnType))
+		sb.WriteString(fmt.Sprintf("	%s(opts?: RpcOpts): %s {\n", methodDecl.MethodName, rtnType))
 	}
 	methodBody := fmt.Sprintf("        return WOS.wshServerRpcHelper_call(%q, %s, opts);\n", methodDecl.Command, dataName)
 	sb.WriteString(methodBody)
@@ -484,7 +484,7 @@ func GenerateServiceTypes(tsTypesMap map[reflect.Type]string) error {
 }
 
 func GenerateWshServerTypes(tsTypesMap map[reflect.Type]string) error {
-	GenerateTSType(reflect.TypeOf(wshrpc.WshRpcCommandOpts{}), tsTypesMap)
+	GenerateTSType(reflect.TypeOf(wshrpc.RpcOpts{}), tsTypesMap)
 	rtype := wshRpcInterfaceRType
 	for midx := 0; midx < rtype.NumMethod(); midx++ {
 		method := rtype.Method(midx)

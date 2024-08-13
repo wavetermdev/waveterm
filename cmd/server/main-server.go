@@ -17,7 +17,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/telemetry"
@@ -27,6 +26,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -147,11 +147,15 @@ func shutdownActivityUpdate() {
 	}
 }
 
+func createMainWshClient() {
+	rpc := wshserver.GetMainRpcClient()
+	wshutil.DefaultRouter.RegisterRoute("wavesrv", rpc)
+	wshutil.DefaultRouter.SetDefaultRoute("wavesrv")
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
-	blockcontroller.WshServerFactoryFn = wshserver.MakeWshServer
-	web.WshServerFactoryFn = wshserver.MakeWshServer
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 
@@ -200,6 +204,7 @@ func main() {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
 	}
+	createMainWshClient()
 	installShutdownSignalHandlers()
 	startupActivityUpdate()
 	go stdinReadWatch()

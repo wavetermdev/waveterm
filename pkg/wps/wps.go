@@ -16,26 +16,24 @@ import (
 // strong typing and event types can be defined elsewhere
 
 type Client interface {
-	ClientId() string
-	SendEvent(event wshrpc.WaveEvent)
+	SendEvent(routeId string, event wshrpc.WaveEvent)
 }
 
 type BrokerSubscription struct {
-	AllSubs   []string            // clientids of client subscribed to "all" events
-	ScopeSubs map[string][]string // clientids of client subscribed to specific scopes
-	StarSubs  map[string][]string // clientids of client subscribed to star scope (scopes with "*" or "**" in them)
+	AllSubs   []string            // routeids subscribed to "all" events
+	ScopeSubs map[string][]string // routeids subscribed to specific scopes
+	StarSubs  map[string][]string // routeids subscribed to star scope (scopes with "*" or "**" in them)
 }
 
 type BrokerType struct {
-	Lock      *sync.Mutex
-	ClientMap map[string]Client
-	SubMap    map[string]*BrokerSubscription
+	Lock   *sync.Mutex
+	Client Client
+	SubMap map[string]*BrokerSubscription
 }
 
 var Broker = &BrokerType{
-	Lock:      &sync.Mutex{},
-	ClientMap: make(map[string]Client),
-	SubMap:    make(map[string]*BrokerSubscription),
+	Lock:   &sync.Mutex{},
+	SubMap: make(map[string]*BrokerSubscription),
 }
 
 func scopeHasStarMatch(scope string) bool {
@@ -48,10 +46,21 @@ func scopeHasStarMatch(scope string) bool {
 	return false
 }
 
-func (b *BrokerType) Subscribe(subscriber Client, sub wshrpc.SubscriptionRequest) {
+func (b *BrokerType) SetClient(client Client) {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
-	clientId := subscriber.ClientId()
+	b.Client = client
+}
+
+func (b *BrokerType) GetClient() Client {
+	b.Lock.Lock()
+	defer b.Lock.Unlock()
+	return b.Client
+}
+
+func (b *BrokerType) Subscribe(subRouteId string, sub wshrpc.SubscriptionRequest) {
+	b.Lock.Lock()
+	defer b.Lock.Unlock()
 	bs := b.SubMap[sub.Event]
 	if bs == nil {
 		bs = &BrokerSubscription{
@@ -62,14 +71,14 @@ func (b *BrokerType) Subscribe(subscriber Client, sub wshrpc.SubscriptionRequest
 		b.SubMap[sub.Event] = bs
 	}
 	if sub.AllScopes {
-		bs.AllSubs = utilfn.AddElemToSliceUniq(bs.AllSubs, clientId)
+		bs.AllSubs = utilfn.AddElemToSliceUniq(bs.AllSubs, subRouteId)
 	}
 	for _, scope := range sub.Scopes {
 		starMatch := scopeHasStarMatch(scope)
 		if starMatch {
-			addStrToScopeMap(bs.StarSubs, scope, clientId)
+			addStrToScopeMap(bs.StarSubs, scope, subRouteId)
 		} else {
-			addStrToScopeMap(bs.ScopeSubs, scope, clientId)
+			addStrToScopeMap(bs.ScopeSubs, scope, subRouteId)
 		}
 	}
 }
@@ -78,9 +87,9 @@ func (bs *BrokerSubscription) IsEmpty() bool {
 	return len(bs.AllSubs) == 0 && len(bs.ScopeSubs) == 0 && len(bs.StarSubs) == 0
 }
 
-func removeStrFromScopeMap(scopeMap map[string][]string, scope string, clientId string) {
+func removeStrFromScopeMap(scopeMap map[string][]string, scope string, routeId string) {
 	scopeSubs := scopeMap[scope]
-	scopeSubs = utilfn.RemoveElemFromSlice(scopeSubs, clientId)
+	scopeSubs = utilfn.RemoveElemFromSlice(scopeSubs, routeId)
 	if len(scopeSubs) == 0 {
 		delete(scopeMap, scope)
 	} else {
@@ -88,9 +97,9 @@ func removeStrFromScopeMap(scopeMap map[string][]string, scope string, clientId 
 	}
 }
 
-func removeStrFromScopeMapAll(scopeMap map[string][]string, clientId string) {
+func removeStrFromScopeMapAll(scopeMap map[string][]string, routeId string) {
 	for scope, scopeSubs := range scopeMap {
-		scopeSubs = utilfn.RemoveElemFromSlice(scopeSubs, clientId)
+		scopeSubs = utilfn.RemoveElemFromSlice(scopeSubs, routeId)
 		if len(scopeSubs) == 0 {
 			delete(scopeMap, scope)
 		} else {
@@ -99,29 +108,28 @@ func removeStrFromScopeMapAll(scopeMap map[string][]string, clientId string) {
 	}
 }
 
-func addStrToScopeMap(scopeMap map[string][]string, scope string, clientId string) {
+func addStrToScopeMap(scopeMap map[string][]string, scope string, routeId string) {
 	scopeSubs := scopeMap[scope]
-	scopeSubs = utilfn.AddElemToSliceUniq(scopeSubs, clientId)
+	scopeSubs = utilfn.AddElemToSliceUniq(scopeSubs, routeId)
 	scopeMap[scope] = scopeSubs
 }
 
-func (b *BrokerType) Unsubscribe(subscriber Client, sub wshrpc.SubscriptionRequest) {
+func (b *BrokerType) Unsubscribe(subRouteId string, sub wshrpc.SubscriptionRequest) {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
-	clientId := subscriber.ClientId()
 	bs := b.SubMap[sub.Event]
 	if bs == nil {
 		return
 	}
 	if sub.AllScopes {
-		bs.AllSubs = utilfn.RemoveElemFromSlice(bs.AllSubs, clientId)
+		bs.AllSubs = utilfn.RemoveElemFromSlice(bs.AllSubs, subRouteId)
 	}
 	for _, scope := range sub.Scopes {
 		starMatch := scopeHasStarMatch(scope)
 		if starMatch {
-			removeStrFromScopeMap(bs.StarSubs, scope, clientId)
+			removeStrFromScopeMap(bs.StarSubs, scope, subRouteId)
 		} else {
-			removeStrFromScopeMap(bs.ScopeSubs, scope, clientId)
+			removeStrFromScopeMap(bs.ScopeSubs, scope, subRouteId)
 		}
 	}
 	if bs.IsEmpty() {
@@ -129,15 +137,13 @@ func (b *BrokerType) Unsubscribe(subscriber Client, sub wshrpc.SubscriptionReque
 	}
 }
 
-func (b *BrokerType) UnsubscribeAll(subscriber Client) {
+func (b *BrokerType) UnsubscribeAll(subRouteId string) {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
-	clientId := subscriber.ClientId()
-	delete(b.ClientMap, clientId)
 	for eventType, bs := range b.SubMap {
-		bs.AllSubs = utilfn.RemoveElemFromSlice(bs.AllSubs, clientId)
-		removeStrFromScopeMapAll(bs.StarSubs, clientId)
-		removeStrFromScopeMapAll(bs.ScopeSubs, clientId)
+		bs.AllSubs = utilfn.RemoveElemFromSlice(bs.AllSubs, subRouteId)
+		removeStrFromScopeMapAll(bs.StarSubs, subRouteId)
+		removeStrFromScopeMapAll(bs.ScopeSubs, subRouteId)
 		if bs.IsEmpty() {
 			delete(b.SubMap, eventType)
 		}
@@ -145,41 +151,42 @@ func (b *BrokerType) UnsubscribeAll(subscriber Client) {
 }
 
 func (b *BrokerType) Publish(event wshrpc.WaveEvent) {
-	clientIds := b.getMatchingClientIds(event)
-	for _, clientId := range clientIds {
-		client := b.ClientMap[clientId]
-		if client != nil {
-			client.SendEvent(event)
-		}
+	client := b.GetClient()
+	if client == nil {
+		return
+	}
+	routeIds := b.getMatchingRouteIds(event)
+	for _, routeId := range routeIds {
+		client.SendEvent(routeId, event)
 	}
 }
 
-func (b *BrokerType) getMatchingClientIds(event wshrpc.WaveEvent) []string {
+func (b *BrokerType) getMatchingRouteIds(event wshrpc.WaveEvent) []string {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 	bs := b.SubMap[event.Event]
 	if bs == nil {
 		return nil
 	}
-	clientIds := make(map[string]bool)
-	for _, clientId := range bs.AllSubs {
-		clientIds[clientId] = true
+	routeIds := make(map[string]bool)
+	for _, routeId := range bs.AllSubs {
+		routeIds[routeId] = true
 	}
 	for _, scope := range event.Scopes {
-		for _, clientId := range bs.ScopeSubs[scope] {
-			clientIds[clientId] = true
+		for _, routeId := range bs.ScopeSubs[scope] {
+			routeIds[routeId] = true
 		}
 		for starScope := range bs.StarSubs {
 			if utilfn.StarMatchString(starScope, scope, ":") {
-				for _, clientId := range bs.StarSubs[starScope] {
-					clientIds[clientId] = true
+				for _, routeId := range bs.StarSubs[starScope] {
+					routeIds[routeId] = true
 				}
 			}
 		}
 	}
 	var rtn []string
-	for clientId := range clientIds {
-		rtn = append(rtn, clientId)
+	for routeId := range routeIds {
+		rtn = append(rtn, routeId)
 	}
 	return rtn
 }

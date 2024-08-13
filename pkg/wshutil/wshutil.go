@@ -248,9 +248,6 @@ func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, erro
 	if rpcCtx.TabId != "" {
 		claims["tabid"] = rpcCtx.TabId
 	}
-	if rpcCtx.WindowId != "" {
-		claims["windowid"] = rpcCtx.WindowId
-	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString([]byte(wavebase.JwtSecret))
 	if err != nil {
@@ -300,11 +297,6 @@ func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
 	if claims["tabid"] != nil {
 		if tabId, ok := claims["tabid"].(string); ok {
 			rpcCtx.TabId = tabId
-		}
-	}
-	if claims["windowid"] != nil {
-		if windowId, ok := claims["windowid"].(string); ok {
-			rpcCtx.WindowId = windowId
 		}
 	}
 	return rpcCtx

@@ -38,7 +38,7 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] resolving oref: %v\n", err)
 		return
 	}
-	resp, err := wshclient.GetMetaCommand(RpcClient, wshrpc.CommandGetMetaData{ORef: *fullORef}, &wshrpc.WshRpcCommandOpts{Timeout: 2000})
+	resp, err := wshclient.GetMetaCommand(RpcClient, wshrpc.CommandGetMetaData{ORef: *fullORef}, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		WriteStderr("[error] getting metadata: %v\n", err)
 		return

@@ -39,7 +39,7 @@ func extraShutdownFn() {
 		cmd := &wshrpc.CommandSetMetaData{
 			Meta: map[string]any{"term:mode": nil},
 		}
-		RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd)
+		RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd, nil)
 		time.Sleep(10 * time.Millisecond)
 	}
 }
@@ -77,7 +77,7 @@ func setupRpcClient(serverImpl wshutil.ServerImpl) error {
 	if err != nil {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
-	wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.WshRpcCommandOpts{NoResponse: true})
+	wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true})
 	// note we don't modify WrappedStdin here (just use os.Stdin)
 	return nil
 }
@@ -87,7 +87,7 @@ func setTermHtmlMode() {
 	cmd := &wshrpc.CommandSetMetaData{
 		Meta: map[string]any{"term:mode": "html"},
 	}
-	err := RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd)
+	err := RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error setting html mode: %v\r\n", err)
 	}
@@ -136,7 +136,7 @@ func resolveSimpleId(id string) (*waveobj.ORef, error) {
 		}
 		return &orefObj, nil
 	}
-	rtnData, err := wshclient.ResolveIdsCommand(RpcClient, wshrpc.CommandResolveIdsData{Ids: []string{id}}, &wshrpc.WshRpcCommandOpts{Timeout: 2000})
+	rtnData, err := wshclient.ResolveIdsCommand(RpcClient, wshrpc.CommandResolveIdsData{Ids: []string{id}}, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return nil, fmt.Errorf("error resolving ids: %v", err)
 	}

@@ -6,6 +6,7 @@ package wshrpc
 
 import (
 	"context"
+	"log"
 	"os"
 	"reflect"
 
@@ -57,6 +58,7 @@ type RespOrErrorUnion[T any] struct {
 
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) error
+
 	MessageCommand(ctx context.Context, data CommandMessageData) error
 	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (wstore.MetaMapType, error)
 	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
@@ -90,15 +92,15 @@ type WshServerCommandMeta struct {
 	CommandType string `json:"commandtype"`
 }
 
-type WshRpcCommandOpts struct {
-	Timeout    int  `json:"timeout"`
-	NoResponse bool `json:"noresponse"`
+type RpcOpts struct {
+	Timeout    int    `json:"timeout,omitempty"`
+	NoResponse bool   `json:"noresponse,omitempty"`
+	Route      string `json:"route,omitempty"`
 }
 
 type RpcContext struct {
-	BlockId  string `json:"blockid,omitempty"`
-	TabId    string `json:"tabid,omitempty"`
-	WindowId string `json:"windowid,omitempty"`
+	BlockId string `json:"blockid,omitempty"`
+	TabId   string `json:"tabid,omitempty"`
 }
 
 func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
@@ -122,12 +124,12 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 			field.SetString(rpcContext.BlockId)
 		case "TabId":
 			field.SetString(rpcContext.TabId)
-		case "WindowId":
-			field.SetString(rpcContext.WindowId)
 		case "BlockORef":
 			if rpcContext.BlockId != "" {
 				field.Set(reflect.ValueOf(waveobj.MakeORef(wstore.OType_Block, rpcContext.BlockId)))
 			}
+		default:
+			log.Printf("invalid wshcontext tag: %q in type(%T)", tag, dataPtr)
 		}
 	}
 }
@@ -147,7 +149,8 @@ type CommandSetMetaData struct {
 }
 
 type CommandResolveIdsData struct {
-	Ids []string `json:"ids"`
+	BlockId string   `json:"blockid" wshcontext:"BlockId"`
+	Ids     []string `json:"ids"`
 }
 
 type CommandResolveIdsRtnData struct {

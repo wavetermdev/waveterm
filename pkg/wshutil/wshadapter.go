@@ -52,6 +52,31 @@ func noImplHandler(handler *RpcResponseHandler) bool {
 	return true
 }
 
+func recodeCommandData(command string, data any, rpcCtx *wshrpc.RpcContext) (any, error) {
+	// only applies to initial command packet
+	if command == "" {
+		return data, nil
+	}
+	methodDecl := WshCommandDeclMap[command]
+	if methodDecl == nil {
+		return data, fmt.Errorf("command %q not found", command)
+	}
+	if methodDecl.CommandDataType == nil {
+		return data, nil
+	}
+	commandDataPtr := reflect.New(methodDecl.CommandDataType).Interface()
+	if data != nil {
+		err := utilfn.ReUnmarshal(commandDataPtr, data)
+		if err != nil {
+			return data, fmt.Errorf("error re-marshalling command data: %w", err)
+		}
+		if rpcCtx != nil {
+			wshrpc.HackRpcContextIntoData(commandDataPtr, *rpcCtx)
+		}
+	}
+	return reflect.ValueOf(commandDataPtr).Elem().Interface(), nil
+}
+
 func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 	if impl == nil {
 		return noImplHandler
@@ -81,14 +106,13 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 		var callParams []reflect.Value
 		callParams = append(callParams, reflect.ValueOf(handler.Context()))
 		if methodDecl.CommandDataType != nil {
-			commandData := reflect.New(methodDecl.CommandDataType).Interface()
-			err := utilfn.ReUnmarshal(commandData, handler.GetCommandRawData())
+			rpcCtx := handler.GetRpcContext()
+			cmdData, err := recodeCommandData(cmd, handler.GetCommandRawData(), &rpcCtx)
 			if err != nil {
-				handler.SendResponseError(fmt.Errorf("error re-marshalling command data: %w", err))
+				handler.SendResponseError(err)
 				return true
 			}
-			wshrpc.HackRpcContextIntoData(commandData, handler.GetRpcContext())
-			callParams = append(callParams, reflect.ValueOf(commandData).Elem())
+			callParams = append(callParams, reflect.ValueOf(cmdData))
 		}
 		if methodDecl.CommandType == wshrpc.RpcType_Call {
 			rtnVals := implMethod.Call(callParams)

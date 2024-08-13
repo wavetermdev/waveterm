@@ -64,7 +64,7 @@ func viewRun(cmd *cobra.Command, args []string) {
 			},
 		}
 	}
-	_, err := RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, 2000)
+	_, err := RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		WriteStderr("[error] running view command: %v\r\n", err)
 		return

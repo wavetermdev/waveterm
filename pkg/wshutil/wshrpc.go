@@ -32,6 +32,11 @@ type ServerImpl interface {
 	WshServerImpl()
 }
 
+type AbstractRpcClient interface {
+	SendRpcMessage(msg []byte)
+	RecvRpcMessage() ([]byte, bool) // blocking
+}
+
 type WshRpc struct {
 	Lock       *sync.Mutex
 	clientId   string
@@ -45,9 +50,14 @@ type WshRpc struct {
 }
 
 type wshRpcContextKey struct{}
+type wshRpcRespHandlerContextKey struct{}
 
 func withWshRpcContext(ctx context.Context, wshRpc *WshRpc) context.Context {
 	return context.WithValue(ctx, wshRpcContextKey{}, wshRpc)
+}
+
+func withRespHandler(ctx context.Context, handler *RpcResponseHandler) context.Context {
+	return context.WithValue(ctx, wshRpcRespHandlerContextKey{}, handler)
 }
 
 func GetWshRpcFromContext(ctx context.Context) *WshRpc {
@@ -58,11 +68,38 @@ func GetWshRpcFromContext(ctx context.Context) *WshRpc {
 	return rtn.(*WshRpc)
 }
 
+func GetRpcSourceFromContext(ctx context.Context) string {
+	rtn := ctx.Value(wshRpcRespHandlerContextKey{})
+	if rtn == nil {
+		return ""
+	}
+	return rtn.(*RpcResponseHandler).GetSource()
+}
+
+func GetRpcResponseHandlerFromContext(ctx context.Context) *RpcResponseHandler {
+	rtn := ctx.Value(wshRpcRespHandlerContextKey{})
+	if rtn == nil {
+		return nil
+	}
+	return rtn.(*RpcResponseHandler)
+}
+
+func (w *WshRpc) SendRpcMessage(msg []byte) {
+	w.InputCh <- msg
+}
+
+func (w *WshRpc) RecvRpcMessage() ([]byte, bool) {
+	msg, more := <-w.OutputCh
+	return msg, more
+}
+
 type RpcMessage struct {
 	Command  string `json:"command,omitempty"`
 	ReqId    string `json:"reqid,omitempty"`
 	ResId    string `json:"resid,omitempty"`
 	Timeout  int    `json:"timeout,omitempty"`
+	Route    string `json:"route,omitempty"`  // to route/forward requests to alternate servers
+	Source   string `json:"source,omitempty"` // source route id
 	Cont     bool   `json:"cont,omitempty"`   // flag if additional requests/responses are forthcoming
 	Cancel   bool   `json:"cancel,omitempty"` // used to cancel a streaming request or response (sent from the side that is not streaming)
 	Error    string `json:"error,omitempty"`
@@ -141,7 +178,6 @@ func validateServerImpl(serverImpl ServerImpl) {
 	}
 }
 
-// oscEsc is the OSC escape sequence to use for *sending* messages
 // closes outputCh when inputCh is closed/done
 func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl) *WshRpc {
 	validateServerImpl(serverImpl)
@@ -235,12 +271,14 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 		reqId:           req.ReqId,
 		command:         req.Command,
 		commandData:     req.Data,
+		source:          req.Source,
 		done:            &atomic.Bool{},
 		canceled:        &atomic.Bool{},
 		contextCancelFn: &atomic.Pointer[context.CancelFunc]{},
 		rpcCtx:          w.GetRpcContext(),
 	}
 	respHandler.contextCancelFn.Store(&cancelFn)
+	respHandler.ctx = withRespHandler(ctx, respHandler)
 	w.registerResponseHandler(req.ReqId, respHandler)
 	isAsync := false
 	defer func() {
@@ -347,8 +385,14 @@ func (w *WshRpc) unregisterRpc(reqId string, err error) {
 }
 
 // no response
-func (w *WshRpc) SendCommand(command string, data any) error {
-	handler, err := w.SendComplexRequest(command, data, false, 0)
+func (w *WshRpc) SendCommand(command string, data any, opts *wshrpc.RpcOpts) error {
+	var optsCopy wshrpc.RpcOpts
+	if opts != nil {
+		optsCopy = *opts
+	}
+	optsCopy.NoResponse = true
+	optsCopy.Timeout = 0
+	handler, err := w.SendComplexRequest(command, data, &optsCopy)
 	if err != nil {
 		return err
 	}
@@ -357,8 +401,13 @@ func (w *WshRpc) SendCommand(command string, data any) error {
 }
 
 // single response
-func (w *WshRpc) SendRpcRequest(command string, data any, timeoutMs int) (any, error) {
-	handler, err := w.SendComplexRequest(command, data, true, timeoutMs)
+func (w *WshRpc) SendRpcRequest(command string, data any, opts *wshrpc.RpcOpts) (any, error) {
+	var optsCopy wshrpc.RpcOpts
+	if opts != nil {
+		optsCopy = *opts
+	}
+	optsCopy.NoResponse = false
+	handler, err := w.SendComplexRequest(command, data, &optsCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -444,6 +493,7 @@ type RpcResponseHandler struct {
 	ctx             context.Context
 	contextCancelFn *atomic.Pointer[context.CancelFunc]
 	reqId           string
+	source          string
 	command         string
 	commandData     any
 	rpcCtx          wshrpc.RpcContext
@@ -465,6 +515,10 @@ func (handler *RpcResponseHandler) GetCommandRawData() any {
 
 func (handler *RpcResponseHandler) GetRpcContext() wshrpc.RpcContext {
 	return handler.rpcCtx
+}
+
+func (handler *RpcResponseHandler) GetSource() string {
+	return handler.source
 }
 
 func (handler *RpcResponseHandler) NeedsResponse() bool {
@@ -559,7 +613,11 @@ func (handler *RpcResponseHandler) IsDone() bool {
 	return handler.done.Load()
 }
 
-func (w *WshRpc) SendComplexRequest(command string, data any, expectsResponse bool, timeoutMs int) (rtnHandler *RpcRequestHandler, rtnErr error) {
+func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOpts) (rtnHandler *RpcRequestHandler, rtnErr error) {
+	if opts == nil {
+		opts = &wshrpc.RpcOpts{}
+	}
+	timeoutMs := opts.Timeout
 	if timeoutMs <= 0 {
 		timeoutMs = DefaultTimeoutMs
 	}
@@ -579,7 +637,7 @@ func (w *WshRpc) SendComplexRequest(command string, data any, expectsResponse bo
 	var cancelFn context.CancelFunc
 	handler.ctx, cancelFn = context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
 	handler.ctxCancelFn.Store(&cancelFn)
-	if expectsResponse {
+	if !opts.NoResponse {
 		handler.reqId = uuid.New().String()
 	}
 	req := &RpcMessage{
@@ -587,6 +645,7 @@ func (w *WshRpc) SendComplexRequest(command string, data any, expectsResponse bo
 		ReqId:   handler.reqId,
 		Data:    data,
 		Timeout: timeoutMs,
+		Route:   opts.Route,
 	}
 	barr, err := json.Marshal(req)
 	if err != nil {

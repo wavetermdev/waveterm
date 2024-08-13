@@ -42,7 +42,7 @@ func deleteBlockRun(cmd *cobra.Command, args []string) {
 	deleteBlockData := &wshrpc.CommandDeleteBlockData{
 		BlockId: fullORef.OID,
 	}
-	_, err = RpcClient.SendRpcRequest(wshrpc.Command_DeleteBlock, deleteBlockData, 2000)
+	_, err = RpcClient.SendRpcRequest(wshrpc.Command_DeleteBlock, deleteBlockData, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		WriteStderr("[error] deleting block: %v\n", err)
 		return

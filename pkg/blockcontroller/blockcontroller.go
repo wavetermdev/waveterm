@@ -27,9 +27,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
-// set by main-server.go (for dependency inversion)
-var WshServerFactoryFn func(inputCh chan []byte, outputCh chan []byte, initialCtx wshrpc.RpcContext) = nil
-
 const (
 	BlockController_Shell = "shell"
 	BlockController_Cmd   = "cmd"
@@ -327,10 +324,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	})
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
-	messageCh := make(chan []byte, 32)
-	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Cmd, messageCh)
-	outputCh := make(chan []byte, 32)
-	WshServerFactoryFn(messageCh, outputCh, wshrpc.RpcContext{BlockId: bc.BlockId, TabId: bc.TabId})
+
+	// make esc sequence wshclient wshProxy
+	// we don't need to authenticate this wshProxy since it is coming direct
+	wshProxy := wshutil.MakeRpcProxy()
+	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
+	wshutil.DefaultRouter.RegisterRoute("controller:"+bc.BlockId, wshProxy)
+	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
@@ -380,7 +380,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	}()
 	go func() {
 		// handles outputCh -> shellInputCh
-		for msg := range outputCh {
+		for msg := range wshProxy.ToRemoteCh {
 			encodedMsg := wshutil.EncodeWaveOSCBytes(wshutil.WaveServerOSC, msg)
 			shellInputCh <- &BlockInputUnion{InputData: encodedMsg}
 		}
@@ -388,6 +388,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	go func() {
 		// wait for the shell to finish
 		defer func() {
+			wshutil.DefaultRouter.UnregisterRoute("controller:" + bc.BlockId)
 			bc.UpdateControllerAndSendUpdate(func() bool {
 				bc.ShellProcStatus = Status_Done
 				return true

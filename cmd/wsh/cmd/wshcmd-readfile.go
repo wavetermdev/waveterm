@@ -38,7 +38,7 @@ func runReadFile(cmd *cobra.Command, args []string) {
 		WriteStderr("error resolving oref: %v\n", err)
 		return
 	}
-	resp64, err := wshclient.FileReadCommand(RpcClient, wshrpc.CommandFileData{ZoneId: fullORef.OID, FileName: args[1]}, &wshrpc.WshRpcCommandOpts{Timeout: 5000})
+	resp64, err := wshclient.FileReadCommand(RpcClient, wshrpc.CommandFileData{ZoneId: fullORef.OID, FileName: args[1]}, &wshrpc.RpcOpts{Timeout: 5000})
 	if err != nil {
 		WriteStderr("[error] reading file: %v\n", err)
 		return

@@ -130,6 +130,7 @@ declare global {
 
     // wshrpc.CommandResolveIdsData
     type CommandResolveIdsData = {
+        blockid: string;
         ids: string[];
     };
 
@@ -305,11 +306,20 @@ declare global {
         reqid?: string;
         resid?: string;
         timeout?: number;
+        route?: string;
+        source?: string;
         cont?: boolean;
         cancel?: boolean;
         error?: string;
         datatype?: string;
         data?: any;
+    };
+
+    // wshrpc.RpcOpts
+    type RpcOpts = {
+        timeout?: number;
+        noresponse?: boolean;
+        route?: string;
     };
 
     // wstore.RuntimeOpts
@@ -605,12 +615,6 @@ declare global {
     type Workspace = WaveObj & {
         name: string;
         tabids: string[];
-    };
-
-    // wshrpc.WshRpcCommandOpts
-    type WshRpcCommandOpts = {
-        timeout: number;
-        noresponse: boolean;
     };
 
     // wshrpc.WshServerCommandMeta
