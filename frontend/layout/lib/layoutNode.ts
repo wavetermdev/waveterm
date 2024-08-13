@@ -1,11 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getCrypto } from "@/util/util";
 import { DefaultNodeSize, LayoutNode } from "./model";
 import { FlexDirection, reverseFlexDirection } from "./utils";
-
-const crypto = getCrypto();
 
 /**
  * Creates a new node.

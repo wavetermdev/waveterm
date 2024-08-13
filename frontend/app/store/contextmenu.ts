@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { v4 as uuidv4 } from "uuid";
 import { getApi } from "./global";
 
 class ContextMenuModelType {
@@ -25,7 +24,7 @@ class ContextMenuModelType {
                 role: item.role,
                 type: item.type,
                 label: item.label,
-                id: uuidv4(),
+                id: crypto.randomUUID(),
             };
             if (item.click) {
                 this.handlers.set(electronItem.id, item.click);

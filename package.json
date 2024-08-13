@@ -115,7 +115,6 @@
         "throttle-debounce": "^5.0.2",
         "tinycolor2": "^1.6.0",
         "use-device-pixel-ratio": "^1.1.2",
-        "uuid": "^10.0.0",
         "winston": "^3.14.1"
     },
     "packageManager": "yarn@4.4.0"

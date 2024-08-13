@@ -186,18 +186,6 @@ const lazy = <T extends (...args: any[]) => any>(callback: T) => {
 };
 
 /**
- * Workaround for NodeJS compatibility. Will attempt to resolve the Crypto API from the browser and fallback to NodeJS if it isn't present.
- * @returns The Crypto API.
- */
-function getCrypto() {
-    try {
-        return window.crypto;
-    } catch {
-        return crypto;
-    }
-}
-
-/**
  * Generates an external link by appending the given URL to the "https://extern?" endpoint.
  *
  * @param {string} url - The URL to be encoded and appended to the external link.
@@ -212,7 +200,6 @@ export {
     base64ToString,
     boundNumber,
     fireAndForget,
-    getCrypto,
     getPromiseState,
     getPromiseValue,
     isBlank,

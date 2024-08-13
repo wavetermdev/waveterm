@@ -7,7 +7,6 @@ import { sendRpcCommand } from "@/app/store/wshrpc";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import * as jotai from "jotai";
 import * as React from "react";
-import { v4 as uuidv4 } from "uuid";
 import { atoms, globalStore } from "./global";
 import * as services from "./services";
 
@@ -120,7 +119,7 @@ function wshServerRpcHelper_responsestream(
     const msg: RpcMessage = {
         command: command,
         data: data,
-        reqid: uuidv4(),
+        reqid: crypto.randomUUID(),
     };
     if (opts?.timeout) {
         msg.timeout = opts.timeout;
@@ -135,7 +134,7 @@ function wshServerRpcHelper_call(command: string, data: any, opts: WshRpcCommand
         data: data,
     };
     if (!opts?.noresponse) {
-        msg.reqid = uuidv4();
+        msg.reqid = crypto.randomUUID();
     }
     if (opts?.timeout) {
         msg.timeout = opts.timeout;

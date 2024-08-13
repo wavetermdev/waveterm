@@ -11,8 +11,6 @@ import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import tinycolor from "tinycolor2";
-import { v4 as uuidv4 } from "uuid";
-
 import "./waveai.less";
 
 interface ChatMessageType {
@@ -33,7 +31,7 @@ interface ChatItemProps {
 
 function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
     return {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         user: prompt.role,
         text: prompt.content,
         isAssistant: prompt.role == "assistant",
@@ -78,7 +76,7 @@ export class WaveAiModel implements ViewModel {
         });
         this.simulateAssistantResponseAtom = jotai.atom(null, async (get, set, userMessage: ChatMessageType) => {
             const typingMessage: ChatMessageType = {
-                id: uuidv4(),
+                id: crypto.randomUUID(),
                 user: "assistant",
                 text: "",
                 isAssistant: true,
@@ -145,7 +143,7 @@ export class WaveAiModel implements ViewModel {
 
         const sendMessage = (text: string, user: string = "user") => {
             const newMessage: ChatMessageType = {
-                id: uuidv4(),
+                id: crypto.randomUUID(),
                 user,
                 text,
                 isAssistant: false,
