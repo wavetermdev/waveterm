@@ -9,6 +9,7 @@ vars:
     VERSION:
         sh: node version.cjs
     RM: '{{if eq OS "windows"}}powershell Remove-Item{{else}}rm{{end}}'
+    RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell date -UFormat{{else}}date{{end}}'
 
 tasks:
@@ -34,7 +35,7 @@ tasks:
     package:
         desc: Package the application for the current platform.
         cmds:
-            - cmd: rm -rf make
+            - cmd: '{{.RMRF}} "make"'
               ignore_error: true
             - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
         deps:
@@ -93,7 +94,7 @@ tasks:
     build:wsh:
         desc: Build the wsh component for all possible targets.
         cmds:
-            - cmd: rm dist/bin/wsh*
+            - cmd: '{{.RM}} "dist/bin/wsh*"'
               ignore_error: true
             - task: build:wsh:internal
               vars:
