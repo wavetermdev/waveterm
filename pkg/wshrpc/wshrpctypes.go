@@ -49,6 +49,7 @@ const (
 	Command_Test              = "test"
 	Command_RemoteStreamFile  = "remotestreamfile"
 	Command_RemoteFileInfo    = "remotefileinfo"
+	Command_Event             = "event"
 )
 
 type RespOrErrorUnion[T any] struct {

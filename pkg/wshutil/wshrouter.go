@@ -47,6 +47,25 @@ func noRouteErr(routeId string) error {
 	return fmt.Errorf("no route for %q", routeId)
 }
 
+func (router *WshRouter) SendEvent(fullRoute string, event wshrpc.WaveEvent) {
+	nextRoute, routeId := popRoute(fullRoute)
+	rpc := router.GetRpc(routeId)
+	if rpc == nil {
+		return
+	}
+	msg := RpcMessage{
+		Command: wshrpc.Command_Event,
+		Route:   nextRoute,
+		Data:    event,
+	}
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		// nothing to do
+		return
+	}
+	rpc.SendRpcMessage(msgBytes)
+}
+
 func (router *WshRouter) handleNoRoute(msg RpcMessage) {
 	nrErr := noRouteErr(msg.Route)
 	if msg.ReqId == "" {

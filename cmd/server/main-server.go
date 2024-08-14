@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wcloud"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web"
+	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
@@ -151,6 +152,7 @@ func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
 	wshutil.DefaultRouter.RegisterRoute("wavesrv", rpc)
 	wshutil.DefaultRouter.SetDefaultRoute("wavesrv")
+	wps.Broker.SetClient(wshutil.DefaultRouter)
 }
 
 func main() {
