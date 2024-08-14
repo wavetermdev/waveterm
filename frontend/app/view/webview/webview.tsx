@@ -18,6 +18,7 @@ export class WebViewModel implements ViewModel {
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
     url: jotai.PrimitiveAtom<string>;
+    isUrlDirty: jotai.PrimitiveAtom<boolean>;
     urlInput: jotai.PrimitiveAtom<string>;
     urlInputFocused: jotai.PrimitiveAtom<boolean>;
     isLoading: jotai.PrimitiveAtom<boolean>;
@@ -34,6 +35,7 @@ export class WebViewModel implements ViewModel {
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
 
         this.url = jotai.atom("");
+        this.isUrlDirty = jotai.atom(false);
         this.urlInput = jotai.atom("");
         this.urlWrapperClassName = jotai.atom("");
         this.urlInputFocused = jotai.atom(false);
@@ -56,8 +58,9 @@ export class WebViewModel implements ViewModel {
             if (url && this.historyStack.length === 0) {
                 this.addToHistoryStack(url);
             }
-            const currUrl = get(this.url);
-            if (currUrl) {
+            const urlIsDirty = get(this.isUrlDirty);
+            if (urlIsDirty) {
+                const currUrl = get(this.url);
                 url = currUrl;
             }
             return [
@@ -173,6 +176,7 @@ export class WebViewModel implements ViewModel {
 
     handleUrlChange(event: React.ChangeEvent<HTMLInputElement>) {
         globalStore.set(this.url, event.target.value);
+        globalStore.set(this.isUrlDirty, true);
     }
 
     handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
