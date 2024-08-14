@@ -128,6 +128,13 @@ declare global {
         data64?: string;
     };
 
+    // wshrpc.CommandRemoteWriteFileData
+    type CommandRemoteWriteFileData = {
+        path: string;
+        data64: string;
+        createmode?: number;
+    };
+
     // wshrpc.CommandResolveIdsData
     type CommandResolveIdsData = {
         blockid: string;

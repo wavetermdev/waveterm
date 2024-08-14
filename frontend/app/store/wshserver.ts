@@ -97,6 +97,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_responsestream("remotestreamfile", data, opts);
     }
 
+    // command "remotewritefile" [call]
+	RemoteWriteFileCommand(data: CommandRemoteWriteFileData, opts?: RpcOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("remotewritefile", data, opts);
+    }
+
     // command "resolveids" [call]
 	ResolveIdsCommand(data: CommandResolveIdsData, opts?: RpcOpts): Promise<CommandResolveIdsRtnData> {
         return WOS.wshServerRpcHelper_call("resolveids", data, opts);

@@ -49,6 +49,7 @@ const (
 	Command_Test              = "test"
 	Command_RemoteStreamFile  = "remotestreamfile"
 	Command_RemoteFileInfo    = "remotefileinfo"
+	Command_RemoteWriteFile   = "remotewritefile"
 	Command_Event             = "event"
 )
 
@@ -86,6 +87,7 @@ type WshRpcInterface interface {
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[CommandRemoteStreamFileRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
+	RemoteWriteFileCommand(ctx context.Context, data CommandRemoteWriteFileData) error
 }
 
 // for frontend
@@ -277,4 +279,10 @@ type CommandRemoteStreamFileData struct {
 type CommandRemoteStreamFileRtnData struct {
 	FileInfo *FileInfo `json:"fileinfo,omitempty"`
 	Data64   string    `json:"data64,omitempty"`
+}
+
+type CommandRemoteWriteFileData struct {
+	Path       string      `json:"path"`
+	Data64     string      `json:"data64"`
+	CreateMode os.FileMode `json:"createmode,omitempty"`
 }

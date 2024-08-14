@@ -118,6 +118,12 @@ func RemoteStreamFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamF
     return sendRpcRequestResponseStreamHelper[wshrpc.CommandRemoteStreamFileRtnData](w, "remotestreamfile", data, opts)
 }
 
+// command "remotewritefile", wshserver.RemoteWriteFileCommand
+func RemoteWriteFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteWriteFileData, opts *wshrpc.RpcOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "remotewritefile", data, opts)
+    return err
+}
+
 // command "resolveids", wshserver.ResolveIdsCommand
 func ResolveIdsCommand(w *wshutil.WshRpc, data wshrpc.CommandResolveIdsData, opts *wshrpc.RpcOpts) (wshrpc.CommandResolveIdsRtnData, error) {
     resp, err := sendRpcRequestCallHelper[wshrpc.CommandResolveIdsRtnData](w, "resolveids", data, opts)
