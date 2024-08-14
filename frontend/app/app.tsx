@@ -360,28 +360,47 @@ function genericClose(tabId: string) {
     services.ObjectService.DeleteBlock(activeBlockId);
 }
 
-const simpleCmdShiftAtom = jotai.atom(false);
+const simpleControlShiftAtom = jotai.atom(false);
 
 const AppKeyHandlers = () => {
     const tabId = jotai.useAtomValue(atoms.activeTabId);
 
+    function setControlShift() {
+        globalStore.set(simpleControlShiftAtom, true);
+        setTimeout(() => {
+            const simpleState = globalStore.get(simpleControlShiftAtom);
+            if (simpleState) {
+                globalStore.set(atoms.controlShiftDelayAtom, true);
+            }
+        }, 400);
+    }
+
+    function unsetControlShift() {
+        globalStore.set(simpleControlShiftAtom, false);
+        globalStore.set(atoms.controlShiftDelayAtom, false);
+    }
+
     function handleKeyUp(event: KeyboardEvent) {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
-        if (waveEvent.key == "Control" || waveEvent.key == "Shift") {
-            globalStore.set(simpleCmdShiftAtom, false);
-            globalStore.set(atoms.cmdShiftDelayAtom, false);
+        if (waveEvent.key === "Control" || waveEvent.key === "Shift") {
+            unsetControlShift();
+        }
+        if (waveEvent.key == "Meta") {
+            if (waveEvent.control && waveEvent.shift) {
+                setControlShift();
+            }
         }
     }
 
     function handleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
-        if ((waveEvent.key == "Control" || waveEvent.key == "Shift") && waveEvent.control && waveEvent.shift) {
-            globalStore.set(simpleCmdShiftAtom, true);
-            setTimeout(() => {
-                const simpleState = globalStore.get(simpleCmdShiftAtom);
-                if (simpleState) {
-                    globalStore.set(atoms.cmdShiftDelayAtom, true);
-                }
-            }, 400);
+        if (waveEvent.key === "Control" || waveEvent.key === "Shift" || waveEvent.key === "Meta") {
+            if (waveEvent.control && waveEvent.shift && !waveEvent.meta) {
+                // Set the control and shift without the Meta key
+                setControlShift();
+            } else {
+                // Unset if Meta is pressed
+                unsetControlShift();
+            }
             return false;
         }
 

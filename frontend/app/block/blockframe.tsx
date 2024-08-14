@@ -228,7 +228,7 @@ function BlockNum({ blockId }: { blockId: string }) {
 }
 
 const BlockMask = ({ blockId, preview, isFocused }: { blockId: string; preview: boolean; isFocused: boolean }) => {
-    const isLayoutMode = jotai.useAtomValue(atoms.cmdShiftDelayAtom);
+    const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
 
     const style: React.CSSProperties = {};

@@ -103,7 +103,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         }
         return windowData.activetabid;
     });
-    const cmdShiftDelayAtom = jotai.atom(false);
+    const controlShiftDelayAtom = jotai.atom(false);
     const updateStatusAtom = jotai.atom<UpdaterStatus>("up-to-date") as jotai.PrimitiveAtom<UpdaterStatus>;
     try {
         globalStore.set(updateStatusAtom, getApi().getUpdaterStatus());
@@ -126,7 +126,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         tabAtom: tabAtom,
         activeTabId: activeTabIdAtom,
         isFullScreen: isFullScreenAtom,
-        cmdShiftDelayAtom: cmdShiftDelayAtom,
+        controlShiftDelayAtom: controlShiftDelayAtom,
         updaterStatusAtom: updateStatusAtom,
     };
 }
