@@ -245,7 +245,6 @@ export class PreviewModel implements ViewModel {
         const newFileContent = globalStore.get(this.newFileContent);
         try {
             services.FileService.SaveFile(fileName, util.stringToBase64(newFileContent));
-            this.toggleCodeEditorReadOnly(true);
         } catch (error) {
             console.error("Error saving file:", error);
         }
