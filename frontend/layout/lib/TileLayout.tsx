@@ -264,7 +264,7 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
             className={clsx("tile-node", {
                 dragging: isDragging,
                 magnified: layoutModel.treeState.magnifiedNodeId === layoutNode.id,
-                "last-magnified": addlProps.isLastMagnifiedNode,
+                "last-magnified": addlProps?.isLastMagnifiedNode,
             })}
             ref={tileNodeRef}
             id={layoutNode.id}

@@ -16,7 +16,7 @@ function getLayoutStateAtomFromTab(tabAtom: Atom<Tab>, get: Getter): WritableWav
 
 export function withLayoutTreeStateAtomFromTab(tabAtom: Atom<Tab>): WritableLayoutTreeStateAtom {
     if (layoutStateAtomMap.has(tabAtom)) {
-        console.log("found atom");
+        // console.log("found atom");
         return layoutStateAtomMap.get(tabAtom);
     }
     const generationAtom = atom(1);
@@ -25,7 +25,7 @@ export function withLayoutTreeStateAtomFromTab(tabAtom: Atom<Tab>): WritableLayo
             const stateAtom = getLayoutStateAtomFromTab(tabAtom, get);
             if (!stateAtom) return;
             const layoutStateData = get(stateAtom);
-            console.log("layoutStateData", layoutStateData);
+            // console.log("layoutStateData", layoutStateData);
             const layoutTreeState: LayoutTreeState = {
                 rootNode: layoutStateData?.rootnode,
                 magnifiedNodeId: layoutStateData?.magnifiednodeid,
@@ -36,10 +36,10 @@ export function withLayoutTreeStateAtomFromTab(tabAtom: Atom<Tab>): WritableLayo
         (get, set, value) => {
             if (get(generationAtom) < value.generation) {
                 const stateAtom = getLayoutStateAtomFromTab(tabAtom, get);
-                console.log("setting new atom val", value);
+                // console.log("setting new atom val", value);
                 if (!stateAtom) return;
                 const waveObjVal = get(stateAtom);
-                console.log("waveObjVal", waveObjVal);
+                // console.log("waveObjVal", waveObjVal);
                 waveObjVal.rootnode = value.rootNode;
                 waveObjVal.magnifiednodeid = value.magnifiedNodeId;
                 set(generationAtom, value.generation);

@@ -1,6 +1,6 @@
 import { globalStore, WOS } from "@/app/store/global";
 import useResizeObserver from "@react-hook/resize-observer";
-import { atom, Atom, useAtomValue } from "jotai";
+import { Atom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { withLayoutTreeStateAtomFromTab } from "./layoutAtom";
 import { LayoutModel } from "./layoutModel";
@@ -15,7 +15,6 @@ export function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
     if (layoutModelMap.has(tabId)) {
         const layoutModel = layoutModelMap.get(tabData.oid);
         if (layoutModel) {
-            if (!layoutModel.generationAtom) layoutModel.generationAtom = atom(0);
             return layoutModel;
         }
     }

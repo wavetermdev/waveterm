@@ -365,10 +365,10 @@ export class LayoutModel {
          * Gets normalized dimensions for the TileLayout container.
          * @returns The normalized dimensions for the TileLayout container.
          */
-        function getBoundingRect(): Dimensions {
+        const getBoundingRect: () => Dimensions = () => {
             const boundingRect = this.displayContainerRef.current.getBoundingClientRect();
             return { top: 0, left: 0, width: boundingRect.width, height: boundingRect.height };
-        }
+        };
 
         if (!node.children?.length) {
             // console.log("adding node to leafs", node);
