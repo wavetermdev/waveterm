@@ -223,7 +223,7 @@ export function moveNode(layoutState: LayoutTreeState, action: LayoutTreeMoveNod
     const parent = findNode(rootNode, action.parentId);
     const oldParent = findParent(rootNode, action.node.id);
 
-    console.log(node, parent, oldParent);
+    // console.log(node, parent, oldParent);
 
     let startingIndex = 0;
 
@@ -293,7 +293,7 @@ export function insertNodeAtIndex(layoutState: LayoutTreeState, action: LayoutTr
 }
 
 export function swapNode(layoutState: LayoutTreeState, action: LayoutTreeSwapNodeAction) {
-    console.log("swapNode", layoutState, action);
+    // console.log("swapNode", layoutState, action);
 
     if (!action.node1Id || !action.node2Id) {
         console.error("invalid swapNode action, both node1 and node2 must be defined");
@@ -353,7 +353,7 @@ export function deleteNode(layoutState: LayoutTreeState, action: LayoutTreeDelet
 }
 
 export function resizeNode(layoutState: LayoutTreeState, action: LayoutTreeResizeNodeAction) {
-    console.log("resizeNode", layoutState, action);
+    // console.log("resizeNode", layoutState, action);
     if (!action.resizeOperations) {
         console.error("invalid resizeNode operation. nodeSizes array must be defined.");
     }
@@ -368,7 +368,7 @@ export function resizeNode(layoutState: LayoutTreeState, action: LayoutTreeResiz
 }
 
 export function magnifyNodeToggle(layoutState: LayoutTreeState, action: LayoutTreeMagnifyNodeToggleAction) {
-    console.log("magnifyNodeToggle", layoutState, action);
+    // console.log("magnifyNodeToggle", layoutState, action);
     if (!action.nodeId) {
         console.error("invalid magnifyNodeToggle operation. nodeId must be defined.");
         return;

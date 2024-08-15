@@ -40,7 +40,7 @@ export function newLayoutNode(
  * @returns The updated parent node.
  */
 export function addChildAt(node: LayoutNode, idx: number, ...children: LayoutNode[]) {
-    console.log("adding", children, "to", node, "at index", idx);
+    // console.log("adding", children, "to", node, "at index", idx);
     if (children.length === 0) return;
 
     if (!node.children) {
@@ -73,7 +73,6 @@ export function addChildAt(node: LayoutNode, idx: number, ...children: LayoutNod
  */
 export function addIntermediateNode(node: LayoutNode): LayoutNode {
     let intermediateNode: LayoutNode;
-    console.log(node);
 
     if (node.data) {
         intermediateNode = newLayoutNode(reverseFlexDirection(node.flexDirection), undefined, undefined, node.data);

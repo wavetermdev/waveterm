@@ -65,7 +65,6 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
     }));
 
     useEffect(() => {
-        console.log("activeDrag", activeDrag);
         setActiveDrag(activeDrag);
     }, [setActiveDrag, activeDrag]);
 
@@ -145,15 +144,7 @@ const DisplayNodesWrapper = ({ layoutModel, contents }: DisplayNodesWrapperProps
     return useMemo(
         () =>
             layoutModel.leafs.map((leaf) => {
-                return (
-                    <DisplayNode
-                        className={clsx({ magnified: layoutModel.treeState.magnifiedNodeId === leaf.id })}
-                        key={leaf.id}
-                        layoutModel={layoutModel}
-                        layoutNode={leaf}
-                        contents={contents}
-                    />
-                );
+                return <DisplayNode key={leaf.id} layoutModel={layoutModel} layoutNode={leaf} contents={contents} />;
             }),
         [generation]
     );
@@ -170,11 +161,6 @@ interface DisplayNodeProps {
      * contains callbacks and information about the contents (or styling) of of the TileLayout
      */
     contents: TileLayoutContents;
-
-    /**
-     * Any class names to add to the component.
-     */
-    className?: string;
 }
 
 const dragItemType = "TILE_ITEM";
@@ -182,7 +168,7 @@ const dragItemType = "TILE_ITEM";
 /**
  * The draggable and displayable portion of a leaf node in a layout tree.
  */
-const DisplayNode = ({ layoutModel, layoutNode, contents, className }: DisplayNodeProps) => {
+const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
     const dragHandleRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
@@ -264,7 +250,7 @@ const DisplayNode = ({ layoutModel, layoutNode, contents, className }: DisplayNo
                         globalReady,
                         layoutNode.id === layoutModel.treeState.magnifiedNodeId,
                         activeDrag,
-                        () => layoutModel.magnifyNode(layoutNode),
+                        () => layoutModel.magnifyNodeToggle(layoutNode),
                         () => layoutModel.closeNode(layoutNode),
                         dragHandleRef
                     )}
@@ -275,7 +261,11 @@ const DisplayNode = ({ layoutModel, layoutNode, contents, className }: DisplayNo
 
     return (
         <div
-            className={clsx("tile-node", className, { dragging: isDragging })}
+            className={clsx("tile-node", {
+                dragging: isDragging,
+                magnified: layoutModel.treeState.magnifiedNodeId === layoutNode.id,
+                "last-magnified": addlProps.isLastMagnifiedNode,
+            })}
             ref={tileNodeRef}
             id={layoutNode.id}
             style={addlProps?.transform}

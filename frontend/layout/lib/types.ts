@@ -274,4 +274,5 @@ export interface LayoutNodeAdditionalProps {
     rect?: Dimensions;
     pixelToSizeRatio?: number;
     resizeHandles?: ResizeHandleProps[];
+    isLastMagnifiedNode?: boolean;
 }

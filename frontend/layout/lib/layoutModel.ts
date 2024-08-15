@@ -48,30 +48,104 @@ interface ResizeContext {
 const DefaultGapSizePx = 5;
 
 export class LayoutModel {
+    /**
+     * The jotai atom for persisting the tree state to the backend and retrieving updates from the backend.
+     */
     treeStateAtom: WritableLayoutTreeStateAtom;
+    /**
+     * The tree state as it is persisted on the backend.
+     */
+    treeState: LayoutTreeState;
+    /**
+     * The jotai getter that is used to read atom values.
+     */
     getter: Getter;
+    /**
+     * The jotai setter that is used to update atom values.
+     */
     setter: Setter;
+    /**
+     * Callback that is invoked to render the block associated with a leaf node.
+     */
     renderContent?: ContentRenderer;
+    /**
+     * Callback that is invoked to render the drag preview for a leaf node.
+     */
     renderPreview?: PreviewRenderer;
+    /**
+     * Callback that is invoked when a node is closed.
+     */
     onNodeDelete?: (data: TabLayoutData) => Promise<void>;
+    /**
+     * The size of the gap between nodes in CSS pixels.
+     */
     gapSizePx: number;
 
-    treeState: LayoutTreeState;
+    /**
+     * List of nodes that are leafs and should be rendered as a DisplayNode
+     */
     leafs: LayoutNode[];
+    /**
+     * Split atom containing the properties of all of the resize handles that should be placed in the layout.
+     */
     resizeHandles: SplitAtom<ResizeHandleProps>;
+    /**
+     * Layout node derived properties that are not persisted to the backend.
+     * @see updateTreeHelper for the logic to update these properties.
+     */
     additionalProps: PrimitiveAtom<Record<string, LayoutNodeAdditionalProps>>;
+    /**
+     * Set if there is currently an uncommitted action pending on the layout tree.
+     * @see LayoutTreeActionType for the different types of actions.
+     */
     pendingAction: AtomWithThrottle<LayoutTreeAction>;
+    /**
+     * Whether a node is currently being dragged.
+     */
     activeDrag: PrimitiveAtom<boolean>;
+    /**
+     * Whether the overlay container should be shown.
+     * @see overlayTransform contains the actual CSS transform that moves the overlay into view.
+     */
     showOverlay: PrimitiveAtom<boolean>;
+    /**
+     * Whether the nodes within the layout should be displaying content.
+     */
     ready: PrimitiveAtom<boolean>;
 
+    /**
+     * RefObject for the display container, that holds the display nodes. This is used to get the size of the whole layout.
+     */
     displayContainerRef: React.RefObject<HTMLDivElement>;
+    /**
+     * CSS properties for the placeholder element.
+     */
     placeholderTransform: Atom<CSSProperties>;
+    /**
+     * CSS properties for the overlay container.
+     */
     overlayTransform: Atom<CSSProperties>;
 
+    /**
+     * The last node to be magnified, other than the current magnified node, if set. This node should sit at a higher z-index than the others so that it floats above the other nodes as it returns to its original position.
+     */
+    lastMagnifiedNodeId: string;
+
+    /**
+     * A context used by the resize handles to keep track of precomputed values for the current resize operation.
+     */
     private resizeContext?: ResizeContext;
+    /**
+     * True if a resize handle is currently being dragged or the whole TileLayout container is being resized.
+     */
     isResizing: Atom<boolean>;
+    /**
+     * True if the whole TileLayout container is being resized.
+     */
     private isContainerResizing: PrimitiveAtom<boolean>;
+    /**
+     * An arbitrary generation value that is incremented every time the updateTree function runs. Helps indicate to subscribers that they should update their memoized values.
+     */
     generationAtom: PrimitiveAtom<number>;
 
     constructor(
@@ -143,12 +217,20 @@ export class LayoutModel {
         this.updateTreeState(true);
     }
 
+    /**
+     * Register TileLayout callbacks that should be called on various state changes.
+     * @param contents Contains callbacks provided by the TileLayout component.
+     */
     registerTileLayout(contents: TileLayoutContents) {
         this.renderContent = contents.renderContent;
         this.renderPreview = contents.renderPreview;
         this.onNodeDelete = contents.onNodeDelete;
     }
 
+    /**
+     * Perform an action against the layout tree state.
+     * @param action The action to perform.
+     */
     treeReducer(action: LayoutTreeAction) {
         console.log("treeReducer", action, this);
         let stateChanged = false;
@@ -220,69 +302,32 @@ export class LayoutModel {
         }
     }
 
+    /**
+     * Callback that is invoked when the tree state has been updated on the backend. This ensures the model is updated if the atom is not fully loaded when the model is first instantiated.
+     * @param force Whether to force the tree state to update, regardless of whether the state is already up to date.
+     */
     updateTreeState(force = false) {
         const treeState = this.getter(this.treeStateAtom);
-        console.log("updateTreeState", this.treeState, treeState);
+        // Only update the local tree state if it is different from the one in the backend. This function is called even when the update was initiated by the LayoutModel, so we need to filter out false positives or we'll enter an infinite loop.
         if (
             force ||
             !this.treeState?.rootNode ||
             !this.treeState?.generation ||
             treeState?.generation > this.treeState.generation
         ) {
-            console.log("newTreeState", treeState);
             this.treeState = treeState;
             this.updateTree();
         }
     }
 
-    private bumpGeneration() {
-        console.log("bumpGeneration");
-        this.setter(this.generationAtom, this.getter(this.generationAtom) + 1);
-    }
-
-    getNodeAdditionalPropertiesAtom(nodeId: string): Atom<LayoutNodeAdditionalProps> {
-        return atom((get) => {
-            const addlProps = get(this.additionalProps);
-            console.log(
-                "updated addlProps",
-                nodeId,
-                addlProps?.[nodeId]?.transform,
-                addlProps?.[nodeId]?.rect,
-                addlProps?.[nodeId]?.pixelToSizeRatio
-            );
-            if (addlProps.hasOwnProperty(nodeId)) return addlProps[nodeId];
-        });
-    }
-
-    getNodeAdditionalPropertiesById(nodeId: string): LayoutNodeAdditionalProps {
-        const addlProps = this.getter(this.additionalProps);
-        if (addlProps.hasOwnProperty(nodeId)) return addlProps[nodeId];
-    }
-
-    getNodeAdditionalProperties(node: LayoutNode): LayoutNodeAdditionalProps {
-        return this.getNodeAdditionalPropertiesById(node.id);
-    }
-
-    getNodeTransform(node: LayoutNode): CSSProperties {
-        return this.getNodeTransformById(node.id);
-    }
-
-    getNodeTransformById(nodeId: string): CSSProperties {
-        return this.getNodeAdditionalPropertiesById(nodeId)?.transform;
-    }
-
-    getNodeRect(node: LayoutNode): Dimensions {
-        return this.getNodeRectById(node.id);
-    }
-
-    getNodeRectById(nodeId: string): Dimensions {
-        return this.getNodeAdditionalPropertiesById(nodeId)?.rect;
-    }
-
+    /**
+     * Recursively walks the tree to find leaf nodes, update the resize handles, and compute additional properties for each node.
+     * @param balanceTree Whether the tree should also be balanced as it is walked. This should be done if the tree state has just been updated. Defaults to true.
+     */
     updateTree = (balanceTree: boolean = true) => {
-        console.log("updateTree");
+        // console.log("updateTree");
         if (this.displayContainerRef.current) {
-            console.log("updateTree 1");
+            // console.log("updateTree 1");
             const newLeafs: LayoutNode[] = [];
             const newAdditionalProps = {};
 
@@ -299,26 +344,37 @@ export class LayoutModel {
             this.setter(this.additionalProps, newAdditionalProps);
             this.leafs = newLeafs.sort((a, b) => a.id.localeCompare(b.id));
 
-            this.bumpGeneration();
+            this.setter(this.generationAtom, this.getter(this.generationAtom) + 1);
         }
     };
 
-    private getBoundingRect(): Dimensions {
-        const boundingRect = this.displayContainerRef.current.getBoundingClientRect();
-        return { top: 0, left: 0, width: boundingRect.width, height: boundingRect.height };
-    }
-
+    /**
+     * Per-node callback that is invoked recursively to find leaf nodes, update the resize handles, and compute additional properties associated with the given node.
+     * @param node The node for which to update the resize handles and additional properties.
+     * @param additionalPropsMap The new map that will contain the updated additional properties for all nodes in the tree.
+     * @param leafs The new list that will contain all the leaf nodes in the tree.
+     * @param resizeAction The pending resize action, if any. Used to set temporary size values on nodes that are being resized.
+     */
     private updateTreeHelper(
         node: LayoutNode,
         additionalPropsMap: Record<string, LayoutNodeAdditionalProps>,
         leafs: LayoutNode[],
         resizeAction?: LayoutTreeResizeNodeAction
     ) {
+        /**
+         * Gets normalized dimensions for the TileLayout container.
+         * @returns The normalized dimensions for the TileLayout container.
+         */
+        function getBoundingRect(): Dimensions {
+            const boundingRect = this.displayContainerRef.current.getBoundingClientRect();
+            return { top: 0, left: 0, width: boundingRect.width, height: boundingRect.height };
+        }
+
         if (!node.children?.length) {
-            console.log("adding node to leafs", node);
+            // console.log("adding node to leafs", node);
             leafs.push(node);
             if (this.treeState.magnifiedNodeId === node.id) {
-                const boundingRect = this.getBoundingRect();
+                const boundingRect = getBoundingRect();
                 const transform = setTransform(
                     {
                         top: boundingRect.height * 0.05,
@@ -341,8 +397,7 @@ export class LayoutModel {
             ? additionalPropsMap[node.id]
             : {};
 
-        const nodeRect: Dimensions =
-            node.id === this.treeState.rootNode.id ? this.getBoundingRect() : additionalProps.rect;
+        const nodeRect: Dimensions = node.id === this.treeState.rootNode.id ? getBoundingRect() : additionalProps.rect;
         const nodeIsRow = node.flexDirection === FlexDirection.Row;
         const nodePixelsMinusGap =
             (nodeIsRow ? nodeRect.width : nodeRect.height) - this.gapSizePx * (node.children.length - 1);
@@ -394,12 +449,20 @@ export class LayoutModel {
             ...additionalProps,
             pixelToSizeRatio,
             resizeHandles,
+            isLastMagnifiedNode: this.lastMagnifiedNodeId === node.id,
         };
     }
 
+    /**
+     * Helper function for the placeholderTransform atom, which computes the new transform value when the pending action changes.
+     * @param pendingAction The new pending action value.
+     * @returns The computed placeholder transform.
+     *
+     * @see placeholderTransform the atom that invokes this function and persists the updated value.
+     */
     private getPlaceholderTransform(pendingAction: LayoutTreeAction): CSSProperties {
         if (pendingAction) {
-            console.log("pendingAction", pendingAction, this);
+            // console.log("pendingAction", pendingAction, this);
             switch (pendingAction.type) {
                 case LayoutTreeActionType.Move: {
                     // console.log("doing move overlay");
@@ -483,15 +546,26 @@ export class LayoutModel {
         return;
     }
 
-    magnifyNode(node: LayoutNode) {
+    /**
+     * Toggle magnification of a given node.
+     * @param node The node that is being magnified.
+     */
+    magnifyNodeToggle(node: LayoutNode) {
         const action = {
             type: LayoutTreeActionType.MagnifyNodeToggle,
             nodeId: node.id,
         };
 
+        // If the node is already magnified, then it is being un-magnified and should be set as the last-magnified node to ensure it has a higher z-index as it transitions back to its original position.
+        if (this.treeState.magnifiedNodeId === node.id) this.lastMagnifiedNodeId = node.id;
+
         this.treeReducer(action);
     }
 
+    /**
+     * Close a given node and update the tree state.
+     * @param node The node that is being closed.
+     */
     async closeNode(node: LayoutNode) {
         const deleteAction: LayoutTreeDeleteNodeAction = {
             type: LayoutTreeActionType.DeleteNode,
@@ -501,18 +575,30 @@ export class LayoutModel {
         await this.onNodeDelete?.(node.data);
     }
 
+    /**
+     * Callback that is invoked when the TileLayout container is being resized.
+     */
     onContainerResize = () => {
         this.updateTree();
         this.setter(this.isContainerResizing, true);
         this.stopContainerResizing();
     };
 
+    /**
+     * Deferred action to restore animations once the TileLayout container is no longer being resized.
+     */
     stopContainerResizing = debounce(30, () => {
         this.setter(this.isContainerResizing, false);
     });
 
+    /**
+     * Callback to update pending node sizes when a resize handle is dragged.
+     * @param resizeHandle The resize handle that is being dragged.
+     * @param x The X coordinate of the pointer device, in CSS pixels.
+     * @param y The Y coordinate of the pointer device, in CSS pixels.
+     */
     onResizeMove(resizeHandle: ResizeHandleProps, x: number, y: number) {
-        console.log("onResizeMove", resizeHandle, x, y, this.resizeContext);
+        // console.log("onResizeMove", resizeHandle, x, y, this.resizeContext);
         const parentIsRow = resizeHandle.flexDirection === FlexDirection.Row;
         const parentNode = findNode(this.treeState.rootNode, resizeHandle.parentNodeId);
         const beforeNode = parentNode.children![resizeHandle.parentIndex];
@@ -568,8 +654,87 @@ export class LayoutModel {
         this.updateTree(false);
     }
 
+    /**
+     * Callback to end the current resize operation and commit its pending action.
+     */
     onResizeEnd() {
-        this.resizeContext = undefined;
-        this.treeReducer({ type: LayoutTreeActionType.CommitPendingAction });
+        if (this.resizeContext) {
+            this.resizeContext = undefined;
+            this.treeReducer({ type: LayoutTreeActionType.CommitPendingAction });
+        }
+    }
+
+    /**
+     * Get a jotai atom containing the additional properties associated with a given node.
+     * @param nodeId The ID of the node for which to retrieve the additional properties.
+     * @returns An atom containing the additional properties associated with the given node.
+     */
+    getNodeAdditionalPropertiesAtom(nodeId: string): Atom<LayoutNodeAdditionalProps> {
+        return atom((get) => {
+            const addlProps = get(this.additionalProps);
+            // console.log(
+            //     "updated addlProps",
+            //     nodeId,
+            //     addlProps?.[nodeId]?.transform,
+            //     addlProps?.[nodeId]?.rect,
+            //     addlProps?.[nodeId]?.pixelToSizeRatio
+            // );
+            if (addlProps.hasOwnProperty(nodeId)) return addlProps[nodeId];
+        });
+    }
+
+    /**
+     * Get additional properties associated with a given node.
+     * @param nodeId The ID of the node for which to retrieve the additional properties.
+     * @returns The additional properties associated with the given node.
+     */
+    getNodeAdditionalPropertiesById(nodeId: string): LayoutNodeAdditionalProps {
+        const addlProps = this.getter(this.additionalProps);
+        if (addlProps.hasOwnProperty(nodeId)) return addlProps[nodeId];
+    }
+
+    /**
+     * Get additional properties associated with a given node.
+     * @param node The node for which to retrieve the additional properties.
+     * @returns The additional properties associated with the given node.
+     */
+    getNodeAdditionalProperties(node: LayoutNode): LayoutNodeAdditionalProps {
+        return this.getNodeAdditionalPropertiesById(node.id);
+    }
+
+    /**
+     * Get the CSS transform associated with a given node.
+     * @param nodeId The ID of the node for which to retrieve the CSS transform.
+     * @returns The CSS transform associated with the given node.
+     */
+    getNodeTransformById(nodeId: string): CSSProperties {
+        return this.getNodeAdditionalPropertiesById(nodeId)?.transform;
+    }
+
+    /**
+     * Get the CSS transform associated with a given node.
+     * @param node The node for which to retrieve the CSS transform.
+     * @returns The CSS transform associated with the given node.
+     */
+    getNodeTransform(node: LayoutNode): CSSProperties {
+        return this.getNodeTransformById(node.id);
+    }
+
+    /**
+     * Get the computed dimensions in CSS pixels of a given node.
+     * @param nodeId The ID of the node for which to retrieve the computed dimensions.
+     * @returns The computed dimensions of the given node, in CSS pixels.
+     */
+    getNodeRectById(nodeId: string): Dimensions {
+        return this.getNodeAdditionalPropertiesById(nodeId)?.rect;
+    }
+
+    /**
+     * Get the computed dimensions in CSS pixels of a given node.
+     * @param node The node for which to retrieve the computed dimensions.
+     * @returns The computed dimensions of the given node, in CSS pixels.
+     */
+    getNodeRect(node: LayoutNode): Dimensions {
+        return this.getNodeRectById(node.id);
     }
 }

@@ -77,7 +77,10 @@
 
         &.magnified {
             background-color: var(--block-bg-solid-color);
-            z-index: 10;
+            z-index: var(--zindex-layout-magnified-node);
+        }
+        &.last-magnified {
+            z-index: var(--zindex-layout-last-magnified-node);
         }
 
         .tile-preview-container {
