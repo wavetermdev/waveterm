@@ -558,18 +558,18 @@ export class LayoutModel {
 
         const clientPoint = parentIsRow ? clientX : clientY;
         const clientDiff = (this.resizeContext.resizeHandleStartPx - clientPoint) * this.resizeContext.pixelToSizeRatio;
-        const sizeNode1 = this.resizeContext.beforeNodeStartSize - clientDiff;
-        const sizeNode2 = this.resizeContext.afterNodeStartSize + clientDiff;
+        const beforeNodeSize = this.resizeContext.beforeNodeStartSize - clientDiff;
+        const afterNodeSize = this.resizeContext.afterNodeStartSize + clientDiff;
         const resizeAction: LayoutTreeResizeNodeAction = {
             type: LayoutTreeActionType.ResizeNode,
             resizeOperations: [
                 {
                     nodeId: beforeNode.id,
-                    size: sizeNode1,
+                    size: beforeNodeSize,
                 },
                 {
                     nodeId: afterNode.id,
-                    size: sizeNode2,
+                    size: afterNodeSize,
                 },
             ],
         };
