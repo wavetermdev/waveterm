@@ -17,6 +17,7 @@ import {
 import {
     ContentRenderer,
     LayoutNode,
+    LayoutNodeAdditionalProps,
     LayoutTreeAction,
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
@@ -30,26 +31,11 @@ import {
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
     PreviewRenderer,
+    ResizeHandleProps,
     TileLayoutContents,
     WritableLayoutTreeStateAtom,
 } from "./types";
 import { Dimensions, FlexDirection, setTransform } from "./utils";
-
-export interface ResizeHandleProps {
-    id: string;
-    parentNodeId: string;
-    parentIndex: number;
-    centerPx: number;
-    transform: CSSProperties;
-    flexDirection: FlexDirection;
-}
-
-export interface LayoutNodeAdditionalProps {
-    transform?: CSSProperties;
-    rect?: Dimensions;
-    pixelToSizeRatio?: number;
-    resizeHandles?: ResizeHandleProps[];
-}
 
 interface ResizeContext {
     handleId: string;

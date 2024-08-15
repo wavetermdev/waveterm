@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WritableAtom } from "jotai";
-import { DropDirection, FlexDirection } from "./utils.js";
+import { CSSProperties } from "react";
+import { Dimensions, DropDirection, FlexDirection } from "./utils.js";
 
 /**
  * Represents an operation to insert a node into a tree.
@@ -257,4 +258,20 @@ export interface TileLayoutContents {
      * tabId this TileLayout is associated with
      */
     tabId?: string;
+}
+
+export interface ResizeHandleProps {
+    id: string;
+    parentNodeId: string;
+    parentIndex: number;
+    centerPx: number;
+    transform: CSSProperties;
+    flexDirection: FlexDirection;
+}
+
+export interface LayoutNodeAdditionalProps {
+    transform?: CSSProperties;
+    rect?: Dimensions;
+    pixelToSizeRatio?: number;
+    resizeHandles?: ResizeHandleProps[];
 }

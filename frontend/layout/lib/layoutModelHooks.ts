@@ -3,8 +3,8 @@ import useResizeObserver from "@react-hook/resize-observer";
 import { atom, Atom, useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { withLayoutTreeStateAtomFromTab } from "./layoutAtom";
-import { LayoutModel, LayoutNodeAdditionalProps } from "./layoutModel";
-import { LayoutNode, TileLayoutContents } from "./types";
+import { LayoutModel } from "./layoutModel";
+import { LayoutNode, LayoutNodeAdditionalProps, TileLayoutContents } from "./types";
 
 const layoutModelMap: Map<string, LayoutModel> = new Map();
 

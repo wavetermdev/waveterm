@@ -18,10 +18,16 @@ import React, {
 import { DropTargetMonitor, XYCoord, useDrag, useDragLayer, useDrop } from "react-dnd";
 import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
-import { LayoutModel, ResizeHandleProps } from "./layoutModel";
+import { LayoutModel } from "./layoutModel";
 import { useLayoutNode, useTileLayout } from "./layoutModelHooks";
 import "./tilelayout.less";
-import { LayoutNode, LayoutTreeActionType, LayoutTreeComputeMoveNodeAction, TileLayoutContents } from "./types";
+import {
+    LayoutNode,
+    LayoutTreeActionType,
+    LayoutTreeComputeMoveNodeAction,
+    ResizeHandleProps,
+    TileLayoutContents,
+} from "./types";
 import { determineDropDirection } from "./utils";
 
 export interface TileLayoutProps {
