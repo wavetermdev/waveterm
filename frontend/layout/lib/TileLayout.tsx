@@ -183,11 +183,12 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
         () => ({
             type: dragItemType,
             item: () => layoutNode,
+            canDrag: () => !layoutModel?.treeState?.magnifiedNodeId,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
         }),
-        [layoutNode]
+        [layoutNode, layoutGeneration]
     );
 
     const [previewElementGeneration, setPreviewElementGeneration] = useState(0);
