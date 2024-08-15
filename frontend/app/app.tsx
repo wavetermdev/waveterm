@@ -493,7 +493,6 @@ const AppInner = () => {
             <AppBackground />
             <AppKeyHandlers />
             <AppSettingsUpdater />
-            -m
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
