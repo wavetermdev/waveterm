@@ -14,7 +14,6 @@ import {
 } from "./layoutNode";
 import {
     DefaultNodeSize,
-    LayoutTreeAction,
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
@@ -28,57 +27,6 @@ import {
     MoveOperation,
 } from "./types";
 import { DropDirection, FlexDirection } from "./utils";
-
-/**
- * Performs a specified action on the layout tree state. Uses Immer Produce internally to resolve deep changes to the tree.
- *
- * @param layoutState The state of the tree.
- * @param action The action to perform.
- *
- * @returns The new state of the tree.
- */
-export function layoutStateReducer(layoutState: LayoutTreeState, action: LayoutTreeAction): LayoutTreeState {
-    layoutStateReducerInner(layoutState, action);
-    return layoutState;
-}
-
-/**
- * Helper function for layoutStateReducer.
- * @param layoutState The state of the tree.
- * @param action The action to perform.
- * @see layoutStateReducer
- */
-function layoutStateReducerInner(layoutState: LayoutTreeState, action: LayoutTreeAction) {
-    switch (action.type) {
-        case LayoutTreeActionType.ComputeMove:
-            computeMoveNode(layoutState, action as LayoutTreeComputeMoveNodeAction);
-            break;
-        case LayoutTreeActionType.Move:
-            moveNode(layoutState, action as LayoutTreeMoveNodeAction);
-            break;
-        case LayoutTreeActionType.InsertNode:
-            insertNode(layoutState, action as LayoutTreeInsertNodeAction);
-            break;
-        case LayoutTreeActionType.InsertNodeAtIndex:
-            insertNodeAtIndex(layoutState, action as LayoutTreeInsertNodeAtIndexAction);
-            break;
-        case LayoutTreeActionType.DeleteNode:
-            deleteNode(layoutState, action as LayoutTreeDeleteNodeAction);
-            break;
-        case LayoutTreeActionType.Swap:
-            swapNode(layoutState, action as LayoutTreeSwapNodeAction);
-            break;
-        case LayoutTreeActionType.ResizeNode:
-            resizeNode(layoutState, action as LayoutTreeResizeNodeAction);
-            break;
-        case LayoutTreeActionType.MagnifyNodeToggle:
-            magnifyNodeToggle(layoutState, action as LayoutTreeMagnifyNodeToggleAction);
-            break;
-        default: {
-            console.error("Invalid reducer action", layoutState, action);
-        }
-    }
-}
 
 /**
  * Computes an operation for inserting a new node into the tree in the given direction relative to the specified node.
