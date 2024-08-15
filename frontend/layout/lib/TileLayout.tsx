@@ -236,7 +236,7 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
         layoutNode.data,
     ]);
 
-    // Register the tile item as a draggable component
+    // Register the display node as a draggable item
     useEffect(() => {
         drag(dragHandleRef);
     }, [drag, dragHandleRef.current]);
@@ -320,7 +320,6 @@ const OverlayNode = ({ layoutNode, layoutModel }: OverlayNodeProps) => {
     const additionalProps = useLayoutNode(layoutModel, layoutNode);
     const overlayRef = useRef<HTMLDivElement>(null);
     const generation = useAtomValue(layoutModel.generationAtom);
-    const pendingAction = useAtomValue(layoutModel.pendingAction.throttledValueAtom);
 
     const [, drop] = useDrop(
         () => ({
@@ -333,27 +332,24 @@ const OverlayNode = ({ layoutNode, layoutModel }: OverlayNodeProps) => {
                 return false;
             },
             drop: (_, monitor) => {
-                // console.log("drop start", layoutNode.id, layoutTreeState.pendingAction);
-                if (!monitor.didDrop() && pendingAction) {
-                    layoutModel.treeReducer({
-                        type: LayoutTreeActionType.CommitPendingAction,
-                    });
+                if (!monitor.didDrop()) {
+                    layoutModel.onDrop();
                 }
             },
-            hover: throttle(30, (_, monitor: DropTargetMonitor<unknown, unknown>) => {
+            hover: throttle(50, (_, monitor: DropTargetMonitor<unknown, unknown>) => {
                 if (monitor.isOver({ shallow: true })) {
-                    if (monitor.canDrop() && layoutModel.displayContainerRef?.current) {
+                    if (monitor.canDrop() && layoutModel.displayContainerRef?.current && additionalProps?.rect) {
                         const dragItem = monitor.getItem<LayoutNode>();
                         // console.log("computing operation", layoutNode, dragItem, additionalProps.rect);
                         const offset = monitor.getClientOffset();
-                        const containerRect = layoutModel.displayContainerRef.current?.getBoundingClientRect();
-                        offset.x -= containerRect?.x;
-                        offset.y -= containerRect?.y;
+                        const containerRect = layoutModel.displayContainerRef.current.getBoundingClientRect();
+                        offset.x -= containerRect.x;
+                        offset.y -= containerRect.y;
                         layoutModel.treeReducer({
                             type: LayoutTreeActionType.ComputeMove,
                             node: layoutNode,
                             nodeToMove: dragItem,
-                            direction: determineDropDirection(additionalProps?.rect, offset),
+                            direction: determineDropDirection(additionalProps.rect, offset),
                         } as LayoutTreeComputeMoveNodeAction);
                     } else {
                         layoutModel.treeReducer({
@@ -363,10 +359,10 @@ const OverlayNode = ({ layoutNode, layoutModel }: OverlayNodeProps) => {
                 }
             }),
         }),
-        [layoutNode, pendingAction, generation, additionalProps, layoutModel.displayContainerRef]
+        [layoutNode, generation, additionalProps, layoutModel.displayContainerRef]
     );
 
-    // Register the tile item as a draggable component
+    // Register the overlay node as a drop target
     useEffect(() => {
         drop(overlayRef);
     }, []);

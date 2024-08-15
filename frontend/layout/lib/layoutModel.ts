@@ -132,6 +132,18 @@ export class LayoutModel {
     lastMagnifiedNodeId: string;
 
     /**
+     * The size of the resize handles, in CSS pixels.
+     * The resize handle size is double the gap size, or double the default gap size, whichever is greater.
+     * @see gapSizePx @see DefaultGapSizePx
+     */
+    private resizeHandleSizePx: number;
+    /**
+     * Half of the size of the resize handles, in CSS pixels.
+     *
+     * @see resizeHandleSizePx This is just a precomputed halving of the resize handle size.
+     */
+    private halfResizeHandleSizePx: number;
+    /**
      * A context used by the resize handles to keep track of precomputed values for the current resize operation.
      */
     private resizeContext?: ResizeContext;
@@ -165,6 +177,8 @@ export class LayoutModel {
         this.renderPreview = renderPreview;
         this.onNodeDelete = onNodeDelete;
         this.gapSizePx = gapSizePx ?? DefaultGapSizePx;
+        this.halfResizeHandleSizePx = this.gapSizePx > 5 ? this.gapSizePx : DefaultGapSizePx;
+        this.resizeHandleSizePx = 2 * this.halfResizeHandleSizePx;
 
         this.leafs = [];
         this.additionalProps = atom({});
@@ -209,7 +223,7 @@ export class LayoutModel {
         this.pendingAction = atomWithThrottle<LayoutTreeAction>(null, 10);
         this.placeholderTransform = atom<CSSProperties>((get: Getter) => {
             const pendingAction = get(this.pendingAction.throttledValueAtom);
-            console.log("update to pending action", pendingAction);
+            // console.log("update to pending action", pendingAction);
             return this.getPlaceholderTransform(pendingAction);
         });
 
@@ -232,7 +246,7 @@ export class LayoutModel {
      * @param action The action to perform.
      */
     treeReducer(action: LayoutTreeAction) {
-        console.log("treeReducer", action, this);
+        // console.log("treeReducer", action, this);
         let stateChanged = false;
         switch (action.type) {
             case LayoutTreeActionType.ComputeMove:
@@ -399,24 +413,17 @@ export class LayoutModel {
 
         const nodeRect: Dimensions = node.id === this.treeState.rootNode.id ? getBoundingRect() : additionalProps.rect;
         const nodeIsRow = node.flexDirection === FlexDirection.Row;
-        const nodePixelsMinusGap =
-            (nodeIsRow ? nodeRect.width : nodeRect.height) - this.gapSizePx * (node.children.length - 1);
+        const nodePixels = nodeIsRow ? nodeRect.width : nodeRect.height;
         const totalChildrenSize = node.children.reduce((acc, child) => acc + getNodeSize(child), 0);
-        const pixelToSizeRatio = totalChildrenSize / nodePixelsMinusGap;
+        const pixelToSizeRatio = totalChildrenSize / nodePixels;
 
         let lastChildRect: Dimensions;
         const resizeHandles: ResizeHandleProps[] = [];
-        node.children.forEach((child, i) => {
+        for (const child of node.children) {
             const childSize = getNodeSize(child);
             const rect: Dimensions = {
-                top:
-                    !nodeIsRow && lastChildRect
-                        ? lastChildRect.top + lastChildRect.height + this.gapSizePx
-                        : nodeRect.top,
-                left:
-                    nodeIsRow && lastChildRect
-                        ? lastChildRect.left + lastChildRect.width + this.gapSizePx
-                        : nodeRect.left,
+                top: !nodeIsRow && lastChildRect ? lastChildRect.top + lastChildRect.height : nodeRect.top,
+                left: nodeIsRow && lastChildRect ? lastChildRect.left + lastChildRect.width : nodeRect.left,
                 width: nodeIsRow ? childSize / pixelToSizeRatio : nodeRect.width,
                 height: nodeIsRow ? nodeRect.height : childSize / pixelToSizeRatio,
             };
@@ -426,24 +433,32 @@ export class LayoutModel {
                 transform,
             };
 
-            const resizeHandleDimensions: Dimensions = {
-                top: nodeIsRow ? rect.top : rect.top + rect.height - 0.5 * this.gapSizePx,
-                left: nodeIsRow ? rect.left + rect.width - 0.5 * this.gapSizePx : rect.left,
-                width: nodeIsRow ? 2 * this.gapSizePx : rect.width,
-                height: nodeIsRow ? rect.height : 2 * this.gapSizePx,
-            };
-            resizeHandles.push({
-                id: `${node.id}-${i}`,
-                parentNodeId: node.id,
-                parentIndex: i,
-                transform: setTransform(resizeHandleDimensions, true, false),
-                flexDirection: node.flexDirection,
-                centerPx: (nodeIsRow ? resizeHandleDimensions.left : resizeHandleDimensions.top) + this.gapSizePx,
-            });
+            // We only want the resize handles in between nodes, this ensures we have n-1 handles.
+            if (lastChildRect) {
+                const resizeHandleIndex = resizeHandles.length;
+                const resizeHandleDimensions: Dimensions = {
+                    top: nodeIsRow
+                        ? lastChildRect.top
+                        : lastChildRect.top + lastChildRect.height - this.halfResizeHandleSizePx,
+                    left: nodeIsRow
+                        ? lastChildRect.left + lastChildRect.width - this.halfResizeHandleSizePx
+                        : lastChildRect.left,
+                    width: nodeIsRow ? this.resizeHandleSizePx : lastChildRect.width,
+                    height: nodeIsRow ? lastChildRect.height : this.resizeHandleSizePx,
+                };
+                resizeHandles.push({
+                    id: `${node.id}-${resizeHandleIndex}`,
+                    parentNodeId: node.id,
+                    parentIndex: resizeHandleIndex,
+                    transform: setTransform(resizeHandleDimensions, true, false),
+                    flexDirection: node.flexDirection,
+                    centerPx:
+                        (nodeIsRow ? resizeHandleDimensions.left : resizeHandleDimensions.top) +
+                        this.halfResizeHandleSizePx,
+                });
+            }
             lastChildRect = rect;
-        });
-
-        resizeHandles.pop();
+        }
 
         additionalPropsMap[node.id] = {
             ...additionalProps,
@@ -573,6 +588,14 @@ export class LayoutModel {
         };
         this.treeReducer(deleteAction);
         await this.onNodeDelete?.(node.data);
+    }
+
+    onDrop() {
+        if (this.getter(this.pendingAction.currentValueAtom)) {
+            this.treeReducer({
+                type: LayoutTreeActionType.CommitPendingAction,
+            });
+        }
     }
 
     /**
