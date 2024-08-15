@@ -7,6 +7,8 @@
     width: 100%;
     overflow: hidden;
 
+    --gap-size-px: 5px;
+
     .overlay-container,
     .display-container,
     .placeholder-container {
@@ -18,6 +20,10 @@
         width: 100%;
         min-height: 4rem;
         min-width: 4rem;
+    }
+
+    .display-container {
+        z-index: var(--zindex-layout-display-container);
     }
 
     .placeholder-container {
@@ -33,41 +39,37 @@
         flex: 0 1 auto;
     }
 
-    .overlay-node {
-        .resize-handle {
-            &.flex-row {
-                cursor: ew-resize;
-                .line {
-                    height: 100%;
-                    margin-left: 2px;
-                }
-            }
-            &.flex-column {
-                cursor: ns-resize;
-                .line {
-                    margin-top: 2px;
-                }
-            }
-            flex: 0 0 5px;
-            &:hover {
-                &.flex-row .line {
-                    border-left: 1px solid var(--accent-color);
-                }
-                &.flex-column .line {
-                    border-bottom: 1px solid var(--accent-color);
-                }
+    .resize-handle {
+        z-index: var(--zindex-layout-resize-handle);
+        &.flex-row {
+            cursor: ew-resize;
+            .line {
+                height: 100%;
+                margin-left: calc(var(--gap-size-px) - 1px);
             }
         }
-
-        &.resizing {
-            border: 1px solid var(--accent-color);
-            backdrop-filter: blur(8px);
+        &.flex-column {
+            cursor: ns-resize;
+            .line {
+                margin-top: calc(var(--gap-size-px) - 1px);
+            }
+        }
+        &:hover {
+            &.flex-row .line {
+                border-left: 2px solid var(--accent-color);
+            }
+            &.flex-column .line {
+                border-bottom: 2px solid var(--accent-color);
+            }
         }
     }
 
     .tile-node {
         border-radius: calc(var(--block-border-radius) + 2px);
         overflow: hidden;
+        width: 100%;
+        height: 100%;
+        z-index: inherit;
 
         &.dragging {
             filter: blur(8px);
@@ -89,6 +91,11 @@
                 width: 100%;
                 height: 100%;
             }
+        }
+
+        &.resizing {
+            border: 1px solid var(--accent-color);
+            backdrop-filter: blur(8px);
         }
     }
 

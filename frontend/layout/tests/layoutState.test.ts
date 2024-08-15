@@ -3,8 +3,8 @@
 
 import { assert, test } from "vitest";
 import { newLayoutNode } from "../lib/layoutNode.js";
-import { layoutTreeStateReducer, newLayoutTreeState } from "../lib/layoutState.js";
-import { LayoutTreeActionType, LayoutTreeComputeMoveNodeAction, LayoutTreeMoveNodeAction } from "../lib/model.js";
+import { layoutStateReducer, newLayoutTreeState } from "../lib/layoutTree.js";
+import { LayoutTreeActionType, LayoutTreeComputeMoveNodeAction, LayoutTreeMoveNodeAction } from "../lib/types.js";
 import { DropDirection } from "../lib/utils.js";
 import { TestData } from "./model.js";
 
@@ -12,7 +12,7 @@ test("layoutTreeStateReducer - compute move", () => {
     let treeState = newLayoutTreeState<TestData>(newLayoutNode(undefined, undefined, undefined, { name: "root" }));
     assert(treeState.rootNode.data!.name === "root", "root should have no children and should have data");
     let node1 = newLayoutNode(undefined, undefined, undefined, { name: "node1" });
-    treeState = layoutTreeStateReducer(treeState, {
+    treeState = layoutStateReducer(treeState, {
         type: LayoutTreeActionType.ComputeMove,
         node: treeState.rootNode,
         nodeToMove: node1,
@@ -23,7 +23,7 @@ test("layoutTreeStateReducer - compute move", () => {
     assert(!insertOperation.parentId, "insert operation parent should not be defined");
     assert(insertOperation.index === 1, "insert operation index should equal 1");
     assert(insertOperation.insertAtRoot, "insert operation insertAtRoot should be true");
-    treeState = layoutTreeStateReducer(treeState, {
+    treeState = layoutStateReducer(treeState, {
         type: LayoutTreeActionType.CommitPendingAction,
     });
     assert(
@@ -33,7 +33,7 @@ test("layoutTreeStateReducer - compute move", () => {
     assert(treeState.rootNode.children![1].data!.name === "node1", "root's second child should be node1");
 
     let node2 = newLayoutNode(undefined, undefined, undefined, { name: "node2" });
-    treeState = layoutTreeStateReducer(treeState, {
+    treeState = layoutStateReducer(treeState, {
         type: LayoutTreeActionType.ComputeMove,
         node: node1,
         nodeToMove: node2,
@@ -44,7 +44,7 @@ test("layoutTreeStateReducer - compute move", () => {
     assert(insertOperation2.parentId === node1.id, "insert operation parent id should be node1 id");
     assert(insertOperation2.index === 1, "insert operation index should equal 1");
     assert(!insertOperation2.insertAtRoot, "insert operation insertAtRoot should be false");
-    treeState = layoutTreeStateReducer(treeState, {
+    treeState = layoutStateReducer(treeState, {
         type: LayoutTreeActionType.CommitPendingAction,
     });
     assert(
@@ -68,7 +68,7 @@ test("computeMove - noop action", () => {
         nodeToMove,
         direction: DropDirection.Left,
     };
-    treeState = layoutTreeStateReducer(treeState, moveAction);
+    treeState = layoutStateReducer(treeState, moveAction);
     assert(
         treeState.pendingAction === undefined,
         "inserting a node to the left of itself should not produce a pendingAction"
@@ -81,7 +81,7 @@ test("computeMove - noop action", () => {
         direction: DropDirection.Right,
     };
 
-    treeState = layoutTreeStateReducer(treeState, moveAction);
+    treeState = layoutStateReducer(treeState, moveAction);
     assert(
         treeState.pendingAction === undefined,
         "inserting a node to the right of itself should not produce a pendingAction"

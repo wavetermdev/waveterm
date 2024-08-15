@@ -1,18 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { handleIncomingRpcMessage } from "@/app/store/wshrpc";
 import {
-    LayoutTreeAction,
+    getLayoutModelForTabById,
     LayoutTreeActionType,
     LayoutTreeInsertNodeAction,
+    LayoutTreeInsertNodeAtIndexAction,
     newLayoutNode,
-} from "frontend/layout/index";
-import { getLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
-import { layoutTreeStateReducer } from "frontend/layout/lib/layoutState";
-
-import { handleIncomingRpcMessage } from "@/app/store/wshrpc";
-import { LayoutTreeInsertNodeAtIndexAction } from "@/layout/lib/model";
-import { getWSServerEndpoint, getWebServerEndpoint } from "@/util/endpoints";
+} from "@/layout/index";
+import { getWebServerEndpoint, getWSServerEndpoint } from "@/util/endpoints";
 import * as layoututil from "@/util/layoututil";
 import { produce } from "immer";
 import * as jotai from "jotai";
@@ -261,29 +258,26 @@ function handleWSEventMessage(msg: WSEventType) {
     }
     if (msg.eventtype == "layoutaction") {
         const layoutAction: WSLayoutActionData = msg.data;
+        const tabId = layoutAction.tabid;
+        const layoutModel = getLayoutModelForTabById(tabId);
         switch (layoutAction.actiontype) {
             case LayoutTreeActionType.InsertNode: {
-                const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
+                const insertNodeAction: LayoutTreeInsertNodeAction = {
                     type: LayoutTreeActionType.InsertNode,
-                    node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, {
+                    node: newLayoutNode(undefined, undefined, undefined, {
                         blockId: layoutAction.blockid,
                     }),
                 };
-                runLayoutAction(layoutAction.tabid, insertNodeAction);
+                layoutModel.treeReducer(insertNodeAction);
                 break;
             }
             case LayoutTreeActionType.DeleteNode: {
-                const layoutStateAtom = getLayoutStateAtomForTab(
-                    layoutAction.tabid,
-                    WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", layoutAction.tabid))
-                );
-                const curState = globalStore.get(layoutStateAtom);
-                const leafId = layoututil.findLeafIdFromBlockId(curState, layoutAction.blockid);
+                const leafId = layoututil.findLeafIdFromBlockId(layoutModel, layoutAction.blockid);
                 const deleteNodeAction = {
                     type: LayoutTreeActionType.DeleteNode,
                     nodeId: leafId,
                 };
-                runLayoutAction(layoutAction.tabid, deleteNodeAction);
+                layoutModel.treeReducer(deleteNodeAction);
                 break;
             }
             case LayoutTreeActionType.InsertNodeAtIndex: {
@@ -291,14 +285,14 @@ function handleWSEventMessage(msg: WSEventType) {
                     console.error("Cannot apply eventbus layout action InsertNodeAtIndex, indexarr field is missing.");
                     break;
                 }
-                const insertAction: LayoutTreeInsertNodeAtIndexAction<TabLayoutData> = {
+                const insertAction: LayoutTreeInsertNodeAtIndexAction = {
                     type: LayoutTreeActionType.InsertNodeAtIndex,
-                    node: newLayoutNode<TabLayoutData>(undefined, layoutAction.nodesize, undefined, {
+                    node: newLayoutNode(undefined, layoutAction.nodesize, undefined, {
                         blockId: layoutAction.blockid,
                     }),
                     indexArr: layoutAction.indexarr,
                 };
-                runLayoutAction(layoutAction.tabid, insertAction);
+                layoutModel.treeReducer(insertAction);
                 break;
             }
             default:
@@ -355,21 +349,16 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
-function runLayoutAction(tabId: string, action: LayoutTreeAction) {
-    const layoutStateAtom = getLayoutStateAtomForTab(tabId, WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId)));
-    const curState = globalStore.get(layoutStateAtom);
-    globalStore.set(layoutStateAtom, layoutTreeStateReducer(curState, action));
-}
-
 async function createBlock(blockDef: BlockDef) {
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const blockId = await services.ObjectService.CreateBlock(blockDef, rtOpts);
-    const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
+    const insertNodeAction: LayoutTreeInsertNodeAction = {
         type: LayoutTreeActionType.InsertNode,
-        node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, { blockId }),
+        node: newLayoutNode(undefined, undefined, undefined, { blockId }),
     };
     const activeTabId = globalStore.get(atoms.uiContext).activetabid;
-    runLayoutAction(activeTabId, insertNodeAction);
+    const layoutModel = getLayoutModelForTabById(activeTabId);
+    layoutModel.treeReducer(insertNodeAction);
 }
 
 // when file is not found, returns {data: null, fileInfo: null}
@@ -450,8 +439,6 @@ async function openLink(uri: string) {
 }
 
 export {
-    PLATFORM,
-    WOS,
     atoms,
     createBlock,
     fetchWaveFile,
@@ -466,10 +453,12 @@ export {
     initWS,
     isDev,
     openLink,
+    PLATFORM,
     sendWSCommand,
     setBlockFocus,
     setPlatform,
     useBlockAtom,
     useBlockCache,
     useSettingsAtom,
+    WOS,
 };

@@ -7,7 +7,7 @@ import { DropDirection, FlexDirection } from "./utils.js";
 /**
  * Represents an operation to insert a node into a tree.
  */
-export type MoveOperation<T> = {
+export type MoveOperation = {
     /**
      * The index at which the node will be inserted in the parent.
      */
@@ -26,7 +26,7 @@ export type MoveOperation<T> = {
     /**
      * The node to insert.
      */
-    node: LayoutNode<T>;
+    node: LayoutNode;
 };
 
 /**
@@ -56,31 +56,28 @@ export interface LayoutTreeAction {
 /**
  * Action for computing a move operation and saving it as a pending action in the tree state.
  *
- * @template T The type of data associated with the nodes of the tree.
  * @see MoveOperation
  * @see LayoutTreeMoveNodeAction
  */
-export interface LayoutTreeComputeMoveNodeAction<T> extends LayoutTreeAction {
+export interface LayoutTreeComputeMoveNodeAction extends LayoutTreeAction {
     type: LayoutTreeActionType.ComputeMove;
-    node: LayoutNode<T>;
-    nodeToMove: LayoutNode<T>;
+    node: LayoutNode;
+    nodeToMove: LayoutNode;
     direction: DropDirection;
 }
 
 /**
  * Action for moving a node within the layout tree.
  *
- * @template T The type of data associated with the nodes of the tree.
  * @see MoveOperation
  */
-export interface LayoutTreeMoveNodeAction<T> extends LayoutTreeAction, MoveOperation<T> {
+export interface LayoutTreeMoveNodeAction extends LayoutTreeAction, MoveOperation {
     type: LayoutTreeActionType.Move;
 }
 
 /**
  * Action for swapping two nodes within the layout tree.
  *
- * @template T The type of data associated with the nodes of the tree.
  */
 export interface LayoutTreeSwapNodeAction extends LayoutTreeAction {
     type: LayoutTreeActionType.Swap;
@@ -98,22 +95,21 @@ export interface LayoutTreeSwapNodeAction extends LayoutTreeAction {
 /**
  * Action for inserting a new node to the layout tree.
  *
- * @template T The type of data associated with the nodes of the tree.
  */
-export interface LayoutTreeInsertNodeAction<T> extends LayoutTreeAction {
+export interface LayoutTreeInsertNodeAction extends LayoutTreeAction {
     type: LayoutTreeActionType.InsertNode;
-    node: LayoutNode<T>;
+    node: LayoutNode;
 }
 
 /**
  * Action for inserting a node into the layout tree at the specified index.
  */
-export interface LayoutTreeInsertNodeAtIndexAction<T> extends LayoutTreeAction {
+export interface LayoutTreeInsertNodeAtIndexAction extends LayoutTreeAction {
     type: LayoutTreeActionType.InsertNodeAtIndex;
     /**
      * The node to insert.
      */
-    node: LayoutNode<T>;
+    node: LayoutNode;
     /**
      * The array of indices to traverse when inserting the node.
      * The last index is the index within the parent node where the node should be inserted.
@@ -194,54 +190,71 @@ export interface LayoutTreeMagnifyNodeToggleAction extends LayoutTreeAction {
 }
 
 /**
- * Represents the state of a layout tree.
- *
- * @template T The type of data associated with the nodes of the tree.
- */
-export type LayoutTreeState<T> = {
-    rootNode: LayoutNode<T>;
-    leafs: LayoutNode<T>[];
-    pendingAction: LayoutTreeAction;
-    generation: number;
-    magnifiedNodeId?: string;
-};
-
-/**
  * Represents a single node in the layout tree.
- * @template T The type of data associated with the node.
  */
-export interface LayoutNode<T> {
+export interface LayoutNode {
     id: string;
-    data?: T;
-    children?: LayoutNode<T>[];
+    data?: TabLayoutData;
+    children?: LayoutNode[];
     flexDirection: FlexDirection;
     size: number;
 }
 
-/**
- * An abstraction of the type definition for a writable layout node atom.
- */
-export type WritableLayoutNodeAtom<T> = WritableAtom<LayoutNode<T>, [value: LayoutNode<T>], void>;
+export type LayoutTreeStateSetter = (value: LayoutState) => void;
 
-/**
- * An abstraction of the type definition for a writable layout tree state atom.
- */
-export type WritableLayoutTreeStateAtom<T> = WritableAtom<LayoutTreeState<T>, [value: LayoutTreeState<T>], void>;
+export type LayoutTreeState = {
+    rootNode: LayoutNode;
+    magnifiedNodeId?: string;
+    generation: number;
+};
 
-export type ContentRenderer<T> = (
-    data: T,
+export type WritableLayoutTreeStateAtom = WritableAtom<LayoutTreeState, [value: LayoutTreeState], void>;
+
+export type ContentRenderer = (
+    data: TabLayoutData,
     ready: boolean,
+    isMagnified: boolean,
     disablePointerEvents: boolean,
     onMagnifyToggle: () => void,
     onClose: () => void,
     dragHandleRef: React.RefObject<HTMLDivElement>
 ) => React.ReactNode;
 
-export type PreviewRenderer<T> = (data: T) => React.ReactElement;
-
-export interface LayoutNodeWaveObj<T> extends WaveObj {
-    node: LayoutNode<T>;
-    magnifiednodeid: string;
-}
+export type PreviewRenderer = (data: TabLayoutData) => React.ReactElement;
 
 export const DefaultNodeSize = 10;
+
+/**
+ * contains callbacks and information about the contents (or styling) of of the TileLayout
+ * nothing in here is specific to the TileLayout itself
+ */
+export interface TileLayoutContents {
+    /**
+     * A callback that accepts the data from the leaf node and displays the leaf contents to the user.
+     */
+    renderContent: ContentRenderer;
+    /**
+     * A callback that accepts the data from the leaf node and returns a preview that can be shown when the user drags a node.
+     */
+    renderPreview?: PreviewRenderer;
+    /**
+     * A callback that is called when a node gets deleted from the LayoutTreeState.
+     * @param data The contents of the node that was deleted.
+     */
+    onNodeDelete?: (data: TabLayoutData) => Promise<void>;
+    /**
+     * The class name to use for the top-level div of the tile layout.
+     */
+    className?: string;
+
+    /**
+     * A callback for getting the cursor point in reference to the current window. This removes Electron as a runtime dependency, allowing for better integration with Storybook.
+     * @returns The cursor position relative to the current window.
+     */
+    getCursorPoint?: () => Point;
+
+    /**
+     * tabId this TileLayout is associated with
+     */
+    tabId?: string;
+}

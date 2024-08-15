@@ -3,7 +3,8 @@
 
 import base64 from "base64-js";
 import clsx from "clsx";
-import * as jotai from "jotai";
+import { Atom, atom, Getter, SetStateAction, Setter, useAtomValue } from "jotai";
+import { debounce, throttle } from "throttle-debounce";
 
 function isBlank(str: string): boolean {
     return str == null || str == "";
@@ -160,13 +161,13 @@ function jotaiLoadableValue<T>(value: Loadable<T>, def: T): T {
     return def;
 }
 
-const NullAtom = jotai.atom(null);
+const NullAtom = atom(null);
 
-function useAtomValueSafe<T>(atom: jotai.Atom<T>): T {
+function useAtomValueSafe<T>(atom: Atom<T>): T {
     if (atom == null) {
-        return jotai.useAtomValue(NullAtom) as T;
+        return useAtomValue(NullAtom) as T;
     }
-    return jotai.useAtomValue(atom);
+    return useAtomValue(atom);
 }
 
 /**
@@ -195,7 +196,55 @@ function makeExternLink(url: string): string {
     return "https://extern?" + encodeURIComponent(url);
 }
 
+function atomWithThrottle<T>(initialValue: T, delayMilliseconds = 500): AtomWithThrottle<T> {
+    // DO NOT EXPORT currentValueAtom as using this atom to set state can cause
+    // inconsistent state between currentValueAtom and throttledValueAtom
+    const _currentValueAtom = atom(initialValue);
+
+    const throttledValueAtom = atom(initialValue, (get, set, update: SetStateAction<T>) => {
+        const prevValue = get(_currentValueAtom);
+        const nextValue = typeof update === "function" ? (update as (prev: T) => T)(prevValue) : update;
+        set(_currentValueAtom, nextValue);
+        throttleUpdate(get, set);
+    });
+
+    const throttleUpdate = throttle(delayMilliseconds, (get: Getter, set: Setter) => {
+        const curVal = get(_currentValueAtom);
+        set(throttledValueAtom, curVal);
+    });
+
+    return {
+        currentValueAtom: atom((get) => get(_currentValueAtom)),
+        throttledValueAtom,
+    };
+}
+
+function atomWithDebounce<T>(initialValue: T, delayMilliseconds = 500): AtomWithDebounce<T> {
+    // DO NOT EXPORT currentValueAtom as using this atom to set state can cause
+    // inconsistent state between currentValueAtom and debouncedValueAtom
+    const _currentValueAtom = atom(initialValue);
+
+    const debouncedValueAtom = atom(initialValue, (get, set, update: SetStateAction<T>) => {
+        const prevValue = get(_currentValueAtom);
+        const nextValue = typeof update === "function" ? (update as (prev: T) => T)(prevValue) : update;
+        set(_currentValueAtom, nextValue);
+        debounceUpdate(get, set);
+    });
+
+    const debounceUpdate = debounce(delayMilliseconds, (get: Getter, set: Setter) => {
+        const curVal = get(_currentValueAtom);
+        set(debouncedValueAtom, curVal);
+    });
+
+    return {
+        currentValueAtom: atom((get) => get(_currentValueAtom)),
+        debouncedValueAtom,
+    };
+}
+
 export {
+    atomWithDebounce,
+    atomWithThrottle,
     base64ToArray,
     base64ToString,
     boundNumber,

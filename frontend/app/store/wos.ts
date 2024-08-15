@@ -24,8 +24,6 @@ type WaveObjectValue<T extends WaveObj> = {
     holdTime: number;
 };
 
-type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
-
 function splitORef(oref: string): [string, string] {
     const parts = oref.split(":");
     if (parts.length != 2) {

@@ -5,6 +5,7 @@ export interface LayoutComponentModel {
     disablePointerEvents: boolean;
     onClose?: () => void;
     onMagnifyToggle?: () => void;
+    isMagnified: boolean;
     dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
 

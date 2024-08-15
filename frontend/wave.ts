@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
     await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
     const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", waveWindow.activetabid));
-    WOS.loadAndPinWaveObject<LayoutNode>(WOS.makeORef("layout", initialTab.layoutnode));
+    await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
     initWS();
     const settings = await services.FileService.GetSettingsConfig();
     console.log("settings", settings);

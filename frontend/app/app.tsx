@@ -1,33 +1,31 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useWaveObjectValue } from "@/app/store/wos";
 import { Workspace } from "@/app/workspace/workspace";
+import {
+    LayoutTreeActionType,
+    LayoutTreeDeleteNodeAction,
+    deleteLayoutModelForTab,
+    getLayoutModelForTab,
+} from "@/layout/index";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { PLATFORM, WOS, atoms, globalStore, setBlockFocus } from "@/store/global";
 import * as services from "@/store/services";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import * as keyutil from "@/util/keyutil";
 import * as layoututil from "@/util/layoututil";
 import * as util from "@/util/util";
+import clsx from "clsx";
+import Color from "color";
 import * as csstree from "css-tree";
-import {
-    deleteLayoutStateAtomForTab,
-    getLayoutStateAtomForTab,
-    globalLayoutTransformsMap,
-} from "frontend/layout/lib/layoutAtom";
 import * as jotai from "jotai";
+import "overlayscrollbars/overlayscrollbars.css";
 import * as React from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { CenteredDiv } from "./element/quickelems";
-
-import { useWaveObjectValue } from "@/app/store/wos";
-import { LayoutTreeActionType, LayoutTreeDeleteNodeAction } from "@/layout/index";
-import { layoutTreeStateReducer } from "@/layout/lib/layoutState";
-import { getWebServerEndpoint } from "@/util/endpoints";
-import clsx from "clsx";
-import Color from "color";
-import "overlayscrollbars/overlayscrollbars.css";
 import "./app.less";
+import { CenteredDiv } from "./element/quickelems";
 
 const App = () => {
     let Provider = jotai.Provider;
@@ -173,15 +171,15 @@ function findBlockAtPoint(m: Map<string, Bounds>, p: Point): string {
 function switchBlockIdx(index: number) {
     const tabId = globalStore.get(atoms.activeTabId);
     const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
-    const layoutTreeState = globalStore.get(getLayoutStateAtomForTab(tabId, tabAtom));
-    if (layoutTreeState?.leafs == null) {
+    const layoutModel = getLayoutModelForTab(tabAtom);
+    if (layoutModel?.leafs == null) {
         return;
     }
     const newLeafIdx = index - 1;
-    if (newLeafIdx < 0 || newLeafIdx >= layoutTreeState.leafs.length) {
+    if (newLeafIdx < 0 || newLeafIdx >= layoutModel.leafs.length) {
         return;
     }
-    const leaf = layoutTreeState.leafs[newLeafIdx];
+    const leaf = layoutModel.leafs[newLeafIdx];
     if (leaf?.data?.blockId == null) {
         return;
     }
@@ -194,26 +192,22 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
         return;
     }
     const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
-    const transforms = globalLayoutTransformsMap.get(tabId);
-    if (transforms == null) {
-        return;
-    }
-    const layoutTreeState = globalStore.get(getLayoutStateAtomForTab(tabId, tabAtom));
+    const layoutModel = getLayoutModelForTab(tabAtom);
     const curBlockId = globalStore.get(atoms.waveWindow)?.activeblockid;
-    const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutTreeState, curBlockId);
+    const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutModel, curBlockId);
     if (curBlockLeafId == null) {
         return;
     }
-    const blockPos = readBoundsFromTransform(transforms[curBlockLeafId]);
+    const blockPos = readBoundsFromTransform(layoutModel.getNodeTransformById(curBlockLeafId));
     if (blockPos == null) {
         return;
     }
     var blockPositions: Map<string, Bounds> = new Map();
-    for (let leaf of layoutTreeState.leafs) {
+    for (const leaf of layoutModel.leafs) {
         if (leaf.id == curBlockLeafId) {
             continue;
         }
-        const pos = readBoundsFromTransform(transforms[leaf.id]);
+        const pos = readBoundsFromTransform(layoutModel.getNodeTransform(leaf));
         if (pos != null) {
             blockPositions.set(leaf.data.blockId, pos);
         }
@@ -341,7 +335,7 @@ function genericClose(tabId: string) {
     if (tabData.blockids == null || tabData.blockids.length == 0) {
         // close tab
         services.WindowService.CloseTab(tabId);
-        deleteLayoutStateAtomForTab(tabId);
+        deleteLayoutModelForTab(tabId);
         return;
     }
     // close block
@@ -349,14 +343,13 @@ function genericClose(tabId: string) {
     if (activeBlockId == null) {
         return;
     }
-    const layoutStateAtom = getLayoutStateAtomForTab(tabId, tabAtom);
-    const layoutTreeState = globalStore.get(layoutStateAtom);
-    const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutTreeState, activeBlockId);
+    const layoutModel = getLayoutModelForTab(tabAtom);
+    const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutModel, activeBlockId);
     const deleteAction: LayoutTreeDeleteNodeAction = {
         type: LayoutTreeActionType.DeleteNode,
         nodeId: curBlockLeafId,
     };
-    globalStore.set(layoutStateAtom, layoutTreeStateReducer(layoutTreeState, deleteAction));
+    layoutModel.treeReducer(deleteAction);
     services.ObjectService.DeleteBlock(activeBlockId);
 }
 

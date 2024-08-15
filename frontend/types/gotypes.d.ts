@@ -200,9 +200,9 @@ declare global {
         data64: string;
     };
 
-    // wstore.LayoutNode
-    type LayoutNode = WaveObj & {
-        node?: any;
+    // wstore.LayoutState
+    type LayoutState = WaveObj & {
+        rootnode?: any;
         magnifiednodeid?: string;
     };
 
@@ -389,7 +389,7 @@ declare global {
     // wstore.Tab
     type Tab = WaveObj & {
         name: string;
-        layoutnode: string;
+        layoutstate: string;
         blockids: string[];
     };
 

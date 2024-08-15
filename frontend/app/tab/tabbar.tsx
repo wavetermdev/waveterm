@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WindowDrag } from "@/element/windowdrag";
+import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, getApi, isDev } from "@/store/global";
 import * as services from "@/store/services";
-import { deleteLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
@@ -139,8 +139,6 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         const scrollable = scrollableRef.current;
         let newTabWidth = tabWidth;
         let newScrollable = scrollable;
-
-        console.log("spaceForTabs", spaceForTabs, minTotalTabWidth);
 
         if (spaceForTabs < totalDefaultTabWidth && spaceForTabs > minTotalTabWidth) {
             newTabWidth = TAB_MIN_WIDTH;
@@ -467,7 +465,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         event?.stopPropagation();
         services.WindowService.CloseTab(tabId);
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
-        deleteLayoutStateAtomForTab(tabId);
+        deleteLayoutModelForTab(tabId);
     };
 
     const handleTabLoaded = useCallback((tabId) => {

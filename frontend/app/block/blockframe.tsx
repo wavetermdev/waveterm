@@ -7,10 +7,8 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, globalStore, useBlockAtom, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { MagnifyIcon } from "@/element/magnify";
-import { LayoutTreeState } from "@/layout/index";
-import { getLayoutStateAtomForTab } from "@/layout/lib/layoutAtom";
+import { useLayoutModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { isBlockMagnified } from "@/util/layoututil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -73,21 +71,15 @@ function getViewIconElem(viewIconUnion: string | HeaderIconButton, blockData: Bl
     }
 }
 
-const OptMagnifyButton = React.memo(
-    ({ blockData, layoutModel }: { blockData: Block; layoutModel: LayoutComponentModel }) => {
-        const tabId = globalStore.get(atoms.activeTabId);
-        const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
-        const layoutTreeState = util.useAtomValueSafe(getLayoutStateAtomForTab(tabId, tabAtom));
-        const isMagnified = isBlockMagnified(layoutTreeState, blockData.oid);
-        const magnifyDecl: HeaderIconButton = {
-            elemtype: "iconbutton",
-            icon: <MagnifyIcon enabled={isMagnified} />,
-            title: isMagnified ? "Minimize" : "Magnify",
-            click: layoutModel?.onMagnifyToggle,
-        };
-        return <IconButton key="magnify" decl={magnifyDecl} className="block-frame-magnify" />;
-    }
-);
+const OptMagnifyButton = React.memo(({ layoutCompModel }: { layoutCompModel: LayoutComponentModel }) => {
+    const magnifyDecl: HeaderIconButton = {
+        elemtype: "iconbutton",
+        icon: <MagnifyIcon enabled={layoutCompModel?.isMagnified} />,
+        title: layoutCompModel?.isMagnified ? "Minimize" : "Magnify",
+        click: layoutCompModel?.onMagnifyToggle,
+    };
+    return <IconButton key="magnify" decl={magnifyDecl} className="block-frame-magnify" />;
+});
 
 function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: LayoutComponentModel): JSX.Element[] {
     const endIconsElem: JSX.Element[] = [];
@@ -104,7 +96,7 @@ function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: La
             handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onMagnifyToggle, layoutModel?.onClose),
     };
     endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
-    endIconsElem.push(<OptMagnifyButton key="unmagnify" blockData={blockData} layoutModel={layoutModel} />);
+    endIconsElem.push(<OptMagnifyButton key="unmagnify" layoutCompModel={layoutModel} />);
     const closeDecl: HeaderIconButton = {
         elemtype: "iconbutton",
         icon: "xmark-large",
@@ -214,12 +206,9 @@ function renderHeaderElements(headerTextUnion: HeaderElem[]): JSX.Element[] {
 function BlockNum({ blockId }: { blockId: string }) {
     const tabId = jotai.useAtomValue(atoms.activeTabId);
     const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
-    const layoutTreeState: LayoutTreeState<TabLayoutData> = globalStore.get(getLayoutStateAtomForTab(tabId, tabAtom));
-    if (!layoutTreeState || !layoutTreeState.leafs) {
-        return null;
-    }
-    for (let idx = 0; idx < layoutTreeState.leafs.length; idx++) {
-        const leaf = layoutTreeState.leafs[idx];
+    const layoutModel = useLayoutModel(tabAtom);
+    for (let idx = 0; idx < layoutModel.leafs.length; idx++) {
+        const leaf = layoutModel.leafs[idx];
         if (leaf?.data?.blockId == blockId) {
             return String(idx + 1);
         }

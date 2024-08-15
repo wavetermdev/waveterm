@@ -2,38 +2,59 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { TileLayout } from "./lib/TileLayout";
-import { newLayoutTreeStateAtom, useLayoutTreeStateReducerAtom, withLayoutTreeState } from "./lib/layoutAtom";
+import { LayoutModel } from "./lib/layoutModel";
+import {
+    deleteLayoutModelForTab,
+    getLayoutModelForTab,
+    getLayoutModelForTabById,
+    useLayoutModel,
+    useLayoutNode,
+} from "./lib/layoutModelHooks";
 import { newLayoutNode } from "./lib/layoutNode";
 import type {
-    LayoutNode,
-    LayoutTreeCommitPendingAction,
-    LayoutTreeComputeMoveNodeAction,
-    LayoutTreeDeleteNodeAction,
-    LayoutTreeInsertNodeAction,
-    LayoutTreeMoveNodeAction,
-    LayoutTreeState,
-    WritableLayoutNodeAtom,
-    WritableLayoutTreeStateAtom,
-} from "./lib/model";
-import { LayoutTreeAction, LayoutTreeActionType } from "./lib/model";
-
-export {
-    LayoutTreeActionType,
-    TileLayout,
-    newLayoutNode,
-    newLayoutTreeStateAtom,
-    useLayoutTreeStateReducerAtom,
-    withLayoutTreeState,
-};
-export type {
+    ContentRenderer,
     LayoutNode,
     LayoutTreeAction,
+    LayoutTreeClearPendingAction,
     LayoutTreeCommitPendingAction,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
     LayoutTreeInsertNodeAction,
+    LayoutTreeInsertNodeAtIndexAction,
+    LayoutTreeMagnifyNodeToggleAction,
     LayoutTreeMoveNodeAction,
-    LayoutTreeState,
-    WritableLayoutNodeAtom,
-    WritableLayoutTreeStateAtom,
+    LayoutTreeResizeNodeAction,
+    LayoutTreeSetPendingAction,
+    LayoutTreeStateSetter,
+    LayoutTreeSwapNodeAction,
+} from "./lib/types";
+import { LayoutTreeActionType } from "./lib/types";
+
+export {
+    deleteLayoutModelForTab,
+    getLayoutModelForTab,
+    getLayoutModelForTabById,
+    LayoutModel,
+    LayoutTreeActionType,
+    newLayoutNode,
+    TileLayout,
+    useLayoutModel,
+    useLayoutNode,
+};
+export type {
+    ContentRenderer,
+    LayoutNode,
+    LayoutTreeAction,
+    LayoutTreeClearPendingAction,
+    LayoutTreeCommitPendingAction,
+    LayoutTreeComputeMoveNodeAction,
+    LayoutTreeDeleteNodeAction,
+    LayoutTreeInsertNodeAction,
+    LayoutTreeInsertNodeAtIndexAction,
+    LayoutTreeMagnifyNodeToggleAction,
+    LayoutTreeMoveNodeAction,
+    LayoutTreeResizeNodeAction,
+    LayoutTreeSetPendingAction,
+    LayoutTreeStateSetter,
+    LayoutTreeSwapNodeAction,
 };

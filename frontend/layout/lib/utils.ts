@@ -81,12 +81,16 @@ export function determineDropDirection(dimensions?: Dimensions, offset?: XYCoord
     return code;
 }
 
-export function setTransform({ top, left, width, height }: Dimensions, setSize: boolean = true): CSSProperties {
+export function setTransform(
+    { top, left, width, height }: Dimensions,
+    setSize = true,
+    roundVals = true
+): CSSProperties {
     // Replace unitless items with px
-    const topRounded = Math.floor(top);
-    const leftRounded = Math.floor(left);
-    const widthRounded = Math.ceil(width);
-    const heightRounded = Math.ceil(height);
+    const topRounded = roundVals ? Math.floor(top) : top;
+    const leftRounded = roundVals ? Math.floor(left) : left;
+    const widthRounded = roundVals ? Math.ceil(width) : width;
+    const heightRounded = roundVals ? Math.ceil(height) : height;
     const translate = `translate3d(${leftRounded}px,${topRounded}px, 0)`;
     return {
         top: 0,

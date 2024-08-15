@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DefaultNodeSize, LayoutNode } from "./model";
+import { DefaultNodeSize, LayoutNode } from "./types";
 import { FlexDirection, reverseFlexDirection } from "./utils";
 
 /**
@@ -10,16 +10,15 @@ import { FlexDirection, reverseFlexDirection } from "./utils";
  * @param size The size for the new node.
  * @param children The children for the new node.
  * @param data The data for the new node.
- * @template T The type of data associated with the node.
  * @returns The new node.
  */
-export function newLayoutNode<T>(
+export function newLayoutNode(
     flexDirection?: FlexDirection,
     size?: number,
-    children?: LayoutNode<T>[],
-    data?: T
-): LayoutNode<T> {
-    const newNode: LayoutNode<T> = {
+    children?: LayoutNode[],
+    data?: TabLayoutData
+): LayoutNode {
+    const newNode: LayoutNode = {
         id: crypto.randomUUID(),
         flexDirection: flexDirection ?? FlexDirection.Row,
         size: size ?? DefaultNodeSize,
@@ -38,10 +37,9 @@ export function newLayoutNode<T>(
  * @param node The parent node.
  * @param idx The index to insert at.
  * @param children The nodes to insert.
- * @template T The type of data associated with the node.
  * @returns The updated parent node.
  */
-export function addChildAt<T>(node: LayoutNode<T>, idx: number, ...children: LayoutNode<T>[]) {
+export function addChildAt(node: LayoutNode, idx: number, ...children: LayoutNode[]) {
     console.log("adding", children, "to", node, "at index", idx);
     if (children.length === 0) return;
 
@@ -71,11 +69,10 @@ export function addChildAt<T>(node: LayoutNode<T>, idx: number, ...children: Lay
  *
  * If the node contains children, they are moved two levels deeper to preserve their flex direction. If the node only has data, it is moved one level deeper.
  * @param node The node to add the intermediate node to.
- * @template T The type of data associated with the node.
  * @returns The updated node and the node that was added.
  */
-export function addIntermediateNode<T>(node: LayoutNode<T>): LayoutNode<T> {
-    let intermediateNode: LayoutNode<T>;
+export function addIntermediateNode(node: LayoutNode): LayoutNode {
+    let intermediateNode: LayoutNode;
     console.log(node);
 
     if (node.data) {
@@ -98,10 +95,9 @@ export function addIntermediateNode<T>(node: LayoutNode<T>): LayoutNode<T> {
  * @param parent The parent node.
  * @param childToRemove The node to remove.
  * @param startingIndex The index in children to start the search from.
- * @template T The type of data associated with the node.
  * @returns The updated parent node, or undefined if the node was not found.
  */
-export function removeChild<T>(parent: LayoutNode<T>, childToRemove: LayoutNode<T>, startingIndex: number = 0) {
+export function removeChild(parent: LayoutNode, childToRemove: LayoutNode, startingIndex: number = 0) {
     if (!parent.children) return;
     const idx = parent.children.indexOf(childToRemove, startingIndex);
     if (idx === -1) return;
@@ -112,10 +108,9 @@ export function removeChild<T>(parent: LayoutNode<T>, childToRemove: LayoutNode<
  * Finds the node with the given id.
  * @param node The node to search in.
  * @param id The id to search for.
- * @template T The type of data associated with the node.
  * @returns The node with the given id or undefined if no node with the given id was found.
  */
-export function findNode<T>(node: LayoutNode<T>, id: string): LayoutNode<T> | undefined {
+export function findNode(node: LayoutNode, id: string): LayoutNode | undefined {
     if (node.id === id) return node;
     if (!node.children) return;
     for (const child of node.children) {
@@ -129,10 +124,9 @@ export function findNode<T>(node: LayoutNode<T>, id: string): LayoutNode<T> | un
  * Finds the node whose children contains the node with the given id.
  * @param node The node to start the search from.
  * @param id The id to search for.
- * @template T The type of data associated with the node.
  * @returns The parent node, or undefined if no node with the given id was found.
  */
-export function findParent<T>(node: LayoutNode<T>, id: string): LayoutNode<T> | undefined {
+export function findParent(node: LayoutNode, id: string): LayoutNode | undefined {
     if (node.id === id || !node.children) return;
     for (const child of node.children) {
         if (child.id === id) return node;
@@ -145,10 +139,9 @@ export function findParent<T>(node: LayoutNode<T>, id: string): LayoutNode<T> | 
 /**
  * Determines whether a node is valid.
  * @param node The node to validate.
- * @template T The type of data associated with the node.
  * @returns True if the node is valid, false otherwise.
  */
-export function validateNode<T>(node: LayoutNode<T>): boolean {
+export function validateNode(node: LayoutNode): boolean {
     if (!node.children == !node.data) {
         console.error("Either children or data must be defined for node, not both");
         return false;
@@ -162,45 +155,60 @@ export function validateNode<T>(node: LayoutNode<T>): boolean {
 }
 
 /**
- * Recursively corrects the tree to minimize nested single-child nodes, remove invalid nodes, and correct invalid flex direction order.
- * Also finds all leaf nodes under the specified node.
- * @param node The node to start the balancing from.
- * @template T The type of data associated with the node.
- * @returns The corrected node and an array of leaf nodes.
+ * Recursively walk the layout tree starting at the specified node. Run the specified callbacks, if any.
+ * @param node The node from which to start the walk.
+ * @param beforeWalkCallback An optional callback to run before walking a node's children.
+ * @param afterWalkCallback An optional callback to run after walking a node's children.
  */
-export function balanceNode<T>(node: LayoutNode<T>): { node: LayoutNode<T>; leafs: LayoutNode<T>[] } | undefined {
-    const leafs: LayoutNode<T>[] = [];
-    const newNode = balanceNodeHelper(node, leafs);
-    return { node: newNode, leafs };
+export function walkNodes(
+    node: LayoutNode,
+    beforeWalkCallback?: (node: LayoutNode) => void,
+    afterWalkCallback?: (node: LayoutNode) => void
+) {
+    if (!node) return;
+    beforeWalkCallback?.(node);
+    node.children?.forEach((child) => walkNodes(child, beforeWalkCallback, afterWalkCallback));
+    afterWalkCallback?.(node);
 }
 
-function balanceNodeHelper<T>(node: LayoutNode<T>, leafs: LayoutNode<T>[]): LayoutNode<T> {
-    if (!node) return;
-    if (!node.children) {
-        leafs.push(node);
-        return node;
-    }
-    if (node.children.length == 0) return;
-    if (!validateNode(node)) throw new Error("Invalid node");
-    node.children = node.children
-        .flatMap((child) => {
-            if (child.flexDirection === node.flexDirection) {
-                child.flexDirection = reverseFlexDirection(node.flexDirection);
+/**
+ * Recursively corrects the tree to minimize nested single-child nodes, remove invalid nodes, and correct invalid flex direction order.
+ * @param node The node to start the balancing from.
+ * @param beforeWalkCallback Any optional callback to run before walking a node's children.
+ * @param afterWalkCallback An optional callback to run after walking a node's children.
+ * @returns The corrected node.
+ */
+export function balanceNode(
+    node: LayoutNode,
+    beforeWalkCallback?: (node: LayoutNode) => void,
+    afterWalkCallback?: (node: LayoutNode) => void
+): LayoutNode {
+    walkNodes(
+        node,
+        (node) => {
+            beforeWalkCallback?.(node);
+            if (!validateNode(node)) throw new Error("Invalid node");
+            node.children = node.children?.flatMap((child) => {
+                if (child.flexDirection === node.flexDirection) {
+                    child.flexDirection = reverseFlexDirection(node.flexDirection);
+                }
+                if (child.children?.length == 1 && child.children[0].children) {
+                    return child.children[0].children;
+                }
+                if (child.children?.length === 0) return;
+                return child;
+            });
+        },
+        (node) => {
+            node.children = node.children?.filter((v) => v);
+            if (node.children?.length === 1 && !node.children[0].children) {
+                node.data = node.children[0].data;
+                node.id = node.children[0].id;
+                node.children = undefined;
             }
-            if (child.children?.length == 1 && child.children[0].children) {
-                return child.children[0].children;
-            }
-            return child;
-        })
-        .map((child) => {
-            return balanceNodeHelper(child, leafs);
-        })
-        .filter((v) => v);
-    if (node.children.length == 1 && !node.children[0].children) {
-        node.data = node.children[0].data;
-        node.id = node.children[0].id;
-        node.children = undefined;
-    }
+            afterWalkCallback?.(node);
+        }
+    );
     return node;
 }
 
@@ -215,10 +223,7 @@ function balanceNodeHelper<T>(node: LayoutNode<T>, leafs: LayoutNode<T>[]): Layo
  * @param maxChildren The maximum number of children a node can have.
  * @returns The node to insert into and the index at which to insert.
  */
-export function findNextInsertLocation<T>(
-    node: LayoutNode<T>,
-    maxChildren: number
-): { node: LayoutNode<T>; index: number } {
+export function findNextInsertLocation(node: LayoutNode, maxChildren: number): { node: LayoutNode; index: number } {
     const insertLoc = findNextInsertLocationHelper(node, maxChildren, 1);
     return { node: insertLoc?.node, index: insertLoc?.index };
 }
@@ -229,10 +234,10 @@ export function findNextInsertLocation<T>(
  * @param indexArr The array of indices to aid in the traversal.
  * @returns The node to insert into and the index at which to insert.
  */
-export function findInsertLocationFromIndexArr<T>(
-    node: LayoutNode<T>,
+export function findInsertLocationFromIndexArr(
+    node: LayoutNode,
     indexArr: number[]
-): { node: LayoutNode<T>; index: number } {
+): { node: LayoutNode; index: number } {
     function normalizeIndex(index: number) {
         const childrenLength = node.children?.length ?? 1;
         const lastChildIndex = childrenLength - 1;
@@ -248,17 +253,17 @@ export function findInsertLocationFromIndexArr<T>(
     if (indexArr.length == 0 || !node.children) {
         return { node, index: nextIndex };
     }
-    return findInsertLocationFromIndexArr<T>(node.children[nextIndex], indexArr);
+    return findInsertLocationFromIndexArr(node.children[nextIndex], indexArr);
 }
 
-function findNextInsertLocationHelper<T>(
-    node: LayoutNode<T>,
+function findNextInsertLocationHelper(
+    node: LayoutNode,
     maxChildren: number,
     curDepth: number = 1
-): { node: LayoutNode<T>; index: number; depth: number } {
+): { node: LayoutNode; index: number; depth: number } {
     if (!node) return;
     if (!node.children) return { node, index: 1, depth: curDepth };
-    let insertLocs: { node: LayoutNode<T>; index: number; depth: number }[] = [];
+    let insertLocs: { node: LayoutNode; index: number; depth: number }[] = [];
     if (node.children.length < maxChildren) {
         insertLocs.push({ node, index: node.children.length, depth: curDepth });
     }
@@ -271,6 +276,6 @@ function findNextInsertLocationHelper<T>(
     return insertLocs[0];
 }
 
-export function totalChildrenSize(node: LayoutNode<any>): number {
-    return parseFloat(node.children?.reduce((partialSum, child) => partialSum + child.size, 0).toPrecision(5));
+export function totalChildrenSize(node: LayoutNode): number {
+    return node.children?.reduce((partialSum, child) => partialSum + child.size, 0);
 }

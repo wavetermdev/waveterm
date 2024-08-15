@@ -8,8 +8,8 @@ import { TileLayout } from "./TileLayout.jsx";
 import { useState } from "react";
 import { newLayoutTreeStateAtom, useLayoutTreeStateReducerAtom } from "./layoutAtom.js";
 import { newLayoutNode } from "./layoutNode.js";
-import { LayoutTreeActionType, LayoutTreeInsertNodeAction, WritableLayoutTreeStateAtom } from "./model.js";
 import "./tilelayout.stories.less";
+import { LayoutTreeActionType, LayoutTreeInsertNodeAction, WritableLayoutTreeStateAtom } from "./types.js";
 
 interface TestData {
     name: string;

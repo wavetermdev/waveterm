@@ -14,7 +14,6 @@ import {
 } from "./layoutNode";
 import {
     DefaultNodeSize,
-    LayoutNode,
     LayoutTreeAction,
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
@@ -24,103 +23,59 @@ import {
     LayoutTreeMagnifyNodeToggleAction,
     LayoutTreeMoveNodeAction,
     LayoutTreeResizeNodeAction,
-    LayoutTreeSetPendingAction,
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
     MoveOperation,
-} from "./model";
+} from "./types";
 import { DropDirection, FlexDirection } from "./utils";
-
-/**
- * Initializes a layout tree state.
- * @param rootNode The root node for the tree.
- * @returns The state of the tree.
- *t
- * @template T The type of data associated with the nodes of the tree.
- */
-export function newLayoutTreeState<T>(rootNode: LayoutNode<T>): LayoutTreeState<T> {
-    const { node: balancedRootNode, leafs } = balanceNode(rootNode);
-    return {
-        rootNode: balancedRootNode,
-        leafs,
-        pendingAction: undefined,
-        generation: 0,
-    };
-}
 
 /**
  * Performs a specified action on the layout tree state. Uses Immer Produce internally to resolve deep changes to the tree.
  *
- * @param layoutTreeState The state of the tree.
+ * @param layoutState The state of the tree.
  * @param action The action to perform.
  *
- * @template T The type of data associated with the nodes of the tree.
  * @returns The new state of the tree.
  */
-export function layoutTreeStateReducer<T>(
-    layoutTreeState: LayoutTreeState<T>,
-    action: LayoutTreeAction
-): LayoutTreeState<T> {
-    layoutTreeStateReducerInner(layoutTreeState, action);
-    return layoutTreeState;
+export function layoutStateReducer(layoutState: LayoutTreeState, action: LayoutTreeAction): LayoutTreeState {
+    layoutStateReducerInner(layoutState, action);
+    return layoutState;
 }
 
 /**
- * Helper function for layoutTreeStateReducer.
- * @param layoutTreeState The state of the tree.
+ * Helper function for layoutStateReducer.
+ * @param layoutState The state of the tree.
  * @param action The action to perform.
- * @see layoutTreeStateReducer
- * @template T The type of data associated with the nodes of the tree.
+ * @see layoutStateReducer
  */
-function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeAction) {
+function layoutStateReducerInner(layoutState: LayoutTreeState, action: LayoutTreeAction) {
     switch (action.type) {
         case LayoutTreeActionType.ComputeMove:
-            computeMoveNode(layoutTreeState, action as LayoutTreeComputeMoveNodeAction<T>);
-            break;
-        case LayoutTreeActionType.SetPendingAction:
-            setPendingAction(layoutTreeState, action as LayoutTreeSetPendingAction);
-            break;
-        case LayoutTreeActionType.ClearPendingAction:
-            layoutTreeState.pendingAction = undefined;
-            break;
-        case LayoutTreeActionType.CommitPendingAction:
-            if (!layoutTreeState?.pendingAction) {
-                console.error("unable to commit pending action, does not exist");
-                break;
-            }
-            layoutTreeStateReducerInner(layoutTreeState, layoutTreeState.pendingAction);
-            layoutTreeState.pendingAction = undefined;
+            computeMoveNode(layoutState, action as LayoutTreeComputeMoveNodeAction);
             break;
         case LayoutTreeActionType.Move:
-            moveNode(layoutTreeState, action as LayoutTreeMoveNodeAction<T>);
-            layoutTreeState.generation++;
+            moveNode(layoutState, action as LayoutTreeMoveNodeAction);
             break;
         case LayoutTreeActionType.InsertNode:
-            insertNode(layoutTreeState, action as LayoutTreeInsertNodeAction<T>);
-            layoutTreeState.generation++;
+            insertNode(layoutState, action as LayoutTreeInsertNodeAction);
             break;
         case LayoutTreeActionType.InsertNodeAtIndex:
-            insertNodeAtIndex(layoutTreeState, action as LayoutTreeInsertNodeAtIndexAction<T>);
-            layoutTreeState.generation++;
+            insertNodeAtIndex(layoutState, action as LayoutTreeInsertNodeAtIndexAction);
             break;
         case LayoutTreeActionType.DeleteNode:
-            deleteNode(layoutTreeState, action as LayoutTreeDeleteNodeAction);
-            layoutTreeState.generation++;
+            deleteNode(layoutState, action as LayoutTreeDeleteNodeAction);
             break;
         case LayoutTreeActionType.Swap:
-            swapNode(layoutTreeState, action as LayoutTreeSwapNodeAction);
-            layoutTreeState.generation++;
+            swapNode(layoutState, action as LayoutTreeSwapNodeAction);
             break;
         case LayoutTreeActionType.ResizeNode:
-            resizeNode(layoutTreeState, action as LayoutTreeResizeNodeAction);
-            layoutTreeState.generation++;
+            resizeNode(layoutState, action as LayoutTreeResizeNodeAction);
             break;
         case LayoutTreeActionType.MagnifyNodeToggle:
-            magnifyNodeToggle(layoutTreeState, action as LayoutTreeMagnifyNodeToggleAction);
-            layoutTreeState.generation++;
+            magnifyNodeToggle(layoutState, action as LayoutTreeMagnifyNodeToggleAction);
             break;
         default: {
-            console.error("Invalid reducer action", layoutTreeState, action);
+            console.error("Invalid reducer action", layoutState, action);
         }
     }
 }
@@ -128,18 +83,13 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
 /**
  * Computes an operation for inserting a new node into the tree in the given direction relative to the specified node.
  *
- * @param layoutTreeState The state of the tree.
+ * @param layoutState The state of the tree.
  * @param computeInsertAction The operation to compute.
- *
- * @template T The type of data associated with the nodes of the tree.
  */
-function computeMoveNode<T>(
-    layoutTreeState: LayoutTreeState<T>,
-    computeInsertAction: LayoutTreeComputeMoveNodeAction<T>
-) {
-    const rootNode = layoutTreeState.rootNode;
+export function computeMoveNode(layoutState: LayoutTreeState, computeInsertAction: LayoutTreeComputeMoveNodeAction) {
+    const rootNode = layoutState.rootNode;
     const { node, nodeToMove, direction } = computeInsertAction;
-    // console.log("computeInsertOperation start", layoutTreeState.rootNode, node, nodeToMove, direction);
+    // console.log("computeInsertOperation start", layoutState.rootNode, node, nodeToMove, direction);
     if (direction === undefined) {
         console.warn("No direction provided for insertItemInDirection");
         return;
@@ -150,7 +100,7 @@ function computeMoveNode<T>(
         return;
     }
 
-    let newMoveOperation: MoveOperation<T>;
+    let newMoveOperation: MoveOperation;
     const parent = lazy(() => findParent(rootNode, node.id));
     const grandparent = lazy(() => findParent(rootNode, parent().id));
     const indexInParent = lazy(() => parent()?.children.findIndex((child) => node.id === child.id));
@@ -289,8 +239,7 @@ function computeMoveNode<T>(
                     node2Id: nodeToMove.id,
                 };
                 // console.log("swapAction", swapAction);
-                layoutTreeState.pendingAction = swapAction;
-                return;
+                return swapAction;
             } else {
                 console.warn("cannot swap");
             }
@@ -304,23 +253,15 @@ function computeMoveNode<T>(
         (newMoveOperation.index !== nodeToMoveIndexInParent() &&
             newMoveOperation.index !== nodeToMoveIndexInParent() + 1)
     )
-        layoutTreeState.pendingAction = {
+        return {
             type: LayoutTreeActionType.Move,
             ...newMoveOperation,
-        } as LayoutTreeMoveNodeAction<T>;
+        } as LayoutTreeMoveNodeAction;
 }
 
-function setPendingAction(layoutTreeState: LayoutTreeState<any>, action: LayoutTreeSetPendingAction) {
-    if (action.action === undefined) {
-        console.error("setPendingAction: invalid pending action passed to function");
-        return;
-    }
-    layoutTreeState.pendingAction = action.action;
-}
-
-function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMoveNodeAction<T>) {
-    const rootNode = layoutTreeState.rootNode;
-    // console.log("moveNode", action, layoutTreeState.rootNode);
+export function moveNode(layoutState: LayoutTreeState, action: LayoutTreeMoveNodeAction) {
+    const rootNode = layoutState.rootNode;
+    // console.log("moveNode", action, layoutState.rootNode);
     if (!action) {
         console.error("no move node action provided");
         return;
@@ -368,61 +309,50 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
         removeChild(oldParent, node, startingIndex);
     }
 
-    const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
-    layoutTreeState.rootNode = newRootNode;
-    layoutTreeState.leafs = leafs;
-    layoutTreeState.pendingAction = undefined;
+    layoutState.rootNode = balanceNode(layoutState.rootNode);
 }
 
-function insertNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeInsertNodeAction<T>) {
+export function insertNode(layoutState: LayoutTreeState, action: LayoutTreeInsertNodeAction) {
     if (!action?.node) {
         console.error("insertNode cannot run, no insert node action provided");
         return;
     }
-    if (!layoutTreeState.rootNode) {
-        const { node: balancedNode, leafs } = balanceNode(action.node);
-        layoutTreeState.rootNode = balancedNode;
-        layoutTreeState.leafs = leafs;
+    if (!layoutState.rootNode) {
+        layoutState.rootNode = balanceNode(action.node);
         return;
     }
-    const insertLoc = findNextInsertLocation(layoutTreeState.rootNode, 5);
+    const insertLoc = findNextInsertLocation(layoutState.rootNode, 5);
     addChildAt(insertLoc.node, insertLoc.index, action.node);
-    const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
-    layoutTreeState.rootNode = newRootNode;
-    layoutTreeState.leafs = leafs;
+    layoutState.rootNode = balanceNode(layoutState.rootNode);
 }
 
-function insertNodeAtIndex<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeInsertNodeAtIndexAction<T>) {
+export function insertNodeAtIndex(layoutState: LayoutTreeState, action: LayoutTreeInsertNodeAtIndexAction) {
     if (!action?.node || !action?.indexArr) {
         console.error("insertNodeAtIndex cannot run, either node or indexArr field is missing");
         return;
     }
-    if (!layoutTreeState.rootNode) {
-        const { node: balancedNode, leafs } = balanceNode(action.node);
-        layoutTreeState.rootNode = balancedNode;
-        layoutTreeState.leafs = leafs;
+    if (!layoutState.rootNode) {
+        layoutState.rootNode = balanceNode(action.node);
         return;
     }
-    const insertLoc = findInsertLocationFromIndexArr(layoutTreeState.rootNode, action.indexArr);
+    const insertLoc = findInsertLocationFromIndexArr(layoutState.rootNode, action.indexArr);
     if (!insertLoc) {
         console.error("insertNodeAtIndex unable to find insert location");
         return;
     }
     addChildAt(insertLoc.node, insertLoc.index + 1, action.node);
-    const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
-    layoutTreeState.rootNode = newRootNode;
-    layoutTreeState.leafs = leafs;
+    layoutState.rootNode = balanceNode(layoutState.rootNode);
 }
 
-function swapNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeSwapNodeAction) {
-    console.log("swapNode", layoutTreeState, action);
+export function swapNode(layoutState: LayoutTreeState, action: LayoutTreeSwapNodeAction) {
+    console.log("swapNode", layoutState, action);
 
     if (!action.node1Id || !action.node2Id) {
         console.error("invalid swapNode action, both node1 and node2 must be defined");
         return;
     }
 
-    if (action.node1Id === layoutTreeState.rootNode.id || action.node2Id === layoutTreeState.rootNode.id) {
+    if (action.node1Id === layoutState.rootNode.id || action.node2Id === layoutState.rootNode.id) {
         console.error("invalid swapNode action, the root node cannot be swapped");
         return;
     }
@@ -431,8 +361,8 @@ function swapNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeSwap
         return;
     }
 
-    const parentNode1 = findParent(layoutTreeState.rootNode, action.node1Id);
-    const parentNode2 = findParent(layoutTreeState.rootNode, action.node2Id);
+    const parentNode1 = findParent(layoutState.rootNode, action.node1Id);
+    const parentNode2 = findParent(layoutState.rootNode, action.node2Id);
     const parentNode1Index = parentNode1.children!.findIndex((child) => child.id === action.node1Id);
     const parentNode2Index = parentNode2.children!.findIndex((child) => child.id === action.node2Id);
 
@@ -446,27 +376,24 @@ function swapNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeSwap
     parentNode1.children[parentNode1Index] = node2;
     parentNode2.children[parentNode2Index] = node1;
 
-    const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
-    layoutTreeState.rootNode = newRootNode;
-    layoutTreeState.leafs = leafs;
+    layoutState.rootNode = balanceNode(layoutState.rootNode);
 }
 
-function deleteNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeDeleteNodeAction) {
-    // console.log("deleteNode", layoutTreeState, action);
+export function deleteNode(layoutState: LayoutTreeState, action: LayoutTreeDeleteNodeAction) {
+    // console.log("deleteNode", layoutState, action);
     if (!action?.nodeId) {
         console.error("no delete node action provided");
         return;
     }
-    if (!layoutTreeState.rootNode) {
+    if (!layoutState.rootNode) {
         console.error("no root node");
         return;
     }
-    if (layoutTreeState.rootNode.id === action.nodeId) {
-        layoutTreeState.rootNode = undefined;
-        layoutTreeState.leafs = undefined;
+    if (layoutState.rootNode.id === action.nodeId) {
+        layoutState.rootNode = undefined;
         return;
     }
-    const parent = findParent(layoutTreeState.rootNode, action.nodeId);
+    const parent = findParent(layoutState.rootNode, action.nodeId);
     if (parent) {
         const node = parent.children.find((child) => child.id === action.nodeId);
         removeChild(parent, node);
@@ -474,13 +401,11 @@ function deleteNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeDe
     } else {
         console.error("unable to delete node, not found in tree");
     }
-    const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
-    layoutTreeState.rootNode = newRootNode;
-    layoutTreeState.leafs = leafs;
+    layoutState.rootNode = balanceNode(layoutState.rootNode);
 }
 
-function resizeNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeResizeNodeAction) {
-    console.log("resizeNode", layoutTreeState, action);
+export function resizeNode(layoutState: LayoutTreeState, action: LayoutTreeResizeNodeAction) {
+    console.log("resizeNode", layoutState, action);
     if (!action.resizeOperations) {
         console.error("invalid resizeNode operation. nodeSizes array must be defined.");
     }
@@ -489,24 +414,24 @@ function resizeNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeRe
             console.error("invalid resizeNode operation. nodeId must be defined and size must be between 0 and 100");
             return;
         }
-        const node = findNode(layoutTreeState.rootNode, resize.nodeId);
+        const node = findNode(layoutState.rootNode, resize.nodeId);
         node.size = resize.size;
     }
 }
 
-function magnifyNodeToggle<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMagnifyNodeToggleAction) {
-    console.log("magnifyNodeToggle", layoutTreeState, action);
+export function magnifyNodeToggle(layoutState: LayoutTreeState, action: LayoutTreeMagnifyNodeToggleAction) {
+    console.log("magnifyNodeToggle", layoutState, action);
     if (!action.nodeId) {
         console.error("invalid magnifyNodeToggle operation. nodeId must be defined.");
         return;
     }
-    if (layoutTreeState.rootNode.id === action.nodeId) {
+    if (layoutState.rootNode.id === action.nodeId) {
         console.warn(`cannot toggle magnification of node ${action.nodeId} because it is the root node.`);
         return;
     }
-    if (layoutTreeState.magnifiedNodeId === action.nodeId) {
-        layoutTreeState.magnifiedNodeId = undefined;
+    if (layoutState.magnifiedNodeId === action.nodeId) {
+        layoutState.magnifiedNodeId = undefined;
     } else {
-        layoutTreeState.magnifiedNodeId = action.nodeId;
+        layoutState.magnifiedNodeId = action.nodeId;
     }
 }

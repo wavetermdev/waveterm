@@ -23,12 +23,12 @@ const (
 )
 
 const (
-	OType_Client     = "client"
-	OType_Window     = "window"
-	OType_Workspace  = "workspace"
-	OType_Tab        = "tab"
-	OType_LayoutNode = "layout"
-	OType_Block      = "block"
+	OType_Client      = "client"
+	OType_Window      = "window"
+	OType_Workspace   = "workspace"
+	OType_Tab         = "tab"
+	OType_LayoutState = "layout"
+	OType_Block       = "block"
 )
 
 type WaveObjUpdate struct {
@@ -156,12 +156,12 @@ func (*Workspace) GetOType() string {
 }
 
 type Tab struct {
-	OID        string      `json:"oid"`
-	Version    int         `json:"version"`
-	Name       string      `json:"name"`
-	LayoutNode string      `json:"layoutnode"`
-	BlockIds   []string    `json:"blockids"`
-	Meta       MetaMapType `json:"meta"`
+	OID         string      `json:"oid"`
+	Version     int         `json:"version"`
+	Name        string      `json:"name"`
+	LayoutState string      `json:"layoutstate"`
+	BlockIds    []string    `json:"blockids"`
+	Meta        MetaMapType `json:"meta"`
 }
 
 func (*Tab) GetOType() string {
@@ -176,16 +176,16 @@ func (t *Tab) GetBlockORefs() []waveobj.ORef {
 	return rtn
 }
 
-type LayoutNode struct {
+type LayoutState struct {
 	OID             string      `json:"oid"`
 	Version         int         `json:"version"`
-	Node            any         `json:"node,omitempty"`
+	RootNode        any         `json:"rootnode,omitempty"`
 	MagnifiedNodeId string      `json:"magnifiednodeid,omitempty"`
 	Meta            MetaMapType `json:"meta,omitempty"`
 }
 
-func (*LayoutNode) GetOType() string {
-	return OType_LayoutNode
+func (*LayoutState) GetOType() string {
+	return OType_LayoutState
 }
 
 type FileDef struct {
@@ -254,6 +254,6 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&Workspace{}),
 		reflect.TypeOf(&Tab{}),
 		reflect.TypeOf(&Block{}),
-		reflect.TypeOf(&LayoutNode{}),
+		reflect.TypeOf(&LayoutState{}),
 	}
 }

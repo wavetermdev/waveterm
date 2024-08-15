@@ -1,13 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { LayoutTreeState } from "frontend/layout/index";
+import { LayoutModel } from "@/layout/index";
 
-function findLeafIdFromBlockId(layoutTree: LayoutTreeState<TabLayoutData>, blockId: string): string {
-    if (layoutTree?.leafs == null) {
+function findLeafIdFromBlockId(layoutModel: LayoutModel, blockId: string): string {
+    if (layoutModel?.leafs == null) {
         return null;
     }
-    for (let leaf of layoutTree.leafs) {
+    for (const leaf of layoutModel.leafs) {
         if (leaf.data.blockId == blockId) {
             return leaf.id;
         }
@@ -15,13 +15,13 @@ function findLeafIdFromBlockId(layoutTree: LayoutTreeState<TabLayoutData>, block
     return null;
 }
 
-function isBlockMagnified(layoutTree: LayoutTreeState<TabLayoutData>, blockId: string): boolean {
-    if (layoutTree?.leafs == null || layoutTree.magnifiedNodeId == null) {
+function isBlockMagnified(layoutModel: LayoutModel, blockId: string): boolean {
+    if (layoutModel?.leafs == null || layoutModel.treeState.magnifiedNodeId == null) {
         return false;
     }
-    for (let leaf of layoutTree.leafs) {
+    for (const leaf of layoutModel.leafs) {
         if (leaf.data.blockId == blockId) {
-            return layoutTree.magnifiedNodeId == leaf.id;
+            return layoutModel.treeState.magnifiedNodeId == leaf.id;
         }
     }
     return false;
