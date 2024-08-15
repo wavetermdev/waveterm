@@ -459,8 +459,20 @@ const AppKeyHandlers = () => {
 };
 
 const AppInner = () => {
+    const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
+    const prefersReducedMotionSetting = jotai.useAtomValue(atoms.reducedMotionPreferenceAtom);
     const client = jotai.useAtomValue(atoms.client);
     const windowData = jotai.useAtomValue(atoms.waveWindow);
+    const isFullScreen = jotai.useAtomValue(atoms.isFullScreen);
+
+    React.useEffect(() => {
+        const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+        setPrefersReducedMotion(!reducedMotionQuery || reducedMotionQuery.matches);
+        reducedMotionQuery.addEventListener("change", () => {
+            setPrefersReducedMotion(reducedMotionQuery.matches);
+        });
+    }, []);
+
     if (client == null || windowData == null) {
         return (
             <div className="mainapp">
@@ -470,12 +482,18 @@ const AppInner = () => {
         );
     }
 
-    const isFullScreen = jotai.useAtomValue(atoms.isFullScreen);
     return (
-        <div className={clsx("mainapp", PLATFORM, { fullscreen: isFullScreen })} onContextMenu={handleContextMenu}>
+        <div
+            className={clsx("mainapp", PLATFORM, {
+                fullscreen: isFullScreen,
+                "prefers-reduced-motion": prefersReducedMotion || prefersReducedMotionSetting,
+            })}
+            onContextMenu={handleContextMenu}
+        >
             <AppBackground />
             <AppKeyHandlers />
             <AppSettingsUpdater />
+            -m
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>

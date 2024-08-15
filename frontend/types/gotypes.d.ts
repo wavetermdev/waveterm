@@ -616,6 +616,7 @@ declare global {
         blur: boolean;
         opacity: number;
         bgcolor: string;
+        reducedmotion: boolean;
     };
 
     // wstore.Workspace

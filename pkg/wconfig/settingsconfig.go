@@ -89,10 +89,11 @@ type TermThemesConfigType map[string]TermThemeType
 
 // note we pointers so we preserve nulls
 type WindowSettingsType struct {
-	Transparent *bool    `json:"transparent"`
-	Blur        *bool    `json:"blur"`
-	Opacity     *float64 `json:"opacity"`
-	BgColor     *string  `json:"bgcolor"`
+	Transparent   *bool    `json:"transparent"`
+	Blur          *bool    `json:"blur"`
+	Opacity       *float64 `json:"opacity"`
+	BgColor       *string  `json:"bgcolor"`
+	ReducedMotion *bool    `json:"reducedmotion"`
 }
 
 type TelemetrySettingsType struct {

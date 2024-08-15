@@ -101,16 +101,17 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return windowData.activetabid;
     });
     const controlShiftDelayAtom = jotai.atom(false);
-    const updateStatusAtom = jotai.atom<UpdaterStatus>("up-to-date") as jotai.PrimitiveAtom<UpdaterStatus>;
+    const updaterStatusAtom = jotai.atom<UpdaterStatus>("up-to-date") as jotai.PrimitiveAtom<UpdaterStatus>;
     try {
-        globalStore.set(updateStatusAtom, getApi().getUpdaterStatus());
+        globalStore.set(updaterStatusAtom, getApi().getUpdaterStatus());
         getApi().onUpdaterStatusChange((status) => {
             console.log("updater status change", status);
-            globalStore.set(updateStatusAtom, status);
+            globalStore.set(updaterStatusAtom, status);
         });
     } catch (_) {
         // do nothing
     }
+    const reducedMotionPreferenceAtom = jotai.atom((get) => get(settingsConfigAtom).window.reducedmotion);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         windowId: windowIdAtom,
@@ -119,12 +120,13 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         client: clientAtom,
         waveWindow: windowDataAtom,
         workspace: workspaceAtom,
-        settingsConfigAtom: settingsConfigAtom,
-        tabAtom: tabAtom,
+        settingsConfigAtom,
+        tabAtom,
         activeTabId: activeTabIdAtom,
         isFullScreen: isFullScreenAtom,
-        controlShiftDelayAtom: controlShiftDelayAtom,
-        updaterStatusAtom: updateStatusAtom,
+        controlShiftDelayAtom,
+        updaterStatusAtom,
+        reducedMotionPreferenceAtom,
     };
 }
 
