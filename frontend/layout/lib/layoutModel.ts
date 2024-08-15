@@ -553,8 +553,8 @@ export class LayoutModel {
         }
 
         const boundingRect = this.displayContainerRef.current?.getBoundingClientRect();
-        x -= boundingRect?.top;
-        y -= boundingRect?.left;
+        x -= boundingRect?.top + 10;
+        y -= boundingRect?.left - 10;
 
         const clientPoint = parentIsRow ? x : y;
         const clientDiff = (this.resizeContext.resizeHandleStartPx - clientPoint) * this.resizeContext.pixelToSizeRatio;
