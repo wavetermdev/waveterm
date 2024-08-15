@@ -49,7 +49,7 @@ export class PreviewModel implements ViewModel {
     fileMimeType: jotai.Atom<Promise<string>>;
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
     fileContent: jotai.Atom<Promise<string>>;
-    newFileContent: jotai.PrimitiveAtom<string>;
+    newFileContent: jotai.PrimitiveAtom<string | null>;
 
     showHiddenFiles: jotai.PrimitiveAtom<boolean>;
     refreshVersion: jotai.PrimitiveAtom<number>;
@@ -111,11 +111,17 @@ export class PreviewModel implements ViewModel {
                     },
                 ];
                 if (get(this.ceReadOnly) == false) {
+                    let saveClassName = "secondary";
+                    if (get(this.newFileContent) !== null) {
+                        saveClassName = "primary";
+                    }
                     viewTextChildren.push(
                         {
                             elemtype: "textbutton",
                             text: "Save",
-                            className: "primary warning border-radius-4 vertical-padding-2 horizontal-padding-10",
+                            className: clsx(
+                                `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10`
+                            ),
                             onClick: this.handleFileSave.bind(this),
                         },
                         {
@@ -218,7 +224,7 @@ export class PreviewModel implements ViewModel {
             const fullFile = await get(this.fullFile);
             return util.base64ToString(fullFile?.data64);
         });
-        this.newFileContent = jotai.atom("");
+        this.newFileContent = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
 
         this.handleBack = this.handleBack.bind(this);
     }
@@ -245,6 +251,7 @@ export class PreviewModel implements ViewModel {
         const newFileContent = globalStore.get(this.newFileContent);
         try {
             services.FileService.SaveFile(fileName, util.stringToBase64(newFileContent));
+            globalStore.set(this.newFileContent, null);
         } catch (error) {
             console.error("Error saving file:", error);
         }
