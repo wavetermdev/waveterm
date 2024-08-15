@@ -525,8 +525,8 @@ export class LayoutModel {
         this.setter(this.isContainerResizing, false);
     });
 
-    onResizeMove(resizeHandle: ResizeHandleProps, clientX: number, clientY: number) {
-        console.log("onResizeMove", resizeHandle, clientX, clientY, this.resizeContext);
+    onResizeMove(resizeHandle: ResizeHandleProps, x: number, y: number) {
+        console.log("onResizeMove", resizeHandle, x, y, this.resizeContext);
         const parentIsRow = resizeHandle.flexDirection === FlexDirection.Row;
         const parentNode = findNode(this.treeState.rootNode, resizeHandle.parentNodeId);
         const beforeNode = parentNode.children![resizeHandle.parentIndex];
@@ -553,10 +553,10 @@ export class LayoutModel {
         }
 
         const boundingRect = this.displayContainerRef.current?.getBoundingClientRect();
-        clientX -= boundingRect?.top;
-        clientY -= boundingRect?.left;
+        x -= boundingRect?.top;
+        y -= boundingRect?.left;
 
-        const clientPoint = parentIsRow ? clientX : clientY;
+        const clientPoint = parentIsRow ? x : y;
         const clientDiff = (this.resizeContext.resizeHandleStartPx - clientPoint) * this.resizeContext.pixelToSizeRatio;
         const beforeNodeSize = this.resizeContext.beforeNodeStartSize - clientDiff;
         const afterNodeSize = this.resizeContext.afterNodeStartSize + clientDiff;
