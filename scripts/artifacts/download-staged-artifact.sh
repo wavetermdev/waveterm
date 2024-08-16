@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Downloads the artifacts for the specified version from the staging bucket for local testing.
-# Usage: download-staged-artifact.sh <version>
-# Example: download-staged-artifact.sh 0.1.0
-# Retrieve version from the first argument
+# Usage: download-staged-artifact.sh <version> <aws-profile>
+# Example: download-staged-artifact.sh 0.1.0 storage
 
 VERSION=$1
-if [ -z "$VERSION" ]; then
-    echo "Usage: $0 <version>"
+AWS_PROFILE=$2
+if [ -z "$VERSION" || -z "$AWS_PROFILE" ]; then
+    echo "Usage: $0 <version> <aws-profile>"
     exit
 fi
 

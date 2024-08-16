@@ -1,11 +1,11 @@
 # Takes a release from our staging bucket and publishes it to the public download bucket.
-# Usage: publish-from-staging.sh <version>
-# Example: publish-from-staging.sh 0.1.0
+# Usage: publish-from-staging.sh <version> <aws-profile>
+# Example: publish-from-staging.sh 0.1.0 storage
 
-# Takes the version as an argument
 VERSION=$1
-if [ -z "$VERSION" ]; then
-    echo "Usage: $0 <version>"
+AWS_PROFILE=$2
+if [ -z "$VERSION" || -z "$AWS_PROFILE" ]; then
+    echo "Usage: $0 <version> <aws-profile>"
     exit
 fi
 
