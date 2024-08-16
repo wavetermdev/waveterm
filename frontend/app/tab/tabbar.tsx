@@ -3,13 +3,12 @@
 
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, getApi, isDev } from "@/store/global";
+import { atoms, getApi, isDev, PLATFORM } from "@/store/global";
 import * as services from "@/store/services";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
-import logoPng from "../../../public/logos/wave-logo.png";
 import { Button } from "../element/button";
 import { Tab } from "./tab";
 import "./tabbar.less";
@@ -482,21 +481,22 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         return tabIds.indexOf(tabId) === tabIds.indexOf(activetabid) - 1;
     };
 
-    const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    let waveLabel: React.ReactNode = null;
-    if (isDev()) {
-        waveLabel = (
-            <div className="dev-label">
-                <i className="fa fa-brands fa-dev fa-fw" />
-            </div>
-        );
-    } else {
-        waveLabel = (
-            <div className="prod-label">
-                <img src={logoPng} />
-            </div>
-        );
+    function onEllipsisClick() {
+        getApi().showContextMenu();
     }
+
+    const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
+    const devLabel = isDev() ? (
+        <div className="dev-label">
+            <i className="fa fa-brands fa-dev fa-fw" />
+        </div>
+    ) : undefined;
+    const appMenuButton =
+        PLATFORM !== "darwin" ? (
+            <div className="app-menu-button" onClick={onEllipsisClick}>
+                <i className="fa fa-ellipsis" />
+            </div>
+        ) : undefined;
 
     function onUpdateAvailableClick() {
         getApi().installAppUpdate();
@@ -519,7 +519,8 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
-            {waveLabel}
+            {appMenuButton}
+            {devLabel}
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {

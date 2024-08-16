@@ -587,12 +587,16 @@ async function createNewWaveWindow() {
 
 electron.ipcMain.on("openNewWindow", () => fireAndForget(createNewWaveWindow));
 
-electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuItem[], { x, y }) => {
-    if (menuDefArr == null || menuDefArr.length == 0) {
+electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenuItem[]) => {
+    const window = electron.BrowserWindow.fromWebContents(event.sender);
+    if (menuDefArr?.length === 0) {
         return;
     }
-    const menu = convertMenuDefArrToMenu(menuDefArr);
-    menu.popup({ x, y });
+    const menu = menuDefArr ? convertMenuDefArrToMenu(menuDefArr) : getAppMenu();
+    const { x, y } = electron.screen.getCursorScreenPoint();
+    const windowPos = window.getPosition();
+
+    menu.popup({ window, x: x - windowPos[0], y: y - windowPos[1] });
     event.returnValue = true;
 });
 
@@ -640,7 +644,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
     return electron.Menu.buildFromTemplate(menuItems);
 }
 
-function makeAppMenu() {
+function getAppMenu() {
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "New Window",
@@ -668,32 +672,29 @@ function makeAppMenu() {
         {
             type: "separator",
         },
-        {
-            role: "services",
-        },
-        {
-            type: "separator",
-        },
-        {
-            label: "Toggle Menu Bar Visibility",
-            visible: unamePlatform != "darwin",
-            click: (_, window) => {
-                window.autoHideMenuBar = !window.autoHideMenuBar;
-            },
-        },
-        {
-            role: "hide",
-        },
-        {
-            role: "hideOthers",
-        },
-        {
-            type: "separator",
-        },
-        {
-            role: "quit",
-        },
     ];
+    if (unamePlatform === "darwin") {
+        appMenu.push(
+            {
+                role: "services",
+            },
+            {
+                type: "separator",
+            },
+            {
+                role: "hide",
+            },
+            {
+                role: "hideOthers",
+            },
+            {
+                type: "separator",
+            }
+        );
+    }
+    appMenu.push({
+        role: "quit",
+    });
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
             role: "forceReload",
@@ -776,8 +777,11 @@ function makeAppMenu() {
             submenu: windowMenu,
         },
     ];
-    const menu = electron.Menu.buildFromTemplate(menuTemplate);
-    electron.Menu.setApplicationMenu(menu);
+    return electron.Menu.buildFromTemplate(menuTemplate);
+}
+
+function makeAppMenu() {
+    electron.Menu.setApplicationMenu(getAppMenu());
 }
 
 electronApp.on("window-all-closed", () => {
