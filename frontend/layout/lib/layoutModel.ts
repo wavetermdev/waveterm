@@ -590,6 +590,11 @@ export class LayoutModel {
         await this.onNodeDelete?.(node.data);
     }
 
+    async closeNodeById(nodeId: string) {
+        const nodeToDelete = findNode(this.treeState.rootNode, nodeId);
+        await this.closeNode(nodeToDelete);
+    }
+
     onDrop() {
         if (this.getter(this.pendingAction.currentValueAtom)) {
             this.treeReducer({
@@ -685,6 +690,15 @@ export class LayoutModel {
             this.resizeContext = undefined;
             this.treeReducer({ type: LayoutTreeActionType.CommitPendingAction });
         }
+    }
+
+    getNodeByBlockId(blockId: string) {
+        for (const leaf of this.leafs) {
+            if (leaf.data.blockId === blockId) {
+                return leaf;
+            }
+        }
+        return null;
     }
 
     /**

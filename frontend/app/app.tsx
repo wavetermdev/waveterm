@@ -3,18 +3,12 @@
 
 import { useWaveObjectValue } from "@/app/store/wos";
 import { Workspace } from "@/app/workspace/workspace";
-import {
-    LayoutTreeActionType,
-    LayoutTreeDeleteNodeAction,
-    deleteLayoutModelForTab,
-    getLayoutModelForTab,
-} from "@/layout/index";
+import { deleteLayoutModelForTab, getLayoutModelForTab } from "@/layout/index";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { PLATFORM, WOS, atoms, globalStore, setBlockFocus } from "@/store/global";
 import * as services from "@/store/services";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import * as keyutil from "@/util/keyutil";
-import * as layoututil from "@/util/layoututil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import Color from "color";
@@ -194,29 +188,24 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
     const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
     const layoutModel = getLayoutModelForTab(tabAtom);
     const curBlockId = globalStore.get(atoms.waveWindow)?.activeblockid;
-    const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutModel, curBlockId);
-    if (curBlockLeafId == null) {
-        return;
-    }
-    const blockPos = readBoundsFromTransform(layoutModel.getNodeTransformById(curBlockLeafId));
-    if (blockPos == null) {
-        return;
-    }
-    var blockPositions: Map<string, Bounds> = new Map();
+    const addlProps = globalStore.get(layoutModel.additionalProps);
+    const blockPositions: Map<string, Bounds> = new Map();
     for (const leaf of layoutModel.leafs) {
-        if (leaf.id == curBlockLeafId) {
-            continue;
-        }
-        const pos = readBoundsFromTransform(layoutModel.getNodeTransform(leaf));
-        if (pos != null) {
+        const pos = readBoundsFromTransform(addlProps[leaf.id]?.transform);
+        if (pos) {
             blockPositions.set(leaf.data.blockId, pos);
         }
     }
+    const curBlockPos = blockPositions.get(curBlockId);
+    if (!curBlockPos) {
+        return;
+    }
+    blockPositions.delete(curBlockId);
     const maxX = boundsMapMaxX(blockPositions);
     const maxY = boundsMapMaxY(blockPositions);
     const moveAmount = 10;
-    let curX = blockPos.x + 1;
-    let curY = blockPos.y + 1;
+    let curX = curBlockPos.x + 1;
+    let curY = curBlockPos.y + 1;
     while (true) {
         curX += offsetX * moveAmount;
         curY += offsetY * moveAmount;
@@ -344,13 +333,8 @@ function genericClose(tabId: string) {
         return;
     }
     const layoutModel = getLayoutModelForTab(tabAtom);
-    const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutModel, activeBlockId);
-    const deleteAction: LayoutTreeDeleteNodeAction = {
-        type: LayoutTreeActionType.DeleteNode,
-        nodeId: curBlockLeafId,
-    };
-    layoutModel.treeReducer(deleteAction);
-    services.ObjectService.DeleteBlock(activeBlockId);
+    const curBlockLeafId = layoutModel.getNodeByBlockId(activeBlockId)?.id;
+    layoutModel.closeNodeById(curBlockLeafId);
 }
 
 const simpleControlShiftAtom = jotai.atom(false);

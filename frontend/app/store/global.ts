@@ -10,7 +10,6 @@ import {
     newLayoutNode,
 } from "@/layout/index";
 import { getWebServerEndpoint, getWSServerEndpoint } from "@/util/endpoints";
-import * as layoututil from "@/util/layoututil";
 import { produce } from "immer";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
@@ -274,12 +273,19 @@ function handleWSEventMessage(msg: WSEventType) {
                 break;
             }
             case LayoutTreeActionType.DeleteNode: {
-                const leafId = layoututil.findLeafIdFromBlockId(layoutModel, layoutAction.blockid);
-                const deleteNodeAction = {
-                    type: LayoutTreeActionType.DeleteNode,
-                    nodeId: leafId,
-                };
-                layoutModel.treeReducer(deleteNodeAction);
+                const leaf = layoutModel?.getNodeByBlockId(layoutAction.blockid);
+                if (leaf) {
+                    const deleteNodeAction = {
+                        type: LayoutTreeActionType.DeleteNode,
+                        nodeId: leaf.id,
+                    };
+                    layoutModel.treeReducer(deleteNodeAction);
+                } else {
+                    console.error(
+                        "Cannot apply eventbus layout action DeleteNode, could not find leaf node with blockId",
+                        layoutAction.blockid
+                    );
+                }
                 break;
             }
             case LayoutTreeActionType.InsertNodeAtIndex: {
