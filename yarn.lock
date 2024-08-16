@@ -6766,9 +6766,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron-updater@npm:6.3.2":
-  version: 6.3.2
-  resolution: "electron-updater@npm:6.3.2"
+"electron-updater@npm:6.3.3":
+  version: 6.3.3
+  resolution: "electron-updater@npm:6.3.3"
   dependencies:
     builder-util-runtime: "npm:9.2.5"
     fs-extra: "npm:^10.1.0"
@@ -6778,7 +6778,7 @@ __metadata:
     lodash.isequal: "npm:^4.5.0"
     semver: "npm:^7.3.8"
     tiny-typed-emitter: "npm:^2.1.0"
-  checksum: 10c0/8f2616967a869517d22177b0f1ffdd13e9df1d237c9603deecd2f762127abc46440098b2f88526246d190cd7d9224475667d54edc7a8b0b4771225bc1935f71b
+  checksum: 10c0/717ebc0b66b8d49ab9dd6de85d26afdb3455cb61cf0b09420fcc007cbc75a98fcd3513c58c9f5e196dc4ca59e13198229125cca052ab4e582add280fdba05314
   languageName: node
   linkType: hard
 
@@ -6817,16 +6817,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:^31.3.1":
-  version: 31.3.1
-  resolution: "electron@npm:31.3.1"
+"electron@npm:^31.4.0":
+  version: 31.4.0
+  resolution: "electron@npm:31.4.0"
   dependencies:
     "@electron/get": "npm:^2.0.0"
     "@types/node": "npm:^20.9.0"
     extract-zip: "npm:^2.0.1"
   bin:
     electron: cli.js
-  checksum: 10c0/71437947b8a6aa7230dc31fcc424632b29f877e672dc64c60b48b2ba37f86c40886dda48d584b8bfec1514b37c1483eaa6bf87c224a09bbf8c495a3f81538377
+  checksum: 10c0/9ed10f363f864912bb9be0a387309babb476df20473ed7ea3f8df609daf19125763fe9ba4b9f5b422673b688e00b31afc52b308623829b7cced28f99687a9d03
   languageName: node
   linkType: hard
 
@@ -12634,9 +12634,9 @@ __metadata:
     color: "npm:^4.2.3"
     css-tree: "npm:^2.3.1"
     dayjs: "npm:^1.11.12"
-    electron: "npm:^31.3.1"
+    electron: "npm:^31.4.0"
     electron-builder: "npm:^24.13.3"
-    electron-updater: "npm:6.3.2"
+    electron-updater: "npm:6.3.3"
     electron-vite: "npm:^2.3.0"
     eslint: "npm:^9.9.0"
     eslint-config-prettier: "npm:^9.1.0"
