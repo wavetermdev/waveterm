@@ -400,6 +400,7 @@ export class LayoutModel {
                 );
                 additionalPropsMap[node.id].transform = transform;
             }
+            additionalPropsMap[node.id].isLastMagnifiedNode = this.lastMagnifiedNodeId === node.id;
             return;
         }
 
@@ -464,7 +465,6 @@ export class LayoutModel {
             ...additionalProps,
             pixelToSizeRatio,
             resizeHandles,
-            isLastMagnifiedNode: this.lastMagnifiedNodeId === node.id,
         };
     }
 
@@ -572,7 +572,10 @@ export class LayoutModel {
         };
 
         // If the node is already magnified, then it is being un-magnified and should be set as the last-magnified node to ensure it has a higher z-index as it transitions back to its original position.
-        if (this.treeState.magnifiedNodeId === node.id) this.lastMagnifiedNodeId = node.id;
+        if (this.treeState.magnifiedNodeId === node.id) {
+            console.log("new last-magnified-node", node.id);
+            this.lastMagnifiedNodeId = node.id;
+        }
 
         this.treeReducer(action);
     }
