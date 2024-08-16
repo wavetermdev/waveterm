@@ -25,6 +25,7 @@ const (
 
 const (
 	Command_Authenticate      = "authenticate"
+	Command_Announce          = "announce" // special (for routing)
 	Command_Message           = "message"
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"
@@ -60,6 +61,7 @@ type RespOrErrorUnion[T any] struct {
 
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) error
+	AnnounceCommand(ctx context.Context, data string) error // (special) announces a new route to the main router
 
 	MessageCommand(ctx context.Context, data CommandMessageData) error
 	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (wstore.MetaMapType, error)

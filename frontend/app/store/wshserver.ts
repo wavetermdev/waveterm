@@ -7,6 +7,11 @@ import * as WOS from "./wos";
 
 // WshServerCommandToDeclMap
 class WshServerType {
+    // command "announce" [call]
+	AnnounceCommand(data: string, opts?: RpcOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("announce", data, opts);
+    }
+
     // command "authenticate" [call]
 	AuthenticateCommand(data: string, opts?: RpcOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("authenticate", data, opts);

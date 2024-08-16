@@ -150,8 +150,7 @@ func shutdownActivityUpdate() {
 
 func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
-	wshutil.DefaultRouter.RegisterRoute("wavesrv", rpc)
-	wshutil.DefaultRouter.SetDefaultRoute("wavesrv")
+	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
 }
 

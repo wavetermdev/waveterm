@@ -11,6 +11,12 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
+// command "announce", wshserver.AnnounceCommand
+func AnnounceCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "announce", data, opts)
+    return err
+}
+
 // command "authenticate", wshserver.AuthenticateCommand
 func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
     _, err := sendRpcRequestCallHelper[any](w, "authenticate", data, opts)
