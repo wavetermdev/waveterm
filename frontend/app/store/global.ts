@@ -275,11 +275,7 @@ function handleWSEventMessage(msg: WSEventType) {
             case LayoutTreeActionType.DeleteNode: {
                 const leaf = layoutModel?.getNodeByBlockId(layoutAction.blockid);
                 if (leaf) {
-                    const deleteNodeAction = {
-                        type: LayoutTreeActionType.DeleteNode,
-                        nodeId: leaf.id,
-                    };
-                    layoutModel.treeReducer(deleteNodeAction);
+                    layoutModel.closeNode(leaf);
                 } else {
                     console.error(
                         "Cannot apply eventbus layout action DeleteNode, could not find leaf node with blockId",
