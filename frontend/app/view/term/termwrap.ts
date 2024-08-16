@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WshServer } from "@/app/store/wshserver";
-import { PLATFORM, fetchWaveFile, getFileSubject, openLink, sendWSCommand } from "@/store/global";
+import { PLATFORM, WOS, fetchWaveFile, getFileSubject, openLink, sendWSCommand } from "@/store/global";
 import * as services from "@/store/services";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { SerializeAddon } from "@xterm/addon-serialize";
@@ -56,6 +56,7 @@ export class TermWrap {
         options: TermTypes.ITerminalOptions & TermTypes.ITerminalInitOnlyOptions,
         waveOptions: TermWrapOptions
     ) {
+        this.loaded = false;
         this.blockId = blockId;
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
@@ -94,9 +95,28 @@ export class TermWrap {
                 loggedWebGL = true;
             }
         }
+        this.terminal.parser.registerOscHandler(7, (data: string) => {
+            if (!this.loaded) {
+                return false;
+            }
+            if (data == null || data.length == 0) {
+                return false;
+            }
+            if (data.startsWith("file://")) {
+                data = data.substring(7);
+                const nextSlashIdx = data.indexOf("/");
+                if (nextSlashIdx == -1) {
+                    return false;
+                }
+                data = data.substring(nextSlashIdx);
+            }
+            setTimeout(() => {
+                services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { "cmd:cwd": data });
+            }, 0);
+            return true;
+        });
         this.connectElem = connectElem;
         this.mainFileSubject = null;
-        this.loaded = false;
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
