@@ -19,6 +19,7 @@ import (
 
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
+	"github.com/wavetermdev/thenextwave/pkg/remote"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
@@ -307,7 +308,19 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	}
 	var shellProc *shellexec.ShellProc
 	if remoteName != "" {
-		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, remoteName)
+		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFunc()
+
+		opts, err := remote.ParseOpts(remoteName)
+		if err != nil {
+			return err
+		}
+
+		client, err := remote.GetClient(credentialCtx, opts)
+		if err != nil {
+			return err
+		}
+		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, client)
 		if err != nil {
 			return err
 		}

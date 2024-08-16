@@ -4,7 +4,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 )
 
 func init() {
@@ -15,6 +18,6 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of wsh",
 	Run: func(cmd *cobra.Command, args []string) {
-		WriteStdout("wsh v0.1.0\n")
+		WriteStdout(fmt.Sprintf("wsh v%s\n", wavebase.WaveVersion))
 	},
 }

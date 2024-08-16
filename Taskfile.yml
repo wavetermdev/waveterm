@@ -8,7 +8,7 @@ vars:
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
-    RM: '{{if eq OS "windows"}}powershell Remove-Item{{else}}rm{{end}}'
+    RM: '{{if eq OS "windows"}}cmd --% /c del /S{{else}}rm {{end}}'
     RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell date -UFormat{{else}}date{{end}}'
 
@@ -53,7 +53,7 @@ tasks:
         status:
             - exit {{if eq OS "darwin"}}1{{else}}0{{end}}
         cmds:
-            - cmd: '{{.RM}} "dist/bin/wavesrv*"'
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -67,7 +67,7 @@ tasks:
         status:
             - exit {{if eq OS "darwin"}}0{{else}}1{{end}}
         cmds:
-            - cmd: '{{.RM}} "dist/bin/wavesrv*"'
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -94,7 +94,7 @@ tasks:
     build:wsh:
         desc: Build the wsh component for all possible targets.
         cmds:
-            - cmd: '{{.RM}} "dist/bin/wsh*"'
+            - cmd: "{{.RM}} dist/bin/wsh*"
               ignore_error: true
             - task: build:wsh:internal
               vars:
@@ -148,7 +148,7 @@ tasks:
         generates:
             - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}}
         cmds:
-            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M')" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         deps:
             - generate
             - go:mod:tidy

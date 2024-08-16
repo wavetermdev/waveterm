@@ -48,7 +48,7 @@ const (
 # Source the original zshrc
 [ -f ~/.zshrc ] && source ~/.zshrc
 
-export PATH=$WAVETERM_WSHBINDIR:$PATH
+export PATH={{.WSHBINDIR}}:$PATH
 `
 
 	ZshStartup_Zlogin = `
@@ -75,8 +75,7 @@ elif [ -f ~/.profile ]; then
     . ~/.profile
 fi
 
-set -i
-export PATH=$WAVETERM_WSHBINDIR:$PATH
+export PATH={{.WSHBINDIR}}:$PATH
 `
 )
 
@@ -194,9 +193,16 @@ func GetZshZDotDir() string {
 	return filepath.Join(wavebase.GetWaveHomeDir(), ZshIntegrationDir)
 }
 
-func initCustomShellStartupFilesInternal() error {
-	log.Printf("initializing wsh and shell startup files\n")
-	waveHome := wavebase.GetWaveHomeDir()
+func GetWshBinaryPath(version string, goos string, goarch string) string {
+	ext := ""
+	if goos == "windows" {
+		ext = ".exe"
+	}
+	return filepath.Join(os.Getenv(WaveAppPathVarName), AppPathBinDir, fmt.Sprintf("wsh-%s-%s.%s%s", version, goos, goarch, ext))
+}
+
+func InitRcFiles(waveHome string, wshBinDir string) error {
+	// ensure directiries exist
 	zshDir := filepath.Join(waveHome, ZshIntegrationDir)
 	err := wavebase.CacheEnsureDir(zshDir, ZshIntegrationDir, 0755, ZshIntegrationDir)
 	if err != nil {
@@ -207,19 +213,14 @@ func initCustomShellStartupFilesInternal() error {
 	if err != nil {
 		return err
 	}
-	binDir := filepath.Join(waveHome, WaveHomeBinDir)
-	err = wavebase.CacheEnsureDir(binDir, WaveHomeBinDir, 0755, WaveHomeBinDir)
-	if err != nil {
-		return err
-	}
 
+	// write files to directory
 	zprofilePath := filepath.Join(zshDir, ".zprofile")
 	err = os.WriteFile(zprofilePath, []byte(ZshStartup_Zprofile), 0644)
 	if err != nil {
 		return fmt.Errorf("error writing zsh-integration .zprofile: %v", err)
 	}
-	zshrcPath := filepath.Join(zshDir, ".zshrc")
-	err = os.WriteFile(zshrcPath, []byte(ZshStartup_Zshrc), 0644)
+	err = utilfn.WriteTemplateToFile(filepath.Join(zshDir, ".zshrc"), ZshStartup_Zshrc, map[string]string{"WSHBINDIR": fmt.Sprintf(`"%s"`, wshBinDir)})
 	if err != nil {
 		return fmt.Errorf("error writing zsh-integration .zshrc: %v", err)
 	}
@@ -233,20 +234,30 @@ func initCustomShellStartupFilesInternal() error {
 	if err != nil {
 		return fmt.Errorf("error writing zsh-integration .zshenv: %v", err)
 	}
-	bashrcPath := filepath.Join(bashDir, ".bashrc")
-	err = os.WriteFile(bashrcPath, []byte(BashStartup_Bashrc), 0644)
+	err = utilfn.WriteTemplateToFile(filepath.Join(bashDir, ".bashrc"), BashStartup_Bashrc, map[string]string{"WSHBINDIR": fmt.Sprintf(`"%s"`, wshBinDir)})
 	if err != nil {
 		return fmt.Errorf("error writing bash-integration .bashrc: %v", err)
 	}
 
-	// copy the correct binary to bin
-	appPath := os.Getenv(WaveAppPathVarName)
-	if appPath == "" {
-		return fmt.Errorf("no app path set")
+	return nil
+}
+
+func initCustomShellStartupFilesInternal() error {
+	log.Printf("initializing wsh and shell startup files\n")
+	waveHome := wavebase.GetWaveHomeDir()
+	binDir := filepath.Join(waveHome, WaveHomeBinDir)
+	err := InitRcFiles(waveHome, `$WAVETERM_WSHBINDIR`)
+	if err != nil {
+		return err
 	}
-	appBinPath := filepath.Join(appPath, AppPathBinDir)
-	wshBaseName := computeWshBaseName()
-	wshFullPath := filepath.Join(appBinPath, wshBaseName)
+
+	err = wavebase.CacheEnsureDir(binDir, WaveHomeBinDir, 0755, WaveHomeBinDir)
+	if err != nil {
+		return err
+	}
+
+	// copy the correct binary to bin
+	wshFullPath := GetWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
 	if _, err := os.Stat(wshFullPath); err != nil {
 		log.Printf("error (non-fatal), could not resolve wsh binary %q: %v\n", wshFullPath, err)
 		return nil
@@ -256,7 +267,7 @@ func initCustomShellStartupFilesInternal() error {
 	if err != nil {
 		return fmt.Errorf("error copying wsh binary to bin: %v", err)
 	}
-	log.Printf("wsh binary successfully %q copied to %q\n", wshBaseName, wshDstPath)
+	log.Printf("wsh binary successfully %q copied to %q\n", computeWshBaseName(), wshDstPath)
 	return nil
 }
 

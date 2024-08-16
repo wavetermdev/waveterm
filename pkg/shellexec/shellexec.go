@@ -5,7 +5,6 @@ package shellexec
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -15,16 +14,15 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/creack/pty"
 	"github.com/wavetermdev/thenextwave/pkg/remote"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"golang.org/x/crypto/ssh"
 )
 
 type TermSize struct {
@@ -155,45 +153,53 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 	return pp.Write([]byte(s))
 }
 
-func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType, remoteName string) (*ShellProc, error) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancelFunc()
-
-	var shellPath string
-	if cmdStr == "" {
-		shellPath = "/bin/bash"
-	} else {
-		shellPath = cmdStr
-	}
-
-	var shellOpts []string
-	if cmdOpts.Login {
-		shellOpts = append(shellOpts, "-l")
-	}
-	if cmdOpts.Interactive {
-		shellOpts = append(shellOpts, "-i")
-	}
-	cmdCombined := fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
-	log.Print(cmdCombined)
-	m := userHostRe.FindStringSubmatch(remoteName)
-	if m == nil {
-		return nil, fmt.Errorf("invalid format of user@host argument")
-	}
-	remoteUser, remoteHost, remotePortStr := m[1], m[2], m[3]
-	remoteUser = strings.Trim(remoteUser, "@")
-	var remotePort int
-	if remotePortStr != "" {
-		var err error
-		remotePort, err = strconv.Atoi(remotePortStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid port specified on user@host argument")
-		}
-	}
-
-	client, err := remote.ConnectToClient(ctx, &remote.SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}) //todo specify or remove opts
+func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType, client *ssh.Client) (*ShellProc, error) {
+	shellPath, err := remote.DetectShell(client)
 	if err != nil {
 		return nil, err
 	}
+	var shellOpts []string
+	var cmdCombined string
+	log.Printf("detected shell: %s", shellPath)
+
+	err = remote.InstallClientRcFiles(client)
+	if err != nil {
+		log.Printf("error installing rc files: %v", err)
+		return nil, err
+	}
+
+	homeDir := remote.GetHomeDir(client)
+
+	if cmdStr == "" {
+		/* transform command in order to inject environment vars */
+		if isBashShell(shellPath) {
+			log.Printf("recognized as bash shell")
+			// add --rcfile
+			// cant set -l or -i with --rcfile
+			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`"%s"/.waveterm/bash-integration/.bashrc`, homeDir))
+		} else {
+			if cmdOpts.Login {
+				shellOpts = append(shellOpts, "-l")
+			}
+			if cmdOpts.Interactive {
+				shellOpts = append(shellOpts, "-i")
+			}
+			// zdotdir setting moved to after session is created
+		}
+		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
+		log.Printf("combined command is: %s", cmdCombined)
+	} else {
+		shellPath = cmdStr
+		if cmdOpts.Login {
+			shellOpts = append(shellOpts, "-l")
+		}
+		if cmdOpts.Interactive {
+			shellOpts = append(shellOpts, "-i")
+		}
+		shellOpts = append(shellOpts, "-c", cmdStr)
+		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
+	}
+
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
@@ -223,9 +229,14 @@ func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsT
 	session.Stdin = remoteStdinRead
 	session.Stdout = remoteStdoutWrite
 	session.Stderr = remoteStdoutWrite
+
 	for envKey, envVal := range cmdOpts.Env {
 		// note these might fail depending on server settings, but we still try
 		session.Setenv(envKey, envVal)
+	}
+
+	if isZshShell(shellPath) {
+		cmdCombined = fmt.Sprintf(`ZDOTDIR="%s/.waveterm/zsh-integration" %s`, homeDir, cmdCombined)
 	}
 
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)

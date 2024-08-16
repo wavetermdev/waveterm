@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 	"unicode/utf8"
 
 	"github.com/mitchellh/mapstructure"
@@ -877,4 +878,10 @@ func AtoiNoErr(str string) int {
 		return 0
 	}
 	return val
+}
+
+func WriteTemplateToFile(fileName string, templateText string, vars map[string]string) error {
+	outBuffer := &bytes.Buffer{}
+	template.Must(template.New("").Parse(templateText)).Execute(outBuffer, vars)
+	return os.WriteFile(fileName, outBuffer.Bytes(), 0644)
 }
