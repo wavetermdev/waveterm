@@ -4,7 +4,7 @@
 
 VERSION=$1
 AWS_PROFILE=$2
-if [ -z "$VERSION" || -z "$AWS_PROFILE" ]; then
+if [ -z "$VERSION"] || [-z "$AWS_PROFILE" ]; then
     echo "Usage: $0 <version> <aws-profile>"
     exit
 fi
