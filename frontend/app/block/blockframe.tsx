@@ -122,10 +122,6 @@ const BlockFrame_Header = ({ blockId, layoutModel, viewModel }: BlockFrameProps)
         preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;
     }
 
-    function handleDoubleClick() {
-        layoutModel?.onMagnifyToggle();
-    }
-
     const headerTextElems: JSX.Element[] = [];
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
@@ -143,7 +139,6 @@ const BlockFrame_Header = ({ blockId, layoutModel, viewModel }: BlockFrameProps)
         <div
             className="block-frame-default-header"
             ref={layoutModel?.dragHandleRef}
-            onDoubleClick={handleDoubleClick}
             onContextMenu={(e) =>
                 handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onMagnifyToggle, layoutModel?.onClose)
             }
