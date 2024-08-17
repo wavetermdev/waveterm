@@ -387,20 +387,23 @@ export class LayoutModel {
         if (!node.children?.length) {
             // console.log("adding node to leafs", node);
             leafs.push(node);
-            if (this.treeState.magnifiedNodeId === node.id) {
-                const boundingRect = getBoundingRect();
-                const transform = setTransform(
-                    {
-                        top: boundingRect.height * 0.05,
-                        left: boundingRect.width * 0.05,
-                        width: boundingRect.width * 0.9,
-                        height: boundingRect.height * 0.9,
-                    },
-                    true
-                );
-                additionalPropsMap[node.id].transform = transform;
+            const addlProps = additionalPropsMap[node.id];
+            if (addlProps) {
+                if (this.treeState.magnifiedNodeId === node.id) {
+                    const boundingRect = getBoundingRect();
+                    const transform = setTransform(
+                        {
+                            top: boundingRect.height * 0.05,
+                            left: boundingRect.width * 0.05,
+                            width: boundingRect.width * 0.9,
+                            height: boundingRect.height * 0.9,
+                        },
+                        true
+                    );
+                    addlProps.transform = transform;
+                }
+                addlProps.isLastMagnifiedNode = this.lastMagnifiedNodeId === node.id;
             }
-            additionalPropsMap[node.id].isLastMagnifiedNode = this.lastMagnifiedNodeId === node.id;
             return;
         }
 
