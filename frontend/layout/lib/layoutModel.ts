@@ -665,14 +665,12 @@ export class LayoutModel {
 
         const clientPoint = parentIsRow ? x : y;
         const clientDiff = (this.resizeContext.resizeHandleStartPx - clientPoint) * this.resizeContext.pixelToSizeRatio;
+        const minNodeSize = MinNodeSizePx * this.resizeContext.pixelToSizeRatio;
         const beforeNodeSize = this.resizeContext.beforeNodeStartSize - clientDiff;
         const afterNodeSize = this.resizeContext.afterNodeStartSize + clientDiff;
 
         // If either node will be too small after this resize, don't let it happen.
-        if (
-            beforeNodeSize / this.resizeContext.pixelToSizeRatio < MinNodeSizePx ||
-            afterNodeSize / this.resizeContext.pixelToSizeRatio < MinNodeSizePx
-        ) {
+        if (beforeNodeSize < minNodeSize || afterNodeSize < minNodeSize) {
             return;
         }
 
