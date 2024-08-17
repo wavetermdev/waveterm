@@ -40,7 +40,7 @@ class ContextMenuModelType {
     showContextMenu(menu: ContextMenuItem[], ev: React.MouseEvent<any>): void {
         this.handlers.clear();
         const electronMenuItems = this._convertAndRegisterMenu(menu);
-        getApi().showContextMenu(electronMenuItems, { x: ev.clientX, y: ev.clientY });
+        getApi().showContextMenu(electronMenuItems);
     }
 }
 
