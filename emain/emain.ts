@@ -332,7 +332,14 @@ function createBrowserWindow(
     };
     winBounds = ensureBoundsAreVisible(winBounds);
     const winOpts: Electron.BrowserWindowConstructorOptions = {
-        titleBarStyle: "hiddenInset",
+        titleBarStyle: unamePlatform === "darwin" ? "hiddenInset" : "hidden",
+        titleBarOverlay:
+            unamePlatform !== "darwin"
+                ? {
+                      symbolColor: "white",
+                      color: "#00000000",
+                  }
+                : false,
         x: winBounds.x,
         y: winBounds.y,
         width: winBounds.width,
