@@ -180,6 +180,12 @@ func validateServerImpl(serverImpl ServerImpl) {
 
 // closes outputCh when inputCh is closed/done
 func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl) *WshRpc {
+	if inputCh == nil {
+		inputCh = make(chan []byte, DefaultInputChSize)
+	}
+	if outputCh == nil {
+		outputCh = make(chan []byte, DefaultOutputChSize)
+	}
 	validateServerImpl(serverImpl)
 	rtn := &WshRpc{
 		Lock:               &sync.Mutex{},

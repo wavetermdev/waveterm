@@ -44,6 +44,7 @@ export class PreviewModel implements ViewModel {
     isCeView: jotai.PrimitiveAtom<boolean>;
 
     fileName: jotai.WritableAtom<string, [string], void>;
+    connection: jotai.Atom<string>;
     statFile: jotai.Atom<Promise<FileInfo>>;
     fullFile: jotai.Atom<Promise<FullFile>>;
     fileMimeType: jotai.Atom<Promise<string>>;
@@ -187,7 +188,6 @@ export class PreviewModel implements ViewModel {
             }
             return null;
         });
-
         this.fileName = jotai.atom<string, [string], void>(
             (get) => {
                 return get(this.blockAtom)?.meta?.file;
@@ -196,14 +196,18 @@ export class PreviewModel implements ViewModel {
                 services.ObjectService.UpdateObjectMeta(`block:${blockId}`, { file: update });
             }
         );
+        this.connection = jotai.atom<string>((get) => {
+            return get(this.blockAtom)?.meta?.connection;
+        });
         this.statFile = jotai.atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.fileName);
             if (fileName == null) {
                 return null;
             }
+            const conn = get(this.connection) ?? "";
             // const statFile = await FileService.StatFile(fileName);
-            console.log("PreviewModel calling StatFile", fileName);
-            const statFile = await services.FileService.StatFile(fileName);
+            console.log("PreviewModel calling StatFile", conn, fileName);
+            const statFile = await services.FileService.StatFile(conn, fileName);
             return statFile;
         });
         this.fullFile = jotai.atom<Promise<FullFile>>(async (get) => {

@@ -26,6 +26,8 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshremote"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
@@ -152,6 +154,8 @@ func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
 	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
+	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{}, &wshremote.ServerImpl{})
+	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh)
 }
 
 func main() {

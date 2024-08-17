@@ -38,6 +38,10 @@ type WshRouter struct {
 	InputCh         chan msgAndRoute
 }
 
+func MakeConnectionRouteId(connId string) string {
+	return "conn:" + connId
+}
+
 var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {

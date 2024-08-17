@@ -11,10 +11,14 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
+	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
 const MaxFileSize = 10 * 1024 * 1024 // 10M
@@ -40,30 +44,24 @@ func (fs *FileService) SaveFile(path string, data64 string) error {
 	return nil
 }
 
-func (fs *FileService) StatFile(path string) (*wshrpc.FileInfo, error) {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
-	finfo, err := os.Stat(cleanedPath)
-	if os.IsNotExist(err) {
-		return &wshrpc.FileInfo{Path: wavebase.ReplaceHomeDir(path), NotFound: true}, nil
+func (fs *FileService) StatFile_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "get file info",
+		ArgNames: []string{"connection", "path"},
 	}
-	if err != nil {
-		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
+}
+
+func (fs *FileService) StatFile(connection string, path string) (*wshrpc.FileInfo, error) {
+	if connection == "" {
+		connection = wshrpc.LocalConnName
 	}
-	mimeType := utilfn.DetectMimeType(cleanedPath)
-	return &wshrpc.FileInfo{
-		Path:     cleanedPath,
-		Name:     finfo.Name(),
-		Size:     finfo.Size(),
-		Mode:     finfo.Mode(),
-		ModeStr:  finfo.Mode().String(),
-		ModTime:  finfo.ModTime().UnixMilli(),
-		IsDir:    finfo.IsDir(),
-		MimeType: mimeType,
-	}, nil
+	connRoute := wshutil.MakeConnectionRouteId(connection)
+	client := wshserver.GetMainRpcClient()
+	return wshclient.RemoteFileInfoCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
 }
 
 func (fs *FileService) ReadFile(path string) (*FullFile, error) {
-	finfo, err := fs.StatFile(path)
+	finfo, err := fs.StatFile("", path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
@@ -83,7 +81,7 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 		}
 		var innerFilesInfo []wshrpc.FileInfo
 		parent := filepath.Dir(finfo.Path)
-		parentFileInfo, err := fs.StatFile(parent)
+		parentFileInfo, err := fs.StatFile("", parent)
 		if err == nil && parent != finfo.Path {
 			log.Printf("adding parent")
 			parentFileInfo.Name = ".."

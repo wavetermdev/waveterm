@@ -16,6 +16,8 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
+const LocalConnName = "local"
+
 const (
 	RpcType_Call             = "call"             // single response (regular rpc)
 	RpcType_ResponseStream   = "responsestream"   // stream of responses (streaming rpc)

@@ -74,7 +74,9 @@ class FileServiceType {
     SaveFile(arg1: string, arg2: string): Promise<void> {
         return WOS.callBackendService("file", "SaveFile", Array.from(arguments))
     }
-    StatFile(arg1: string): Promise<FileInfo> {
+
+    // get file info
+    StatFile(connection: string, path: string): Promise<FileInfo> {
         return WOS.callBackendService("file", "StatFile", Array.from(arguments))
     }
 }
