@@ -22,7 +22,7 @@ the staging bucket to the releases bucket.
 You will need to configure an AWS CLI profile with write permissions for the S3 buckets in order for the script to work. You should invoke the script as follows:
 
 ```bash
-AWS_PROFILE=<profile> <script>
+<script> <version> <aws-profile-name>
 ```
 
 ## Automatic updates
