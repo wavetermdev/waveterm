@@ -115,8 +115,8 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
                 style={tileStyle}
             >
                 <div key="display" ref={layoutModel.displayContainerRef} className="display-container">
-                    <DisplayNodesWrapper contents={contents} layoutModel={layoutModel} />
                     <ResizeHandleWrapper layoutModel={layoutModel} />
+                    <DisplayNodesWrapper contents={contents} layoutModel={layoutModel} />
                 </div>
                 <Placeholder key="placeholder" layoutModel={layoutModel} style={{ top: 10000, ...overlayTransform }} />
                 <OverlayNodeWrapper layoutModel={layoutModel} />
