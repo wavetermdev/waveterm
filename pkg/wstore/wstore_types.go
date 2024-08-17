@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
@@ -220,8 +219,8 @@ type StickerType struct {
 }
 
 type RuntimeOpts struct {
-	TermSize shellexec.TermSize `json:"termsize,omitempty"`
-	WinSize  WinSize            `json:"winsize,omitempty"`
+	TermSize TermSize `json:"termsize,omitempty"`
+	WinSize  WinSize  `json:"winsize,omitempty"`
 }
 
 type Point struct {
@@ -256,4 +255,9 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&Block{}),
 		reflect.TypeOf(&LayoutState{}),
 	}
+}
+
+type TermSize struct {
+	Rows int `json:"rows"`
+	Cols int `json:"cols"`
 }

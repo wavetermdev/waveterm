@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,26 +17,71 @@ import (
 
 	"github.com/wavetermdev/thenextwave/pkg/userinput"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"golang.org/x/crypto/ssh"
 )
 
 var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
 var globalLock = &sync.Mutex{}
-var clientControllerMap = make(map[SSHOpts]*ssh.Client)
+var clientControllerMap = make(map[SSHOpts]*SSHConn)
 
-func GetClient(ctx context.Context, opts *SSHOpts) (*ssh.Client, error) {
+type SSHConn struct {
+	Lock               *sync.Mutex
+	Opts               *SSHOpts
+	Client             *ssh.Client
+	SockName           string
+	DomainSockListener net.Listener
+}
+
+func (conn *SSHConn) Close() error {
+	if conn.DomainSockListener != nil {
+		conn.DomainSockListener.Close()
+	}
+	return conn.Client.Close()
+}
+
+func (conn *SSHConn) OpenDomainSocketListener() error {
+	if conn.DomainSockListener != nil {
+		return nil
+	}
+	randStr, err := utilfn.RandomHexString(16) // 64-bits of randomness
+	if err != nil {
+		return fmt.Errorf("error generating random string: %w", err)
+	}
+	sockName := fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
+	log.Printf("remote domain socket %s %q\n", conn.Opts.String(), sockName)
+	listener, err := conn.Client.ListenUnix(sockName)
+	if err != nil {
+		return fmt.Errorf("unable to request connection domain socket: %v", err)
+	}
+	conn.SockName = sockName
+	conn.DomainSockListener = listener
+	go func() {
+		wshutil.RunWshRpcOverListener(listener)
+	}()
+	return nil
+}
+
+func GetConn(ctx context.Context, opts *SSHOpts) (*SSHConn, error) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 
 	// attempt to retrieve if already opened
-	client, ok := clientControllerMap[*opts]
+	conn, ok := clientControllerMap[*opts]
 	if ok {
-		return client, nil
+		return conn, nil
 	}
 
 	client, err := ConnectToClient(ctx, opts) //todo specify or remove opts
 	if err != nil {
+		return nil, err
+	}
+	conn = &SSHConn{Lock: &sync.Mutex{}, Opts: opts, Client: client}
+	err = conn.OpenDomainSocketListener()
+	if err != nil {
+		conn.Close()
 		return nil, err
 	}
 
@@ -44,9 +90,8 @@ func GetClient(ctx context.Context, opts *SSHOpts) (*ssh.Client, error) {
 	clientVersion, err := getWshVersion(client)
 	if err == nil && clientVersion == expectedVersion {
 		// save successful connection to map
-		clientControllerMap[*opts] = client
-
-		return client, nil
+		clientControllerMap[*opts] = conn
+		return conn, nil
 	}
 
 	var queryText string
@@ -92,9 +137,9 @@ func GetClient(ctx context.Context, opts *SSHOpts) (*ssh.Client, error) {
 	log.Printf("successful install")
 
 	// save successful connection to map
-	clientControllerMap[*opts] = client
+	clientControllerMap[*opts] = conn
 
-	return client, nil
+	return conn, nil
 }
 
 func DisconnectClient(opts *SSHOpts) error {

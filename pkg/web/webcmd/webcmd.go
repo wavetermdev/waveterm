@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 const (
@@ -45,9 +45,9 @@ func (cmd *WSRpcCommand) GetWSCommand() string {
 }
 
 type SetBlockTermSizeWSCommand struct {
-	WSCommand string             `json:"wscommand" tstype:"\"setblocktermsize\""`
-	BlockId   string             `json:"blockid"`
-	TermSize  shellexec.TermSize `json:"termsize"`
+	WSCommand string          `json:"wscommand" tstype:"\"setblocktermsize\""`
+	BlockId   string          `json:"blockid"`
+	TermSize  wstore.TermSize `json:"termsize"`
 }
 
 func (cmd *SetBlockTermSizeWSCommand) GetWSCommand() string {

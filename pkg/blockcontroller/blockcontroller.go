@@ -6,9 +6,7 @@ package blockcontroller
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -55,9 +53,9 @@ var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
 type BlockInputUnion struct {
-	InputData []byte              `json:"inputdata,omitempty"`
-	SigName   string              `json:"signame,omitempty"`
-	TermSize  *shellexec.TermSize `json:"termsize,omitempty"`
+	InputData []byte           `json:"inputdata,omitempty"`
+	SigName   string           `json:"signame,omitempty"`
+	TermSize  *wstore.TermSize `json:"termsize,omitempty"`
 }
 
 type BlockController struct {
@@ -116,7 +114,7 @@ func (bc *BlockController) getShellProc() *shellexec.ShellProc {
 }
 
 type RunShellOpts struct {
-	TermSize shellexec.TermSize `json:"termsize,omitempty"`
+	TermSize wstore.TermSize `json:"termsize,omitempty"`
 }
 
 func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
@@ -205,18 +203,6 @@ func (bc *BlockController) resetTerminalState() {
 	}
 }
 
-// every byte is 4-bits of randomness
-func randomHexString(numHexDigits int) (string, error) {
-	numBytes := (numHexDigits + 1) / 2 // Calculate the number of bytes needed
-	bytes := make([]byte, numBytes)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-
-	hexStr := hex.EncodeToString(bytes)
-	return hexStr[:numHexDigits], nil // Return the exact number of hex digits
-}
-
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
@@ -244,34 +230,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	if shellProcErr != nil {
 		return shellProcErr
 	}
-	var remoteDomainSocketName string
 	remoteName := blockMeta.GetString(wstore.MetaKey_Connection, "")
-	isRemote := remoteName != ""
-	if isRemote {
-		randStr, err := randomHexString(16) // 64-bits of randomness
-		if err != nil {
-			return fmt.Errorf("error generating random string: %w", err)
-		}
-		remoteDomainSocketName = fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
-	}
 	var cmdStr string
 	cmdOpts := shellexec.CommandOptsType{
 		Env: make(map[string]string),
-	}
-	if !blockMeta.GetBool(wstore.MetaKey_CmdNoWsh, false) {
-		if isRemote {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, remoteDomainSocketName)
-			if err != nil {
-				return fmt.Errorf("error making jwt token: %w", err)
-			}
-			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
-		} else {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
-			if err != nil {
-				return fmt.Errorf("error making jwt token: %w", err)
-			}
-			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
-		}
 	}
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Interactive = true
@@ -315,16 +277,29 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		if err != nil {
 			return err
 		}
-
-		client, err := remote.GetClient(credentialCtx, opts)
+		conn, err := remote.GetConn(credentialCtx, opts)
 		if err != nil {
 			return err
 		}
-		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, client)
+		if !blockMeta.GetBool(wstore.MetaKey_CmdNoWsh, false) {
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, conn.SockName)
+			if err != nil {
+				return fmt.Errorf("error making jwt token: %w", err)
+			}
+			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+		}
+		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, conn)
 		if err != nil {
 			return err
 		}
 	} else {
+		if !blockMeta.GetBool(wstore.MetaKey_CmdNoWsh, false) {
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
+			if err != nil {
+				return fmt.Errorf("error making jwt token: %w", err)
+			}
+			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+		}
 		shellProc, err = shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
 		if err != nil {
 			return err
@@ -428,11 +403,11 @@ func getBoolFromMeta(meta map[string]any, key string, def bool) bool {
 	return def
 }
 
-func getTermSize(bdata *wstore.Block) shellexec.TermSize {
+func getTermSize(bdata *wstore.Block) wstore.TermSize {
 	if bdata.RuntimeOpts != nil {
 		return bdata.RuntimeOpts.TermSize
 	} else {
-		return shellexec.TermSize{
+		return wstore.TermSize{
 			Rows: 25,
 			Cols: 80,
 		}

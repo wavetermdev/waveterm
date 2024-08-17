@@ -398,7 +398,7 @@ declare global {
         enabled: boolean;
     };
 
-    // shellexec.TermSize
+    // wstore.TermSize
     type TermSize = {
         rows: number;
         cols: number;

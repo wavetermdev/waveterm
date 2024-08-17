@@ -11,7 +11,6 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/thenextwave/pkg/ijson"
-	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -180,10 +179,10 @@ type CommandBlockRestartData struct {
 }
 
 type CommandBlockInputData struct {
-	BlockId     string              `json:"blockid" wshcontext:"BlockId"`
-	InputData64 string              `json:"inputdata64,omitempty"`
-	SigName     string              `json:"signame,omitempty"`
-	TermSize    *shellexec.TermSize `json:"termsize,omitempty"`
+	BlockId     string           `json:"blockid" wshcontext:"BlockId"`
+	InputData64 string           `json:"inputdata64,omitempty"`
+	SigName     string           `json:"signame,omitempty"`
+	TermSize    *wstore.TermSize `json:"termsize,omitempty"`
 }
 
 type CommandFileData struct {

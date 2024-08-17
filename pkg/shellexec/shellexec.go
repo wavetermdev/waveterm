@@ -22,13 +22,9 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/remote"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"golang.org/x/crypto/ssh"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
-
-type TermSize struct {
-	Rows int `json:"rows"`
-	Cols int `json:"cols"`
-}
 
 type CommandOptsType struct {
 	Interactive bool              `json:"interactive,omitempty"`
@@ -153,7 +149,8 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 	return pp.Write([]byte(s))
 }
 
-func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType, client *ssh.Client) (*ShellProc, error) {
+func StartRemoteShellProc(termSize wstore.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *remote.SSHConn) (*ShellProc, error) {
+	client := conn.Client
 	shellPath, err := remote.DetectShell(client)
 	if err != nil {
 		return nil, err
@@ -239,6 +236,12 @@ func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsT
 		cmdCombined = fmt.Sprintf(`ZDOTDIR="%s/.waveterm/zsh-integration" %s`, homeDir, cmdCombined)
 	}
 
+	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
+	if !ok {
+		return nil, fmt.Errorf("no jwt token provided to connection")
+	}
+	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
+
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 
 	sessionWrap := SessionWrap{session, cmdCombined, pipePty, pipePty}
@@ -262,7 +265,7 @@ func isBashShell(shellPath string) bool {
 	return strings.Contains(shellBase, "bash")
 }
 
-func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (*ShellProc, error) {
+func StartShellProc(termSize wstore.TermSize, cmdStr string, cmdOpts CommandOptsType) (*ShellProc, error) {
 	shellutil.InitCustomShellStartupFiles()
 	var ecmd *exec.Cmd
 	var shellOpts []string
@@ -324,7 +327,7 @@ func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (
 	return &ShellProc{Cmd: CmdWrap{ecmd, cmdPty}, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
-func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize TermSize) ([]byte, error) {
+func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize wstore.TermSize) ([]byte, error) {
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellLocalEnvVars(shellutil.DefaultTermType))
 	if termSize.Rows == 0 || termSize.Cols == 0 {

@@ -302,6 +302,44 @@ func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
 	return rpcCtx
 }
 
+func RunWshRpcOverListener(listener net.Listener) {
+	defer log.Printf("domain socket listener shutting down\n")
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("error accepting connection: %v\n", err)
+			continue
+		}
+		log.Print("got domain socket connection\n")
+		go handleDomainSocketClient(conn)
+	}
+}
+
+func handleDomainSocketClient(conn net.Conn) {
+	proxy := MakeRpcProxy()
+	go func() {
+		writeErr := AdaptOutputChToStream(proxy.ToRemoteCh, conn)
+		if writeErr != nil {
+			log.Printf("error writing to domain socket: %v\n", writeErr)
+		}
+	}()
+	go func() {
+		// when input is closed, close the connection
+		defer conn.Close()
+		AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
+	}()
+	rpcCtx, err := proxy.HandleAuthentication()
+	if err != nil {
+		conn.Close()
+		log.Printf("error handling authentication: %v\n", err)
+		return
+	}
+	// now that we're authenticated, set the ctx and attach to the router
+	log.Printf("domain socket connection authenticated: %#v\n", rpcCtx)
+	proxy.SetRpcContext(rpcCtx)
+	DefaultRouter.RegisterRoute("controller:"+rpcCtx.BlockId, proxy)
+}
+
 // only for use on client
 func ExtractUnverifiedRpcContext(tokenStr string) (*wshrpc.RpcContext, error) {
 	// this happens on the client who does not have access to the secret key

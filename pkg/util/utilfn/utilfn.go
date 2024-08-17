@@ -5,8 +5,10 @@ package utilfn
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -884,4 +886,16 @@ func WriteTemplateToFile(fileName string, templateText string, vars map[string]s
 	outBuffer := &bytes.Buffer{}
 	template.Must(template.New("").Parse(templateText)).Execute(outBuffer, vars)
 	return os.WriteFile(fileName, outBuffer.Bytes(), 0644)
+}
+
+// every byte is 4-bits of randomness
+func RandomHexString(numHexDigits int) (string, error) {
+	numBytes := (numHexDigits + 1) / 2 // Calculate the number of bytes needed
+	bytes := make([]byte, numBytes)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+
+	hexStr := hex.EncodeToString(bytes)
+	return hexStr[:numHexDigits], nil // Return the exact number of hex digits
 }

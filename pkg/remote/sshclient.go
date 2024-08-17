@@ -707,3 +707,10 @@ type SSHOpts struct {
 	SSHUser string `json:"sshuser"`
 	SSHPort int    `json:"sshport,omitempty"`
 }
+
+func (opts SSHOpts) String() string {
+	if opts.SSHPort == 0 {
+		return fmt.Sprintf("%s@%s", opts.SSHUser, opts.SSHHost)
+	}
+	return fmt.Sprintf("%s@%s:%d", opts.SSHUser, opts.SSHHost, opts.SSHPort)
+}
