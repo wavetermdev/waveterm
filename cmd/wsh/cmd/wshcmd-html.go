@@ -15,9 +15,10 @@ func init() {
 }
 
 var htmlCmd = &cobra.Command{
-	Use:   "html",
-	Short: "Launch a demo html-mode terminal",
-	Run:   htmlRun,
+	Use:     "html",
+	Short:   "Launch a demo html-mode terminal",
+	Run:     htmlRun,
+	PreRunE: preRunSetupRpcClient,
 }
 
 func htmlRun(cmd *cobra.Command, args []string) {

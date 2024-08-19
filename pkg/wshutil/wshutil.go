@@ -248,6 +248,9 @@ func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, erro
 	if rpcCtx.TabId != "" {
 		claims["tabid"] = rpcCtx.TabId
 	}
+	if rpcCtx.Conn != "" {
+		claims["conn"] = rpcCtx.Conn
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString([]byte(wavebase.JwtSecret))
 	if err != nil {
@@ -299,6 +302,11 @@ func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
 			rpcCtx.TabId = tabId
 		}
 	}
+	if claims["conn"] != nil {
+		if conn, ok := claims["conn"].(string); ok {
+			rpcCtx.Conn = conn
+		}
+	}
 	return rpcCtx
 }
 
@@ -306,9 +314,12 @@ func RunWshRpcOverListener(listener net.Listener) {
 	defer log.Printf("domain socket listener shutting down\n")
 	for {
 		conn, err := listener.Accept()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			log.Printf("error accepting connection: %v\n", err)
-			continue
+			break
 		}
 		log.Print("got domain socket connection\n")
 		go handleDomainSocketClient(conn)
@@ -337,7 +348,11 @@ func handleDomainSocketClient(conn net.Conn) {
 	// now that we're authenticated, set the ctx and attach to the router
 	log.Printf("domain socket connection authenticated: %#v\n", rpcCtx)
 	proxy.SetRpcContext(rpcCtx)
-	DefaultRouter.RegisterRoute("controller:"+rpcCtx.BlockId, proxy)
+	if rpcCtx.BlockId != "" {
+		DefaultRouter.RegisterRoute(MakeControllerRouteId(rpcCtx.BlockId), proxy)
+	} else if rpcCtx.Conn != "" {
+		DefaultRouter.RegisterRoute(MakeConnectionRouteId(rpcCtx.Conn), proxy)
+	}
 }
 
 // only for use on client

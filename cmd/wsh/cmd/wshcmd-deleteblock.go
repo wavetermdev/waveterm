@@ -9,10 +9,11 @@ import (
 )
 
 var deleteBlockCmd = &cobra.Command{
-	Use:   "deleteblock",
-	Short: "delete a block",
-	Args:  cobra.ExactArgs(1),
-	Run:   deleteBlockRun,
+	Use:     "deleteblock",
+	Short:   "delete a block",
+	Args:    cobra.ExactArgs(1),
+	Run:     deleteBlockRun,
+	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {

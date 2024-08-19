@@ -15,10 +15,11 @@ import (
 )
 
 var termCmd = &cobra.Command{
-	Use:   "term",
-	Short: "open a terminal in directory",
-	Args:  cobra.RangeArgs(0, 1),
-	Run:   termRun,
+	Use:     "term",
+	Short:   "open a terminal in directory",
+	Args:    cobra.RangeArgs(0, 1),
+	Run:     termRun,
+	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {

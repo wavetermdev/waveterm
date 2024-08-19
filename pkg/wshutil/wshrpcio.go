@@ -43,7 +43,7 @@ func streamToLines_processBuf(lineBuf *lineBuf, readBuf []byte, lineFn func([]by
 	}
 }
 
-func streamToLines(input io.Reader, lineFn func([]byte)) error {
+func StreamToLines(input io.Reader, lineFn func([]byte)) error {
 	var lineBuf lineBuf
 	readBuf := make([]byte, 16*1024)
 	for {
@@ -56,7 +56,7 @@ func streamToLines(input io.Reader, lineFn func([]byte)) error {
 }
 
 func AdaptStreamToMsgCh(input io.Reader, output chan []byte) error {
-	return streamToLines(input, func(line []byte) {
+	return StreamToLines(input, func(line []byte) {
 		output <- line
 	})
 }

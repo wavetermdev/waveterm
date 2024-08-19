@@ -12,10 +12,11 @@ import (
 )
 
 var getMetaCmd = &cobra.Command{
-	Use:   "getmeta",
-	Short: "get metadata for an entity",
-	Args:  cobra.RangeArgs(1, 2),
-	Run:   getMetaRun,
+	Use:     "getmeta",
+	Short:   "get metadata for an entity",
+	Args:    cobra.RangeArgs(1, 2),
+	Run:     getMetaRun,
+	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {

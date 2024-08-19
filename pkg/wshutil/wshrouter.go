@@ -42,6 +42,14 @@ func MakeConnectionRouteId(connId string) string {
 	return "conn:" + connId
 }
 
+func MakeControllerRouteId(blockId string) string {
+	return "controller:" + blockId
+}
+
+func MakeWindowRouteId(windowId string) string {
+	return "window:" + windowId
+}
+
 var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {
@@ -230,6 +238,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
 		log.Printf("error: WshRouter cannot register sys route\n")
 		return
 	}
+	log.Printf("registering wsh route %q\n", routeId)
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
 	router.RouteMap[routeId] = rpc

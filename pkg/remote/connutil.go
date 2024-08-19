@@ -2,156 +2,20 @@ package remote
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 
-	"github.com/wavetermdev/thenextwave/pkg/userinput"
-	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"golang.org/x/crypto/ssh"
 )
 
 var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
-var globalLock = &sync.Mutex{}
-var clientControllerMap = make(map[SSHOpts]*SSHConn)
-
-type SSHConn struct {
-	Lock               *sync.Mutex
-	Opts               *SSHOpts
-	Client             *ssh.Client
-	SockName           string
-	DomainSockListener net.Listener
-}
-
-func (conn *SSHConn) Close() error {
-	if conn.DomainSockListener != nil {
-		conn.DomainSockListener.Close()
-	}
-	return conn.Client.Close()
-}
-
-func (conn *SSHConn) OpenDomainSocketListener() error {
-	if conn.DomainSockListener != nil {
-		return nil
-	}
-	randStr, err := utilfn.RandomHexString(16) // 64-bits of randomness
-	if err != nil {
-		return fmt.Errorf("error generating random string: %w", err)
-	}
-	sockName := fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
-	log.Printf("remote domain socket %s %q\n", conn.Opts.String(), sockName)
-	listener, err := conn.Client.ListenUnix(sockName)
-	if err != nil {
-		return fmt.Errorf("unable to request connection domain socket: %v", err)
-	}
-	conn.SockName = sockName
-	conn.DomainSockListener = listener
-	go func() {
-		wshutil.RunWshRpcOverListener(listener)
-	}()
-	return nil
-}
-
-func GetConn(ctx context.Context, opts *SSHOpts) (*SSHConn, error) {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-
-	// attempt to retrieve if already opened
-	conn, ok := clientControllerMap[*opts]
-	if ok {
-		return conn, nil
-	}
-
-	client, err := ConnectToClient(ctx, opts) //todo specify or remove opts
-	if err != nil {
-		return nil, err
-	}
-	conn = &SSHConn{Lock: &sync.Mutex{}, Opts: opts, Client: client}
-	err = conn.OpenDomainSocketListener()
-	if err != nil {
-		conn.Close()
-		return nil, err
-	}
-
-	// check that correct wsh extensions are installed
-	expectedVersion := fmt.Sprintf("wsh v%s", wavebase.WaveVersion)
-	clientVersion, err := getWshVersion(client)
-	if err == nil && clientVersion == expectedVersion {
-		// save successful connection to map
-		clientControllerMap[*opts] = conn
-		return conn, nil
-	}
-
-	var queryText string
-	var title string
-	if err != nil {
-		queryText = "Waveterm requires `wsh` shell extensions installed on your client to ensure a seamless experience. Would you like to install them?"
-		title = "Install Wsh Shell Extensions"
-	} else {
-		queryText = fmt.Sprintf("Waveterm requires `wsh` shell extensions installed on your client to be updated from %s to %s. Would you like to update?", clientVersion, expectedVersion)
-		title = "Update Wsh Shell Extensions"
-
-	}
-
-	request := &userinput.UserInputRequest{
-		ResponseType: "confirm",
-		QueryText:    queryText,
-		Title:        title,
-		CheckBoxMsg:  "Don't show me this again",
-	}
-	response, err := userinput.GetUserInput(ctx, request)
-	if err != nil || !response.Confirm {
-		return nil, err
-	}
-
-	log.Printf("attempting to install wsh to `%s@%s`", client.User(), client.RemoteAddr().String())
-
-	clientOs, err := getClientOs(client)
-	if err != nil {
-		return nil, err
-	}
-
-	clientArch, err := getClientArch(client)
-	if err != nil {
-		return nil, err
-	}
-
-	// attempt to install extension
-	wshLocalPath := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
-	err = cpHostToRemote(client, wshLocalPath, "~/.waveterm/bin/wsh")
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("successful install")
-
-	// save successful connection to map
-	clientControllerMap[*opts] = conn
-
-	return conn, nil
-}
-
-func DisconnectClient(opts *SSHOpts) error {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-
-	client, ok := clientControllerMap[*opts]
-	if ok {
-		return client.Close()
-	}
-	return fmt.Errorf("client %v not found", opts)
-}
 
 func ParseOpts(input string) (*SSHOpts, error) {
 	m := userHostRe.FindStringSubmatch(input)
@@ -173,7 +37,7 @@ func ParseOpts(input string) (*SSHOpts, error) {
 }
 
 func DetectShell(client *ssh.Client) (string, error) {
-	wshPath := getWshPath(client)
+	wshPath := GetWshPath(client)
 
 	session, err := client.NewSession()
 	if err != nil {
@@ -191,8 +55,8 @@ func DetectShell(client *ssh.Client) (string, error) {
 	return fmt.Sprintf(`"%s"`, strings.TrimSpace(string(out))), nil
 }
 
-func getWshVersion(client *ssh.Client) (string, error) {
-	wshPath := getWshPath(client)
+func GetWshVersion(client *ssh.Client) (string, error) {
+	wshPath := GetWshPath(client)
 
 	session, err := client.NewSession()
 	if err != nil {
@@ -207,7 +71,7 @@ func getWshVersion(client *ssh.Client) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func getWshPath(client *ssh.Client) string {
+func GetWshPath(client *ssh.Client) string {
 	defaultPath := filepath.Join("~", ".waveterm", "bin", "wsh")
 
 	session, err := client.NewSession()
@@ -267,7 +131,7 @@ func hasBashInstalled(client *ssh.Client) (bool, error) {
 	return false, nil
 }
 
-func getClientOs(client *ssh.Client) (string, error) {
+func GetClientOs(client *ssh.Client) (string, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return "", err
@@ -306,7 +170,7 @@ func getClientOs(client *ssh.Client) (string, error) {
 	return "", fmt.Errorf("unable to determine os: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
 }
 
-func getClientArch(client *ssh.Client) (string, error) {
+func GetClientArch(client *ssh.Client) (string, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return "", err
@@ -360,7 +224,7 @@ mv {{.tempPath}} {{.installPath}}; \
 chmod a+x {{.installPath}}; \
 `
 
-func cpHostToRemote(client *ssh.Client, sourcePath string, destPath string) error {
+func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) error {
 	// warning: does not work on windows remote yet
 	bashInstalled, err := hasBashInstalled(client)
 	if err != nil {
@@ -414,7 +278,7 @@ func cpHostToRemote(client *ssh.Client, sourcePath string, destPath string) erro
 }
 
 func InstallClientRcFiles(client *ssh.Client) error {
-	path := getWshPath(client)
+	path := GetWshPath(client)
 
 	session, err := client.NewSession()
 	if err != nil {

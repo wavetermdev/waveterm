@@ -7,15 +7,15 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshremote"
 )
 
 var serverCmd = &cobra.Command{
-	Use:   "server",
-	Short: "remote server to power wave blocks",
-	Args:  cobra.NoArgs,
-	Run:   serverRun,
+	Use:     "connserver",
+	Short:   "remote server to power wave blocks",
+	Args:    cobra.NoArgs,
+	Run:     serverRun,
+	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {
@@ -23,10 +23,8 @@ func init() {
 }
 
 func serverRun(cmd *cobra.Command, args []string) {
-	WriteStdout("running wsh server\n")
+	WriteStdout("running wsh connserver\n")
 	RpcClient.SetServerImpl(&wshremote.ServerImpl{LogWriter: os.Stdout})
-	err := wshclient.TestCommand(RpcClient, "hello", nil)
-	WriteStdout("got test rtn: %v\n", err)
 
 	select {} // run forever
 }

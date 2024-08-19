@@ -257,10 +257,9 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	defer eventbus.UnregisterWSChannel(wsConnId)
 	// we create a wshproxy to handle rpc messages to/from the window
 	wproxy := wshutil.MakeRpcProxy()
-	rpcRouteId := "window:" + windowId
-	wshutil.DefaultRouter.RegisterRoute(rpcRouteId, wproxy)
+	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeWindowRouteId(windowId), wproxy)
 	defer func() {
-		wshutil.DefaultRouter.UnregisterRoute(rpcRouteId)
+		wshutil.DefaultRouter.UnregisterRoute(wshutil.MakeWindowRouteId(windowId))
 		close(wproxy.ToRemoteCh)
 	}()
 	// WshServerFactoryFn(rpcInputCh, rpcOutputCh, wshrpc.RpcContext{})

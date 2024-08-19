@@ -17,10 +17,11 @@ import (
 var viewNewBlock bool
 
 var viewCmd = &cobra.Command{
-	Use:   "view",
-	Short: "preview a file or directory",
-	Args:  cobra.ExactArgs(1),
-	Run:   viewRun,
+	Use:     "view",
+	Short:   "preview a file or directory",
+	Args:    cobra.ExactArgs(1),
+	Run:     viewRun,
+	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {

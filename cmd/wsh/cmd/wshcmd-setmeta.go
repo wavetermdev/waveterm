@@ -14,10 +14,11 @@ import (
 )
 
 var setMetaCmd = &cobra.Command{
-	Use:   "setmeta",
-	Short: "set metadata for an entity",
-	Args:  cobra.MinimumNArgs(2),
-	Run:   setMetaRun,
+	Use:     "setmeta",
+	Short:   "set metadata for an entity",
+	Args:    cobra.MinimumNArgs(2),
+	Run:     setMetaRun,
+	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {

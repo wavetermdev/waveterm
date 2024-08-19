@@ -23,9 +23,10 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "wsh",
-		Short: "CLI tool to control Wave Terminal",
-		Long:  `wsh is a small utility that lets you do cool things with Wave Terminal, right from the command line`,
+		Use:          "wsh",
+		Short:        "CLI tool to control Wave Terminal",
+		Long:         `wsh is a small utility that lets you do cool things with Wave Terminal, right from the command line`,
+		SilenceUsage: true,
 	}
 )
 
@@ -60,9 +61,17 @@ func WriteStdout(fmtStr string, args ...interface{}) {
 	fmt.Print(output)
 }
 
+func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
+	err := setupRpcClient(nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
 func setupRpcClient(serverImpl wshutil.ServerImpl) error {
-	jwtToken := os.Getenv("WAVETERM_JWT")
+	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
 	if jwtToken == "" {
 		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 		UsingTermWshMode = true
@@ -71,7 +80,7 @@ func setupRpcClient(serverImpl wshutil.ServerImpl) error {
 	}
 	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
 	if err != nil {
-		return fmt.Errorf("error extracting socket name from WAVETERM_JWT: %v", err)
+		return fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
 	}
 	RpcClient, err = wshutil.SetupDomainSocketRpcClient(sockName, serverImpl)
 	if err != nil {
@@ -158,13 +167,7 @@ func Execute() {
 			wshutil.DoShutdown("", 0, false)
 		}
 	}()
-	err := setupRpcClient(nil)
-	if err != nil {
-		log.Printf("[error] %v\n", err)
-		wshutil.DoShutdown("", 1, true)
-		return
-	}
-	err = rootCmd.Execute()
+	err := rootCmd.Execute()
 	if err != nil {
 		log.Printf("[error] %v\n", err)
 		wshutil.DoShutdown("", 1, true)

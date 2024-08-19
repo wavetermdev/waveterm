@@ -6,6 +6,7 @@ package wshutil
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -81,11 +82,13 @@ func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, error) {
 	if newCtx == nil {
 		return nil, fmt.Errorf("no context found in jwt token")
 	}
-	if newCtx.BlockId == "" {
-		return nil, fmt.Errorf("no blockId found in jwt token")
+	if newCtx.BlockId == "" && newCtx.Conn == "" {
+		return nil, fmt.Errorf("no blockid or conn found in jwt token")
 	}
-	if _, err := uuid.Parse(newCtx.BlockId); err != nil {
-		return nil, fmt.Errorf("invalid blockId in jwt token")
+	if newCtx.BlockId != "" {
+		if _, err := uuid.Parse(newCtx.BlockId); err != nil {
+			return nil, fmt.Errorf("invalid blockId in jwt token")
+		}
 	}
 	return newCtx, nil
 }
@@ -114,6 +117,7 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 		}
 		newCtx, err := handleAuthenticationCommand(msg)
 		if err != nil {
+			log.Printf("error handling authentication: %v\n", err)
 			p.sendResponseError(msg, err)
 			continue
 		}

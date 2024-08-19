@@ -12,10 +12,11 @@ import (
 )
 
 var readFileCmd = &cobra.Command{
-	Use:   "readfile",
-	Short: "read a blockfile",
-	Args:  cobra.ExactArgs(2),
-	Run:   runReadFile,
+	Use:     "readfile",
+	Short:   "read a blockfile",
+	Args:    cobra.ExactArgs(2),
+	Run:     runReadFile,
+	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {
