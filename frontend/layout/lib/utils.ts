@@ -4,13 +4,6 @@
 import { CSSProperties } from "react";
 import { XYCoord } from "react-dnd";
 
-export interface Dimensions {
-    width: number;
-    height: number;
-    left: number;
-    top: number;
-}
-
 export enum DropDirection {
     Top = 0,
     Right = 1,

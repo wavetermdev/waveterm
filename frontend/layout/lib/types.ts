@@ -3,7 +3,7 @@
 
 import { WritableAtom } from "jotai";
 import { CSSProperties } from "react";
-import { Dimensions, DropDirection, FlexDirection } from "./utils.js";
+import { DropDirection, FlexDirection } from "./utils.js";
 
 /**
  * Represents an operation to insert a node into a tree.

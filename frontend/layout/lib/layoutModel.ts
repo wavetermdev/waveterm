@@ -35,7 +35,7 @@ import {
     TileLayoutContents,
     WritableLayoutTreeStateAtom,
 } from "./types";
-import { Dimensions, FlexDirection, setTransform } from "./utils";
+import { FlexDirection, setTransform } from "./utils";
 
 interface ResizeContext {
     handleId: string;
