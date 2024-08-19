@@ -68,6 +68,7 @@ declare global {
         onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void;
         getUpdaterStatus: () => UpdaterStatus;
         installAppUpdate: () => void;
+        updateWindowControlsOverlay: (rect: Dimensions) => void;
     };
 
     type ElectronContextMenuItem = {
@@ -206,6 +207,13 @@ declare global {
 
     // jotai doesn't export this type :/
     type Loadable<T> = { state: "loading" } | { state: "hasData"; data: T } | { state: "hasError"; error: unknown };
+
+    interface Dimensions {
+        width: number;
+        height: number;
+        left: number;
+        top: number;
+    }
 }
 
 export {};

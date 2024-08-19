@@ -17,6 +17,7 @@ export default defineConfig({
                 input: {
                     index: "emain/emain.ts",
                 },
+                external: ["sharp"],
             },
             outDir: "dist/main",
         },

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
+import { getAverageColor } from "fast-average-color-node";
 import fs from "fs";
 import * as child_process from "node:child_process";
 import os from "os";
@@ -582,6 +583,27 @@ electron.ipcMain.on("getCursorPoint", (event) => {
 
 electron.ipcMain.on("getEnv", (event, varName) => {
     event.returnValue = process.env[varName] ?? null;
+});
+
+electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
+    if (unamePlatform !== "darwin") {
+        const zoomFactor = event.sender.getZoomFactor();
+        const electronRect: Electron.Rectangle = {
+            x: rect.left * zoomFactor,
+            y: rect.top * zoomFactor,
+            height: rect.height * zoomFactor,
+            width: rect.width * zoomFactor,
+        };
+        const overlay = await event.sender.capturePage(electronRect);
+        const overlayBuffer = overlay.toPNG();
+
+        const color = await getAverageColor(overlayBuffer);
+        const window = electron.BrowserWindow.fromWebContents(event.sender);
+        window.setTitleBarOverlay({
+            color: unamePlatform === "linux" ? color.rgba : "#00000000", // Windows supports a true transparent overlay, so we don't need to set a background color.
+            symbolColor: color.isDark ? "white" : "black",
+        });
+    }
 });
 
 async function createNewWaveWindow() {

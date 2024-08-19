@@ -5,11 +5,12 @@ import { useWaveObjectValue } from "@/app/store/wos";
 import { Workspace } from "@/app/workspace/workspace";
 import { deleteLayoutModelForTab, getLayoutModelForTab } from "@/layout/index";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { PLATFORM, WOS, atoms, globalStore, setBlockFocus } from "@/store/global";
+import { PLATFORM, WOS, atoms, getApi, globalStore, setBlockFocus } from "@/store/global";
 import * as services from "@/store/services";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
+import useResizeObserver from "@react-hook/resize-observer";
 import clsx from "clsx";
 import Color from "color";
 import * as csstree from "css-tree";
@@ -18,6 +19,7 @@ import "overlayscrollbars/overlayscrollbars.css";
 import * as React from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { debounce } from "throttle-debounce";
 import "./app.less";
 import { CenteredDiv } from "./element/quickelems";
 
@@ -291,7 +293,9 @@ function processBackgroundUrls(cssText: string): string {
 const backgroundAttr = "url(/Users/mike/Downloads/wave-logo_appicon.png) repeat-x fixed";
 
 function AppBackground() {
+    const bgRef = React.useRef<HTMLDivElement>(null);
     const tabId = jotai.useAtomValue(atoms.activeTabId);
+    const windowOpacity = jotai.useAtomValue(atoms.settingsConfigAtom).window.opacity;
     const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
     const bgAttr = tabData?.meta?.bg;
     const style: React.CSSProperties = {};
@@ -311,7 +315,34 @@ function AppBackground() {
             console.error("error processing background", e);
         }
     }
-    return <div className="app-background" style={style} />;
+    const getAvgColor = React.useCallback(
+        debounce(10, () => {
+            if (
+                bgRef.current &&
+                PLATFORM !== "darwin" &&
+                bgRef.current &&
+                "windowControlsOverlay" in window.navigator
+            ) {
+                const titlebarRect: Dimensions = (window.navigator.windowControlsOverlay as any).getTitlebarAreaRect();
+                const bgRect = bgRef.current.getBoundingClientRect();
+                if (titlebarRect && bgRect) {
+                    const windowControlsLeft = titlebarRect.width - titlebarRect.height;
+                    const windowControlsRect: Dimensions = {
+                        top: titlebarRect.top,
+                        left: windowControlsLeft,
+                        height: titlebarRect.height,
+                        width: bgRect.width - bgRect.left - windowControlsLeft,
+                    };
+                    getApi().updateWindowControlsOverlay(windowControlsRect);
+                }
+            }
+        }),
+        [bgRef, style]
+    );
+    React.useEffect(getAvgColor, [getAvgColor]);
+    useResizeObserver(bgRef, getAvgColor);
+
+    return <div ref={bgRef} className="app-background" style={style} />;
 }
 
 function genericClose(tabId: string) {
