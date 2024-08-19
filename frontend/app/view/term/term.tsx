@@ -6,6 +6,7 @@ import { VDomView } from "@/app/view/term/vdom";
 import { WOS, atoms, getEventORefSubject, globalStore, useBlockAtom, useSettingsAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
+import * as util from "@/util/util";
 import clsx from "clsx";
 import { produce } from "immer";
 import * as jotai from "jotai";
@@ -277,7 +278,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         if (asciiVal.length == 0) {
             return false;
         }
-        const b64data = btoa(asciiVal);
+        const b64data = util.stringToBase64(asciiVal);
         WshServer.ControllerInputCommand({ blockid: blockId, inputdata64: b64data });
         return true;
     };

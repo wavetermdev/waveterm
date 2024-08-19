@@ -4,6 +4,7 @@
 import { WshServer } from "@/app/store/wshserver";
 import { createBlock } from "@/store/global";
 import { getWebServerEndpoint } from "@/util/endpoints";
+import { stringToBase64 } from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -98,7 +99,7 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
         clickHandler = () => {
             console.log("clickHandler", sticker.clickcmd, sticker.clickblockdef);
             if (sticker.clickcmd) {
-                const b64data = btoa(sticker.clickcmd);
+                const b64data = stringToBase64(sticker.clickcmd);
                 WshServer.ControllerInputCommand({ blockid: config.blockId, inputdata64: b64data });
             }
             if (sticker.clickblockdef) {

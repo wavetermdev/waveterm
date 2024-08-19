@@ -4,6 +4,7 @@
 import { WshServer } from "@/app/store/wshserver";
 import { PLATFORM, WOS, fetchWaveFile, getFileSubject, openLink, sendWSCommand } from "@/store/global";
 import * as services from "@/store/services";
+import * as util from "@/util/util";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -148,7 +149,7 @@ export class TermWrap {
     }
 
     handleTermData(data: string) {
-        const b64data = btoa(data);
+        const b64data = util.stringToBase64(data);
         WshServer.ControllerInputCommand({ blockid: this.blockId, inputdata64: b64data });
     }
 
