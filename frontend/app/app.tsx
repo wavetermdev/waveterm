@@ -290,12 +290,9 @@ function processBackgroundUrls(cssText: string): string {
     return rtnStyle.replace(/^background:\s*/, "");
 }
 
-const backgroundAttr = "url(/Users/mike/Downloads/wave-logo_appicon.png) repeat-x fixed";
-
 function AppBackground() {
     const bgRef = React.useRef<HTMLDivElement>(null);
     const tabId = jotai.useAtomValue(atoms.activeTabId);
-    const windowOpacity = jotai.useAtomValue(atoms.settingsConfigAtom).window.opacity;
     const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
     const bgAttr = tabData?.meta?.bg;
     const style: React.CSSProperties = {};
