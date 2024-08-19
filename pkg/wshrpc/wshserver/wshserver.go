@@ -99,8 +99,8 @@ func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.Ope
 	return waveai.RunLocalCompletionStream(ctx, request)
 }
 
-func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.CpuDataRequest) chan wshrpc.RespOrErrorUnion[wshrpc.CpuDataType] {
-	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.CpuDataType])
+func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.CpuDataRequest) chan wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData])
 	go func() {
 		defer close(rtn)
 		MakePlotData(ctx, request.Id)
@@ -110,7 +110,7 @@ func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.Cp
 			now := time.Now()
 			percent, err := cpu.Percent(0, false)
 			if err != nil {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: err}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: err}
 			}
 			var value float64
 			if len(percent) > 0 {
@@ -118,23 +118,23 @@ func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.Cp
 			} else {
 				value = 0.0
 			}
-			cpuData := wshrpc.CpuDataType{Time: now.UnixMilli() / 1000, Value: value}
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Response: cpuData}
+			cpuData := wshrpc.TimeSeriesData{Ts: now.UnixMilli(), Values: map[string]float64{wshrpc.TimeSeries_Cpu: value}}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Response: cpuData}
 			time.Sleep(time.Second * 1)
 			// this will end the goroutine if the block is closed
 			err = SavePlotData(ctx, request.Id, "")
 			if err != nil {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: err}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: err}
 				return
 			}
 			blockData, getBlockDataErr := wstore.DBMustGet[*wstore.Block](ctx, request.Id)
 			if getBlockDataErr != nil {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: getBlockDataErr}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: getBlockDataErr}
 				return
 			}
 			count := blockData.Meta.GetInt(wstore.MetaKey_Count, 0)
 			if count != request.Count {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CpuDataType]{Error: fmt.Errorf("new instance created. canceling old goroutine")}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: fmt.Errorf("new instance created. canceling old goroutine")}
 				return
 			}
 

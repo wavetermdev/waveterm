@@ -158,12 +158,6 @@ declare global {
         count: number;
     };
 
-    // wshrpc.CpuDataType
-    type CpuDataType = {
-        time: number;
-        value: number;
-    };
-
     // wstore.FileDef
     type FileDef = {
         filetype?: string;
@@ -435,6 +429,12 @@ declare global {
         fontsize?: number;
         fontfamily?: string;
         disablewebgl: boolean;
+    };
+
+    // wshrpc.TimeSeriesData
+    type TimeSeriesData = {
+        ts: number;
+        values: {[key: string]: number};
     };
 
     // wstore.UIContext

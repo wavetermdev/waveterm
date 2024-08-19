@@ -102,6 +102,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("remotefileinfo", data, opts);
     }
 
+    // command "remotestreamcpudata" [responsestream]
+	RemoteStreamCpuDataCommand(opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
+        return WOS.wshServerRpcHelper_responsestream("remotestreamcpudata", null, opts);
+    }
+
     // command "remotestreamfile" [responsestream]
 	RemoteStreamFileCommand(data: CommandRemoteStreamFileData, opts?: RpcOpts): AsyncGenerator<CommandRemoteStreamFileRtnData, void, boolean> {
         return WOS.wshServerRpcHelper_responsestream("remotestreamfile", data, opts);
@@ -128,7 +133,7 @@ class WshServerType {
     }
 
     // command "streamcpudata" [responsestream]
-	StreamCpuDataCommand(data: CpuDataRequest, opts?: RpcOpts): AsyncGenerator<CpuDataType, void, boolean> {
+	StreamCpuDataCommand(data: CpuDataRequest, opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
         return WOS.wshServerRpcHelper_responsestream("streamcpudata", data, opts);
     }
 

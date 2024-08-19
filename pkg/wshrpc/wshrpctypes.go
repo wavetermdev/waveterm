@@ -85,7 +85,7 @@ type WshRpcInterface interface {
 	EventUnsubAllCommand(ctx context.Context) error
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
-	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[CpuDataType]
+	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
 
 	// remotes
@@ -93,6 +93,7 @@ type WshRpcInterface interface {
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileDeleteCommand(ctx context.Context, path string) error
 	RemoteWriteFileCommand(ctx context.Context, data CommandRemoteWriteFileData) error
+	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 }
 
 // for frontend
@@ -291,4 +292,13 @@ type CommandRemoteWriteFileData struct {
 	Path       string      `json:"path"`
 	Data64     string      `json:"data64"`
 	CreateMode os.FileMode `json:"createmode,omitempty"`
+}
+
+const (
+	TimeSeries_Cpu = "cpu"
+)
+
+type TimeSeriesData struct {
+	Ts     int64              `json:"ts"`
+	Values map[string]float64 `json:"values"`
 }

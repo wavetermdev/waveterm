@@ -14,7 +14,7 @@ import * as React from "react";
 import "./cpuplot.less";
 
 type Point = {
-    time: number;
+    time: number; // note this is in seconds not milliseconds
     value: number;
 };
 
@@ -89,7 +89,8 @@ function CpuPlotView({ model }: { model: CpuPlotViewModel }) {
             );
             try {
                 for await (const datum of dataGen) {
-                    addPlotData(datum);
+                    const ts = datum.ts;
+                    addPlotData({ time: ts / 1000, value: datum.values?.["cpu"] });
                 }
             } catch (e) {
                 console.log(e);
