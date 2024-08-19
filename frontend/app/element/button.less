@@ -2,150 +2,102 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 .button {
-    background: var(--accent-color);
-    border: none;
-    cursor: pointer;
-    outline: inherit;
-    display: flex;
-    padding: 6px 16px;
-    align-items: center;
-    gap: 4px;
-    border-radius: 6px;
-    height: auto;
-    line-height: 1.5;
-    white-space: nowrap;
-    user-select: none;
-    font-weight: 500;
+    padding: 1px;
+    border: 1px solid transparent;
+    border-radius: 8px;
 
-    color: var(--main-text-color);
-
-    i {
-        fill: var(--main-text-color);
+    &:focus,
+    &.focus {
+        border: 1px solid var(--button-focus-border-color);
     }
 
-    &.primary,
-    &.secondary {
-        color: var(--main-text-color);
+    .button-inner {
         background: var(--accent-color);
+        border: none;
+        cursor: pointer;
+        outline: inherit;
+        display: flex;
+        padding: 8px 20px;
+        align-items: center;
+        gap: 4px;
+        border-radius: 6px;
+        height: auto;
+        line-height: 16px;
+        white-space: nowrap;
+        user-select: none;
+        font-size: 14px;
+
+        color: var(--main-text-color);
 
         i {
             fill: var(--main-text-color);
         }
-    }
 
-    &.primary.danger {
-        background: var(--error-color);
-    }
-
-    &.primary.warning {
-        background: #e6ba1e;
-        color: #000000;
-    }
-
-    &.primary.outlined,
-    &.primary.greyoutlined {
-        background: none;
-        border: 1px solid var(--accent-color);
-
-        i {
-            fill: var(--accent-color);
-        }
-    }
-
-    &.primary.greyoutlined {
-        border-color: var(--secondary-text-color);
-
-        i {
-            fill: var(--secondary-text-color);
-        }
-    }
-
-    &.primary.outlined.danger {
-        border-color: var(--error-color);
-
-        i {
-            fill: var(--error-color);
-        }
-    }
-
-    &.primary.outlined,
-    &.primary.greyoutlined {
-        &.hover-danger:hover {
+        &.primary,
+        &.secondary {
             color: var(--main-text-color);
-            border-color: var(--error-color);
+            background: var(--accent-color);
+
+            i {
+                fill: var(--main-text-color);
+            }
+        }
+
+        &.primary.danger {
             background: var(--error-color);
         }
-    }
 
-    &.greytext {
-        color: var(--secondary-text-color);
-    }
+        &.primary.warning {
+            background: #e6ba1e;
+            color: #000000;
+        }
 
-    &.primary.ghost {
-        background: none;
+        &.primary.ghost {
+            background: none;
 
-        i {
-            fill: var(--accent-color);
+            i {
+                fill: var(--accent-color);
+            }
+        }
+
+        &.primary.ghost.danger {
+            i {
+                fill: var(--app-error-color);
+            }
+        }
+
+        &.secondary,
+        &.link-button {
+            background: var(--highlight-bg-color);
+        }
+
+        &.secondary.ghost {
+            background: none;
+        }
+
+        &.secondary.danger {
+            color: var(--error-color);
+        }
+
+        &.disabled {
+            opacity: 0.5;
         }
     }
 
-    &.primary.ghost.danger {
-        i {
-            fill: var(--app-error-color);
-        }
+    /* 
+	 *	customs styles here
+	 */
+    .border-radius-4 {
+        border-radius: 4px;
     }
 
-    &.secondary {
-        background: var(--highlight-bg-color);
+    .vertical-padding-2 {
+        padding-top: 2px;
+        padding-bottom: 2px;
     }
 
-    &.secondary.outlined {
-        background: none;
-        border: 1px solid var(--main-text-color);
+    .horizontal-padding-10 {
+        padding-left: 10px;
+        padding-right: 10px;
     }
-
-    &.secondary.outlined.danger {
-        border-color: var(--error-color);
-    }
-
-    &.secondary.ghost {
-        background: none;
-    }
-
-    &.secondary.danger {
-        color: var(--error-color);
-    }
-
-    &.small {
-        padding: 4px 8px;
-        font-size: 12px;
-        border-radius: 3.6px;
-    }
-
-    &.term-inline {
-        padding: 2px 8px;
-        border-radius: 3px;
-    }
-
-    &.disabled {
-        opacity: 0.5;
-    }
-
-    &.link {
-        cursor: pointer;
-    }
-}
-
-.border-radius-4 {
-    border-radius: 4px;
-}
-
-.vertical-padding-2 {
-    padding-top: 2px;
-    padding-bottom: 2px;
-}
-
-.horizontal-padding-10 {
-    padding-left: 10px;
-    padding-right: 10px;
 }

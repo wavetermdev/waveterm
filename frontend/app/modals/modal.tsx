@@ -2,19 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import clsx from "clsx";
 import ReactDOM from "react-dom";
 
 import "./modal.less";
 
 interface ModalHeaderProps {
-    title: React.ReactNode;
     description?: string;
     onClose?: () => void;
 }
 
-const ModalHeader = ({ onClose, title, description }: ModalHeaderProps) => (
+const ModalHeader = ({ onClose, description }: ModalHeaderProps) => (
     <header className="modal-header">
-        {typeof title === "string" ? <h3 className="modal-title">{title}</h3> : title}
         {description && <p>{description}</p>}
         {onClose && (
             <Button className="secondary ghost" onClick={onClose} title="Close (ESC)">
@@ -39,20 +38,22 @@ interface ModalFooterProps {
     onCancel?: () => void;
 }
 
-const ModalFooter = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }: ModalFooterProps) => (
-    <footer className="modal-footer">
-        {onCancel && (
-            <Button className="secondary" onClick={onCancel}>
-                {cancelLabel}
-            </Button>
-        )}
-        {onOk && (
-            <Button className="primary" onClick={onOk}>
-                {okLabel}
-            </Button>
-        )}
-    </footer>
-);
+const ModalFooter = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }: ModalFooterProps) => {
+    return (
+        <footer className="modal-footer">
+            {onCancel && (
+                <Button className="secondary ghost" onClick={onCancel}>
+                    {cancelLabel}
+                </Button>
+            )}
+            {onOk && (
+                <Button className="primary" onClick={onOk}>
+                    {okLabel}
+                </Button>
+            )}
+        </footer>
+    );
+};
 
 interface ModalProps {
     title: string;
@@ -81,13 +82,21 @@ const Modal = ({
 }: ModalProps) => {
     const renderBackdrop = (onClick) => <div className="modal-backdrop" onClick={onClick}></div>;
 
+    const renderFooter = () => {
+        return onOk || onCancel;
+    };
+
     const renderModal = () => (
         <div className="modal-wrapper">
             {renderBackdrop(onClickBackdrop)}
-            <div className={`modal ${className}`}>
-                <ModalHeader title={title} onClose={onClose} description={description} />
-                <ModalContent>{children}</ModalContent>
-                <ModalFooter onCancel={onCancel} onOk={onOk} cancelLabel={cancelLabel} okLabel={okLabel} />
+            <div className={clsx(`modal`, className)}>
+                <div className="header-content-wrapper">
+                    <ModalHeader onClose={onClose} description={description} />
+                    <ModalContent>{children}</ModalContent>
+                </div>
+                {renderFooter() && (
+                    <ModalFooter onCancel={onCancel} onOk={onOk} cancelLabel={cancelLabel} okLabel={okLabel} />
+                )}
             </div>
         </div>
     );

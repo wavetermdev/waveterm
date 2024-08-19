@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld("api", {
     onUpdaterStatusChange: (callback) => ipcRenderer.on("app-update-status", (_event, status) => callback(status)),
     getUpdaterStatus: () => ipcRenderer.sendSync("get-app-update-status"),
     installAppUpdate: () => ipcRenderer.send("install-app-update"),
+    onMenuItemAbout: (callback) => ipcRenderer.on("menu-item-about", callback),
     updateWindowControlsOverlay: (rect) => ipcRenderer.send("update-window-controls-overlay", rect),
 });
 

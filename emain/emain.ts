@@ -690,7 +690,10 @@ function getAppMenu() {
     ];
     const appMenu: Electron.MenuItemConstructorOptions[] = [
         {
-            role: "about",
+            label: "About Wave Terminal",
+            click: (_, window) => {
+                window?.webContents.send("menu-item-about");
+            },
         },
         {
             label: "Check for Updates",

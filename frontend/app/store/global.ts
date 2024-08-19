@@ -62,6 +62,15 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // do nothing
     }
 
+    const showAboutModalAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
+    try {
+        getApi().onMenuItemAbout(() => {
+            modalsModel.pushModal("AboutModal");
+        });
+    } catch (_) {
+        // do nothing
+    }
+
     const clientAtom: jotai.Atom<Client> = jotai.atom((get) => {
         const clientId = get(clientIdAtom);
         if (clientId == null) {

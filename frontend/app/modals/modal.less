@@ -24,51 +24,61 @@
 }
 
 .modal {
+    position: relative;
     z-index: var(--zindex-modal);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
-    border-radius: 10px;
+    gap: 32px;
+    padding: 24px 16px 16px;
+    border-radius: 8px;
+    border: 0.5px solid var(--modal-border-color);
     background: var(--modal-bg-color);
-    border: 1px solid var(--border-color);
-    box-shadow: 0px 5px 5px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
 
-    .modal-header {
-        width: 100%;
+    .header-content-wrapper {
         display: flex;
-        align-items: center;
-        padding: 12px 14px 12px 20px;
-        justify-content: space-between;
-        line-height: 20px;
-        border-bottom: 1px solid var(--modal-header-bottom-border-color);
-        user-select: none;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
 
-        .modal-title {
-            color: var(--main-text-color);
-            font-size: var(--title-font-size);
-        }
+        .modal-header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
 
-        button {
-            padding-right: 4px !important;
-            i {
-                font-size: 18px;
+            .modal-title {
+                color: var(--main-text-color);
+                font-size: var(--title-font-size);
+            }
+
+            button {
+                position: absolute;
+                right: 8px;
+                top: 8px;
+                padding: 8px 16px;
+
+                i {
+                    font-size: 18px;
+                }
             }
         }
-    }
-
-    .modal-body {
-        width: 100%;
-        padding: 0px 20px;
+        .modal-content {
+            width: 100%;
+            padding: 0px 20px;
+        }
     }
 
     .modal-footer {
         display: flex;
         justify-content: flex-end;
         width: 100%;
-        padding: 0 20px 20px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
 
-        button:last-child {
+        .button:last-child {
             margin-left: 8px;
         }
     }

@@ -68,6 +68,7 @@ declare global {
         onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void;
         getUpdaterStatus: () => UpdaterStatus;
         installAppUpdate: () => void;
+        onMenuItemAbout: (callback: () => void) => void;
         updateWindowControlsOverlay: (rect: Dimensions) => void;
     };
 
