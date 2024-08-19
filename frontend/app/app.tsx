@@ -336,7 +336,7 @@ function AppBackground() {
         }),
         [bgRef, style]
     );
-    React.useEffect(getAvgColor, [getAvgColor]);
+    React.useLayoutEffect(getAvgColor, [getAvgColor]);
     useResizeObserver(bgRef, getAvgColor);
 
     return <div ref={bgRef} className="app-background" style={style} />;
