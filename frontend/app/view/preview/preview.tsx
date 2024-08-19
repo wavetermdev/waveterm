@@ -205,8 +205,6 @@ export class PreviewModel implements ViewModel {
                 return null;
             }
             const conn = get(this.connection) ?? "";
-            // const statFile = await FileService.StatFile(fileName);
-            console.log("PreviewModel calling StatFile", conn, fileName);
             const statFile = await services.FileService.StatFile(conn, fileName);
             return statFile;
         });
@@ -215,8 +213,8 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            // const file = await FileService.ReadFile(fileName);
-            const file = await services.FileService.ReadFile(fileName);
+            const conn = get(this.connection) ?? "";
+            const file = await services.FileService.ReadFile(conn, fileName);
             return file;
         });
         this.fileMimeType = jotai.atom<Promise<string>>(async (get) => {
@@ -253,8 +251,9 @@ export class PreviewModel implements ViewModel {
     async handleFileSave() {
         const fileName = globalStore.get(this.fileName);
         const newFileContent = globalStore.get(this.newFileContent);
+        const conn = globalStore.get(this.connection) ?? "";
         try {
-            services.FileService.SaveFile(fileName, util.stringToBase64(newFileContent));
+            services.FileService.SaveFile(conn, fileName, util.stringToBase64(newFileContent));
             globalStore.set(this.newFileContent, null);
         } catch (error) {
             console.error("Error saving file:", error);

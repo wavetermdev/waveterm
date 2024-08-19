@@ -124,7 +124,7 @@ declare global {
 
     // wshrpc.CommandRemoteStreamFileRtnData
     type CommandRemoteStreamFileRtnData = {
-        fileinfo?: FileInfo;
+        fileinfo?: FileInfo[];
         data64?: string;
     };
 

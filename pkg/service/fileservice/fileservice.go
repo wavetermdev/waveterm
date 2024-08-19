@@ -1,19 +1,16 @@
 package fileservice
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
+	"io"
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
@@ -31,17 +28,21 @@ type FullFile struct {
 	Data64 string           `json:"data64"` // base64 encoded
 }
 
-func (fs *FileService) SaveFile(path string, data64 string) error {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
-	data, err := base64.StdEncoding.DecodeString(data64)
-	if err != nil {
-		return fmt.Errorf("failed to decode base64 data: %w", err)
+func (fs *FileService) SaveFile_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "save file",
+		ArgNames: []string{"connection", "path", "data64"},
 	}
-	err = os.WriteFile(cleanedPath, data, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write file %q: %w", path, err)
+}
+
+func (fs *FileService) SaveFile(connection string, path string, data64 string) error {
+	if connection == "" {
+		connection = wshrpc.LocalConnName
 	}
-	return nil
+	connRoute := wshutil.MakeConnectionRouteId(connection)
+	client := wshserver.GetMainRpcClient()
+	writeData := wshrpc.CommandRemoteWriteFileData{Path: path, Data64: data64}
+	return wshclient.RemoteWriteFileCommand(client, writeData, &wshrpc.RpcOpts{Route: connRoute})
 }
 
 func (fs *FileService) StatFile_Meta() tsgenmeta.MethodMeta {
@@ -60,78 +61,70 @@ func (fs *FileService) StatFile(connection string, path string) (*wshrpc.FileInf
 	return wshclient.RemoteFileInfoCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
 }
 
-func (fs *FileService) ReadFile(path string) (*FullFile, error) {
-	finfo, err := fs.StatFile("", path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
+func (fs *FileService) ReadFile_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "read file",
+		ArgNames: []string{"connection", "path"},
 	}
-	if finfo.NotFound {
-		return &FullFile{Info: finfo}, nil
+}
+
+func (fs *FileService) ReadFile(connection string, path string) (*FullFile, error) {
+	if connection == "" {
+		connection = wshrpc.LocalConnName
 	}
-	if finfo.Size > MaxFileSize {
-		return nil, fmt.Errorf("file %q is too large to read, use /wave/stream-file", path)
-	}
-	if finfo.IsDir {
-		innerFilesEntries, err := os.ReadDir(finfo.Path)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse directory %s", finfo.Path)
+	connRoute := wshutil.MakeConnectionRouteId(connection)
+	client := wshserver.GetMainRpcClient()
+	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
+	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: connRoute})
+	fullFile := &FullFile{}
+	firstPk := true
+	isDir := false
+	var fileBuf bytes.Buffer
+	var fileInfoArr []*wshrpc.FileInfo
+	for respUnion := range rtnCh {
+		if respUnion.Error != nil {
+			return nil, respUnion.Error
 		}
-		if len(innerFilesEntries) > 1000 {
-			innerFilesEntries = innerFilesEntries[:1000]
+		resp := respUnion.Response
+		if firstPk {
+			firstPk = false
+			// first packet has the fileinfo
+			if len(resp.FileInfo) != 1 {
+				return nil, fmt.Errorf("stream file protocol error, first pk fileinfo len=%d", len(resp.FileInfo))
+			}
+			fullFile.Info = resp.FileInfo[0]
+			if fullFile.Info.IsDir {
+				isDir = true
+			}
+			continue
 		}
-		var innerFilesInfo []wshrpc.FileInfo
-		parent := filepath.Dir(finfo.Path)
-		parentFileInfo, err := fs.StatFile("", parent)
-		if err == nil && parent != finfo.Path {
-			log.Printf("adding parent")
-			parentFileInfo.Name = ".."
-			parentFileInfo.Size = -1
-			innerFilesInfo = append(innerFilesInfo, *parentFileInfo)
-		}
-		for _, innerFileEntry := range innerFilesEntries {
-			innerFileInfoInt, err := innerFileEntry.Info()
-			if err != nil {
-				log.Printf("unable to get file info for (innerFileInfo) %s: %v", innerFileEntry.Name(), err)
+		if isDir {
+			if len(resp.FileInfo) == 0 {
 				continue
 			}
-			mimeType := utilfn.DetectMimeType(filepath.Join(finfo.Path, innerFileInfoInt.Name()))
-			var fileSize int64
-			if mimeType == "directory" {
-				fileSize = -1
-			} else {
-				fileSize = innerFileInfoInt.Size()
+			fileInfoArr = append(fileInfoArr, resp.FileInfo...)
+		} else {
+			if resp.Data64 == "" {
+				continue
 			}
-			innerFileInfo := wshrpc.FileInfo{
-				Path:     filepath.Join(finfo.Path, innerFileInfoInt.Name()),
-				Name:     innerFileInfoInt.Name(),
-				Size:     fileSize,
-				Mode:     innerFileInfoInt.Mode(),
-				ModeStr:  innerFileInfoInt.Mode().String(),
-				ModTime:  innerFileInfoInt.ModTime().UnixMilli(),
-				IsDir:    innerFileInfoInt.IsDir(),
-				MimeType: mimeType,
+			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(resp.Data64)))
+			_, err := io.Copy(&fileBuf, decoder)
+			if err != nil {
+				return nil, fmt.Errorf("stream file, failed to decode base64 data %q: %w", resp.Data64, err)
 			}
-			innerFilesInfo = append(innerFilesInfo, innerFileInfo)
 		}
-
-		filesSerialized, err := json.Marshal(innerFilesInfo)
+	}
+	if isDir {
+		fiBytes, err := json.Marshal(fileInfoArr)
 		if err != nil {
-			return nil, fmt.Errorf("unable to serialize files %s", finfo.Path)
+			return nil, fmt.Errorf("unable to serialize files %s", path)
 		}
-		return &FullFile{
-			Info:   finfo,
-			Data64: base64.StdEncoding.EncodeToString(filesSerialized),
-		}, nil
+		fullFile.Data64 = base64.StdEncoding.EncodeToString(fiBytes)
+	} else {
+		// we can avoid this re-encoding if we ensure the remote side always encodes chunks of 3 bytes so we don't get padding chars
+		fullFile.Data64 = base64.StdEncoding.EncodeToString(fileBuf.Bytes())
 	}
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
-	barr, err := os.ReadFile(cleanedPath)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read file %q: %w", path, err)
-	}
-	return &FullFile{
-		Info:   finfo,
-		Data64: base64.StdEncoding.EncodeToString(barr),
-	}, nil
+	return fullFile, nil
 }
 
 func (fs *FileService) GetWaveFile(id string, path string) (any, error) {
@@ -144,9 +137,20 @@ func (fs *FileService) GetWaveFile(id string, path string) (any, error) {
 	return file, nil
 }
 
-func (fs *FileService) DeleteFile(path string) error {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
-	return os.Remove(cleanedPath)
+func (fs *FileService) DeleteFile_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "delete file",
+		ArgNames: []string{"connection", "path"},
+	}
+}
+
+func (fs *FileService) DeleteFile(connection string, path string) error {
+	if connection == "" {
+		connection = wshrpc.LocalConnName
+	}
+	connRoute := wshutil.MakeConnectionRouteId(connection)
+	client := wshserver.GetMainRpcClient()
+	return wshclient.RemoteFileDeleteCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
 }
 
 func (fs *FileService) GetSettingsConfig() wconfig.SettingsConfigType {

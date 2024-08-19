@@ -56,7 +56,9 @@ class FileServiceType {
     AddWidget(arg1: WidgetsConfigType): Promise<void> {
         return WOS.callBackendService("file", "AddWidget", Array.from(arguments))
     }
-    DeleteFile(arg1: string): Promise<void> {
+
+    // delete file
+    DeleteFile(connection: string, path: string): Promise<void> {
         return WOS.callBackendService("file", "DeleteFile", Array.from(arguments))
     }
     GetSettingsConfig(): Promise<SettingsConfigType> {
@@ -65,13 +67,17 @@ class FileServiceType {
     GetWaveFile(arg1: string, arg2: string): Promise<any> {
         return WOS.callBackendService("file", "GetWaveFile", Array.from(arguments))
     }
-    ReadFile(arg1: string): Promise<FullFile> {
+
+    // read file
+    ReadFile(connection: string, path: string): Promise<FullFile> {
         return WOS.callBackendService("file", "ReadFile", Array.from(arguments))
     }
     RemoveWidget(arg1: number): Promise<void> {
         return WOS.callBackendService("file", "RemoveWidget", Array.from(arguments))
     }
-    SaveFile(arg1: string, arg2: string): Promise<void> {
+
+    // save file
+    SaveFile(connection: string, path: string, data64: string): Promise<void> {
         return WOS.callBackendService("file", "SaveFile", Array.from(arguments))
     }
 

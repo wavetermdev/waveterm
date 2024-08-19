@@ -113,6 +113,12 @@ func MessageCommand(w *wshutil.WshRpc, data wshrpc.CommandMessageData, opts *wsh
     return err
 }
 
+// command "remotefiledelete", wshserver.RemoteFileDeleteCommand
+func RemoteFileDeleteCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "remotefiledelete", data, opts)
+    return err
+}
+
 // command "remotefileinfo", wshserver.RemoteFileInfoCommand
 func RemoteFileInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.FileInfo, error) {
     resp, err := sendRpcRequestCallHelper[*wshrpc.FileInfo](w, "remotefileinfo", data, opts)

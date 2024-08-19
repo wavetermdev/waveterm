@@ -92,6 +92,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("message", data, opts);
     }
 
+    // command "remotefiledelete" [call]
+	RemoteFileDeleteCommand(data: string, opts?: RpcOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("remotefiledelete", data, opts);
+    }
+
     // command "remotefileinfo" [call]
 	RemoteFileInfoCommand(data: string, opts?: RpcOpts): Promise<FileInfo> {
         return WOS.wshServerRpcHelper_call("remotefileinfo", data, opts);

@@ -29,6 +29,7 @@ import { OverlayScrollbars } from "overlayscrollbars";
 import "./directorypreview.less";
 
 interface DirectoryTableProps {
+    model: PreviewModel;
     data: FileInfo[];
     search: string;
     focusIndex: number;
@@ -124,6 +125,7 @@ function cleanMimetype(input: string): string {
 }
 
 function DirectoryTable({
+    model,
     data,
     search,
     focusIndex,
@@ -294,6 +296,7 @@ function DirectoryTable({
             </div>
             {table.getState().columnSizingInfo.isResizingColumn ? (
                 <MemoizedTableBody
+                    model={model}
                     data={data}
                     table={table}
                     search={search}
@@ -306,6 +309,7 @@ function DirectoryTable({
                 />
             ) : (
                 <TableBody
+                    model={model}
                     data={data}
                     table={table}
                     search={search}
@@ -322,6 +326,7 @@ function DirectoryTable({
 }
 
 interface TableBodyProps {
+    model: PreviewModel;
     data: Array<FileInfo>;
     table: Table<FileInfo>;
     search: string;
@@ -334,6 +339,7 @@ interface TableBodyProps {
 }
 
 function TableBody({
+    model,
     data,
     table,
     search,
@@ -353,6 +359,7 @@ function TableBody({
     const rowRefs = useRef<HTMLDivElement[]>([]);
 
     const parentHeight = useHeight(parentRef);
+    const conn = jotai.useAtomValue(model.connection);
 
     useEffect(() => {
         if (dummyLineRef.current && data && parentRef.current) {
@@ -454,13 +461,13 @@ function TableBody({
             menu.push({
                 label: "Delete File",
                 click: async () => {
-                    await services.FileService.DeleteFile(path).catch((e) => console.log(e));
+                    await services.FileService.DeleteFile(conn, path).catch((e) => console.log(e));
                     setRefreshVersion((current) => current + 1);
                 },
             });
             ContextMenuModel.showContextMenu(menu, e);
         },
-        [setRefreshVersion]
+        [setRefreshVersion, conn]
     );
 
     const displayRow = useCallback(
@@ -541,6 +548,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
     const showHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = jotai.useAtom(model.refreshVersion);
+    const conn = jotai.useAtomValue(model.connection);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -553,13 +561,13 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await services.FileService.ReadFile(fileName);
+            const file = await services.FileService.ReadFile(conn, fileName);
             const serializedContent = util.base64ToString(file?.data64);
             const content: FileInfo[] = JSON.parse(serializedContent);
             setUnfilteredData(content);
         };
         getContent();
-    }, [fileName, refreshVersion]);
+    }, [conn, fileName, refreshVersion]);
 
     useEffect(() => {
         const filtered = unfilteredData.filter((fileInfo) => {
@@ -633,6 +641,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 />
             </div>
             <DirectoryTable
+                model={model}
                 data={filteredData}
                 search={searchText}
                 focusIndex={focusIndex}
