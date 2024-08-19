@@ -105,6 +105,8 @@ type RpcOpts struct {
 	Timeout    int    `json:"timeout,omitempty"`
 	NoResponse bool   `json:"noresponse,omitempty"`
 	Route      string `json:"route,omitempty"`
+
+	StreamCancelFn func() `json:"-"` // this is an *output* parameter, set by the handler
 }
 
 type RpcContext struct {

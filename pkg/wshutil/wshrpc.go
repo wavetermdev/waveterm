@@ -76,6 +76,14 @@ func GetRpcSourceFromContext(ctx context.Context) string {
 	return rtn.(*RpcResponseHandler).GetSource()
 }
 
+func GetIsCanceledFromContext(ctx context.Context) bool {
+	rtn := ctx.Value(wshRpcRespHandlerContextKey{})
+	if rtn == nil {
+		return false
+	}
+	return rtn.(*RpcResponseHandler).IsCanceled()
+}
+
 func GetRpcResponseHandlerFromContext(ctx context.Context) *RpcResponseHandler {
 	rtn := ctx.Value(wshRpcRespHandlerContextKey{})
 	if rtn == nil {

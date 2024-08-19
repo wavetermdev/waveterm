@@ -57,27 +57,30 @@ func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string
 	if err != nil {
 		rtnErr(respChan, err)
 		return respChan
-	} else {
-		go func() {
-			defer close(respChan)
-			for {
-				if reqHandler.ResponseDone() {
-					break
-				}
-				resp, err := reqHandler.NextResponse()
-				if err != nil {
-					respChan <- wshrpc.RespOrErrorUnion[T]{Error: err}
-					break
-				}
-				var respData T
-				err = utilfn.ReUnmarshal(&respData, resp)
-				if err != nil {
-					respChan <- wshrpc.RespOrErrorUnion[T]{Error: err}
-					break
-				}
-				respChan <- wshrpc.RespOrErrorUnion[T]{Response: respData}
-			}
-		}()
 	}
+	opts.StreamCancelFn = func() {
+		// TODO coordinate the cancel with the for loop below
+		reqHandler.SendCancel()
+	}
+	go func() {
+		defer close(respChan)
+		for {
+			if reqHandler.ResponseDone() {
+				break
+			}
+			resp, err := reqHandler.NextResponse()
+			if err != nil {
+				respChan <- wshrpc.RespOrErrorUnion[T]{Error: err}
+				break
+			}
+			var respData T
+			err = utilfn.ReUnmarshal(&respData, resp)
+			if err != nil {
+				respChan <- wshrpc.RespOrErrorUnion[T]{Error: err}
+				break
+			}
+			respChan <- wshrpc.RespOrErrorUnion[T]{Response: respData}
+		}
+	}()
 	return respChan
 }

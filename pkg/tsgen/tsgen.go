@@ -79,6 +79,13 @@ func generateTSMethodTypes(method reflect.Method, tsTypesMap map[reflect.Type]st
 }
 
 func getTSFieldName(field reflect.StructField) string {
+	tsFieldTag := field.Tag.Get("tsfield")
+	if tsFieldTag != "" {
+		if tsFieldTag == "-" {
+			return ""
+		}
+		return tsFieldTag
+	}
 	jsonTag := field.Tag.Get("json")
 	if jsonTag != "" {
 		parts := strings.Split(jsonTag, ",")

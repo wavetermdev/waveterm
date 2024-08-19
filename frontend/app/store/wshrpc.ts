@@ -51,7 +51,11 @@ async function* rpcResponseGenerator(
                     return;
                 }
                 const shouldTerminate = yield msg.data;
-                if (shouldTerminate || !msg.cont) {
+                if (shouldTerminate) {
+                    sendRpcCancel(reqid);
+                    return;
+                }
+                if (!msg.cont) {
                     return;
                 }
             }
@@ -63,6 +67,12 @@ async function* rpcResponseGenerator(
             clearTimeout(timeoutId);
         }
     }
+}
+
+function sendRpcCancel(reqid: string) {
+    const rpcMsg: RpcMessage = { reqid: reqid, cancel: true };
+    const wsMsg: WSRpcCommand = { wscommand: "rpc", message: rpcMsg };
+    globalWS.pushMessage(wsMsg);
 }
 
 function sendRpcCommand(msg: RpcMessage): AsyncGenerator<RpcMessage, void, boolean> {
