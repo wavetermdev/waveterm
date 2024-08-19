@@ -313,7 +313,7 @@ function AppBackground() {
         }
     }
     const getAvgColor = React.useCallback(
-        debounce(10, () => {
+        debounce(30, () => {
             if (
                 bgRef.current &&
                 PLATFORM !== "darwin" &&
