@@ -32,7 +32,7 @@ const WebGLSupported = detectWebGLSupport();
 let loggedWebGL = false;
 
 type TermWrapOptions = {
-    keydownHandler?: (e: KeyboardEvent) => void;
+    keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
 };
 
@@ -49,7 +49,6 @@ export class TermWrap {
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
     isRunning: boolean;
-    keydownHandler: (e: KeyboardEvent) => void;
 
     constructor(
         blockId: string,
@@ -116,6 +115,7 @@ export class TermWrap {
             }, 0);
             return true;
         });
+        this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;
         this.mainFileSubject = null;
         this.heldData = [];
@@ -123,11 +123,9 @@ export class TermWrap {
         this.terminal.open(this.connectElem);
         this.handleResize();
         this.isRunning = true;
-        this.keydownHandler = waveOptions.keydownHandler;
     }
 
     async initTerminal() {
-        this.connectElem.addEventListener("keydown", this.keydownHandler, true);
         this.terminal.onData(this.handleTermData.bind(this));
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));

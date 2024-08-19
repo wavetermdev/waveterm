@@ -100,7 +100,14 @@ function callBackendService(service: string, method: string, args: any[], noUICo
             if (respData.error != null) {
                 throw new Error(`call ${methodName} error: ${respData.error}`);
             }
-            console.log("Call", methodName, Date.now() - startTs + "ms");
+            const durationStr = Date.now() - startTs + "ms";
+            if (methodName == "object.UpdateObject") {
+                console.log("Call UpdateObject", args[0].otype, args[0].oid, durationStr, args[0]);
+            } else if (methodName == "object.GetObject") {
+                console.log("Call GetObject", args[0], durationStr);
+            } else {
+                console.log("Call", methodName, durationStr);
+            }
             return respData.data;
         });
     return prtn;

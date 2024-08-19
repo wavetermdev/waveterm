@@ -217,7 +217,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const isFocused = jotai.useAtomValue(isFocusedAtom);
 
     React.useEffect(() => {
-        function handleTerminalKeydown(event: KeyboardEvent) {
+        function handleTerminalKeydown(event: KeyboardEvent): boolean {
             const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
             if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
                 event.preventDefault();
@@ -225,11 +225,28 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 WshServer.SetMetaCommand({ oref: WOS.makeORef("block", blockId), meta: { "term:mode": null } });
                 return false;
             }
+            if (
+                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowLeft") ||
+                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowRight") ||
+                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowUp") ||
+                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowDown")
+            ) {
+                return false;
+            }
+            for (let i = 1; i <= 9; i++) {
+                if (
+                    keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:Digit${i}`) ||
+                    keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Numpad${i}}`)
+                ) {
+                    return false;
+                }
+            }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
                 WshServer.ControllerRestartCommand({ blockid: blockId });
                 return false;
             }
+            return true;
         }
         const settings = globalStore.get(atoms.settingsConfigAtom);
         const termTheme = computeTheme(settings, blockData?.meta?.["term:theme"]);

@@ -405,19 +405,19 @@ const AppKeyHandlers = () => {
                 return true;
             }
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
+        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowUp")) {
             switchBlock(tabId, 0, -1);
             return true;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
+        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowDown")) {
             switchBlock(tabId, 0, 1);
             return true;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowLeft")) {
+        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowLeft")) {
             switchBlock(tabId, -1, 0);
             return true;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowRight")) {
+        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowRight")) {
             switchBlock(tabId, 1, 0);
             return true;
         }
