@@ -4,6 +4,7 @@
 package web
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -24,6 +25,10 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/telemetry"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -210,15 +215,8 @@ func serveTransparentGIF(w http.ResponseWriter) {
 	w.Write(gifBytes)
 }
 
-func handleStreamFile(w http.ResponseWriter, r *http.Request) {
-	fileName := r.URL.Query().Get("path")
-	if fileName == "" {
-		http.Error(w, "path is required", http.StatusBadRequest)
-		return
-	}
-	no404 := r.URL.Query().Get("no404")
-	log.Printf("got no404: %q\n", no404)
-	if no404 != "" {
+func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, fileName string, no404 bool) {
+	if no404 {
 		log.Printf("streaming file w/no404: %q\n", fileName)
 		// use the custom response writer
 		rw := &notFoundBlockingResponseWriter{w: w, headers: http.Header{}}
@@ -232,6 +230,86 @@ func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fileName = wavebase.ExpandHomeDir(fileName)
 		http.ServeFile(w, r, fileName)
+	}
+}
+
+func handleRemoteStreamFile(w http.ResponseWriter, r *http.Request, conn string, fileName string, no404 bool) error {
+	client := wshserver.GetMainRpcClient()
+	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: fileName}
+	route := wshutil.MakeConnectionRouteId(conn)
+	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: route})
+	firstPk := true
+	var fileInfo *wshrpc.FileInfo
+	loopDone := false
+	defer func() {
+		if loopDone {
+			return
+		}
+		// if loop didn't finish naturally clear it out
+		go func() {
+			for range rtnCh {
+			}
+		}()
+	}()
+	for respUnion := range rtnCh {
+		if respUnion.Error != nil {
+			return respUnion.Error
+		}
+		if firstPk {
+			firstPk = false
+			if len(respUnion.Response.FileInfo) != 1 {
+				return fmt.Errorf("stream file protocol error, first pk fileinfo len=%d", len(respUnion.Response.FileInfo))
+			}
+			fileInfo = respUnion.Response.FileInfo[0]
+			if fileInfo.NotFound {
+				if no404 {
+					serveTransparentGIF(w)
+					return nil
+				} else {
+					return fmt.Errorf("file not found: %q", fileName)
+				}
+			}
+			if fileInfo.IsDir {
+				return fmt.Errorf("cannot stream directory: %q", fileName)
+			}
+			w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
+			w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
+			continue
+		}
+		if respUnion.Response.Data64 == "" {
+			continue
+		}
+		decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(respUnion.Response.Data64)))
+		_, err := io.Copy(w, decoder)
+		if err != nil {
+			log.Printf("error streaming file %q: %v\n", fileName, err)
+			// not sure what to do here, the headers have already been sent.
+			// just return
+			return nil
+		}
+	}
+	loopDone = true
+	return nil
+}
+
+func handleStreamFile(w http.ResponseWriter, r *http.Request) {
+	conn := r.URL.Query().Get("connection")
+	if conn == "" {
+		conn = wshrpc.LocalConnName
+	}
+	fileName := r.URL.Query().Get("path")
+	if fileName == "" {
+		http.Error(w, "path is required", http.StatusBadRequest)
+		return
+	}
+	no404 := r.URL.Query().Get("no404")
+	if conn == wshrpc.LocalConnName {
+		handleLocalStreamFile(w, r, fileName, no404 != "")
+	} else {
+		err := handleRemoteStreamFile(w, r, conn, fileName, no404 != "")
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error streaming file: %v", err), http.StatusInternalServerError)
+		}
 	}
 }
 

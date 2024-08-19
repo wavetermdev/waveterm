@@ -61,6 +61,23 @@ function GetObject<T>(oref: string): Promise<T> {
     return callBackendService("object", "GetObject", [oref], true);
 }
 
+function debugLogBackendCall(methodName: string, durationStr: string, args: any[]) {
+    durationStr = "| " + durationStr;
+    if (methodName == "object.UpdateObject" && args.length > 0) {
+        console.log("[service] object.UpdateObject", args[0].otype, args[0].oid, durationStr, args[0]);
+        return;
+    }
+    if (methodName == "object.GetObject" && args.length > 0) {
+        console.log("[service] object.GetObject", args[0], durationStr);
+        return;
+    }
+    if (methodName == "file.StatFile" && args.length >= 2) {
+        console.log("[service] file.StatFile", args[1], durationStr);
+        return;
+    }
+    console.log("[service]", methodName, durationStr);
+}
+
 function callBackendService(service: string, method: string, args: any[], noUIContext?: boolean): Promise<any> {
     const startTs = Date.now();
     let uiContext: UIContext = null;
@@ -101,13 +118,7 @@ function callBackendService(service: string, method: string, args: any[], noUICo
                 throw new Error(`call ${methodName} error: ${respData.error}`);
             }
             const durationStr = Date.now() - startTs + "ms";
-            if (methodName == "object.UpdateObject") {
-                console.log("Call UpdateObject", args[0].otype, args[0].oid, durationStr, args[0]);
-            } else if (methodName == "object.GetObject") {
-                console.log("Call GetObject", args[0], durationStr);
-            } else {
-                console.log("Call", methodName, durationStr);
-            }
+            debugLogBackendCall(methodName, durationStr, args);
             return respData.data;
         });
     return prtn;

@@ -159,7 +159,7 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 			filePos += int64(n)
 			dataCallback(nil, buf[:n])
 		}
-		if filePos >= byteRange.End {
+		if !byteRange.All && filePos >= byteRange.End {
 			break
 		}
 		if errors.Is(err, io.EOF) {

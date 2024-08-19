@@ -374,9 +374,14 @@ function MarkdownPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<stri
     );
 }
 
-function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
+function StreamingPreview({ connection, fileInfo }: { connection?: string; fileInfo: FileInfo }) {
     const filePath = fileInfo.path;
-    const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(filePath);
+    const usp = new URLSearchParams();
+    usp.set("path", filePath);
+    if (connection != null) {
+        usp.set("connection", connection);
+    }
+    const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
     if (fileInfo.mimetype == "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">
@@ -516,6 +521,7 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     const fileName = jotai.useAtomValue(fileNameAtom);
     const fileInfo = jotai.useAtomValue(statFileAtom);
     const ceReadOnly = jotai.useAtomValue(ceReadOnlyAtom);
+    const conn = jotai.useAtomValue(model.connection);
     let blockIcon = iconForFile(mimeType, fileName);
 
     // ensure consistent hook calls
@@ -528,7 +534,7 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
             mimeType.startsWith("audio/") ||
             mimeType.startsWith("image/")
         ) {
-            view = <StreamingPreview fileInfo={fileInfo} />;
+            view = <StreamingPreview connection={conn} fileInfo={fileInfo} />;
         } else if (!fileInfo) {
             view = <CenteredDiv>File Not Found{util.isBlank(fileName) ? null : JSON.stringify(fileName)}</CenteredDiv>;
         } else if (fileInfo.size > MaxFileSize) {
