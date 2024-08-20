@@ -190,7 +190,11 @@ export class PreviewModel implements ViewModel {
         });
         this.fileName = jotai.atom<string, [string], void>(
             (get) => {
-                return get(this.blockAtom)?.meta?.file;
+                const file = get(this.blockAtom)?.meta?.file;
+                if (util.isBlank(file)) {
+                    return "~";
+                }
+                return file;
             },
             (get, set, update) => {
                 services.ObjectService.UpdateObjectMeta(`block:${blockId}`, { file: update });
