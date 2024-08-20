@@ -586,8 +586,10 @@ electron.ipcMain.on("getEnv", (event, varName) => {
     event.returnValue = process.env[varName] ?? null;
 });
 
-electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
-    if (unamePlatform !== "darwin") {
+if (unamePlatform !== "darwin") {
+    const fac = new FastAverageColor();
+
+    electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
         const zoomFactor = event.sender.getZoomFactor();
         const electronRect: Electron.Rectangle = {
             x: rect.left * zoomFactor,
@@ -598,15 +600,14 @@ electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimens
         const overlay = await event.sender.capturePage(electronRect);
         const overlayBuffer = overlay.toPNG();
         const png = PNG.sync.read(overlayBuffer);
-        const fac = new FastAverageColor();
         const color = fac.prepareResult(fac.getColorFromArray4(png.data));
         const window = electron.BrowserWindow.fromWebContents(event.sender);
         window.setTitleBarOverlay({
             color: unamePlatform === "linux" ? color.rgba : "#00000000", // Windows supports a true transparent overlay, so we don't need to set a background color.
             symbolColor: color.isDark ? "white" : "black",
         });
-    }
-});
+    });
+}
 
 async function createNewWaveWindow() {
     const clientData = await services.ClientService.GetClientData();
