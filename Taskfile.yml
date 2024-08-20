@@ -18,8 +18,7 @@ tasks:
         cmds:
             - yarn dev
         deps:
-            - build:server
-            - build:wsh
+            - build:backend
         env:
             WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
             WCLOUD_WS_ENDPOINT: "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
@@ -29,8 +28,7 @@ tasks:
         cmds:
             - yarn start
         deps:
-            - build:server
-            - build:wsh
+            - build:backend
 
     package:
         desc: Package the application for the current platform.
@@ -39,12 +37,18 @@ tasks:
               ignore_error: true
             - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
         deps:
-            - build:server
-            - build:wsh
+            - build:backend
+
+    build:backend:
+        desc: Build the wavesrv and wsh components.
+        cmds:
+            - task: build:server
+            - task: build:wsh
 
     build:server:
         desc: Build the wavesrv component.
         deps:
+            - generate
             - build:server:darwin
             - build:server:other
 
@@ -87,7 +91,6 @@ tasks:
         generates:
             - dist/bin/wavesrv.{{.GOARCH}}{{exeExt}}
         deps:
-            - generate
             - go:mod:tidy
         internal: true
 
@@ -120,6 +123,8 @@ tasks:
               vars:
                   GOOS: windows
                   GOARCH: arm64
+        deps:
+            - generate
 
     dev:installwsh:
         desc: quick shortcut to rebuild wsh and install for macos arm64
@@ -150,7 +155,6 @@ tasks:
         cmds:
             - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         deps:
-            - generate
             - go:mod:tidy
         internal: true
 
