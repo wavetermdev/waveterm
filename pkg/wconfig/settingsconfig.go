@@ -101,19 +101,19 @@ type TelemetrySettingsType struct {
 }
 
 type SettingsConfigType struct {
-	MimeTypes      map[string]MimeTypeConfigType `json:"mimetypes"`
-	Term           TerminalConfigType            `json:"term"`
-	Ai             *AiConfigType                 `json:"ai"`
-	Widgets        []WidgetsConfigType           `json:"widgets"`
-	BlockHeader    BlockHeaderOpts               `json:"blockheader"`
-	AutoUpdate     *AutoUpdateOpts               `json:"autoupdate"`
-	TermThemes     TermThemesConfigType          `json:"termthemes"`
-	WindowSettings WindowSettingsType            `json:"window"`
-	Web            WebConfigType                 `json:"web"`
-	Telemetry      *TelemetrySettingsType        `json:"telemetry"`
-
-	DefaultMeta *waveobj.MetaMapType            `json:"defaultmeta,omitempty"`
-	Presets     map[string]*waveobj.MetaMapType `json:"presets,omitempty"`
+	MimeTypes      map[string]MimeTypeConfigType   `json:"mimetypes"`
+	Term           TerminalConfigType              `json:"term"`
+	Ai             *AiConfigType                   `json:"ai"`
+	DefaultWidgets []WidgetsConfigType             `json:"defaultwidgets"`
+	Widgets        []WidgetsConfigType             `json:"widgets"`
+	WidgetShowHelp *bool                           `json:"widget:showhelp"`
+	BlockHeader    BlockHeaderOpts                 `json:"blockheader"`
+	AutoUpdate     *AutoUpdateOpts                 `json:"autoupdate"`
+	TermThemes     TermThemesConfigType            `json:"termthemes"`
+	WindowSettings WindowSettingsType              `json:"window"`
+	Web            WebConfigType                   `json:"web"`
+	Telemetry      *TelemetrySettingsType          `json:"telemetry"`
+	Presets        map[string]*waveobj.MetaMapType `json:"presets,omitempty"`
 }
 
 var DefaultTermDarkTheme = TermThemeType{
@@ -280,6 +280,26 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 	}
 	defaultWidgets := []WidgetsConfigType{
 		{
+			Icon:  "square-terminal",
+			Label: "terminal",
+			BlockDef: wstore.BlockDef{
+				Meta: map[string]any{
+					wstore.MetaKey_View:       "term",
+					wstore.MetaKey_Controller: "shell",
+				},
+			},
+		},
+		{
+			Icon:  "folder",
+			Label: "files",
+			BlockDef: wstore.BlockDef{
+				Meta: map[string]any{
+					wstore.MetaKey_View: "preview",
+					wstore.MetaKey_File: "~",
+				},
+			},
+		},
+		{
 			Icon:  "globe",
 			Label: "web",
 			BlockDef: wstore.BlockDef{
@@ -307,18 +327,9 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 				},
 			},
 		},
-		{
-			Icon:  "circle-question",
-			Label: "help",
-			BlockDef: wstore.BlockDef{
-				Meta: map[string]any{
-					wstore.MetaKey_View: "help",
-				},
-			},
-		},
 	}
-	if settings.Widgets == nil {
-		settings.Widgets = defaultWidgets
+	if settings.DefaultWidgets == nil {
+		settings.DefaultWidgets = defaultWidgets
 	}
 	if settings.TermThemes == nil {
 		settings.TermThemes = make(map[string]TermThemeType)

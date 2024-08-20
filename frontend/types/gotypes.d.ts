@@ -341,14 +341,15 @@ declare global {
         mimetypes: {[key: string]: MimeTypeConfigType};
         term: TerminalConfigType;
         ai: AiConfigType;
+        defaultwidgets: WidgetsConfigType[];
         widgets: WidgetsConfigType[];
+        "widget:showhelp": boolean;
         blockheader: BlockHeaderOpts;
         autoupdate: AutoUpdateOpts;
         termthemes: {[key: string]: TermThemeType};
         window: WindowSettingsType;
         web: WebConfigType;
         telemetry: TelemetrySettingsType;
-        defaultmeta?: MetaType;
         presets?: {[key: string]: MetaType};
     };
 

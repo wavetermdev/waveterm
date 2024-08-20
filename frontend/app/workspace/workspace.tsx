@@ -5,7 +5,6 @@ import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { atoms, createBlock } from "@/store/global";
-import * as services from "@/store/services";
 import * as util from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -18,87 +17,61 @@ const iconRegex = /^[a-z0-9-]+$/;
 const Widgets = React.memo(() => {
     const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
     const newWidgetModalVisible = React.useState(false);
-    async function clickTerminal() {
-        const termBlockDef: BlockDef = {
+    const helpWidget: WidgetsConfigType = {
+        icon: "circle-question",
+        label: "help",
+        blockdef: {
             meta: {
-                controller: "shell",
-                view: "term",
+                view: "help",
             },
-        };
-        createBlock(termBlockDef);
-    }
-
-    async function clickHome() {
-        const editDef: BlockDef = {
-            meta: {
-                view: "preview",
-                file: "~",
-            },
-        };
-        createBlock(editDef);
-    }
-    async function clickWeb() {
-        const editDef: BlockDef = {
-            meta: {
-                view: "web",
-                url: "https://waveterm.dev/",
-            },
-        };
-        createBlock(editDef);
-    }
-    async function handleWidgetSelect(blockDef: BlockDef) {
-        createBlock(blockDef);
-    }
-
-    async function handleCreateWidget(newWidget: WidgetsConfigType) {
-        await services.FileService.AddWidget(newWidget);
-    }
-
-    async function handleRemoveWidget(idx: number) {
-        await services.FileService.RemoveWidget(idx);
-    }
-
-    function isIconValid(icon: string): boolean {
-        if (util.isBlank(icon)) {
-            return false;
-        }
-        return icon.match(iconRegex) != null;
-    }
-
-    function getIconClass(icon: string): string {
-        if (!isIconValid(icon)) {
-            return "fa fa-solid fa-question fa-fw";
-        }
-        return `fa fa-solid fa-${icon} fa-fw`;
-    }
-
+        },
+    };
+    const showHelp = settingsConfig?.["widget:showhelp"] ?? true;
+    const showDivider = settingsConfig?.defaultwidgets?.length > 0 && settingsConfig?.widgets?.length > 0;
     return (
         <div className="workspace-widgets">
-            <div className="widget" onClick={() => clickTerminal()}>
-                <div className="widget-icon">
-                    <i className="fa fa-solid fa-square-terminal fa-fw" />
-                </div>
-                <div className="widget-label">terminal</div>
+            {settingsConfig?.defaultwidgets?.map((data, idx) => <Widget key={`defwidget-${idx}`} widget={data} />)}
+            {showDivider ? <div className="widget-divider" /> : null}
+            {settingsConfig?.widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} />)}
+            {showHelp ? (
+                <>
+                    <div className="widget-spacer" />
+                    <Widget key="help" widget={helpWidget} />
+                </>
+            ) : null}
+        </div>
+    );
+});
+
+async function handleWidgetSelect(blockDef: BlockDef) {
+    createBlock(blockDef);
+}
+
+function isIconValid(icon: string): boolean {
+    if (util.isBlank(icon)) {
+        return false;
+    }
+    return icon.match(iconRegex) != null;
+}
+
+function getIconClass(icon: string): string {
+    if (!isIconValid(icon)) {
+        return "fa fa-solid fa-question fa-fw";
+    }
+    return `fa fa-solid fa-${icon} fa-fw`;
+}
+
+const Widget = React.memo(({ widget }: { widget: WidgetsConfigType }) => {
+    return (
+        <div
+            className="widget"
+            onClick={() => handleWidgetSelect(widget.blockdef)}
+            title={widget.description || widget.label}
+        >
+            <div className="widget-icon" style={{ color: widget.color }}>
+                <i className={getIconClass(widget.icon)}></i>
             </div>
-            <div className="widget" onClick={() => clickHome()}>
-                <div className="widget-icon">
-                    <i className="fa-sharp fa-solid fa-folder"></i>
-                </div>
-                <div className="widget-label">files</div>
-            </div>
-            {settingsConfig?.widgets?.map((data, idx) => (
-                <div
-                    className="widget"
-                    onClick={() => handleWidgetSelect(data.blockdef)}
-                    key={`widget-${idx}`}
-                    title={data.description || data.label}
-                >
-                    <div className="widget-icon" style={{ color: data.color }}>
-                        <i className={getIconClass(data.icon)}></i>
-                    </div>
-                    {!util.isBlank(data.label) ? <div className="widget-label">{data.label}</div> : null}
-                </div>
-            ))}
+            {!util.isBlank(widget.label) ? <div className="widget-label">{widget.label}</div> : null}
         </div>
     );
 });
