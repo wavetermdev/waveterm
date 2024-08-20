@@ -677,7 +677,7 @@ function getAppMenu() {
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "New Window",
-            accelerator: "CommandOrControl+N",
+            accelerator: "CommandOrControl+Shift+N",
             click: () => fireAndForget(createNewWaveWindow),
         },
         {

@@ -247,8 +247,14 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
         switchTab(-1);
         return true;
     }
-    if (keyutil.checkKeyPressed(waveEvent, "Cmd:t")) {
+    if (keyutil.checkKeyPressed(waveEvent, "Cmd:n")) {
         handleCmdT();
+        return true;
+    }
+    if (keyutil.checkKeyPressed(waveEvent, "Cmd:t")) {
+        const workspace = globalStore.get(atoms.workspace);
+        const newTabName = `T${workspace.tabids.length + 1}`;
+        services.ObjectService.AddTabToWorkspace(newTabName, true);
         return true;
     }
     for (let idx = 1; idx <= 9; idx++) {
