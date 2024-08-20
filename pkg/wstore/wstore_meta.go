@@ -27,6 +27,7 @@ const (
 	MetaKey_File       = "file"
 	MetaKey_Url        = "url"
 	MetaKey_Connection = "connection"
+	MetaKey_History    = "history" // stores an array of history items specific to the block
 
 	MetaKey_Icon      = "icon"
 	MetaKey_IconColor = "icon:color"
@@ -60,12 +61,14 @@ const (
 // for typescript typing
 type MetaTSType struct {
 	// shared
-	View       string `json:"view,omitempty"`
-	Controller string `json:"controller,omitempty"`
-	Title      string `json:"title,omitempty"`
-	File       string `json:"file,omitempty"`
-	Url        string `json:"url,omitempty"`
-	Connection string `json:"connection,omitempty"`
+	View           string   `json:"view,omitempty"`
+	Controller     string   `json:"controller,omitempty"`
+	Title          string   `json:"title,omitempty"`
+	File           string   `json:"file,omitempty"`
+	Url            string   `json:"url,omitempty"`
+	Connection     string   `json:"connection,omitempty"`
+	History        []string `json:"history,omitempty"`
+	HistoryForward []string `json:"history:forward,omitempty"`
 
 	Icon      string `json:"icon,omitempty"`
 	IconColor string `json:"icon:color,omitempty"`

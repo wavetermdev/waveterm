@@ -208,6 +208,8 @@ declare global {
         file?: string;
         url?: string;
         connection?: string;
+        history?: string[];
+        "history:forward"?: string[];
         icon?: string;
         "icon:color"?: string;
         frame?: boolean;

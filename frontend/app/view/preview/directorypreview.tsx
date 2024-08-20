@@ -34,7 +34,6 @@ interface DirectoryTableProps {
     search: string;
     focusIndex: number;
     setFocusIndex: (_: number) => void;
-    setFileName: (_: string) => void;
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
     setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
@@ -130,7 +129,6 @@ function DirectoryTable({
     search,
     focusIndex,
     setFocusIndex,
-    setFileName,
     setSearch,
     setSelectedPath,
     setRefreshVersion,
@@ -301,7 +299,6 @@ function DirectoryTable({
                     table={table}
                     search={search}
                     focusIndex={focusIndex}
-                    setFileName={setFileName}
                     setFocusIndex={setFocusIndex}
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
@@ -314,7 +311,6 @@ function DirectoryTable({
                     table={table}
                     search={search}
                     focusIndex={focusIndex}
-                    setFileName={setFileName}
                     setFocusIndex={setFocusIndex}
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
@@ -332,7 +328,6 @@ interface TableBodyProps {
     search: string;
     focusIndex: number;
     setFocusIndex: (_: number) => void;
-    setFileName: (_: string) => void;
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
     setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
@@ -345,7 +340,6 @@ function TableBody({
     search,
     focusIndex,
     setFocusIndex,
-    setFileName,
     setSearch,
     setSelectedPath,
     setRefreshVersion,
@@ -478,7 +472,7 @@ function TableBody({
                 key={row.id}
                 onDoubleClick={() => {
                     const newFileName = row.getValue("path") as string;
-                    setFileName(newFileName);
+                    model.goHistory(newFileName);
                     setSearch("");
                 }}
                 onClick={() => setFocusIndex(idx)}
@@ -495,7 +489,7 @@ function TableBody({
                 ))}
             </div>
         ),
-        [setSearch, setFileName, handleFileContextMenu, setFocusIndex, focusIndex]
+        [setSearch, handleFileContextMenu, setFocusIndex, focusIndex]
     );
 
     const handleScrollbarInitialized = (instance) => {
@@ -535,7 +529,7 @@ const MemoizedTableBody = React.memo(
 ) as typeof TableBody;
 
 interface DirectoryPreviewProps {
-    fileNameAtom: jotai.WritableAtom<string, [string], void>;
+    fileNameAtom: jotai.Atom<string>;
     model: PreviewModel;
 }
 
@@ -544,7 +538,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
     const [filteredData, setFilteredData] = useState<FileInfo[]>([]);
-    const [fileName, setFileName] = jotai.useAtom(fileNameAtom);
+    const fileName = jotai.useAtomValue(fileNameAtom);
     const showHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = jotai.useAtom(model.refreshVersion);
@@ -597,7 +591,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 if (filteredData.length == 0) {
                     return;
                 }
-                setFileName(selectedPath);
+                model.goHistory(selectedPath);
                 setSearchText("");
                 return true;
             }
@@ -645,7 +639,6 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 data={filteredData}
                 search={searchText}
                 focusIndex={focusIndex}
-                setFileName={setFileName}
                 setFocusIndex={setFocusIndex}
                 setSearch={setSearchText}
                 setSelectedPath={setSelectedPath}

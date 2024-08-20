@@ -7,6 +7,8 @@ import { createBlock, globalStore, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
+import * as historyutil from "@/util/historyutil";
+import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -43,7 +45,7 @@ export class PreviewModel implements ViewModel {
     ceReadOnly: jotai.PrimitiveAtom<boolean>;
     isCeView: jotai.PrimitiveAtom<boolean>;
 
-    fileName: jotai.WritableAtom<string, [string], void>;
+    fileName: jotai.Atom<string>;
     connection: jotai.Atom<string>;
     statFile: jotai.Atom<Promise<FileInfo>>;
     fullFile: jotai.Atom<Promise<FullFile>>;
@@ -80,20 +82,26 @@ export class PreviewModel implements ViewModel {
                     icon: "folder-open",
                     longClick: (e: React.MouseEvent<any>) => {
                         let menuItems: ContextMenuItem[] = [];
-                        menuItems.push({ label: "Go to Home", click: () => globalStore.set(this.fileName, "~") });
+                        menuItems.push({
+                            label: "Go to Home",
+                            click: () => this.goHistory("~"),
+                        });
                         menuItems.push({
                             label: "Go to Desktop",
-                            click: () => globalStore.set(this.fileName, "~/Desktop"),
+                            click: () => this.goHistory("~/Desktop"),
                         });
                         menuItems.push({
                             label: "Go to Downloads",
-                            click: () => globalStore.set(this.fileName, "~/Downloads"),
+                            click: () => this.goHistory("~/Downloads"),
                         });
                         menuItems.push({
                             label: "Go to Documents",
-                            click: () => globalStore.set(this.fileName, "~/Documents"),
+                            click: () => this.goHistory("~/Documents"),
                         });
-                        menuItems.push({ label: "Go to Root", click: () => globalStore.set(this.fileName, "/") });
+                        menuItems.push({
+                            label: "Go to Root",
+                            click: () => this.goHistory("/"),
+                        });
                         ContextMenuModel.showContextMenu(menuItems, e);
                     },
                 };
@@ -164,7 +172,7 @@ export class PreviewModel implements ViewModel {
             return {
                 elemtype: "iconbutton",
                 icon: "chevron-left",
-                click: this.handleBack.bind(this),
+                click: this.goParentDirectory.bind(this),
             };
         });
         this.endIconButtons = jotai.atom((get) => {
@@ -188,18 +196,13 @@ export class PreviewModel implements ViewModel {
             }
             return null;
         });
-        this.fileName = jotai.atom<string, [string], void>(
-            (get) => {
-                const file = get(this.blockAtom)?.meta?.file;
-                if (util.isBlank(file)) {
-                    return "~";
-                }
-                return file;
-            },
-            (get, set, update) => {
-                services.ObjectService.UpdateObjectMeta(`block:${blockId}`, { file: update });
+        this.fileName = jotai.atom<string>((get) => {
+            const file = get(this.blockAtom)?.meta?.file;
+            if (util.isBlank(file)) {
+                return "~";
             }
-        );
+            return file;
+        });
         this.connection = jotai.atom<string>((get) => {
             return get(this.blockAtom)?.meta?.connection;
         });
@@ -232,20 +235,58 @@ export class PreviewModel implements ViewModel {
         });
         this.newFileContent = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
 
-        this.handleBack = this.handleBack.bind(this);
+        this.goParentDirectory = this.goParentDirectory.bind(this);
     }
 
-    handleBack() {
+    goHistory(newPath: string) {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const fileName = globalStore.get(this.fileName);
         if (fileName == null) {
             return;
         }
-        const splitPath = fileName.split("/");
-        console.log("splitPath-1", splitPath);
-        splitPath.pop();
-        console.log("splitPath-2", splitPath);
-        const newPath = splitPath.join("/");
-        globalStore.set(this.fileName, newPath);
+        const updateMeta = historyutil.goHistory("file", fileName, newPath, blockMeta);
+        if (updateMeta == null) {
+            return;
+        }
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+    }
+
+    goParentDirectory() {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+        const fileName = globalStore.get(this.fileName);
+        if (fileName == null) {
+            return;
+        }
+        const newPath = historyutil.getParentDirectory(fileName);
+        const updateMeta = historyutil.goHistory("file", fileName, newPath, blockMeta);
+        if (updateMeta == null) {
+            return;
+        }
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+    }
+
+    goHistoryBack() {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+        const curPath = globalStore.get(this.fileName);
+        const updateMeta = historyutil.goHistoryBack("file", curPath, blockMeta, true);
+        if (updateMeta == null) {
+            return;
+        }
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+    }
+
+    goHistoryForward() {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+        const curPath = globalStore.get(this.fileName);
+        const updateMeta = historyutil.goHistoryForward("file", curPath, blockMeta);
+        if (updateMeta == null) {
+            return;
+        }
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
     toggleCodeEditorReadOnly(readOnly: boolean) {
@@ -313,6 +354,23 @@ export class PreviewModel implements ViewModel {
     giveFocus(): boolean {
         if (this.directoryInputElem) {
             this.directoryInputElem.focus({ preventScroll: true });
+            return true;
+        }
+        return false;
+    }
+
+    keyDownHandler(e: WaveKeyboardEvent): boolean {
+        if (keyutil.checkKeyPressed(e, "Cmd:ArrowLeft")) {
+            this.goHistoryBack();
+            return true;
+        }
+        if (keyutil.checkKeyPressed(e, "Cmd:ArrowRight")) {
+            this.goHistoryForward();
+            return true;
+        }
+        if (keyutil.checkKeyPressed(e, "Cmd:ArrowUp")) {
+            // handle up directory
+            this.goParentDirectory();
             return true;
         }
         return false;
