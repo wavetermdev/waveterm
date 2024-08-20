@@ -202,6 +202,7 @@ declare global {
         onSearch?: (text: string) => void;
         getSettingsMenuItems?: () => ContextMenuItem[];
         giveFocus?: () => boolean;
+        keyDownHandler?: (e: WaveKeyboardEvent) => boolean;
     }
 
     type UpdaterStatus = "up-to-date" | "checking" | "downloading" | "ready" | "error" | "installing";

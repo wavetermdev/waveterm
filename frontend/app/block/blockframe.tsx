@@ -8,7 +8,7 @@ import { atoms, globalStore, useBlockAtom, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { MagnifyIcon } from "@/element/magnify";
 import { useLayoutModel } from "@/layout/index";
-import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -258,13 +258,15 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
 
-    function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
+    function handleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(waveEvent, "Cmd:m")) {
-            e.preventDefault();
             layoutModel?.onMagnifyToggle();
-            return;
+            return true;
         }
+        if (viewModel?.keyDownHandler) {
+            return viewModel.keyDownHandler(waveEvent);
+        }
+        return false;
     }
     const innerStyle: React.CSSProperties = {};
     if (!preview && customBg?.bg != null) {
@@ -290,7 +292,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
-            onKeyDown={handleKeyDown}
+            onKeyDown={keydownWrapper(handleKeyDown)}
         >
             <BlockMask blockId={blockId} preview={preview} isFocused={isFocused} />
             <div className="block-frame-default-inner" style={innerStyle}>
