@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"golang.org/x/term"
@@ -251,6 +252,9 @@ func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, erro
 	if rpcCtx.Conn != "" {
 		claims["conn"] = rpcCtx.Conn
 	}
+	if rpcCtx.ClientType != "" {
+		claims["ctype"] = rpcCtx.ClientType
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString([]byte(wavebase.JwtSecret))
 	if err != nil {
@@ -307,6 +311,11 @@ func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
 			rpcCtx.Conn = conn
 		}
 	}
+	if claims["ctype"] != nil {
+		if ctype, ok := claims["ctype"].(string); ok {
+			rpcCtx.ClientType = ctype
+		}
+	}
 	return rpcCtx
 }
 
@@ -326,7 +335,28 @@ func RunWshRpcOverListener(listener net.Listener) {
 	}
 }
 
+func MakeRouteIdFromCtx(rpcCtx *wshrpc.RpcContext) (string, error) {
+	if rpcCtx.ClientType != "" {
+		if rpcCtx.ClientType == wshrpc.ClientType_ConnServer {
+			if rpcCtx.Conn != "" {
+				return MakeConnectionRouteId(rpcCtx.Conn), nil
+			}
+			return "", fmt.Errorf("invalid connserver connection, no conn id")
+		}
+		if rpcCtx.ClientType == wshrpc.ClientType_BlockController {
+			if rpcCtx.BlockId != "" {
+				return MakeControllerRouteId(rpcCtx.BlockId), nil
+			}
+			return "", fmt.Errorf("invalid block controller connection, no block id")
+		}
+		return "", fmt.Errorf("invalid client type: %q", rpcCtx.ClientType)
+	}
+	procId := uuid.New().String()
+	return MakeProcRouteId(procId), nil
+}
+
 func handleDomainSocketClient(conn net.Conn) {
+	var routeIdContainer atomic.Pointer[string]
 	proxy := MakeRpcProxy()
 	go func() {
 		writeErr := AdaptOutputChToStream(proxy.ToRemoteCh, conn)
@@ -336,7 +366,13 @@ func handleDomainSocketClient(conn net.Conn) {
 	}()
 	go func() {
 		// when input is closed, close the connection
-		defer conn.Close()
+		defer func() {
+			conn.Close()
+			routeIdPtr := routeIdContainer.Load()
+			if routeIdPtr != nil && *routeIdPtr != "" {
+				DefaultRouter.UnregisterRoute(*routeIdPtr)
+			}
+		}()
 		AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
 	}()
 	rpcCtx, err := proxy.HandleAuthentication()
@@ -348,11 +384,14 @@ func handleDomainSocketClient(conn net.Conn) {
 	// now that we're authenticated, set the ctx and attach to the router
 	log.Printf("domain socket connection authenticated: %#v\n", rpcCtx)
 	proxy.SetRpcContext(rpcCtx)
-	if rpcCtx.BlockId != "" {
-		DefaultRouter.RegisterRoute(MakeControllerRouteId(rpcCtx.BlockId), proxy)
-	} else if rpcCtx.Conn != "" {
-		DefaultRouter.RegisterRoute(MakeConnectionRouteId(rpcCtx.Conn), proxy)
+	routeId, err := MakeRouteIdFromCtx(rpcCtx)
+	if err != nil {
+		conn.Close()
+		log.Printf("error making route id: %v\n", err)
+		return
 	}
+	routeIdContainer.Store(&routeId)
+	DefaultRouter.RegisterRoute(routeId, proxy)
 }
 
 // only for use on client

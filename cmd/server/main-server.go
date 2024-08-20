@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/telemetry"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wcloud"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web"
@@ -116,7 +117,7 @@ func sendTelemetryWrapper() {
 	}()
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	client, err := wstore.DBGetSingleton[*wstore.Client](ctx)
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
 		log.Printf("[error] getting client data for telemetry: %v\n", err)
 		return
@@ -133,7 +134,7 @@ func startupActivityUpdate() {
 	activity := telemetry.ActivityUpdate{
 		Startup: 1,
 	}
-	activity.NumTabs, _ = wstore.DBGetCount[*wstore.Tab](ctx)
+	activity.NumTabs, _ = wstore.DBGetCount[*waveobj.Tab](ctx)
 	err := telemetry.UpdateActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
 	if err != nil {
 		log.Printf("error updating startup activity: %v\n", err)

@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +34,7 @@ var (
 var usingHtmlMode bool
 var WrappedStdin io.Reader = os.Stdin
 var RpcClient *wshutil.WshRpc
+var RpcContext wshrpc.RpcContext
 var UsingTermWshMode bool
 
 func extraShutdownFn() {
@@ -78,6 +80,11 @@ func setupRpcClient(serverImpl wshutil.ServerImpl) error {
 		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(serverImpl)
 		return nil
 	}
+	rpcCtx, err := wshutil.ExtractUnverifiedRpcContext(jwtToken)
+	if err != nil {
+		return fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)
+	}
+	RpcContext = *rpcCtx
 	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
 	if err != nil {
 		return fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
@@ -162,6 +169,7 @@ func Execute() {
 		r := recover()
 		if r != nil {
 			WriteStderr("[panic] %v\n", r)
+			debug.PrintStack()
 			wshutil.DoShutdown("", 1, true)
 		} else {
 			wshutil.DoShutdown("", 0, false)

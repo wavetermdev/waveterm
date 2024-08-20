@@ -13,7 +13,7 @@ class WshServerType {
     }
 
     // command "authenticate" [call]
-	AuthenticateCommand(data: string, opts?: RpcOpts): Promise<void> {
+	AuthenticateCommand(data: string, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
         return WOS.wshServerRpcHelper_call("authenticate", data, opts);
     }
 

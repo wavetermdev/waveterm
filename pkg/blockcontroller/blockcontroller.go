@@ -54,9 +54,9 @@ var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
 type BlockInputUnion struct {
-	InputData []byte           `json:"inputdata,omitempty"`
-	SigName   string           `json:"signame,omitempty"`
-	TermSize  *wstore.TermSize `json:"termsize,omitempty"`
+	InputData []byte            `json:"inputdata,omitempty"`
+	SigName   string            `json:"signame,omitempty"`
+	TermSize  *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
 type BlockController struct {
@@ -64,7 +64,7 @@ type BlockController struct {
 	ControllerType  string
 	TabId           string
 	BlockId         string
-	BlockDef        *wstore.BlockDef
+	BlockDef        *waveobj.BlockDef
 	Status          string
 	CreatedHtmlFile bool
 	ShellProc       *shellexec.ShellProc
@@ -115,7 +115,7 @@ func (bc *BlockController) getShellProc() *shellexec.ShellProc {
 }
 
 type RunShellOpts struct {
-	TermSize wstore.TermSize `json:"termsize,omitempty"`
+	TermSize waveobj.TermSize `json:"termsize,omitempty"`
 }
 
 func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
@@ -127,7 +127,7 @@ func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
 		log.Printf("sending blockcontroller update %#v\n", bc.GetRuntimeStatus())
 		go eventbus.SendEvent(eventbus.WSEventType{
 			EventType: eventbus.WSEvent_BlockControllerStatus,
-			ORef:      waveobj.MakeORef(wstore.OType_Block, bc.BlockId).String(),
+			ORef:      waveobj.MakeORef(waveobj.OType_Block, bc.BlockId).String(),
 			Data:      bc.GetRuntimeStatus(),
 		})
 	}
@@ -145,7 +145,7 @@ func HandleTruncateBlockFile(blockId string, blockFile string) error {
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
+		ORef:      waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   blockId,
 			FileName: blockFile,
@@ -165,7 +165,7 @@ func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
+		ORef:      waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   blockId,
 			FileName: blockFile,
@@ -180,9 +180,9 @@ func (bc *BlockController) resetTerminalState() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	var shouldTruncate bool
-	blockData, getBlockDataErr := wstore.DBMustGet[*wstore.Block](ctx, bc.BlockId)
+	blockData, getBlockDataErr := wstore.DBMustGet[*waveobj.Block](ctx, bc.BlockId)
 	if getBlockDataErr == nil {
-		shouldTruncate = blockData.Meta.GetBool(wstore.MetaKey_CmdClearOnRestart, false)
+		shouldTruncate = blockData.Meta.GetBool(waveobj.MetaKey_CmdClearOnRestart, false)
 	}
 	if shouldTruncate {
 		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Term)
@@ -231,7 +231,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	if shellProcErr != nil {
 		return shellProcErr
 	}
-	remoteName := blockMeta.GetString(wstore.MetaKey_Connection, "")
+	remoteName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
 	var cmdStr string
 	cmdOpts := shellexec.CommandOptsType{
 		Env: make(map[string]string),
@@ -239,22 +239,22 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
-		cmdOpts.Cwd = blockMeta.GetString(wstore.MetaKey_CmdCwd, "")
+		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
 		if cmdOpts.Cwd != "" {
 			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
 		}
 	} else if bc.ControllerType == BlockController_Cmd {
-		cmdStr = blockMeta.GetString(wstore.MetaKey_Cmd, "")
+		cmdStr = blockMeta.GetString(waveobj.MetaKey_Cmd, "")
 		if cmdStr == "" {
 			return fmt.Errorf("missing cmd in block meta")
 		}
-		cmdOpts.Cwd = blockMeta.GetString(wstore.MetaKey_CmdCwd, "")
+		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
 		if cmdOpts.Cwd != "" {
 			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
 		}
-		cmdOpts.Interactive = blockMeta.GetBool(wstore.MetaKey_CmdInteractive, false)
-		cmdOpts.Login = blockMeta.GetBool(wstore.MetaKey_CmdLogin, false)
-		cmdEnv := blockMeta.GetMap(wstore.MetaKey_CmdEnv)
+		cmdOpts.Interactive = blockMeta.GetBool(waveobj.MetaKey_CmdInteractive, false)
+		cmdOpts.Login = blockMeta.GetBool(waveobj.MetaKey_CmdLogin, false)
+		cmdEnv := blockMeta.GetMap(waveobj.MetaKey_CmdEnv)
 		for k, v := range cmdEnv {
 			if v == nil {
 				continue
@@ -282,8 +282,8 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		if err != nil {
 			return err
 		}
-		if !blockMeta.GetBool(wstore.MetaKey_CmdNoWsh, false) {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, conn.SockName)
+		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.SockName)
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}
@@ -294,7 +294,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			return err
 		}
 	} else {
-		if !blockMeta.GetBool(wstore.MetaKey_CmdNoWsh, false) {
+		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
@@ -404,18 +404,18 @@ func getBoolFromMeta(meta map[string]any, key string, def bool) bool {
 	return def
 }
 
-func getTermSize(bdata *wstore.Block) wstore.TermSize {
+func getTermSize(bdata *waveobj.Block) waveobj.TermSize {
 	if bdata.RuntimeOpts != nil {
 		return bdata.RuntimeOpts.TermSize
 	} else {
-		return wstore.TermSize{
+		return waveobj.TermSize{
 			Rows: 25,
 			Cols: 80,
 		}
 	}
 }
 
-func (bc *BlockController) run(bdata *wstore.Block, blockMeta map[string]any) {
+func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any) {
 	defer func() {
 		bc.UpdateControllerAndSendUpdate(func() bool {
 			if bc.Status == Status_Running {
@@ -432,18 +432,18 @@ func (bc *BlockController) run(bdata *wstore.Block, blockMeta map[string]any) {
 		bc.Status = Status_Running
 		return true
 	})
-	controllerName := bdata.Meta.GetString(wstore.MetaKey_Controller, "")
+	controllerName := bdata.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
 		log.Printf("unknown controller %q\n", controllerName)
 		return
 	}
-	if getBoolFromMeta(blockMeta, wstore.MetaKey_CmdClearOnStart, false) {
+	if getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdClearOnStart, false) {
 		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Term)
 		if err != nil {
 			log.Printf("error truncating term blockfile: %v\n", err)
 		}
 	}
-	runOnStart := getBoolFromMeta(blockMeta, wstore.MetaKey_CmdRunOnStart, true)
+	runOnStart := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnStart, true)
 	if runOnStart {
 		go func() {
 			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: getTermSize(bdata)}, bdata.Meta)
@@ -466,7 +466,7 @@ func (bc *BlockController) SendInput(inputUnion *BlockInputUnion) error {
 func (bc *BlockController) RestartController() error {
 	// TODO: if shell command is already running
 	// we probably want to kill it off, wait, and then restart it
-	bdata, err := wstore.DBMustGet[*wstore.Block](context.Background(), bc.BlockId)
+	bdata, err := wstore.DBMustGet[*waveobj.Block](context.Background(), bc.BlockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
@@ -479,11 +479,11 @@ func (bc *BlockController) RestartController() error {
 
 func StartBlockController(ctx context.Context, tabId string, blockId string) error {
 	log.Printf("start blockcontroller %q\n", blockId)
-	blockData, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
-	controllerName := blockData.Meta.GetString(wstore.MetaKey_Controller, "")
+	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName == "" {
 		// nothing to start
 		return nil

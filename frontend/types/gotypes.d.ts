@@ -22,7 +22,7 @@ declare global {
         installonquit: boolean;
     };
 
-    // wstore.Block
+    // waveobj.Block
     type Block = WaveObj & {
         blockdef: BlockDef;
         runtimeopts?: RuntimeOpts;
@@ -36,7 +36,7 @@ declare global {
         shellprocstatus?: string;
     };
 
-    // wstore.BlockDef
+    // waveobj.BlockDef
     type BlockDef = {
         files?: {[key: string]: FileDef};
         meta?: MetaType;
@@ -54,7 +54,7 @@ declare global {
         inputdata64: string;
     };
 
-    // wstore.Client
+    // waveobj.Client
     type Client = WaveObj & {
         windowids: string[];
         tosagreed?: number;
@@ -65,6 +65,11 @@ declare global {
         zoneid: string;
         filename: string;
         data: {[key: string]: any};
+    };
+
+    // wshrpc.CommandAuthenticateRtnData
+    type CommandAuthenticateRtnData = {
+        routeid: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -158,7 +163,7 @@ declare global {
         count: number;
     };
 
-    // wstore.FileDef
+    // waveobj.FileDef
     type FileDef = {
         filetype?: string;
         path?: string;
@@ -194,13 +199,13 @@ declare global {
         data64: string;
     };
 
-    // wstore.LayoutState
+    // waveobj.LayoutState
     type LayoutState = WaveObj & {
         rootnode?: any;
         magnifiednodeid?: string;
     };
 
-    // wstore.MetaTSType
+    // waveobj.MetaTSType
     type MetaType = {
         view?: string;
         controller?: string;
@@ -297,7 +302,7 @@ declare global {
         prompt: OpenAIPromptMessageType[];
     };
 
-    // wstore.Point
+    // waveobj.Point
     type Point = {
         x: number;
         y: number;
@@ -325,7 +330,7 @@ declare global {
         route?: string;
     };
 
-    // wstore.RuntimeOpts
+    // waveobj.RuntimeOpts
     type RuntimeOpts = {
         termsize?: TermSize;
         winsize?: WinSize;
@@ -355,20 +360,20 @@ declare global {
         presets?: {[key: string]: MetaType};
     };
 
-    // wstore.StickerClickOptsType
+    // waveobj.StickerClickOptsType
     type StickerClickOptsType = {
         sendinput?: string;
         createblock?: BlockDef;
     };
 
-    // wstore.StickerDisplayOptsType
+    // waveobj.StickerDisplayOptsType
     type StickerDisplayOptsType = {
         icon: string;
         imgsrc: string;
         svgblob?: string;
     };
 
-    // wstore.StickerType
+    // waveobj.StickerType
     type StickerType = {
         stickertype: string;
         style: {[key: string]: any};
@@ -383,7 +388,7 @@ declare global {
         allscopes?: boolean;
     };
 
-    // wstore.Tab
+    // waveobj.Tab
     type Tab = WaveObj & {
         name: string;
         layoutstate: string;
@@ -395,7 +400,7 @@ declare global {
         enabled: boolean;
     };
 
-    // wstore.TermSize
+    // waveobj.TermSize
     type TermSize = {
         rows: number;
         cols: number;
@@ -440,7 +445,7 @@ declare global {
         values: {[key: string]: number};
     };
 
-    // wstore.UIContext
+    // waveobj.UIContext
     type UIContext = {
         windowid: string;
         activetabid: string;
@@ -558,7 +563,7 @@ declare global {
         meta: MetaType;
     };
 
-    // wstore.WaveObjUpdate
+    // waveobj.WaveObjUpdate
     type WaveObjUpdate = {
         updatetype: string;
         otype: string;
@@ -566,7 +571,7 @@ declare global {
         obj?: WaveObj;
     };
 
-    // wstore.Window
+    // waveobj.Window
     type WaveWindow = WaveObj & {
         workspaceid: string;
         activetabid: string;
@@ -607,7 +612,7 @@ declare global {
         blockdef: BlockDef;
     };
 
-    // wstore.WinSize
+    // waveobj.WinSize
     type WinSize = {
         width: number;
         height: number;
@@ -622,7 +627,7 @@ declare global {
         reducedmotion: boolean;
     };
 
-    // wstore.Workspace
+    // waveobj.Workspace
     type Workspace = WaveObj & {
         name: string;
         tabids: string[];

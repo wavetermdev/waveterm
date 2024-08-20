@@ -4,10 +4,8 @@
 package wstore
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,154 +13,26 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
-var waveObjUpdateKey = struct{}{}
-
-type UpdatesRtnType = []WaveObjUpdate
-
 func init() {
-	for _, rtype := range AllWaveObjTypes() {
+	for _, rtype := range waveobj.AllWaveObjTypes() {
 		waveobj.RegisterType(rtype)
 	}
 }
 
-type contextUpdatesType struct {
-	UpdatesStack []map[waveobj.ORef]WaveObjUpdate
-}
-
-func dumpUpdateStack(updates *contextUpdatesType) {
-	log.Printf("dumpUpdateStack len:%d\n", len(updates.UpdatesStack))
-	for idx, update := range updates.UpdatesStack {
-		var buf bytes.Buffer
-		buf.WriteString(fmt.Sprintf("  [%d]:", idx))
-		for k := range update {
-			buf.WriteString(fmt.Sprintf(" %s:%s", k.OType, k.OID))
-		}
-		buf.WriteString("\n")
-		log.Print(buf.String())
-	}
-}
-
-func ContextWithUpdates(ctx context.Context) context.Context {
-	updatesVal := ctx.Value(waveObjUpdateKey)
-	if updatesVal != nil {
-		return ctx
-	}
-	return context.WithValue(ctx, waveObjUpdateKey, &contextUpdatesType{
-		UpdatesStack: []map[waveobj.ORef]WaveObjUpdate{make(map[waveobj.ORef]WaveObjUpdate)},
-	})
-}
-
-func ContextGetUpdates(ctx context.Context) map[waveobj.ORef]WaveObjUpdate {
-	updatesVal := ctx.Value(waveObjUpdateKey)
-	if updatesVal == nil {
-		return nil
-	}
-	updates := updatesVal.(*contextUpdatesType)
-	if len(updates.UpdatesStack) == 1 {
-		return updates.UpdatesStack[0]
-	}
-	rtn := make(map[waveobj.ORef]WaveObjUpdate)
-	for _, update := range updates.UpdatesStack {
-		for k, v := range update {
-			rtn[k] = v
-		}
-	}
-	return rtn
-}
-
-func ContextGetUpdatesRtn(ctx context.Context) UpdatesRtnType {
-	updatesMap := ContextGetUpdates(ctx)
-	if updatesMap == nil {
-		return nil
-	}
-	rtn := make(UpdatesRtnType, 0, len(updatesMap))
-	for _, v := range updatesMap {
-		rtn = append(rtn, v)
-	}
-	return rtn
-}
-
-func ContextGetUpdate(ctx context.Context, oref waveobj.ORef) *WaveObjUpdate {
-	updatesVal := ctx.Value(waveObjUpdateKey)
-	if updatesVal == nil {
-		return nil
-	}
-	updates := updatesVal.(*contextUpdatesType)
-	for idx := len(updates.UpdatesStack) - 1; idx >= 0; idx-- {
-		if obj, ok := updates.UpdatesStack[idx][oref]; ok {
-			return &obj
-		}
-	}
-	return nil
-}
-
-func ContextAddUpdate(ctx context.Context, update WaveObjUpdate) {
-	updatesVal := ctx.Value(waveObjUpdateKey)
-	if updatesVal == nil {
-		return
-	}
-	updates := updatesVal.(*contextUpdatesType)
-	oref := waveobj.ORef{
-		OType: update.OType,
-		OID:   update.OID,
-	}
-	updates.UpdatesStack[len(updates.UpdatesStack)-1][oref] = update
-}
-
-func ContextUpdatesBeginTx(ctx context.Context) context.Context {
-	updatesVal := ctx.Value(waveObjUpdateKey)
-	if updatesVal == nil {
-		return ctx
-	}
-	updates := updatesVal.(*contextUpdatesType)
-	updates.UpdatesStack = append(updates.UpdatesStack, make(map[waveobj.ORef]WaveObjUpdate))
-	return ctx
-}
-
-func ContextUpdatesCommitTx(ctx context.Context) {
-	updatesVal := ctx.Value(waveObjUpdateKey)
-	if updatesVal == nil {
-		return
-	}
-	updates := updatesVal.(*contextUpdatesType)
-	if len(updates.UpdatesStack) <= 1 {
-		panic(fmt.Errorf("no updates transaction to commit"))
-	}
-	// merge the last two updates
-	curUpdateMap := updates.UpdatesStack[len(updates.UpdatesStack)-1]
-	prevUpdateMap := updates.UpdatesStack[len(updates.UpdatesStack)-2]
-	for k, v := range curUpdateMap {
-		prevUpdateMap[k] = v
-	}
-	updates.UpdatesStack = updates.UpdatesStack[:len(updates.UpdatesStack)-1]
-}
-
-func ContextUpdatesRollbackTx(ctx context.Context) {
-	updatesVal := ctx.Value(waveObjUpdateKey)
-	if updatesVal == nil {
-		return
-	}
-	updates := updatesVal.(*contextUpdatesType)
-	if len(updates.UpdatesStack) <= 1 {
-		panic(fmt.Errorf("no updates transaction to rollback"))
-	}
-	updates.UpdatesStack = updates.UpdatesStack[:len(updates.UpdatesStack)-1]
-}
-
-func CreateTab(ctx context.Context, workspaceId string, name string) (*Tab, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*Tab, error) {
-		ws, _ := DBGet[*Workspace](tx.Context(), workspaceId)
+func CreateTab(ctx context.Context, workspaceId string, name string) (*waveobj.Tab, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.Tab, error) {
+		ws, _ := DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
 		if ws == nil {
 			return nil, fmt.Errorf("workspace not found: %q", workspaceId)
 		}
 		layoutStateId := uuid.NewString()
-		tab := &Tab{
+		tab := &waveobj.Tab{
 			OID:         uuid.NewString(),
 			Name:        name,
 			BlockIds:    []string{},
 			LayoutState: layoutStateId,
 		}
-		layoutState := &LayoutState{
+		layoutState := &waveobj.LayoutState{
 			OID: layoutStateId,
 		}
 		ws.TabIds = append(ws.TabIds, tab.OID)
@@ -173,8 +43,8 @@ func CreateTab(ctx context.Context, workspaceId string, name string) (*Tab, erro
 	})
 }
 
-func CreateWorkspace(ctx context.Context) (*Workspace, error) {
-	ws := &Workspace{
+func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
+	ws := &waveobj.Workspace{
 		OID:    uuid.NewString(),
 		TabIds: []string{},
 	}
@@ -184,7 +54,7 @@ func CreateWorkspace(ctx context.Context) (*Workspace, error) {
 
 func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		ws, _ := DBGet[*Workspace](tx.Context(), workspaceId)
+		ws, _ := DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
 		if ws == nil {
 			return fmt.Errorf("workspace not found: %q", workspaceId)
 		}
@@ -196,12 +66,12 @@ func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []str
 
 func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		window, _ := DBGet[*Window](tx.Context(), windowId)
+		window, _ := DBGet[*waveobj.Window](tx.Context(), windowId)
 		if window == nil {
 			return fmt.Errorf("window not found: %q", windowId)
 		}
 		if tabId != "" {
-			tab, _ := DBGet[*Tab](tx.Context(), tabId)
+			tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
 			if tab == nil {
 				return fmt.Errorf("tab not found: %q", tabId)
 			}
@@ -214,7 +84,7 @@ func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
 
 func UpdateTabName(ctx context.Context, tabId, name string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
 		if tab == nil {
 			return fmt.Errorf("tab not found: %q", tabId)
 		}
@@ -226,14 +96,14 @@ func UpdateTabName(ctx context.Context, tabId, name string) error {
 	})
 }
 
-func CreateBlock(ctx context.Context, tabId string, blockDef *BlockDef, rtOpts *RuntimeOpts) (*Block, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*Block, error) {
-		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.Block, error) {
+		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
 		if tab == nil {
 			return nil, fmt.Errorf("tab not found: %q", tabId)
 		}
 		blockId := uuid.NewString()
-		blockData := &Block{
+		blockData := &waveobj.Block{
 			OID:         blockId,
 			BlockDef:    blockDef,
 			RuntimeOpts: rtOpts,
@@ -257,7 +127,7 @@ func findStringInSlice(slice []string, val string) int {
 
 func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
 		if tab == nil {
 			return fmt.Errorf("tab not found: %q", tabId)
 		}
@@ -267,20 +137,25 @@ func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 		}
 		tab.BlockIds = append(tab.BlockIds[:blockIdx], tab.BlockIds[blockIdx+1:]...)
 		DBUpdate(tx.Context(), tab)
-		DBDelete(tx.Context(), OType_Block, blockId)
+		DBDelete(tx.Context(), waveobj.OType_Block, blockId)
 		return nil
 	})
 }
 
+// must delete all blocks individually first
+// also deletes LayoutState
 func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		ws, _ := DBGet[*Workspace](tx.Context(), workspaceId)
+		ws, _ := DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
 		if ws == nil {
 			return fmt.Errorf("workspace not found: %q", workspaceId)
 		}
-		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
 		if tab == nil {
 			return fmt.Errorf("tab not found: %q", tabId)
+		}
+		if len(tab.BlockIds) != 0 {
+			return fmt.Errorf("tab has blocks, must delete blocks first")
 		}
 		tabIdx := findStringInSlice(ws.TabIds, tabId)
 		if tabIdx == -1 {
@@ -288,16 +163,13 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 		}
 		ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
 		DBUpdate(tx.Context(), ws)
-		DBDelete(tx.Context(), OType_Tab, tabId)
-		DBDelete(tx.Context(), OType_LayoutState, tab.LayoutState)
-		for _, blockId := range tab.BlockIds {
-			DBDelete(tx.Context(), OType_Block, blockId)
-		}
+		DBDelete(tx.Context(), waveobj.OType_Tab, tabId)
+		DBDelete(tx.Context(), waveobj.OType_LayoutState, tab.LayoutState)
 		return nil
 	})
 }
 
-func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta MetaMapType) error {
+func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaMapType) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		if oref.IsEmpty() {
 			return fmt.Errorf("empty object reference")
@@ -310,27 +182,27 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta MetaMapType) 
 		if objMeta == nil {
 			objMeta = make(map[string]any)
 		}
-		newMeta := MergeMeta(objMeta, meta)
+		newMeta := waveobj.MergeMeta(objMeta, meta)
 		waveobj.SetMeta(obj, newMeta)
 		DBUpdate(tx.Context(), obj)
 		return nil
 	})
 }
 
-func CreateWindow(ctx context.Context, winSize *WinSize) (*Window, error) {
+func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Window, error) {
 	windowId := uuid.NewString()
 	workspaceId := uuid.NewString()
 	if winSize == nil {
-		winSize = &WinSize{
+		winSize = &waveobj.WinSize{
 			Width:  1200,
 			Height: 800,
 		}
 	}
-	window := &Window{
+	window := &waveobj.Window{
 		OID:            windowId,
 		WorkspaceId:    workspaceId,
 		ActiveBlockMap: make(map[string]string),
-		Pos: Point{
+		Pos: waveobj.Point{
 			X: 100,
 			Y: 100,
 		},
@@ -340,7 +212,7 @@ func CreateWindow(ctx context.Context, winSize *WinSize) (*Window, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error inserting window: %w", err)
 	}
-	ws := &Workspace{
+	ws := &waveobj.Workspace{
 		OID:  workspaceId,
 		Name: "w" + workspaceId[0:8],
 	}
@@ -356,7 +228,7 @@ func CreateWindow(ctx context.Context, winSize *WinSize) (*Window, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}
-	client, err := DBGetSingleton[*Client](ctx)
+	client, err := DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting client: %w", err)
 	}
@@ -365,16 +237,16 @@ func CreateWindow(ctx context.Context, winSize *WinSize) (*Window, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error updating client: %w", err)
 	}
-	return DBMustGet[*Window](ctx, windowId)
+	return DBMustGet[*waveobj.Window](ctx, windowId)
 }
 
 func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, blockId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		currentTab, _ := DBGet[*Tab](tx.Context(), currentTabId)
+		currentTab, _ := DBGet[*waveobj.Tab](tx.Context(), currentTabId)
 		if currentTab == nil {
 			return fmt.Errorf("current tab not found: %q", currentTabId)
 		}
-		newTab, _ := DBGet[*Tab](tx.Context(), newTabId)
+		newTab, _ := DBGet[*waveobj.Tab](tx.Context(), newTabId)
 		if newTab == nil {
 			return fmt.Errorf("new tab not found: %q", newTabId)
 		}
@@ -390,8 +262,8 @@ func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, b
 	})
 }
 
-func CreateClient(ctx context.Context) (*Client, error) {
-	client := &Client{
+func CreateClient(ctx context.Context) (*waveobj.Client, error) {
+	client := &waveobj.Client{
 		OID:       uuid.NewString(),
 		WindowIds: []string{},
 	}
@@ -406,7 +278,7 @@ func EnsureInitialData() error {
 	// does not need to run in a transaction since it is called on startup
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	client, err := DBGetSingleton[*Client](ctx)
+	client, err := DBGetSingleton[*waveobj.Client](ctx)
 	if err == ErrNotFound {
 		client, err = CreateClient(ctx)
 		if err != nil {
@@ -416,7 +288,7 @@ func EnsureInitialData() error {
 	if len(client.WindowIds) > 0 {
 		return nil
 	}
-	_, err = CreateWindow(ctx, &WinSize{0, 0})
+	_, err = CreateWindow(ctx, &waveobj.WinSize{Height: 0, Width: 0})
 	if err != nil {
 		return fmt.Errorf("error creating window: %w", err)
 	}

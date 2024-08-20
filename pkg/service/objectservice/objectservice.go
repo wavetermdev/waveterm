@@ -13,6 +13,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wcore"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -78,11 +79,11 @@ func (svc *ObjectService) AddTabToWorkspace_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) AddTabToWorkspace(uiContext wstore.UIContext, tabName string, activateTab bool) (string, wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) AddTabToWorkspace(uiContext waveobj.UIContext, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
-	windowData, err := wstore.DBMustGet[*wstore.Window](ctx, uiContext.WindowId)
+	ctx = waveobj.ContextWithUpdates(ctx)
+	windowData, err := wstore.DBMustGet[*waveobj.Window](ctx, uiContext.WindowId)
 	if err != nil {
 		return "", nil, fmt.Errorf("error getting window: %w", err)
 	}
@@ -96,7 +97,7 @@ func (svc *ObjectService) AddTabToWorkspace(uiContext wstore.UIContext, tabName 
 			return "", nil, fmt.Errorf("error setting active tab: %w", err)
 		}
 	}
-	return tab.OID, wstore.ContextGetUpdatesRtn(ctx), nil
+	return tab.OID, waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *ObjectService) UpdateWorkspaceTabIds_Meta() tsgenmeta.MethodMeta {
@@ -105,15 +106,15 @@ func (svc *ObjectService) UpdateWorkspaceTabIds_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) UpdateWorkspaceTabIds(uiContext wstore.UIContext, workspaceId string, tabIds []string) (wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) UpdateWorkspaceTabIds(uiContext waveobj.UIContext, workspaceId string, tabIds []string) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 	err := wstore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
 	if err != nil {
 		return nil, fmt.Errorf("error updating workspace tab ids: %w", err)
 	}
-	return wstore.ContextGetUpdatesRtn(ctx), nil
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *ObjectService) SetActiveTab_Meta() tsgenmeta.MethodMeta {
@@ -122,16 +123,16 @@ func (svc *ObjectService) SetActiveTab_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string) (wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) SetActiveTab(uiContext waveobj.UIContext, tabId string) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 	err := wstore.SetActiveTab(ctx, uiContext.WindowId, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}
 	// check all blocks in tab and start controllers (if necessary)
-	tab, err := wstore.DBMustGet[*wstore.Tab](ctx, tabId)
+	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
@@ -148,9 +149,9 @@ func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tab blocks: %w", err)
 	}
-	updates := wstore.ContextGetUpdatesRtn(ctx)
-	updates = append(updates, wstore.MakeUpdate(tab))
-	updates = append(updates, wstore.MakeUpdates(blocks)...)
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	updates = append(updates, waveobj.MakeUpdate(tab))
+	updates = append(updates, waveobj.MakeUpdates(blocks)...)
 	return updates, nil
 }
 
@@ -160,15 +161,15 @@ func (svc *ObjectService) UpdateTabName_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) UpdateTabName(uiContext wstore.UIContext, tabId, name string) (wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) UpdateTabName(uiContext waveobj.UIContext, tabId, name string) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 	err := wstore.UpdateTabName(ctx, tabId, name)
 	if err != nil {
 		return nil, fmt.Errorf("error updating tab name: %w", err)
 	}
-	return wstore.ContextGetUpdatesRtn(ctx), nil
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *ObjectService) CreateBlock_Meta() tsgenmeta.MethodMeta {
@@ -178,12 +179,12 @@ func (svc *ObjectService) CreateBlock_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) CreateBlock_NoUI(ctx context.Context, tabId string, blockDef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (*wstore.Block, error) {
+func (svc *ObjectService) CreateBlock_NoUI(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
 	blockData, err := wstore.CreateBlock(ctx, tabId, blockDef, rtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	controllerName := blockData.Meta.GetString(wstore.MetaKey_Controller, "")
+	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName != "" {
 		err = blockcontroller.StartBlockController(ctx, tabId, blockData.OID)
 		if err != nil {
@@ -194,20 +195,20 @@ func (svc *ObjectService) CreateBlock_NoUI(ctx context.Context, tabId string, bl
 	return blockData, nil
 }
 
-func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (string, wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) CreateBlock(uiContext waveobj.UIContext, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (string, waveobj.UpdatesRtnType, error) {
 	if uiContext.ActiveTabId == "" {
 		return "", nil, fmt.Errorf("no active tab")
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 
 	blockData, err := svc.CreateBlock_NoUI(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
 	if err != nil {
 		return "", nil, err
 	}
 
-	return blockData.OID, wstore.ContextGetUpdatesRtn(ctx), nil
+	return blockData.OID, waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *ObjectService) DeleteBlock_Meta() tsgenmeta.MethodMeta {
@@ -216,16 +217,15 @@ func (svc *ObjectService) DeleteBlock_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string) (wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) DeleteBlock(uiContext waveobj.UIContext, blockId string) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
-	err := wstore.DeleteBlock(ctx, uiContext.ActiveTabId, blockId)
+	ctx = waveobj.ContextWithUpdates(ctx)
+	err := wcore.DeleteBlock(ctx, uiContext.ActiveTabId, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting block: %w", err)
 	}
-	blockcontroller.StopBlockController(blockId)
-	return wstore.ContextGetUpdatesRtn(ctx), nil
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *ObjectService) CloseTab_Meta() tsgenmeta.MethodMeta {
@@ -240,10 +240,10 @@ func (svc *ObjectService) UpdateObjectMeta_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr string, meta wstore.MetaMapType) (wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) UpdateObjectMeta(uiContext waveobj.UIContext, orefStr string, meta waveobj.MetaMapType) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 	oref, err := parseORef(orefStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing object reference: %w", err)
@@ -252,7 +252,7 @@ func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr s
 	if err != nil {
 		return nil, fmt.Errorf("error updateing %q meta: %w", orefStr, err)
 	}
-	return wstore.ContextGetUpdatesRtn(ctx), nil
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *ObjectService) UpdateObject_Meta() tsgenmeta.MethodMeta {
@@ -261,10 +261,10 @@ func (svc *ObjectService) UpdateObject_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) UpdateObject(uiContext wstore.UIContext, waveObj waveobj.WaveObj, returnUpdates bool) (wstore.UpdatesRtnType, error) {
+func (svc *ObjectService) UpdateObject(uiContext waveobj.UIContext, waveObj waveobj.WaveObj, returnUpdates bool) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 	if waveObj == nil {
 		return nil, fmt.Errorf("update wavobj is nil")
 	}
@@ -281,7 +281,7 @@ func (svc *ObjectService) UpdateObject(uiContext wstore.UIContext, waveObj waveo
 		return nil, fmt.Errorf("error updating object: %w", err)
 	}
 	if returnUpdates {
-		return wstore.ContextGetUpdatesRtn(ctx), nil
+		return waveobj.ContextGetUpdatesRtn(ctx), nil
 	}
 	return nil, nil
 }

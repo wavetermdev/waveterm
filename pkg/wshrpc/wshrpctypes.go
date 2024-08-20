@@ -11,8 +11,8 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/thenextwave/pkg/ijson"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 const LocalConnName = "local"
@@ -25,8 +25,12 @@ const (
 )
 
 const (
-	Command_Authenticate      = "authenticate"
-	Command_Announce          = "announce" // special (for routing)
+	Event_BlockClose = "blockclose"
+)
+
+const (
+	Command_Authenticate      = "authenticate" // special
+	Command_Announce          = "announce"     // special (for routing)
 	Command_Message           = "message"
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"
@@ -53,7 +57,6 @@ const (
 	Command_RemoteFileInfo    = "remotefileinfo"
 	Command_RemoteWriteFile   = "remotewritefile"
 	Command_RemoteFileDelete  = "remotefiledelete"
-	Command_Event             = "event"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -62,11 +65,11 @@ type RespOrErrorUnion[T any] struct {
 }
 
 type WshRpcInterface interface {
-	AuthenticateCommand(ctx context.Context, data string) error
+	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
 	AnnounceCommand(ctx context.Context, data string) error // (special) announces a new route to the main router
 
 	MessageCommand(ctx context.Context, data CommandMessageData) error
-	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (wstore.MetaMapType, error)
+	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (waveobj.MetaMapType, error)
 	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
 	SetViewCommand(ctx context.Context, data CommandBlockSetViewData) error
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
@@ -79,7 +82,6 @@ type WshRpcInterface interface {
 	FileWriteCommand(ctx context.Context, data CommandFileData) error
 	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
 	EventPublishCommand(ctx context.Context, data WaveEvent) error
-	EventRecvCommand(ctx context.Context, data WaveEvent) error
 	EventSubCommand(ctx context.Context, data SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data SubscriptionRequest) error
 	EventUnsubAllCommand(ctx context.Context) error
@@ -87,6 +89,9 @@ type WshRpcInterface interface {
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
+
+	// eventrecv is special, it's handled internally by WshRpc with EventListener
+	EventRecvCommand(ctx context.Context, data WaveEvent) error
 
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[CommandRemoteStreamFileRtnData]
@@ -109,10 +114,16 @@ type RpcOpts struct {
 	StreamCancelFn func() `json:"-"` // this is an *output* parameter, set by the handler
 }
 
+const (
+	ClientType_ConnServer      = "connserver"
+	ClientType_BlockController = "blockcontroller"
+)
+
 type RpcContext struct {
-	BlockId string `json:"blockid,omitempty"`
-	TabId   string `json:"tabid,omitempty"`
-	Conn    string `json:"conn,omitempty"`
+	ClientType string `json:"ctype,omitempty"`
+	BlockId    string `json:"blockid,omitempty"`
+	TabId      string `json:"tabid,omitempty"`
+	Conn       string `json:"conn,omitempty"`
 }
 
 func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
@@ -138,12 +149,16 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 			field.SetString(rpcContext.TabId)
 		case "BlockORef":
 			if rpcContext.BlockId != "" {
-				field.Set(reflect.ValueOf(waveobj.MakeORef(wstore.OType_Block, rpcContext.BlockId)))
+				field.Set(reflect.ValueOf(waveobj.MakeORef(waveobj.OType_Block, rpcContext.BlockId)))
 			}
 		default:
 			log.Printf("invalid wshcontext tag: %q in type(%T)", tag, dataPtr)
 		}
 	}
+}
+
+type CommandAuthenticateRtnData struct {
+	RouteId string `json:"routeid"`
 }
 
 type CommandMessageData struct {
@@ -156,8 +171,8 @@ type CommandGetMetaData struct {
 }
 
 type CommandSetMetaData struct {
-	ORef waveobj.ORef       `json:"oref" wshcontext:"BlockORef"`
-	Meta wstore.MetaMapType `json:"meta"`
+	ORef waveobj.ORef        `json:"oref" wshcontext:"BlockORef"`
+	Meta waveobj.MetaMapType `json:"meta"`
 }
 
 type CommandResolveIdsData struct {
@@ -170,9 +185,9 @@ type CommandResolveIdsRtnData struct {
 }
 
 type CommandCreateBlockData struct {
-	TabId    string              `json:"tabid" wshcontext:"TabId"`
-	BlockDef *wstore.BlockDef    `json:"blockdef"`
-	RtOpts   *wstore.RuntimeOpts `json:"rtopts"`
+	TabId    string               `json:"tabid" wshcontext:"TabId"`
+	BlockDef *waveobj.BlockDef    `json:"blockdef"`
+	RtOpts   *waveobj.RuntimeOpts `json:"rtopts"`
 }
 
 type CommandBlockSetViewData struct {
@@ -185,10 +200,10 @@ type CommandBlockRestartData struct {
 }
 
 type CommandBlockInputData struct {
-	BlockId     string           `json:"blockid" wshcontext:"BlockId"`
-	InputData64 string           `json:"inputdata64,omitempty"`
-	SigName     string           `json:"signame,omitempty"`
-	TermSize    *wstore.TermSize `json:"termsize,omitempty"`
+	BlockId     string            `json:"blockid" wshcontext:"BlockId"`
+	InputData64 string            `json:"inputdata64,omitempty"`
+	SigName     string            `json:"signame,omitempty"`
+	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
 type CommandFileData struct {
@@ -212,6 +227,10 @@ type WaveEvent struct {
 	Scopes []string `json:"scopes,omitempty"`
 	Sender string   `json:"sender,omitempty"`
 	Data   any      `json:"data,omitempty"`
+}
+
+func (e WaveEvent) HasScope(scope string) bool {
+	return utilfn.ContainsStr(e.Scopes, scope)
 }
 
 type SubscriptionRequest struct {

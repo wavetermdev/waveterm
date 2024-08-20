@@ -14,6 +14,7 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/thenextwave/pkg/util/migrateutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 
 	dbfs "github.com/wavetermdev/thenextwave/db"
 )
@@ -56,24 +57,24 @@ func MakeDB(ctx context.Context) (*sqlx.DB, error) {
 }
 
 func WithTx(ctx context.Context, fn func(tx *TxWrap) error) (rtnErr error) {
-	ContextUpdatesBeginTx(ctx)
+	waveobj.ContextUpdatesBeginTx(ctx)
 	defer func() {
 		if rtnErr != nil {
-			ContextUpdatesRollbackTx(ctx)
+			waveobj.ContextUpdatesRollbackTx(ctx)
 		} else {
-			ContextUpdatesCommitTx(ctx)
+			waveobj.ContextUpdatesCommitTx(ctx)
 		}
 	}()
 	return txwrap.WithTx(ctx, globalDB, fn)
 }
 
 func WithTxRtn[RT any](ctx context.Context, fn func(tx *TxWrap) (RT, error)) (rtnVal RT, rtnErr error) {
-	ContextUpdatesBeginTx(ctx)
+	waveobj.ContextUpdatesBeginTx(ctx)
 	defer func() {
 		if rtnErr != nil {
-			ContextUpdatesRollbackTx(ctx)
+			waveobj.ContextUpdatesRollbackTx(ctx)
 		} else {
-			ContextUpdatesCommitTx(ctx)
+			waveobj.ContextUpdatesCommitTx(ctx)
 		}
 	}()
 	return txwrap.WithTxRtn(ctx, globalDB, fn)

@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 var viewNewBlock bool
@@ -31,13 +31,14 @@ func init() {
 
 func viewRun(cmd *cobra.Command, args []string) {
 	fileArg := args[0]
+	conn := RpcContext.Conn
 	var wshCmd *wshrpc.CommandCreateBlockData
 	if strings.HasPrefix(fileArg, "http://") || strings.HasPrefix(fileArg, "https://") {
 		wshCmd = &wshrpc.CommandCreateBlockData{
-			BlockDef: &wstore.BlockDef{
-				Meta: map[string]interface{}{
-					wstore.MetaKey_View: "web",
-					wstore.MetaKey_Url:  fileArg,
+			BlockDef: &waveobj.BlockDef{
+				Meta: map[string]any{
+					waveobj.MetaKey_View: "web",
+					waveobj.MetaKey_Url:  fileArg,
 				},
 			},
 		}
@@ -57,12 +58,15 @@ func viewRun(cmd *cobra.Command, args []string) {
 			return
 		}
 		wshCmd = &wshrpc.CommandCreateBlockData{
-			BlockDef: &wstore.BlockDef{
+			BlockDef: &waveobj.BlockDef{
 				Meta: map[string]interface{}{
-					wstore.MetaKey_View: "preview",
-					wstore.MetaKey_File: absFile,
+					waveobj.MetaKey_View: "preview",
+					waveobj.MetaKey_File: absFile,
 				},
 			},
+		}
+		if conn != "" {
+			wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = conn
 		}
 	}
 	_, err := RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})

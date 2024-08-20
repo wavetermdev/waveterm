@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 var termCmd = &cobra.Command{
@@ -46,13 +46,16 @@ func termRun(cmd *cobra.Command, args []string) {
 		return
 	}
 	createBlockData := wshrpc.CommandCreateBlockData{
-		BlockDef: &wstore.BlockDef{
+		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]interface{}{
-				wstore.MetaKey_View:       "term",
-				wstore.MetaKey_CmdCwd:     cwd,
-				wstore.MetaKey_Controller: "shell",
+				waveobj.MetaKey_View:       "term",
+				waveobj.MetaKey_CmdCwd:     cwd,
+				waveobj.MetaKey_Controller: "shell",
 			},
 		},
+	}
+	if RpcContext.Conn != "" {
+		createBlockData.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn
 	}
 	oref, err := wshclient.CreateBlockCommand(RpcClient, createBlockData, nil)
 	if err != nil {

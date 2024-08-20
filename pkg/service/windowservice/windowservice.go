@@ -13,6 +13,8 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wcore"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -20,12 +22,12 @@ const DefaultTimeout = 2 * time.Second
 
 type WindowService struct{}
 
-func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId string, pos *wstore.Point, size *wstore.WinSize) (wstore.UpdatesRtnType, error) {
+func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId string, pos *waveobj.Point, size *waveobj.WinSize) (waveobj.UpdatesRtnType, error) {
 	if pos == nil && size == nil {
 		return nil, nil
 	}
-	ctx = wstore.ContextWithUpdates(ctx)
-	win, err := wstore.DBMustGet[*wstore.Window](ctx, windowId)
+	ctx = waveobj.ContextWithUpdates(ctx)
+	win, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 	if err != nil {
 		return nil, err
 	}
@@ -39,20 +41,20 @@ func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId strin
 	if err != nil {
 		return nil, err
 	}
-	return wstore.ContextGetUpdatesRtn(ctx), nil
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *WindowService) CloseTab(ctx context.Context, uiContext wstore.UIContext, tabId string) (wstore.UpdatesRtnType, error) {
-	ctx = wstore.ContextWithUpdates(ctx)
-	window, err := wstore.DBMustGet[*wstore.Window](ctx, uiContext.WindowId)
+func (svc *WindowService) CloseTab(ctx context.Context, uiContext waveobj.UIContext, tabId string) (waveobj.UpdatesRtnType, error) {
+	ctx = waveobj.ContextWithUpdates(ctx)
+	window, err := wstore.DBMustGet[*waveobj.Window](ctx, uiContext.WindowId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting window: %w", err)
 	}
-	tab, err := wstore.DBMustGet[*wstore.Tab](ctx, tabId)
+	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
-	ws, err := wstore.DBMustGet[*wstore.Workspace](ctx, window.WorkspaceId)
+	ws, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting workspace: %w", err)
 	}
@@ -66,7 +68,7 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext wstore.UIConte
 	for _, blockId := range tab.BlockIds {
 		blockcontroller.StopBlockController(blockId)
 	}
-	if err := wstore.DeleteTab(ctx, window.WorkspaceId, tabId); err != nil {
+	if err := wcore.DeleteTab(ctx, window.WorkspaceId, tabId); err != nil {
 		return nil, fmt.Errorf("error closing tab: %w", err)
 	}
 	if window.ActiveTabId == tabId && tabIndex != -1 {
@@ -85,7 +87,7 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext wstore.UIConte
 			}
 		}
 	}
-	return wstore.ContextGetUpdatesRtn(ctx), nil
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *WindowService) MoveBlockToNewWindow_Meta() tsgenmeta.MethodMeta {
@@ -95,14 +97,14 @@ func (svc *WindowService) MoveBlockToNewWindow_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId string, blockId string) (wstore.UpdatesRtnType, error) {
+func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId string, blockId string) (waveobj.UpdatesRtnType, error) {
 	log.Printf("MoveBlockToNewWindow(%s, %s)", currentTabId, blockId)
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 	curWindowId, err := wstore.DBFindWindowForTabId(ctx, currentTabId)
 	if err != nil {
 		return nil, fmt.Errorf("error finding window for current-tab: %w", err)
 	}
-	tab, err := wstore.DBMustGet[*wstore.Tab](ctx, currentTabId)
+	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, currentTabId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
@@ -149,35 +151,35 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 			BlockId:    blockId,
 		},
 	})
-	return wstore.ContextGetUpdatesRtn(ctx), nil
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *WindowService) CloseWindow(ctx context.Context, windowId string) error {
-	ctx = wstore.ContextWithUpdates(ctx)
-	window, err := wstore.DBMustGet[*wstore.Window](ctx, windowId)
+	ctx = waveobj.ContextWithUpdates(ctx)
+	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 	if err != nil {
 		return fmt.Errorf("error getting window: %w", err)
 	}
-	workspace, err := wstore.DBMustGet[*wstore.Workspace](ctx, window.WorkspaceId)
+	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
 	if err != nil {
 		return fmt.Errorf("error getting workspace: %w", err)
 	}
 	for _, tabId := range workspace.TabIds {
-		uiContext := wstore.UIContext{WindowId: windowId}
+		uiContext := waveobj.UIContext{WindowId: windowId}
 		_, err := svc.CloseTab(ctx, uiContext, tabId)
 		if err != nil {
 			return fmt.Errorf("error closing tab: %w", err)
 		}
 	}
-	err = wstore.DBDelete(ctx, wstore.OType_Workspace, window.WorkspaceId)
+	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, window.WorkspaceId)
 	if err != nil {
 		return fmt.Errorf("error deleting workspace: %w", err)
 	}
-	err = wstore.DBDelete(ctx, wstore.OType_Window, windowId)
+	err = wstore.DBDelete(ctx, waveobj.OType_Window, windowId)
 	if err != nil {
 		return fmt.Errorf("error deleting window: %w", err)
 	}
-	client, err := wstore.DBGetSingleton[*wstore.Client](ctx)
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
 	}

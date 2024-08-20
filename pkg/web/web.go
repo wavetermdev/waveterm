@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/telemetry"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
@@ -363,7 +364,7 @@ func handleLogActiveState(w http.ResponseWriter, r *http.Request) {
 	if activeState.Open {
 		activity.OpenMinutes = 1
 	}
-	activity.NumTabs, _ = wstore.DBGetCount[*wstore.Tab](r.Context())
+	activity.NumTabs, _ = wstore.DBGetCount[*waveobj.Tab](r.Context())
 	err = telemetry.UpdateActivity(r.Context(), activity)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))

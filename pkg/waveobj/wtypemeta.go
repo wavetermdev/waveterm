@@ -1,17 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package wstore
+package waveobj
 
 import (
 	"strings"
-
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
 const Entity_Any = "any"
-
-type MetaMapType = waveobj.MetaMapType
 
 // well known meta keys
 // to add a new key, add it here and add it to MetaTSType (make sure the keys match)

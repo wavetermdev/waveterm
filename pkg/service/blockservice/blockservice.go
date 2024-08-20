@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -41,7 +42,7 @@ func (bs *BlockService) GetControllerStatus(ctx context.Context, blockId string)
 }
 
 func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, state string, stateType string, ptyOffset int64) error {
-	_, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	_, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return err
 	}
@@ -62,11 +63,11 @@ func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, s
 }
 
 func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, history []wshrpc.OpenAIPromptMessageType) error {
-	block, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return err
 	}
-	viewName := block.Meta.GetString(wstore.MetaKey_View, "")
+	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
 	if viewName != "waveai" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}

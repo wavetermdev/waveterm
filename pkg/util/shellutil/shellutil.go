@@ -19,7 +19,7 @@ import (
 
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
 const DefaultTermType = "xterm-256color"
@@ -126,8 +126,8 @@ func internalMacUserShell() string {
 	return m[1]
 }
 
-func DefaultTermSize() wstore.TermSize {
-	return wstore.TermSize{Rows: DefaultTermRows, Cols: DefaultTermCols}
+func DefaultTermSize() waveobj.TermSize {
+	return waveobj.TermSize{Rows: DefaultTermRows, Cols: DefaultTermCols}
 }
 
 func WaveshellLocalEnvVars(termType string) map[string]string {

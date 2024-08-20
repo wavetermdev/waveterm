@@ -167,7 +167,7 @@ func DBSelectORefs(ctx context.Context, orefs []waveobj.ORef) ([]waveobj.WaveObj
 
 func DBResolveEasyOID(ctx context.Context, oid string) (*waveobj.ORef, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.ORef, error) {
-		for _, rtype := range AllWaveObjTypes() {
+		for _, rtype := range waveobj.AllWaveObjTypes() {
 			otype := reflect.Zero(rtype).Interface().(waveobj.WaveObj).GetOType()
 			table := tableNameFromOType(otype)
 			var fullOID string
@@ -204,7 +204,7 @@ func DBDelete(ctx context.Context, otype string, id string) error {
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("DELETE FROM %s WHERE oid = ?", table)
 		tx.Exec(query, id)
-		ContextAddUpdate(ctx, WaveObjUpdate{UpdateType: UpdateType_Delete, OType: otype, OID: id})
+		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Delete, OType: otype, OID: id})
 		return nil
 	})
 	if err != nil {
@@ -237,7 +237,7 @@ func DBUpdate(ctx context.Context, val waveobj.WaveObj) error {
 		query := fmt.Sprintf("UPDATE %s SET data = ?, version = version+1 WHERE oid = ? RETURNING version", table)
 		newVersion := tx.GetInt(query, jsonData, oid)
 		waveobj.SetVersion(val, newVersion)
-		ContextAddUpdate(ctx, WaveObjUpdate{UpdateType: UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
+		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
 		return nil
 	})
 }
@@ -256,7 +256,7 @@ func DBInsert(ctx context.Context, val waveobj.WaveObj) error {
 		waveobj.SetVersion(val, 1)
 		query := fmt.Sprintf("INSERT INTO %s (oid, version, data) VALUES (?, ?, ?)", table)
 		tx.Exec(query, oid, 1, jsonData)
-		ContextAddUpdate(ctx, WaveObjUpdate{UpdateType: UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
+		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
 		return nil
 	})
 }

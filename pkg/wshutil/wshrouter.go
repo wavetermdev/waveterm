@@ -50,6 +50,10 @@ func MakeWindowRouteId(windowId string) string {
 	return "window:" + windowId
 }
 
+func MakeProcRouteId(procId string) string {
+	return "proc:" + procId
+}
+
 var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {
@@ -77,7 +81,7 @@ func (router *WshRouter) SendEvent(routeId string, event wshrpc.WaveEvent) {
 		return
 	}
 	msg := RpcMessage{
-		Command: wshrpc.Command_Event,
+		Command: wshrpc.Command_EventRecv,
 		Route:   routeId,
 		Data:    event,
 	}
@@ -238,7 +242,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
 		log.Printf("error: WshRouter cannot register sys route\n")
 		return
 	}
-	log.Printf("registering wsh route %q\n", routeId)
+	log.Printf("[router] registering wsh route %q\n", routeId)
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
 	router.RouteMap[routeId] = rpc
@@ -277,6 +281,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
 }
 
 func (router *WshRouter) UnregisterRoute(routeId string) {
+	log.Printf("[router] unregistering wsh route %q\n", routeId)
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
 	delete(router.RouteMap, routeId)

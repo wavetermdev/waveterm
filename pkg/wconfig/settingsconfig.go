@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 const termThemesDir = "terminal-themes"
@@ -17,11 +16,11 @@ const settingsFile = "settings.json"
 var settingsAbsPath = filepath.Join(configDirAbsPath, settingsFile)
 
 type WidgetsConfigType struct {
-	Icon        string          `json:"icon"`
-	Color       string          `json:"color,omitempty"`
-	Label       string          `json:"label,omitempty"`
-	Description string          `json:"description,omitempty"`
-	BlockDef    wstore.BlockDef `json:"blockdef"`
+	Icon        string           `json:"icon"`
+	Color       string           `json:"color,omitempty"`
+	Label       string           `json:"label,omitempty"`
+	Description string           `json:"description,omitempty"`
+	BlockDef    waveobj.BlockDef `json:"blockdef"`
 }
 
 type TerminalConfigType struct {
@@ -192,38 +191,38 @@ var CampbellTheme = TermThemeType{
 }
 
 var BgDefaultPreset = waveobj.MetaMapType{
-	wstore.MetaKey_DisplayName:  "Default",
-	wstore.MetaKey_DisplayOrder: -1,
-	wstore.MetaKey_BgClear:      true,
+	waveobj.MetaKey_DisplayName:  "Default",
+	waveobj.MetaKey_DisplayOrder: -1,
+	waveobj.MetaKey_BgClear:      true,
 }
 
 var BgRainbowPreset = waveobj.MetaMapType{
-	wstore.MetaKey_DisplayName:  "Rainbow",
-	wstore.MetaKey_DisplayOrder: 1,
-	wstore.MetaKey_BgClear:      true,
-	wstore.MetaKey_Bg:           "linear-gradient( 226.4deg,  rgba(255,26,1,1) 28.9%, rgba(254,155,1,1) 33%, rgba(255,241,0,1) 48.6%, rgba(34,218,1,1) 65.3%, rgba(0,141,254,1) 80.6%, rgba(113,63,254,1) 100.1% );",
-	wstore.MetaKey_BgOpacity:    0.3,
+	waveobj.MetaKey_DisplayName:  "Rainbow",
+	waveobj.MetaKey_DisplayOrder: 1,
+	waveobj.MetaKey_BgClear:      true,
+	waveobj.MetaKey_Bg:           "linear-gradient( 226.4deg,  rgba(255,26,1,1) 28.9%, rgba(254,155,1,1) 33%, rgba(255,241,0,1) 48.6%, rgba(34,218,1,1) 65.3%, rgba(0,141,254,1) 80.6%, rgba(113,63,254,1) 100.1% );",
+	waveobj.MetaKey_BgOpacity:    0.3,
 }
 
 var BgGreenPreset = waveobj.MetaMapType{
-	wstore.MetaKey_DisplayName: "Green",
-	wstore.MetaKey_BgClear:     true,
-	wstore.MetaKey_Bg:          "green",
-	wstore.MetaKey_BgOpacity:   0.3,
+	waveobj.MetaKey_DisplayName: "Green",
+	waveobj.MetaKey_BgClear:     true,
+	waveobj.MetaKey_Bg:          "green",
+	waveobj.MetaKey_BgOpacity:   0.3,
 }
 
 var BgBluePreset = waveobj.MetaMapType{
-	wstore.MetaKey_DisplayName: "Blue",
-	wstore.MetaKey_BgClear:     true,
-	wstore.MetaKey_Bg:          "blue",
-	wstore.MetaKey_BgOpacity:   0.3,
+	waveobj.MetaKey_DisplayName: "Blue",
+	waveobj.MetaKey_BgClear:     true,
+	waveobj.MetaKey_Bg:          "blue",
+	waveobj.MetaKey_BgOpacity:   0.3,
 }
 
 var BgRedPreset = waveobj.MetaMapType{
-	wstore.MetaKey_DisplayName: "Red",
-	wstore.MetaKey_BgClear:     true,
-	wstore.MetaKey_Bg:          "red",
-	wstore.MetaKey_BgOpacity:   0.3,
+	waveobj.MetaKey_DisplayName: "Red",
+	waveobj.MetaKey_BgClear:     true,
+	waveobj.MetaKey_Bg:          "red",
+	waveobj.MetaKey_BgOpacity:   0.3,
 }
 
 func applyDefaultSettings(settings *SettingsConfigType) {
@@ -282,48 +281,48 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 		{
 			Icon:  "square-terminal",
 			Label: "terminal",
-			BlockDef: wstore.BlockDef{
+			BlockDef: waveobj.BlockDef{
 				Meta: map[string]any{
-					wstore.MetaKey_View:       "term",
-					wstore.MetaKey_Controller: "shell",
+					waveobj.MetaKey_View:       "term",
+					waveobj.MetaKey_Controller: "shell",
 				},
 			},
 		},
 		{
 			Icon:  "folder",
 			Label: "files",
-			BlockDef: wstore.BlockDef{
+			BlockDef: waveobj.BlockDef{
 				Meta: map[string]any{
-					wstore.MetaKey_View: "preview",
-					wstore.MetaKey_File: "~",
+					waveobj.MetaKey_View: "preview",
+					waveobj.MetaKey_File: "~",
 				},
 			},
 		},
 		{
 			Icon:  "globe",
 			Label: "web",
-			BlockDef: wstore.BlockDef{
+			BlockDef: waveobj.BlockDef{
 				Meta: map[string]any{
-					wstore.MetaKey_View: "web",
-					wstore.MetaKey_Url:  "https://waveterm.dev/",
+					waveobj.MetaKey_View: "web",
+					waveobj.MetaKey_Url:  "https://waveterm.dev/",
 				},
 			},
 		},
 		{
 			Icon:  "sparkles",
 			Label: "waveai",
-			BlockDef: wstore.BlockDef{
+			BlockDef: waveobj.BlockDef{
 				Meta: map[string]any{
-					wstore.MetaKey_View: "waveai",
+					waveobj.MetaKey_View: "waveai",
 				},
 			},
 		},
 		{
 			Icon:  "chart-line",
 			Label: "cpu",
-			BlockDef: wstore.BlockDef{
+			BlockDef: waveobj.BlockDef{
 				Meta: map[string]any{
-					wstore.MetaKey_View: "cpuplot",
+					waveobj.MetaKey_View: "cpuplot",
 				},
 			},
 		},

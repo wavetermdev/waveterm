@@ -54,7 +54,7 @@ func (p *WshRpcProxy) sendResponseError(msg RpcMessage, sendErr error) {
 	p.SendRpcMessage(respBytes)
 }
 
-func (p *WshRpcProxy) sendResponse(msg RpcMessage) {
+func (p *WshRpcProxy) sendResponse(msg RpcMessage, routeId string) {
 	if msg.ReqId == "" {
 		// no response needed
 		return
@@ -62,35 +62,40 @@ func (p *WshRpcProxy) sendResponse(msg RpcMessage) {
 	resp := RpcMessage{
 		ResId: msg.ReqId,
 		Route: msg.Source,
+		Data:  wshrpc.CommandAuthenticateRtnData{RouteId: routeId},
 	}
 	respBytes, _ := json.Marshal(resp)
 	p.SendRpcMessage(respBytes)
 }
 
-func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, error) {
+func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, string, error) {
 	if msg.Data == nil {
-		return nil, fmt.Errorf("no data in authenticate message")
+		return nil, "", fmt.Errorf("no data in authenticate message")
 	}
 	strData, ok := msg.Data.(string)
 	if !ok {
-		return nil, fmt.Errorf("data in authenticate message not a string")
+		return nil, "", fmt.Errorf("data in authenticate message not a string")
 	}
 	newCtx, err := ValidateAndExtractRpcContextFromToken(strData)
 	if err != nil {
-		return nil, fmt.Errorf("error validating token: %w", err)
+		return nil, "", fmt.Errorf("error validating token: %w", err)
 	}
 	if newCtx == nil {
-		return nil, fmt.Errorf("no context found in jwt token")
+		return nil, "", fmt.Errorf("no context found in jwt token")
 	}
 	if newCtx.BlockId == "" && newCtx.Conn == "" {
-		return nil, fmt.Errorf("no blockid or conn found in jwt token")
+		return nil, "", fmt.Errorf("no blockid or conn found in jwt token")
 	}
 	if newCtx.BlockId != "" {
 		if _, err := uuid.Parse(newCtx.BlockId); err != nil {
-			return nil, fmt.Errorf("invalid blockId in jwt token")
+			return nil, "", fmt.Errorf("invalid blockId in jwt token")
 		}
 	}
-	return newCtx, nil
+	routeId, err := MakeRouteIdFromCtx(newCtx)
+	if err != nil {
+		return nil, "", fmt.Errorf("error making routeId from context: %w", err)
+	}
+	return newCtx, routeId, nil
 }
 
 func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
@@ -115,13 +120,13 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 			p.sendResponseError(msg, respErr)
 			continue
 		}
-		newCtx, err := handleAuthenticationCommand(msg)
+		newCtx, routeId, err := handleAuthenticationCommand(msg)
 		if err != nil {
 			log.Printf("error handling authentication: %v\n", err)
 			p.sendResponseError(msg, err)
 			continue
 		}
-		p.sendResponse(msg)
+		p.sendResponse(msg, routeId)
 		return newCtx, nil
 	}
 }

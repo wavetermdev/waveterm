@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/waveai"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wcore"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
@@ -127,12 +128,12 @@ func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.Cp
 				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: err}
 				return
 			}
-			blockData, getBlockDataErr := wstore.DBMustGet[*wstore.Block](ctx, request.Id)
+			blockData, getBlockDataErr := wstore.DBMustGet[*waveobj.Block](ctx, request.Id)
 			if getBlockDataErr != nil {
 				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: getBlockDataErr}
 				return
 			}
-			count := blockData.Meta.GetInt(wstore.MetaKey_Count, 0)
+			count := blockData.Meta.GetInt(waveobj.MetaKey_Count, 0)
 			if count != request.Count {
 				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: fmt.Errorf("new instance created. canceling old goroutine")}
 				return
@@ -145,11 +146,11 @@ func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.Cp
 }
 
 func MakePlotData(ctx context.Context, blockId string) error {
-	block, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return err
 	}
-	viewName := block.Meta.GetString(wstore.MetaKey_View, "")
+	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
 	if viewName != "cpuplot" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
@@ -157,11 +158,11 @@ func MakePlotData(ctx context.Context, blockId string) error {
 }
 
 func SavePlotData(ctx context.Context, blockId string, history string) error {
-	block, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return err
 	}
-	viewName := block.Meta.GetString(wstore.MetaKey_View, "")
+	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
 	if viewName != "cpuplot" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
@@ -210,8 +211,8 @@ func sendWaveObjUpdate(oref waveobj.ORef) {
 	eventbus.SendEvent(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_WaveObjUpdate,
 		ORef:      oref.String(),
-		Data: wstore.WaveObjUpdate{
-			UpdateType: wstore.UpdateType_Update,
+		Data: waveobj.WaveObjUpdate{
+			UpdateType: waveobj.UpdateType_Update,
 			OType:      waveObj.GetOType(),
 			OID:        waveobj.GetOID(waveObj),
 			Obj:        waveObj,
@@ -224,7 +225,7 @@ func resolveSimpleId(ctx context.Context, data wshrpc.CommandResolveIdsData, sim
 		if data.BlockId == "" {
 			return nil, fmt.Errorf("no blockid in request")
 		}
-		return &waveobj.ORef{OType: wstore.OType_Block, OID: data.BlockId}, nil
+		return &waveobj.ORef{OType: waveobj.OType_Block, OID: data.BlockId}, nil
 	}
 	if strings.Contains(simpleId, ":") {
 		rtn, err := waveobj.ParseORef(simpleId)
@@ -249,7 +250,7 @@ func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandR
 	return rtn, nil
 }
 
-func sendWStoreUpdatesToEventBus(updates wstore.UpdatesRtnType) {
+func sendWStoreUpdatesToEventBus(updates waveobj.UpdatesRtnType) {
 	for _, update := range updates {
 		eventbus.SendEvent(eventbus.WSEventType{
 			EventType: eventbus.WSEvent_WaveObjUpdate,
@@ -260,7 +261,7 @@ func sendWStoreUpdatesToEventBus(updates wstore.UpdatesRtnType) {
 }
 
 func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.CommandCreateBlockData) (*waveobj.ORef, error) {
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId := data.TabId
 	if data.TabId != "" {
 		tabId = data.TabId
@@ -269,7 +270,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	controllerName := blockData.Meta.GetString(wstore.MetaKey_Controller, "")
+	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName != "" {
 		// TODO
 		err = blockcontroller.StartBlockController(ctx, data.TabId, blockData.OID)
@@ -277,7 +278,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 			return nil, fmt.Errorf("error starting block controller: %w", err)
 		}
 	}
-	updates := wstore.ContextGetUpdatesRtn(ctx)
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	sendWStoreUpdatesToEventBus(updates)
 	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
 	if err != nil {
@@ -294,22 +295,22 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 			BlockId:    blockData.OID,
 		},
 	})
-	return &waveobj.ORef{OType: wstore.OType_Block, OID: blockData.OID}, nil
+	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}, nil
 }
 
 func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
 	log.Printf("SETVIEW: %s | %q\n", data.BlockId, data.View)
-	ctx = wstore.ContextWithUpdates(ctx)
-	block, err := wstore.DBGet[*wstore.Block](ctx, data.BlockId)
+	ctx = waveobj.ContextWithUpdates(ctx)
+	block, err := wstore.DBGet[*waveobj.Block](ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
-	block.Meta[wstore.MetaKey_View] = data.View
+	block.Meta[waveobj.MetaKey_View] = data.View
 	err = wstore.DBUpdate(ctx, block)
 	if err != nil {
 		return fmt.Errorf("error updating block: %w", err)
 	}
-	updates := wstore.ContextGetUpdatesRtn(ctx)
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	sendWStoreUpdatesToEventBus(updates)
 	return nil
 }
@@ -353,7 +354,7 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFi
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(wstore.OType_Block, data.ZoneId).String(),
+		ORef:      waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   data.ZoneId,
 			FileName: data.FileName,
@@ -382,7 +383,7 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandF
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(wstore.OType_Block, data.ZoneId).String(),
+		ORef:      waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   data.ZoneId,
 			FileName: data.FileName,
@@ -407,7 +408,7 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(wstore.OType_Block, data.ZoneId).String(),
+		ORef:      waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   data.ZoneId,
 			FileName: data.FileName,
@@ -419,7 +420,7 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 }
 
 func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
-	ctx = wstore.ContextWithUpdates(ctx)
+	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error finding tab for block: %w", err)
@@ -434,7 +435,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if windowId == "" {
 		return fmt.Errorf("no window found for tab")
 	}
-	err = wstore.DeleteBlock(ctx, tabId, data.BlockId)
+	err = wcore.DeleteBlock(ctx, tabId, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
@@ -446,8 +447,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 			BlockId:    data.BlockId,
 		},
 	})
-	blockcontroller.StopBlockController(data.BlockId)
-	updates := wstore.ContextGetUpdatesRtn(ctx)
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	sendWStoreUpdatesToEventBus(updates)
 	return nil
 }

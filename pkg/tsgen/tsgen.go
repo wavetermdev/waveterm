@@ -21,7 +21,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 // add extra types to generate here
@@ -31,7 +30,7 @@ var ExtraTypes = []any{
 	map[string]any{},
 	service.WebCallType{},
 	service.WebReturnType{},
-	wstore.UIContext{},
+	waveobj.UIContext{},
 	eventbus.WSEventType{},
 	eventbus.WSFileEventData{},
 	eventbus.WSLayoutActionData{},
@@ -45,7 +44,7 @@ var ExtraTypes = []any{
 	vdom.Elem{},
 	vdom.VDomFuncType{},
 	vdom.VDomRefType{},
-	wstore.MetaTSType{},
+	waveobj.MetaTSType{},
 }
 
 // add extra type unions to generate here
@@ -56,10 +55,10 @@ var TypeUnions = []tsgenmeta.TypeUnionMeta{
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
 var anyRType = reflect.TypeOf((*interface{})(nil)).Elem()
-var metaRType = reflect.TypeOf((*wstore.MetaMapType)(nil)).Elem()
-var uiContextRType = reflect.TypeOf((*wstore.UIContext)(nil)).Elem()
+var metaRType = reflect.TypeOf((*waveobj.MetaMapType)(nil)).Elem()
+var uiContextRType = reflect.TypeOf((*waveobj.UIContext)(nil)).Elem()
 var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
-var updatesRtnRType = reflect.TypeOf(wstore.UpdatesRtnType{})
+var updatesRtnRType = reflect.TypeOf(waveobj.UpdatesRtnType{})
 var orefRType = reflect.TypeOf((*waveobj.ORef)(nil)).Elem()
 var wshRpcInterfaceRType = reflect.TypeOf((*wshrpc.WshRpcInterface)(nil)).Elem()
 
@@ -471,7 +470,7 @@ func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
 	for _, extraType := range ExtraTypes {
 		GenerateTSType(reflect.TypeOf(extraType), tsTypesMap)
 	}
-	for _, rtype := range wstore.AllWaveObjTypes() {
+	for _, rtype := range waveobj.AllWaveObjTypes() {
 		GenerateTSType(rtype, tsTypesMap)
 	}
 }

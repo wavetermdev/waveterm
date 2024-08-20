@@ -83,7 +83,8 @@ func (conn *SSHConn) StartConnServer() error {
 	}
 	wshPath := remote.GetWshPath(conn.Client)
 	rpcCtx := wshrpc.RpcContext{
-		Conn: conn.Opts.String(),
+		ClientType: wshrpc.ClientType_ConnServer,
+		Conn:       conn.Opts.String(),
 	}
 	jwtToken, err := wshutil.MakeClientJWTToken(rpcCtx, conn.SockName)
 	if err != nil {

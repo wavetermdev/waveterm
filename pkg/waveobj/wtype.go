@@ -1,15 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package wstore
+package waveobj
 
 import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
+
+type UpdatesRtnType = []WaveObjUpdate
 
 type UIContext struct {
 	WindowId    string `json:"windowid"`
@@ -31,10 +31,10 @@ const (
 )
 
 type WaveObjUpdate struct {
-	UpdateType string          `json:"updatetype"`
-	OType      string          `json:"otype"`
-	OID        string          `json:"oid"`
-	Obj        waveobj.WaveObj `json:"obj,omitempty"`
+	UpdateType string  `json:"updatetype"`
+	OType      string  `json:"otype"`
+	OID        string  `json:"oid"`
+	Obj        WaveObj `json:"obj,omitempty"`
 }
 
 func (update WaveObjUpdate) MarshalJSON() ([]byte, error) {
@@ -44,7 +44,7 @@ func (update WaveObjUpdate) MarshalJSON() ([]byte, error) {
 	rtn["oid"] = update.OID
 	if update.Obj != nil {
 		var err error
-		rtn["obj"], err = waveobj.ToJsonMap(update.Obj)
+		rtn["obj"], err = ToJsonMap(update.Obj)
 		if err != nil {
 			return nil, err
 		}
@@ -52,16 +52,16 @@ func (update WaveObjUpdate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rtn)
 }
 
-func MakeUpdate(obj waveobj.WaveObj) WaveObjUpdate {
+func MakeUpdate(obj WaveObj) WaveObjUpdate {
 	return WaveObjUpdate{
 		UpdateType: UpdateType_Update,
 		OType:      obj.GetOType(),
-		OID:        waveobj.GetOID(obj),
+		OID:        GetOID(obj),
 		Obj:        obj,
 	}
 }
 
-func MakeUpdates(objs []waveobj.WaveObj) []WaveObjUpdate {
+func MakeUpdates(objs []WaveObj) []WaveObjUpdate {
 	rtn := make([]WaveObjUpdate, 0, len(objs))
 	for _, obj := range objs {
 		rtn = append(rtn, MakeUpdate(obj))
@@ -102,7 +102,7 @@ func (update *WaveObjUpdate) UnmarshalJSON(data []byte) error {
 		if !ok {
 			return fmt.Errorf("in WaveObjUpdate bad obj type %T", objMap["obj"])
 		}
-		waveObj, err := waveobj.FromJsonMap(objMap)
+		waveObj, err := FromJsonMap(objMap)
 		if err != nil {
 			return fmt.Errorf("in WaveObjUpdate error decoding obj: %w", err)
 		}
@@ -167,10 +167,10 @@ func (*Tab) GetOType() string {
 	return OType_Tab
 }
 
-func (t *Tab) GetBlockORefs() []waveobj.ORef {
-	rtn := make([]waveobj.ORef, 0, len(t.BlockIds))
+func (t *Tab) GetBlockORefs() []ORef {
+	rtn := make([]ORef, 0, len(t.BlockIds))
 	for _, blockId := range t.BlockIds {
-		rtn = append(rtn, waveobj.ORef{OType: OType_Block, OID: blockId})
+		rtn = append(rtn, ORef{OType: OType_Block, OID: blockId})
 	}
 	return rtn
 }

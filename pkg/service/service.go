@@ -19,7 +19,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 var ServiceMap = map[string]any{
@@ -33,28 +32,28 @@ var ServiceMap = map[string]any{
 
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
-var updatesRType = reflect.TypeOf(([]wstore.WaveObjUpdate{}))
+var updatesRType = reflect.TypeOf(([]waveobj.WaveObjUpdate{}))
 var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 var waveObjSliceRType = reflect.TypeOf([]waveobj.WaveObj{})
 var waveObjMapRType = reflect.TypeOf(map[string]waveobj.WaveObj{})
 var methodMetaRType = reflect.TypeOf(tsgenmeta.MethodMeta{})
-var waveObjUpdateRType = reflect.TypeOf(wstore.WaveObjUpdate{})
-var uiContextRType = reflect.TypeOf((*wstore.UIContext)(nil)).Elem()
+var waveObjUpdateRType = reflect.TypeOf(waveobj.WaveObjUpdate{})
+var uiContextRType = reflect.TypeOf((*waveobj.UIContext)(nil)).Elem()
 var wsCommandRType = reflect.TypeOf((*webcmd.WSCommandType)(nil)).Elem()
 var orefRType = reflect.TypeOf((*waveobj.ORef)(nil)).Elem()
 
 type WebCallType struct {
-	Service   string            `json:"service"`
-	Method    string            `json:"method"`
-	UIContext *wstore.UIContext `json:"uicontext,omitempty"`
-	Args      []any             `json:"args"`
+	Service   string             `json:"service"`
+	Method    string             `json:"method"`
+	UIContext *waveobj.UIContext `json:"uicontext,omitempty"`
+	Args      []any              `json:"args"`
 }
 
 type WebReturnType struct {
-	Success bool                   `json:"success,omitempty"`
-	Error   string                 `json:"error,omitempty"`
-	Data    any                    `json:"data,omitempty"`
-	Updates []wstore.WaveObjUpdate `json:"updates,omitempty"`
+	Success bool                    `json:"success,omitempty"`
+	Error   string                  `json:"error,omitempty"`
+	Data    any                     `json:"data,omitempty"`
+	Updates []waveobj.WaveObjUpdate `json:"updates,omitempty"`
 }
 
 func convertNumber(argType reflect.Type, jsonArg float64) (any, error) {
@@ -289,7 +288,7 @@ func convertReturnValues(rtnVals []reflect.Value) *WebReturnType {
 		}
 		if valType == updatesRType {
 			// has a special MarshalJSON method
-			rtn.Updates = val.Interface().([]wstore.WaveObjUpdate)
+			rtn.Updates = val.Interface().([]waveobj.WaveObjUpdate)
 			continue
 		}
 		if isSpecialWaveArgType(valType) {

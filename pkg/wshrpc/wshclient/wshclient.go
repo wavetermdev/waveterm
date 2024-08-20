@@ -18,9 +18,9 @@ func AnnounceCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error
 }
 
 // command "authenticate", wshserver.AuthenticateCommand
-func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
-    _, err := sendRpcRequestCallHelper[any](w, "authenticate", data, opts)
-    return err
+func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.CommandAuthenticateRtnData, error) {
+    resp, err := sendRpcRequestCallHelper[wshrpc.CommandAuthenticateRtnData](w, "authenticate", data, opts)
+    return resp, err
 }
 
 // command "controllerinput", wshserver.ControllerInputCommand

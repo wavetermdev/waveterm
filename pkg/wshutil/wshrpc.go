@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 )
 
@@ -38,14 +39,14 @@ type AbstractRpcClient interface {
 }
 
 type WshRpc struct {
-	Lock       *sync.Mutex
-	clientId   string
-	InputCh    chan []byte
-	OutputCh   chan []byte
-	RpcContext *atomic.Pointer[wshrpc.RpcContext]
-	RpcMap     map[string]*rpcData
-	ServerImpl ServerImpl
-
+	Lock               *sync.Mutex
+	clientId           string
+	InputCh            chan []byte
+	OutputCh           chan []byte
+	RpcContext         *atomic.Pointer[wshrpc.RpcContext]
+	RpcMap             map[string]*rpcData
+	ServerImpl         ServerImpl
+	EventListener      *EventListener
 	ResponseHandlerMap map[string]*RpcResponseHandler // reqId => handler
 }
 
@@ -202,6 +203,7 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 		OutputCh:           outputCh,
 		RpcMap:             make(map[string]*rpcData),
 		RpcContext:         &atomic.Pointer[wshrpc.RpcContext]{},
+		EventListener:      MakeEventListener(),
 		ServerImpl:         serverImpl,
 		ResponseHandlerMap: make(map[string]*RpcResponseHandler),
 	}
@@ -212,20 +214,6 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 
 func (w *WshRpc) ClientId() string {
 	return w.clientId
-}
-
-func (w *WshRpc) SendEvent(event wshrpc.WaveEvent) {
-	// for wps compatibility
-	msg := &RpcMessage{
-		Command: wshrpc.Command_EventPublish,
-		Data:    event,
-	}
-	barr, err := json.Marshal(msg)
-	if err != nil {
-		log.Printf("error marshalling event: %v\n", err)
-		return
-	}
-	w.OutputCh <- barr
 }
 
 func (w *WshRpc) GetRpcContext() wshrpc.RpcContext {
@@ -263,6 +251,22 @@ func (w *WshRpc) cancelRequest(reqId string) {
 }
 
 func (w *WshRpc) handleRequest(req *RpcMessage) {
+	// events first
+	if req.Command == wshrpc.Command_EventRecv {
+		if req.Data == nil {
+			// invalid
+			return
+		}
+		var waveEvent wshrpc.WaveEvent
+		err := utilfn.ReUnmarshal(&waveEvent, req.Data)
+		if err != nil {
+			// invalid
+			return
+		}
+		w.EventListener.RecvEvent(&waveEvent)
+		return
+	}
+
 	var respHandler *RpcResponseHandler
 	defer func() {
 		if r := recover(); r != nil {
