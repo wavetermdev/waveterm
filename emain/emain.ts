@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import { getAverageColor } from "fast-average-color-node";
+import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
 import os from "os";
 import * as path from "path";
+import { PNG } from "pngjs";
 import * as readline from "readline";
 import { sprintf } from "sprintf-js";
 import { debounce } from "throttle-debounce";
@@ -596,8 +597,9 @@ electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimens
         };
         const overlay = await event.sender.capturePage(electronRect);
         const overlayBuffer = overlay.toPNG();
-
-        const color = await getAverageColor(overlayBuffer);
+        const png = PNG.sync.read(overlayBuffer);
+        const fac = new FastAverageColor();
+        const color = fac.prepareResult(fac.getColorFromArray4(png.data));
         const window = electron.BrowserWindow.fromWebContents(event.sender);
         window.setTitleBarOverlay({
             color: unamePlatform === "linux" ? color.rgba : "#00000000", // Windows supports a true transparent overlay, so we don't need to set a background color.

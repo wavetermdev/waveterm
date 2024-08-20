@@ -31,8 +31,6 @@ const config = {
   },
   asarUnpack: [
     "dist/bin/**/*", // wavesrv and wsh binaries
-    "**/node_modules/sharp/**/*", // Requirement for sharp, a dependency of the fast-average-color-node package
-    "**/node_modules/@img/**/*", // Requirement sharp, a dependency of the fast-average-color-node package
   ],
   mac: {
     target: [
