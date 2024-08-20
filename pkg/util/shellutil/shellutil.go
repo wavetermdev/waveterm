@@ -268,6 +268,9 @@ func initCustomShellStartupFilesInternal() error {
 		return nil
 	}
 	wshDstPath := filepath.Join(binDir, "wsh")
+	if runtime.GOOS == "windows" {
+		wshDstPath = wshDstPath + ".exe"
+	}
 	err = utilfn.AtomicRenameCopy(wshDstPath, wshFullPath, 0755)
 	if err != nil {
 		return fmt.Errorf("error copying wsh binary to bin: %v", err)

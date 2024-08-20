@@ -72,7 +72,7 @@ func GetWshVersion(client *ssh.Client) (string, error) {
 }
 
 func GetWshPath(client *ssh.Client) string {
-	defaultPath := filepath.Join("~", ".waveterm", "bin", "wsh")
+	defaultPath := "~/.waveterm/bin/wsh"
 
 	session, err := client.NewSession()
 	if err != nil {
@@ -93,6 +93,18 @@ func GetWshPath(client *ssh.Client) string {
 
 	out, whereErr := session.Output("where.exe wsh")
 	if whereErr == nil {
+		return strings.TrimSpace(string(out))
+	}
+
+	// check cmd on windows since it requires an absolute path with backslashes
+	session, err = client.NewSession()
+	if err != nil {
+		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
+		return defaultPath
+	}
+
+	out, cmdErr := session.Output("(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none") //todo
+	if cmdErr == nil && strings.TrimSpace(string(out)) != "none" {
 		return strings.TrimSpace(string(out))
 	}
 
@@ -279,6 +291,9 @@ func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) erro
 
 func InstallClientRcFiles(client *ssh.Client) error {
 	path := GetWshPath(client)
+	log.Printf("path to wsh searched is: %s", path)
+	log.Printf("in bytes is: %v", []byte(path))
+	log.Printf("in bytes expected would be: %v", []byte("~/.waveterm/bin/wsh"))
 
 	session, err := client.NewSession()
 	if err != nil {
