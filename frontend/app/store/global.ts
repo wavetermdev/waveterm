@@ -362,7 +362,7 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
-async function createBlock(blockDef: BlockDef) {
+async function createBlock(blockDef: BlockDef): Promise<string> {
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const blockId = await services.ObjectService.CreateBlock(blockDef, rtOpts);
     const insertNodeAction: LayoutTreeInsertNodeAction = {
@@ -372,6 +372,7 @@ async function createBlock(blockDef: BlockDef) {
     const activeTabId = globalStore.get(atoms.uiContext).activetabid;
     const layoutModel = getLayoutModelForTabById(activeTabId);
     layoutModel.treeReducer(insertNodeAction);
+    return blockId;
 }
 
 // when file is not found, returns {data: null, fileInfo: null}
