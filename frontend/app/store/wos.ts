@@ -5,6 +5,7 @@
 
 import { sendRpcCommand } from "@/app/store/wshrpc";
 import { getWebServerEndpoint } from "@/util/endpoints";
+import { fetch } from "@/util/fetchutil";
 import * as jotai from "jotai";
 import * as React from "react";
 import { atoms, globalStore } from "./global";

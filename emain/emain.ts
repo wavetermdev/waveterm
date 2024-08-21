@@ -5,7 +5,6 @@ import * as electron from "electron";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
-import os from "os";
 import * as path from "path";
 import { PNG } from "pngjs";
 import * as readline from "readline";
@@ -16,9 +15,20 @@ import winston from "winston";
 import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
-import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
-import * as keyutil from "../frontend/util/keyutil";
+import { fetch } from "../frontend/util/fetchutil";
 import { fireAndForget } from "../frontend/util/util";
+import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
+import {
+    getElectronAppBasePath,
+    getGoAppBasePath,
+    getWaveHomeDir,
+    getWaveSrvCwd,
+    getWaveSrvPath,
+    isDev,
+    isDevVite,
+    unameArch,
+    unamePlatform,
+} from "./platform";
 import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
@@ -27,7 +37,6 @@ let WaveBuildTime = 0; // set by WAVESRV-ESTART
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
-const AuthKeyFile = "waveterm.authkey";
 electron.nativeTheme.themeSource = "dark";
 
 type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string; readyPromise: Promise<void> };
@@ -44,35 +53,14 @@ let globalIsRelaunching = false;
 let wasActive = true;
 let wasInFg = true;
 
-const isDev = !electronApp.isPackaged;
-const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
-if (isDev) {
-    process.env[WaveDevVarName] = "1";
-}
-if (isDevVite) {
-    process.env[WaveDevViteVarName] = "1";
-}
-
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
-electronApp.setName(isDev ? "TheNextWave (Dev)" : "TheNextWave");
-const unamePlatform = process.platform;
-let unameArch: string = process.arch;
-if (unameArch == "x64") {
-    unameArch = "amd64";
-}
-keyutil.setKeyUtilPlatform(unamePlatform);
-
-// must match golang
-function getWaveHomeDir() {
-    return path.join(os.homedir(), isDev ? ".w2-dev" : ".w2");
-}
 
 const waveHome = getWaveHomeDir();
 
 const oldConsoleLog = console.log;
 
 const loggerTransports: winston.transport[] = [
-    new winston.transports.File({ filename: path.join(waveHome, "waveterm-app.log"), level: "info" }),
+    new winston.transports.File({ filename: path.join(getWaveHomeDir(), "waveterm-app.log"), level: "info" }),
 ];
 if (isDev) {
     loggerTransports.push(new winston.transports.Console());
@@ -110,29 +98,6 @@ if (isDev) {
 
 initGlobal({ windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
-function getElectronAppBasePath(): string {
-    return path.dirname(__dirname);
-}
-
-function getGoAppBasePath(): string {
-    return getElectronAppBasePath().replace("app.asar", "app.asar.unpacked");
-}
-
-const wavesrvBinName = `wavesrv.${unameArch}`;
-
-function getWaveSrvPath(): string {
-    if (process.platform === "win32") {
-        const winBinName = `${wavesrvBinName}.exe`;
-        const appPath = path.join(getGoAppBasePath(), "bin", winBinName);
-        return `${appPath}`;
-    }
-    return path.join(getGoAppBasePath(), "bin", wavesrvBinName);
-}
-
-function getWaveSrvCwd(): string {
-    return getWaveHomeDir();
-}
-
 function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
     const windowId = event.sender.id;
     return electron.BrowserWindow.fromId(windowId);
@@ -148,6 +113,7 @@ function runWaveSrv(): Promise<boolean> {
     const envCopy = { ...process.env };
     envCopy[WaveAppPathVarName] = getGoAppBasePath();
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
+    envCopy[AuthKeyEnv] = AuthKey;
     const waveSrvCmd = getWaveSrvPath();
     console.log("trying to run local server", waveSrvCmd);
     const proc = child_process.spawn(getWaveSrvPath(), {
@@ -197,6 +163,7 @@ function runWaveSrv(): Promise<boolean> {
                 applicationVersion: "v" + WaveVersion,
                 version: (isDev ? "dev-" : "") + String(WaveBuildTime),
             });
+            configureAuthKeyRequestInjection(electron.session.defaultSession);
             waveSrvReadyResolve(true);
             return;
         }
@@ -465,6 +432,7 @@ function createBrowserWindow(
         console.log("window-open denied", url);
         return { action: "deny" };
     });
+    configureAuthKeyRequestInjection(win.webContents.session);
     return win;
 }
 
@@ -548,12 +516,6 @@ function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rectangle 
     return bounds;
 }
 
-electron.ipcMain.on("getIsDev", (event) => {
-    event.returnValue = isDev;
-});
-electron.ipcMain.on("getPlatform", (event, url) => {
-    event.returnValue = unamePlatform;
-});
 // Listen for the open-external event from the renderer process
 electron.ipcMain.on("open-external", (event, url) => {
     if (url && typeof url === "string") {
@@ -571,7 +533,7 @@ electron.ipcMain.on("download", (event, payload) => {
     window.webContents.downloadURL(streamingUrl);
 });
 
-electron.ipcMain.on("getCursorPoint", (event) => {
+electron.ipcMain.on("get-cursor-point", (event) => {
     const window = electron.BrowserWindow.fromWebContents(event.sender);
     const screenPoint = electron.screen.getCursorScreenPoint();
     const windowRect = window.getContentBounds();
@@ -582,7 +544,7 @@ electron.ipcMain.on("getCursorPoint", (event) => {
     event.returnValue = retVal;
 });
 
-electron.ipcMain.on("getEnv", (event, varName) => {
+electron.ipcMain.on("get-env", (event, varName) => {
     event.returnValue = process.env[varName] ?? null;
 });
 
@@ -617,7 +579,7 @@ async function createNewWaveWindow() {
     newBrowserWindow.show();
 }
 
-electron.ipcMain.on("openNewWindow", () => fireAndForget(createNewWaveWindow));
+electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
 
 electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenuItem[]) => {
     const window = electron.BrowserWindow.fromWebContents(event.sender);

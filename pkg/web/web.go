@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/wavetermdev/thenextwave/pkg/authkey"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/telemetry"
@@ -397,17 +398,13 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 			w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		}
 		w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo")
-		// reqAuthKey := r.Header.Get("X-AuthKey")
-		// if reqAuthKey == "" {
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	w.Write([]byte("no x-authkey header"))
-		// 	return
-		// }
-		// if reqAuthKey != scbase.WaveAuthKey {
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	w.Write([]byte("x-authkey header is invalid"))
-		// 	return
-		// }
+		err := authkey.ValidateIncomingRequest(r)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("error validating authkey: %v", err)))
+			log.Printf("error validating request: %v", err)
+			return
+		}
 		fn(w, r)
 	}
 }

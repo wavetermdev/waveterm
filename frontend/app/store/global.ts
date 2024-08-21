@@ -10,6 +10,7 @@ import {
     newLayoutNode,
 } from "@/layout/index";
 import { getWebServerEndpoint, getWSServerEndpoint } from "@/util/endpoints";
+import { fetch } from "@/util/fetchutil";
 import { produce } from "immer";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";

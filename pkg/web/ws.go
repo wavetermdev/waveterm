@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/wavetermdev/thenextwave/pkg/authkey"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
@@ -243,6 +244,14 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	windowId := r.URL.Query().Get("windowid")
 	if windowId == "" {
 		return fmt.Errorf("windowid is required")
+	}
+
+	err := authkey.ValidateIncomingRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("error validating authkey: %v", err)))
+		log.Printf("error validating request: %v", err)
+		return err
 	}
 	conn, err := WebSocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {

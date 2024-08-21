@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wavetermdev/thenextwave/pkg/authkey"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/telemetry"
@@ -165,7 +166,13 @@ func main() {
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 
-	err := service.ValidateServiceMap()
+	err := authkey.SetAuthKeyFromEnv()
+	if err != nil {
+		log.Printf("error setting auth key: %v\n", err)
+		return
+	}
+
+	err = service.ValidateServiceMap()
 	if err != nil {
 		log.Printf("error validating service map: %v\n", err)
 		return

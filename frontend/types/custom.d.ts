@@ -52,6 +52,7 @@ declare global {
     };
 
     type ElectronApi = {
+        getAuthKey(): string;
         getIsDev(): boolean;
         getCursorPoint: () => Electron.Point;
 

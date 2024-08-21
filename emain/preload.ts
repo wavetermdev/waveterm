@@ -4,10 +4,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
-    getIsDev: () => ipcRenderer.sendSync("getIsDev"),
-    getPlatform: () => ipcRenderer.sendSync("getPlatform"),
-    getCursorPoint: () => ipcRenderer.sendSync("getCursorPoint"),
-    openNewWindow: () => ipcRenderer.send("openNewWindow"),
+    getAuthKey: () => ipcRenderer.sendSync("get-auth-key"),
+    getIsDev: () => ipcRenderer.sendSync("get-is-dev"),
+    getPlatform: () => ipcRenderer.sendSync("get-platform"),
+    getCursorPoint: () => ipcRenderer.sendSync("get-cursor-point"),
+    openNewWindow: () => ipcRenderer.send("open-new-window"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),
     downloadFile: (filePath) => ipcRenderer.send("download", { filePath }),
@@ -18,7 +19,7 @@ contextBridge.exposeInMainWorld("api", {
             console.error("Invalid URL passed to openExternal:", url);
         }
     },
-    getEnv: (varName) => ipcRenderer.sendSync("getEnv", varName),
+    getEnv: (varName) => ipcRenderer.sendSync("get-env", varName),
     onFullScreenChange: (callback) =>
         ipcRenderer.on("fullscreen-change", (_event, isFullScreen) => callback(isFullScreen)),
     onUpdaterStatusChange: (callback) => ipcRenderer.on("app-update-status", (_event, status) => callback(status)),
