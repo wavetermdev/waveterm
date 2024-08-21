@@ -248,9 +248,8 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 
 	err := authkey.ValidateIncomingRequest(r)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(fmt.Sprintf("error validating authkey: %v", err)))
-		log.Printf("error validating request: %v", err)
 		return err
 	}
 	conn, err := WebSocketUpgrader.Upgrade(w, r, nil)

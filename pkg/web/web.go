@@ -400,9 +400,8 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 		w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo")
 		err := authkey.ValidateIncomingRequest(r)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(fmt.Sprintf("error validating authkey: %v", err)))
-			log.Printf("error validating request: %v", err)
 			return
 		}
 		fn(w, r)
