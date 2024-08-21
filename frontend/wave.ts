@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WshServer } from "@/app/store/wshserver";
-import { atoms, getApi, globalStore, globalWS, initGlobal, initWS } from "@/store/global";
+import { atoms, countersClear, countersPrint, getApi, globalStore, globalWS, initGlobal, initWS } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as keyutil from "@/util/keyutil";
@@ -30,6 +30,8 @@ loadFonts();
 (window as any).globalAtoms = atoms;
 (window as any).WshServer = WshServer;
 (window as any).isFullScreen = false;
+(window as any).countersPrint = countersPrint;
+(window as any).countersClear = countersClear;
 
 document.title = `The Next Wave (${windowId.substring(0, 8)})`;
 

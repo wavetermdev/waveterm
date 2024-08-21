@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock, globalStore, setBlockFocus, WOS } from "@/app/store/global";
+import { atoms, createBlock, getViewModel, globalStore, setBlockFocus, WOS } from "@/app/store/global";
 import { deleteLayoutModelForTab, getLayoutModelForTab } from "@/layout/index";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
@@ -225,6 +225,25 @@ async function handleCmdT() {
     setBlockFocus(newBlockId);
 }
 
+function handleCmdI() {
+    const waveWindow = globalStore.get(atoms.waveWindow);
+    if (waveWindow == null) {
+        return;
+    }
+    let activeBlockId = waveWindow.activeblockid;
+    if (activeBlockId == null) {
+        // get the first block
+        const tabData = globalStore.get(atoms.tabAtom);
+        const firstBlockId = tabData.blockids?.length == 0 ? null : tabData.blockids[0];
+        if (firstBlockId == null) {
+            return;
+        }
+        activeBlockId = firstBlockId;
+    }
+    const viewModel = getViewModel(activeBlockId);
+    viewModel?.giveFocus?.();
+}
+
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     if (waveEvent.key === "Control" || waveEvent.key === "Shift" || waveEvent.key === "Meta") {
         if (waveEvent.control && waveEvent.shift && !waveEvent.meta) {
@@ -249,6 +268,10 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     }
     if (keyutil.checkKeyPressed(waveEvent, "Cmd:n")) {
         handleCmdT();
+        return true;
+    }
+    if (keyutil.checkKeyPressed(waveEvent, "Cmd:i")) {
+        handleCmdI();
         return true;
     }
     if (keyutil.checkKeyPressed(waveEvent, "Cmd:t")) {

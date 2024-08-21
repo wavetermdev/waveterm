@@ -9,6 +9,7 @@ import { WebviewTag } from "electron";
 import * as jotai from "jotai";
 import React, { memo, useEffect } from "react";
 
+import { checkKeyPressed } from "@/util/keyutil";
 import "./webview.less";
 
 export class WebViewModel implements ViewModel {
@@ -307,6 +308,19 @@ export class WebViewModel implements ViewModel {
             return true;
         }
     }
+
+    keyDownHandler(e: WaveKeyboardEvent): boolean {
+        if (checkKeyPressed(e, "Cmd:l")) {
+            this.urlInputRef?.current?.focus();
+            this.urlInputRef?.current?.select();
+            return true;
+        }
+        if (checkKeyPressed(e, "Cmd:r")) {
+            this.webviewRef?.current?.reload();
+            return true;
+        }
+        return false;
+    }
 }
 
 function makeWebViewModel(blockId: string): WebViewModel {
@@ -315,11 +329,11 @@ function makeWebViewModel(blockId: string): WebViewModel {
 }
 
 interface WebViewProps {
-    parentRef: React.RefObject<HTMLDivElement>;
+    blockId: string;
     model: WebViewModel;
 }
 
-const WebView = memo(({ parentRef, model }: WebViewProps) => {
+const WebView = memo(({ model }: WebViewProps) => {
     const url = model.getUrl();
     const blockData = jotai.useAtomValue(model.blockAtom);
     const metaUrl = blockData?.meta?.url;
@@ -385,34 +399,6 @@ const WebView = memo(({ parentRef, model }: WebViewProps) => {
             };
         }
     }, []);
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === "l") {
-                e.preventDefault();
-                if (model.urlInputRef) {
-                    model.urlInputRef.current.focus();
-                    model.urlInputRef.current.select();
-                }
-            } else if ((e.ctrlKey || e.metaKey) && e.key === "r") {
-                e.preventDefault();
-                if (model.webviewRef.current) {
-                    model.webviewRef.current.reload();
-                }
-            }
-        };
-
-        const parentElement = parentRef.current;
-        if (parentElement) {
-            parentElement.addEventListener("keydown", handleKeyDown);
-        }
-
-        return () => {
-            if (parentElement) {
-                parentElement.removeEventListener("keydown", handleKeyDown);
-            }
-        };
-    }, [parentRef]);
 
     return <webview id="webview" className="webview" ref={model.webviewRef} src={url}></webview>;
 });

@@ -168,7 +168,7 @@ Other useful metadata values to override block titles, icons, colors, themes, et
 
 `;
 
-function HelpView() {
+function HelpView({ blockId }: { blockId: string }) {
     return <Markdown text={helpText} className="help-view" />;
 }
 

@@ -23,6 +23,8 @@ let PLATFORM: NodeJS.Platform = "darwin";
 const globalStore = jotai.createStore();
 let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
+const blockViewModelMap = new Map<string, ViewModel>();
+const Counters = new Map<string, number>();
 
 type GlobalInitOptions = {
     platform: NodeJS.Platform;
@@ -236,6 +238,13 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
         console.log("New BlockAtom", blockId, name);
     }
     return atom as jotai.Atom<T>;
+}
+
+function useBlockDataLoaded(blockId: string): boolean {
+    const loadedAtom = useBlockAtom<boolean>(blockId, "block-loaded", () => {
+        return WOS.getWaveObjectLoadingAtom(WOS.makeORef("block", blockId));
+    });
+    return jotai.useAtomValue(loadedAtom);
 }
 
 let globalWS: WSControl = null;
@@ -455,8 +464,41 @@ async function openLink(uri: string) {
     }
 }
 
+function registerViewModel(blockId: string, viewModel: ViewModel) {
+    blockViewModelMap.set(blockId, viewModel);
+}
+
+function unregisterViewModel(blockId: string) {
+    blockViewModelMap.delete(blockId);
+}
+
+function getViewModel(blockId: string): ViewModel {
+    return blockViewModelMap.get(blockId);
+}
+
+function countersClear() {
+    Counters.clear();
+}
+
+function counterInc(name: string, incAmt: number = 1) {
+    let count = Counters.get(name) ?? 0;
+    count += incAmt;
+    Counters.set(name, count);
+}
+
+function countersPrint() {
+    let outStr = "";
+    for (const [name, count] of Counters.entries()) {
+        outStr += `${name}: ${count}\n`;
+    }
+    console.log(outStr);
+}
+
 export {
     atoms,
+    counterInc,
+    countersClear,
+    countersPrint,
     createBlock,
     fetchWaveFile,
     getApi,
@@ -464,6 +506,7 @@ export {
     getEventSubject,
     getFileSubject,
     getObjectId,
+    getViewModel,
     globalStore,
     globalWS,
     initGlobal,
@@ -471,11 +514,14 @@ export {
     isDev,
     openLink,
     PLATFORM,
+    registerViewModel,
     sendWSCommand,
     setBlockFocus,
     setPlatform,
+    unregisterViewModel,
     useBlockAtom,
     useBlockCache,
+    useBlockDataLoaded,
     useSettingsAtom,
     WOS,
 };

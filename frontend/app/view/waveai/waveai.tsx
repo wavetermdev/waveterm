@@ -398,7 +398,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
     }
 );
 
-const WaveAi = ({ model }: { model: WaveAiModel }) => {
+const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const { messages, sendMessage } = model.useWaveAi();
     const waveaiRef = useRef<HTMLDivElement>(null);
     const chatWindowRef = useRef<HTMLDivElement>(null);

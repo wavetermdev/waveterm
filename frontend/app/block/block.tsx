@@ -1,19 +1,19 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BlockComponentModel, BlockProps } from "@/app/block/blocktypes";
+import { BlockComponentModel, BlockProps, LayoutComponentModel } from "@/app/block/blocktypes";
 import { PlotView } from "@/app/view/plotview/plotview";
-import { PreviewView, makePreviewModel } from "@/app/view/preview/preview";
+import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
-import { atoms, setBlockFocus, useBlockAtom } from "@/store/global";
+import { atoms, counterInc, registerViewModel, setBlockFocus, unregisterViewModel, useBlockAtom } from "@/store/global";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
-import { CpuPlotView, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
+import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
 import { HelpView } from "@/view/helpview/helpview";
-import { TerminalView, makeTerminalModel } from "@/view/term/term";
-import { WaveAi, makeWaveAiViewModel } from "@/view/waveai/waveai";
-import { WebView, makeWebViewModel } from "@/view/webview/webview";
+import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
+import { WaveAi, WaveAiModel, makeWaveAiViewModel } from "@/view/waveai/waveai";
+import { WebView, WebViewModel, makeWebViewModel } from "@/view/webview/webview";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrame } from "./blockframe";
@@ -21,47 +21,58 @@ import { blockViewToIcon, blockViewToName } from "./blockutil";
 
 import "./block.less";
 
-function getViewElemAndModel(
-    blockId: string,
-    blockView: string,
-    blockRef: React.RefObject<HTMLDivElement>
-): { viewModel: ViewModel; viewElem: JSX.Element } {
-    let viewElem: JSX.Element = null;
-    let viewModel: ViewModel = null;
+type FullBlockProps = {
+    blockId: string;
+    preview: boolean;
+    layoutModel: LayoutComponentModel;
+    viewModel: ViewModel;
+};
+
+function makeViewModel(blockId: string, blockView: string): ViewModel {
+    if (blockView === "term") {
+        return makeTerminalModel(blockId);
+    }
+    if (blockView === "preview") {
+        return makePreviewModel(blockId);
+    }
+    if (blockView === "web") {
+        return makeWebViewModel(blockId);
+    }
+    if (blockView === "waveai") {
+        return makeWaveAiViewModel(blockId);
+    }
+    if (blockView === "cpuplot") {
+        return makeCpuPlotViewModel(blockId);
+    }
+    return makeDefaultViewModel(blockId);
+}
+
+function getViewElem(blockId: string, blockView: string, viewModel: ViewModel): JSX.Element {
     if (util.isBlank(blockView)) {
-        viewElem = <CenteredDiv>No View</CenteredDiv>;
-        viewModel = makeDefaultViewModel(blockId);
-    } else if (blockView === "term") {
-        const termViewModel = makeTerminalModel(blockId);
-        viewElem = <TerminalView key={blockId} blockId={blockId} model={termViewModel} />;
-        viewModel = termViewModel;
-    } else if (blockView === "preview") {
-        const previewModel = makePreviewModel(blockId);
-        viewElem = <PreviewView key={blockId} blockId={blockId} model={previewModel} />;
-        viewModel = previewModel;
-    } else if (blockView === "plot") {
-        viewElem = <PlotView key={blockId} />;
-    } else if (blockView === "web") {
-        const webviewModel = makeWebViewModel(blockId);
-        viewElem = <WebView key={blockId} parentRef={blockRef} model={webviewModel} />;
-        viewModel = webviewModel;
-    } else if (blockView === "waveai") {
-        const waveAiModel = makeWaveAiViewModel(blockId);
-        viewElem = <WaveAi key={blockId} model={waveAiModel} />;
-        viewModel = waveAiModel;
-    } else if (blockView === "cpuplot") {
-        const cpuPlotModel = makeCpuPlotViewModel(blockId);
-        viewElem = <CpuPlotView key={blockId} model={cpuPlotModel} />;
-        viewModel = cpuPlotModel;
-    } else if (blockView == "help") {
-        viewElem = <HelpView key={blockId} />;
-        viewModel = makeDefaultViewModel(blockId);
+        return <CenteredDiv>No View</CenteredDiv>;
     }
-    if (viewModel == null) {
-        viewElem = <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
-        viewModel = makeDefaultViewModel(blockId);
+    if (blockView === "term") {
+        return <TerminalView key={blockId} blockId={blockId} model={viewModel as TermViewModel} />;
     }
-    return { viewElem, viewModel };
+    if (blockView === "preview") {
+        return <PreviewView key={blockId} blockId={blockId} model={viewModel as PreviewModel} />;
+    }
+    if (blockView === "plot") {
+        return <PlotView key={blockId} />;
+    }
+    if (blockView === "web") {
+        return <WebView key={blockId} blockId={blockId} model={viewModel as WebViewModel} />;
+    }
+    if (blockView === "waveai") {
+        return <WaveAi key={blockId} blockId={blockId} model={viewModel as WaveAiModel} />;
+    }
+    if (blockView === "cpuplot") {
+        return <CpuPlotView key={blockId} blockId={blockId} model={viewModel as CpuPlotViewModel} />;
+    }
+    if (blockView == "help") {
+        return <HelpView key={blockId} blockId={blockId} />;
+    }
+    return <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
 }
 
 function makeDefaultViewModel(blockId: string): ViewModel {
@@ -85,12 +96,11 @@ function makeDefaultViewModel(blockId: string): ViewModel {
     return viewModel;
 }
 
-const BlockPreview = React.memo(({ blockId, layoutModel }: BlockProps) => {
+const BlockPreview = React.memo(({ blockId, layoutModel, viewModel }: FullBlockProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     if (!blockData) {
         return null;
     }
-    let { viewModel } = getViewElemAndModel(blockId, blockData?.meta?.view, null);
     return (
         <BlockFrame
             key={blockId}
@@ -103,11 +113,12 @@ const BlockPreview = React.memo(({ blockId, layoutModel }: BlockProps) => {
     );
 });
 
-const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
+const BlockFull = React.memo(({ blockId, layoutModel, viewModel }: FullBlockProps) => {
+    counterInc("render-BlockFull");
     const focusElemRef = React.useRef<HTMLInputElement>(null);
     const blockRef = React.useRef<HTMLDivElement>(null);
     const [blockClicked, setBlockClicked] = React.useState(false);
-    const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const [focusedChild, setFocusedChild] = React.useState(null);
     const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
         return jotai.atom((get) => {
@@ -145,9 +156,9 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
         setBlockClicked(true);
     }, []);
 
-    let { viewElem, viewModel } = React.useMemo(
-        () => getViewElemAndModel(blockId, blockData?.meta?.view, blockRef),
-        [blockId, blockData?.meta?.view, blockRef]
+    let viewElem = React.useMemo(
+        () => getViewElem(blockId, blockData?.meta?.view, viewModel),
+        [blockId, blockData?.meta?.view, viewModel]
     );
 
     const determineFocusedChild = React.useCallback(
@@ -165,11 +176,6 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
         focusElemRef.current?.focus({ preventScroll: true });
     }, []);
 
-    if (!blockId || !blockData) return null;
-
-    if (blockDataLoading) {
-        viewElem = <CenteredDiv>Loading...</CenteredDiv>;
-    }
     const blockModel: BlockComponentModel = {
         onClick: setBlockClickedTrue,
         onFocusCapture: determineFocusedChild,
@@ -202,10 +208,25 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
 });
 
 const Block = React.memo((props: BlockProps) => {
-    if (props.preview) {
-        return <BlockPreview {...props} />;
+    counterInc("render-Block");
+    counterInc("render-Block-" + props.blockId.substring(0, 8));
+    const [blockData, loading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", props.blockId));
+    const viewModel = makeViewModel(props.blockId, blockData?.meta?.view);
+    React.useEffect(() => {
+        registerViewModel(props.blockId, viewModel);
+    }, [blockData?.meta?.view]);
+    React.useEffect(() => {
+        return () => {
+            unregisterViewModel(props.blockId);
+        };
+    }, []);
+    if (loading || util.isBlank(props.blockId) || blockData == null) {
+        return null;
     }
-    return <BlockFull {...props} />;
+    if (props.preview) {
+        return <BlockPreview {...props} viewModel={viewModel} />;
+    }
+    return <BlockFull {...props} viewModel={viewModel} />;
 });
 
 export { Block };

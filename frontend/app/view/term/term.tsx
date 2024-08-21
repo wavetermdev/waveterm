@@ -404,4 +404,4 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     );
 };
 
-export { TerminalView, makeTerminalModel };
+export { TermViewModel, TerminalView, makeTerminalModel };

@@ -71,7 +71,7 @@ function makeCpuPlotViewModel(blockId: string): CpuPlotViewModel {
     return cpuPlotViewModel;
 }
 
-function CpuPlotView({ model }: { model: CpuPlotViewModel }) {
+function CpuPlotView({ model }: { model: CpuPlotViewModel; blockId: string }) {
     const containerRef = React.useRef<HTMLInputElement>();
     const plotData = jotai.useAtomValue(model.dataAtom);
     const addPlotData = jotai.useSetAtom(model.addDataAtom);
