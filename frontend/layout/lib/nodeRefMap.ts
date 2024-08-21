@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 export class NodeRefMap {
     private map: Map<string, React.RefObject<HTMLDivElement>> = new Map();
     generation: number = 0;

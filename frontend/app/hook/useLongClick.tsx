@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export const useLongClick = (ref, onClick, onLongClick, ms = 300) => {

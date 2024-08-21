@@ -1,4 +1,4 @@
-// Copyright 2023, Command Line Inc.
+// Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { AboutModal } from "./about";

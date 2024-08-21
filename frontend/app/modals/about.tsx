@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import Logo from "@/app/asset/logo.svg";
 import { LinkButton } from "@/app/element/linkbutton";
 import { modalsModel } from "@/app/store/modalmodel";

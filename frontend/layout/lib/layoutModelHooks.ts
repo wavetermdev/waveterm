@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { globalStore, WOS } from "@/app/store/global";
 import useResizeObserver from "@react-hook/resize-observer";
 import { Atom, useAtomValue } from "jotai";

@@ -1,10 +1,11 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { WOS } from "@/app/store/global";
 import { Atom, atom, Getter } from "jotai";
 import { LayoutTreeState, WritableLayoutTreeStateAtom } from "./types";
 
 const layoutStateAtomMap: WeakMap<Atom<Tab>, WritableLayoutTreeStateAtom> = new WeakMap();
-// const layoutStateLoadingAtomMap: WeakMap<Atom<Tab>, Atom<boolean>> = new WeakMap();
-// const layoutStateAtomMap
 
 function getLayoutStateAtomFromTab(tabAtom: Atom<Tab>, get: Getter): WritableWaveObjectAtom<LayoutState> {
     const tabData = get(tabAtom);

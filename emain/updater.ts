@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { isDev } from "@/util/isdev";
 import * as electron from "electron";
 import { autoUpdater } from "electron-updater";
