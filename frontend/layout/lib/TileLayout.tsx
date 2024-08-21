@@ -175,7 +175,6 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
     const addlProps = useLayoutNode(layoutModel, layoutNode);
     const activeDrag = useAtomValue(layoutModel.activeDrag);
     const globalReady = useAtomValue(layoutModel.ready);
-    const layoutGeneration = useAtomValue(layoutModel.generationAtom);
 
     const devicePixelRatio = useDevicePixelRatio();
 
@@ -183,12 +182,12 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
         () => ({
             type: dragItemType,
             item: () => layoutNode,
-            canDrag: () => !layoutModel?.treeState?.magnifiedNodeId,
+            canDrag: () => !addlProps?.isMagnifiedNode,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
         }),
-        [layoutNode, layoutGeneration]
+        [layoutNode, addlProps]
     );
 
     const [previewElementGeneration, setPreviewElementGeneration] = useState(0);
@@ -249,7 +248,7 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
                     {contents.renderContent(
                         layoutNode.data,
                         globalReady,
-                        layoutNode.id === layoutModel.treeState.magnifiedNodeId,
+                        addlProps?.isMagnifiedNode ?? false,
                         activeDrag,
                         () => layoutModel.magnifyNodeToggle(layoutNode),
                         () => layoutModel.closeNode(layoutNode),
@@ -258,13 +257,13 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
                 </div>
             )
         );
-    }, [layoutNode, globalReady, layoutGeneration, activeDrag, addlProps]);
+    }, [layoutNode, globalReady, activeDrag, addlProps]);
 
     return (
         <div
             className={clsx("tile-node", {
                 dragging: isDragging,
-                magnified: layoutModel.treeState.magnifiedNodeId === layoutNode.id,
+                magnified: addlProps?.isMagnifiedNode,
                 "last-magnified": addlProps?.isLastMagnifiedNode,
             })}
             ref={tileNodeRef}

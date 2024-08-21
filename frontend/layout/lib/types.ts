@@ -93,24 +93,30 @@ export interface LayoutTreeSwapNodeAction extends LayoutTreeAction {
     node2Id: string;
 }
 
+interface InsertNodeOperation {
+    /**
+     * The node to insert.
+     */
+    node: LayoutNode;
+    /**
+     * Whether the inserted node should be magnified.
+     */
+    magnified?: boolean;
+}
+
 /**
  * Action for inserting a new node to the layout tree.
  *
  */
-export interface LayoutTreeInsertNodeAction extends LayoutTreeAction {
+export interface LayoutTreeInsertNodeAction extends LayoutTreeAction, InsertNodeOperation {
     type: LayoutTreeActionType.InsertNode;
-    node: LayoutNode;
 }
 
 /**
  * Action for inserting a node into the layout tree at the specified index.
  */
-export interface LayoutTreeInsertNodeAtIndexAction extends LayoutTreeAction {
+export interface LayoutTreeInsertNodeAtIndexAction extends LayoutTreeAction, InsertNodeOperation {
     type: LayoutTreeActionType.InsertNodeAtIndex;
-    /**
-     * The node to insert.
-     */
-    node: LayoutNode;
     /**
      * The array of indices to traverse when inserting the node.
      * The last index is the index within the parent node where the node should be inserted.
@@ -274,5 +280,6 @@ export interface LayoutNodeAdditionalProps {
     rect?: Dimensions;
     pixelToSizeRatio?: number;
     resizeHandles?: ResizeHandleProps[];
+    isMagnifiedNode?: boolean;
     isLastMagnifiedNode?: boolean;
 }

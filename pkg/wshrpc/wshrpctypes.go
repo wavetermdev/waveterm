@@ -185,9 +185,10 @@ type CommandResolveIdsRtnData struct {
 }
 
 type CommandCreateBlockData struct {
-	TabId    string               `json:"tabid" wshcontext:"TabId"`
-	BlockDef *waveobj.BlockDef    `json:"blockdef"`
-	RtOpts   *waveobj.RuntimeOpts `json:"rtopts"`
+	TabId     string               `json:"tabid" wshcontext:"TabId"`
+	BlockDef  *waveobj.BlockDef    `json:"blockdef"`
+	RtOpts    *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
+	Magnified bool                 `json:"magnified,omitempty"`
 }
 
 type CommandBlockSetViewData struct {

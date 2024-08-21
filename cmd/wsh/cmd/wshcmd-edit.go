@@ -14,6 +14,8 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
 )
 
+var editMagnified bool
+
 var editCmd = &cobra.Command{
 	Use:     "edit",
 	Short:   "edit a file",
@@ -23,6 +25,7 @@ var editCmd = &cobra.Command{
 }
 
 func init() {
+	editCmd.Flags().BoolVarP(&editMagnified, "magnified", "m", false, "open view in magnified mode")
 	rootCmd.AddCommand(editCmd)
 }
 
@@ -35,6 +38,7 @@ func editRun(cmd *cobra.Command, args []string) {
 				waveobj.MetaKey_File: fileArg,
 			},
 		},
+		Magnified: editMagnified,
 	}
 	if RpcContext.Conn != "" {
 		wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn

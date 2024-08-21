@@ -131,6 +131,10 @@ export class LayoutModel {
     overlayTransform: Atom<CSSProperties>;
 
     /**
+     * The currently magnified node.
+     */
+    magnifiedNodeId: string;
+    /**
      * The last node to be magnified, other than the current magnified node, if set. This node should sit at a higher z-index than the others so that it floats above the other nodes as it returns to its original position.
      */
     lastMagnifiedNodeId: string;
@@ -314,6 +318,10 @@ export class LayoutModel {
         }
         if (stateChanged) {
             console.log("state changed", this.treeState);
+            if (this.magnifiedNodeId !== this.treeState.magnifiedNodeId) {
+                this.lastMagnifiedNodeId = this.magnifiedNodeId;
+                this.magnifiedNodeId = this.treeState.magnifiedNodeId;
+            }
             this.updateTree();
             this.treeState.generation++;
             this.setter(this.treeStateAtom, this.treeState);
@@ -393,7 +401,7 @@ export class LayoutModel {
             leafs.push(node);
             const addlProps = additionalPropsMap[node.id];
             if (addlProps) {
-                if (this.treeState.magnifiedNodeId === node.id) {
+                if (this.magnifiedNodeId === node.id) {
                     const boundingRect = getBoundingRect();
                     const transform = setTransform(
                         {
@@ -405,6 +413,7 @@ export class LayoutModel {
                         true
                     );
                     addlProps.transform = transform;
+                    addlProps.isMagnifiedNode = true;
                 }
                 addlProps.isLastMagnifiedNode = this.lastMagnifiedNodeId === node.id;
             }
@@ -577,12 +586,6 @@ export class LayoutModel {
             type: LayoutTreeActionType.MagnifyNodeToggle,
             nodeId: node.id,
         };
-
-        // If the node is already magnified, then it is being un-magnified and should be set as the last-magnified node to ensure it has a higher z-index as it transitions back to its original position.
-        if (this.treeState.magnifiedNodeId === node.id) {
-            console.log("new last-magnified-node", node.id);
-            this.lastMagnifiedNodeId = node.id;
-        }
 
         this.treeReducer(action);
     }

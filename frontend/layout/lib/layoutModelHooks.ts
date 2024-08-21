@@ -43,6 +43,8 @@ export function useLayoutModel(tabAtom: Atom<Tab>): LayoutModel {
 }
 
 export function useTileLayout(tabAtom: Atom<Tab>, tileContent: TileLayoutContents): LayoutModel {
+    // Use tab data to ensure we can reload if the tab is disposed and remade (such as during Hot Module Reloading)
+    useAtomValue(tabAtom);
     const layoutModel = useLayoutModel(tabAtom);
     useResizeObserver(layoutModel?.displayContainerRef, layoutModel?.onContainerResize);
     useEffect(() => layoutModel.registerTileLayout(tileContent), [tileContent]);

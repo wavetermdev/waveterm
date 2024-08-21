@@ -14,6 +14,8 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
 )
 
+var termMagnified bool
+
 var termCmd = &cobra.Command{
 	Use:     "term",
 	Short:   "open a terminal in directory",
@@ -23,6 +25,7 @@ var termCmd = &cobra.Command{
 }
 
 func init() {
+	termCmd.Flags().BoolVarP(&termMagnified, "magnified", "m", false, "open view in magnified mode")
 	rootCmd.AddCommand(termCmd)
 }
 
@@ -53,6 +56,7 @@ func termRun(cmd *cobra.Command, args []string) {
 				waveobj.MetaKey_Controller: "shell",
 			},
 		},
+		Magnified: termMagnified,
 	}
 	if RpcContext.Conn != "" {
 		createBlockData.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn

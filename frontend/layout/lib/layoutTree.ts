@@ -5,7 +5,6 @@ import { lazy } from "@/util/util";
 import {
     addChildAt,
     addIntermediateNode,
-    balanceNode,
     findInsertLocationFromIndexArr,
     findNextInsertLocation,
     findNode,
@@ -256,8 +255,6 @@ export function moveNode(layoutState: LayoutTreeState, action: LayoutTreeMoveNod
     if (oldParent) {
         removeChild(oldParent, node, startingIndex);
     }
-
-    layoutState.rootNode = balanceNode(layoutState.rootNode);
 }
 
 export function insertNode(layoutState: LayoutTreeState, action: LayoutTreeInsertNodeAction) {
@@ -266,12 +263,14 @@ export function insertNode(layoutState: LayoutTreeState, action: LayoutTreeInser
         return;
     }
     if (!layoutState.rootNode) {
-        layoutState.rootNode = balanceNode(action.node);
+        layoutState.rootNode = action.node;
         return;
     }
     const insertLoc = findNextInsertLocation(layoutState.rootNode, 5);
     addChildAt(insertLoc.node, insertLoc.index, action.node);
-    layoutState.rootNode = balanceNode(layoutState.rootNode);
+    if (action.magnified) {
+        layoutState.magnifiedNodeId = action.node.id;
+    }
 }
 
 export function insertNodeAtIndex(layoutState: LayoutTreeState, action: LayoutTreeInsertNodeAtIndexAction) {
@@ -280,7 +279,7 @@ export function insertNodeAtIndex(layoutState: LayoutTreeState, action: LayoutTr
         return;
     }
     if (!layoutState.rootNode) {
-        layoutState.rootNode = balanceNode(action.node);
+        layoutState.rootNode = action.node;
         return;
     }
     const insertLoc = findInsertLocationFromIndexArr(layoutState.rootNode, action.indexArr);
@@ -289,7 +288,9 @@ export function insertNodeAtIndex(layoutState: LayoutTreeState, action: LayoutTr
         return;
     }
     addChildAt(insertLoc.node, insertLoc.index + 1, action.node);
-    layoutState.rootNode = balanceNode(layoutState.rootNode);
+    if (action.magnified) {
+        layoutState.magnifiedNodeId = action.node.id;
+    }
 }
 
 export function swapNode(layoutState: LayoutTreeState, action: LayoutTreeSwapNodeAction) {
@@ -323,8 +324,6 @@ export function swapNode(layoutState: LayoutTreeState, action: LayoutTreeSwapNod
 
     parentNode1.children[parentNode1Index] = node2;
     parentNode2.children[parentNode2Index] = node1;
-
-    layoutState.rootNode = balanceNode(layoutState.rootNode);
 }
 
 export function deleteNode(layoutState: LayoutTreeState, action: LayoutTreeDeleteNodeAction) {
@@ -349,7 +348,6 @@ export function deleteNode(layoutState: LayoutTreeState, action: LayoutTreeDelet
     } else {
         console.error("unable to delete node, not found in tree");
     }
-    layoutState.rootNode = balanceNode(layoutState.rootNode);
 }
 
 export function resizeNode(layoutState: LayoutTreeState, action: LayoutTreeResizeNodeAction) {

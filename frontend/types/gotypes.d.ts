@@ -95,7 +95,8 @@ declare global {
     type CommandCreateBlockData = {
         tabid: string;
         blockdef: BlockDef;
-        rtopts: RuntimeOpts;
+        rtopts?: RuntimeOpts;
+        magnified?: boolean;
     };
 
     // wshrpc.CommandDeleteBlockData
@@ -522,6 +523,7 @@ declare global {
         blockid: string;
         nodesize?: number;
         indexarr?: number[];
+        magnified?: boolean;
     };
 
     // webcmd.WSRpcCommand

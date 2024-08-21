@@ -15,6 +15,7 @@ import (
 )
 
 var viewNewBlock bool
+var viewMagnified bool
 
 var viewCmd = &cobra.Command{
 	Use:     "view",
@@ -26,6 +27,7 @@ var viewCmd = &cobra.Command{
 
 func init() {
 	viewCmd.Flags().BoolVarP(&viewNewBlock, "newblock", "n", false, "open view in a new block")
+	viewCmd.Flags().BoolVarP(&viewMagnified, "magnified", "m", false, "open view in magnified mode")
 	rootCmd.AddCommand(viewCmd)
 }
 
@@ -41,6 +43,7 @@ func viewRun(cmd *cobra.Command, args []string) {
 					waveobj.MetaKey_Url:  fileArg,
 				},
 			},
+			Magnified: viewMagnified,
 		}
 	} else {
 		absFile, err := filepath.Abs(fileArg)
@@ -64,6 +67,7 @@ func viewRun(cmd *cobra.Command, args []string) {
 					waveobj.MetaKey_File: absFile,
 				},
 			},
+			Magnified: viewMagnified,
 		}
 		if conn != "" {
 			wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = conn

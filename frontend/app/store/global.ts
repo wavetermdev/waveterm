@@ -277,6 +277,7 @@ function handleWSEventMessage(msg: WSEventType) {
                     node: newLayoutNode(undefined, undefined, undefined, {
                         blockId: layoutAction.blockid,
                     }),
+                    magnified: layoutAction.magnified,
                 };
                 layoutModel.treeReducer(insertNodeAction);
                 break;
@@ -304,6 +305,7 @@ function handleWSEventMessage(msg: WSEventType) {
                         blockId: layoutAction.blockid,
                     }),
                     indexArr: layoutAction.indexarr,
+                    magnified: layoutAction.magnified,
                 };
                 layoutModel.treeReducer(insertAction);
                 break;
