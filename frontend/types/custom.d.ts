@@ -44,13 +44,6 @@ declare global {
         blockId: string;
     };
 
-    type Bounds = {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    };
-
     type ElectronApi = {
         getAuthKey(): string;
         getIsDev(): boolean;

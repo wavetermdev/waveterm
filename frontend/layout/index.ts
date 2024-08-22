@@ -28,14 +28,16 @@ import type {
     LayoutTreeStateSetter,
     LayoutTreeSwapNodeAction,
 } from "./lib/types";
-import { LayoutTreeActionType } from "./lib/types";
+import { DropDirection, LayoutTreeActionType, NavigateDirection } from "./lib/types";
 
 export {
     deleteLayoutModelForTab,
+    DropDirection,
     getLayoutModelForTab,
     getLayoutModelForTabById,
     LayoutModel,
     LayoutTreeActionType,
+    NavigateDirection,
     newLayoutNode,
     TileLayout,
     useLayoutModel,

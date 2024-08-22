@@ -202,13 +202,9 @@ function BlockNum({ blockId }: { blockId: string }) {
     const tabId = jotai.useAtomValue(atoms.activeTabId);
     const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
     const layoutModel = useLayoutModel(tabAtom);
-    for (let idx = 0; idx < layoutModel.leafs.length; idx++) {
-        const leaf = layoutModel.leafs[idx];
-        if (leaf?.data?.blockId == blockId) {
-            return String(idx + 1);
-        }
-    }
-    return null;
+    const leafsOrdered = jotai.useAtomValue(layoutModel.leafsOrdered);
+    const index = React.useMemo(() => leafsOrdered.findIndex((leaf) => leaf.data?.blockId == blockId), [leafsOrdered]);
+    return index !== -1 ? index + 1 : null;
 }
 
 const BlockMask = ({ blockId, preview, isFocused }: { blockId: string; preview: boolean; isFocused: boolean }) => {

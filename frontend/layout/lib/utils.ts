@@ -3,23 +3,7 @@
 
 import { CSSProperties } from "react";
 import { XYCoord } from "react-dnd";
-
-export enum DropDirection {
-    Top = 0,
-    Right = 1,
-    Bottom = 2,
-    Left = 3,
-    OuterTop = 4,
-    OuterRight = 5,
-    OuterBottom = 6,
-    OuterLeft = 7,
-    Center = 8,
-}
-
-export enum FlexDirection {
-    Row = "row",
-    Column = "column",
-}
+import { DropDirection, FlexDirection } from "./types";
 
 export function reverseFlexDirection(flexDirection: FlexDirection): FlexDirection {
     return flexDirection === FlexDirection.Row ? FlexDirection.Column : FlexDirection.Row;

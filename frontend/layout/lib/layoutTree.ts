@@ -13,6 +13,8 @@ import {
 } from "./layoutNode";
 import {
     DefaultNodeSize,
+    DropDirection,
+    FlexDirection,
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
@@ -25,7 +27,6 @@ import {
     LayoutTreeSwapNodeAction,
     MoveOperation,
 } from "./types";
-import { DropDirection, FlexDirection } from "./utils";
 
 /**
  * Computes an operation for inserting a new node into the tree in the given direction relative to the specified node.

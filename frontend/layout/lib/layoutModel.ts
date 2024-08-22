@@ -19,6 +19,7 @@ import {
 } from "./layoutTree";
 import {
     ContentRenderer,
+    FlexDirection,
     LayoutNode,
     LayoutNodeAdditionalProps,
     LayoutTreeAction,
@@ -38,7 +39,7 @@ import {
     TileLayoutContents,
     WritableLayoutTreeStateAtom,
 } from "./types";
-import { FlexDirection, setTransform } from "./utils";
+import { setTransform } from "./utils";
 
 interface ResizeContext {
     handleId: string;
@@ -86,9 +87,14 @@ export class LayoutModel {
     gapSizePx: number;
 
     /**
-     * List of nodes that are leafs and should be rendered as a DisplayNode
+     * List of nodes that are leafs and should be rendered as a DisplayNode.
      */
-    leafs: LayoutNode[];
+    leafs: PrimitiveAtom<LayoutNode[]>;
+    /**
+     * List of nodes that are leafs, ordered sequentially by placement in the tree.
+     */
+    leafsOrdered: Atom<LayoutNode[]>;
+
     /**
      * Split atom containing the properties of all of the resize handles that should be placed in the layout.
      */
@@ -163,6 +169,7 @@ export class LayoutModel {
      * True if the whole TileLayout container is being resized.
      */
     private isContainerResizing: PrimitiveAtom<boolean>;
+
     /**
      * An arbitrary generation value that is incremented every time the updateTree function runs. Helps indicate to subscribers that they should update their memoized values.
      */
@@ -188,8 +195,20 @@ export class LayoutModel {
         this.halfResizeHandleSizePx = this.gapSizePx > 5 ? this.gapSizePx : DefaultGapSizePx;
         this.resizeHandleSizePx = 2 * this.halfResizeHandleSizePx;
 
-        this.leafs = [];
+        this.leafs = atom([]);
         this.additionalProps = atom({});
+        this.leafsOrdered = atom((get) => {
+            const leafs = get(this.leafs);
+            const additionalProps = get(this.additionalProps);
+            console.log("additionalProps", additionalProps);
+            const leafsOrdered = leafs.sort((a, b) => {
+                const treeKeyA = additionalProps[a.id].treeKey;
+                const treeKeyB = additionalProps[b.id].treeKey;
+                return treeKeyA.localeCompare(treeKeyB);
+            });
+            console.log("leafsOrdered", leafsOrdered);
+            return leafsOrdered;
+        });
 
         const resizeHandleListAtom = atom((get) => {
             const addlProps = get(this.additionalProps);
@@ -368,7 +387,10 @@ export class LayoutModel {
             else walkNodes(this.treeState.rootNode, callback);
 
             this.setter(this.additionalProps, newAdditionalProps);
-            this.leafs = newLeafs.sort((a, b) => a.id.localeCompare(b.id));
+            this.setter(
+                this.leafs,
+                newLeafs.sort((a, b) => a.id.localeCompare(b.id))
+            );
 
             this.setter(this.generationAtom, this.getter(this.generationAtom) + 1);
         }
@@ -426,7 +448,9 @@ export class LayoutModel {
 
         const additionalProps: LayoutNodeAdditionalProps = additionalPropsMap.hasOwnProperty(node.id)
             ? additionalPropsMap[node.id]
-            : {};
+            : { treeKey: "0" };
+
+        console.log("layoutNode addlProps", node, additionalProps);
 
         const nodeRect: Dimensions = node.id === this.treeState.rootNode.id ? getBoundingRect() : additionalProps.rect;
         const nodeIsRow = node.flexDirection === FlexDirection.Row;
@@ -436,7 +460,7 @@ export class LayoutModel {
 
         let lastChildRect: Dimensions;
         const resizeHandles: ResizeHandleProps[] = [];
-        for (const child of node.children) {
+        node.children.forEach((child, i) => {
             const childSize = getNodeSize(child);
             const rect: Dimensions = {
                 top: !nodeIsRow && lastChildRect ? lastChildRect.top + lastChildRect.height : nodeRect.top,
@@ -448,6 +472,7 @@ export class LayoutModel {
             additionalPropsMap[child.id] = {
                 rect,
                 transform,
+                treeKey: additionalProps.treeKey + i,
             };
 
             // We only want the resize handles in between nodes, this ensures we have n-1 handles.
@@ -475,7 +500,7 @@ export class LayoutModel {
                 });
             }
             lastChildRect = rect;
-        }
+        });
 
         additionalPropsMap[node.id] = {
             ...additionalProps,
@@ -713,7 +738,7 @@ export class LayoutModel {
     }
 
     getNodeByBlockId(blockId: string) {
-        for (const leaf of this.leafs) {
+        for (const leaf of this.getter(this.leafs)) {
             if (leaf.data.blockId === blockId) {
                 return leaf;
             }

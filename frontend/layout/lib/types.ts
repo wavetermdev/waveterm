@@ -3,7 +3,30 @@
 
 import { WritableAtom } from "jotai";
 import { CSSProperties } from "react";
-import { DropDirection, FlexDirection } from "./utils.js";
+
+export enum NavigateDirection {
+    Top = 0,
+    Right = 1,
+    Bottom = 2,
+    Left = 3,
+}
+
+export enum DropDirection {
+    Top = 0,
+    Right = 1,
+    Bottom = 2,
+    Left = 3,
+    OuterTop = 4,
+    OuterRight = 5,
+    OuterBottom = 6,
+    OuterLeft = 7,
+    Center = 8,
+}
+
+export enum FlexDirection {
+    Row = "row",
+    Column = "column",
+}
 
 /**
  * Represents an operation to insert a node into a tree.
@@ -276,6 +299,7 @@ export interface ResizeHandleProps {
 }
 
 export interface LayoutNodeAdditionalProps {
+    treeKey: string;
     transform?: CSSProperties;
     rect?: Dimensions;
     pixelToSizeRatio?: number;

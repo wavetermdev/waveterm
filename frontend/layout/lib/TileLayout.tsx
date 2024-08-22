@@ -139,14 +139,14 @@ interface DisplayNodesWrapperProps {
 }
 
 const DisplayNodesWrapper = ({ layoutModel, contents }: DisplayNodesWrapperProps) => {
-    const generation = useAtomValue(layoutModel.generationAtom);
+    const leafs = useAtomValue(layoutModel.leafs);
 
     return useMemo(
         () =>
-            layoutModel.leafs.map((leaf) => {
+            leafs.map((leaf) => {
                 return <DisplayNode key={leaf.id} layoutModel={layoutModel} layoutNode={leaf} contents={contents} />;
             }),
-        [generation]
+        [leafs]
     );
 };
 
@@ -283,15 +283,15 @@ interface OverlayNodeWrapperProps {
 }
 
 const OverlayNodeWrapper = ({ layoutModel }: OverlayNodeWrapperProps) => {
-    const generation = useAtomValue(layoutModel.generationAtom);
+    const leafs = useAtomValue(layoutModel.leafs);
     const overlayTransform = useAtomValue(layoutModel.overlayTransform);
 
     const overlayNodes = useMemo(
         () =>
-            layoutModel.leafs.map((leaf) => {
+            leafs.map((leaf) => {
                 return <OverlayNode key={leaf.id} layoutModel={layoutModel} layoutNode={leaf} />;
             }),
-        [generation]
+        [leafs]
     );
 
     return (

@@ -52,67 +52,36 @@ function switchBlockIdx(index: number) {
     const tabId = globalStore.get(atoms.activeTabId);
     const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
     const layoutModel = getLayoutModelForTab(tabAtom);
-    if (layoutModel?.leafs == null) {
+    if (!layoutModel) {
         return;
     }
+    const leafsOrdered = globalStore.get(layoutModel.leafsOrdered);
     const newLeafIdx = index - 1;
-    if (newLeafIdx < 0 || newLeafIdx >= layoutModel.leafs.length) {
+    if (newLeafIdx < 0 || newLeafIdx >= leafsOrdered.length) {
         return;
     }
-    const leaf = layoutModel.leafs[newLeafIdx];
+    const leaf = leafsOrdered[newLeafIdx];
     if (leaf?.data?.blockId == null) {
         return;
     }
     setBlockFocus(leaf.data.blockId);
 }
 
-function boundsMapMaxX(m: Map<string, Bounds>): number {
-    let max = 0;
-    for (let p of m.values()) {
-        if (p.x + p.width > max) {
-            max = p.x + p.width;
-        }
-    }
-    return max;
-}
-
-function boundsMapMaxY(m: Map<string, Bounds>): number {
-    let max = 0;
-    for (let p of m.values()) {
-        if (p.y + p.height > max) {
-            max = p.y + p.height;
-        }
-    }
-    return max;
-}
-
-function readBoundsFromTransform(fullTransform: React.CSSProperties): Bounds {
-    const transformProp = fullTransform.transform;
-    if (transformProp == null || fullTransform.width == null || fullTransform.height == null) {
-        return null;
-    }
-    const m = transformRegexp.exec(transformProp);
-    if (m == null) {
-        return null;
-    }
+function getCenter(dimensions: Dimensions): Point {
     return {
-        x: parseFloat(m[1]),
-        y: parseFloat(m[2]),
-        width: parseFloatFromCSS(fullTransform.width),
-        height: parseFloatFromCSS(fullTransform.height),
+        x: dimensions.left + dimensions.width / 2,
+        y: dimensions.top + dimensions.height / 2,
     };
 }
 
-function parseFloatFromCSS(s: string | number): number {
-    if (typeof s == "number") {
-        return s;
-    }
-    return parseFloat(s);
-}
-
-function findBlockAtPoint(m: Map<string, Bounds>, p: Point): string {
-    for (let [blockId, bounds] of m.entries()) {
-        if (p.x >= bounds.x && p.x <= bounds.x + bounds.width && p.y >= bounds.y && p.y <= bounds.y + bounds.height) {
+function findBlockAtPoint(m: Map<string, Dimensions>, p: Point): string {
+    for (const [blockId, dimension] of m.entries()) {
+        if (
+            p.x >= dimension.left &&
+            p.x <= dimension.left + dimension.width &&
+            p.y >= dimension.top &&
+            p.y <= dimension.top + dimension.height
+        ) {
             return blockId;
         }
     }
@@ -128,9 +97,10 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
     const layoutModel = getLayoutModelForTab(tabAtom);
     const curBlockId = globalStore.get(atoms.waveWindow)?.activeblockid;
     const addlProps = globalStore.get(layoutModel.additionalProps);
-    const blockPositions: Map<string, Bounds> = new Map();
-    for (const leaf of layoutModel.leafs) {
-        const pos = readBoundsFromTransform(addlProps[leaf.id]?.transform);
+    const blockPositions: Map<string, Dimensions> = new Map();
+    const leafsOrdered = globalStore.get(layoutModel.leafsOrdered);
+    for (const leaf of leafsOrdered) {
+        const pos = addlProps[leaf.id]?.rect;
         if (pos) {
             blockPositions.set(leaf.data.blockId, pos);
         }
@@ -140,18 +110,22 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
         return;
     }
     blockPositions.delete(curBlockId);
-    const maxX = boundsMapMaxX(blockPositions);
-    const maxY = boundsMapMaxY(blockPositions);
+    const boundingRect = layoutModel.displayContainerRef?.current.getBoundingClientRect();
+    if (!boundingRect) {
+        return;
+    }
+    const maxX = boundingRect.left + boundingRect.width;
+    const maxY = boundingRect.top + boundingRect.height;
     const moveAmount = 10;
-    let curX = curBlockPos.x + 1;
-    let curY = curBlockPos.y + 1;
+    const curPoint = getCenter(curBlockPos);
     while (true) {
-        curX += offsetX * moveAmount;
-        curY += offsetY * moveAmount;
-        if (curX < 0 || curX > maxX || curY < 0 || curY > maxY) {
+        console.log("nextPoint", curPoint, curBlockPos);
+        curPoint.x += offsetX * moveAmount;
+        curPoint.y += offsetY * moveAmount;
+        if (curPoint.x < 0 || curPoint.x > maxX || curPoint.y < 0 || curPoint.y > maxY) {
             return;
         }
-        const blockId = findBlockAtPoint(blockPositions, { x: curX, y: curY });
+        const blockId = findBlockAtPoint(blockPositions, curPoint);
         if (blockId != null) {
             setBlockFocus(blockId);
             return;

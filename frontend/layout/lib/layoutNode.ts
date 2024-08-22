@@ -1,8 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DefaultNodeSize, LayoutNode } from "./types";
-import { FlexDirection, reverseFlexDirection } from "./utils";
+import { DefaultNodeSize, FlexDirection, LayoutNode } from "./types";
+import { reverseFlexDirection } from "./utils";
 
 /**
  * Creates a new node.
