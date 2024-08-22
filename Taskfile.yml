@@ -167,6 +167,7 @@ tasks:
             - "cmd/generate/*.go"
             - "cmd/generatewshclient/*.go"
             - "pkg/service/**/*.go"
+            - "pkg/waveobj/wtype.go"
             - "pkg/wconfig/**/*.go"
             - "pkg/wstore/*.go"
             - "pkg/wshrpc/**/*.go"
