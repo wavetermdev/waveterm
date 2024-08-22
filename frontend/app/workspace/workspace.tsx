@@ -56,7 +56,7 @@ function isIconValid(icon: string): boolean {
 
 function getIconClass(icon: string): string {
     if (!isIconValid(icon)) {
-        return "fa fa-solid fa-question fa-fw";
+        return "fa fa-regular fa-browser fa-fw";
     }
     return `fa fa-solid fa-${icon} fa-fw`;
 }
@@ -89,8 +89,8 @@ const WorkspaceElem = React.memo(() => {
                     <CenteredDiv>No Active Tab</CenteredDiv>
                 ) : (
                     <>
-                        <Widgets />
                         <TabContent key={activeTabId} tabId={activeTabId} />
+                        <Widgets />
                         <ModalsRenderer />
                     </>
                 )}
