@@ -19,6 +19,7 @@ type Point = {
 };
 
 class CpuPlotViewModel {
+    viewType: string;
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
@@ -32,6 +33,7 @@ class CpuPlotViewModel {
     incrementCount: jotai.WritableAtom<unknown, [], Promise<void>>;
 
     constructor(blockId: string) {
+        this.viewType = "cpuplot";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.width = 100;
@@ -39,7 +41,8 @@ class CpuPlotViewModel {
         this.addDataAtom = jotai.atom(null, (get, set, point) => {
             // not efficient but should be okay for a demo?
             const data = get(this.dataAtom);
-            set(this.dataAtom, [...data.slice(1), point]);
+            const newData = [...data.slice(1), point];
+            set(this.dataAtom, newData);
         });
 
         this.viewIcon = jotai.atom((get) => {
@@ -89,8 +92,8 @@ function CpuPlotView({ model }: { model: CpuPlotViewModel; blockId: string }) {
             );
             try {
                 for await (const datum of dataGen) {
-                    const ts = datum.ts;
-                    addPlotData({ time: ts / 1000, value: datum.values?.["cpu"] });
+                    const data = { time: datum.ts / 1000, value: datum.values?.["cpu"] };
+                    addPlotData(data);
                 }
             } catch (e) {
                 console.log(e);

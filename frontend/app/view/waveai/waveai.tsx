@@ -39,6 +39,7 @@ function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
 }
 
 export class WaveAiModel implements ViewModel {
+    viewType: string;
     blockId: string;
     blockAtom: jotai.Atom<Block>;
     viewIcon?: jotai.Atom<string | HeaderIconButton>;
@@ -53,6 +54,7 @@ export class WaveAiModel implements ViewModel {
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
 
     constructor(blockId: string) {
+        this.viewType = "waveai";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = jotai.atom((get) => {

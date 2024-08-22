@@ -108,6 +108,7 @@ function setBlockFocus(blockId: string) {
 }
 
 class TermViewModel {
+    viewType: string;
     termRef: React.RefObject<TermWrap>;
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
@@ -119,6 +120,7 @@ class TermViewModel {
     blockBg: jotai.Atom<MetaType>;
 
     constructor(blockId: string) {
+        this.viewType = "term";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.termMode = jotai.atom((get) => {

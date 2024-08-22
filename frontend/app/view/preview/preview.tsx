@@ -35,6 +35,7 @@ function isTextFile(mimeType: string): boolean {
 }
 
 export class PreviewModel implements ViewModel {
+    viewType: string;
     blockId: string;
     blockAtom: jotai.Atom<Block>;
     viewIcon: jotai.Atom<string | HeaderIconButton>;
@@ -64,6 +65,7 @@ export class PreviewModel implements ViewModel {
     }
 
     constructor(blockId: string) {
+        this.viewType = "preview";
         this.blockId = blockId;
         this.showHiddenFiles = jotai.atom(true);
         this.refreshVersion = jotai.atom(0);

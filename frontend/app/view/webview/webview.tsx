@@ -13,6 +13,7 @@ import { checkKeyPressed } from "@/util/keyutil";
 import "./webview.less";
 
 export class WebViewModel implements ViewModel {
+    viewType: string;
     blockId: string;
     blockAtom: jotai.Atom<Block>;
     viewIcon: jotai.Atom<string | HeaderIconButton>;
@@ -32,6 +33,7 @@ export class WebViewModel implements ViewModel {
     recentUrls: { [key: string]: number };
 
     constructor(blockId: string) {
+        this.viewType = "web";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
 

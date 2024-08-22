@@ -6,7 +6,15 @@ import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
-import { atoms, counterInc, registerViewModel, setBlockFocus, unregisterViewModel, useBlockAtom } from "@/store/global";
+import {
+    atoms,
+    counterInc,
+    getViewModel,
+    registerViewModel,
+    setBlockFocus,
+    unregisterViewModel,
+    useBlockAtom,
+} from "@/store/global";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
 import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
@@ -44,7 +52,7 @@ function makeViewModel(blockId: string, blockView: string): ViewModel {
     if (blockView === "cpuplot") {
         return makeCpuPlotViewModel(blockId);
     }
-    return makeDefaultViewModel(blockId);
+    return makeDefaultViewModel(blockId, blockView);
 }
 
 function getViewElem(blockId: string, blockView: string, viewModel: ViewModel): JSX.Element {
@@ -75,9 +83,10 @@ function getViewElem(blockId: string, blockView: string, viewModel: ViewModel): 
     return <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
 }
 
-function makeDefaultViewModel(blockId: string): ViewModel {
+function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
     const blockDataAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
     let viewModel: ViewModel = {
+        viewType: viewType,
         viewIcon: jotai.atom((get) => {
             const blockData = get(blockDataAtom);
             return blockViewToIcon(blockData?.meta?.view);
@@ -211,10 +220,11 @@ const Block = React.memo((props: BlockProps) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.blockId.substring(0, 8));
     const [blockData, loading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", props.blockId));
-    const viewModel = makeViewModel(props.blockId, blockData?.meta?.view);
-    React.useEffect(() => {
+    let viewModel = getViewModel(props.blockId);
+    if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
+        viewModel = makeViewModel(props.blockId, blockData?.meta?.view);
         registerViewModel(props.blockId, viewModel);
-    }, [blockData?.meta?.view]);
+    }
     React.useEffect(() => {
         return () => {
             unregisterViewModel(props.blockId);

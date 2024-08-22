@@ -183,6 +183,7 @@ declare global {
     };
 
     interface ViewModel {
+        viewType: string;
         viewIcon?: jotai.Atom<string | HeaderIconButton>;
         viewName?: jotai.Atom<string>;
         viewText?: jotai.Atom<string | HeaderElem[]>;
