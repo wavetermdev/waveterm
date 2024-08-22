@@ -19,7 +19,7 @@ Blocks can be closed by clicking the &#x2715; button on the right side of the he
 At most, it is possible to have one block be focused. Depending on the type of block, this allows you to directly interact with the content in that block. A focused block is always outlined with a distinct border. A block may be focused by clicking on it. Alternatively, you can change the focused block by pressing <code>Cmd + &uarr;</code>, <code>Cmd + &darr;</code>, <code>Cmd + &larr;</code>, or <code>Cmd + &rarr;</code>to navigate relative to the currently selected block.
 1
 ### How to Magnify Blocks
-Magnifying a block will pop the block out in front of everything else. To magnify a block, simply double click the header. To un-magnify the block, double click the header again. Alternatively, you can magnify and un-magnify with \`Cmd + m\`.
+Magnifying a block will pop the block out in front of everything else. You can magnify using the header icon, or with \`Cmd + m\`.
 
 ### How to Reorganize Blocks
 By dragging and dropping their headers, blocks can be moved to different locations in the layout. This effectively allows you to reorganize your screen however you see fit. When dragging, you will see a preview of the block that is being dragged. When the block is over a valid drop point, the area where it would be moved to will turn green. Releasing the click will place the block there and reflow the other blocks around it. If you see a green box cover half of two different blocks, the drop will place the block between the two. If you see the green box cover half of one block at the edge of the screen, the block will be placed between that block and the edge of the screen. If you see the green box cover one block entirely, the two blocks will swap locations.
@@ -43,7 +43,10 @@ When looking at a directory, preview will show a file viewer much like MacOS' *F
 The simplest way to view a new file is to double click its row in the file viewer. Alternatively, while the block is focused, you can use the &uarr; and &darr; arrow keys to select a row and press enter to preview the associated file.
 
 ##### View the Parent Directory
-In the directory view, this is as simple as opening the \`..\` file as if it were a regular file. This can be done with the method above.
+In the directory view, this is as simple as opening the \`..\` file as if it were a regular file. This can be done with the method above.  You can also use the keyboard shortcut \`Cmd + ArrowUp\`.
+
+##### Navigate Back and Forward
+When looking at a file, you can navigate back by clicking the back button in the block header or the keyboard shortcut \`Cmd + ArrowLeft\`.  You can always navigate back and forward using \`Cmd + ArrowLeft\` and \`Cmd + ArrowRight\`.
 
 ##### Filter the List of Files
 While the block is focused, you can filter by filename by typing a substring of the filename you're working for. To clear the filter, you can click the &#x2715; on the filter dropdown or press esc.
@@ -140,6 +143,14 @@ wsh view [path]
 
 You can use this command to easily preview images, markdown files, and directories.  For code/text files this will open
 a codeedit block which you can use to quickly edit the file using Wave's embedded graphical editor.
+
+### edit
+
+\`\`\`
+wsh edit [path]
+\`\`\`
+
+This will open up codeedit for the specified file.  This is useful for quickly editing files on a local or remote machine in our graphical editor.  This command will wait until the file is closed before exiting (unlike \`view\`) so you can set your \`$EDITOR\` to \`wsh edit\` for a seamless experience.  You can combine this with a \`-m\` flag to open the editor in magnified mode.
 
 ### getmeta
 
