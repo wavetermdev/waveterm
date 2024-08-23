@@ -26,6 +26,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { quote as shellQuote } from "shell-quote";
 
 import { OverlayScrollbars } from "overlayscrollbars";
+
 import "./directorypreview.less";
 
 interface DirectoryTableProps {

@@ -108,12 +108,9 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
     }, [countdown]);
 
     return (
-        <Modal
-            title={userInputRequest.title + ` (${countdown}s)`}
-            onOk={() => handleSubmit()}
-            onCancel={() => handleSendCancel()}
-        >
+        <Modal onOk={() => handleSubmit()} onCancel={() => handleSendCancel()}>
             <div className="userinput-body">
+                {userInputRequest.title + ` (${countdown}s)`}
                 {queryText}
                 {inputBox}
             </div>

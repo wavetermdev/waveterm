@@ -7,22 +7,6 @@ import ReactDOM from "react-dom";
 
 import "./modal.less";
 
-interface ModalHeaderProps {
-    description?: string;
-    onClose?: () => void;
-}
-
-const ModalHeader = ({ onClose, description }: ModalHeaderProps) => (
-    <header className="modal-header">
-        {description && <p>{description}</p>}
-        {onClose && (
-            <Button className="secondary ghost" onClick={onClose} title="Close (ESC)">
-                <i className="fa-sharp fa-solid fa-xmark"></i>
-            </Button>
-        )}
-    </header>
-);
-
 interface ModalContentProps {
     children: React.ReactNode;
 }
@@ -56,7 +40,6 @@ const ModalFooter = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }:
 };
 
 interface ModalProps {
-    title: string;
     children?: React.ReactNode;
     description?: string;
     okLabel?: string;
@@ -71,7 +54,6 @@ interface ModalProps {
 const Modal = ({
     children,
     className,
-    title,
     description,
     cancelLabel,
     okLabel,
@@ -90,8 +72,10 @@ const Modal = ({
         <div className="modal-wrapper">
             {renderBackdrop(onClickBackdrop)}
             <div className={clsx(`modal`, className)}>
-                <div className="header-content-wrapper">
-                    <ModalHeader onClose={onClose} description={description} />
+                <Button className="secondary ghost modal-close-btn" onClick={onClose} title="Close (ESC)">
+                    <i className="fa-sharp fa-solid fa-xmark"></i>
+                </Button>
+                <div className="content-wrapper">
                     <ModalContent>{children}</ModalContent>
                 </div>
                 {renderFooter() && (
@@ -123,7 +107,6 @@ const FlexiModal = ({ children, className, onClickBackdrop }: FlexiModalProps) =
     return ReactDOM.createPortal(renderModal(), document.getElementById("main"));
 };
 
-FlexiModal.Header = ModalHeader;
 FlexiModal.Content = ModalContent;
 FlexiModal.Footer = ModalFooter;
 

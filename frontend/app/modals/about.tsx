@@ -14,7 +14,7 @@ const AboutModal = ({}: AboutModalProps) => {
     const currentDate = new Date();
 
     return (
-        <Modal className="about-modal" title="About" onClose={() => modalsModel.popModal()}>
+        <Modal className="about-modal" onClose={() => modalsModel.popModal()}>
             <div className="section-wrapper">
                 <div className="section logo-section">
                     <Logo />

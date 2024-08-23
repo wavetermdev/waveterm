@@ -1,9 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { Markdown } from "@/element/markdown";
-import { createBlock, globalStore, useBlockAtom } from "@/store/global";
+import { atoms, createBlock, globalStore, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -13,7 +14,7 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { loadable } from "jotai/utils";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { CenteredDiv } from "../../element/quickelems";
 import { CodeEditor } from "../codeeditor/codeeditor";
 import { CSVView } from "./csvview";
@@ -586,6 +587,7 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     const fileInfo = jotai.useAtomValue(statFileAtom);
     const ceReadOnly = jotai.useAtomValue(ceReadOnlyAtom);
     const conn = jotai.useAtomValue(model.connection);
+    const typeAhead = jotai.useAtomValue(atoms.typeAheadModalAtom);
     let blockIcon = iconForFile(mimeType, fileName);
 
     // ensure consistent hook calls
@@ -642,6 +644,34 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
         return view;
     })();
 
+    const handleKeyDown = useCallback(
+        (waveEvent: WaveKeyboardEvent): boolean => {
+            if (keyutil.checkKeyPressed(waveEvent, "Cmd:o")) {
+                globalStore.set(atoms.typeAheadModalAtom, {
+                    ...(typeAhead as TypeAheadModalType),
+                    [blockId]: true,
+                });
+                return true;
+            }
+            if (keyutil.checkKeyPressed(waveEvent, "Cmd:d")) {
+                globalStore.set(atoms.typeAheadModalAtom, {
+                    ...(typeAhead as TypeAheadModalType),
+                    [blockId]: false,
+                });
+                model.giveFocus();
+                return;
+            }
+        },
+        [typeAhead, model, blockId]
+    );
+
+    const handleFileSuggestionSelect = (value) => {
+        globalStore.set(atoms.typeAheadModalAtom, {
+            ...(typeAhead as TypeAheadModalType),
+            [blockId]: false,
+        });
+    };
+
     useEffect(() => {
         const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
             return jotai.atom<string>(null);
@@ -650,11 +680,24 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     }, [blockId, blockIcon]);
 
     return (
-        <div className="full-preview scrollbar-hide-until-hover">
-            <div ref={contentRef} className="full-preview-content">
-                {specializedView}
+        <>
+            {typeAhead[blockId] && (
+                <TypeAheadModal
+                    label="Open file:"
+                    anchor={contentRef}
+                    onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
+                    onSelect={handleFileSuggestionSelect}
+                />
+            )}
+            <div
+                className="full-preview scrollbar-hide-until-hover"
+                onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
+            >
+                <div ref={contentRef} className="full-preview-content">
+                    {specializedView}
+                </div>
             </div>
-        </div>
+        </>
     );
 }
 

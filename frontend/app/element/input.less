@@ -1,0 +1,85 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.input {
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    position: relative;
+    min-height: 32px;
+    min-width: 200px;
+    gap: 6px;
+    border: 2px solid var(--form-element-border-color);
+    background: var(--form-element-bg-color);
+
+    &:hover {
+        cursor: text;
+    }
+
+    &.focused {
+        border-color: var(--form-element-primary-color);
+    }
+
+    &.disabled {
+        opacity: 0.75;
+    }
+
+    &.error {
+        border-color: var(--form-element-error-color);
+    }
+
+    &-inner {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        flex-grow: 1;
+        --inner-padding: 5px 0 5px 16px;
+
+        &-label {
+            padding: var(--inner-padding);
+            margin-bottom: -10px;
+            font-size: 12.5px;
+            transition: all 0.3s;
+            color: var(--form-element-label-color);
+            line-height: 10px;
+            user-select: none;
+
+            &.float {
+                font-size: 10px;
+                top: 5px;
+            }
+
+            &.offset-left {
+                left: 0;
+            }
+        }
+
+        &-input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: var(--inner-padding);
+            font-size: 12px;
+            outline: none;
+            background-color: transparent;
+            color: var(--form-element-text-color);
+            line-height: 20px;
+
+            &.offset-left {
+                padding: 5px 16px 5px 0;
+            }
+
+            &:placeholder-shown {
+                user-select: none;
+            }
+        }
+    }
+
+    &.no-label {
+        height: 34px;
+
+        input {
+            height: 32px;
+        }
+    }
+}

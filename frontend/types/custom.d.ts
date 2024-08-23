@@ -19,6 +19,7 @@ declare global {
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         reducedMotionPreferenceAtom: jotai.Atom<boolean>;
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
+        typeAheadModalAtom: jotai.Primitive<TypeAheadModalType>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -211,6 +212,8 @@ declare global {
         left: number;
         top: number;
     }
+
+    type TypeAheadModalType = { [key: string]: boolean };
 }
 
 export {};

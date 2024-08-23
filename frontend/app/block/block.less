@@ -17,6 +17,7 @@
     }
 
     .block-content {
+        position: relative;
         display: flex;
         flex-grow: 1;
         width: 100%;
@@ -184,7 +185,8 @@
                         }
                     }
 
-                    .block-frame-div-url {
+                    .block-frame-div-url,
+                    .block-frame-div-search {
                         background: rgba(255, 255, 255, 0.1);
 
                         input {
@@ -255,14 +257,16 @@
             }
 
             &.is-layoutmode .block-mask-inner {
+                margin-top: 35px; // TODO fix this magic
                 background-color: rgba(0, 0, 0, 0.5);
-                height: 100%;
+                height: calc(100% - 35px);
                 width: 100%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
 
                 .bignum {
+                    margin-top: -15%;
                     font-size: 60px;
                     font-weight: bold;
                     opacity: 0.7;
