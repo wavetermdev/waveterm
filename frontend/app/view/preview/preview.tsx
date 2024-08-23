@@ -653,7 +653,7 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
                 });
                 return true;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "Cmd:d")) {
+            if (keyutil.checkKeyPressed(waveEvent, "Cmd:d") || keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 globalStore.set(atoms.typeAheadModalAtom, {
                     ...(typeAhead as TypeAheadModalType),
                     [blockId]: false,
@@ -687,6 +687,7 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
                     anchor={contentRef}
                     onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
                     onSelect={handleFileSuggestionSelect}
+                    onSubmit={(value) => console.log(value)}
                 />
             )}
             <div
