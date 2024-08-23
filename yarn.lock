@@ -6624,9 +6624,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron-updater@npm:6.3.3":
-  version: 6.3.3
-  resolution: "electron-updater@npm:6.3.3"
+"electron-updater@npm:6.3.4":
+  version: 6.3.4
+  resolution: "electron-updater@npm:6.3.4"
   dependencies:
     builder-util-runtime: "npm:9.2.5"
     fs-extra: "npm:^10.1.0"
@@ -6634,9 +6634,9 @@ __metadata:
     lazy-val: "npm:^1.0.5"
     lodash.escaperegexp: "npm:^4.1.2"
     lodash.isequal: "npm:^4.5.0"
-    semver: "npm:^7.3.8"
+    semver: "npm:^7.6.3"
     tiny-typed-emitter: "npm:^2.1.0"
-  checksum: 10c0/717ebc0b66b8d49ab9dd6de85d26afdb3455cb61cf0b09420fcc007cbc75a98fcd3513c58c9f5e196dc4ca59e13198229125cca052ab4e582add280fdba05314
+  checksum: 10c0/ca67160d251c16f896672e15b81dcfbf759a6a8350dc919666d426207e60038d20b75c5351705af3153ae686621d2856df2ce68ed538e0aad397ef90723d0da1
   languageName: node
   linkType: hard
 
@@ -6675,16 +6675,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:^31.4.0":
-  version: 31.4.0
-  resolution: "electron@npm:31.4.0"
+"electron@npm:^32.0.1":
+  version: 32.0.1
+  resolution: "electron@npm:32.0.1"
   dependencies:
     "@electron/get": "npm:^2.0.0"
     "@types/node": "npm:^20.9.0"
     extract-zip: "npm:^2.0.1"
   bin:
     electron: cli.js
-  checksum: 10c0/9ed10f363f864912bb9be0a387309babb476df20473ed7ea3f8df609daf19125763fe9ba4b9f5b422673b688e00b31afc52b308623829b7cced28f99687a9d03
+  checksum: 10c0/274412b2da617c2489f4cb0bcbd2316a8429adbc07ef8a469e5f312ca3113558b7e9b25fdc78faea95270ee11ed155c5cf4a5b11083342577defcb9b298012d7
   languageName: node
   linkType: hard
 
@@ -11815,7 +11815,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.3.8":
+"semver@npm:^7.3.8, semver@npm:^7.6.3":
   version: 7.6.3
   resolution: "semver@npm:7.6.3"
   bin:
@@ -12455,9 +12455,9 @@ __metadata:
     color: "npm:^4.2.3"
     css-tree: "npm:^2.3.1"
     dayjs: "npm:^1.11.12"
-    electron: "npm:^31.4.0"
+    electron: "npm:^32.0.1"
     electron-builder: "npm:^24.13.3"
-    electron-updater: "npm:6.3.3"
+    electron-updater: "npm:6.3.4"
     electron-vite: "npm:^2.3.0"
     eslint: "npm:^9.9.0"
     eslint-config-prettier: "npm:^9.1.0"
