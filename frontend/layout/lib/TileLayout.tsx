@@ -96,7 +96,6 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
     // `animate` will be disabled until after the transforms have all applied the first time.
     const [animate, setAnimate] = useState(false);
     useEffect(() => {
-        setReady(false);
         setTimeout(() => {
             setAnimate(true);
             setReady(true);
