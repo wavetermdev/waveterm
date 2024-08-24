@@ -34,6 +34,8 @@ You'll now have to move the built `scripthaus` binary to a directory in your pat
 sudo cp scripthaus /usr/local/bin
 ```
 
+## Install nodejs and yarn
+
 You also need a relatively modern nodejs with npm and yarn installed.
 
 Node can be installed from [https://nodejs.org](https://nodejs.org).
@@ -49,22 +51,6 @@ Once you've verified that you have Corepack installed, run the following script 
 ```sh
 corepack enable
 yarn install
-```
-
-## Install nodejs, npm, and yarn
-
-We use [nvm](https://github.com/nvm-sh/nvm) to install nodejs on Linux (you can use an alternate installer if you wish). You must have a relatively recent version of node in order to build the terminal. Different distributions and shells will require different setup instructions. These instructions work for Ubuntu 22 using bash (will install node v20.8.1):
-
-```
-wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-source ~/.bashrc
-nvm install v20.8.1
-```
-
-Now we can install yarn:
-
-```
-npm install -g yarn
 ```
 
 ## Clone the Wave Repo
