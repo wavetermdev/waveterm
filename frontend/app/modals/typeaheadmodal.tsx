@@ -104,8 +104,9 @@ interface TypeAheadModalProps {
     suggestions?: SuggestionType[];
     label?: string;
     className?: string;
-    onSelect?: (_: string) => void;
+    value?: string;
     onChange?: (_: string) => void;
+    onSelect?: (_: string) => void;
     onClickBackdrop?: () => void;
     onKeyDown?: (_) => void;
 }
@@ -115,6 +116,7 @@ const TypeAheadModal = ({
     suggestions = dummy,
     label,
     anchor,
+    value,
     onChange,
     onSelect,
     onClickBackdrop,
@@ -167,6 +169,7 @@ const TypeAheadModal = ({
                     <Input
                         ref={inputRef}
                         onChange={handleChange}
+                        value={value}
                         autoFocus
                         decoration={{
                             startDecoration: (

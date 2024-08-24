@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
+	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
 	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -62,6 +64,10 @@ func (cs *ClientService) GetWindow(windowId string) (*waveobj.Window, error) {
 
 func (cs *ClientService) MakeWindow(ctx context.Context) (*waveobj.Window, error) {
 	return wstore.CreateWindow(ctx, nil)
+}
+
+func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnStatus, error) {
+	return conncontroller.GetAllConnStatus(), nil
 }
 
 // moves the window to the front of the windowId stack

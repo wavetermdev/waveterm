@@ -158,6 +158,14 @@ declare global {
         meta: MetaType;
     };
 
+    // wshrpc.ConnStatus
+    type ConnStatus = {
+        status: string;
+        connection: string;
+        connected: boolean;
+        error?: string;
+    };
+
     // wshrpc.CpuDataRequest
     type CpuDataRequest = {
         id: string;

@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { handleIncomingRpcMessage } from "@/app/store/wshrpc";
+import { handleIncomingRpcMessage, sendRawRpcMessage } from "@/app/store/wshrpc";
 import {
     getLayoutModelForTabById,
     LayoutTreeActionType,
@@ -11,6 +11,7 @@ import {
 } from "@/layout/index";
 import { getWebServerEndpoint, getWSServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
+import * as util from "@/util/util";
 import { produce } from "immer";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
@@ -25,6 +26,7 @@ let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
 const blockViewModelMap = new Map<string, ViewModel>();
 const Counters = new Map<string, number>();
+const ConnStatusMap = new Map<string, jotai.PrimitiveAtom<ConnStatus>>();
 
 type GlobalInitOptions = {
     platform: NodeJS.Platform;
@@ -143,9 +145,16 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     };
 }
 
+type WaveEventSubjectContainer = {
+    id: string;
+    handler: (event: WaveEvent) => void;
+    scope: string;
+};
+
 // key is "eventType" or "eventType|oref"
 const eventSubjects = new Map<string, SubjectWithRef<WSEventType>>();
 const fileSubjects = new Map<string, SubjectWithRef<WSFileEventData>>();
+const waveEventSubjects = new Map<string, WaveEventSubjectContainer[]>();
 
 function getSubjectInternal(subjectKey: string): SubjectWithRef<WSEventType> {
     let subject = eventSubjects.get(subjectKey);
@@ -171,6 +180,61 @@ function getEventSubject(eventType: string): SubjectWithRef<WSEventType> {
 
 function getEventORefSubject(eventType: string, oref: string): SubjectWithRef<WSEventType> {
     return getSubjectInternal(eventType + "|" + oref);
+}
+
+function makeWaveReSubCommand(eventType: string): RpcMessage {
+    let subjects = waveEventSubjects.get(eventType);
+    if (subjects == null) {
+        return { command: "eventunsub", data: eventType };
+    }
+    let subreq: SubscriptionRequest = { event: eventType, scopes: [], allscopes: false };
+    for (const scont of subjects) {
+        if (util.isBlank(scont.scope)) {
+            subreq.allscopes = true;
+            subreq.scopes = [];
+            break;
+        }
+        subreq.scopes.push(scont.scope);
+    }
+    return { command: "eventsub", data: subreq };
+}
+
+function updateWaveEventSub(eventType: string) {
+    const command = makeWaveReSubCommand(eventType);
+    sendRawRpcMessage(command);
+}
+
+function waveEventSubscribe(eventType: string, scope: string, handler: (event: WaveEvent) => void): () => void {
+    if (handler == null) {
+        return;
+    }
+    const id = crypto.randomUUID();
+    const subject = new rxjs.Subject() as any;
+    const scont: WaveEventSubjectContainer = { id, scope, handler };
+    let subjects = waveEventSubjects.get(eventType);
+    if (subjects == null) {
+        subjects = [];
+        waveEventSubjects.set(eventType, subjects);
+    }
+    subjects.push(scont);
+    updateWaveEventSub(eventType);
+    return () => waveEventUnsubscribe(eventType, id);
+}
+
+function waveEventUnsubscribe(eventType: string, id: string) {
+    let subjects = waveEventSubjects.get(eventType);
+    if (subjects == null) {
+        return;
+    }
+    const idx = subjects.findIndex((s) => s.id === id);
+    if (idx === -1) {
+        return;
+    }
+    subjects.splice(idx, 1);
+    if (subjects.length === 0) {
+        waveEventSubjects.delete(eventType);
+    }
+    updateWaveEventSub(eventType);
 }
 
 function getFileSubject(zoneId: string, fileName: string): SubjectWithRef<WSFileEventData> {
@@ -251,6 +315,25 @@ function useBlockDataLoaded(blockId: string): boolean {
 
 let globalWS: WSControl = null;
 
+function handleWaveEvent(event: WaveEvent) {
+    const subjects = waveEventSubjects.get(event.event);
+    if (subjects == null) {
+        return;
+    }
+    for (const scont of subjects) {
+        if (util.isBlank(scont.scope)) {
+            scont.handler(event);
+            continue;
+        }
+        if (event.scopes == null) {
+            continue;
+        }
+        if (event.scopes.includes(scont.scope)) {
+            scont.handler(event);
+        }
+    }
+}
+
 function handleWSEventMessage(msg: WSEventType) {
     if (msg.eventtype == null) {
         console.log("unsupported event", msg);
@@ -275,7 +358,7 @@ function handleWSEventMessage(msg: WSEventType) {
     }
     if (msg.eventtype == "rpc") {
         const rpcMsg: RpcMessage = msg.data;
-        handleIncomingRpcMessage(rpcMsg);
+        handleIncomingRpcMessage(rpcMsg, handleWaveEvent);
         return;
     }
     if (msg.eventtype == "layoutaction") {
@@ -496,6 +579,38 @@ function countersPrint() {
     console.log(outStr);
 }
 
+async function loadConnStatus() {
+    const connStatusArr = await services.ClientService.GetAllConnStatus();
+    if (connStatusArr == null) {
+        return;
+    }
+    for (const connStatus of connStatusArr) {
+        const curAtom = getConnStatusAtom(connStatus.connection);
+        globalStore.set(curAtom, connStatus);
+    }
+}
+
+function subscribeToConnEvents() {
+    waveEventSubscribe("connchange", null, (event: WaveEvent) => {
+        const connStatus = event.data as ConnStatus;
+        if (connStatus == null || util.isBlank(connStatus.connection)) {
+            return;
+        }
+        let curAtom = ConnStatusMap.get(connStatus.connection);
+        globalStore.set(curAtom, connStatus);
+    });
+}
+
+function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
+    let rtn = ConnStatusMap.get(conn);
+    if (rtn == null) {
+        const connStatus: ConnStatus = { connection: conn, connected: false, error: null };
+        rtn = jotai.atom(connStatus);
+        ConnStatusMap.set(conn, rtn);
+    }
+    return rtn;
+}
+
 export {
     atoms,
     counterInc,
@@ -504,6 +619,7 @@ export {
     createBlock,
     fetchWaveFile,
     getApi,
+    getConnStatusAtom,
     getEventORefSubject,
     getEventSubject,
     getFileSubject,
@@ -514,16 +630,20 @@ export {
     initGlobal,
     initWS,
     isDev,
+    loadConnStatus,
     openLink,
     PLATFORM,
     registerViewModel,
     sendWSCommand,
     setBlockFocus,
     setPlatform,
+    subscribeToConnEvents,
     unregisterViewModel,
     useBlockAtom,
     useBlockCache,
     useBlockDataLoaded,
     useSettingsAtom,
+    waveEventSubscribe,
+    waveEventUnsubscribe,
     WOS,
 };

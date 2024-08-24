@@ -58,9 +58,14 @@ func (b *BrokerType) GetClient() Client {
 	return b.Client
 }
 
+// if already subscribed, this will *resubscribe* with the new subscription (remove the old one, and replace with this one)
 func (b *BrokerType) Subscribe(subRouteId string, sub wshrpc.SubscriptionRequest) {
+	if sub.Event == "" {
+		return
+	}
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
+	b.unsubscribe_nolock(subRouteId, sub.Event)
 	bs := b.SubMap[sub.Event]
 	if bs == nil {
 		bs = &BrokerSubscription{
@@ -72,6 +77,7 @@ func (b *BrokerType) Subscribe(subRouteId string, sub wshrpc.SubscriptionRequest
 	}
 	if sub.AllScopes {
 		bs.AllSubs = utilfn.AddElemToSliceUniq(bs.AllSubs, subRouteId)
+		return
 	}
 	for _, scope := range sub.Scopes {
 		starMatch := scopeHasStarMatch(scope)
@@ -114,26 +120,26 @@ func addStrToScopeMap(scopeMap map[string][]string, scope string, routeId string
 	scopeMap[scope] = scopeSubs
 }
 
-func (b *BrokerType) Unsubscribe(subRouteId string, sub wshrpc.SubscriptionRequest) {
+func (b *BrokerType) Unsubscribe(subRouteId string, eventName string) {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
-	bs := b.SubMap[sub.Event]
+	b.unsubscribe_nolock(subRouteId, eventName)
+}
+
+func (b *BrokerType) unsubscribe_nolock(subRouteId string, eventName string) {
+	bs := b.SubMap[eventName]
 	if bs == nil {
 		return
 	}
-	if sub.AllScopes {
-		bs.AllSubs = utilfn.RemoveElemFromSlice(bs.AllSubs, subRouteId)
+	bs.AllSubs = utilfn.RemoveElemFromSlice(bs.AllSubs, subRouteId)
+	for scope := range bs.ScopeSubs {
+		removeStrFromScopeMap(bs.ScopeSubs, scope, subRouteId)
 	}
-	for _, scope := range sub.Scopes {
-		starMatch := scopeHasStarMatch(scope)
-		if starMatch {
-			removeStrFromScopeMap(bs.StarSubs, scope, subRouteId)
-		} else {
-			removeStrFromScopeMap(bs.ScopeSubs, scope, subRouteId)
-		}
+	for scope := range bs.StarSubs {
+		removeStrFromScopeMap(bs.StarSubs, scope, subRouteId)
 	}
 	if bs.IsEmpty() {
-		delete(b.SubMap, sub.Event)
+		delete(b.SubMap, eventName)
 	}
 }
 

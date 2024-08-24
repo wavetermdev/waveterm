@@ -10,6 +10,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 )
 
@@ -17,6 +18,8 @@ const DefaultRoute = "wavesrv"
 const SysRoute = "sys" // this route doesn't exist, just a placeholder for system messages
 
 // this works like a network switch
+
+// TODO maybe move the wps integration here instead of in wshserver
 
 type routeInfo struct {
 	RpcId         string
@@ -285,6 +288,9 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
 	delete(router.RouteMap, routeId)
+	go func() {
+		wps.Broker.UnsubscribeAll(routeId)
+	}()
 }
 
 // this may return nil (returns default only for empty routeId)

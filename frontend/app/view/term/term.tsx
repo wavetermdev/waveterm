@@ -1,9 +1,18 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { WshServer } from "@/app/store/wshserver";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getEventORefSubject, globalStore, useBlockAtom, useSettingsAtom } from "@/store/global";
+import {
+    WOS,
+    atoms,
+    getConnStatusAtom,
+    getEventORefSubject,
+    globalStore,
+    useBlockAtom,
+    useSettingsAtom,
+} from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -109,13 +118,16 @@ function setBlockFocus(blockId: string) {
 
 class TermViewModel {
     viewType: string;
+    connected: boolean;
     termRef: React.RefObject<TermWrap>;
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
+    connectedAtom: jotai.Atom<boolean>;
+    typeahead: boolean;
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
     viewIcon: jotai.Atom<string>;
-    viewText: jotai.Atom<string>;
+    viewText: jotai.Atom<HeaderElem[]>;
     viewName: jotai.Atom<string>;
     blockBg: jotai.Atom<MetaType>;
 
@@ -123,6 +135,14 @@ class TermViewModel {
         this.viewType = "term";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.connectedAtom = jotai.atom((get) => {
+            const connectionName = get(this.blockAtom).meta?.connection || "";
+            if (connectionName == "") {
+                return true;
+            }
+            const status = get(getConnStatusAtom(connectionName));
+            return status.connected;
+        });
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:mode"] ?? "term";
@@ -139,7 +159,30 @@ class TermViewModel {
         });
         this.viewText = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
-            return blockData?.meta?.title ?? "";
+            const titleText: HeaderText = { elemtype: "text", text: blockData?.meta?.title ?? "" };
+            const typeAhead = get(atoms.typeAheadModalAtom);
+            const connectionName = blockData?.meta?.connection || "";
+            const isConnected = get(this.connectedAtom);
+            let iconColor: string;
+            if (connectionName != "") {
+                iconColor = "#53b4ea";
+            } else {
+                iconColor = "var(--grey-text-color)";
+            }
+            const connButton: ConnectionButton = {
+                elemtype: "connectionbutton",
+                icon: "arrow-right-arrow-left",
+                iconColor: iconColor,
+                text: connectionName,
+                connected: isConnected,
+                onClick: () => {
+                    globalStore.set(atoms.typeAheadModalAtom, {
+                        ...(typeAhead as TypeAheadModalType),
+                        [blockId]: true,
+                    });
+                },
+            };
+            return [connButton, titleText] as HeaderElem[];
         });
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -150,6 +193,10 @@ class TermViewModel {
             }
             return null;
         });
+    }
+
+    resetConnection() {
+        WshServer.ControllerRestartCommand({ blockid: this.blockId });
     }
 
     giveFocus(): boolean {
@@ -196,6 +243,9 @@ interface TerminalViewProps {
 }
 
 const TerminalView = ({ blockId, model }: TerminalViewProps) => {
+    const typeAhead = jotai.useAtomValue(atoms.typeAheadModalAtom);
+    const viewRef = React.createRef<HTMLDivElement>();
+    const [connSelected, setConnSelected] = React.useState("");
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<TermWrap>(null);
     model.termRef = termRef;
@@ -371,11 +421,57 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         }
     }
 
+    const changeConnection = React.useCallback(
+        async (connName: string) => {
+            await WshServer.SetMetaCommand({ oref: WOS.makeORef("block", blockId), meta: { connection: connName } });
+            await WshServer.ControllerRestartCommand({ blockid: blockId });
+        },
+        [blockId]
+    );
+
+    const handleTypeAheadKeyDown = React.useCallback(
+        (waveEvent: WaveKeyboardEvent): boolean => {
+            if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+                changeConnection(connSelected);
+                globalStore.set(atoms.typeAheadModalAtom, {
+                    ...(typeAhead as TypeAheadModalType),
+                    [blockId]: false,
+                });
+                setConnSelected("");
+                return true;
+            }
+            if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+                globalStore.set(atoms.typeAheadModalAtom, {
+                    ...(typeAhead as TypeAheadModalType),
+                    [blockId]: false,
+                });
+                setConnSelected("");
+                model.giveFocus();
+                return true;
+            }
+        },
+        [typeAhead, model, blockId, connSelected]
+    );
+
     return (
         <div
             className={clsx("view-term", "term-mode-" + termMode, isFocused ? "is-focused" : null)}
             onKeyDown={handleKeyDown}
+            ref={viewRef}
         >
+            {typeAhead[blockId] && (
+                <TypeAheadModal
+                    anchor={viewRef}
+                    suggestions={[]}
+                    onSelect={(selected: string) => {
+                        changeConnection(selected);
+                    }}
+                    onKeyDown={(e) => keyutil.keydownWrapper(handleTypeAheadKeyDown)(e)}
+                    onChange={(current: string) => setConnSelected(current)}
+                    value={connSelected}
+                    label="Switch Connection"
+                />
+            )}
             <TermThemeUpdater blockId={blockId} termRef={termRef} />
             <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>

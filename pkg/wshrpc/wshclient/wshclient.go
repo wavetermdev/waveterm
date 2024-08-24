@@ -66,7 +66,7 @@ func EventSubCommand(w *wshutil.WshRpc, data wshrpc.SubscriptionRequest, opts *w
 }
 
 // command "eventunsub", wshserver.EventUnsubCommand
-func EventUnsubCommand(w *wshutil.WshRpc, data wshrpc.SubscriptionRequest, opts *wshrpc.RpcOpts) error {
+func EventUnsubCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
     _, err := sendRpcRequestCallHelper[any](w, "eventunsub", data, opts)
     return err
 }

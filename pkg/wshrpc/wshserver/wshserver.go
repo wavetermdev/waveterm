@@ -478,7 +478,7 @@ func (ws *WshServer) EventSubCommand(ctx context.Context, data wshrpc.Subscripti
 	return nil
 }
 
-func (ws *WshServer) EventUnsubCommand(ctx context.Context, data wshrpc.SubscriptionRequest) error {
+func (ws *WshServer) EventUnsubCommand(ctx context.Context, data string) error {
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	if rpcSource == "" {
 		return fmt.Errorf("no rpc source set")

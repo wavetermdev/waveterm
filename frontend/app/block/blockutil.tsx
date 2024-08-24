@@ -168,6 +168,34 @@ export const IconButton = React.memo(({ decl, className }: { decl: HeaderIconBut
     );
 });
 
+export const ConnectionButton = React.memo(({ decl }: { decl: ConnectionButton }) => {
+    const buttonRef = React.useRef<HTMLDivElement>(null);
+    return (
+        <div ref={buttonRef} className={clsx("connection-button")} onClick={decl.onClick}>
+            <span className="fa-stack connection-icon-box">
+                {typeof decl.icon === "string" ? (
+                    <i
+                        className={clsx(util.makeIconClass(decl.icon, true), "fa-stack-1x")}
+                        style={{ color: decl.iconColor, marginRight: "2px" }}
+                    />
+                ) : (
+                    decl.icon
+                )}
+                <i
+                    className="fa-slash fa-solid fa-stack-1x"
+                    style={{
+                        color: decl.iconColor,
+                        marginRight: "2px",
+                        textShadow: "0 1px black, 0 1.5px black",
+                        opacity: decl.connected ? 0 : 1,
+                    }}
+                />
+            </span>
+            <div className="connection-name">{decl.text}</div>
+        </div>
+    );
+});
+
 export const Input = React.memo(({ decl, className }: { decl: HeaderInput; className: string }) => {
     const { value, ref, isDisabled, onChange, onKeyDown, onFocus, onBlur } = decl;
     return (

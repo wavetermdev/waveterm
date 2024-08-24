@@ -10,7 +10,7 @@ type RpcEntry = {
     msgFn: (msg: RpcMessage) => void;
 };
 
-let openRpcs = new Map<string, RpcEntry>();
+const openRpcs = new Map<string, RpcEntry>();
 
 async function* rpcResponseGenerator(
     command: string,
@@ -86,10 +86,23 @@ function sendRpcCommand(msg: RpcMessage): AsyncGenerator<RpcMessage, void, boole
     return rtnGen;
 }
 
-function handleIncomingRpcMessage(msg: RpcMessage) {
+function sendRawRpcMessage(msg: RpcMessage) {
+    const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
+    globalWS.pushMessage(wsMsg);
+}
+
+function handleIncomingRpcMessage(msg: RpcMessage, eventHandlerFn: (event: WaveEvent) => void) {
     const isRequest = msg.command != null || msg.reqid != null;
     if (isRequest) {
-        console.log("rpc request not supported", msg);
+        // handle events
+        if (msg.command == "eventrecv") {
+            if (eventHandlerFn != null) {
+                eventHandlerFn(msg.data);
+            }
+            return;
+        }
+
+        console.log("rpc command not supported", msg);
         return;
     }
     if (msg.resid == null) {
@@ -122,4 +135,4 @@ if (globalThis.window != null) {
     globalThis["consumeGenerator"] = consumeGenerator;
 }
 
-export { handleIncomingRpcMessage, sendRpcCommand };
+export { handleIncomingRpcMessage, sendRawRpcMessage, sendRpcCommand };

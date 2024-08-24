@@ -140,7 +140,7 @@ declare global {
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
-    type HeaderElem = HeaderIconButton | HeaderText | HeaderInput | HeaderDiv | HeaderTextButton;
+    type HeaderElem = HeaderIconButton | HeaderText | HeaderInput | HeaderDiv | HeaderTextButton | ConnectionButton;
 
     type HeaderIconButton = {
         elemtype: "iconbutton";
@@ -181,6 +181,16 @@ declare global {
         children: HeaderElem[];
         onMouseOver?: (e: React.MouseEvent<any>) => void;
         onMouseOut?: (e: React.MouseEvent<any>) => void;
+        onClick?: (e: React.MouseEvent<any>) => void;
+    };
+
+    type ConnectionButton = {
+        elemtype: "connectionbutton";
+        icon: string;
+        text: string;
+        iconColor: string;
+        onClick?: (e: React.MouseEvent<any>) => void;
+        connected: boolean;
     };
 
     interface ViewModel {

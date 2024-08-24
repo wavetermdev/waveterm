@@ -26,6 +26,7 @@ const (
 
 const (
 	Event_BlockClose = "blockclose"
+	Event_ConnChange = "connchange"
 )
 
 const (
@@ -83,7 +84,7 @@ type WshRpcInterface interface {
 	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
 	EventPublishCommand(ctx context.Context, data WaveEvent) error
 	EventSubCommand(ctx context.Context, data SubscriptionRequest) error
-	EventUnsubCommand(ctx context.Context, data SubscriptionRequest) error
+	EventUnsubCommand(ctx context.Context, data string) error
 	EventUnsubAllCommand(ctx context.Context) error
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
@@ -323,4 +324,11 @@ const (
 type TimeSeriesData struct {
 	Ts     int64              `json:"ts"`
 	Values map[string]float64 `json:"values"`
+}
+
+type ConnStatus struct {
+	Status     string `json:"status"`
+	Connection string `json:"connection"`
+	Connected  bool   `json:"connected"`
+	Error      string `json:"error,omitempty"`
 }

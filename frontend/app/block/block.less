@@ -137,6 +137,34 @@
                     }
                 }
 
+                .connection-button {
+                    display: flex;
+                    align-items: center;
+                    gap: 2px;
+                    flex-wrap: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    min-width: 0;
+                    font-weight: 400;
+                    color: var(--main-text-color);
+                    border-radius: 2px;
+                    padding-right: 6px;
+
+                    &:hover {
+                        background-color: var(--highlight-bg-color);
+                    }
+
+                    .connection-icon-box {
+                        flex: 1 1 auto;
+                        overflow: hidden;
+                    }
+
+                    .connection-name {
+                        flex: 1 100 auto;
+                        overflow: hidden;
+                    }
+                }
+
                 .block-frame-textelems-wrapper {
                     display: flex;
                     flex: 1 100 auto;

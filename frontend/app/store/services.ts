@@ -32,6 +32,9 @@ class ClientServiceType {
     FocusWindow(arg2: string): Promise<void> {
         return WOS.callBackendService("client", "FocusWindow", Array.from(arguments))
     }
+    GetAllConnStatus(): Promise<ConnStatus[]> {
+        return WOS.callBackendService("client", "GetAllConnStatus", Array.from(arguments))
+    }
     GetClientData(): Promise<Client> {
         return WOS.callBackendService("client", "GetClientData", Array.from(arguments))
     }

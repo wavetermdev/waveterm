@@ -2,7 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WshServer } from "@/app/store/wshserver";
-import { atoms, countersClear, countersPrint, getApi, globalStore, globalWS, initGlobal, initWS } from "@/store/global";
+import {
+    atoms,
+    countersClear,
+    countersPrint,
+    getApi,
+    globalStore,
+    globalWS,
+    initGlobal,
+    initWS,
+    loadConnStatus,
+    subscribeToConnEvents,
+} from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as keyutil from "@/util/keyutil";
@@ -44,6 +55,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", waveWindow.activetabid));
     await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
     initWS();
+    await loadConnStatus();
+    subscribeToConnEvents();
     const settings = await services.FileService.GetSettingsConfig();
     console.log("settings", settings);
     globalStore.set(atoms.settingsConfigAtom, settings);

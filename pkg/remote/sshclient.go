@@ -709,8 +709,13 @@ type SSHOpts struct {
 }
 
 func (opts SSHOpts) String() string {
-	if opts.SSHPort == 0 {
-		return fmt.Sprintf("%s@%s", opts.SSHUser, opts.SSHHost)
+	stringRepr := ""
+	if opts.SSHUser != "" {
+		stringRepr = opts.SSHUser + "@"
 	}
-	return fmt.Sprintf("%s@%s:%d", opts.SSHUser, opts.SSHHost, opts.SSHPort)
+	stringRepr = stringRepr + opts.SSHHost
+	if opts.SSHPort != 0 {
+		stringRepr = stringRepr + ":" + fmt.Sprint(opts.SSHPort)
+	}
+	return stringRepr
 }

@@ -278,12 +278,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		if err != nil {
 			return err
 		}
-		conn, err := conncontroller.GetConn(credentialCtx, opts)
-		if err != nil {
-			return err
+		conn := conncontroller.GetConn(credentialCtx, opts, true)
+		connStatus := conn.DeriveConnStatus()
+		if connStatus.Error != "" {
+			return fmt.Errorf("error connecting to remote: %s", connStatus.Error)
 		}
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.SockName)
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.GetDomainSocketName())
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}
@@ -385,10 +386,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			log.Printf("[shellproc] shell process wait loop done\n")
 		}()
 		waitErr := shellProc.Cmd.Wait()
-		shellProc.SetWaitErrorAndSignalDone(waitErr)
 		exitCode := shellexec.ExitCodeFromWaitErr(waitErr)
 		termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
+		//HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte("\r\n"))
 		HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte(termMsg))
+		shellProc.SetWaitErrorAndSignalDone(waitErr)
 	}()
 	return nil
 }
@@ -464,8 +466,21 @@ func (bc *BlockController) SendInput(inputUnion *BlockInputUnion) error {
 }
 
 func (bc *BlockController) RestartController() error {
-	// TODO: if shell command is already running
-	// we probably want to kill it off, wait, and then restart it
+
+	// kill the command if it's running
+	bc.Lock.Lock()
+	if bc.ShellProc != nil {
+		bc.ShellProc.Close()
+	}
+	bc.Lock.Unlock()
+
+	// wait for process to complete
+	if bc.ShellProc != nil {
+		doneCh := bc.ShellProc.DoneCh
+		<-doneCh
+	}
+
+	// restart controller
 	bdata, err := wstore.DBMustGet[*waveobj.Block](context.Background(), bc.BlockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)

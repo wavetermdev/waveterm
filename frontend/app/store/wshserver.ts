@@ -53,7 +53,7 @@ class WshServerType {
     }
 
     // command "eventunsub" [call]
-	EventUnsubCommand(data: SubscriptionRequest, opts?: RpcOpts): Promise<void> {
+	EventUnsubCommand(data: string, opts?: RpcOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("eventunsub", data, opts);
     }
 

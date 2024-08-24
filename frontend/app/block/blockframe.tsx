@@ -1,7 +1,14 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { blockViewToIcon, blockViewToName, getBlockHeaderIcon, IconButton, Input } from "@/app/block/blockutil";
+import {
+    blockViewToIcon,
+    blockViewToName,
+    ConnectionButton,
+    getBlockHeaderIcon,
+    IconButton,
+    Input,
+} from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, globalStore, useBlockAtom, WOS } from "@/app/store/global";
@@ -170,6 +177,8 @@ const HeaderTextElem = React.memo(({ elem }: { elem: HeaderElem }) => {
                 {elem.text}
             </Button>
         );
+    } else if (elem.elemtype == "connectionbutton") {
+        return <ConnectionButton decl={elem} />;
     } else if (elem.elemtype == "div") {
         return (
             <div
