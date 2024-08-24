@@ -120,5 +120,5 @@
         "use-device-pixel-ratio": "^1.1.2",
         "winston": "^3.14.2"
     },
-    "packageManager": "yarn@4.4.0"
+    "packageManager": "yarn@4.4.1"
 }
