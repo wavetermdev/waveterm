@@ -314,6 +314,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 drawBoldTextInBrightColors: false,
                 fontWeight: "normal",
                 fontWeightBold: "bold",
+                allowTransparency: true,
             },
             {
                 keydownHandler: handleTerminalKeydown,
