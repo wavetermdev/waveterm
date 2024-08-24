@@ -604,7 +604,7 @@ function subscribeToConnEvents() {
 function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
     let rtn = ConnStatusMap.get(conn);
     if (rtn == null) {
-        const connStatus: ConnStatus = { connection: conn, connected: false, error: null };
+        const connStatus: ConnStatus = { connection: conn, connected: false, error: null, status: "disconnected" };
         rtn = jotai.atom(connStatus);
         ConnStatusMap.set(conn, rtn);
     }
