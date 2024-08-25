@@ -1,0 +1,38 @@
+# Ignore node_modules and other dependencies
+node_modules
+.yarn
+.yarnrc.yml
+
+# Ignore build directories
+build
+dist
+
+# Ignore logs and temporary files
+logs
+*.log
+*.tmp
+
+# Ignore IDE and editor settings
+.vscode
+.idea
+
+# Ignore Git and GitHub files
+.git
+.github
+
+# Ignore Docker files
+Dockerfile
+.dockerignore
+
+# Ignore test and coverage files
+coverage
+test-results
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore other unnecessary files
+*.md
+*.yml
+*.yaml

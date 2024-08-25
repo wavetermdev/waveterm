@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  wave:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: waveterminal
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    command: scripthaus run electron
+    stdin_open: true
+    tty: true
