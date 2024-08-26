@@ -13,9 +13,6 @@ logs
 
 
 
-# Ignore Docker files
-Dockerfile
-.dockerignore
 
 # Ignore test and coverage files
 coverage
