@@ -1,7 +1,6 @@
 # Ignore node_modules and other dependencies
 node_modules
 .yarn
-.yarnrc.yml
 
 # Ignore build directories
 build
