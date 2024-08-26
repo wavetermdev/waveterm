@@ -268,7 +268,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             }
             for (let i = 1; i <= 9; i++) {
                 if (
-                    keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:Digit${i}`) ||
+                    keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Digit${i}}`) ||
                     keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Numpad${i}}`)
                 ) {
                     return false;
