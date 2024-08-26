@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { assert, test } from "vitest";
-import { DropDirection, FlexDirection } from "../lib/types.js";
-import { determineDropDirection, reverseFlexDirection } from "../lib/utils.js";
+import { DropDirection, FlexDirection } from "../lib/types";
+import { determineDropDirection, reverseFlexDirection } from "../lib/utils";
 
 test("determineDropDirection", () => {
     const dimensions: Dimensions = {

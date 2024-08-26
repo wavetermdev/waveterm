@@ -2,14 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { assert, test } from "vitest";
-import {
-    addChildAt,
-    addIntermediateNode,
-    balanceNode,
-    findNextInsertLocation,
-    newLayoutNode,
-} from "../lib/layoutNode.js";
-import { FlexDirection, LayoutNode } from "../lib/types.js";
+import { addChildAt, addIntermediateNode, balanceNode, findNextInsertLocation, newLayoutNode } from "../lib/layoutNode";
+import { FlexDirection, LayoutNode } from "../lib/types";
 
 test("newLayoutNode", () => {
     assert.throws(

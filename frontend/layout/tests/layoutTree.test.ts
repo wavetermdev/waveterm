@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { assert, test } from "vitest";
-import { newLayoutNode } from "../lib/layoutNode.js";
-import { computeMoveNode, moveNode } from "../lib/layoutTree.js";
+import { newLayoutNode } from "../lib/layoutNode";
+import { computeMoveNode, moveNode } from "../lib/layoutTree";
 import {
     DropDirection,
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeMoveNodeAction,
-} from "../lib/types.js";
-import { newLayoutTreeState } from "./model.js";
+} from "../lib/types";
+import { newLayoutTreeState } from "./model";
 
 test("layoutTreeStateReducer - compute move", () => {
     let treeState = newLayoutTreeState(newLayoutNode(undefined, undefined, undefined, { blockId: "root" }));
