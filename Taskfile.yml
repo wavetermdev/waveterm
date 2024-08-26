@@ -192,6 +192,7 @@ tasks:
         sources:
             - yarn.lock
             - package.json
+            - .yarnrc.yml
         cmds:
             - yarn
 
