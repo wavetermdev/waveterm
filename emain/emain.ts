@@ -691,6 +691,43 @@ function getAppMenu() {
     appMenu.push({
         role: "quit",
     });
+    const editMenu: Electron.MenuItemConstructorOptions[] = [
+        {
+            role: "undo",
+            accelerator: unamePlatform === "darwin" ? "Command+Z" : "",
+        },
+        {
+            role: "redo",
+            accelerator: unamePlatform === "darwin" ? "Command+Shift+Z" : "",
+        },
+        {
+            type: "separator",
+        },
+        {
+            role: "cut",
+            accelerator: unamePlatform === "darwin" ? "Command+X" : "",
+        },
+        {
+            role: "copy",
+            accelerator: unamePlatform === "darwin" ? "Command+C" : "",
+        },
+        {
+            role: "paste",
+            accelerator: unamePlatform === "darwin" ? "Command+V" : "",
+        },
+        {
+            role: "pasteAndMatchStyle",
+            accelerator: unamePlatform === "darwin" ? "Command+Shift+V" : "",
+        },
+        {
+            role: "delete",
+        },
+        {
+            role: "selectAll",
+            accelerator: unamePlatform === "darwin" ? "Command+A" : "",
+        },
+    ];
+
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
             role: "forceReload",
@@ -763,6 +800,7 @@ function getAppMenu() {
         },
         {
             role: "editMenu",
+            submenu: editMenu,
         },
         {
             role: "viewMenu",
