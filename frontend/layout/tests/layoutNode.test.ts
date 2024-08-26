@@ -9,8 +9,7 @@ import {
     findNextInsertLocation,
     newLayoutNode,
 } from "../lib/layoutNode.js";
-import { LayoutNode } from "../lib/types.js";
-import { FlexDirection } from "../lib/utils.js";
+import { FlexDirection, LayoutNode } from "../lib/types.js";
 
 test("newLayoutNode", () => {
     assert.throws(

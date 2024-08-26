@@ -120,7 +120,7 @@ export class LayoutModel {
      * Set if there is currently an uncommitted action pending on the layout tree.
      * @see LayoutTreeActionType for the different types of actions.
      */
-    pendingAction: AtomWithThrottle<LayoutTreeAction>;
+    pendingTreeAction: AtomWithThrottle<LayoutTreeAction>;
     /**
      * Whether a node is currently being dragged.
      */
@@ -224,7 +224,7 @@ export class LayoutModel {
         this.resizeHandles = splitAtom(resizeHandleListAtom);
         this.isContainerResizing = atom(false);
         this.isResizing = atom((get) => {
-            const pendingAction = get(this.pendingAction.throttledValueAtom);
+            const pendingAction = get(this.pendingTreeAction.throttledValueAtom);
             const isWindowResizing = get(this.isContainerResizing);
             return isWindowResizing || pendingAction?.type === LayoutTreeActionType.ResizeNode;
         });
@@ -258,17 +258,13 @@ export class LayoutModel {
         });
         this.focusedNodeIdStack = [];
 
-        this.pendingAction = atomWithThrottle<LayoutTreeAction>(null, 10);
+        this.pendingTreeAction = atomWithThrottle<LayoutTreeAction>(null, 10);
         this.placeholderTransform = atom<CSSProperties>((get: Getter) => {
-            const pendingAction = get(this.pendingAction.throttledValueAtom);
+            const pendingAction = get(this.pendingTreeAction.throttledValueAtom);
             return this.getPlaceholderTransform(pendingAction);
         });
 
         this.updateTreeState(true);
-    }
-
-    get focusedNodeId(): string {
-        return this.focusedNodeIdStack[0];
     }
 
     /**
@@ -289,7 +285,7 @@ export class LayoutModel {
         switch (action.type) {
             case LayoutTreeActionType.ComputeMove:
                 this.setter(
-                    this.pendingAction.throttledValueAtom,
+                    this.pendingTreeAction.throttledValueAtom,
                     computeMoveNode(this.treeState, action as LayoutTreeComputeMoveNodeAction)
                 );
                 break;
@@ -314,23 +310,23 @@ export class LayoutModel {
             case LayoutTreeActionType.SetPendingAction: {
                 const pendingAction = (action as LayoutTreeSetPendingAction).action;
                 if (pendingAction) {
-                    this.setter(this.pendingAction.throttledValueAtom, pendingAction);
+                    this.setter(this.pendingTreeAction.throttledValueAtom, pendingAction);
                 } else {
                     console.warn("No new pending action provided");
                 }
                 break;
             }
             case LayoutTreeActionType.ClearPendingAction:
-                this.setter(this.pendingAction.throttledValueAtom, undefined);
+                this.setter(this.pendingTreeAction.throttledValueAtom, undefined);
                 break;
             case LayoutTreeActionType.CommitPendingAction: {
-                const pendingAction = this.getter(this.pendingAction.currentValueAtom);
+                const pendingAction = this.getter(this.pendingTreeAction.currentValueAtom);
                 if (!pendingAction) {
                     console.error("unable to commit pending action, does not exist");
                     break;
                 }
                 this.treeReducer(pendingAction);
-                this.setter(this.pendingAction.throttledValueAtom, undefined);
+                this.setter(this.pendingTreeAction.throttledValueAtom, undefined);
                 break;
             }
             case LayoutTreeActionType.FocusNode:
@@ -380,7 +376,7 @@ export class LayoutModel {
             const newLeafs: LayoutNode[] = [];
             const newAdditionalProps = {};
 
-            const pendingAction = this.getter(this.pendingAction.currentValueAtom);
+            const pendingAction = this.getter(this.pendingTreeAction.currentValueAtom);
             const resizeAction =
                 pendingAction?.type === LayoutTreeActionType.ResizeNode
                     ? (pendingAction as LayoutTreeResizeNodeAction)
@@ -513,6 +509,13 @@ export class LayoutModel {
     }
 
     /**
+     * The id of the focused node in the layout.
+     */
+    get focusedNodeId(): string {
+        return this.focusedNodeIdStack[0];
+    }
+
+    /**
      * Checks whether the focused node id has changed and, if so, whether to update the focused node stack. If the focused node was deleted, will pop the latest value from the stack.
      * @param leafOrder The new leaf order array to use when searching for stale nodes in the stack.
      */
@@ -530,8 +533,8 @@ export class LayoutModel {
                 if (this.focusedNodeIdStack.length > 0) {
                     this.treeState.focusedNodeId = this.focusedNodeIdStack.shift();
                 } else {
+                    // If no nodes are in the stack, use the top left node in the layout.
                     this.treeState.focusedNodeId = leafOrder[0];
-                    console.log("next insert loc", this.treeState.focusedNodeId);
                 }
             }
             this.focusedNodeIdStack.unshift(this.treeState.focusedNodeId);
@@ -807,7 +810,7 @@ export class LayoutModel {
      * Callback that is invoked when a drag operation completes and the pending action should be committed.
      */
     onDrop() {
-        if (this.getter(this.pendingAction.currentValueAtom)) {
+        if (this.getter(this.pendingTreeAction.currentValueAtom)) {
             this.treeReducer({
                 type: LayoutTreeActionType.CommitPendingAction,
             });
