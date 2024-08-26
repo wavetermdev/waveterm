@@ -173,7 +173,7 @@ export const IconButton = React.memo(({ decl, className }: { decl: HeaderIconBut
 export const ConnectionButton = React.memo(({ blockId, connection }: { blockId: string; connection: string }) => {
     const [typeAhead, setTypeAhead] = jotai.useAtom(atoms.typeAheadModalAtom);
     const buttonRef = React.useRef<HTMLDivElement>(null);
-    const isLocal = connection == "" || connection == "local";
+    const isLocal = util.isBlank(connection) || connection == "local";
     const connStatusAtom = getConnStatusAtom(connection);
     const connStatus = jotai.useAtomValue(connStatusAtom);
     const showDisconnectedSlash = !isLocal && !connStatus?.connected;
