@@ -1,13 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WritableAtom } from "jotai";
+import { Atom, WritableAtom } from "jotai";
 import { CSSProperties } from "react";
 
 export enum NavigateDirection {
-    Top = 0,
+    Up = 0,
     Right = 1,
-    Bottom = 2,
+    Down = 2,
     Left = 3,
 }
 
@@ -67,6 +67,7 @@ export enum LayoutTreeActionType {
     InsertNode = "insert",
     InsertNodeAtIndex = "insertatindex",
     DeleteNode = "delete",
+    FocusNode = "focus",
     MagnifyNodeToggle = "magnify",
 }
 
@@ -208,6 +209,18 @@ export interface LayoutTreeResizeNodeAction extends LayoutTreeAction {
 }
 
 /**
+ * Action for focusing a node from the layout tree.
+ */
+export interface LayoutTreeFocusNodeAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.FocusNode;
+
+    /**
+     * The id of the node to focus;
+     */
+    nodeId: string;
+}
+
+/**
  * Action for toggling magnification of a node from the layout tree.
  */
 export interface LayoutTreeMagnifyNodeToggleAction extends LayoutTreeAction {
@@ -234,23 +247,16 @@ export type LayoutTreeStateSetter = (value: LayoutState) => void;
 
 export type LayoutTreeState = {
     rootNode: LayoutNode;
+    focusedNodeId?: string;
     magnifiedNodeId?: string;
     generation: number;
 };
 
 export type WritableLayoutTreeStateAtom = WritableAtom<LayoutTreeState, [value: LayoutTreeState], void>;
 
-export type ContentRenderer = (
-    data: TabLayoutData,
-    ready: boolean,
-    isMagnified: boolean,
-    disablePointerEvents: boolean,
-    onMagnifyToggle: () => void,
-    onClose: () => void,
-    dragHandleRef: React.RefObject<HTMLDivElement>
-) => React.ReactNode;
+export type ContentRenderer = (nodeModel: NodeModel) => React.ReactNode;
 
-export type PreviewRenderer = (data: TabLayoutData) => React.ReactElement;
+export type PreviewRenderer = (nodeModel: NodeModel) => React.ReactElement;
 
 export const DefaultNodeSize = 10;
 
@@ -306,4 +312,19 @@ export interface LayoutNodeAdditionalProps {
     resizeHandles?: ResizeHandleProps[];
     isMagnifiedNode?: boolean;
     isLastMagnifiedNode?: boolean;
+}
+
+export interface NodeModel {
+    additionalProps: Atom<LayoutNodeAdditionalProps>;
+    blockNum: Atom<number>;
+    nodeId: string;
+    blockId: string;
+    isFocused: Atom<boolean>;
+    isMagnified: Atom<boolean>;
+    ready: Atom<boolean>;
+    disablePointerEvents: Atom<boolean>;
+    toggleMagnify: () => void;
+    focusNode: () => void;
+    onClose: () => void;
+    dragHandleRef?: React.RefObject<HTMLDivElement>;
 }

@@ -3,7 +3,7 @@
 
 import { CSSProperties } from "react";
 import { XYCoord } from "react-dnd";
-import { DropDirection, FlexDirection } from "./types";
+import { DropDirection, FlexDirection, NavigateDirection } from "./types";
 
 export function reverseFlexDirection(flexDirection: FlexDirection): FlexDirection {
     return flexDirection === FlexDirection.Row ? FlexDirection.Column : FlexDirection.Row;
@@ -81,4 +81,24 @@ export function setTransform(
         height: setSize ? `${heightRounded}px` : undefined,
         position: "absolute",
     };
+}
+
+export function getCenter(dimensions: Dimensions): Point {
+    return {
+        x: dimensions.left + dimensions.width / 2,
+        y: dimensions.top + dimensions.height / 2,
+    };
+}
+
+export function navigateDirectionToOffset(direction: NavigateDirection): Point {
+    switch (direction) {
+        case NavigateDirection.Up:
+            return { x: 0, y: -1 };
+        case NavigateDirection.Down:
+            return { x: 0, y: 1 };
+        case NavigateDirection.Left:
+            return { x: -1, y: 0 };
+        case NavigateDirection.Right:
+            return { x: 1, y: 0 };
+    }
 }

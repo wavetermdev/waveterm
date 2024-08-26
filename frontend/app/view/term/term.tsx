@@ -17,7 +17,6 @@ import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
-import { produce } from "immer";
 import * as jotai from "jotai";
 import "public/xterm.css";
 import * as React from "react";
@@ -104,17 +103,6 @@ const testVDom: VDomElem = {
         },
     ],
 };
-
-function setBlockFocus(blockId: string) {
-    let winData = globalStore.get(atoms.waveWindow);
-    if (winData == null) {
-        return;
-    }
-    winData = produce(winData, (draft) => {
-        draft.activeblockid = blockId;
-    });
-    WOS.setObjectValue(winData, globalStore.set, true);
-}
 
 class TermViewModel {
     viewType: string;
@@ -256,17 +244,10 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
     model.htmlElemFocusRef = htmlElemFocusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
-        return jotai.atom((get) => {
-            const winData = get(atoms.waveWindow);
-            return winData?.activeblockid === blockId;
-        });
-    });
     const termSettingsAtom = useSettingsAtom<TerminalConfigType>("term", (settings: SettingsConfigType) => {
         return settings?.term;
     });
     const termSettings = jotai.useAtomValue(termSettingsAtom);
-    const isFocused = jotai.useAtomValue(isFocusedAtom);
 
     React.useEffect(() => {
         function handleTerminalKeydown(event: KeyboardEvent): boolean {
@@ -323,9 +304,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         );
         (window as any).term = termWrap;
         termRef.current = termWrap;
-        termWrap.addFocusListener(() => {
-            setBlockFocus(blockId);
-        });
         const rszObs = new ResizeObserver(() => {
             termWrap.handleResize_debounced();
         });
@@ -357,16 +335,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     if (termMode != "term" && termMode != "html") {
         termMode = "term";
     }
-
-    // set initial focus
-    React.useEffect(() => {
-        if (isFocused && termMode == "term") {
-            termRef.current?.terminal.focus();
-        }
-        if (isFocused && termMode == "html") {
-            htmlElemFocusRef.current?.focus();
-        }
-    }, []);
 
     // set intitial controller status, and then subscribe for updates
     React.useEffect(() => {
@@ -455,11 +423,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     );
 
     return (
-        <div
-            className={clsx("view-term", "term-mode-" + termMode, isFocused ? "is-focused" : null)}
-            onKeyDown={handleKeyDown}
-            ref={viewRef}
-        >
+        <div className={clsx("view-term", "term-mode-" + termMode)} onKeyDown={handleKeyDown} ref={viewRef}>
             {typeAhead[blockId] && (
                 <TypeAheadModal
                     anchor={viewRef}
@@ -483,7 +447,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                     if (htmlElemFocusRef.current != null) {
                         htmlElemFocusRef.current.focus();
                     }
-                    setBlockFocus(blockId);
                 }}
             >
                 <div key="htmlElemFocus" className="term-htmlelem-focus">

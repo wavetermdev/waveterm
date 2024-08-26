@@ -2,9 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block } from "@/app/block/block";
-import { LayoutComponentModel } from "@/app/block/blocktypes";
 import { CenteredDiv } from "@/element/quickelems";
-import { ContentRenderer, TileLayout } from "@/layout/index";
+import { ContentRenderer, NodeModel, PreviewRenderer, TileLayout } from "@/layout/index";
 import { getApi } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
@@ -21,34 +20,13 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     const tabData = useAtomValue(tabAtom);
 
     const tileLayoutContents = useMemo(() => {
-        const renderBlock: ContentRenderer = (
-            blockData: TabLayoutData,
-            ready: boolean,
-            isMagnified: boolean,
-            disablePointerEvents: boolean,
-            onMagnifyToggle: () => void,
-            onClose: () => void,
-            dragHandleRef: React.RefObject<HTMLDivElement>
-        ) => {
-            if (!blockData.blockId || !ready) {
-                return null;
-            }
-            const layoutModel: LayoutComponentModel = {
-                disablePointerEvents,
-                onClose,
-                onMagnifyToggle,
-                dragHandleRef,
-                isMagnified,
-            };
-            return (
-                <Block key={blockData.blockId} blockId={blockData.blockId} layoutModel={layoutModel} preview={false} />
-            );
+        const renderBlock: ContentRenderer = (nodeModel: NodeModel) => {
+            return <Block key={nodeModel.blockId} nodeModel={nodeModel} preview={false} />;
         };
 
-        function renderPreview(tabData: TabLayoutData) {
-            if (!tabData) return;
-            return <Block key={tabData.blockId} blockId={tabData.blockId} layoutModel={null} preview={true} />;
-        }
+        const renderPreview: PreviewRenderer = (nodeModel: NodeModel) => {
+            return <Block key={nodeModel.blockId} nodeModel={nodeModel} preview={true} />;
+        };
 
         function onNodeDelete(data: TabLayoutData) {
             return services.ObjectService.DeleteBlock(data.blockId);

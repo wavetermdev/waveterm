@@ -212,6 +212,7 @@ declare global {
     type LayoutState = WaveObj & {
         rootnode?: any;
         magnifiednodeid?: string;
+        focusednodeid?: string;
     };
 
     // waveobj.MetaTSType
@@ -585,8 +586,6 @@ declare global {
     type WaveWindow = WaveObj & {
         workspaceid: string;
         activetabid: string;
-        activeblockid?: string;
-        activeblockmap: {[key: string]: string};
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;

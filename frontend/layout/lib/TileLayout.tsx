@@ -19,7 +19,7 @@ import { DropTargetMonitor, XYCoord, useDrag, useDragLayer, useDrop } from "reac
 import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
 import { LayoutModel } from "./layoutModel";
-import { useLayoutNode, useTileLayout } from "./layoutModelHooks";
+import { useNodeModel, useTileLayout } from "./layoutModelHooks";
 import "./tilelayout.less";
 import {
     LayoutNode,
@@ -53,7 +53,6 @@ const DragPreviewHeight = 300;
 
 function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutProps) {
     const layoutModel = useTileLayout(tabAtom, contents);
-    const generation = useAtomValue(layoutModel.generationAtom);
     const overlayTransform = useAtomValue(layoutModel.overlayTransform);
     const setActiveDrag = useSetAtom(layoutModel.activeDrag);
     const setReady = useSetAtom(layoutModel.ready);
@@ -85,7 +84,7 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
                 }
             }
         }),
-        [getCursorPoint, generation]
+        [getCursorPoint]
     );
 
     // Effect to detect when the cursor leaves the TileLayout hit trap so we can remove any placeholders. This cannot be done using pointer capture
@@ -115,7 +114,7 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
             >
                 <div key="display" ref={layoutModel.displayContainerRef} className="display-container">
                     <ResizeHandleWrapper layoutModel={layoutModel} />
-                    <DisplayNodesWrapper contents={contents} layoutModel={layoutModel} />
+                    <DisplayNodesWrapper layoutModel={layoutModel} />
                 </div>
                 <Placeholder key="placeholder" layoutModel={layoutModel} style={{ top: 10000, ...overlayTransform }} />
                 <OverlayNodeWrapper layoutModel={layoutModel} />
@@ -131,19 +130,15 @@ interface DisplayNodesWrapperProps {
      * The layout tree state.
      */
     layoutModel: LayoutModel;
-    /**
-     * contains callbacks and information about the contents (or styling) of of the TileLayout
-     */
-    contents: TileLayoutContents;
 }
 
-const DisplayNodesWrapper = ({ layoutModel, contents }: DisplayNodesWrapperProps) => {
+const DisplayNodesWrapper = ({ layoutModel }: DisplayNodesWrapperProps) => {
     const leafs = useAtomValue(layoutModel.leafs);
 
     return useMemo(
         () =>
-            leafs.map((leaf) => {
-                return <DisplayNode key={leaf.id} layoutModel={layoutModel} layoutNode={leaf} contents={contents} />;
+            leafs.map((node) => {
+                return <DisplayNode key={node.id} layoutModel={layoutModel} node={node} />;
             }),
         [leafs]
     );
@@ -154,12 +149,7 @@ interface DisplayNodeProps {
     /**
      * The leaf node object, containing the data needed to display the leaf contents to the user.
      */
-    layoutNode: LayoutNode;
-
-    /**
-     * contains callbacks and information about the contents (or styling) of of the TileLayout
-     */
-    contents: TileLayoutContents;
+    node: LayoutNode;
 }
 
 const dragItemType = "TILE_ITEM";
@@ -167,26 +157,23 @@ const dragItemType = "TILE_ITEM";
 /**
  * The draggable and displayable portion of a leaf node in a layout tree.
  */
-const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) => {
+const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
+    const nodeModel = useNodeModel(layoutModel, node);
     const tileNodeRef = useRef<HTMLDivElement>(null);
-    const dragHandleRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
-    const addlProps = useLayoutNode(layoutModel, layoutNode);
-    const activeDrag = useAtomValue(layoutModel.activeDrag);
-    const globalReady = useAtomValue(layoutModel.ready);
-
+    const addlProps = useAtomValue(nodeModel.additionalProps);
     const devicePixelRatio = useDevicePixelRatio();
 
     const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({
             type: dragItemType,
-            item: () => layoutNode,
+            item: () => node,
             canDrag: () => !addlProps?.isMagnifiedNode,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
         }),
-        [layoutNode, addlProps]
+        [node, addlProps]
     );
 
     const [previewElementGeneration, setPreviewElementGeneration] = useState(0);
@@ -203,11 +190,11 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
                         transform: `scale(${1 / devicePixelRatio})`,
                     }}
                 >
-                    {contents.renderPreview?.(layoutNode.data)}
+                    {layoutModel.renderPreview?.(nodeModel)}
                 </div>
             </div>
         );
-    }, [contents.renderPreview, devicePixelRatio, layoutNode.data]);
+    }, [devicePixelRatio, nodeModel]);
 
     const [previewImage, setPreviewImage] = useState<HTMLImageElement>(null);
     const [previewImageGeneration, setPreviewImageGeneration] = useState(0);
@@ -232,31 +219,20 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
         previewImageGeneration,
         previewImage,
         devicePixelRatio,
-        layoutNode.data,
     ]);
-
-    // Register the display node as a draggable item
-    useEffect(() => {
-        drag(dragHandleRef);
-    }, [drag, dragHandleRef.current]);
 
     const leafContent = useMemo(() => {
         return (
-            layoutNode.data && (
-                <div key="leaf" className="tile-leaf">
-                    {contents.renderContent(
-                        layoutNode.data,
-                        globalReady,
-                        addlProps?.isMagnifiedNode ?? false,
-                        activeDrag,
-                        () => layoutModel.magnifyNodeToggle(layoutNode),
-                        () => layoutModel.closeNode(layoutNode),
-                        dragHandleRef
-                    )}
-                </div>
-            )
+            <div key="leaf" className="tile-leaf">
+                {layoutModel.renderContent(nodeModel)}
+            </div>
         );
-    }, [layoutNode, globalReady, activeDrag, addlProps]);
+    }, [nodeModel]);
+
+    // Register the display node as a draggable item
+    useEffect(() => {
+        drag(nodeModel.dragHandleRef);
+    }, [drag, nodeModel.dragHandleRef.current]);
 
     return (
         <div
@@ -266,7 +242,7 @@ const DisplayNode = ({ layoutModel, layoutNode, contents }: DisplayNodeProps) =>
                 "last-magnified": addlProps?.isLastMagnifiedNode,
             })}
             ref={tileNodeRef}
-            id={layoutNode.id}
+            id={node.id}
             style={addlProps?.transform}
             onPointerEnter={generatePreviewImage}
             onPointerOver={(event) => event.stopPropagation()}
@@ -281,14 +257,14 @@ interface OverlayNodeWrapperProps {
     layoutModel: LayoutModel;
 }
 
-const OverlayNodeWrapper = ({ layoutModel }: OverlayNodeWrapperProps) => {
+const OverlayNodeWrapper = memo(({ layoutModel }: OverlayNodeWrapperProps) => {
     const leafs = useAtomValue(layoutModel.leafs);
     const overlayTransform = useAtomValue(layoutModel.overlayTransform);
 
     const overlayNodes = useMemo(
         () =>
-            leafs.map((leaf) => {
-                return <OverlayNode key={leaf.id} layoutModel={layoutModel} layoutNode={leaf} />;
+            leafs.map((node) => {
+                return <OverlayNode key={node.id} layoutModel={layoutModel} node={node} />;
             }),
         [leafs]
     );
@@ -298,34 +274,31 @@ const OverlayNodeWrapper = ({ layoutModel }: OverlayNodeWrapperProps) => {
             {overlayNodes}
         </div>
     );
-};
+});
 
 interface OverlayNodeProps {
-    /**
-     * The layout node object corresponding to the OverlayNode.
-     */
-    layoutNode: LayoutNode;
     /**
      * The layout tree state.
      */
     layoutModel: LayoutModel;
+    node: LayoutNode;
 }
 
 /**
  * An overlay representing the true flexbox layout of the LayoutTreeState. This holds the drop targets for moving around nodes and is used to calculate the
  * dimensions of the corresponding DisplayNode for each LayoutTreeState leaf.
  */
-const OverlayNode = ({ layoutNode, layoutModel }: OverlayNodeProps) => {
-    const additionalProps = useLayoutNode(layoutModel, layoutNode);
+const OverlayNode = memo(({ node, layoutModel }: OverlayNodeProps) => {
+    const nodeModel = useNodeModel(layoutModel, node);
+    const additionalProps = useAtomValue(nodeModel.additionalProps);
     const overlayRef = useRef<HTMLDivElement>(null);
-    const generation = useAtomValue(layoutModel.generationAtom);
 
     const [, drop] = useDrop(
         () => ({
             accept: dragItemType,
             canDrop: (_, monitor) => {
                 const dragItem = monitor.getItem<LayoutNode>();
-                if (monitor.isOver({ shallow: true }) && dragItem?.id !== layoutNode.id) {
+                if (monitor.isOver({ shallow: true }) && dragItem?.id !== node.id) {
                     return true;
                 }
                 return false;
@@ -346,7 +319,7 @@ const OverlayNode = ({ layoutNode, layoutModel }: OverlayNodeProps) => {
                         offset.y -= containerRect.y;
                         layoutModel.treeReducer({
                             type: LayoutTreeActionType.ComputeMove,
-                            node: layoutNode,
+                            node: node,
                             nodeToMove: dragItem,
                             direction: determineDropDirection(additionalProps.rect, offset),
                         } as LayoutTreeComputeMoveNodeAction);
@@ -358,7 +331,7 @@ const OverlayNode = ({ layoutNode, layoutModel }: OverlayNodeProps) => {
                 }
             }),
         }),
-        [layoutNode, generation, additionalProps, layoutModel.displayContainerRef]
+        [node, additionalProps, layoutModel.displayContainerRef]
     );
 
     // Register the overlay node as a drop target
@@ -366,27 +339,27 @@ const OverlayNode = ({ layoutNode, layoutModel }: OverlayNodeProps) => {
         drop(overlayRef);
     }, []);
 
-    return <div ref={overlayRef} className="overlay-node" id={layoutNode.id} style={additionalProps?.transform} />;
-};
+    return <div ref={overlayRef} className="overlay-node" id={node.id} style={additionalProps?.transform} />;
+});
 
 interface ResizeHandleWrapperProps {
     layoutModel: LayoutModel;
 }
 
-const ResizeHandleWrapper = ({ layoutModel }: ResizeHandleWrapperProps) => {
+const ResizeHandleWrapper = memo(({ layoutModel }: ResizeHandleWrapperProps) => {
     const resizeHandles = useAtomValue(layoutModel.resizeHandles) as Atom<ResizeHandleProps>[];
 
     return resizeHandles.map((resizeHandleAtom, i) => (
         <ResizeHandle key={`resize-handle-${i}`} layoutModel={layoutModel} resizeHandleAtom={resizeHandleAtom} />
     ));
-};
+});
 
 interface ResizeHandleComponentProps {
     resizeHandleAtom: Atom<ResizeHandleProps>;
     layoutModel: LayoutModel;
 }
 
-const ResizeHandle = ({ resizeHandleAtom, layoutModel }: ResizeHandleComponentProps) => {
+const ResizeHandle = memo(({ resizeHandleAtom, layoutModel }: ResizeHandleComponentProps) => {
     const resizeHandleProps = useAtomValue(resizeHandleAtom);
     const resizeHandleRef = useRef<HTMLDivElement>(null);
 
@@ -436,7 +409,7 @@ const ResizeHandle = ({ resizeHandleAtom, layoutModel }: ResizeHandleComponentPr
             <div className="line" />
         </div>
     );
-};
+});
 
 interface PlaceholderProps {
     /**

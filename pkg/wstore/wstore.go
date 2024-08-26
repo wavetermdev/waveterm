@@ -199,9 +199,8 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Windo
 		}
 	}
 	window := &waveobj.Window{
-		OID:            windowId,
-		WorkspaceId:    workspaceId,
-		ActiveBlockMap: make(map[string]string),
+		OID:         windowId,
+		WorkspaceId: workspaceId,
 		Pos: waveobj.Point{
 			X: 100,
 			Y: 100,

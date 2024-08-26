@@ -126,16 +126,14 @@ func (*Client) GetOType() string {
 // stores the ui-context of the window
 // workspaceid, active tab, active block within each tab, window size, etc.
 type Window struct {
-	OID            string            `json:"oid"`
-	Version        int               `json:"version"`
-	WorkspaceId    string            `json:"workspaceid"`
-	ActiveTabId    string            `json:"activetabid"`
-	ActiveBlockId  string            `json:"activeblockid,omitempty"`
-	ActiveBlockMap map[string]string `json:"activeblockmap"` // map from tabid to blockid
-	Pos            Point             `json:"pos"`
-	WinSize        WinSize           `json:"winsize"`
-	LastFocusTs    int64             `json:"lastfocusts"`
-	Meta           MetaMapType       `json:"meta"`
+	OID         string      `json:"oid"`
+	Version     int         `json:"version"`
+	WorkspaceId string      `json:"workspaceid"`
+	ActiveTabId string      `json:"activetabid"`
+	Pos         Point       `json:"pos"`
+	WinSize     WinSize     `json:"winsize"`
+	LastFocusTs int64       `json:"lastfocusts"`
+	Meta        MetaMapType `json:"meta"`
 }
 
 func (*Window) GetOType() string {
@@ -180,6 +178,7 @@ type LayoutState struct {
 	Version         int         `json:"version"`
 	RootNode        any         `json:"rootnode,omitempty"`
 	MagnifiedNodeId string      `json:"magnifiednodeid,omitempty"`
+	FocusedNodeId   string      `json:"focusednodeid,omitempty"`
 	Meta            MetaMapType `json:"meta,omitempty"`
 }
 

@@ -10,6 +10,7 @@ import { balanceNode, findNode, walkNodes } from "./layoutNode";
 import {
     computeMoveNode,
     deleteNode,
+    focusNode,
     insertNode,
     insertNodeAtIndex,
     magnifyNodeToggle,
@@ -26,6 +27,7 @@ import {
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
+    LayoutTreeFocusNodeAction,
     LayoutTreeInsertNodeAction,
     LayoutTreeInsertNodeAtIndexAction,
     LayoutTreeMagnifyNodeToggleAction,
@@ -34,12 +36,14 @@ import {
     LayoutTreeSetPendingAction,
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
+    NavigateDirection,
+    NodeModel,
     PreviewRenderer,
     ResizeHandleProps,
     TileLayoutContents,
     WritableLayoutTreeStateAtom,
 } from "./types";
-import { setTransform } from "./utils";
+import { getCenter, navigateDirectionToOffset, setTransform } from "./utils";
 
 interface ResizeContext {
     handleId: string;
@@ -61,6 +65,10 @@ export class LayoutModel {
      * The tree state as it is persisted on the backend.
      */
     treeState: LayoutTreeState;
+    /**
+     * The last-recorded tree state generation.
+     */
+    lastTreeStateGeneration: number;
     /**
      * The jotai getter that is used to read atom values.
      */
@@ -91,9 +99,13 @@ export class LayoutModel {
      */
     leafs: PrimitiveAtom<LayoutNode[]>;
     /**
-     * List of nodes that are leafs, ordered sequentially by placement in the tree.
+     * An ordered list of node ids starting from the top left corner to the bottom right corner.
      */
-    leafsOrdered: Atom<LayoutNode[]>;
+    leafOrder: Atom<string[]>;
+    /**
+     * A map of node models for currently-active leafs.
+     */
+    private nodeModels: Map<string, NodeModel>;
 
     /**
      * Split atom containing the properties of all of the resize handles that should be placed in the layout.
@@ -137,6 +149,14 @@ export class LayoutModel {
     overlayTransform: Atom<CSSProperties>;
 
     /**
+     * The currently focused node.
+     */
+    private focusedNodeIdStack: string[];
+    /**
+     * Atom pointing to the currently focused node.
+     */
+    focusedNode: Atom<LayoutNode>;
+    /**
      * The currently magnified node.
      */
     magnifiedNodeId: string;
@@ -170,11 +190,6 @@ export class LayoutModel {
      */
     private isContainerResizing: PrimitiveAtom<boolean>;
 
-    /**
-     * An arbitrary generation value that is incremented every time the updateTree function runs. Helps indicate to subscribers that they should update their memoized values.
-     */
-    generationAtom: PrimitiveAtom<number>;
-
     constructor(
         treeStateAtom: WritableLayoutTreeStateAtom,
         getter: Getter,
@@ -184,7 +199,6 @@ export class LayoutModel {
         onNodeDelete?: (data: TabLayoutData) => Promise<void>,
         gapSizePx?: number
     ) {
-        console.log("ctor");
         this.treeStateAtom = treeStateAtom;
         this.getter = getter;
         this.setter = setter;
@@ -196,19 +210,21 @@ export class LayoutModel {
         this.resizeHandleSizePx = 2 * this.halfResizeHandleSizePx;
 
         this.leafs = atom([]);
-        this.additionalProps = atom({});
-        this.leafsOrdered = atom((get) => {
+        this.leafOrder = atom((get) => {
             const leafs = get(this.leafs);
             const additionalProps = get(this.additionalProps);
-            console.log("additionalProps", additionalProps);
-            const leafsOrdered = leafs.sort((a, b) => {
-                const treeKeyA = additionalProps[a.id].treeKey;
-                const treeKeyB = additionalProps[b.id].treeKey;
-                return treeKeyA.localeCompare(treeKeyB);
-            });
-            console.log("leafsOrdered", leafsOrdered);
-            return leafsOrdered;
+            return leafs
+                .map((node) => node.id)
+                .sort((a, b) => {
+                    const treeKeyA = additionalProps[a]?.treeKey;
+                    const treeKeyB = additionalProps[b]?.treeKey;
+                    if (!treeKeyA || !treeKeyB) return;
+                    return treeKeyA.localeCompare(treeKeyB);
+                });
         });
+
+        this.nodeModels = new Map();
+        this.additionalProps = atom({});
 
         const resizeHandleListAtom = atom((get) => {
             const addlProps = get(this.additionalProps);
@@ -247,15 +263,23 @@ export class LayoutModel {
             }
         });
 
+        this.focusedNode = atom((get) => {
+            const treeState = get(this.treeStateAtom);
+            return findNode(treeState.rootNode, treeState.focusedNodeId);
+        });
+        this.focusedNodeIdStack = [];
+
         this.pendingAction = atomWithThrottle<LayoutTreeAction>(null, 10);
         this.placeholderTransform = atom<CSSProperties>((get: Getter) => {
             const pendingAction = get(this.pendingAction.throttledValueAtom);
-            // console.log("update to pending action", pendingAction);
             return this.getPlaceholderTransform(pendingAction);
         });
 
-        this.generationAtom = atom(0);
         this.updateTreeState(true);
+    }
+
+    get focusedNodeId(): string {
+        return this.focusedNodeIdStack[0];
     }
 
     /**
@@ -273,8 +297,6 @@ export class LayoutModel {
      * @param action The action to perform.
      */
     treeReducer(action: LayoutTreeAction) {
-        // console.log("treeReducer", action, this);
-        let stateChanged = false;
         switch (action.type) {
             case LayoutTreeActionType.ComputeMove:
                 this.setter(
@@ -284,27 +306,21 @@ export class LayoutModel {
                 break;
             case LayoutTreeActionType.Move:
                 moveNode(this.treeState, action as LayoutTreeMoveNodeAction);
-                stateChanged = true;
                 break;
             case LayoutTreeActionType.InsertNode:
                 insertNode(this.treeState, action as LayoutTreeInsertNodeAction);
-                stateChanged = true;
                 break;
             case LayoutTreeActionType.InsertNodeAtIndex:
                 insertNodeAtIndex(this.treeState, action as LayoutTreeInsertNodeAtIndexAction);
-                stateChanged = true;
                 break;
             case LayoutTreeActionType.DeleteNode:
                 deleteNode(this.treeState, action as LayoutTreeDeleteNodeAction);
-                stateChanged = true;
                 break;
             case LayoutTreeActionType.Swap:
                 swapNode(this.treeState, action as LayoutTreeSwapNodeAction);
-                stateChanged = true;
                 break;
             case LayoutTreeActionType.ResizeNode:
                 resizeNode(this.treeState, action as LayoutTreeResizeNodeAction);
-                stateChanged = true;
                 break;
             case LayoutTreeActionType.SetPendingAction: {
                 const pendingAction = (action as LayoutTreeSetPendingAction).action;
@@ -328,21 +344,22 @@ export class LayoutModel {
                 this.setter(this.pendingAction.throttledValueAtom, undefined);
                 break;
             }
+            case LayoutTreeActionType.FocusNode:
+                focusNode(this.treeState, action as LayoutTreeFocusNodeAction);
+                break;
             case LayoutTreeActionType.MagnifyNodeToggle:
                 magnifyNodeToggle(this.treeState, action as LayoutTreeMagnifyNodeToggleAction);
-                stateChanged = true;
                 break;
             default:
                 console.error("Invalid reducer action", this.treeState, action);
         }
-        if (stateChanged) {
-            console.log("state changed", this.treeState);
+        if (this.lastTreeStateGeneration !== this.treeState.generation) {
+            this.lastTreeStateGeneration = this.treeState.generation;
             if (this.magnifiedNodeId !== this.treeState.magnifiedNodeId) {
                 this.lastMagnifiedNodeId = this.magnifiedNodeId;
                 this.magnifiedNodeId = this.treeState.magnifiedNodeId;
             }
             this.updateTree();
-            this.treeState.generation++;
             this.setter(this.treeStateAtom, this.treeState);
         }
     }
@@ -370,9 +387,7 @@ export class LayoutModel {
      * @param balanceTree Whether the tree should also be balanced as it is walked. This should be done if the tree state has just been updated. Defaults to true.
      */
     updateTree = (balanceTree: boolean = true) => {
-        // console.log("updateTree");
         if (this.displayContainerRef.current) {
-            // console.log("updateTree 1");
             const newLeafs: LayoutNode[] = [];
             const newAdditionalProps = {};
 
@@ -391,8 +406,8 @@ export class LayoutModel {
                 this.leafs,
                 newLeafs.sort((a, b) => a.id.localeCompare(b.id))
             );
-
-            this.setter(this.generationAtom, this.getter(this.generationAtom) + 1);
+            this.validateFocusedNode(newLeafs);
+            this.cleanupNodeModels();
         }
     };
 
@@ -419,7 +434,6 @@ export class LayoutModel {
         };
 
         if (!node.children?.length) {
-            // console.log("adding node to leafs", node);
             leafs.push(node);
             const addlProps = additionalPropsMap[node.id];
             if (addlProps) {
@@ -449,8 +463,6 @@ export class LayoutModel {
         const additionalProps: LayoutNodeAdditionalProps = additionalPropsMap.hasOwnProperty(node.id)
             ? additionalPropsMap[node.id]
             : { treeKey: "0" };
-
-        console.log("layoutNode addlProps", node, additionalProps);
 
         const nodeRect: Dimensions = node.id === this.treeState.rootNode.id ? getBoundingRect() : additionalProps.rect;
         const nodeIsRow = node.flexDirection === FlexDirection.Row;
@@ -510,6 +522,29 @@ export class LayoutModel {
     }
 
     /**
+     * Checks whether the focused node id has changed and, if so, whether to update the focused node stack. If the focused node was deleted, will pop the latest value from the stack.
+     * @param newLeafs The new leafs array to use when searching for stale nodes in the stack.
+     */
+    private validateFocusedNode(newLeafs: LayoutNode[]) {
+        if (this.treeState.focusedNodeId !== this.focusedNodeId) {
+            // Remove duplicates and stale entries from focus stack.
+            const leafIds = newLeafs.map((leaf) => leaf.id);
+            const newFocusedNodeIdStack: string[] = [];
+            for (const id of this.focusedNodeIdStack) {
+                if (leafIds.includes(id) && !newFocusedNodeIdStack.includes(id)) newFocusedNodeIdStack.push(id);
+            }
+            this.focusedNodeIdStack = newFocusedNodeIdStack;
+
+            // Update the focused node and stack based on the changes in the tree state.
+            if (this.treeState.focusedNodeId) {
+                this.focusedNodeIdStack.unshift(this.treeState.focusedNodeId);
+            } else {
+                this.treeState.focusedNodeId = this.focusedNodeIdStack.shift();
+            }
+        }
+    }
+
+    /**
      * Helper function for the placeholderTransform atom, which computes the new transform value when the pending action changes.
      * @param pendingAction The new pending action value.
      * @returns The computed placeholder transform.
@@ -518,10 +553,8 @@ export class LayoutModel {
      */
     private getPlaceholderTransform(pendingAction: LayoutTreeAction): CSSProperties {
         if (pendingAction) {
-            // console.log("pendingAction", pendingAction, this);
             switch (pendingAction.type) {
                 case LayoutTreeActionType.Move: {
-                    // console.log("doing move overlay");
                     const action = pendingAction as LayoutTreeMoveNodeAction;
                     let parentId: string;
                     if (action.insertAtRoot) {
@@ -581,7 +614,6 @@ export class LayoutModel {
                     break;
                 }
                 case LayoutTreeActionType.Swap: {
-                    // console.log("doing swap overlay");
                     const action = pendingAction as LayoutTreeSwapNodeAction;
                     const targetNodeId = action.node1Id;
                     const targetBoundingRect = this.getNodeRectById(targetNodeId);
@@ -603,13 +635,150 @@ export class LayoutModel {
     }
 
     /**
-     * Toggle magnification of a given node.
-     * @param node The node that is being magnified.
+     * Gets the node model for the given node.
+     * @param node The node for which to retrieve the node model.
+     * @returns The node model for the given node.
      */
-    magnifyNodeToggle(node: LayoutNode) {
-        const action = {
+    getNodeModel(node: LayoutNode): NodeModel {
+        const nodeid = node.id;
+        const blockId = node.data.blockId;
+        if (!this.nodeModels.has(nodeid)) {
+            this.nodeModels.set(nodeid, {
+                additionalProps: this.getNodeAdditionalPropertiesAtom(nodeid),
+                nodeId: nodeid,
+                blockId,
+                blockNum: atom((get) => get(this.leafOrder).indexOf(nodeid) + 1),
+                isFocused: atom((get) => {
+                    const treeState = get(this.treeStateAtom);
+                    const isFocused = treeState.focusedNodeId === nodeid;
+                    return isFocused;
+                }),
+                isMagnified: atom((get) => {
+                    const treeState = get(this.treeStateAtom);
+                    return treeState.magnifiedNodeId === nodeid;
+                }),
+                ready: this.ready,
+                disablePointerEvents: this.activeDrag,
+                onClose: async () => await this.closeNode(nodeid),
+                toggleMagnify: () => this.magnifyNodeToggle(nodeid),
+                focusNode: () => this.focusNode(nodeid),
+                dragHandleRef: createRef(),
+            });
+        }
+        const nodeModel = this.nodeModels.get(nodeid);
+        return nodeModel;
+    }
+
+    private cleanupNodeModels() {
+        const leafOrder = this.getter(this.leafOrder);
+        const orphanedNodeModels = [...this.nodeModels.keys()].filter((id) => !leafOrder.includes(id));
+        for (const id of orphanedNodeModels) {
+            this.nodeModels.delete(id);
+        }
+    }
+
+    /**
+     * Switch focus to the next node in the given direction in the layout.
+     * @param direction The direction in which to switch focus.
+     */
+    switchNodeFocusInDirection(direction: NavigateDirection) {
+        const curNodeId = this.focusedNodeId;
+
+        // If no node is focused, set focus to the first leaf.
+        if (!curNodeId) {
+            this.focusNode(this.getter(this.leafOrder)[0]);
+            return;
+        }
+
+        const offset = navigateDirectionToOffset(direction);
+        const nodePositions: Map<string, Dimensions> = new Map();
+        const leafs = this.getter(this.leafs);
+        const addlProps = this.getter(this.additionalProps);
+        for (const leaf of leafs) {
+            const pos = addlProps[leaf.id]?.rect;
+            if (pos) {
+                nodePositions.set(leaf.id, pos);
+            }
+        }
+        const curNodePos = nodePositions.get(curNodeId);
+        if (!curNodePos) {
+            return;
+        }
+        nodePositions.delete(curNodeId);
+        const boundingRect = this.displayContainerRef?.current.getBoundingClientRect();
+        if (!boundingRect) {
+            return;
+        }
+        const maxX = boundingRect.left + boundingRect.width;
+        const maxY = boundingRect.top + boundingRect.height;
+        const moveAmount = 10;
+        const curPoint = getCenter(curNodePos);
+
+        function findNodeAtPoint(m: Map<string, Dimensions>, p: Point): string {
+            for (const [blockId, dimension] of m.entries()) {
+                if (
+                    p.x >= dimension.left &&
+                    p.x <= dimension.left + dimension.width &&
+                    p.y >= dimension.top &&
+                    p.y <= dimension.top + dimension.height
+                ) {
+                    return blockId;
+                }
+            }
+            return null;
+        }
+
+        while (true) {
+            curPoint.x += offset.x * moveAmount;
+            curPoint.y += offset.y * moveAmount;
+            if (curPoint.x < 0 || curPoint.x > maxX || curPoint.y < 0 || curPoint.y > maxY) {
+                return;
+            }
+            const nodeId = findNodeAtPoint(nodePositions, curPoint);
+            if (nodeId != null) {
+                this.focusNode(nodeId);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Switch focus to a node using the given BlockNum
+     * @param newBlockNum The BlockNum of the node to which focus should switch.
+     * @see leafOrder - the indices in this array determine BlockNum
+     */
+    switchNodeFocusByBlockNum(newBlockNum: number) {
+        const leafOrder = this.getter(this.leafOrder);
+        const newLeafIdx = newBlockNum - 1;
+        if (newLeafIdx < 0 || newLeafIdx >= leafOrder.length) {
+            return;
+        }
+        const leafId = leafOrder[newLeafIdx];
+        this.focusNode(leafId);
+    }
+
+    /**
+     * Set the layout to focus on the given node.
+     * @param nodeId The id of the node that is being focused.
+     */
+    focusNode(nodeId: string) {
+        if (this.focusedNodeId === nodeId) return;
+        const action: LayoutTreeFocusNodeAction = {
+            type: LayoutTreeActionType.FocusNode,
+            nodeId: nodeId,
+        };
+
+        this.treeReducer(action);
+    }
+
+    /**
+     * Toggle magnification of a given node.
+     * @param nodeId The id of the node that is being magnified.
+     */
+    magnifyNodeToggle(nodeId: string) {
+        const action: LayoutTreeMagnifyNodeToggleAction = {
             type: LayoutTreeActionType.MagnifyNodeToggle,
-            nodeId: node.id,
+            nodeId: nodeId,
         };
 
         this.treeReducer(action);
@@ -617,22 +786,32 @@ export class LayoutModel {
 
     /**
      * Close a given node and update the tree state.
-     * @param node The node that is being closed.
+     * @param nodeId The id of the node that is being closed.
      */
-    async closeNode(node: LayoutNode) {
+    async closeNode(nodeId: string) {
+        const nodeToDelete = findNode(this.treeState.rootNode, nodeId);
+        if (!nodeToDelete) {
+            console.error("unable to close node, cannot find it in tree", nodeId);
+            return;
+        }
         const deleteAction: LayoutTreeDeleteNodeAction = {
             type: LayoutTreeActionType.DeleteNode,
-            nodeId: node.id,
+            nodeId: nodeId,
         };
         this.treeReducer(deleteAction);
-        await this.onNodeDelete?.(node.data);
+        await this.onNodeDelete?.(nodeToDelete.data);
     }
 
-    async closeNodeById(nodeId: string) {
-        const nodeToDelete = findNode(this.treeState.rootNode, nodeId);
-        await this.closeNode(nodeToDelete);
+    /**
+     * Shorthand function for closing the focused node in a layout.
+     */
+    async closeFocusedNode() {
+        await this.closeNode(this.focusedNodeId);
     }
 
+    /**
+     * Callback that is invoked when a drag operation completes and the pending action should be committed.
+     */
     onDrop() {
         if (this.getter(this.pendingAction.currentValueAtom)) {
             this.treeReducer({
@@ -664,7 +843,6 @@ export class LayoutModel {
      * @param y The Y coordinate of the pointer device, in CSS pixels.
      */
     onResizeMove(resizeHandle: ResizeHandleProps, x: number, y: number) {
-        // console.log("onResizeMove", resizeHandle, x, y, this.resizeContext);
         const parentIsRow = resizeHandle.flexDirection === FlexDirection.Row;
         const parentNode = findNode(this.treeState.rootNode, resizeHandle.parentNodeId);
         const beforeNode = parentNode.children![resizeHandle.parentIndex];
@@ -689,10 +867,6 @@ export class LayoutModel {
                 return;
             }
         }
-
-        const boundingRect = this.displayContainerRef.current?.getBoundingClientRect();
-        x -= boundingRect?.top + 10;
-        y -= boundingRect?.left - 10;
 
         const clientPoint = parentIsRow ? x : y;
         const clientDiff = (this.resizeContext.resizeHandleStartPx - clientPoint) * this.resizeContext.pixelToSizeRatio;
@@ -737,7 +911,12 @@ export class LayoutModel {
         }
     }
 
-    getNodeByBlockId(blockId: string) {
+    /**
+     * Get the layout node matching the specified blockId.
+     * @param blockId The blockId that the returned node should contain.
+     * @returns The node containing the specified blockId, null if not found.
+     */
+    getNodeByBlockId(blockId: string): LayoutNode {
         for (const leaf of this.getter(this.leafs)) {
             if (leaf.data.blockId === blockId) {
                 return leaf;
@@ -754,13 +933,6 @@ export class LayoutModel {
     getNodeAdditionalPropertiesAtom(nodeId: string): Atom<LayoutNodeAdditionalProps> {
         return atom((get) => {
             const addlProps = get(this.additionalProps);
-            // console.log(
-            //     "updated addlProps",
-            //     nodeId,
-            //     addlProps?.[nodeId]?.transform,
-            //     addlProps?.[nodeId]?.rect,
-            //     addlProps?.[nodeId]?.pixelToSizeRatio
-            // );
             if (addlProps.hasOwnProperty(nodeId)) return addlProps[nodeId];
         });
     }

@@ -5,10 +5,10 @@ import { TileLayout } from "./lib/TileLayout";
 import { LayoutModel } from "./lib/layoutModel";
 import {
     deleteLayoutModelForTab,
+    getLayoutModelForActiveTab,
     getLayoutModelForTab,
     getLayoutModelForTabById,
     useLayoutModel,
-    useLayoutNode,
 } from "./lib/layoutModelHooks";
 import { newLayoutNode } from "./lib/layoutNode";
 import type {
@@ -19,6 +19,7 @@ import type {
     LayoutTreeCommitPendingAction,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
+    LayoutTreeFocusNodeAction,
     LayoutTreeInsertNodeAction,
     LayoutTreeInsertNodeAtIndexAction,
     LayoutTreeMagnifyNodeToggleAction,
@@ -27,12 +28,15 @@ import type {
     LayoutTreeSetPendingAction,
     LayoutTreeStateSetter,
     LayoutTreeSwapNodeAction,
+    NodeModel,
+    PreviewRenderer,
 } from "./lib/types";
 import { DropDirection, LayoutTreeActionType, NavigateDirection } from "./lib/types";
 
 export {
     deleteLayoutModelForTab,
     DropDirection,
+    getLayoutModelForActiveTab,
     getLayoutModelForTab,
     getLayoutModelForTabById,
     LayoutModel,
@@ -41,7 +45,6 @@ export {
     newLayoutNode,
     TileLayout,
     useLayoutModel,
-    useLayoutNode,
 };
 export type {
     ContentRenderer,
@@ -51,6 +54,7 @@ export type {
     LayoutTreeCommitPendingAction,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
+    LayoutTreeFocusNodeAction,
     LayoutTreeInsertNodeAction,
     LayoutTreeInsertNodeAtIndexAction,
     LayoutTreeMagnifyNodeToggleAction,
@@ -59,4 +63,6 @@ export type {
     LayoutTreeSetPendingAction,
     LayoutTreeStateSetter,
     LayoutTreeSwapNodeAction,
+    NodeModel,
+    PreviewRenderer,
 };

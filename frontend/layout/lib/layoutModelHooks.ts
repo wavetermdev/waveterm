@@ -1,13 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore, WOS } from "@/app/store/global";
+import { atoms, globalStore, WOS } from "@/app/store/global";
 import useResizeObserver from "@react-hook/resize-observer";
 import { Atom, useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { withLayoutTreeStateAtomFromTab } from "./layoutAtom";
 import { LayoutModel } from "./layoutModel";
-import { LayoutNode, LayoutNodeAdditionalProps, TileLayoutContents } from "./types";
+import { LayoutNode, NodeModel, TileLayoutContents } from "./types";
 
 const layoutModelMap: Map<string, LayoutModel> = new Map();
 
@@ -34,6 +34,11 @@ export function getLayoutModelForTabById(tabId: string) {
     return getLayoutModelForTab(tabAtom);
 }
 
+export function getLayoutModelForActiveTab() {
+    const tabId = globalStore.get(atoms.activeTabId);
+    return getLayoutModelForTabById(tabId);
+}
+
 export function deleteLayoutModelForTab(tabId: string) {
     if (layoutModelMap.has(tabId)) layoutModelMap.delete(tabId);
 }
@@ -51,8 +56,6 @@ export function useTileLayout(tabAtom: Atom<Tab>, tileContent: TileLayoutContent
     return layoutModel;
 }
 
-export function useLayoutNode(layoutModel: LayoutModel, layoutNode: LayoutNode): LayoutNodeAdditionalProps {
-    const [addlPropsAtom] = useState(layoutModel.getNodeAdditionalPropertiesAtom(layoutNode.id));
-    const addlProps = useAtomValue(addlPropsAtom);
-    return addlProps;
+export function useNodeModel(layoutModel: LayoutModel, layoutNode: LayoutNode): NodeModel {
+    return layoutModel.getNodeModel(layoutNode);
 }

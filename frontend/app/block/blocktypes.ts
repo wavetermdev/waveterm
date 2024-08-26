@@ -1,18 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-export interface LayoutComponentModel {
-    disablePointerEvents: boolean;
-    onClose?: () => void;
-    onMagnifyToggle?: () => void;
-    isMagnified: boolean;
-    dragHandleRef?: React.RefObject<HTMLDivElement>;
-}
-
+import { NodeModel } from "@/layout/index";
 export interface BlockProps {
-    blockId: string;
     preview: boolean;
-    layoutModel: LayoutComponentModel;
+    nodeModel: NodeModel;
 }
 
 export interface BlockComponentModel {
@@ -22,9 +14,8 @@ export interface BlockComponentModel {
 }
 
 export interface BlockFrameProps {
-    blockId: string;
     blockModel?: BlockComponentModel;
-    layoutModel?: LayoutComponentModel;
+    nodeModel?: NodeModel;
     viewModel?: ViewModel;
     preview: boolean;
     numBlocksInTab?: number;

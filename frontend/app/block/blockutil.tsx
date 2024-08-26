@@ -196,20 +196,26 @@ export const ConnectionButton = React.memo(({ decl }: { decl: ConnectionButton }
     );
 });
 
-export const Input = React.memo(({ decl, className }: { decl: HeaderInput; className: string }) => {
-    const { value, ref, isDisabled, onChange, onKeyDown, onFocus, onBlur } = decl;
-    return (
-        <div className="input-wrapper">
-            <input
-                ref={ref}
-                disabled={isDisabled}
-                className={className}
-                value={value}
-                onChange={(e) => onChange(e)}
-                onKeyDown={(e) => onKeyDown(e)}
-                onFocus={(e) => onFocus(e)}
-                onBlur={(e) => onBlur(e)}
-            />
-        </div>
-    );
-});
+export const Input = React.memo(
+    ({ decl, className, preview }: { decl: HeaderInput; className: string; preview: boolean }) => {
+        const { value, ref, isDisabled, onChange, onKeyDown, onFocus, onBlur } = decl;
+        return (
+            <div className="input-wrapper">
+                <input
+                    ref={
+                        !preview
+                            ? ref
+                            : undefined /* don't wire up the input field if the preview block is being rendered */
+                    }
+                    disabled={isDisabled}
+                    className={className}
+                    value={value}
+                    onChange={(e) => onChange(e)}
+                    onKeyDown={(e) => onKeyDown(e)}
+                    onFocus={(e) => onFocus(e)}
+                    onBlur={(e) => onBlur(e)}
+                />
+            </div>
+        );
+    }
+);

@@ -18,6 +18,7 @@ import {
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
+    LayoutTreeFocusNodeAction,
     LayoutTreeInsertNodeAction,
     LayoutTreeInsertNodeAtIndexAction,
     LayoutTreeMagnifyNodeToggleAction,
@@ -37,7 +38,6 @@ import {
 export function computeMoveNode(layoutState: LayoutTreeState, computeInsertAction: LayoutTreeComputeMoveNodeAction) {
     const rootNode = layoutState.rootNode;
     const { node, nodeToMove, direction } = computeInsertAction;
-    // console.log("computeInsertOperation start", layoutState.rootNode, node, nodeToMove, direction);
     if (direction === undefined) {
         console.warn("No direction provided for insertItemInDirection");
         return;
@@ -179,14 +179,12 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
             }
             break;
         case DropDirection.Center:
-            // console.log("center drop", rootNode, node, nodeToMove);
             if (node.id !== rootNode.id && nodeToMove.id !== rootNode.id) {
                 const swapAction: LayoutTreeSwapNodeAction = {
                     type: LayoutTreeActionType.Swap,
                     node1Id: node.id,
                     node2Id: nodeToMove.id,
                 };
-                // console.log("swapAction", swapAction);
                 return swapAction;
             } else {
                 console.warn("cannot swap");
@@ -209,7 +207,6 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
 
 export function moveNode(layoutState: LayoutTreeState, action: LayoutTreeMoveNodeAction) {
     const rootNode = layoutState.rootNode;
-    // console.log("moveNode", action, layoutState.rootNode);
     if (!action) {
         console.error("no move node action provided");
         return;
@@ -222,8 +219,6 @@ export function moveNode(layoutState: LayoutTreeState, action: LayoutTreeMoveNod
     const node = findNode(rootNode, action.node.id) ?? action.node;
     const parent = findNode(rootNode, action.parentId);
     const oldParent = findParent(rootNode, action.node.id);
-
-    // console.log(node, parent, oldParent);
 
     let startingIndex = 0;
 
@@ -256,6 +251,7 @@ export function moveNode(layoutState: LayoutTreeState, action: LayoutTreeMoveNod
     if (oldParent) {
         removeChild(oldParent, node, startingIndex);
     }
+    layoutState.generation++;
 }
 
 export function insertNode(layoutState: LayoutTreeState, action: LayoutTreeInsertNodeAction) {
@@ -265,13 +261,15 @@ export function insertNode(layoutState: LayoutTreeState, action: LayoutTreeInser
     }
     if (!layoutState.rootNode) {
         layoutState.rootNode = action.node;
-        return;
+    } else {
+        const insertLoc = findNextInsertLocation(layoutState.rootNode, 5);
+        addChildAt(insertLoc.node, insertLoc.index, action.node);
+        if (action.magnified) {
+            layoutState.magnifiedNodeId = action.node.id;
+        }
+        layoutState.focusedNodeId = action.node.id;
     }
-    const insertLoc = findNextInsertLocation(layoutState.rootNode, 5);
-    addChildAt(insertLoc.node, insertLoc.index, action.node);
-    if (action.magnified) {
-        layoutState.magnifiedNodeId = action.node.id;
-    }
+    layoutState.generation++;
 }
 
 export function insertNodeAtIndex(layoutState: LayoutTreeState, action: LayoutTreeInsertNodeAtIndexAction) {
@@ -281,22 +279,22 @@ export function insertNodeAtIndex(layoutState: LayoutTreeState, action: LayoutTr
     }
     if (!layoutState.rootNode) {
         layoutState.rootNode = action.node;
-        return;
+    } else {
+        const insertLoc = findInsertLocationFromIndexArr(layoutState.rootNode, action.indexArr);
+        if (!insertLoc) {
+            console.error("insertNodeAtIndex unable to find insert location");
+            return;
+        }
+        addChildAt(insertLoc.node, insertLoc.index + 1, action.node);
+        if (action.magnified) {
+            layoutState.magnifiedNodeId = action.node.id;
+        }
+        layoutState.focusedNodeId = action.node.id;
     }
-    const insertLoc = findInsertLocationFromIndexArr(layoutState.rootNode, action.indexArr);
-    if (!insertLoc) {
-        console.error("insertNodeAtIndex unable to find insert location");
-        return;
-    }
-    addChildAt(insertLoc.node, insertLoc.index + 1, action.node);
-    if (action.magnified) {
-        layoutState.magnifiedNodeId = action.node.id;
-    }
+    layoutState.generation++;
 }
 
 export function swapNode(layoutState: LayoutTreeState, action: LayoutTreeSwapNodeAction) {
-    // console.log("swapNode", layoutState, action);
-
     if (!action.node1Id || !action.node2Id) {
         console.error("invalid swapNode action, both node1 and node2 must be defined");
         return;
@@ -325,10 +323,10 @@ export function swapNode(layoutState: LayoutTreeState, action: LayoutTreeSwapNod
 
     parentNode1.children[parentNode1Index] = node2;
     parentNode2.children[parentNode2Index] = node1;
+    layoutState.generation++;
 }
 
 export function deleteNode(layoutState: LayoutTreeState, action: LayoutTreeDeleteNodeAction) {
-    // console.log("deleteNode", layoutState, action);
     if (!action?.nodeId) {
         console.error("no delete node action provided");
         return;
@@ -339,20 +337,23 @@ export function deleteNode(layoutState: LayoutTreeState, action: LayoutTreeDelet
     }
     if (layoutState.rootNode.id === action.nodeId) {
         layoutState.rootNode = undefined;
-        return;
-    }
-    const parent = findParent(layoutState.rootNode, action.nodeId);
-    if (parent) {
-        const node = parent.children.find((child) => child.id === action.nodeId);
-        removeChild(parent, node);
-        // console.log("node deleted", parent, node);
     } else {
-        console.error("unable to delete node, not found in tree");
+        const parent = findParent(layoutState.rootNode, action.nodeId);
+        if (parent) {
+            const node = parent.children.find((child) => child.id === action.nodeId);
+            removeChild(parent, node);
+            if (layoutState.focusedNodeId === node.id) {
+                layoutState.focusedNodeId = undefined;
+            }
+        } else {
+            console.error("unable to delete node, not found in tree");
+        }
     }
+
+    layoutState.generation++;
 }
 
 export function resizeNode(layoutState: LayoutTreeState, action: LayoutTreeResizeNodeAction) {
-    // console.log("resizeNode", layoutState, action);
     if (!action.resizeOperations) {
         console.error("invalid resizeNode operation. nodeSizes array must be defined.");
     }
@@ -364,10 +365,20 @@ export function resizeNode(layoutState: LayoutTreeState, action: LayoutTreeResiz
         const node = findNode(layoutState.rootNode, resize.nodeId);
         node.size = resize.size;
     }
+    layoutState.generation++;
+}
+
+export function focusNode(layoutState: LayoutTreeState, action: LayoutTreeFocusNodeAction) {
+    if (!action.nodeId) {
+        console.error("invalid focusNode operation, nodeId must be defined.");
+        return;
+    }
+
+    layoutState.focusedNodeId = action.nodeId;
+    layoutState.generation++;
 }
 
 export function magnifyNodeToggle(layoutState: LayoutTreeState, action: LayoutTreeMagnifyNodeToggleAction) {
-    // console.log("magnifyNodeToggle", layoutState, action);
     if (!action.nodeId) {
         console.error("invalid magnifyNodeToggle operation. nodeId must be defined.");
         return;
@@ -380,5 +391,7 @@ export function magnifyNodeToggle(layoutState: LayoutTreeState, action: LayoutTr
         layoutState.magnifiedNodeId = undefined;
     } else {
         layoutState.magnifiedNodeId = action.nodeId;
+        layoutState.focusedNodeId = action.nodeId;
     }
+    layoutState.generation++;
 }

@@ -11,21 +11,22 @@ import {
 } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, globalStore, useBlockAtom, WOS } from "@/app/store/global";
+import { atoms, globalStore, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { MagnifyIcon } from "@/element/magnify";
-import { useLayoutModel } from "@/layout/index";
+import { NodeModel } from "@/layout/index";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
-import { BlockFrameProps, LayoutComponentModel } from "./blocktypes";
+import { BlockFrameProps } from "./blocktypes";
 
 function handleHeaderContextMenu(
     e: React.MouseEvent<HTMLDivElement>,
     blockData: Block,
     viewModel: ViewModel,
+    magnified: boolean,
     onMagnifyToggle: () => void,
     onClose: () => void
 ) {
@@ -33,7 +34,7 @@ function handleHeaderContextMenu(
     e.stopPropagation();
     let menu: ContextMenuItem[] = [
         {
-            label: "Magnify Block",
+            label: magnified ? "Un-magnify Block" : "Magnify Block",
             click: () => {
                 onMagnifyToggle();
             },
@@ -78,20 +79,27 @@ function getViewIconElem(viewIconUnion: string | HeaderIconButton, blockData: Bl
     }
 }
 
-const OptMagnifyButton = React.memo(({ layoutCompModel }: { layoutCompModel: LayoutComponentModel }) => {
-    const magnifyDecl: HeaderIconButton = {
-        elemtype: "iconbutton",
-        icon: <MagnifyIcon enabled={layoutCompModel?.isMagnified} />,
-        title: layoutCompModel?.isMagnified ? "Minimize" : "Magnify",
-        click: layoutCompModel?.onMagnifyToggle,
-    };
-    return <IconButton key="magnify" decl={magnifyDecl} className="block-frame-magnify" />;
-});
+const OptMagnifyButton = React.memo(
+    ({ magnified, toggleMagnify }: { magnified: boolean; toggleMagnify: () => void }) => {
+        const magnifyDecl: HeaderIconButton = {
+            elemtype: "iconbutton",
+            icon: <MagnifyIcon enabled={magnified} />,
+            title: magnified ? "Minimize" : "Magnify",
+            click: toggleMagnify,
+        };
+        return <IconButton key="magnify" decl={magnifyDecl} className="block-frame-magnify" />;
+    }
+);
 
-function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: LayoutComponentModel): JSX.Element[] {
+function computeEndIcons(
+    viewModel: ViewModel,
+    magnified: boolean,
+    toggleMagnify: () => void,
+    onClose: () => void,
+    onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void
+): JSX.Element[] {
     const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
-
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(...endIconButtons.map((button, idx) => <IconButton key={idx} decl={button} />));
     }
@@ -99,30 +107,44 @@ function computeEndIcons(blockData: Block, viewModel: ViewModel, layoutModel: La
         elemtype: "iconbutton",
         icon: "cog",
         title: "Settings",
-        click: (e) =>
-            handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onMagnifyToggle, layoutModel?.onClose),
+        click: onContextMenu,
     };
     endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
-    endIconsElem.push(<OptMagnifyButton key="unmagnify" layoutCompModel={layoutModel} />);
+    endIconsElem.push(<OptMagnifyButton key="unmagnify" magnified={magnified} toggleMagnify={toggleMagnify} />);
     const closeDecl: HeaderIconButton = {
         elemtype: "iconbutton",
         icon: "xmark-large",
         title: "Close",
-        click: layoutModel?.onClose,
+        click: onClose,
     };
     endIconsElem.push(<IconButton key="close" decl={closeDecl} className="block-frame-default-close" />);
     return endIconsElem;
 }
 
-const BlockFrame_Header = ({ blockId, layoutModel, viewModel }: BlockFrameProps) => {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+const BlockFrame_Header = ({ nodeModel, viewModel, preview }: BlockFrameProps) => {
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.meta?.view);
     const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
     const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
+    const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
 
-    const endIconsElem = computeEndIcons(blockData, viewModel, layoutModel);
+    const onContextMenu = React.useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            handleHeaderContextMenu(e, blockData, viewModel, magnified, nodeModel.toggleMagnify, nodeModel.onClose);
+        },
+        [magnified]
+    );
+
+    const endIconsElem = computeEndIcons(
+        viewModel,
+        magnified,
+        nodeModel.toggleMagnify,
+        nodeModel.onClose,
+        onContextMenu
+    );
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
     let preIconButtonElem: JSX.Element = null;
     if (preIconButton) {
@@ -139,23 +161,17 @@ const BlockFrame_Header = ({ blockId, layoutModel, viewModel }: BlockFrameProps)
             );
         }
     } else if (Array.isArray(headerTextUnion)) {
-        headerTextElems.push(...renderHeaderElements(headerTextUnion));
+        headerTextElems.push(...renderHeaderElements(headerTextUnion, preview));
     }
 
     return (
-        <div
-            className="block-frame-default-header"
-            ref={layoutModel?.dragHandleRef}
-            onContextMenu={(e) =>
-                handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onMagnifyToggle, layoutModel?.onClose)
-            }
-        >
+        <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}
                 <div className="block-frame-view-type">{viewName}</div>
                 {settingsConfig?.blockheader?.showblockids && (
-                    <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
+                    <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>
                 )}
             </div>
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
@@ -164,11 +180,11 @@ const BlockFrame_Header = ({ blockId, layoutModel, viewModel }: BlockFrameProps)
     );
 };
 
-const HeaderTextElem = React.memo(({ elem }: { elem: HeaderElem }) => {
+const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; preview: boolean }) => {
     if (elem.elemtype == "iconbutton") {
         return <IconButton decl={elem} className={clsx("block-frame-header-iconbutton", elem.className)} />;
     } else if (elem.elemtype == "input") {
-        return <Input decl={elem} className={clsx("block-frame-input", elem.className)} />;
+        return <Input decl={elem} className={clsx("block-frame-input", elem.className)} preview={preview} />;
     } else if (elem.elemtype == "text") {
         return <div className="block-frame-text">{elem.text}</div>;
     } else if (elem.elemtype == "textbutton") {
@@ -187,7 +203,7 @@ const HeaderTextElem = React.memo(({ elem }: { elem: HeaderElem }) => {
                 onMouseOut={elem.onMouseOut}
             >
                 {elem.children.map((child, childIdx) => (
-                    <HeaderTextElem elem={child} key={childIdx} />
+                    <HeaderTextElem elem={child} key={childIdx} preview={preview} />
                 ))}
             </div>
         );
@@ -195,11 +211,11 @@ const HeaderTextElem = React.memo(({ elem }: { elem: HeaderElem }) => {
     return null;
 });
 
-function renderHeaderElements(headerTextUnion: HeaderElem[]): JSX.Element[] {
+function renderHeaderElements(headerTextUnion: HeaderElem[], preview: boolean): JSX.Element[] {
     const headerTextElems: JSX.Element[] = [];
     for (let idx = 0; idx < headerTextUnion.length; idx++) {
         const elem = headerTextUnion[idx];
-        const renderedElement = <HeaderTextElem elem={elem} key={idx} />;
+        const renderedElement = <HeaderTextElem elem={elem} key={idx} preview={preview} />;
         if (renderedElement) {
             headerTextElems.push(renderedElement);
         }
@@ -207,18 +223,11 @@ function renderHeaderElements(headerTextUnion: HeaderElem[]): JSX.Element[] {
     return headerTextElems;
 }
 
-function BlockNum({ blockId }: { blockId: string }) {
-    const tabId = jotai.useAtomValue(atoms.activeTabId);
-    const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
-    const layoutModel = useLayoutModel(tabAtom);
-    const leafsOrdered = jotai.useAtomValue(layoutModel.leafsOrdered);
-    const index = React.useMemo(() => leafsOrdered.findIndex((leaf) => leaf.data?.blockId == blockId), [leafsOrdered]);
-    return index !== -1 ? index + 1 : null;
-}
-
-const BlockMask = ({ blockId, preview, isFocused }: { blockId: string; preview: boolean; isFocused: boolean }) => {
+const BlockMask = ({ nodeModel }: { nodeModel: NodeModel }) => {
+    const isFocused = jotai.useAtomValue(nodeModel.isFocused);
+    const blockNum = jotai.useAtomValue(nodeModel.blockNum);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
 
     const style: React.CSSProperties = {};
     if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
@@ -231,9 +240,7 @@ const BlockMask = ({ blockId, preview, isFocused }: { blockId: string; preview: 
     if (isLayoutMode) {
         innerElem = (
             <div className="block-mask-inner">
-                <div className="bignum">
-                    <BlockNum blockId={blockId} />
-                </div>
+                <div className="bignum">{blockNum}</div>
             </div>
         );
     }
@@ -245,27 +252,17 @@ const BlockMask = ({ blockId, preview, isFocused }: { blockId: string; preview: 
 };
 
 const BlockFrame_Default_Component = (props: BlockFrameProps) => {
-    const { blockId, layoutModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
-        return jotai.atom((get) => {
-            const winData = get(atoms.waveWindow);
-            return winData?.activeblockid === blockId;
-        });
-    });
+    const { nodeModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const customBg = util.useAtomValueSafe(viewModel.blockBg);
-
-    let isFocused = jotai.useAtomValue(isFocusedAtom);
-    if (preview) {
-        isFocused = true;
-    }
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
 
     function handleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(waveEvent, "Cmd:m")) {
-            layoutModel?.onMagnifyToggle();
+            nodeModel.toggleMagnify();
             return true;
         }
         if (viewModel?.keyDownHandler) {
@@ -286,20 +283,17 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const previewElem = <div className="block-frame-preview">{viewIconElem}</div>;
     return (
         <div
-            className={clsx(
-                "block",
-                "block-frame-default",
-                isFocused ? "block-focused" : null,
-                preview ? "block-preview" : null,
-                numBlocksInTab == 1 ? "block-no-highlight" : null,
-                "block-" + blockId
-            )}
+            className={clsx("block", "block-frame-default", "block-" + nodeModel.blockId, {
+                "block-focused": isFocused || preview,
+                "block-preview": preview,
+                "block-no-highlight": numBlocksInTab === 1,
+            })}
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
             onKeyDown={keydownWrapper(handleKeyDown)}
         >
-            <BlockMask blockId={blockId} preview={preview} isFocused={isFocused} />
+            <BlockMask nodeModel={nodeModel} />
             <div className="block-frame-default-inner" style={innerStyle}>
                 <BlockFrame_Header {...props} />
                 {preview ? previewElem : children}
@@ -311,7 +305,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
 const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof BlockFrame_Default_Component;
 
 const BlockFrame = React.memo((props: BlockFrameProps) => {
-    const blockId = props.blockId;
+    const blockId = props.nodeModel.blockId;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const tabData = jotai.useAtomValue(atoms.tabAtom);
 

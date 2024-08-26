@@ -3,6 +3,7 @@
 
 import { handleIncomingRpcMessage, sendRawRpcMessage } from "@/app/store/wshrpc";
 import {
+    getLayoutModelForActiveTab,
     getLayoutModelForTabById,
     LayoutTreeActionType,
     LayoutTreeInsertNodeAction,
@@ -12,7 +13,7 @@ import {
 import { getWebServerEndpoint, getWSServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import * as util from "@/util/util";
-import { produce } from "immer";
+import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
 import { modalsModel } from "./modalmodel";
@@ -60,7 +61,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const isFullScreenAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
     try {
         getApi().onFullScreenChange((isFullScreen) => {
-            console.log("fullscreen change", isFullScreen);
             globalStore.set(isFullScreenAtom, isFullScreen);
         });
     } catch (_) {
@@ -118,7 +118,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     try {
         globalStore.set(updaterStatusAtom, getApi().getUpdaterStatus());
         getApi().onUpdaterStatusChange((status) => {
-            console.log("updater status change", status);
             globalStore.set(updaterStatusAtom, status);
         });
     } catch (_) {
@@ -336,7 +335,7 @@ function handleWaveEvent(event: WaveEvent) {
 
 function handleWSEventMessage(msg: WSEventType) {
     if (msg.eventtype == null) {
-        console.log("unsupported event", msg);
+        console.warn("unsupported WSEvent", msg);
         return;
     }
     if (msg.eventtype == "config") {
@@ -380,7 +379,7 @@ function handleWSEventMessage(msg: WSEventType) {
             case LayoutTreeActionType.DeleteNode: {
                 const leaf = layoutModel?.getNodeByBlockId(layoutAction.blockid);
                 if (leaf) {
-                    layoutModel.closeNode(leaf);
+                    fireAndForget(() => layoutModel.closeNode(leaf.id));
                 } else {
                     console.error(
                         "Cannot apply eventbus layout action DeleteNode, could not find leaf node with blockId",
@@ -406,7 +405,7 @@ function handleWSEventMessage(msg: WSEventType) {
                 break;
             }
             default:
-                console.log("unsupported layout action", layoutAction);
+                console.warn("unsupported layout action", layoutAction);
                 break;
         }
         return;
@@ -459,12 +458,13 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
-async function createBlock(blockDef: BlockDef): Promise<string> {
+async function createBlock(blockDef: BlockDef, magnified = false): Promise<string> {
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const blockId = await services.ObjectService.CreateBlock(blockDef, rtOpts);
     const insertNodeAction: LayoutTreeInsertNodeAction = {
         type: LayoutTreeActionType.InsertNode,
         node: newLayoutNode(undefined, undefined, undefined, { blockId }),
+        magnified,
     };
     const activeTabId = globalStore.get(atoms.uiContext).activetabid;
     const layoutModel = getLayoutModelForTabById(activeTabId);
@@ -503,18 +503,9 @@ async function fetchWaveFile(
     return { data: new Uint8Array(data), fileInfo };
 }
 
-function setBlockFocus(blockId: string) {
-    let winData = globalStore.get(atoms.waveWindow);
-    if (winData == null) {
-        return;
-    }
-    if (winData.activeblockid === blockId) {
-        return;
-    }
-    winData = produce(winData, (draft) => {
-        draft.activeblockid = blockId;
-    });
-    WOS.setObjectValue(winData, globalStore.set, true);
+function setNodeFocus(nodeId: string) {
+    const layoutModel = getLayoutModelForActiveTab();
+    layoutModel.focusNode(nodeId);
 }
 
 const objectIdWeakMap = new WeakMap();
@@ -635,7 +626,7 @@ export {
     PLATFORM,
     registerViewModel,
     sendWSCommand,
-    setBlockFocus,
+    setNodeFocus,
     setPlatform,
     subscribeToConnEvents,
     unregisterViewModel,
