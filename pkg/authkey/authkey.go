@@ -12,6 +12,18 @@ import (
 var authkey string
 
 const AuthKeyEnv = "AUTH_KEY"
+const AuthKeyHeader = "X-AuthKey"
+
+func ValidateIncomingRequest(r *http.Request) error {
+	reqAuthKey := r.Header.Get(AuthKeyHeader)
+	if reqAuthKey == "" {
+		return fmt.Errorf("no x-authkey header")
+	}
+	if reqAuthKey != GetAuthKey() {
+		return fmt.Errorf("x-authkey header is invalid")
+	}
+	return nil
+}
 
 func SetAuthKeyFromEnv() error {
 	authkey = os.Getenv(AuthKeyEnv)
@@ -24,15 +36,4 @@ func SetAuthKeyFromEnv() error {
 
 func GetAuthKey() string {
 	return authkey
-}
-
-func ValidateIncomingRequest(r *http.Request) error {
-	reqAuthKey := r.Header.Get("X-AuthKey")
-	if reqAuthKey == "" {
-		return fmt.Errorf("no x-authkey header")
-	}
-	if reqAuthKey != GetAuthKey() {
-		return fmt.Errorf("x-authkey header is invalid")
-	}
-	return nil
 }
