@@ -11,9 +11,6 @@ logs
 *.log
 *.tmp
 
-# Ignore IDE and editor settings
-.vscode
-.idea
 
 # Ignore Git and GitHub files
 .git
