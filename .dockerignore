@@ -25,7 +25,3 @@ test-results
 .DS_Store
 Thumbs.db
 
-# Ignore other unnecessary files
-*.md
-*.yml
-*.yaml
