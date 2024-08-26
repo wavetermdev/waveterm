@@ -8,8 +8,6 @@ const AuthKeyHeader = "X-AuthKey";
 export const AuthKeyEnv = "AUTH_KEY";
 export const AuthKey = crypto.randomUUID();
 
-console.log("authKey", AuthKey);
-
 ipcMain.on("get-auth-key", (event) => {
     event.returnValue = AuthKey;
 });
