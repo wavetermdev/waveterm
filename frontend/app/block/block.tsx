@@ -116,6 +116,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
     counterInc("render-BlockFull");
     const focusElemRef = React.useRef<HTMLInputElement>(null);
     const blockRef = React.useRef<HTMLDivElement>(null);
+    const contentRef = React.useRef<HTMLDivElement>(null);
     const [blockClicked, setBlockClicked] = React.useState(false);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const [focusedChild, setFocusedChild] = React.useState(null);
@@ -202,6 +203,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
                     width: addlProps?.transform?.width,
                     height: addlProps?.transform?.height,
                 }}
+                ref={contentRef}
             >
                 <ErrorBoundary>
                     <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</React.Suspense>

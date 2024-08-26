@@ -69,8 +69,8 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	defer conn.Lock.Unlock()
 	return wshrpc.ConnStatus{
 		Status:     conn.Status,
+		Connected:  conn.Status == Status_Connected,
 		Connection: conn.Opts.String(),
-		Connected:  conn.Client != nil,
 		Error:      conn.Error,
 	}
 }

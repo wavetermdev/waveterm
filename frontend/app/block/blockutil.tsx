@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useLongClick } from "@/app/hook/useLongClick";
+import { atoms, getConnStatusAtom } from "@/app/store/global";
 import * as util from "@/util/util";
 import clsx from "clsx";
+import * as jotai from "jotai";
 import * as React from "react";
 
 export const colorRegex = /^((#[0-9a-f]{6,8})|([a-z]+))$/;
@@ -168,30 +170,60 @@ export const IconButton = React.memo(({ decl, className }: { decl: HeaderIconBut
     );
 });
 
-export const ConnectionButton = React.memo(({ decl }: { decl: ConnectionButton }) => {
+export const ConnectionButton = React.memo(({ blockId, connection }: { blockId: string; connection: string }) => {
+    const [typeAhead, setTypeAhead] = jotai.useAtom(atoms.typeAheadModalAtom);
     const buttonRef = React.useRef<HTMLDivElement>(null);
+    const isLocal = connection == "" || connection == "local";
+    const connStatusAtom = getConnStatusAtom(connection);
+    const connStatus = jotai.useAtomValue(connStatusAtom);
+    const showDisconnectedSlash = !isLocal && !connStatus?.connected;
+    let connIconElem: React.ReactNode = null;
+    let color = "#53b4ea";
+    const clickHandler = function () {
+        setTypeAhead({
+            ...typeAhead,
+            [blockId]: true,
+        });
+    };
+    let titleText = null;
+    if (isLocal) {
+        color = "var(--grey-text-color)";
+        titleText = "Connected to Local Machine";
+        connIconElem = (
+            <i
+                className={clsx(util.makeIconClass("laptop", false), "fa-stack-1x")}
+                style={{ color: color, marginRight: 2 }}
+            />
+        );
+    } else {
+        titleText = "Connected to " + connection;
+        if (!connStatus?.connected) {
+            color = "var(--grey-text-color)";
+            titleText = "Disconnected from " + connection;
+        }
+        connIconElem = (
+            <i
+                className={clsx(util.makeIconClass("arrow-right-arrow-left", false), "fa-stack-1x")}
+                style={{ color: color, marginRight: 2 }}
+            />
+        );
+    }
+
     return (
-        <div ref={buttonRef} className={clsx("connection-button")} onClick={decl.onClick}>
+        <div ref={buttonRef} className={clsx("connection-button")} onClick={clickHandler} title={titleText}>
             <span className="fa-stack connection-icon-box">
-                {typeof decl.icon === "string" ? (
-                    <i
-                        className={clsx(util.makeIconClass(decl.icon, true), "fa-stack-1x")}
-                        style={{ color: decl.iconColor, marginRight: "2px" }}
-                    />
-                ) : (
-                    decl.icon
-                )}
+                {connIconElem}
                 <i
                     className="fa-slash fa-solid fa-stack-1x"
                     style={{
-                        color: decl.iconColor,
+                        color: color,
                         marginRight: "2px",
                         textShadow: "0 1px black, 0 1.5px black",
-                        opacity: decl.connected ? 0 : 1,
+                        opacity: showDisconnectedSlash ? 1 : 0,
                     }}
                 />
             </span>
-            <div className="connection-name">{decl.text}</div>
+            {isLocal ? null : <div className="connection-name">{connection}</div>}
         </div>
     );
 });

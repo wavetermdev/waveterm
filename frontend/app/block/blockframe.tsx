@@ -10,11 +10,14 @@ import {
     Input,
 } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
+import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, globalStore, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
+import { WshServer } from "@/app/store/wshserver";
 import { MagnifyIcon } from "@/element/magnify";
 import { NodeModel } from "@/layout/index";
+import * as keyutil from "@/util/keyutil";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
@@ -129,6 +132,7 @@ const BlockFrame_Header = ({ nodeModel, viewModel, preview }: BlockFrameProps) =
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const manageConnection = jotai.useAtomValue(viewModel.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
 
     const onContextMenu = React.useCallback(
@@ -163,6 +167,16 @@ const BlockFrame_Header = ({ nodeModel, viewModel, preview }: BlockFrameProps) =
     } else if (Array.isArray(headerTextUnion)) {
         headerTextElems.push(...renderHeaderElements(headerTextUnion, preview));
     }
+    if (manageConnection) {
+        const connButtonElem = (
+            <ConnectionButton
+                key={nodeModel.blockId}
+                blockId={nodeModel.blockId}
+                connection={blockData?.meta?.connection}
+            />
+        );
+        headerTextElems.unshift(connButtonElem);
+    }
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
@@ -174,6 +188,7 @@ const BlockFrame_Header = ({ nodeModel, viewModel, preview }: BlockFrameProps) =
                     <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>
                 )}
             </div>
+
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
             <div className="block-frame-end-icons">{endIconsElem}</div>
         </div>
@@ -193,8 +208,6 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
                 {elem.text}
             </Button>
         );
-    } else if (elem.elemtype == "connectionbutton") {
-        return <ConnectionButton decl={elem} />;
     } else if (elem.elemtype == "div") {
         return (
             <div
@@ -294,6 +307,13 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             onKeyDown={keydownWrapper(handleKeyDown)}
         >
             <BlockMask nodeModel={nodeModel} />
+            {preview ? null : (
+                <ChangeConnectionBlockModal
+                    blockId={nodeModel.blockId}
+                    viewModel={viewModel}
+                    blockRef={blockModel?.blockRef}
+                />
+            )}
             <div className="block-frame-default-inner" style={innerStyle}>
                 <BlockFrame_Header {...props} />
                 {preview ? previewElem : children}
@@ -301,6 +321,70 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         </div>
     );
 };
+
+const ChangeConnectionBlockModal = React.memo(
+    ({
+        blockId,
+        viewModel,
+        blockRef,
+    }: {
+        blockId: string;
+        viewModel: ViewModel;
+        blockRef: React.RefObject<HTMLDivElement>;
+    }) => {
+        const typeAhead = jotai.useAtomValue(atoms.typeAheadModalAtom);
+        const [connSelected, setConnSelected] = React.useState("");
+        const changeConnection = React.useCallback(
+            async (connName: string) => {
+                await WshServer.SetMetaCommand({
+                    oref: WOS.makeORef("block", blockId),
+                    meta: { connection: connName },
+                });
+                await WshServer.ControllerRestartCommand({ blockid: blockId });
+            },
+            [blockId]
+        );
+        const handleTypeAheadKeyDown = React.useCallback(
+            (waveEvent: WaveKeyboardEvent): boolean => {
+                if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+                    changeConnection(connSelected);
+                    globalStore.set(atoms.typeAheadModalAtom, {
+                        ...(typeAhead as TypeAheadModalType),
+                        [blockId]: false,
+                    });
+                    setConnSelected("");
+                    return true;
+                }
+                if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+                    globalStore.set(atoms.typeAheadModalAtom, {
+                        ...(typeAhead as TypeAheadModalType),
+                        [blockId]: false,
+                    });
+                    setConnSelected("");
+                    viewModel.giveFocus();
+                    return true;
+                }
+            },
+            [typeAhead, viewModel, blockId, connSelected]
+        );
+        if (!typeAhead[blockId]) {
+            return null;
+        }
+        return (
+            <TypeAheadModal
+                anchor={blockRef}
+                suggestions={[]}
+                onSelect={(selected: string) => {
+                    changeConnection(selected);
+                }}
+                onKeyDown={(e) => keyutil.keydownWrapper(handleTypeAheadKeyDown)(e)}
+                onChange={(current: string) => setConnSelected(current)}
+                value={connSelected}
+                label="Switch Connection"
+            />
+        );
+    }
+);
 
 const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof BlockFrame_Default_Component;
 

@@ -19,7 +19,7 @@ declare global {
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         reducedMotionPreferenceAtom: jotai.Atom<boolean>;
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
-        typeAheadModalAtom: jotai.Primitive<TypeAheadModalType>;
+        typeAheadModalAtom: jotai.PrimitiveAtom<TypeAheadModalType>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -201,6 +201,7 @@ declare global {
         preIconButton?: jotai.Atom<HeaderIconButton>;
         endIconButtons?: jotai.Atom<HeaderIconButton[]>;
         blockBg?: jotai.Atom<MetaType>;
+        manageConnection?: jotai.Atom<boolean>;
 
         onBack?: () => void;
         onForward?: () => void;
