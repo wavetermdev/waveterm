@@ -163,7 +163,6 @@ function runWaveSrv(): Promise<boolean> {
                 applicationVersion: "v" + WaveVersion,
                 version: (isDev ? "dev-" : "") + String(WaveBuildTime),
             });
-            configureAuthKeyRequestInjection(electron.session.defaultSession);
             waveSrvReadyResolve(true);
             return;
         }
@@ -867,6 +866,7 @@ async function appMain() {
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
+    configureAuthKeyRequestInjection(electron.session.defaultSession);
     await relaunchBrowserWindows();
     await configureAutoUpdater();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
