@@ -12,9 +12,6 @@ logs
 *.tmp
 
 
-# Ignore Git and GitHub files
-.git
-.github
 
 # Ignore Docker files
 Dockerfile
