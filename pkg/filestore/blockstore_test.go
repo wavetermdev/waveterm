@@ -165,7 +165,7 @@ func TestDelete(t *testing.T) {
 		t.Fatalf("error deleting file: %v", err)
 	}
 	_, err = WFS.Stat(ctx, zoneId, "testfile")
-	if err == nil || errors.Is(err, fs.ErrNotExist) {
+	if err == nil || !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("expected file not found error")
 	}
 
