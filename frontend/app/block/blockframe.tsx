@@ -132,7 +132,7 @@ const BlockFrame_Header = ({ nodeModel, viewModel, preview }: BlockFrameProps) =
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
-    const manageConnection = jotai.useAtomValue(viewModel.manageConnection);
+    const manageConnection = util.useAtomValueSafe(viewModel.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
 
     const onContextMenu = React.useCallback(
