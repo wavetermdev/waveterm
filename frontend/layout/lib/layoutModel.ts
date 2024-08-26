@@ -101,7 +101,7 @@ export class LayoutModel {
     /**
      * An ordered list of node ids starting from the top left corner to the bottom right corner.
      */
-    leafOrder: Atom<string[]>;
+    leafOrder: PrimitiveAtom<string[]>;
     /**
      * A map of node models for currently-active leafs.
      */
@@ -210,18 +210,7 @@ export class LayoutModel {
         this.resizeHandleSizePx = 2 * this.halfResizeHandleSizePx;
 
         this.leafs = atom([]);
-        this.leafOrder = atom((get) => {
-            const leafs = get(this.leafs);
-            const additionalProps = get(this.additionalProps);
-            return leafs
-                .map((node) => node.id)
-                .sort((a, b) => {
-                    const treeKeyA = additionalProps[a]?.treeKey;
-                    const treeKeyB = additionalProps[b]?.treeKey;
-                    if (!treeKeyA || !treeKeyB) return;
-                    return treeKeyA.localeCompare(treeKeyB);
-                });
-        });
+        this.leafOrder = atom([]);
 
         this.nodeModels = new Map();
         this.additionalProps = atom({});
@@ -406,7 +395,9 @@ export class LayoutModel {
                 this.leafs,
                 newLeafs.sort((a, b) => a.id.localeCompare(b.id))
             );
-            this.validateFocusedNode(newLeafs);
+            const newLeafOrder = getLeafOrder(newLeafs, newAdditionalProps);
+            this.setter(this.leafOrder, newLeafOrder);
+            this.validateFocusedNode(newLeafOrder);
             this.cleanupNodeModels();
         }
     };
@@ -523,24 +514,27 @@ export class LayoutModel {
 
     /**
      * Checks whether the focused node id has changed and, if so, whether to update the focused node stack. If the focused node was deleted, will pop the latest value from the stack.
-     * @param newLeafs The new leafs array to use when searching for stale nodes in the stack.
+     * @param leafOrder The new leaf order array to use when searching for stale nodes in the stack.
      */
-    private validateFocusedNode(newLeafs: LayoutNode[]) {
+    private validateFocusedNode(leafOrder: string[]) {
         if (this.treeState.focusedNodeId !== this.focusedNodeId) {
             // Remove duplicates and stale entries from focus stack.
-            const leafIds = newLeafs.map((leaf) => leaf.id);
             const newFocusedNodeIdStack: string[] = [];
             for (const id of this.focusedNodeIdStack) {
-                if (leafIds.includes(id) && !newFocusedNodeIdStack.includes(id)) newFocusedNodeIdStack.push(id);
+                if (leafOrder.includes(id) && !newFocusedNodeIdStack.includes(id)) newFocusedNodeIdStack.push(id);
             }
             this.focusedNodeIdStack = newFocusedNodeIdStack;
 
             // Update the focused node and stack based on the changes in the tree state.
-            if (this.treeState.focusedNodeId) {
-                this.focusedNodeIdStack.unshift(this.treeState.focusedNodeId);
-            } else {
-                this.treeState.focusedNodeId = this.focusedNodeIdStack.shift();
+            if (!this.treeState.focusedNodeId) {
+                if (this.focusedNodeIdStack.length > 0) {
+                    this.treeState.focusedNodeId = this.focusedNodeIdStack.shift();
+                } else {
+                    this.treeState.focusedNodeId = leafOrder[0];
+                    console.log("next insert loc", this.treeState.focusedNodeId);
+                }
             }
+            this.focusedNodeIdStack.unshift(this.treeState.focusedNodeId);
         }
     }
 
@@ -991,4 +985,15 @@ export class LayoutModel {
     getNodeRect(node: LayoutNode): Dimensions {
         return this.getNodeRectById(node.id);
     }
+}
+
+function getLeafOrder(leafs: LayoutNode[], additionalProps: Record<string, LayoutNodeAdditionalProps>): string[] {
+    return leafs
+        .map((node) => node.id)
+        .sort((a, b) => {
+            const treeKeyA = additionalProps[a]?.treeKey;
+            const treeKeyB = additionalProps[b]?.treeKey;
+            if (!treeKeyA || !treeKeyB) return;
+            return treeKeyA.localeCompare(treeKeyB);
+        });
 }

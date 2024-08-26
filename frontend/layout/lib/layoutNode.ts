@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { DEFAULT_MAX_CHILDREN } from "./layoutTree";
 import { DefaultNodeSize, FlexDirection, LayoutNode } from "./types";
 import { reverseFlexDirection } from "./utils";
 
@@ -222,7 +223,10 @@ export function balanceNode(
  * @param maxChildren The maximum number of children a node can have.
  * @returns The node to insert into and the index at which to insert.
  */
-export function findNextInsertLocation(node: LayoutNode, maxChildren: number): { node: LayoutNode; index: number } {
+export function findNextInsertLocation(
+    node: LayoutNode,
+    maxChildren = DEFAULT_MAX_CHILDREN
+): { node: LayoutNode; index: number } {
     const insertLoc = findNextInsertLocationHelper(node, maxChildren, 1);
     return { node: insertLoc?.node, index: insertLoc?.index };
 }

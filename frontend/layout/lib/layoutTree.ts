@@ -29,6 +29,8 @@ import {
     MoveOperation,
 } from "./types";
 
+export const DEFAULT_MAX_CHILDREN = 5;
+
 /**
  * Computes an operation for inserting a new node into the tree in the given direction relative to the specified node.
  *
@@ -262,7 +264,7 @@ export function insertNode(layoutState: LayoutTreeState, action: LayoutTreeInser
     if (!layoutState.rootNode) {
         layoutState.rootNode = action.node;
     } else {
-        const insertLoc = findNextInsertLocation(layoutState.rootNode, 5);
+        const insertLoc = findNextInsertLocation(layoutState.rootNode, DEFAULT_MAX_CHILDREN);
         addChildAt(insertLoc.node, insertLoc.index, action.node);
         if (action.magnified) {
             layoutState.magnifiedNodeId = action.node.id;
