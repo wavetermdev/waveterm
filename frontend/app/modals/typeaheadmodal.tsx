@@ -2,7 +2,7 @@ import { Input } from "@/app/element/input";
 import { InputDecoration } from "@/app/element/inputdecoration";
 import { useDimensions } from "@/app/hook/useDimensions";
 import clsx from "clsx";
-import React, { useEffect, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
 import "./typeaheadmodal.less";
@@ -81,15 +81,9 @@ interface SuggestionsProps {
     onSelect?: (_: string) => void;
 }
 
-function Suggestions({ suggestions, onSelect }: SuggestionsProps) {
-    const suggestionsWrapperRef = useRef<HTMLDivElement>(null);
-
+const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(({ suggestions, onSelect }: SuggestionsProps, ref) => {
     return (
-        <div
-            ref={suggestionsWrapperRef}
-            className="suggestions-wrapper"
-            style={{ marginTop: suggestions?.length > 0 ? "8px" : "0" }}
-        >
+        <div ref={ref} className="suggestions-wrapper" style={{ marginTop: suggestions?.length > 0 ? "8px" : "0" }}>
             {suggestions?.map((suggestion, index) => (
                 <div className="suggestion" key={index} onClick={() => onSelect(suggestion.value)}>
                     {suggestion.label}
@@ -97,7 +91,7 @@ function Suggestions({ suggestions, onSelect }: SuggestionsProps) {
             ))}
         </div>
     );
-}
+});
 
 interface TypeAheadModalProps {
     anchor: React.MutableRefObject<HTMLDivElement>;
@@ -125,20 +119,31 @@ const TypeAheadModal = ({
     const { width, height } = useDimensions(anchor);
     const modalRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLDivElement>(null);
+    const suggestionsWrapperRef = useRef<HTMLDivElement>(null);
     const [suggestionsHeight, setSuggestionsHeight] = useState<number | undefined>(undefined);
+    const [modalHeight, setModalHeight] = useState<string | undefined>(undefined);
 
     useEffect(() => {
-        if (modalRef.current && inputRef.current) {
-            const modalHeight = modalRef.current.getBoundingClientRect().height;
+        if (modalRef.current && inputRef.current && suggestionsWrapperRef.current) {
+            const modalPadding = 32;
             const inputHeight = inputRef.current.getBoundingClientRect().height;
+            let suggestionsTotalHeight = 0;
 
-            // Get the padding value (assuming padding is uniform on all sides)
-            const padding = 16 * 2; // 16px top + 16px bottom
+            const suggestionItems = suggestionsWrapperRef.current.children;
+            for (let i = 0; i < suggestionItems.length; i++) {
+                suggestionsTotalHeight += suggestionItems[i].getBoundingClientRect().height;
+            }
 
-            // Subtract the input height and padding from the modal height
-            setSuggestionsHeight(modalHeight - inputHeight - padding);
+            const totalHeight = modalPadding + inputHeight + suggestionsTotalHeight;
+            const maxHeight = height * 0.8;
+            const computedHeight = totalHeight > maxHeight ? maxHeight : totalHeight;
+
+            setModalHeight(`${computedHeight}px`);
+
+            const padding = 16 * 2;
+            setSuggestionsHeight(computedHeight - inputHeight - padding);
         }
-    }, [width, height]);
+    }, [height, suggestions.length]);
 
     const renderBackdrop = (onClick) => <div className="type-ahead-modal-backdrop" onClick={onClick}></div>;
 
@@ -162,7 +167,7 @@ const TypeAheadModal = ({
                 className={clsx("type-ahead-modal", className)}
                 style={{
                     width: width * 0.6,
-                    maxHeight: height * 0.8,
+                    maxHeight: modalHeight,
                 }}
             >
                 <div className="content-wrapper">
@@ -187,7 +192,7 @@ const TypeAheadModal = ({
                             overflowY: "auto",
                         }}
                     >
-                        <Suggestions suggestions={suggestions} onSelect={handleSelect} />
+                        <Suggestions ref={suggestionsWrapperRef} suggestions={suggestions} onSelect={handleSelect} />
                     </div>
                 </div>
             </div>

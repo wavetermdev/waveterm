@@ -687,7 +687,6 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
                     anchor={contentRef}
                     onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
                     onSelect={handleFileSuggestionSelect}
-                    onSubmit={(value) => console.log(value)}
                 />
             )}
             <div
