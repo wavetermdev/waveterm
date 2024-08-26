@@ -173,6 +173,15 @@ func (t *Tab) GetBlockORefs() []ORef {
 	return rtn
 }
 
+type LayoutActionData struct {
+	TabId      string `json:"tabid"`
+	ActionType string `json:"actiontype"`
+	BlockId    string `json:"blockid"`
+	NodeSize   uint   `json:"nodesize,omitempty"`
+	IndexArr   []int  `json:"indexarr,omitempty"`
+	Magnified  bool   `json:"magnified,omitempty"`
+}
+
 type LayoutState struct {
 	OID             string      `json:"oid"`
 	Version         int         `json:"version"`

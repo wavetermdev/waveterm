@@ -56,15 +56,6 @@ const (
 	WSLayoutActionType_Remove = "delete"
 )
 
-type WSLayoutActionData struct {
-	TabId      string `json:"tabid"`
-	ActionType string `json:"actiontype"`
-	BlockId    string `json:"blockid"`
-	NodeSize   uint   `json:"nodesize,omitempty"`
-	IndexArr   []int  `json:"indexarr,omitempty"`
-	Magnified  bool   `json:"magnified,omitempty"`
-}
-
 var globalLock = &sync.Mutex{}
 var wsMap = make(map[string]*WindowWatchData) // websocketid => WindowWatchData
 

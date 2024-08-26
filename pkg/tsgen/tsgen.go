@@ -33,7 +33,7 @@ var ExtraTypes = []any{
 	waveobj.UIContext{},
 	eventbus.WSEventType{},
 	eventbus.WSFileEventData{},
-	eventbus.WSLayoutActionData{},
+	waveobj.LayoutActionData{},
 	filestore.WaveFile{},
 	wconfig.SettingsConfigType{},
 	wconfig.TermThemesConfigType{},

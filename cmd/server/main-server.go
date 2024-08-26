@@ -26,6 +26,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wcloud"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
+	"github.com/wavetermdev/thenextwave/pkg/wcore"
 	"github.com/wavetermdev/thenextwave/pkg/web"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
@@ -212,7 +213,7 @@ func main() {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
 		}
 	}()
-	err = wstore.EnsureInitialData()
+	err = wcore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return

@@ -83,21 +83,11 @@ func (svc *ObjectService) AddTabToWorkspace(uiContext waveobj.UIContext, tabName
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	windowData, err := wstore.DBMustGet[*waveobj.Window](ctx, uiContext.WindowId)
-	if err != nil {
-		return "", nil, fmt.Errorf("error getting window: %w", err)
-	}
-	tab, err := wstore.CreateTab(ctx, windowData.WorkspaceId, tabName)
+	tabId, err := wcore.CreateTab(ctx, uiContext.WindowId, tabName, activateTab)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}
-	if activateTab {
-		err = wstore.SetActiveTab(ctx, uiContext.WindowId, tab.OID)
-		if err != nil {
-			return "", nil, fmt.Errorf("error setting active tab: %w", err)
-		}
-	}
-	return tab.OID, waveobj.ContextGetUpdatesRtn(ctx), nil
+	return tabId, waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *ObjectService) UpdateWorkspaceTabIds_Meta() tsgenmeta.MethodMeta {

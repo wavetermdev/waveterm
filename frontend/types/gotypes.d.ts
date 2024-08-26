@@ -208,6 +208,16 @@ declare global {
         data64: string;
     };
 
+    // waveobj.LayoutActionData
+    type LayoutActionData = {
+        tabid: string;
+        actiontype: string;
+        blockid: string;
+        nodesize?: number;
+        indexarr?: number[];
+        magnified?: boolean;
+    };
+
     // waveobj.LayoutState
     type LayoutState = WaveObj & {
         rootnode?: any;
@@ -523,16 +533,6 @@ declare global {
         filename: string;
         fileop: string;
         data64: string;
-    };
-
-    // eventbus.WSLayoutActionData
-    type WSLayoutActionData = {
-        tabid: string;
-        actiontype: string;
-        blockid: string;
-        nodesize?: number;
-        indexarr?: number[];
-        magnified?: boolean;
     };
 
     // webcmd.WSRpcCommand

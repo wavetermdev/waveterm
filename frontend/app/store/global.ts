@@ -361,7 +361,7 @@ function handleWSEventMessage(msg: WSEventType) {
         return;
     }
     if (msg.eventtype == "layoutaction") {
-        const layoutAction: WSLayoutActionData = msg.data;
+        const layoutAction: LayoutActionData = msg.data;
         const tabId = layoutAction.tabid;
         const layoutModel = getLayoutModelForTabById(tabId);
         switch (layoutAction.actiontype) {

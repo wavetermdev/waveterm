@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wcore"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -63,7 +64,7 @@ func (cs *ClientService) GetWindow(windowId string) (*waveobj.Window, error) {
 }
 
 func (cs *ClientService) MakeWindow(ctx context.Context) (*waveobj.Window, error) {
-	return wstore.CreateWindow(ctx, nil)
+	return wcore.CreateWindow(ctx, nil)
 }
 
 func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnStatus, error) {
@@ -183,7 +184,7 @@ func (cs *ClientService) BootstrapStarterLayout(ctx context.Context) error {
 
 		eventbus.SendEventToWindow(windowId, eventbus.WSEventType{
 			EventType: eventbus.WSEvent_LayoutAction,
-			Data: &eventbus.WSLayoutActionData{
+			Data: &waveobj.LayoutActionData{
 				ActionType: "insertatindex",
 				TabId:      tabId,
 				BlockId:    blockData.OID,

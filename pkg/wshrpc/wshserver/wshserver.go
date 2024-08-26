@@ -177,7 +177,6 @@ func SavePlotData(ctx context.Context, blockId string, history string) error {
 }
 
 func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetMetaData) (waveobj.MetaMapType, error) {
-	log.Printf("calling meta: %s\n", data.ORef)
 	obj, err := wstore.DBGetORef(ctx, data.ORef)
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)
@@ -263,20 +262,9 @@ func sendWStoreUpdatesToEventBus(updates waveobj.UpdatesRtnType) {
 func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.CommandCreateBlockData) (*waveobj.ORef, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId := data.TabId
-	if data.TabId != "" {
-		tabId = data.TabId
-	}
-	blockData, err := wstore.CreateBlock(ctx, tabId, data.BlockDef, data.RtOpts)
+	blockRef, err := wcore.CreateBlock(ctx, data)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
-	}
-	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
-	if controllerName != "" {
-		// TODO
-		err = blockcontroller.StartBlockController(ctx, data.TabId, blockData.OID)
-		if err != nil {
-			return nil, fmt.Errorf("error starting block controller: %w", err)
-		}
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	sendWStoreUpdatesToEventBus(updates)
@@ -289,14 +277,14 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	}
 	eventbus.SendEventToWindow(windowId, eventbus.WSEventType{
 		EventType: eventbus.WSEvent_LayoutAction,
-		Data: &eventbus.WSLayoutActionData{
+		Data: &waveobj.LayoutActionData{
 			ActionType: "insert",
 			TabId:      tabId,
-			BlockId:    blockData.OID,
+			BlockId:    blockRef.OID,
 			Magnified:  data.Magnified,
 		},
 	})
-	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}, nil
+	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
 }
 
 func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
@@ -442,7 +430,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	}
 	eventbus.SendEventToWindow(windowId, eventbus.WSEventType{
 		EventType: eventbus.WSEvent_LayoutAction,
-		Data: &eventbus.WSLayoutActionData{
+		Data: &waveobj.LayoutActionData{
 			ActionType: "delete",
 			TabId:      tabId,
 			BlockId:    data.BlockId,

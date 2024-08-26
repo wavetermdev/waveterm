@@ -119,7 +119,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	if !foundBlock {
 		return nil, fmt.Errorf("block not found in current tab")
 	}
-	newWindow, err := wstore.CreateWindow(ctx, nil)
+	newWindow, err := wcore.CreateWindow(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating window: %w", err)
 	}
@@ -137,7 +137,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	}
 	eventbus.SendEventToWindow(curWindowId, eventbus.WSEventType{
 		EventType: eventbus.WSEvent_LayoutAction,
-		Data: eventbus.WSLayoutActionData{
+		Data: waveobj.LayoutActionData{
 			ActionType: eventbus.WSLayoutActionType_Remove,
 			TabId:      currentTabId,
 			BlockId:    blockId,
@@ -145,7 +145,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	})
 	eventbus.SendEventToWindow(newWindow.OID, eventbus.WSEventType{
 		EventType: eventbus.WSEvent_LayoutAction,
-		Data: eventbus.WSLayoutActionData{
+		Data: waveobj.LayoutActionData{
 			ActionType: eventbus.WSLayoutActionType_Insert,
 			TabId:      newWindow.ActiveTabId,
 			BlockId:    blockId,

@@ -6,7 +6,6 @@ package wstore
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
@@ -189,56 +188,6 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaM
 	})
 }
 
-func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Window, error) {
-	windowId := uuid.NewString()
-	workspaceId := uuid.NewString()
-	if winSize == nil {
-		winSize = &waveobj.WinSize{
-			Width:  1200,
-			Height: 800,
-		}
-	}
-	window := &waveobj.Window{
-		OID:         windowId,
-		WorkspaceId: workspaceId,
-		Pos: waveobj.Point{
-			X: 100,
-			Y: 100,
-		},
-		WinSize: *winSize,
-	}
-	err := DBInsert(ctx, window)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting window: %w", err)
-	}
-	ws := &waveobj.Workspace{
-		OID:  workspaceId,
-		Name: "w" + workspaceId[0:8],
-	}
-	err = DBInsert(ctx, ws)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting workspace: %w", err)
-	}
-	tab, err := CreateTab(ctx, ws.OID, "T1")
-	if err != nil {
-		return nil, fmt.Errorf("error inserting tab: %w", err)
-	}
-	err = SetActiveTab(ctx, window.OID, tab.OID)
-	if err != nil {
-		return nil, fmt.Errorf("error setting active tab: %w", err)
-	}
-	client, err := DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting client: %w", err)
-	}
-	client.WindowIds = append(client.WindowIds, windowId)
-	err = DBUpdate(ctx, client)
-	if err != nil {
-		return nil, fmt.Errorf("error updating client: %w", err)
-	}
-	return DBMustGet[*waveobj.Window](ctx, windowId)
-}
-
 func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, blockId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		currentTab, _ := DBGet[*waveobj.Tab](tx.Context(), currentTabId)
@@ -259,37 +208,4 @@ func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, b
 		DBUpdate(tx.Context(), newTab)
 		return nil
 	})
-}
-
-func CreateClient(ctx context.Context) (*waveobj.Client, error) {
-	client := &waveobj.Client{
-		OID:       uuid.NewString(),
-		WindowIds: []string{},
-	}
-	err := DBInsert(ctx, client)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting client: %w", err)
-	}
-	return client, nil
-}
-
-func EnsureInitialData() error {
-	// does not need to run in a transaction since it is called on startup
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	client, err := DBGetSingleton[*waveobj.Client](ctx)
-	if err == ErrNotFound {
-		client, err = CreateClient(ctx)
-		if err != nil {
-			return fmt.Errorf("error creating client: %w", err)
-		}
-	}
-	if len(client.WindowIds) > 0 {
-		return nil
-	}
-	_, err = CreateWindow(ctx, &waveobj.WinSize{Height: 0, Width: 0})
-	if err != nil {
-		return fmt.Errorf("error creating window: %w", err)
-	}
-	return nil
 }
