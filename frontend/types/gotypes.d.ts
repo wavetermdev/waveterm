@@ -9,7 +9,6 @@ declare global {
     type AiConfigType = {
         baseurl: string;
         apitoken: string;
-        name: string;
         model: string;
         maxtokens: number;
         timeoutms: number;

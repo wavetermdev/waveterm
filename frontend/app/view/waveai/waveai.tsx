@@ -163,7 +163,6 @@ export class WaveAiModel implements ViewModel {
             const newPrompt: OpenAIPromptMessageType = {
                 role: "user",
                 content: text,
-                name: globalStore.get(atoms.settingsConfigAtom).ai.name,
             };
             let temp = async () => {
                 const history = await this.fetchAiData();

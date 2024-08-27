@@ -4,7 +4,6 @@
 package wconfig
 
 import (
-	"os/user"
 	"path/filepath"
 
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
@@ -36,7 +35,6 @@ type WebConfigType struct {
 type AiConfigType struct {
 	BaseURL   string `json:"baseurl"`
 	ApiToken  string `json:"apitoken"`
-	Name      string `json:"name"`
 	Model     string `json:"model"`
 	MaxTokens uint32 `json:"maxtokens"`
 	TimeoutMs uint32 `json:"timeoutms"`
@@ -262,16 +260,8 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 			IntervalMs:    3600000,
 		}
 	}
-	var userName string
-	currentUser, err := user.Current()
-	if err != nil {
-		userName = "user"
-	} else {
-		userName = currentUser.Username
-	}
 	if settings.Ai == nil {
 		settings.Ai = &AiConfigType{
-			Name:      userName,
 			Model:     "gpt-3.5-turbo",
 			MaxTokens: 1000,
 			TimeoutMs: 10 * 1000,
