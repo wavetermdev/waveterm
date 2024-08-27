@@ -267,6 +267,9 @@ export class LayoutModel {
 
         this.focusedNode = atom((get) => {
             const treeState = get(this.treeStateAtom);
+            if (treeState.focusedNodeId == null) {
+                return null;
+            }
             return findNode(treeState.rootNode, treeState.focusedNodeId);
         });
         this.focusedNodeIdStack = [];
