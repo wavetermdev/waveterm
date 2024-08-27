@@ -1,0 +1,19 @@
+{
+    "name": "Wave Terminal Dev Container",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "wave",
+    "workspaceFolder": "/app/waveterm",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash",
+                "extensions": [
+                    "golang.go",
+                    "dbaeumer.vscode-eslint",
+                    "esbenp.prettier-vscode"
+                ]
+            }
+        }
+    },
+    "remoteUser": "wave"
+}

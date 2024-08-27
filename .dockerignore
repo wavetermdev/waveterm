@@ -11,9 +11,6 @@ logs
 *.log
 *.tmp
 
-
-
-
 # Ignore test and coverage files
 coverage
 test-results

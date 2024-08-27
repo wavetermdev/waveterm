@@ -31,5 +31,3 @@ RUN scripthaus run webpack-watch
 RUN useradd -m -s /bin/bash wave
 USER wave
 
-CMD [ "scripthaus", "run", "electron" ]
-
