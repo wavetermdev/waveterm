@@ -111,6 +111,7 @@ export function removeChild(parent: LayoutNode, childToRemove: LayoutNode, start
  * @returns The node with the given id or undefined if no node with the given id was found.
  */
 export function findNode(node: LayoutNode, id: string): LayoutNode | undefined {
+    if (!node) return;
     if (node.id === id) return node;
     if (!node.children) return;
     for (const child of node.children) {
