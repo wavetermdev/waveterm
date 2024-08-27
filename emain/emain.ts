@@ -18,6 +18,7 @@ import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint
 import { fetch } from "../frontend/util/fetchutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
+import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
     getGoAppBasePath,
@@ -404,6 +405,10 @@ function createBrowserWindow(
         if (globalIsQuitting || updater?.status == "installing") {
             return;
         }
+        const numWindows = electron.BrowserWindow.getAllWindows().length;
+        if ((unamePlatform == "win32" || unamePlatform == "linux") && numWindows == 1) {
+            return;
+        }
         const choice = electron.dialog.showMessageBoxSync(win, {
             type: "question",
             buttons: ["Cancel", "Yes"],
@@ -416,6 +421,10 @@ function createBrowserWindow(
     });
     win.on("closed", () => {
         if (globalIsQuitting || updater?.status == "installing") {
+            return;
+        }
+        const numWindows = electron.BrowserWindow.getAllWindows().length;
+        if ((unamePlatform == "win32" || unamePlatform == "linux") && numWindows == 0) {
             return;
         }
         services.WindowService.CloseWindow(waveWindow.oid);
@@ -570,7 +579,7 @@ if (unamePlatform !== "darwin") {
     });
 }
 
-async function createNewWaveWindow() {
+async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const newWindow = await services.ClientService.MakeWindow();
     const settings = await services.FileService.GetSettingsConfig();
@@ -585,7 +594,7 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenu
     if (menuDefArr?.length === 0) {
         return;
     }
-    const menu = menuDefArr ? convertMenuDefArrToMenu(menuDefArr) : getAppMenu();
+    const menu = menuDefArr ? convertMenuDefArrToMenu(menuDefArr) : instantiateAppMenu();
     const { x, y } = electron.screen.getCursorScreenPoint();
     const windowPos = window.getPosition();
 
@@ -637,185 +646,13 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
     return electron.Menu.buildFromTemplate(menuItems);
 }
 
-function getAppMenu() {
-    const fileMenu: Electron.MenuItemConstructorOptions[] = [
-        {
-            label: "New Window",
-            accelerator: "CommandOrControl+Shift+N",
-            click: () => fireAndForget(createNewWaveWindow),
-        },
-        {
-            role: "close",
-            accelerator: "", // clear the accelerator
-            click: () => {
-                electron.BrowserWindow.getFocusedWindow()?.close();
-            },
-        },
-    ];
-    const appMenu: Electron.MenuItemConstructorOptions[] = [
-        {
-            label: "About Wave Terminal",
-            click: (_, window) => {
-                window?.webContents.send("menu-item-about");
-            },
-        },
-        {
-            label: "Check for Updates",
-            click: () => {
-                fireAndForget(() => updater?.checkForUpdates(true));
-            },
-        },
-        {
-            type: "separator",
-        },
-    ];
-    if (unamePlatform === "darwin") {
-        appMenu.push(
-            {
-                role: "services",
-            },
-            {
-                type: "separator",
-            },
-            {
-                role: "hide",
-            },
-            {
-                role: "hideOthers",
-            },
-            {
-                type: "separator",
-            }
-        );
-    }
-    appMenu.push({
-        role: "quit",
-    });
-    const editMenu: Electron.MenuItemConstructorOptions[] = [
-        {
-            role: "undo",
-            accelerator: unamePlatform === "darwin" ? "Command+Z" : "",
-        },
-        {
-            role: "redo",
-            accelerator: unamePlatform === "darwin" ? "Command+Shift+Z" : "",
-        },
-        {
-            type: "separator",
-        },
-        {
-            role: "cut",
-            accelerator: unamePlatform === "darwin" ? "Command+X" : "",
-        },
-        {
-            role: "copy",
-            accelerator: unamePlatform === "darwin" ? "Command+C" : "",
-        },
-        {
-            role: "paste",
-            accelerator: unamePlatform === "darwin" ? "Command+V" : "",
-        },
-        {
-            role: "pasteAndMatchStyle",
-            accelerator: unamePlatform === "darwin" ? "Command+Shift+V" : "",
-        },
-        {
-            role: "delete",
-        },
-        {
-            role: "selectAll",
-            accelerator: unamePlatform === "darwin" ? "Command+A" : "",
-        },
-    ];
-
-    const viewMenu: Electron.MenuItemConstructorOptions[] = [
-        {
-            role: "forceReload",
-        },
-        {
-            label: "Relaunch All Windows",
-            click: () => {
-                relaunchBrowserWindows();
-            },
-        },
-        {
-            role: "toggleDevTools",
-        },
-        {
-            type: "separator",
-        },
-        {
-            label: "Actual Size",
-            accelerator: "CommandOrControl+0",
-            click: (_, window) => {
-                window.webContents.setZoomFactor(1);
-            },
-        },
-        {
-            label: "Zoom In",
-            accelerator: "CommandOrControl+=",
-            click: (_, window) => {
-                window.webContents.setZoomFactor(window.webContents.getZoomFactor() + 0.2);
-            },
-        },
-        {
-            label: "Zoom In (hidden)",
-            accelerator: "CommandOrControl+Shift+=",
-            click: (_, window) => {
-                window.webContents.setZoomFactor(window.webContents.getZoomFactor() + 0.2);
-            },
-            visible: false,
-            acceleratorWorksWhenHidden: true,
-        },
-        {
-            label: "Zoom Out",
-            accelerator: "CommandOrControl+-",
-            click: (_, window) => {
-                window.webContents.setZoomFactor(window.webContents.getZoomFactor() - 0.2);
-            },
-        },
-        {
-            type: "separator",
-        },
-        {
-            role: "togglefullscreen",
-        },
-    ];
-    const windowMenu: Electron.MenuItemConstructorOptions[] = [
-        { role: "minimize", accelerator: "" },
-        { role: "zoom" },
-        { type: "separator" },
-        { role: "front" },
-        { type: "separator" },
-        { role: "window" },
-    ];
-    const menuTemplate: Electron.MenuItemConstructorOptions[] = [
-        {
-            role: "appMenu",
-            submenu: appMenu,
-        },
-        {
-            role: "fileMenu",
-            submenu: fileMenu,
-        },
-        {
-            role: "editMenu",
-            submenu: editMenu,
-        },
-        {
-            role: "viewMenu",
-            submenu: viewMenu,
-        },
-        {
-            role: "windowMenu",
-            submenu: windowMenu,
-        },
-    ];
-    return electron.Menu.buildFromTemplate(menuTemplate);
+function instantiateAppMenu(): electron.Menu {
+    return getAppMenu({ createNewWaveWindow, relaunchBrowserWindows });
 }
 
 function makeAppMenu() {
-    electron.Menu.setApplicationMenu(getAppMenu());
+    const menu = instantiateAppMenu();
+    electron.Menu.setApplicationMenu(menu);
 }
 
 electronApp.on("window-all-closed", () => {
@@ -853,7 +690,7 @@ process.on("uncaughtException", (error) => {
     electronApp.quit();
 });
 
-async function relaunchBrowserWindows() {
+async function relaunchBrowserWindows(): Promise<void> {
     globalIsRelaunching = true;
     const windows = electron.BrowserWindow.getAllWindows();
     for (const window of windows) {
