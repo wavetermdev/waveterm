@@ -159,6 +159,10 @@ const TypeAheadModal = ({
         onSelect && onSelect(value);
     };
 
+    let modalWidth = width * 0.6;
+    if (modalWidth < 300) {
+        modalWidth = Math.min(300, width * 0.95);
+    }
     const renderModal = () => (
         <div className="type-ahead-modal-wrapper" onKeyDown={handleKeyDown}>
             {renderBackdrop(onClickBackdrop)}
@@ -166,7 +170,7 @@ const TypeAheadModal = ({
                 ref={modalRef}
                 className={clsx("type-ahead-modal", className)}
                 style={{
-                    width: width * 0.6,
+                    width: modalWidth,
                     maxHeight: modalHeight,
                 }}
             >

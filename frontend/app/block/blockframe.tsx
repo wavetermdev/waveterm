@@ -12,7 +12,7 @@ import {
 import { Button } from "@/app/element/button";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, globalStore, WOS } from "@/app/store/global";
+import { atoms, globalStore, useBlockAtom, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { WshServer } from "@/app/store/wshserver";
 import { MagnifyIcon } from "@/element/magnify";
@@ -124,7 +124,12 @@ function computeEndIcons(
     return endIconsElem;
 }
 
-const BlockFrame_Header = ({ nodeModel, viewModel, preview }: BlockFrameProps) => {
+const BlockFrame_Header = ({
+    nodeModel,
+    viewModel,
+    preview,
+    changeConnModalAtom,
+}: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean> }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.meta?.view);
     const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
@@ -173,6 +178,7 @@ const BlockFrame_Header = ({ nodeModel, viewModel, preview }: BlockFrameProps) =
                 key={nodeModel.blockId}
                 blockId={nodeModel.blockId}
                 connection={blockData?.meta?.connection}
+                changeConnModalAtom={changeConnModalAtom}
             />
         );
         headerTextElems.unshift(connButtonElem);
@@ -270,6 +276,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const customBg = util.useAtomValueSafe(viewModel.blockBg);
+    const changeConnModalAtom = useBlockAtom(nodeModel.blockId, "changeConn", () => {
+        return jotai.atom(false);
+    }) as jotai.PrimitiveAtom<boolean>;
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
 
@@ -312,10 +321,11 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     blockId={nodeModel.blockId}
                     viewModel={viewModel}
                     blockRef={blockModel?.blockRef}
+                    changeConnModalAtom={changeConnModalAtom}
                 />
             )}
             <div className="block-frame-default-inner" style={innerStyle}>
-                <BlockFrame_Header {...props} />
+                <BlockFrame_Header {...props} changeConnModalAtom={changeConnModalAtom} />
                 {preview ? previewElem : children}
             </div>
         </div>
@@ -327,13 +337,15 @@ const ChangeConnectionBlockModal = React.memo(
         blockId,
         viewModel,
         blockRef,
+        changeConnModalAtom,
     }: {
         blockId: string;
         viewModel: ViewModel;
         blockRef: React.RefObject<HTMLDivElement>;
+        changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
     }) => {
-        const typeAhead = jotai.useAtomValue(atoms.typeAheadModalAtom);
         const [connSelected, setConnSelected] = React.useState("");
+        const changeConnModalOpen = jotai.useAtomValue(changeConnModalAtom);
         const changeConnection = React.useCallback(
             async (connName: string) => {
                 await WshServer.SetMetaCommand({
@@ -348,26 +360,20 @@ const ChangeConnectionBlockModal = React.memo(
             (waveEvent: WaveKeyboardEvent): boolean => {
                 if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
                     changeConnection(connSelected);
-                    globalStore.set(atoms.typeAheadModalAtom, {
-                        ...(typeAhead as TypeAheadModalType),
-                        [blockId]: false,
-                    });
+                    globalStore.set(changeConnModalAtom, false);
                     setConnSelected("");
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
-                    globalStore.set(atoms.typeAheadModalAtom, {
-                        ...(typeAhead as TypeAheadModalType),
-                        [blockId]: false,
-                    });
+                    globalStore.set(changeConnModalAtom, false);
                     setConnSelected("");
                     viewModel.giveFocus();
                     return true;
                 }
             },
-            [typeAhead, viewModel, blockId, connSelected]
+            [changeConnModalAtom, viewModel, blockId, connSelected]
         );
-        if (!typeAhead[blockId]) {
+        if (!changeConnModalOpen) {
             return null;
         }
         return (
