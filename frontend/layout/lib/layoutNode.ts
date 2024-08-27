@@ -186,7 +186,6 @@ export function balanceNode(
     walkNodes(
         node,
         (node) => {
-            beforeWalkCallback?.(node);
             if (!validateNode(node)) throw new Error("Invalid node");
             node.children = node.children?.flatMap((child) => {
                 if (child.flexDirection === node.flexDirection) {
@@ -198,6 +197,7 @@ export function balanceNode(
                 if (child.children?.length === 0) return;
                 return child;
             });
+            beforeWalkCallback?.(node);
         },
         (node) => {
             node.children = node.children?.filter((v) => v);
