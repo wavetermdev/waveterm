@@ -55,6 +55,7 @@ interface ResizeContext {
 
 const DefaultGapSizePx = 5;
 const MinNodeSizePx = 40;
+const DefaultAnimationTimeS = 0.15;
 
 export class LayoutModel {
     /**
@@ -95,6 +96,11 @@ export class LayoutModel {
     gapSizePx: number;
 
     /**
+     * The time a transition animation takes, in seconds.
+     */
+    animationTimeS: number;
+
+    /**
      * List of nodes that are leafs and should be rendered as a DisplayNode.
      */
     leafs: PrimitiveAtom<LayoutNode[]>;
@@ -102,6 +108,10 @@ export class LayoutModel {
      * An ordered list of node ids starting from the top left corner to the bottom right corner.
      */
     leafOrder: PrimitiveAtom<string[]>;
+    /**
+     * Atom representing the number of leaf nodes in a layout.
+     */
+    numLeafs: Atom<number>;
     /**
      * A map of node models for currently-active leafs.
      */
@@ -197,7 +207,8 @@ export class LayoutModel {
         renderContent?: ContentRenderer,
         renderPreview?: PreviewRenderer,
         onNodeDelete?: (data: TabLayoutData) => Promise<void>,
-        gapSizePx?: number
+        gapSizePx?: number,
+        animationTimeS?: number
     ) {
         this.treeStateAtom = treeStateAtom;
         this.getter = getter;
@@ -208,9 +219,11 @@ export class LayoutModel {
         this.gapSizePx = gapSizePx ?? DefaultGapSizePx;
         this.halfResizeHandleSizePx = this.gapSizePx > 5 ? this.gapSizePx : DefaultGapSizePx;
         this.resizeHandleSizePx = 2 * this.halfResizeHandleSizePx;
+        this.animationTimeS = animationTimeS ?? DefaultAnimationTimeS;
 
         this.leafs = atom([]);
         this.leafOrder = atom([]);
+        this.numLeafs = atom((get) => get(this.leafOrder).length);
 
         this.nodeModels = new Map();
         this.additionalProps = atom({});
@@ -639,12 +652,27 @@ export class LayoutModel {
     getNodeModel(node: LayoutNode): NodeModel {
         const nodeid = node.id;
         const blockId = node.data.blockId;
+        const addlPropsAtom = this.getNodeAdditionalPropertiesAtom(nodeid);
         if (!this.nodeModels.has(nodeid)) {
             this.nodeModels.set(nodeid, {
-                additionalProps: this.getNodeAdditionalPropertiesAtom(nodeid),
+                additionalProps: addlPropsAtom,
+                animationTimeS: this.animationTimeS,
+                innerRect: atom((get) => {
+                    const addlProps = get(addlPropsAtom);
+                    const numLeafs = get(this.numLeafs);
+                    if (numLeafs > 1 && addlProps?.rect) {
+                        return {
+                            width: `${addlProps.transform.width} - ${this.gapSizePx}px`,
+                            height: `${addlProps.transform.height} - ${this.gapSizePx}px`,
+                        } as CSSProperties;
+                    } else {
+                        return null;
+                    }
+                }),
                 nodeId: nodeid,
                 blockId,
                 blockNum: atom((get) => get(this.leafOrder).indexOf(nodeid) + 1),
+                isResizing: this.isResizing,
                 isFocused: atom((get) => {
                     const treeState = get(this.treeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;

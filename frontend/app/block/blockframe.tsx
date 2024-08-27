@@ -402,7 +402,7 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
     if (!blockId || !blockData) {
         return null;
     }
-    let FrameElem = BlockFrame_Default;
+    const FrameElem = BlockFrame_Default;
     const numBlocks = tabData?.blockids?.length ?? 0;
     return <FrameElem {...props} numBlocksInTab={numBlocks} />;
 });

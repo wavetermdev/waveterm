@@ -6,7 +6,7 @@ import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
-import { NodeModel } from "@/layout/index";
+import { NodeModel, useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc, getViewModel, registerViewModel, unregisterViewModel } from "@/store/global";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
@@ -122,7 +122,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const [focusedChild, setFocusedChild] = React.useState(null);
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = jotai.useAtomValue(nodeModel.disablePointerEvents);
-    const addlProps = jotai.useAtomValue(nodeModel.additionalProps);
+    const innerRect = useDebouncedNodeInnerRect(nodeModel);
 
     React.useLayoutEffect(() => {
         setBlockClicked(isFocused);
@@ -151,6 +151,32 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const setBlockClickedTrue = React.useCallback(() => {
         setBlockClicked(true);
     }, []);
+
+    const [blockContentOffset, setBlockContentOffset] = React.useState<Dimensions>();
+
+    React.useEffect(() => {
+        if (blockRef.current && contentRef.current) {
+            const blockRect = blockRef.current.getBoundingClientRect();
+            const contentRect = contentRef.current.getBoundingClientRect();
+            setBlockContentOffset({
+                top: 0,
+                left: 0,
+                width: blockRect.width - contentRect.width,
+                height: blockRect.height - contentRect.height,
+            });
+        }
+    }, [blockRef, contentRef]);
+
+    const blockContentStyle = React.useMemo<React.CSSProperties>(() => {
+        const retVal: React.CSSProperties = {
+            pointerEvents: disablePointerEvents ? "none" : undefined,
+        };
+        if (innerRect?.width && innerRect.height && blockContentOffset) {
+            retVal.width = `calc(${innerRect?.width} - ${blockContentOffset.width}px)`;
+            retVal.height = `calc(${innerRect?.height} - ${blockContentOffset.height}px)`;
+        }
+        return retVal;
+    }, [innerRect, disablePointerEvents, blockContentOffset]);
 
     const viewElem = React.useMemo(
         () => getViewElem(nodeModel.blockId, blockData?.meta?.view, viewModel),
@@ -195,16 +221,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
                     onChange={() => {}}
                 />
             </div>
-            <div
-                key="content"
-                className="block-content"
-                style={{
-                    pointerEvents: disablePointerEvents ? "none" : undefined,
-                    width: addlProps?.transform?.width,
-                    height: addlProps?.transform?.height,
-                }}
-                ref={contentRef}
-            >
+            <div key="content" className="block-content" ref={contentRef} style={blockContentStyle}>
                 <ErrorBoundary>
                     <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</React.Suspense>
                 </ErrorBoundary>

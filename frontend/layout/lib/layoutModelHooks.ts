@@ -4,7 +4,7 @@
 import { atoms, globalStore, WOS } from "@/app/store/global";
 import useResizeObserver from "@react-hook/resize-observer";
 import { Atom, useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { CSSProperties, useEffect, useState } from "react";
 import { withLayoutTreeStateAtomFromTab } from "./layoutAtom";
 import { LayoutModel } from "./layoutModel";
 import { LayoutNode, NodeModel, TileLayoutContents } from "./types";
@@ -58,4 +58,31 @@ export function useTileLayout(tabAtom: Atom<Tab>, tileContent: TileLayoutContent
 
 export function useNodeModel(layoutModel: LayoutModel, layoutNode: LayoutNode): NodeModel {
     return layoutModel.getNodeModel(layoutNode);
+}
+
+export function useDebouncedNodeInnerRect(nodeModel: NodeModel): CSSProperties {
+    const nodeInnerRect = useAtomValue(nodeModel.innerRect);
+    const nodeIsResizing = useAtomValue(nodeModel.isResizing);
+
+    const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout>();
+    const [innerRect, setInnerRect] = useState<CSSProperties>();
+
+    useEffect(() => {
+        if (!nodeIsResizing && nodeInnerRect) {
+            if (debounceTimeout) {
+                clearTimeout(debounceTimeout);
+            }
+            setDebounceTimeout(
+                setTimeout(() => {
+                    console.log("setting inner rect", nodeInnerRect);
+                    setInnerRect(nodeInnerRect);
+                    setDebounceTimeout(null);
+                }, nodeModel.animationTimeS * 1000)
+            );
+        } else {
+            setInnerRect(null);
+        }
+    }, [nodeInnerRect, nodeIsResizing]);
+
+    return innerRect;
 }

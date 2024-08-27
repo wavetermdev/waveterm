@@ -102,8 +102,12 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
     }, []);
 
     const tileStyle = useMemo(
-        () => ({ "--gap-size-px": `${layoutModel.gapSizePx}px` }) as CSSProperties,
-        [layoutModel.gapSizePx]
+        () =>
+            ({
+                "--gap-size-px": `${layoutModel.gapSizePx}px`,
+                "--animation-time-s": `${layoutModel.animationTimeS}s`,
+            }) as CSSProperties,
+        [layoutModel.gapSizePx, layoutModel.animationTimeS]
     );
 
     return (

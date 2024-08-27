@@ -8,6 +8,7 @@ import {
     getLayoutModelForActiveTab,
     getLayoutModelForTab,
     getLayoutModelForTabById,
+    useDebouncedNodeInnerRect,
     useLayoutModel,
 } from "./lib/layoutModelHooks";
 import { newLayoutNode } from "./lib/layoutNode";
@@ -44,6 +45,7 @@ export {
     NavigateDirection,
     newLayoutNode,
     TileLayout,
+    useDebouncedNodeInnerRect,
     useLayoutModel,
 };
 export type {

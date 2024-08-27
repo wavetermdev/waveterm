@@ -316,9 +316,12 @@ export interface LayoutNodeAdditionalProps {
 
 export interface NodeModel {
     additionalProps: Atom<LayoutNodeAdditionalProps>;
+    animationTimeS: number;
+    innerRect: Atom<CSSProperties>;
     blockNum: Atom<number>;
     nodeId: string;
     blockId: string;
+    isResizing: Atom<boolean>;
     isFocused: Atom<boolean>;
     isMagnified: Atom<boolean>;
     ready: Atom<boolean>;

@@ -99,12 +99,20 @@
             border: 1px solid var(--accent-color);
             backdrop-filter: blur(8px);
         }
+
+        .tile-leaf {
+            overflow: hidden;
+        }
+
+        &:not(:only-child) .tile-leaf {
+            padding: calc(var(--gap-size-px) / 2);
+        }
     }
 
     &.animate {
         .tile-node,
         .placeholder {
-            transition-duration: 0.15s;
+            transition-duration: var(--animation-time-s);
             transition-timing-function: ease-in;
             transition-property: transform, width, height, background-color;
         }
@@ -114,11 +122,6 @@
     .overlay-leaf {
         height: 100%;
         width: 100%;
-    }
-
-    .tile-leaf {
-        overflow: hidden;
-        padding: calc(var(--gap-size-px) / 2);
     }
 
     .placeholder {
