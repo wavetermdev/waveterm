@@ -615,7 +615,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
     }, []);
 
     return (
-        <OverlayScrollbarsComponent
+        <div
             className="dir-table-container"
             onChangeCapture={(e) => {
                 const event = e as React.ChangeEvent<HTMLInputElement>;
@@ -623,7 +623,6 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
             }}
             onKeyDownCapture={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
             onFocusCapture={() => document.getSelection().collapseToEnd()}
-            options={{ scrollbars: { autoHide: "leave" } }}
         >
             <div className="dir-table-search-line">
                 <input
@@ -645,7 +644,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 setSelectedPath={setSelectedPath}
                 setRefreshVersion={setRefreshVersion}
             />
-        </OverlayScrollbarsComponent>
+        </div>
     );
 }
 
