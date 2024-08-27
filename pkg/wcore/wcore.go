@@ -95,7 +95,7 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Windo
 	if winSize == nil {
 		winSize = &waveobj.WinSize{
 			Width:  1200,
-			Height: 800,
+			Height: 850,
 		}
 	}
 	window := &waveobj.Window{

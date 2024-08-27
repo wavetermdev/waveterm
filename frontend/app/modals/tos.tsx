@@ -3,6 +3,7 @@
 
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
+import { Toggle } from "@/app/element/toggle";
 import * as services from "@/store/services";
 import { FlexiModal } from "./modal";
 
@@ -75,6 +76,7 @@ const TosModal = () => {
                                 </a>
                                 to help us understand how people are using Wave.
                             </div>
+                            <Toggle checked={true} onChange={() => {}} label="Telemetry enabled" />
                         </div>
                     </div>
                 </div>
