@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -898,4 +899,16 @@ func RandomHexString(numHexDigits int) (string, error) {
 
 	hexStr := hex.EncodeToString(bytes)
 	return hexStr[:numHexDigits], nil // Return the exact number of hex digits
+}
+
+func GetJsonTag(field reflect.StructField) string {
+	jsonTag := field.Tag.Get("json")
+	if jsonTag == "" {
+		return ""
+	}
+	commaIdx := strings.Index(jsonTag, ",")
+	if commaIdx != -1 {
+		jsonTag = jsonTag[:commaIdx]
+	}
+	return jsonTag
 }

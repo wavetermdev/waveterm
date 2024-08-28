@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/userinput"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/vdom"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
@@ -84,20 +85,15 @@ func getTSFieldName(field reflect.StructField) string {
 		}
 		return tsFieldTag
 	}
-	jsonTag := field.Tag.Get("json")
+	jsonTag := utilfn.GetJsonTag(field)
+	if jsonTag == "-" {
+		return ""
+	}
+	if strings.Contains(jsonTag, ":") {
+		return "\"" + jsonTag + "\""
+	}
 	if jsonTag != "" {
-		parts := strings.Split(jsonTag, ",")
-		namePart := parts[0]
-		if namePart != "" {
-			if namePart == "-" {
-				return ""
-			}
-			if strings.Contains(namePart, ":") {
-				return "\"" + namePart + "\""
-			}
-			return namePart
-		}
-		// if namePart is empty, still uses default
+		return jsonTag
 	}
 	return field.Name
 }
@@ -452,9 +448,9 @@ func GenerateWshServerMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMa
 		dataName = "data"
 	}
 	if methodDecl.CommandDataType != nil {
-		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), rtnType))
+		sb.WriteString(fmt.Sprintf("    %s(data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), rtnType))
 	} else {
-		sb.WriteString(fmt.Sprintf("	%s(opts?: RpcOpts): %s {\n", methodDecl.MethodName, rtnType))
+		sb.WriteString(fmt.Sprintf("    %s(opts?: RpcOpts): %s {\n", methodDecl.MethodName, rtnType))
 	}
 	methodBody := fmt.Sprintf("        return WOS.wshServerRpcHelper_call(%q, %s, opts);\n", methodDecl.Command, dataName)
 	sb.WriteString(methodBody)

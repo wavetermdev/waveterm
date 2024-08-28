@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/waveai"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/wcore"
 	"github.com/wavetermdev/thenextwave/pkg/wlayout"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
@@ -476,4 +477,8 @@ func (ws *WshServer) EventUnsubAllCommand(ctx context.Context) error {
 	}
 	wps.Broker.UnsubscribeAll(rpcSource)
 	return nil
+}
+
+func (ws *WshServer) SetConfigCommand(ctx context.Context, data waveobj.MetaMapType) error {
+	return wconfig.SetBaseConfigValue(data)
 }

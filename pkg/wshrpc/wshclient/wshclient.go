@@ -147,6 +147,12 @@ func ResolveIdsCommand(w *wshutil.WshRpc, data wshrpc.CommandResolveIdsData, opt
 	return resp, err
 }
 
+// command "setconfig", wshserver.SetConfigCommand
+func SetConfigCommand(w *wshutil.WshRpc, data waveobj.MetaMapType, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "setconfig", data, opts)
+	return err
+}
+
 // command "setmeta", wshserver.SetMetaCommand
 func SetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandSetMetaData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setmeta", data, opts)

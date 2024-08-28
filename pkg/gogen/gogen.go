@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 )
 
@@ -42,10 +43,7 @@ func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype refle
 			continue
 		}
 		fieldName := field.Name
-		jsonTag := field.Tag.Get("json")
-		if commaIdx := strings.Index(jsonTag, ","); commaIdx != -1 {
-			jsonTag = jsonTag[:commaIdx]
-		}
+		jsonTag := utilfn.GetJsonTag(field)
 		if jsonTag == "" {
 			jsonTag = fieldName
 		}

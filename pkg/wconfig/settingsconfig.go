@@ -157,12 +157,12 @@ func ReadFullConfig() FullConfigType {
 		if configFile == "-" {
 			continue
 		}
-		jsonTag := field.Tag.Get("json")
+		jsonTag := utilfn.GetJsonTag(field)
 		if jsonTag == "-" || jsonTag == "" {
 			continue
 		}
 		simpleMerge := field.Tag.Get("merge") == ""
-		fileName := field.Tag.Get("json") + ".json"
+		fileName := jsonTag + ".json"
 		configPart, cerrs := ReadConfigPart(fileName, simpleMerge)
 		fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, cerrs...)
 		if configPart != nil {
@@ -177,7 +177,8 @@ func getConfigKeyType(configKey string) reflect.Type {
 	ctype := reflect.TypeOf(SettingsType{})
 	for i := 0; i < ctype.NumField(); i++ {
 		field := ctype.Field(i)
-		if field.Tag.Get("json") == configKey {
+		jsonTag := utilfn.GetJsonTag(field)
+		if jsonTag == configKey {
 			return field.Type
 		}
 	}
@@ -261,11 +262,7 @@ func jsonMarshalConfigInOrder(m waveobj.MetaMapType) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func SetBaseConfigValue(configKey string, val any) error {
-	ctype := getConfigKeyType(configKey)
-	if ctype == nil {
-		return fmt.Errorf("invalid config key: %s", configKey)
-	}
+func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
 	if len(cerrs) > 0 {
 		return fmt.Errorf("error reading config file: %v", cerrs[0])
@@ -273,13 +270,19 @@ func SetBaseConfigValue(configKey string, val any) error {
 	if m == nil {
 		m = make(waveobj.MetaMapType)
 	}
-	if val == nil {
-		delete(m, configKey)
-	} else {
-		if reflect.TypeOf(val) != ctype {
-			return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+	for configKey, val := range toMerge {
+		ctype := getConfigKeyType(configKey)
+		if ctype == nil {
+			return fmt.Errorf("invalid config key: %s", configKey)
 		}
-		m[configKey] = val
+		if val == nil {
+			delete(m, configKey)
+		} else {
+			if reflect.TypeOf(val) != ctype {
+				return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+			}
+			m[configKey] = val
+		}
 	}
 	return WriteWaveHomeConfigFile(SettingsFile, m)
 }

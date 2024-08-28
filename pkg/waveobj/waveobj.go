@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 )
 
 const (
@@ -127,7 +128,8 @@ func RegisterType(rtype reflect.Type) {
 	if oidField.Type.Kind() != reflect.String {
 		panic(fmt.Sprintf("OID field must be string for %v", rtype))
 	}
-	if oidField.Tag.Get("json") != OIDKeyName {
+	oidJsonTag := utilfn.GetJsonTag(oidField)
+	if oidJsonTag != OIDKeyName {
 		panic(fmt.Sprintf("OID field json tag must be %q for %v", OIDKeyName, rtype))
 	}
 	versionField, found := rtype.Elem().FieldByName(VersionGoFieldName)
@@ -137,7 +139,8 @@ func RegisterType(rtype reflect.Type) {
 	if versionField.Type.Kind() != reflect.Int {
 		panic(fmt.Sprintf("Version field must be int for %v", rtype))
 	}
-	if versionField.Tag.Get("json") != VersionKeyName {
+	versionJsonTag := utilfn.GetJsonTag(versionField)
+	if versionJsonTag != VersionKeyName {
 		panic(fmt.Sprintf("Version field json tag must be %q for %v", VersionKeyName, rtype))
 	}
 	metaField, found := rtype.Elem().FieldByName(MetaGoFieldName)
