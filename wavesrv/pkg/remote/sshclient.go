@@ -393,10 +393,10 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, HostKeyAl
 	// incorrectly. if a problem file is found, it is removed from our list
 	// and we try again
 	var basicCallback ssh.HostKeyCallback
-	var keyDb *knownhosts.HostKeyDB
+	var hostKeyAlgorithms HostKeyAlgorithms
 	for basicCallback == nil && len(knownHostsFiles) > 0 {
 		var err error
-		keyDb, err = knownhosts.NewDB(knownHostsFiles...)
+		keyDb, err := knownhosts.NewDB(knownHostsFiles...)
 		if serr, ok := err.(*os.PathError); ok {
 			badFile := serr.Path
 			unreadableFiles = append(unreadableFiles, badFile)
@@ -415,12 +415,18 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, HostKeyAl
 			return nil, nil, fmt.Errorf("known_hosts formatting error: %+v", err)
 		} else {
 			basicCallback = keyDb.HostKeyCallback()
+			hostKeyAlgorithms = keyDb.HostKeyAlgorithms
 		}
 	}
 
 	if basicCallback == nil {
 		basicCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			return &xknownhosts.KeyError{}
+		}
+		// need to return nil here to avoid null pointer from attempting to call
+		// the one provided by the db if nothing was found
+		hostKeyAlgorithms = func(hostWithPort string) (algos []string) {
+			return nil
 		}
 	}
 
@@ -516,7 +522,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, HostKeyAl
 		return updatedCallback(hostname, remote, key)
 	}
 
-	return waveHostKeyCallback, keyDb.HostKeyAlgorithms, nil
+	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
 func DialContext(ctx context.Context, network string, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
