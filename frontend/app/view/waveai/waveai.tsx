@@ -3,7 +3,7 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { WOS, atoms, fetchWaveFile, globalStore } from "@/store/global";
+import { WOS, atoms, fetchWaveFile, getUserName, globalStore } from "@/store/global";
 import * as services from "@/store/services";
 import { WshServer } from "@/store/wshserver";
 import * as jotai from "jotai";
@@ -107,7 +107,7 @@ export class WaveAiModel implements ViewModel {
             const viewTextChildren: HeaderElem[] = [
                 {
                     elemtype: "text",
-                    text: get(atoms.settingsConfigAtom).ai?.model ?? "gpt-3.5-turbo",
+                    text: get(atoms.settingsAtom)["ai:model"] ?? "gpt-3.5-turbo",
                 },
             ];
             return viewTextChildren;
@@ -152,18 +152,21 @@ export class WaveAiModel implements ViewModel {
             };
             addMessage(newMessage);
             // send message to backend and get response
-            const settings = globalStore.get(atoms.settingsConfigAtom);
+            const settings = globalStore.get(atoms.settingsAtom);
             const opts: OpenAIOptsType = {
-                model: settings.ai.model,
-                apitoken: settings.ai.apitoken,
-                maxtokens: settings.ai.maxtokens,
-                timeout: settings.ai.timeoutms / 1000,
-                baseurl: settings.ai.baseurl,
+                model: settings["ai:model"],
+                apitoken: settings["ai:apitoken"],
+                maxtokens: settings["ai:maxtokens"],
+                timeout: settings["ai:timeoutms"] / 1000,
+                baseurl: settings["ai:baseurl"],
             };
             const newPrompt: OpenAIPromptMessageType = {
                 role: "user",
                 content: text,
             };
+            if (newPrompt.name == "*username") {
+                newPrompt.name = getUserName();
+            }
             let temp = async () => {
                 const history = await this.fetchAiData();
                 const beMsg: OpenAiStreamRequest = {

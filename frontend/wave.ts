@@ -57,9 +57,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     initWS();
     await loadConnStatus();
     subscribeToConnEvents();
-    const settings = await services.FileService.GetSettingsConfig();
-    console.log("settings", settings);
-    globalStore.set(atoms.settingsConfigAtom, settings);
+    const fullConfig = await services.FileService.GetFullConfig();
+    console.log("fullconfig", fullConfig);
+    globalStore.set(atoms.fullConfigAtom, fullConfig);
     services.ObjectService.SetActiveTab(waveWindow.activetabid); // no need to wait
     const reactElem = React.createElement(App, null, null);
     const elem = document.getElementById("main");

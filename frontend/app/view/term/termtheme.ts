@@ -13,7 +13,8 @@ interface TermThemeProps {
 }
 
 const TermThemeUpdater = ({ blockId, termRef }: TermThemeProps) => {
-    const { termthemes } = useAtomValue(atoms.settingsConfigAtom);
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const termthemes = fullConfig?.termthemes;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     let defaultThemeName = "default-dark";
     let themeName = blockData.meta?.["term:theme"] ?? "default-dark";

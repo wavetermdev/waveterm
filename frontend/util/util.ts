@@ -242,6 +242,19 @@ function atomWithDebounce<T>(initialValue: T, delayMilliseconds = 500): AtomWith
     };
 }
 
+function getPrefixedSettings(settings: SettingsType, prefix: string): SettingsType {
+    const rtn: SettingsType = {};
+    if (settings == null || isBlank(prefix)) {
+        return rtn;
+    }
+    for (const key in settings) {
+        if (key == prefix || key.startsWith(prefix + ":")) {
+            rtn[key] = settings[key];
+        }
+    }
+    return rtn;
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -249,6 +262,7 @@ export {
     base64ToString,
     boundNumber,
     fireAndForget,
+    getPrefixedSettings,
     getPromiseState,
     getPromiseValue,
     isBlank,

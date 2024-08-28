@@ -12,7 +12,8 @@ declare global {
         uiContext: jotai.Atom<UIContext>; // driven from windowId, activetabid, etc.
         waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
         workspace: jotai.Atom<Workspace>; // driven from WOS
-        settingsConfigAtom: jotai.PrimitiveAtom<SettingsConfigType>; // driven from WOS, settings -- updated via WebSocket
+        fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
+        settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         tabAtom: jotai.Atom<Tab>; // driven from WOS
         activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
         isFullScreen: jotai.PrimitiveAtom<boolean>;
@@ -49,10 +50,9 @@ declare global {
         getAuthKey(): string;
         getIsDev(): boolean;
         getCursorPoint: () => Electron.Point;
-
         getPlatform: () => NodeJS.Platform;
         getEnv: (varName: string) => string;
-
+        getUserName: () => string;
         showContextMenu: (menu?: ElectronContextMenuItem[]) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
         onNavigate: (callback: (url: string) => void) => void;

@@ -181,7 +181,7 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaM
 		if objMeta == nil {
 			objMeta = make(map[string]any)
 		}
-		newMeta := waveobj.MergeMeta(objMeta, meta)
+		newMeta := waveobj.MergeMeta(objMeta, meta, false)
 		waveobj.SetMeta(obj, newMeta)
 		DBUpdate(tx.Context(), obj)
 		return nil

@@ -135,31 +135,6 @@ export function getBlockHeaderIcon(blockIcon: string, blockData: Block): React.R
     return blockIconElem;
 }
 
-export function getBlockHeaderText(blockIcon: string, blockData: Block, settings: SettingsConfigType): React.ReactNode {
-    if (!blockData) {
-        return "no block data";
-    }
-    let blockIdStr = "";
-    if (settings?.blockheader?.showblockids) {
-        blockIdStr = ` [${blockData.oid.substring(0, 8)}]`;
-    }
-    let blockIconElem = getBlockHeaderIcon(blockIcon, blockData);
-    if (!util.isBlank(blockData?.meta?.title)) {
-        try {
-            const rtn = processTitleString(blockData.meta.title) ?? [];
-            return [blockIconElem, ...rtn, blockIdStr == "" ? null : blockIdStr];
-        } catch (e) {
-            console.error("error processing title", blockData.meta.title, e);
-            return [blockIconElem, blockData.meta.title + blockIdStr];
-        }
-    }
-    let viewString = blockData?.meta?.view;
-    if (blockData?.meta?.controller == "cmd") {
-        viewString = "cmd";
-    }
-    return [blockIconElem, viewString + blockIdStr];
-}
-
 export const IconButton = React.memo(({ decl, className }: { decl: HeaderIconButton; className?: string }) => {
     const buttonRef = React.useRef<HTMLDivElement>(null);
     useLongClick(buttonRef, decl.click, decl.longClick);

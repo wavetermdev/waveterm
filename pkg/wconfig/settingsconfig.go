@@ -4,55 +4,298 @@
 package wconfig
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
+	"strings"
 
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wconfig/defaultconfig"
 )
 
-const termThemesDir = "terminal-themes"
-const settingsFile = "settings.json"
+const SettingsFile = "settings.json"
 
-var settingsAbsPath = filepath.Join(configDirAbsPath, settingsFile)
+type SettingsType struct {
+	AiClear     bool   `json:"ai:*,omitempty"`
+	AiBaseURL   string `json:"ai:baseurl,omitempty"`
+	AiApiToken  string `json:"ai:apitoken,omitempty"`
+	AiName      string `json:"ai:name,omitempty"`
+	AiModel     string `json:"ai:model,omitempty"`
+	AiMaxTokens int    `json:"ai:maxtokens,omitempty"`
+	AiTimeoutMs int    `json:"ai:timeoutms,omitempty"`
 
-type WidgetsConfigType struct {
-	Icon        string           `json:"icon"`
-	Color       string           `json:"color,omitempty"`
-	Label       string           `json:"label,omitempty"`
-	Description string           `json:"description,omitempty"`
-	BlockDef    waveobj.BlockDef `json:"blockdef"`
+	TermClear        bool   `json:"term:*,omitempty"`
+	TermFontSize     int    `json:"term:fontsize,omitempty"`
+	TermFontFamily   string `json:"term:fontfamily,omitempty"`
+	TermDisableWebGl bool   `json:"term:disablewebgl,omitempty"`
+
+	WebClear               bool `json:"web:*,omitempty"`
+	WebOpenLinksInternally bool `json:"web:openlinksinternally,omitempty"`
+
+	BlockHeaderClear        bool `json:"blockheader:*,omitempty"`
+	BlockHeaderShowBlockIds bool `json:"blockheader:showblockids,omitempty"`
+
+	AutoUpdateClear         bool `json:"autoupdate:*,omitempty"`
+	AutoUpdateEnabled       bool `json:"autoupdate:enabled,omitempty"`
+	AutoUpdateIntervalMs    int  `json:"autoupdate:intervalms,omitempty"`
+	AutoUpdateInstallOnQuit bool `json:"autoupdate:installonquit,omitempty"`
+
+	WidgetClear    bool `json:"widget:*,omitempty"`
+	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
+
+	WindowClear         bool    `json:"window:*,omitempty"`
+	WindowTransparent   bool    `json:"window:transparent,omitempty"`
+	WindowBlur          bool    `json:"window:blur,omitempty"`
+	WindowOpacity       float64 `json:"window:opacity,omitempty"`
+	WindowBgColor       string  `json:"window:bgcolor,omitempty"`
+	WindowReducedMotion bool    `json:"window:reducedmotion,omitempty"`
+
+	TelemetryClear   bool `json:"telemetry:*,omitempty"`
+	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
 }
 
-type TerminalConfigType struct {
-	FontSize     int    `json:"fontsize,omitempty"`
-	FontFamily   string `json:"fontfamily,omitempty"`
-	DisableWebGl bool   `json:"disablewebgl"`
+type ConfigError struct {
+	File string `json:"file"`
+	Err  string `json:"err"`
 }
 
-type WebConfigType struct {
-	OpenLinksInternally bool `json:"openlinksinternally"`
+type FullConfigType struct {
+	Settings       SettingsType                   `json:"settings" merge:"meta"`
+	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
+	DefaultWidgets map[string]WidgetConfigType    `json:"defaultwidgets"`
+	Widgets        map[string]WidgetConfigType    `json:"widgets"`
+	Presets        map[string]waveobj.MetaMapType `json:"presets"`
+	TermThemes     map[string]TermThemeType       `json:"termthemes"`
+	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 
-type AiConfigType struct {
-	BaseURL   string `json:"baseurl"`
-	ApiToken  string `json:"apitoken"`
-	Model     string `json:"model"`
-	MaxTokens uint32 `json:"maxtokens"`
-	TimeoutMs uint32 `json:"timeoutms"`
+var settingsAbsPath = filepath.Join(configDirAbsPath, SettingsFile)
+
+func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
+	var cerrs []ConfigError
+	if readErr != nil && !os.IsNotExist(readErr) {
+		cerrs = append(cerrs, ConfigError{File: "defaults:" + fileName, Err: readErr.Error()})
+	}
+	if len(barr) == 0 {
+		return nil, cerrs
+	}
+	var rtn waveobj.MetaMapType
+	err := json.Unmarshal(barr, &rtn)
+	if err != nil {
+		cerrs = append(cerrs, ConfigError{File: "defaults:" + fileName, Err: err.Error()})
+	}
+	return rtn, cerrs
+}
+
+func ReadDefaultsConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
+	barr, readErr := defaultconfig.ConfigFS.ReadFile(fileName)
+	return readConfigHelper("defaults:"+fileName, barr, readErr)
+}
+
+func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
+	fullFileName := filepath.Join(configDirAbsPath, fileName)
+	barr, err := os.ReadFile(fullFileName)
+	return readConfigHelper(fullFileName, barr, err)
+}
+
+func WriteWaveHomeConfigFile(fileName string, m waveobj.MetaMapType) error {
+	fullFileName := filepath.Join(configDirAbsPath, fileName)
+	barr, err := jsonMarshalConfigInOrder(m)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(fullFileName, barr, 0644)
+}
+
+// simple merge that overwrites
+func mergeMetaMapSimple(m waveobj.MetaMapType, toMerge waveobj.MetaMapType) waveobj.MetaMapType {
+	if m == nil {
+		return toMerge
+	}
+	if toMerge == nil {
+		return m
+	}
+	for k, v := range toMerge {
+		if v == nil {
+			delete(m, k)
+			continue
+		}
+		m[k] = v
+	}
+	if len(m) == 0 {
+		return nil
+	}
+	return m
+}
+
+func ReadConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+	defConfig, cerrs1 := ReadDefaultsConfigFile(partName)
+	userConfig, cerrs2 := ReadWaveHomeConfigFile(partName)
+	allErrs := append(cerrs1, cerrs2...)
+	if simpleMerge {
+		return mergeMetaMapSimple(defConfig, userConfig), allErrs
+	} else {
+		return waveobj.MergeMeta(defConfig, userConfig, true), allErrs
+	}
+}
+
+func ReadFullConfig() FullConfigType {
+	var fullConfig FullConfigType
+	configRType := reflect.TypeOf(fullConfig)
+	configRVal := reflect.ValueOf(&fullConfig).Elem()
+	for fieldIdx := 0; fieldIdx < configRType.NumField(); fieldIdx++ {
+		field := configRType.Field(fieldIdx)
+		if field.PkgPath != "" {
+			continue
+		}
+		configFile := field.Tag.Get("configfile")
+		if configFile == "-" {
+			continue
+		}
+		jsonTag := field.Tag.Get("json")
+		if jsonTag == "-" || jsonTag == "" {
+			continue
+		}
+		simpleMerge := field.Tag.Get("merge") == ""
+		fileName := field.Tag.Get("json") + ".json"
+		configPart, cerrs := ReadConfigPart(fileName, simpleMerge)
+		fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, cerrs...)
+		if configPart != nil {
+			fieldPtr := configRVal.Field(fieldIdx).Addr().Interface()
+			utilfn.ReUnmarshal(fieldPtr, configPart)
+		}
+	}
+	return fullConfig
+}
+
+func getConfigKeyType(configKey string) reflect.Type {
+	ctype := reflect.TypeOf(SettingsType{})
+	for i := 0; i < ctype.NumField(); i++ {
+		field := ctype.Field(i)
+		if field.Tag.Get("json") == configKey {
+			return field.Type
+		}
+	}
+	return nil
+}
+
+func getConfigKeyNamespace(key string) string {
+	colonIdx := strings.Index(key, ":")
+	if colonIdx == -1 {
+		return ""
+	}
+	return key[:colonIdx]
+}
+
+func orderConfigKeys(m waveobj.MetaMapType) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		k1 := keys[i]
+		k2 := keys[j]
+		k1ns := getConfigKeyNamespace(k1)
+		k2ns := getConfigKeyNamespace(k2)
+		if k1ns != k2ns {
+			return k1ns < k2ns
+		}
+		return k1 < k2
+	})
+	return keys
+}
+
+func reindentJson(barr []byte, indentStr string) []byte {
+	if len(barr) < 2 {
+		return barr
+	}
+	if barr[0] != '{' && barr[0] != '[' {
+		return barr
+	}
+	if bytes.Index(barr, []byte("\n")) == -1 {
+		return barr
+	}
+	outputLines := bytes.Split(barr, []byte("\n"))
+	for i, line := range outputLines {
+		if i == 0 || i == len(outputLines)-1 {
+			continue
+		}
+		outputLines[i] = append([]byte(indentStr), line...)
+	}
+	return bytes.Join(outputLines, []byte("\n"))
+}
+
+func jsonMarshalConfigInOrder(m waveobj.MetaMapType) ([]byte, error) {
+	if len(m) == 0 {
+		return []byte("{}"), nil
+	}
+	var buf bytes.Buffer
+	orderedKeys := orderConfigKeys(m)
+	buf.WriteString("{\n")
+	for idx, key := range orderedKeys {
+		val := m[key]
+		keyBarr, err := json.Marshal(key)
+		if err != nil {
+			return nil, err
+		}
+		valBarr, err := json.MarshalIndent(val, "", "  ")
+		if err != nil {
+			return nil, err
+		}
+		valBarr = reindentJson(valBarr, "  ")
+		buf.WriteString("  ")
+		buf.Write(keyBarr)
+		buf.WriteString(": ")
+		buf.Write(valBarr)
+		if idx < len(orderedKeys)-1 {
+			buf.WriteString(",")
+		}
+		buf.WriteString("\n")
+	}
+	buf.WriteString("}")
+	return buf.Bytes(), nil
+}
+
+func SetBaseConfigValue(configKey string, val any) error {
+	ctype := getConfigKeyType(configKey)
+	if ctype == nil {
+		return fmt.Errorf("invalid config key: %s", configKey)
+	}
+	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
+	if len(cerrs) > 0 {
+		return fmt.Errorf("error reading config file: %v", cerrs[0])
+	}
+	if m == nil {
+		m = make(waveobj.MetaMapType)
+	}
+	if val == nil {
+		delete(m, configKey)
+	} else {
+		if reflect.TypeOf(val) != ctype {
+			return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+		}
+		m[configKey] = val
+	}
+	return WriteWaveHomeConfigFile(SettingsFile, m)
+}
+
+type WidgetConfigType struct {
+	DisplayOrder float64          `json:"display:order,omitempty"`
+	Icon         string           `json:"icon,omitempty"`
+	Color        string           `json:"color,omitempty"`
+	Label        string           `json:"label,omitempty"`
+	Description  string           `json:"description,omitempty"`
+	BlockDef     waveobj.BlockDef `json:"blockdef"`
 }
 
 type MimeTypeConfigType struct {
 	Icon  string `json:"icon"`
 	Color string `json:"color"`
-}
-
-type BlockHeaderOpts struct {
-	ShowBlockIds bool `json:"showblockids"`
-}
-
-type AutoUpdateOpts struct {
-	Enabled       bool   `json:"enabled"`
-	IntervalMs    uint32 `json:"intervalms"`
-	InstallOnQuit bool   `json:"installonquit"`
 }
 
 type TermThemeType struct {
@@ -78,276 +321,4 @@ type TermThemeType struct {
 	SelectionBackground string `json:"selectionBackground"`
 	Background          string `json:"background"`
 	CursorAccent        string `json:"cursorAccent"`
-}
-
-type TermThemesConfigType map[string]TermThemeType
-
-// TODO add default term theme settings
-
-// note we pointers so we preserve nulls
-type WindowSettingsType struct {
-	Transparent   *bool    `json:"transparent"`
-	Blur          *bool    `json:"blur"`
-	Opacity       *float64 `json:"opacity"`
-	BgColor       *string  `json:"bgcolor"`
-	ReducedMotion *bool    `json:"reducedmotion"`
-}
-
-type TelemetrySettingsType struct {
-	Enabled *bool `json:"enabled"`
-}
-
-type SettingsConfigType struct {
-	MimeTypes      map[string]MimeTypeConfigType   `json:"mimetypes"`
-	Term           TerminalConfigType              `json:"term"`
-	Ai             *AiConfigType                   `json:"ai"`
-	DefaultWidgets []WidgetsConfigType             `json:"defaultwidgets"`
-	Widgets        []WidgetsConfigType             `json:"widgets"`
-	WidgetShowHelp *bool                           `json:"widget:showhelp"`
-	BlockHeader    BlockHeaderOpts                 `json:"blockheader"`
-	AutoUpdate     *AutoUpdateOpts                 `json:"autoupdate"`
-	TermThemes     TermThemesConfigType            `json:"termthemes"`
-	WindowSettings WindowSettingsType              `json:"window"`
-	Web            WebConfigType                   `json:"web"`
-	Telemetry      *TelemetrySettingsType          `json:"telemetry"`
-	Presets        map[string]*waveobj.MetaMapType `json:"presets,omitempty"`
-}
-
-var DefaultTermDarkTheme = TermThemeType{
-	Black:               "#757575",
-	Red:                 "#cc685c",
-	Green:               "#76c266",
-	Yellow:              "#cbca9b",
-	Blue:                "#85aacb",
-	Magenta:             "#cc72ca",
-	Cyan:                "#74a7cb",
-	White:               "#c1c1c1",
-	BrightBlack:         "#727272",
-	BrightRed:           "#cc9d97",
-	BrightGreen:         "#a3dd97",
-	BrightYellow:        "#cbcaaa",
-	BrightBlue:          "#9ab6cb",
-	BrightMagenta:       "#cc8ecb",
-	BrightCyan:          "#b7b8cb",
-	BrightWhite:         "#f0f0f0",
-	Gray:                "#8b918a",
-	CmdText:             "#f0f0f0",
-	Foreground:          "#c1c1c1",
-	SelectionBackground: "",
-	Background:          "#00000077",
-	CursorAccent:        "",
-}
-
-var DraculaTheme = TermThemeType{
-	Black:               "#21222C", // AnsiBlack
-	Red:                 "#FF5555", // AnsiRed
-	Green:               "#50FA7B", // AnsiGreen
-	Yellow:              "#F1FA8C", // AnsiYellow
-	Blue:                "#BD93F9", // AnsiBlue
-	Magenta:             "#FF79C6", // AnsiMagenta
-	Cyan:                "#8BE9FD", // AnsiCyan
-	White:               "#F8F8F2", // AnsiWhite
-	BrightBlack:         "#6272A4", // AnsiBrightBlack
-	BrightRed:           "#FF6E6E", // AnsiBrightRed
-	BrightGreen:         "#69FF94", // AnsiBrightGreen
-	BrightYellow:        "#FFFFA5", // AnsiBrightYellow
-	BrightBlue:          "#D6ACFF", // AnsiBrightBlue
-	BrightMagenta:       "#FF92DF", // AnsiBrightMagenta
-	BrightCyan:          "#A4FFFF", // AnsiBrightCyan
-	BrightWhite:         "#FFFFFF", // AnsiBrightWhite
-	Gray:                "#6272A4", // Comment or closest approximation
-	CmdText:             "#F8F8F2", // Foreground
-	Foreground:          "#F8F8F2", // Foreground
-	SelectionBackground: "#44475a", // Selection
-	Background:          "#282a36", // Background
-	CursorAccent:        "#f8f8f2", // Foreground (used for cursor accent)
-}
-
-var CampbellTheme = TermThemeType{
-	Black:               "#0C0C0C", // Black
-	Red:                 "#C50F1F", // Red
-	Green:               "#13A10E", // Green
-	Yellow:              "#C19C00", // Yellow
-	Blue:                "#0037DA", // Blue
-	Magenta:             "#881798", // Purple (used as Magenta)
-	Cyan:                "#3A96DD", // Cyan
-	White:               "#CCCCCC", // White
-	BrightBlack:         "#767676", // BrightBlack
-	BrightRed:           "#E74856", // BrightRed
-	BrightGreen:         "#16C60C", // BrightGreen
-	BrightYellow:        "#F9F1A5", // BrightYellow
-	BrightBlue:          "#3B78FF", // BrightBlue
-	BrightMagenta:       "#B4009E", // BrightPurple (used as BrightMagenta)
-	BrightCyan:          "#61D6D6", // BrightCyan
-	BrightWhite:         "#F2F2F2", // BrightWhite
-	Gray:                "#767676", // BrightBlack or closest approximation
-	CmdText:             "#CCCCCC", // Foreground
-	Foreground:          "#CCCCCC", // Foreground
-	SelectionBackground: "#3A96DD", // Cyan (chosen for selection background)
-	Background:          "#0C0C0C", // Background
-	CursorAccent:        "#CCCCCC", // Foreground (used for cursor accent)
-}
-
-var BgDefaultPreset = waveobj.MetaMapType{
-	waveobj.MetaKey_DisplayName:  "Default",
-	waveobj.MetaKey_DisplayOrder: -1,
-	waveobj.MetaKey_BgClear:      true,
-}
-
-var BgRainbowPreset = waveobj.MetaMapType{
-	waveobj.MetaKey_DisplayName:  "Rainbow",
-	waveobj.MetaKey_DisplayOrder: 1,
-	waveobj.MetaKey_BgClear:      true,
-	waveobj.MetaKey_Bg:           "linear-gradient( 226.4deg,  rgba(255,26,1,1) 28.9%, rgba(254,155,1,1) 33%, rgba(255,241,0,1) 48.6%, rgba(34,218,1,1) 65.3%, rgba(0,141,254,1) 80.6%, rgba(113,63,254,1) 100.1% );",
-	waveobj.MetaKey_BgOpacity:    0.3,
-}
-
-var BgGreenPreset = waveobj.MetaMapType{
-	waveobj.MetaKey_DisplayName: "Green",
-	waveobj.MetaKey_BgClear:     true,
-	waveobj.MetaKey_Bg:          "green",
-	waveobj.MetaKey_BgOpacity:   0.3,
-}
-
-var BgBluePreset = waveobj.MetaMapType{
-	waveobj.MetaKey_DisplayName: "Blue",
-	waveobj.MetaKey_BgClear:     true,
-	waveobj.MetaKey_Bg:          "blue",
-	waveobj.MetaKey_BgOpacity:   0.3,
-}
-
-var BgRedPreset = waveobj.MetaMapType{
-	waveobj.MetaKey_DisplayName: "Red",
-	waveobj.MetaKey_BgClear:     true,
-	waveobj.MetaKey_Bg:          "red",
-	waveobj.MetaKey_BgOpacity:   0.3,
-}
-
-func applyDefaultSettings(settings *SettingsConfigType) {
-	defaultMimeTypes := map[string]MimeTypeConfigType{
-		"audio":            {Icon: "file-audio"},
-		"application/pdf":  {Icon: "file-pdf"},
-		"application/json": {Icon: "file-lines"},
-		"directory":        {Icon: "folder", Color: "var(--term-bright-blue)"},
-		"font":             {Icon: "book-font"},
-		"image":            {Icon: "file-image"},
-		"text":             {Icon: "file-lines"},
-		"text/css":         {Icon: "css3-alt fa-brands"},
-		"text/javascript":  {Icon: "js fa-brands"},
-		"text/typescript":  {Icon: "js fa-brands"},
-		"text/golang":      {Icon: "golang fa-brands"},
-		"text/html":        {Icon: "html5 fa-brands"},
-		"text/less":        {Icon: "less fa-brands"},
-		"text/markdown":    {Icon: "markdown fa-brands"},
-		"text/rust":        {Icon: "rust fa-brands"},
-		"text/scss":        {Icon: "sass fa-brands"},
-		"video":            {Icon: "file-video"},
-		"text/csv":         {Icon: "file-csv"},
-	}
-	if settings.MimeTypes == nil {
-		settings.MimeTypes = defaultMimeTypes
-	} else {
-		for k, v := range defaultMimeTypes {
-			if _, found := settings.MimeTypes[k]; !found {
-				settings.MimeTypes[k] = v
-			}
-		}
-	}
-	if settings.AutoUpdate == nil {
-		settings.AutoUpdate = &AutoUpdateOpts{
-			Enabled:       true,
-			InstallOnQuit: true,
-			IntervalMs:    3600000,
-		}
-	}
-	if settings.Ai == nil {
-		settings.Ai = &AiConfigType{
-			Model:     "gpt-3.5-turbo",
-			MaxTokens: 1000,
-			TimeoutMs: 10 * 1000,
-		}
-	}
-	defaultWidgets := []WidgetsConfigType{
-		{
-			Icon:  "square-terminal",
-			Label: "terminal",
-			BlockDef: waveobj.BlockDef{
-				Meta: map[string]any{
-					waveobj.MetaKey_View:       "term",
-					waveobj.MetaKey_Controller: "shell",
-				},
-			},
-		},
-		{
-			Icon:  "folder",
-			Label: "files",
-			BlockDef: waveobj.BlockDef{
-				Meta: map[string]any{
-					waveobj.MetaKey_View: "preview",
-					waveobj.MetaKey_File: "~",
-				},
-			},
-		},
-		{
-			Icon:  "globe",
-			Label: "web",
-			BlockDef: waveobj.BlockDef{
-				Meta: map[string]any{
-					waveobj.MetaKey_View: "web",
-					waveobj.MetaKey_Url:  "https://waveterm.dev/",
-				},
-			},
-		},
-		{
-			Icon:  "sparkles",
-			Label: "waveai",
-			BlockDef: waveobj.BlockDef{
-				Meta: map[string]any{
-					waveobj.MetaKey_View: "waveai",
-				},
-			},
-		},
-		{
-			Icon:  "chart-line",
-			Label: "cpu",
-			BlockDef: waveobj.BlockDef{
-				Meta: map[string]any{
-					waveobj.MetaKey_View: "cpuplot",
-				},
-			},
-		},
-	}
-	if settings.DefaultWidgets == nil {
-		settings.DefaultWidgets = defaultWidgets
-	}
-	if settings.TermThemes == nil {
-		settings.TermThemes = make(map[string]TermThemeType)
-	}
-	if _, found := settings.TermThemes["default-dark"]; !found {
-		settings.TermThemes["default-dark"] = DefaultTermDarkTheme
-	}
-	if _, found := settings.TermThemes["dracula"]; !found {
-		settings.TermThemes["dracula"] = DraculaTheme
-	}
-	if _, found := settings.TermThemes["campbell"]; !found {
-		settings.TermThemes["campbell"] = CampbellTheme
-	}
-	if settings.Presets == nil {
-		settings.Presets = make(map[string]*waveobj.MetaMapType)
-	}
-	if _, found := settings.Presets["bg@default"]; !found {
-		settings.Presets["bg@default"] = &BgDefaultPreset
-	}
-	if _, found := settings.Presets["bg@rainbow"]; !found {
-		settings.Presets["bg@rainbow"] = &BgRainbowPreset
-	}
-	if _, found := settings.Presets["bg@green"]; !found {
-		settings.Presets["bg@green"] = &BgGreenPreset
-	}
-	if _, found := settings.Presets["bg@blue"]; !found {
-		settings.Presets["bg@blue"] = &BgBluePreset
-	}
-	if _, found := settings.Presets["bg@red"]; !found {
-		settings.Presets["bg@red"] = &BgRedPreset
-	}
 }

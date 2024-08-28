@@ -74,11 +74,8 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 }
 
 func IsTelemetryEnabled() bool {
-	settings := wconfig.GetWatcher().GetSettingsConfig()
-	if settings.Telemetry == nil || settings.Telemetry.Enabled == nil {
-		return true
-	}
-	return *settings.Telemetry.Enabled
+	settings := wconfig.GetWatcher().GetFullConfig()
+	return settings.Settings.TelemetryEnabled
 }
 
 func IsAllowedRenderer(renderer string) bool {

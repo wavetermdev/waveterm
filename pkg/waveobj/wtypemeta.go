@@ -9,51 +9,6 @@ import (
 
 const Entity_Any = "any"
 
-// well known meta keys
-// to add a new key, add it here and add it to MetaTSType (make sure the keys match)
-// TODO: will code generate one side of this so we don't need to add the keys in two places
-// will probably drive this off the meta decls so we can add more information and validate the keys/values
-const (
-	MetaKey_DisplayName  = "display:name"  // special, does not get merged
-	MetaKey_DisplayOrder = "display:order" // special, does not get merged
-
-	MetaKey_View       = "view"
-	MetaKey_Controller = "controller"
-	MetaKey_Title      = "title"
-	MetaKey_File       = "file"
-	MetaKey_Url        = "url"
-	MetaKey_Connection = "connection"
-	MetaKey_History    = "history" // stores an array of history items specific to the block
-
-	MetaKey_Icon      = "icon"
-	MetaKey_IconColor = "icon:color"
-
-	MetaKey_Frame                    = "frame"
-	MetaKey_FrameBorderColor         = "frame:bordercolor"
-	MetaKey_FrameBorderColor_Focused = "frame:bordercolor:focused"
-
-	MetaKey_Cmd               = "cmd"
-	MetaKey_CmdInteractive    = "cmd:interactive"
-	MetaKey_CmdLogin          = "cmd:login"
-	MetaKey_CmdRunOnStart     = "cmd:runonstart"
-	MetaKey_CmdClearOnStart   = "cmd:clearonstart"
-	MetaKey_CmdClearOnRestart = "cmd:clearonrestart"
-	MetaKey_CmdEnv            = "cmd:env"
-	MetaKey_CmdCwd            = "cmd:cwd"
-	MetaKey_CmdNoWsh          = "cmd:nowsh"
-
-	MetaKey_Bg          = "bg"
-	MetaKey_BgClear     = "bg:*"
-	MetaKey_BgOpacity   = "bg:opacity"
-	MetaKey_BgBlendMode = "bg:blendmode"
-
-	MetaKey_TermFontSize   = "term:fontsize"
-	MetaKey_TermFontFamily = "term:fontfamily"
-	MetaKey_TermMode       = "term:mode"
-	MetaKey_TermTheme      = "term:theme"
-	MetaKey_Count          = "count" // temp for cpu plot. will remove later
-)
-
 // for typescript typing
 type MetaTSType struct {
 	// shared
@@ -65,6 +20,9 @@ type MetaTSType struct {
 	Connection     string   `json:"connection,omitempty"`
 	History        []string `json:"history,omitempty"`
 	HistoryForward []string `json:"history:forward,omitempty"`
+
+	DisplayName  string  `json:"display:name,omitempty"`
+	DisplayOrder float64 `json:"display:order,omitempty"`
 
 	Icon      string `json:"icon,omitempty"`
 	IconColor string `json:"icon:color,omitempty"`
@@ -118,7 +76,8 @@ type MetaPresetDecl struct {
 }
 
 // returns a clean copy of meta with mergeMeta merged in
-func MergeMeta(meta MetaMapType, metaUpdate MetaMapType) MetaMapType {
+// if mergeSpecial is false, then special keys will not be merged (like display:*)
+func MergeMeta(meta MetaMapType, metaUpdate MetaMapType, mergeSpecial bool) MetaMapType {
 	rtn := make(MetaMapType)
 	for k, v := range meta {
 		rtn[k] = v
@@ -145,7 +104,7 @@ func MergeMeta(meta MetaMapType, metaUpdate MetaMapType) MetaMapType {
 	}
 	// now deal with regular keys
 	for k, v := range metaUpdate {
-		if strings.HasPrefix(k, "display:") {
+		if !mergeSpecial && strings.HasPrefix(k, "display:") {
 			continue
 		}
 		if strings.HasSuffix(k, ":*") {

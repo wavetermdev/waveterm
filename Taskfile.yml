@@ -164,17 +164,19 @@ tasks:
     generate:
         desc: Generate Typescript bindings for the Go backend.
         cmds:
-            - go run cmd/generate/main-generate.go
-            - go run cmd/generatewshclient/main-generatewshclient.go
+            - go run cmd/generatets/main-generatets.go
+            - go run cmd/generatego/main-generatego.go
         sources:
-            - "cmd/generate/*.go"
-            - "cmd/generatewshclient/*.go"
+            - "cmd/generatego/*.go"
+            - "cmd/generatets/*.go"
             - "pkg/service/**/*.go"
             - "pkg/waveobj/wtype.go"
             - "pkg/wconfig/**/*.go"
             - "pkg/wstore/*.go"
             - "pkg/wshrpc/**/*.go"
             - "pkg/tsgen/**/*.go"
+            - "pkg/gogen/**/*.go"
+            - "pkg/wconfig/**/*.go"
             - "pkg/eventbus/eventbus.go"
         generates:
             - frontend/types/gotypes.d.ts

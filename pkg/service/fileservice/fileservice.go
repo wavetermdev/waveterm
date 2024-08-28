@@ -153,17 +153,7 @@ func (fs *FileService) DeleteFile(connection string, path string) error {
 	return wshclient.RemoteFileDeleteCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
 }
 
-func (fs *FileService) GetSettingsConfig() wconfig.SettingsConfigType {
+func (fs *FileService) GetFullConfig() wconfig.FullConfigType {
 	watcher := wconfig.GetWatcher()
-	return watcher.GetSettingsConfig()
-}
-
-func (fs *FileService) AddWidget(newWidget wconfig.WidgetsConfigType) error {
-	watcher := wconfig.GetWatcher()
-	return watcher.AddWidget(newWidget)
-}
-
-func (fs *FileService) RemoveWidget(idx uint) error {
-	watcher := wconfig.GetWatcher()
-	return watcher.RmWidget(idx)
+	return watcher.GetFullConfig()
 }

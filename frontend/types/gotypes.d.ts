@@ -5,22 +5,6 @@
 
 declare global {
 
-    // wconfig.AiConfigType
-    type AiConfigType = {
-        baseurl: string;
-        apitoken: string;
-        model: string;
-        maxtokens: number;
-        timeoutms: number;
-    };
-
-    // wconfig.AutoUpdateOpts
-    type AutoUpdateOpts = {
-        enabled: boolean;
-        intervalms: number;
-        installonquit: boolean;
-    };
-
     // waveobj.Block
     type Block = WaveObj & {
         blockdef: BlockDef;
@@ -39,11 +23,6 @@ declare global {
     type BlockDef = {
         files?: {[key: string]: FileDef};
         meta?: MetaType;
-    };
-
-    // wconfig.BlockHeaderOpts
-    type BlockHeaderOpts = {
-        showblockids: boolean;
     };
 
     // webcmd.BlockInputWSCommand
@@ -157,6 +136,12 @@ declare global {
         meta: MetaType;
     };
 
+    // wconfig.ConfigError
+    type ConfigError = {
+        file: string;
+        err: string;
+    };
+
     // wshrpc.ConnStatus
     type ConnStatus = {
         status: string;
@@ -201,6 +186,17 @@ declare global {
         ijsonbudget?: number;
     };
 
+    // wconfig.FullConfigType
+    type FullConfigType = {
+        settings: SettingsType;
+        mimetypes: {[key: string]: MimeTypeConfigType};
+        defaultwidgets: {[key: string]: WidgetConfigType};
+        widgets: {[key: string]: WidgetConfigType};
+        presets: {[key: string]: MetaType};
+        termthemes: {[key: string]: TermThemeType};
+        configerrors: ConfigError[];
+    };
+
     // fileservice.FullFile
     type FullFile = {
         info: FileInfo;
@@ -235,6 +231,8 @@ declare global {
         connection?: string;
         history?: string[];
         "history:forward"?: string[];
+        "display:name"?: string;
+        "display:order"?: number;
         icon?: string;
         "icon:color"?: string;
         frame?: boolean;
@@ -363,21 +361,37 @@ declare global {
         termsize: TermSize;
     };
 
-    // wconfig.SettingsConfigType
-    type SettingsConfigType = {
-        mimetypes: {[key: string]: MimeTypeConfigType};
-        term: TerminalConfigType;
-        ai: AiConfigType;
-        defaultwidgets: WidgetsConfigType[];
-        widgets: WidgetsConfigType[];
-        "widget:showhelp": boolean;
-        blockheader: BlockHeaderOpts;
-        autoupdate: AutoUpdateOpts;
-        termthemes: {[key: string]: TermThemeType};
-        window: WindowSettingsType;
-        web: WebConfigType;
-        telemetry: TelemetrySettingsType;
-        presets?: {[key: string]: MetaType};
+    // wconfig.SettingsType
+    type SettingsType = {
+        "ai:*"?: boolean;
+        "ai:baseurl"?: string;
+        "ai:apitoken"?: string;
+        "ai:name"?: string;
+        "ai:model"?: string;
+        "ai:maxtokens"?: number;
+        "ai:timeoutms"?: number;
+        "term:*"?: boolean;
+        "term:fontsize"?: number;
+        "term:fontfamily"?: string;
+        "term:disablewebgl"?: boolean;
+        "web:*"?: boolean;
+        "web:openlinksinternally"?: boolean;
+        "blockheader:*"?: boolean;
+        "blockheader:showblockids"?: boolean;
+        "autoupdate:*"?: boolean;
+        "autoupdate:enabled"?: boolean;
+        "autoupdate:intervalms"?: number;
+        "autoupdate:installonquit"?: boolean;
+        "widget:*"?: boolean;
+        "widget:showhelp"?: boolean;
+        "window:*"?: boolean;
+        "window:transparent"?: boolean;
+        "window:blur"?: boolean;
+        "window:opacity"?: number;
+        "window:bgcolor"?: string;
+        "window:reducedmotion"?: boolean;
+        "telemetry:*"?: boolean;
+        "telemetry:enabled"?: boolean;
     };
 
     // waveobj.StickerClickOptsType
@@ -415,11 +429,6 @@ declare global {
         blockids: string[];
     };
 
-    // wconfig.TelemetrySettingsType
-    type TelemetrySettingsType = {
-        enabled: boolean;
-    };
-
     // waveobj.TermSize
     type TermSize = {
         rows: number;
@@ -450,13 +459,6 @@ declare global {
         selectionBackground: string;
         background: string;
         cursorAccent: string;
-    };
-
-    // wconfig.TerminalConfigType
-    type TerminalConfigType = {
-        fontsize?: number;
-        fontfamily?: string;
-        disablewebgl: boolean;
     };
 
     // wshrpc.TimeSeriesData
@@ -543,8 +545,7 @@ declare global {
 
     // wconfig.WatcherUpdate
     type WatcherUpdate = {
-        settings: SettingsConfigType;
-        error: string;
+        fullconfig: FullConfigType;
     };
 
     // wshrpc.WaveEvent
@@ -599,11 +600,6 @@ declare global {
         args: any[];
     };
 
-    // wconfig.WebConfigType
-    type WebConfigType = {
-        openlinksinternally: boolean;
-    };
-
     // service.WebReturnType
     type WebReturnType = {
         success?: boolean;
@@ -612,9 +608,10 @@ declare global {
         updates?: WaveObjUpdate[];
     };
 
-    // wconfig.WidgetsConfigType
-    type WidgetsConfigType = {
-        icon: string;
+    // wconfig.WidgetConfigType
+    type WidgetConfigType = {
+        "display:order"?: number;
+        icon?: string;
         color?: string;
         label?: string;
         description?: string;
@@ -625,15 +622,6 @@ declare global {
     type WinSize = {
         width: number;
         height: number;
-    };
-
-    // wconfig.WindowSettingsType
-    type WindowSettingsType = {
-        transparent: boolean;
-        blur: boolean;
-        opacity: number;
-        bgcolor: string;
-        reducedmotion: boolean;
     };
 
     // waveobj.Workspace

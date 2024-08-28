@@ -27,6 +27,10 @@ ipcMain.on("get-is-dev", (event) => {
 ipcMain.on("get-platform", (event, url) => {
     event.returnValue = unamePlatform;
 });
+ipcMain.on("get-user-name", (event) => {
+    const userInfo = os.userInfo();
+    event.returnValue = userInfo.username;
+});
 
 // must match golang
 function getWaveHomeDir() {

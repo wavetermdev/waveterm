@@ -5,7 +5,7 @@ import { appHandleKeyDown, appHandleKeyUp } from "@/app/appkey";
 import { useWaveObjectValue } from "@/app/store/wos";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { PLATFORM, WOS, atoms, getApi, globalStore } from "@/store/global";
+import { PLATFORM, WOS, atoms, getApi, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -80,12 +80,13 @@ function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
 }
 
 function AppSettingsUpdater() {
-    const settings = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const windowSettings = useSettingsPrefixAtom("window");
     React.useEffect(() => {
-        const isTransparentOrBlur = (settings?.window?.transparent || settings?.window?.blur) ?? false;
-        const opacity = util.boundNumber(settings?.window?.opacity ?? 0.8, 0, 1);
-        let baseBgColor = settings?.window?.bgcolor;
-        console.log("window settings", settings.window);
+        const isTransparentOrBlur =
+            (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
+        const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
+        let baseBgColor = windowSettings?.["window:bgcolor"];
+        console.log("window settings", windowSettings);
         if (isTransparentOrBlur) {
             document.body.classList.add("is-transparent");
             const rootStyles = getComputedStyle(document.documentElement);
@@ -99,7 +100,7 @@ function AppSettingsUpdater() {
             document.body.classList.remove("is-transparent");
             document.body.style.opacity = null;
         }
-    }, [settings?.window]);
+    }, [windowSettings]);
     return null;
 }
 

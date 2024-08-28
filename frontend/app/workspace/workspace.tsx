@@ -14,10 +14,28 @@ import "./workspace.less";
 
 const iconRegex = /^[a-z0-9-]+$/;
 
+function keyLen(obj: Object): number {
+    if (obj == null) {
+        return 0;
+    }
+    return Object.keys(obj).length;
+}
+
+function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetConfigType[] {
+    if (wmap == null) {
+        return [];
+    }
+    const wlist = Object.values(wmap);
+    wlist.sort((a, b) => {
+        return a["display:order"] - b["display:order"];
+    });
+    return wlist;
+}
+
 const Widgets = React.memo(() => {
-    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
     const newWidgetModalVisible = React.useState(false);
-    const helpWidget: WidgetsConfigType = {
+    const helpWidget: WidgetConfigType = {
         icon: "circle-question",
         label: "help",
         blockdef: {
@@ -26,13 +44,17 @@ const Widgets = React.memo(() => {
             },
         },
     };
-    const showHelp = settingsConfig?.["widget:showhelp"] ?? true;
-    const showDivider = settingsConfig?.defaultwidgets?.length > 0 && settingsConfig?.widgets?.length > 0;
+    const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
+    const showDivider = keyLen(fullConfig?.defaultwidgets) > 0 && keyLen(fullConfig?.widgets) > 0;
+    const defaultWidgets = sortByDisplayOrder(fullConfig?.defaultwidgets);
+    const widgets = sortByDisplayOrder(fullConfig?.widgets);
     return (
         <div className="workspace-widgets">
-            {settingsConfig?.defaultwidgets?.map((data, idx) => <Widget key={`defwidget-${idx}`} widget={data} />)}
+            {defaultWidgets.map((data, idx) => (
+                <Widget key={`defwidget-${idx}`} widget={data} />
+            ))}
             {showDivider ? <div className="widget-divider" /> : null}
-            {settingsConfig?.widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} />)}
+            {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} />)}
             {showHelp ? (
                 <>
                     <div className="widget-spacer" />
@@ -61,7 +83,7 @@ function getIconClass(icon: string): string {
     return `fa fa-solid fa-${icon} fa-fw`;
 }
 
-const Widget = React.memo(({ widget }: { widget: WidgetsConfigType }) => {
+const Widget = React.memo(({ widget }: { widget: WidgetConfigType }) => {
     return (
         <div
             className="widget"

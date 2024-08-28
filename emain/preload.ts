@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("api", {
     getIsDev: () => ipcRenderer.sendSync("get-is-dev"),
     getPlatform: () => ipcRenderer.sendSync("get-platform"),
     getCursorPoint: () => ipcRenderer.sendSync("get-cursor-point"),
+    getUserName: () => ipcRenderer.sendSync("get-user-name"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),

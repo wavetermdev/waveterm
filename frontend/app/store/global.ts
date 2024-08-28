@@ -96,7 +96,10 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         }
         return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
     });
-    const settingsConfigAtom = jotai.atom(null) as jotai.PrimitiveAtom<SettingsConfigType>;
+    const fullConfigAtom = jotai.atom(null) as jotai.PrimitiveAtom<FullConfigType>;
+    const settingsAtom = jotai.atom((get) => {
+        return get(fullConfigAtom)?.settings ?? {};
+    }) as jotai.Atom<SettingsType>;
     const tabAtom: jotai.Atom<Tab> = jotai.atom((get) => {
         const windowData = get(windowDataAtom);
         if (windowData == null) {
@@ -121,7 +124,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     } catch (_) {
         // do nothing
     }
-    const reducedMotionPreferenceAtom = jotai.atom((get) => get(settingsConfigAtom).window.reducedmotion);
+    const reducedMotionPreferenceAtom = jotai.atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
     const typeAheadModalAtom = jotai.atom({});
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
@@ -131,7 +134,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         client: clientAtom,
         waveWindow: windowDataAtom,
         workspace: workspaceAtom,
-        settingsConfigAtom,
+        fullConfigAtom,
+        settingsAtom,
         tabAtom,
         activeTabId: activeTabIdAtom,
         isFullScreen: isFullScreenAtom,
@@ -271,19 +275,35 @@ function useBlockCache<T>(blockId: string, name: string, makeFn: () => T): T {
 
 const settingsAtomCache = new Map<string, jotai.Atom<any>>();
 
-function useSettingsAtom<T>(name: string, settingsFn: (settings: SettingsConfigType) => T): jotai.Atom<T> {
-    let atom = settingsAtomCache.get(name);
+function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): jotai.Atom<SettingsType[T]> {
+    let atom = settingsAtomCache.get(key) as jotai.Atom<SettingsType[T]>;
     if (atom == null) {
         atom = jotai.atom((get) => {
-            const settings = get(atoms.settingsConfigAtom);
+            const settings = get(atoms.settingsAtom);
             if (settings == null) {
                 return null;
             }
-            return settingsFn(settings);
-        }) as jotai.Atom<T>;
-        settingsAtomCache.set(name, atom);
+            return settings[key];
+        });
+        settingsAtomCache.set(key, atom);
     }
-    return atom as jotai.Atom<T>;
+    return atom;
+}
+
+function useSettingsPrefixAtom(prefix: string): jotai.Atom<SettingsType> {
+    // TODO: use a shallow equal here to make this more efficient
+    let atom = settingsAtomCache.get(prefix + ":");
+    if (atom == null) {
+        atom = jotai.atom((get) => {
+            const settings = get(atoms.settingsAtom);
+            if (settings == null) {
+                return {};
+            }
+            return util.getPrefixedSettings(settings, prefix);
+        });
+        settingsAtomCache.set(prefix + ":", atom);
+    }
+    return atom;
 }
 
 const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
@@ -337,7 +357,7 @@ function handleWSEventMessage(msg: WSEventType) {
         return;
     }
     if (msg.eventtype == "config") {
-        globalStore.set(atoms.settingsConfigAtom, msg.data.settings);
+        globalStore.set(atoms.fullConfigAtom, (msg.data as WatcherUpdate).fullconfig);
         return;
     }
     if (msg.eventtype == "userinput") {
@@ -474,8 +494,17 @@ function isDev() {
     return cachedIsDev;
 }
 
+let cachedUserName: string = null;
+
+function getUserName(): string {
+    if (cachedUserName == null) {
+        cachedUserName = getApi().getUserName();
+    }
+    return cachedUserName;
+}
+
 async function openLink(uri: string) {
-    if (globalStore.get(atoms.settingsConfigAtom)?.web?.openlinksinternally) {
+    if (globalStore.get(atoms.settingsAtom)?.["web:openlinksinternally"]) {
         const blockDef: BlockDef = {
             meta: {
                 view: "web",
@@ -563,6 +592,7 @@ export {
     getEventSubject,
     getFileSubject,
     getObjectId,
+    getUserName,
     getViewModel,
     globalStore,
     globalWS,
@@ -581,7 +611,8 @@ export {
     useBlockAtom,
     useBlockCache,
     useBlockDataLoaded,
-    useSettingsAtom,
+    useSettingsKeyAtom,
+    useSettingsPrefixAtom,
     waveEventSubscribe,
     waveEventUnsubscribe,
     WOS,

@@ -134,11 +134,11 @@ function DirectoryTable({
     setSelectedPath,
     setRefreshVersion,
 }: DirectoryTableProps) {
-    const settings = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
             while (mimeType.length > 0) {
-                let icon = settings.mimetypes?.[mimeType]?.icon ?? null;
+                let icon = fullConfig.mimetypes?.[mimeType]?.icon ?? null;
                 if (isIconValid(icon)) {
                     return `fa fa-solid fa-${icon} fa-fw`;
                 }
@@ -146,14 +146,14 @@ function DirectoryTable({
             }
             return "fa fa-solid fa-file fa-fw";
         },
-        [settings.mimetypes]
+        [fullConfig.mimetypes]
     );
     const getIconColor = useCallback(
         (mimeType: string): string => {
-            let iconColor = settings.mimetypes?.[mimeType]?.color ?? "inherit";
+            let iconColor = fullConfig.mimetypes?.[mimeType]?.color ?? "inherit";
             return iconColor;
         },
-        [settings.mimetypes]
+        [fullConfig.mimetypes]
     );
     const columns = useMemo(
         () => [
@@ -208,7 +208,7 @@ function DirectoryTable({
             }),
             columnHelper.accessor("path", {}),
         ],
-        [settings]
+        [fullConfig]
     );
 
     const table = useReactTable({

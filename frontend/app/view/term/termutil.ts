@@ -3,11 +3,11 @@
 
 import * as util from "@/util/util";
 
-function computeTheme(settings: SettingsConfigType, themeName: string): TermThemeType {
+function computeTheme(fullConfig: FullConfigType, themeName: string): TermThemeType {
     let defaultThemeName = "default-dark";
     themeName = themeName ?? "default-dark";
-    const defaultTheme: TermThemeType = settings?.termthemes?.[defaultThemeName] || ({} as any);
-    const theme: TermThemeType = settings?.termthemes?.[themeName] || ({} as any);
+    const defaultTheme: TermThemeType = fullConfig?.termthemes?.[defaultThemeName] || ({} as any);
+    const theme: TermThemeType = fullConfig?.termthemes?.[themeName] || ({} as any);
     const combinedTheme = { ...defaultTheme };
     for (const key in theme) {
         if (!util.isBlank(theme[key])) {

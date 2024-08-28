@@ -191,8 +191,8 @@ async function handleWSEvent(evtMsg: WSEventType) {
             return;
         }
         const clientData = await services.ClientService.GetClientData();
-        const settings = await services.FileService.GetSettingsConfig();
-        const newWin = createBrowserWindow(clientData.oid, windowData, settings);
+        const fullConfig = await services.FileService.GetFullConfig();
+        const newWin = createBrowserWindow(clientData.oid, windowData, fullConfig);
         await newWin.readyPromise;
         newWin.show();
     } else if (evtMsg.eventtype == "electron:closewindow") {
@@ -268,11 +268,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
 
 // note, this does not *show* the window.
 // to show, await win.readyPromise and then win.show()
-function createBrowserWindow(
-    clientId: string,
-    waveWindow: WaveWindow,
-    settings: SettingsConfigType
-): WaveBrowserWindow {
+function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
     let winWidth = waveWindow?.winsize?.width;
     let winHeight = waveWindow?.winsize?.height;
     let winPosX = waveWindow.pos.x;
@@ -326,8 +322,9 @@ function createBrowserWindow(
         show: false,
         autoHideMenuBar: true,
     };
-    const isTransparent = settings?.window?.transparent ?? false;
-    const isBlur = !isTransparent && (settings?.window?.blur ?? false);
+    const settings = fullConfig?.settings;
+    const isTransparent = settings?.["window:transparent"] ?? false;
+    const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
     if (isTransparent) {
         winOpts.transparent = true;
     } else if (isBlur) {
@@ -582,8 +579,8 @@ if (unamePlatform !== "darwin") {
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const newWindow = await services.ClientService.MakeWindow();
-    const settings = await services.FileService.GetSettingsConfig();
-    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, settings);
+    const fullConfig = await services.FileService.GetFullConfig();
+    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig);
     newBrowserWindow.show();
 }
 
@@ -700,7 +697,7 @@ async function relaunchBrowserWindows(): Promise<void> {
     globalIsRelaunching = false;
 
     const clientData = await services.ClientService.GetClientData();
-    const settings = await services.FileService.GetSettingsConfig();
+    const fullConfig = await services.FileService.GetFullConfig();
     const wins: WaveBrowserWindow[] = [];
     for (const windowId of clientData.windowids.slice().reverse()) {
         const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
@@ -710,7 +707,7 @@ async function relaunchBrowserWindows(): Promise<void> {
             });
             continue;
         }
-        const win = createBrowserWindow(clientData.oid, windowData, settings);
+        const win = createBrowserWindow(clientData.oid, windowData, fullConfig);
         wins.push(win);
     }
     for (const win of wins) {

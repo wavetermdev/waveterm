@@ -12,7 +12,7 @@ import {
 import { Button } from "@/app/element/button";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, globalStore, useBlockAtom, WOS } from "@/app/store/global";
+import { atoms, globalStore, useBlockAtom, useSettingsKeyAtom, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { WshServer } from "@/app/store/wshserver";
 import { MagnifyIcon } from "@/element/magnify";
@@ -132,7 +132,8 @@ const BlockFrame_Header = ({
 }: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean> }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.meta?.view);
-    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const showBlockIds = jotai.useAtomValue(useSettingsKeyAtom("blockheader:showblockids"));
+    const settingsConfig = jotai.useAtomValue(atoms.settingsAtom);
     const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
@@ -190,9 +191,7 @@ const BlockFrame_Header = ({
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}
                 <div className="block-frame-view-type">{viewName}</div>
-                {settingsConfig?.blockheader?.showblockids && (
-                    <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>
-                )}
+                {showBlockIds && <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>}
             </div>
 
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>

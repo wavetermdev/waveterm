@@ -139,33 +139,33 @@ const Tab = React.memo(
             function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
                 e.preventDefault();
                 let menu: ContextMenuItem[] = [];
-                const settings = globalStore.get(atoms.settingsConfigAtom);
-                console.log("settings", settings);
+                const fullConfig = globalStore.get(atoms.fullConfigAtom);
                 const bgPresets: string[] = [];
-                for (const key in settings?.presets ?? {}) {
+                for (const key in fullConfig?.presets ?? {}) {
                     if (key.startsWith("bg@")) {
                         bgPresets.push(key);
                     }
                 }
                 bgPresets.sort((a, b) => {
-                    const aOrder = settings.presets[a]["display:order"] ?? 0;
-                    const bOrder = settings.presets[b]["display:order"] ?? 0;
+                    const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
+                    const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
                     return aOrder - bOrder;
                 });
-                console.log("bgPresets", bgPresets);
                 menu.push({ label: "Copy TabId", click: () => navigator.clipboard.writeText(id) });
                 menu.push({ type: "separator" });
                 if (bgPresets.length > 0) {
                     const submenu: ContextMenuItem[] = [];
                     const oref = WOS.makeORef("tab", id);
                     for (const presetName of bgPresets) {
-                        const preset = settings.presets[presetName];
+                        const preset = fullConfig.presets[presetName];
                         if (preset == null) {
                             continue;
                         }
                         submenu.push({
                             label: preset["display:name"] ?? presetName,
-                            click: () => services.ObjectService.UpdateObjectMeta(oref, preset),
+                            click: () => {
+                                services.ObjectService.UpdateObjectMeta(oref, preset);
+                            },
                         });
                     }
                     menu.push({ label: "Backgrounds", type: "submenu", submenu });

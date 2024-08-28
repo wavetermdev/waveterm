@@ -3,7 +3,7 @@
 
 import { WshServer } from "@/app/store/wshserver";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getEventORefSubject, globalStore, useBlockAtom, useSettingsAtom } from "@/store/global";
+import { WOS, atoms, getEventORefSubject, globalStore, useBlockAtom, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -135,8 +135,8 @@ class TermViewModel {
         });
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
-            const settings = globalStore.get(atoms.settingsConfigAtom);
-            const theme = computeTheme(settings, blockData?.meta?.["term:theme"]);
+            const fullConfig = get(atoms.fullConfigAtom);
+            const theme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
             if (theme != null && theme.background != null) {
                 return { bg: theme.background };
             }
@@ -203,9 +203,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
     model.htmlElemFocusRef = htmlElemFocusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const termSettingsAtom = useSettingsAtom<TerminalConfigType>("term", (settings: SettingsConfigType) => {
-        return settings?.term;
-    });
+    const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
 
     React.useEffect(() => {
@@ -240,8 +238,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             }
             return true;
         }
-        const settings = globalStore.get(atoms.settingsConfigAtom);
-        const termTheme = computeTheme(settings, blockData?.meta?.["term:theme"]);
+        const fullConfig = globalStore.get(atoms.fullConfigAtom);
+        const termTheme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
         const themeCopy = { ...termTheme };
         themeCopy.background = "#00000000";
         const termWrap = new TermWrap(
@@ -249,8 +247,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             connectElemRef.current,
             {
                 theme: themeCopy,
-                fontSize: termSettings?.fontsize ?? 12,
-                fontFamily: termSettings?.fontfamily ?? "Hack",
+                fontSize: termSettings?.["term:fontsize"] ?? 12,
+                fontFamily: termSettings?.["term:fontfamily"] ?? "Hack",
                 drawBoldTextInBrightColors: false,
                 fontWeight: "normal",
                 fontWeightBold: "bold",
@@ -258,7 +256,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             },
             {
                 keydownHandler: handleTerminalKeydown,
-                useWebGl: !termSettings?.disablewebgl,
+                useWebGl: !termSettings?.["term:disablewebgl"],
             }
         );
         (window as any).term = termWrap;
