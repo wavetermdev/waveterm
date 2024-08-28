@@ -23,8 +23,9 @@ jobs:
       - uses: dashcamio/testdriver@main
         id: testdriver
         with:
-          version: v3.6.5
+          version: v3.9.0
           key: ${{secrets.DASHCAM_API}}
+          os: mac
           prerun: |
             cd ~/actions-runner/_work/testdriver/testdriver/
             brew install go
