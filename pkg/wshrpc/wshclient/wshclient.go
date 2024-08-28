@@ -6,9 +6,9 @@
 package wshclient
 
 import (
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
 // command "announce", wshserver.AnnounceCommand
@@ -185,3 +185,5 @@ func TestCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "test", data, opts)
 	return err
 }
+
+
