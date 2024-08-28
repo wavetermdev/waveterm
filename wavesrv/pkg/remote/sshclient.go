@@ -22,17 +22,20 @@ import (
 	"time"
 
 	"github.com/kevinburke/ssh_config"
+	"github.com/skeema/knownhosts"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/knownhosts"
+	xknownhosts "golang.org/x/crypto/ssh/knownhosts"
 )
 
 type UserInputCancelError struct {
 	Err error
 }
+
+type HostKeyAlgorithmsFunction = func(hostWithPort string) (algos []string)
 
 func (uice UserInputCancelError) Error() string {
 	return uice.Err.Error()
@@ -356,7 +359,7 @@ func lineContainsMatch(line []byte, matches [][]byte) bool {
 	return false
 }
 
-func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
+func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, HostKeyAlgorithmsFunction, error) {
 	rawUserKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "UserKnownHostsFile")
 	userKnownHostsFiles := strings.Fields(rawUserKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
 	rawGlobalKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "GlobalKnownHostsFile")
@@ -364,7 +367,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 
 	osUser, err := user.Current()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var unexpandedKnownHostsFiles []string
 	if osUser.Username == "root" {
@@ -380,7 +383,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 
 	// there are no good known hosts files
 	if len(knownHostsFiles) == 0 {
-		return nil, fmt.Errorf("no known_hosts files provided by ssh. defaults are overridden")
+		return nil, nil, fmt.Errorf("no known_hosts files provided by ssh. defaults are overridden")
 	}
 
 	var unreadableFiles []string
@@ -389,9 +392,10 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 	// incorrectly. if a problem file is found, it is removed from our list
 	// and we try again
 	var basicCallback ssh.HostKeyCallback
+	var keyDb *knownhosts.HostKeyDB
 	for basicCallback == nil && len(knownHostsFiles) > 0 {
 		var err error
-		basicCallback, err = knownhosts.New(knownHostsFiles...)
+		keyDb, err = knownhosts.NewDB(knownHostsFiles...)
 		if serr, ok := err.(*os.PathError); ok {
 			badFile := serr.Path
 			unreadableFiles = append(unreadableFiles, badFile)
@@ -402,13 +406,19 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 				}
 			}
 			if len(okFiles) >= len(knownHostsFiles) {
-				return nil, fmt.Errorf("problem file (%s) doesn't exist. this should not be possible", badFile)
+				return nil, nil, fmt.Errorf("problem file (%s) doesn't exist. this should not be possible", badFile)
 			}
 			knownHostsFiles = okFiles
 		} else if err != nil {
 			// TODO handle obscure problems if possible
-			return nil, fmt.Errorf("known_hosts formatting error: %+v", err)
+			return nil, nil, fmt.Errorf("known_hosts formatting error: %+v", err)
+		} else {
+			basicCallback = keyDb.HostKeyCallback()
 		}
+	}
+
+	if basicCallback == nil {
+		return nil, nil, fmt.Errorf("no valid knownhosts files exist")
 	}
 
 	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
@@ -416,21 +426,21 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 		if err == nil {
 			// success
 			return nil
-		} else if _, ok := err.(*knownhosts.RevokedError); ok {
+		} else if _, ok := err.(*xknownhosts.RevokedError); ok {
 			// revoked credentials are refused outright
 			return err
-		} else if _, ok := err.(*knownhosts.KeyError); !ok {
+		} else if _, ok := err.(*xknownhosts.KeyError); !ok {
 			// this is an unknown error (note the !ok is opposite of usual)
 			return err
 		}
-		serr, _ := err.(*knownhosts.KeyError)
+		serr, _ := err.(*xknownhosts.KeyError)
 		if len(serr.Want) == 0 {
 			// the key was not found
 
 			// try to write to a file that could be parsed
 			var err error
 			for _, filename := range knownHostsFiles {
-				newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
+				newLine := xknownhosts.Line([]string{xknownhosts.Normalize(hostname)}, key)
 				getUserVerification := createUnknownKeyVerifier(filename, hostname, remote.String(), key)
 				err = writeToKnownHosts(filename, newLine, getUserVerification)
 				if err == nil {
@@ -445,7 +455,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 			// should catch cases where there is no known_hosts file
 			if err != nil {
 				for _, filename := range unreadableFiles {
-					newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
+					newLine := xknownhosts.Line([]string{xknownhosts.Normalize(hostname)}, key)
 					getUserVerification := createMissingKnownHostsVerifier(filename, hostname, remote.String(), key)
 					err = writeToKnownHosts(filename, newLine, getUserVerification)
 					if err == nil {
@@ -495,7 +505,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 			return fmt.Errorf("remote host identification has changed")
 		}
 
-		updatedCallback, err := knownhosts.New(knownHostsFiles...)
+		updatedCallback, err := xknownhosts.New(knownHostsFiles...)
 		if err != nil {
 			return err
 		}
@@ -503,7 +513,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 		return updatedCallback(hostname, remote, key)
 	}
 
-	return waveHostKeyCallback, nil
+	return waveHostKeyCallback, keyDb.HostKeyAlgorithms, nil
 }
 
 func DialContext(ctx context.Context, network string, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
@@ -569,17 +579,18 @@ func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDispla
 		authMethods = append(authMethods, authMethod)
 	}
 
-	hostKeyCallback, err := createHostKeyCallback(opts)
+	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	clientConfig := &ssh.ClientConfig{
-		User:            sshKeywords.User,
-		Auth:            authMethods,
-		HostKeyCallback: hostKeyCallback,
-	}
 	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
+	clientConfig := &ssh.ClientConfig{
+		User:              sshKeywords.User,
+		Auth:              authMethods,
+		HostKeyCallback:   hostKeyCallback,
+		HostKeyAlgorithms: hostKeyAlgorithms(networkAddr),
+	}
 	return DialContext(connCtx, "tcp", networkAddr, clientConfig)
 }
 
