@@ -19,6 +19,7 @@ require (
 	github.com/sashabaranov/go-openai v1.28.3
 	github.com/sawka/txwrap v0.2.0
 	github.com/shirou/gopsutil/v4 v4.24.7
+	github.com/skeema/knownhosts v1.3.0
 	github.com/spf13/cobra v1.8.1
 	github.com/wavetermdev/htmltoken v0.1.0
 	golang.org/x/crypto v0.26.0
