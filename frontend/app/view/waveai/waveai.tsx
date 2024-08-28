@@ -6,6 +6,7 @@ import { TypingIndicator } from "@/app/element/typingindicator";
 import { WOS, atoms, fetchWaveFile, getUserName, globalStore } from "@/store/global";
 import * as services from "@/store/services";
 import { WshServer } from "@/store/wshserver";
+import * as util from "@/util/util";
 import * as jotai from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
@@ -104,10 +105,16 @@ export class WaveAiModel implements ViewModel {
             }, 1500);
         });
         this.viewText = jotai.atom((get) => {
+            const settings = get(atoms.settingsAtom);
+            const isCloud = util.isBlank(settings?.["ai:apitoken"]) && util.isBlank(settings?.["ai:baseurl"]);
+            let modelText = "gpt-4o-mini";
+            if (!isCloud && !util.isBlank(settings?.["ai:model"])) {
+                modelText = settings["ai:model"];
+            }
             const viewTextChildren: HeaderElem[] = [
                 {
                     elemtype: "text",
-                    text: get(atoms.settingsAtom)["ai:model"] ?? "gpt-3.5-turbo",
+                    text: modelText,
                 },
             ];
             return viewTextChildren;
@@ -174,7 +181,7 @@ export class WaveAiModel implements ViewModel {
                     opts: opts,
                     prompt: [...history, newPrompt],
                 };
-                const aiGen = WshServer.StreamWaveAiCommand(beMsg);
+                const aiGen = WshServer.StreamWaveAiCommand(beMsg, { timeout: 60000 });
                 let fullMsg = "";
                 for await (const msg of aiGen) {
                     fullMsg += msg.text ?? "";

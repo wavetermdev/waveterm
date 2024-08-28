@@ -82,7 +82,7 @@ func GetWSEndpoint() string {
 }
 
 const DefaultMaxTokens = 1000
-const DefaultModel = "gpt-3.5-turbo"
+const DefaultModel = "gpt-4o-mini"
 const DefaultStreamChanSize = 10
 const PCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
 const PCloudWSEndpointVarName = "PCLOUD_WS_ENDPOINT"

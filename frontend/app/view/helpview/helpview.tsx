@@ -98,7 +98,7 @@ You can also exit without saving by pressing \`Cmd + r\`.
 ### AI
 
 #### How to Ask an LLM a Question
-Asking a question is as simple as typing a message in the prompt and pressing enter. By default, we forward messages to the *gpt-3.5-turbo* model through our server.
+Asking a question is as simple as typing a message in the prompt and pressing enter. By default, we forward messages to the *gpt-4o-mini* model through our server.
 
 #### How To Change The Model
 See *settings help* for more info on how to configure your model.

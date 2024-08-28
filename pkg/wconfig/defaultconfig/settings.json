@@ -1,5 +1,5 @@
 {
-    "ai:model": "gpt-3.5-turbo",
+    "ai:model": "gpt-4o-mini",
     "ai:maxtokens": 1000,
     "ai:timeoutms": 10000,
     "autoupdate:enabled": true,
