@@ -732,7 +732,6 @@ export class LayoutModel {
                 nodeId: nodeid,
                 blockId,
                 blockNum: atom((get) => get(this.leafOrder).indexOf(nodeid) + 1),
-                isResizing: this.isResizing,
                 isFocused: atom((get) => {
                     const treeState = get(this.treeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;
@@ -748,6 +747,7 @@ export class LayoutModel {
                 toggleMagnify: () => this.magnifyNodeToggle(nodeid),
                 focusNode: () => this.focusNode(nodeid),
                 dragHandleRef: createRef(),
+                displayContainerRef: this.displayContainerRef,
             });
         }
         const nodeModel = this.nodeModels.get(nodeid);

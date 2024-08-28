@@ -330,7 +330,6 @@ export interface NodeModel {
     blockNum: Atom<number>;
     nodeId: string;
     blockId: string;
-    isResizing: Atom<boolean>;
     isFocused: Atom<boolean>;
     isMagnified: Atom<boolean>;
     ready: Atom<boolean>;
@@ -339,4 +338,5 @@ export interface NodeModel {
     focusNode: () => void;
     onClose: () => void;
     dragHandleRef?: React.RefObject<HTMLDivElement>;
+    displayContainerRef: React.RefObject<HTMLDivElement>;
 }
