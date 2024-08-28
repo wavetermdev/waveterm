@@ -335,7 +335,7 @@ const OverlayNode = memo(({ node, layoutModel }: OverlayNodeProps) => {
                 }
             }),
         }),
-        [node, additionalProps, layoutModel.displayContainerRef]
+        [node, additionalProps?.rect, layoutModel.displayContainerRef]
     );
 
     // Register the overlay node as a drop target
