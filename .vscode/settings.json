@@ -32,6 +32,9 @@
     "[yaml]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.insertSpaces": true,
-        "editor.autoIndent": "keep",
+        "editor.autoIndent": "keep"
+    },
+    "[go]": {
+        "editor.defaultFormatter": "golang.go"
     }
 }
