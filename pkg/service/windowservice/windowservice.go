@@ -139,6 +139,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	wlayout.QueueLayoutActionForTab(ctx, newWindow.ActiveTabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
 		BlockId:    blockId,
+		Focused:    true,
 	})
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }

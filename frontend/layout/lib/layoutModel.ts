@@ -393,6 +393,7 @@ export class LayoutModel {
                                     blockId: action.blockid,
                                 }),
                                 magnified: action.magnified,
+                                focused: action.focused,
                             };
                             this.treeReducer(insertNodeAction);
                             break;
@@ -423,6 +424,7 @@ export class LayoutModel {
                                 }),
                                 indexArr: action.indexarr,
                                 magnified: action.magnified,
+                                focused: action.focused,
                             };
                             this.treeReducer(insertAction);
                             break;

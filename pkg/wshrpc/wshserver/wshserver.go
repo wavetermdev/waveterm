@@ -281,7 +281,8 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
 		BlockId:    blockRef.OID,
-		Magnified:  &data.Magnified,
+		Magnified:  data.Magnified,
+		Focused:    true,
 	})
 	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
 }

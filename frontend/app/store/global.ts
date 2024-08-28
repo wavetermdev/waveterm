@@ -433,6 +433,7 @@ async function createBlock(blockDef: BlockDef, magnified = false): Promise<strin
         type: LayoutTreeActionType.InsertNode,
         node: newLayoutNode(undefined, undefined, undefined, { blockId }),
         magnified,
+        focused: true,
     };
     const activeTabId = globalStore.get(atoms.uiContext).activetabid;
     const layoutModel = getLayoutModelForTabById(activeTabId);

@@ -125,7 +125,11 @@ interface InsertNodeOperation {
     /**
      * Whether the inserted node should be magnified.
      */
-    magnified?: boolean;
+    magnified: boolean;
+    /**
+     * Whether the inserted node should be focused.
+     */
+    focused: boolean;
 }
 
 /**

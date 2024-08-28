@@ -75,7 +75,6 @@ export function useDebouncedNodeInnerRect(nodeModel: NodeModel): CSSProperties {
             }
             setDebounceTimeout(
                 setTimeout(() => {
-                    console.log("setting inner rect", nodeInnerRect);
                     setInnerRect(nodeInnerRect);
                     setDebounceTimeout(null);
                 }, nodeModel.animationTimeS * 1000)

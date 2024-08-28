@@ -268,7 +268,10 @@ export function insertNode(layoutState: LayoutTreeState, action: LayoutTreeInser
         addChildAt(insertLoc.node, insertLoc.index, action.node);
         if (action.magnified) {
             layoutState.magnifiedNodeId = action.node.id;
+            layoutState.focusedNodeId = action.node.id;
         }
+    }
+    if (action.focused) {
         layoutState.focusedNodeId = action.node.id;
     }
     layoutState.generation++;
@@ -290,7 +293,10 @@ export function insertNodeAtIndex(layoutState: LayoutTreeState, action: LayoutTr
         addChildAt(insertLoc.node, insertLoc.index + 1, action.node);
         if (action.magnified) {
             layoutState.magnifiedNodeId = action.node.id;
+            layoutState.focusedNodeId = action.node.id;
         }
+    }
+    if (action.focused) {
         layoutState.focusedNodeId = action.node.id;
     }
     layoutState.generation++;

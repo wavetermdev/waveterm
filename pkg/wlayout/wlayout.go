@@ -24,6 +24,7 @@ type PortableLayout []struct {
 	IndexArr []int             `json:"indexarr"`
 	Size     *uint             `json:"size,omitempty"`
 	BlockDef *waveobj.BlockDef `json:"blockdef"`
+	Focused  bool              `json:"focused"`
 }
 
 func GetStarterLayout() PortableLayout {
@@ -33,7 +34,7 @@ func GetStarterLayout() PortableLayout {
 				waveobj.MetaKey_View:       "term",
 				waveobj.MetaKey_Controller: "shell",
 			},
-		}},
+		}, Focused: true},
 		{IndexArr: []int{1}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
 				waveobj.MetaKey_View: "cpuplot",
@@ -77,7 +78,7 @@ func GetNewTabLayout() PortableLayout {
 				waveobj.MetaKey_View:       "term",
 				waveobj.MetaKey_Controller: "shell",
 			},
-		}},
+		}, Focused: true},
 	}
 }
 
@@ -132,6 +133,7 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 			BlockId:    blockData.OID,
 			IndexArr:   &layoutAction.IndexArr,
 			NodeSize:   layoutAction.Size,
+			Focused:    layoutAction.Focused,
 		}
 	}
 

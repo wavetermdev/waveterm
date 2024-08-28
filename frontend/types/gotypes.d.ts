@@ -209,7 +209,8 @@ declare global {
         blockid: string;
         nodesize?: number;
         indexarr?: number[];
-        magnified?: boolean;
+        focused: boolean;
+        magnified: boolean;
     };
 
     // waveobj.LayoutState
