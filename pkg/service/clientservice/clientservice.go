@@ -6,15 +6,13 @@ package clientservice
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
-	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wcore"
+	"github.com/wavetermdev/thenextwave/pkg/wlayout"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -97,101 +95,6 @@ func (cs *ClientService) AgreeTos(ctx context.Context) (waveobj.UpdatesRtnType, 
 	if err != nil {
 		return nil, fmt.Errorf("error updating client data: %w", err)
 	}
-	cs.BootstrapStarterLayout(ctx)
+	wlayout.BootstrapStarterLayout(ctx)
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
-}
-
-type PortableLayout []struct {
-	IndexArr []int
-	Size     uint
-	BlockDef *waveobj.BlockDef
-}
-
-func (cs *ClientService) BootstrapStarterLayout(ctx context.Context) error {
-	ctx, cancelFn := context.WithTimeout(ctx, 2*time.Second)
-	defer cancelFn()
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		log.Printf("unable to find client: %v\n", err)
-		return fmt.Errorf("unable to find client: %w", err)
-	}
-
-	if len(client.WindowIds) < 1 {
-		return fmt.Errorf("error bootstrapping layout, no windows exist")
-	}
-
-	windowId := client.WindowIds[0]
-
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
-	if err != nil {
-		return fmt.Errorf("error getting window: %w", err)
-	}
-
-	tabId := window.ActiveTabId
-
-	starterLayout := PortableLayout{
-		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Controller: "shell",
-			},
-		}},
-		{IndexArr: []int{1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "cpuplot",
-			},
-		}},
-		{IndexArr: []int{1, 1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "web",
-				waveobj.MetaKey_Url:  "https://github.com/wavetermdev/waveterm",
-			},
-		}},
-		{IndexArr: []int{1, 2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "preview",
-				waveobj.MetaKey_File: "~",
-			},
-		}},
-		{IndexArr: []int{2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "help",
-			},
-		}},
-		{IndexArr: []int{2, 1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "waveai",
-			},
-		}},
-		// {IndexArr: []int{2, 2}, BlockDef: &wstore.BlockDef{
-		// 	Meta: wstore.MetaMapType{
-		// 		waveobj.MetaKey_View: "web",
-		// 		waveobj.MetaKey_Url:  "https://www.youtube.com/embed/cKqsw_sAsU8",
-		// 	},
-		// }},
-	}
-
-	objsvc := &objectservice.ObjectService{}
-
-	for i := 0; i < len(starterLayout); i++ {
-		layoutAction := starterLayout[i]
-
-		blockData, err := objsvc.CreateBlock_NoUI(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{})
-
-		if err != nil {
-			return fmt.Errorf("unable to create block for starter layout: %w", err)
-		}
-
-		eventbus.SendEventToWindow(windowId, eventbus.WSEventType{
-			EventType: eventbus.WSEvent_LayoutAction,
-			Data: &waveobj.LayoutActionData{
-				ActionType: "insertatindex",
-				TabId:      tabId,
-				BlockId:    blockData.OID,
-				IndexArr:   layoutAction.IndexArr,
-				NodeSize:   layoutAction.Size,
-			},
-		})
-	}
-	return nil
 }

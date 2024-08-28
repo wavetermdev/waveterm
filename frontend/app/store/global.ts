@@ -7,13 +7,11 @@ import {
     getLayoutModelForTabById,
     LayoutTreeActionType,
     LayoutTreeInsertNodeAction,
-    LayoutTreeInsertNodeAtIndexAction,
     newLayoutNode,
 } from "@/layout/index";
 import { getWebServerEndpoint, getWSServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import * as util from "@/util/util";
-import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
 import { modalsModel } from "./modalmodel";
@@ -358,56 +356,6 @@ function handleWSEventMessage(msg: WSEventType) {
     if (msg.eventtype == "rpc") {
         const rpcMsg: RpcMessage = msg.data;
         handleIncomingRpcMessage(rpcMsg, handleWaveEvent);
-        return;
-    }
-    if (msg.eventtype == "layoutaction") {
-        const layoutAction: LayoutActionData = msg.data;
-        const tabId = layoutAction.tabid;
-        const layoutModel = getLayoutModelForTabById(tabId);
-        switch (layoutAction.actiontype) {
-            case LayoutTreeActionType.InsertNode: {
-                const insertNodeAction: LayoutTreeInsertNodeAction = {
-                    type: LayoutTreeActionType.InsertNode,
-                    node: newLayoutNode(undefined, undefined, undefined, {
-                        blockId: layoutAction.blockid,
-                    }),
-                    magnified: layoutAction.magnified,
-                };
-                layoutModel.treeReducer(insertNodeAction);
-                break;
-            }
-            case LayoutTreeActionType.DeleteNode: {
-                const leaf = layoutModel?.getNodeByBlockId(layoutAction.blockid);
-                if (leaf) {
-                    fireAndForget(() => layoutModel.closeNode(leaf.id));
-                } else {
-                    console.error(
-                        "Cannot apply eventbus layout action DeleteNode, could not find leaf node with blockId",
-                        layoutAction.blockid
-                    );
-                }
-                break;
-            }
-            case LayoutTreeActionType.InsertNodeAtIndex: {
-                if (!layoutAction.indexarr) {
-                    console.error("Cannot apply eventbus layout action InsertNodeAtIndex, indexarr field is missing.");
-                    break;
-                }
-                const insertAction: LayoutTreeInsertNodeAtIndexAction = {
-                    type: LayoutTreeActionType.InsertNodeAtIndex,
-                    node: newLayoutNode(undefined, layoutAction.nodesize, undefined, {
-                        blockId: layoutAction.blockid,
-                    }),
-                    indexArr: layoutAction.indexarr,
-                    magnified: layoutAction.magnified,
-                };
-                layoutModel.treeReducer(insertAction);
-                break;
-            }
-            default:
-                console.warn("unsupported layout action", layoutAction);
-                break;
-        }
         return;
     }
     // we send to two subjects just eventType and eventType|oref

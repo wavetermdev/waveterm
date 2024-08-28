@@ -209,7 +209,6 @@ declare global {
 
     // waveobj.LayoutActionData
     type LayoutActionData = {
-        tabid: string;
         actiontype: string;
         blockid: string;
         nodesize?: number;
@@ -222,6 +221,8 @@ declare global {
         rootnode?: any;
         magnifiednodeid?: string;
         focusednodeid?: string;
+        leaforder?: string[];
+        pendingbackendactions?: LayoutActionData[];
     };
 
     // waveobj.MetaTSType

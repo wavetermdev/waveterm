@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wcore"
+	"github.com/wavetermdev/thenextwave/pkg/wlayout"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -100,10 +101,6 @@ func (svc *WindowService) MoveBlockToNewWindow_Meta() tsgenmeta.MethodMeta {
 func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId string, blockId string) (waveobj.UpdatesRtnType, error) {
 	log.Printf("MoveBlockToNewWindow(%s, %s)", currentTabId, blockId)
 	ctx = waveobj.ContextWithUpdates(ctx)
-	curWindowId, err := wstore.DBFindWindowForTabId(ctx, currentTabId)
-	if err != nil {
-		return nil, fmt.Errorf("error finding window for current-tab: %w", err)
-	}
 	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, currentTabId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tab: %w", err)
@@ -135,21 +132,13 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	if !windowCreated {
 		return nil, fmt.Errorf("new window not created")
 	}
-	eventbus.SendEventToWindow(curWindowId, eventbus.WSEventType{
-		EventType: eventbus.WSEvent_LayoutAction,
-		Data: waveobj.LayoutActionData{
-			ActionType: eventbus.WSLayoutActionType_Remove,
-			TabId:      currentTabId,
-			BlockId:    blockId,
-		},
+	wlayout.QueueLayoutActionForTab(ctx, currentTabId, waveobj.LayoutActionData{
+		ActionType: wlayout.LayoutActionDataType_Remove,
+		BlockId:    blockId,
 	})
-	eventbus.SendEventToWindow(newWindow.OID, eventbus.WSEventType{
-		EventType: eventbus.WSEvent_LayoutAction,
-		Data: waveobj.LayoutActionData{
-			ActionType: eventbus.WSLayoutActionType_Insert,
-			TabId:      newWindow.ActiveTabId,
-			BlockId:    blockId,
-		},
+	wlayout.QueueLayoutActionForTab(ctx, newWindow.ActiveTabId, waveobj.LayoutActionData{
+		ActionType: wlayout.LayoutActionDataType_Insert,
+		BlockId:    blockId,
 	})
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }

@@ -174,21 +174,22 @@ func (t *Tab) GetBlockORefs() []ORef {
 }
 
 type LayoutActionData struct {
-	TabId      string `json:"tabid"`
 	ActionType string `json:"actiontype"`
 	BlockId    string `json:"blockid"`
-	NodeSize   uint   `json:"nodesize,omitempty"`
-	IndexArr   []int  `json:"indexarr,omitempty"`
-	Magnified  bool   `json:"magnified,omitempty"`
+	NodeSize   *uint  `json:"nodesize,omitempty"`
+	IndexArr   *[]int `json:"indexarr,omitempty"`
+	Magnified  *bool  `json:"magnified,omitempty"`
 }
 
 type LayoutState struct {
-	OID             string      `json:"oid"`
-	Version         int         `json:"version"`
-	RootNode        any         `json:"rootnode,omitempty"`
-	MagnifiedNodeId string      `json:"magnifiednodeid,omitempty"`
-	FocusedNodeId   string      `json:"focusednodeid,omitempty"`
-	Meta            MetaMapType `json:"meta,omitempty"`
+	OID                   string              `json:"oid"`
+	Version               int                 `json:"version"`
+	RootNode              any                 `json:"rootnode,omitempty"`
+	MagnifiedNodeId       string              `json:"magnifiednodeid,omitempty"`
+	FocusedNodeId         string              `json:"focusednodeid,omitempty"`
+	LeafOrder             *[]string           `json:"leaforder,omitempty"`
+	PendingBackendActions *[]LayoutActionData `json:"pendingbackendactions,omitempty"`
+	Meta                  MetaMapType         `json:"meta,omitempty"`
 }
 
 func (*LayoutState) GetOType() string {

@@ -168,18 +168,18 @@ func CreateClient(ctx context.Context) (*waveobj.Client, error) {
 	return client, nil
 }
 
-func CreateBlock(ctx context.Context, createBlockCmd wshrpc.CommandCreateBlockData) (*waveobj.ORef, error) {
-	tabId := createBlockCmd.TabId
-	blockData, err := wstore.CreateBlock(ctx, tabId, createBlockCmd.BlockDef, createBlockCmd.RtOpts)
+func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
+	blockData, err := wstore.CreateBlock(ctx, tabId, blockDef, rtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
 	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName != "" {
-		err = blockcontroller.StartBlockController(ctx, createBlockCmd.TabId, blockData.OID)
+		err = blockcontroller.StartBlockController(ctx, tabId, blockData.OID)
 		if err != nil {
 			return nil, fmt.Errorf("error starting block controller: %w", err)
 		}
 	}
-	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}, nil
+
+	return blockData, nil
 }

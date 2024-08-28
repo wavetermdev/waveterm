@@ -249,6 +249,11 @@ export type LayoutTreeState = {
     rootNode: LayoutNode;
     focusedNodeId?: string;
     magnifiedNodeId?: string;
+    /**
+     * A computed ordered list of leafs in the layout. This value is driven by the LayoutModel and should not be read when updated from the backend.
+     */
+    leafOrder?: string[];
+    pendingBackendActions: LayoutActionData[];
     generation: number;
 };
 

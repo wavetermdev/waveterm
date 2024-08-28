@@ -51,11 +51,6 @@ type WindowWatchData struct {
 	WatchedORefs map[waveobj.ORef]bool
 }
 
-const (
-	WSLayoutActionType_Insert = "insert"
-	WSLayoutActionType_Remove = "delete"
-)
-
 var globalLock = &sync.Mutex{}
 var wsMap = make(map[string]*WindowWatchData) // websocketid => WindowWatchData
 

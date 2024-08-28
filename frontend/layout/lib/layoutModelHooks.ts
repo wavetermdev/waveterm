@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms, globalStore, WOS } from "@/app/store/global";
+import { fireAndForget } from "@/util/util";
 import useResizeObserver from "@react-hook/resize-observer";
 import { Atom, useAtomValue } from "jotai";
 import { CSSProperties, useEffect, useState } from "react";
@@ -23,7 +24,7 @@ export function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
     }
     const layoutTreeStateAtom = withLayoutTreeStateAtomFromTab(tabAtom);
     const layoutModel = new LayoutModel(layoutTreeStateAtom, globalStore.get, globalStore.set);
-    globalStore.sub(layoutTreeStateAtom, () => layoutModel.updateTreeState());
+    globalStore.sub(layoutTreeStateAtom, () => fireAndForget(() => layoutModel.updateTreeState()));
     layoutModelMap.set(tabId, layoutModel);
     return layoutModel;
 }

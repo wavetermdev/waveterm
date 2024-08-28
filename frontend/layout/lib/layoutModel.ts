@@ -6,7 +6,7 @@ import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { createRef, CSSProperties } from "react";
 import { debounce } from "throttle-debounce";
-import { balanceNode, findNode, walkNodes } from "./layoutNode";
+import { balanceNode, findNode, newLayoutNode, walkNodes } from "./layoutNode";
 import {
     computeMoveNode,
     deleteNode,
@@ -369,17 +369,72 @@ export class LayoutModel {
      * Callback that is invoked when the tree state has been updated on the backend. This ensures the model is updated if the atom is not fully loaded when the model is first instantiated.
      * @param force Whether to force the tree state to update, regardless of whether the state is already up to date.
      */
-    updateTreeState(force = false) {
+    async updateTreeState(force = false) {
         const treeState = this.getter(this.treeStateAtom);
         // Only update the local tree state if it is different from the one in the backend. This function is called even when the update was initiated by the LayoutModel, so we need to filter out false positives or we'll enter an infinite loop.
         if (
             force ||
             !this.treeState?.rootNode ||
             !this.treeState?.generation ||
-            treeState?.generation > this.treeState.generation
+            treeState?.generation > this.treeState.generation ||
+            treeState?.pendingBackendActions?.length
         ) {
             this.treeState = treeState;
-            this.updateTree();
+
+            if (this.treeState.pendingBackendActions?.length) {
+                const actions = this.treeState.pendingBackendActions;
+                this.treeState.pendingBackendActions = undefined;
+                for (const action of actions) {
+                    switch (action.actiontype) {
+                        case LayoutTreeActionType.InsertNode: {
+                            const insertNodeAction: LayoutTreeInsertNodeAction = {
+                                type: LayoutTreeActionType.InsertNode,
+                                node: newLayoutNode(undefined, undefined, undefined, {
+                                    blockId: action.blockid,
+                                }),
+                                magnified: action.magnified,
+                            };
+                            this.treeReducer(insertNodeAction);
+                            break;
+                        }
+                        case LayoutTreeActionType.DeleteNode: {
+                            const leaf = this?.getNodeByBlockId(action.blockid);
+                            if (leaf) {
+                                await this.closeNode(leaf.id);
+                            } else {
+                                console.error(
+                                    "Cannot apply eventbus layout action DeleteNode, could not find leaf node with blockId",
+                                    action.blockid
+                                );
+                            }
+                            break;
+                        }
+                        case LayoutTreeActionType.InsertNodeAtIndex: {
+                            if (!action.indexarr) {
+                                console.error(
+                                    "Cannot apply eventbus layout action InsertNodeAtIndex, indexarr field is missing."
+                                );
+                                break;
+                            }
+                            const insertAction: LayoutTreeInsertNodeAtIndexAction = {
+                                type: LayoutTreeActionType.InsertNodeAtIndex,
+                                node: newLayoutNode(undefined, action.nodesize, undefined, {
+                                    blockId: action.blockid,
+                                }),
+                                indexArr: action.indexarr,
+                                magnified: action.magnified,
+                            };
+                            this.treeReducer(insertAction);
+                            break;
+                        }
+                        default:
+                            console.warn("unsupported layout action", action);
+                            break;
+                    }
+                }
+            } else {
+                this.updateTree();
+            }
         }
     }
 
@@ -407,9 +462,9 @@ export class LayoutModel {
                 this.leafs,
                 newLeafs.sort((a, b) => a.id.localeCompare(b.id))
             );
-            const newLeafOrder = getLeafOrder(newLeafs, newAdditionalProps);
-            this.setter(this.leafOrder, newLeafOrder);
-            this.validateFocusedNode(newLeafOrder);
+            this.treeState.leafOrder = getLeafOrder(newLeafs, newAdditionalProps);
+            this.setter(this.leafOrder, this.treeState.leafOrder);
+            this.validateFocusedNode(this.treeState.leafOrder);
             this.cleanupNodeModels();
         }
     };

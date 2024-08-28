@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wcore"
+	"github.com/wavetermdev/thenextwave/pkg/wlayout"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -86,6 +87,11 @@ func (svc *ObjectService) AddTabToWorkspace(uiContext waveobj.UIContext, tabName
 	tabId, err := wcore.CreateTab(ctx, uiContext.WindowId, tabName, activateTab)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
+	}
+
+	err = wlayout.ApplyPortableLayout(ctx, tabId, wlayout.GetNewTabLayout())
+	if err != nil {
+		return "", nil, fmt.Errorf("error applying new tab layout: %w", err)
 	}
 	return tabId, waveobj.ContextGetUpdatesRtn(ctx), nil
 }
@@ -169,22 +175,6 @@ func (svc *ObjectService) CreateBlock_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) CreateBlock_NoUI(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
-	blockData, err := wstore.CreateBlock(ctx, tabId, blockDef, rtOpts)
-	if err != nil {
-		return nil, fmt.Errorf("error creating block: %w", err)
-	}
-	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
-	if controllerName != "" {
-		err = blockcontroller.StartBlockController(ctx, tabId, blockData.OID)
-		if err != nil {
-			return nil, fmt.Errorf("error starting block controller: %w", err)
-		}
-	}
-
-	return blockData, nil
-}
-
 func (svc *ObjectService) CreateBlock(uiContext waveobj.UIContext, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (string, waveobj.UpdatesRtnType, error) {
 	if uiContext.ActiveTabId == "" {
 		return "", nil, fmt.Errorf("no active tab")
@@ -193,7 +183,7 @@ func (svc *ObjectService) CreateBlock(uiContext waveobj.UIContext, blockDef *wav
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
 
-	blockData, err := svc.CreateBlock_NoUI(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
+	blockData, err := wcore.CreateBlock(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
 	if err != nil {
 		return "", nil, err
 	}

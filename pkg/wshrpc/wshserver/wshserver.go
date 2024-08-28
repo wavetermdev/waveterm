@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/waveai"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wcore"
+	"github.com/wavetermdev/thenextwave/pkg/wlayout"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
@@ -262,10 +263,11 @@ func sendWStoreUpdatesToEventBus(updates waveobj.UpdatesRtnType) {
 func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.CommandCreateBlockData) (*waveobj.ORef, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId := data.TabId
-	blockRef, err := wcore.CreateBlock(ctx, data)
+	blockData, err := wcore.CreateBlock(ctx, tabId, data.BlockDef, data.RtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
+	blockRef := &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	sendWStoreUpdatesToEventBus(updates)
 	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
@@ -275,14 +277,10 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if windowId == "" {
 		return nil, fmt.Errorf("no window found for tab")
 	}
-	eventbus.SendEventToWindow(windowId, eventbus.WSEventType{
-		EventType: eventbus.WSEvent_LayoutAction,
-		Data: &waveobj.LayoutActionData{
-			ActionType: "insert",
-			TabId:      tabId,
-			BlockId:    blockRef.OID,
-			Magnified:  data.Magnified,
-		},
+	wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+		ActionType: wlayout.LayoutActionDataType_Insert,
+		BlockId:    blockRef.OID,
+		Magnified:  &data.Magnified,
 	})
 	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
 }
@@ -428,13 +426,9 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
-	eventbus.SendEventToWindow(windowId, eventbus.WSEventType{
-		EventType: eventbus.WSEvent_LayoutAction,
-		Data: &waveobj.LayoutActionData{
-			ActionType: "delete",
-			TabId:      tabId,
-			BlockId:    data.BlockId,
-		},
+	wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+		ActionType: wlayout.LayoutActionDataType_Remove,
+		BlockId:    data.BlockId,
 	})
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	sendWStoreUpdatesToEventBus(updates)

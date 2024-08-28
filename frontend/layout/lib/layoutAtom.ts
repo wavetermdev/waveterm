@@ -29,6 +29,7 @@ export function withLayoutTreeStateAtomFromTab(tabAtom: Atom<Tab>): WritableLayo
                 rootNode: layoutStateData?.rootnode,
                 focusedNodeId: layoutStateData?.focusednodeid,
                 magnifiedNodeId: layoutStateData?.magnifiednodeid,
+                pendingBackendActions: layoutStateData?.pendingbackendactions,
                 generation: get(generationAtom),
             };
             return layoutTreeState;
@@ -41,6 +42,10 @@ export function withLayoutTreeStateAtomFromTab(tabAtom: Atom<Tab>): WritableLayo
                 waveObjVal.rootnode = value.rootNode;
                 waveObjVal.magnifiednodeid = value.magnifiedNodeId;
                 waveObjVal.focusednodeid = value.focusedNodeId;
+                waveObjVal.leaforder = value.leafOrder; // only set leaforder, never get it, since this value is driven by the frontend
+                waveObjVal.pendingbackendactions = value.pendingBackendActions?.length
+                    ? value.pendingBackendActions
+                    : undefined;
                 set(generationAtom, value.generation);
                 set(stateAtom, waveObjVal);
             }
