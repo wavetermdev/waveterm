@@ -1,6 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as util from "./util";
+
 const KeyTypeCodeRegex = /c{(.*)}/;
 const KeyTypeKey = "key";
 const KeyTypeCode = "code";
@@ -74,6 +76,13 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
 
 function notMod(keyPressMod: boolean, eventMod: boolean) {
     return (keyPressMod && !eventMod) || (eventMod && !keyPressMod);
+}
+
+function isCharacterKeyEvent(event: WaveKeyboardEvent): boolean {
+    if (event.alt || event.meta || event.control) {
+        return false;
+    }
+    return util.countGraphemes(event.key) == 1;
 }
 
 function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
@@ -155,6 +164,7 @@ export {
     adaptFromElectronKeyEvent,
     adaptFromReactOrNativeKeyEvent,
     checkKeyPressed,
+    isCharacterKeyEvent,
     keydownWrapper,
     parseKeyDescription,
     setKeyUtilPlatform,
