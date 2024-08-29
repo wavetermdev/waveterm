@@ -128,6 +128,7 @@ const BlockFrame_Header = ({
     nodeModel,
     viewModel,
     preview,
+    connBtnRef,
     changeConnModalAtom,
 }: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean> }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
@@ -176,8 +177,8 @@ const BlockFrame_Header = ({
     if (manageConnection) {
         const connButtonElem = (
             <ConnectionButton
+                ref={connBtnRef}
                 key={nodeModel.blockId}
-                blockId={nodeModel.blockId}
                 connection={blockData?.meta?.connection}
                 changeConnModalAtom={changeConnModalAtom}
             />
@@ -206,7 +207,11 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
     } else if (elem.elemtype == "input") {
         return <Input decl={elem} className={clsx("block-frame-input", elem.className)} preview={preview} />;
     } else if (elem.elemtype == "text") {
-        return <div className="block-frame-text">{elem.text}</div>;
+        return (
+            <div ref={preview ? null : elem.ref} className="block-frame-text">
+                {elem.text}
+            </div>
+        );
     } else if (elem.elemtype == "textbutton") {
         return (
             <Button className={elem.className} onClick={(e) => elem.onClick(e)}>
@@ -278,6 +283,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const changeConnModalAtom = useBlockAtom(nodeModel.blockId, "changeConn", () => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
+    const connBtnRef = React.useRef<HTMLDivElement>();
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
 
@@ -315,18 +321,19 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             onKeyDown={keydownWrapper(handleKeyDown)}
         >
             <BlockMask nodeModel={nodeModel} />
+            <div className="block-frame-default-inner" style={innerStyle}>
+                <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
+                {preview ? previewElem : children}
+            </div>
             {preview ? null : (
                 <ChangeConnectionBlockModal
                     blockId={nodeModel.blockId}
                     viewModel={viewModel}
                     blockRef={blockModel?.blockRef}
                     changeConnModalAtom={changeConnModalAtom}
+                    connBtnRef={connBtnRef}
                 />
             )}
-            <div className="block-frame-default-inner" style={innerStyle}>
-                <BlockFrame_Header {...props} changeConnModalAtom={changeConnModalAtom} />
-                {preview ? previewElem : children}
-            </div>
         </div>
     );
 };
@@ -336,11 +343,13 @@ const ChangeConnectionBlockModal = React.memo(
         blockId,
         viewModel,
         blockRef,
+        connBtnRef,
         changeConnModalAtom,
     }: {
         blockId: string;
         viewModel: ViewModel;
         blockRef: React.RefObject<HTMLDivElement>;
+        connBtnRef: React.RefObject<HTMLDivElement>;
         changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
     }) => {
         const [connSelected, setConnSelected] = React.useState("");
@@ -377,15 +386,18 @@ const ChangeConnectionBlockModal = React.memo(
         }
         return (
             <TypeAheadModal
-                anchor={blockRef}
-                suggestions={[]}
+                blockRef={blockRef}
+                anchorRef={connBtnRef}
+                // suggestions={[]}
                 onSelect={(selected: string) => {
                     changeConnection(selected);
+                    globalStore.set(changeConnModalAtom, false);
                 }}
                 onKeyDown={(e) => keyutil.keydownWrapper(handleTypeAheadKeyDown)(e)}
                 onChange={(current: string) => setConnSelected(current)}
                 value={connSelected}
-                label="Switch Connection"
+                label="Switch connection"
+                onClickBackdrop={() => globalStore.set(changeConnModalAtom, false)}
             />
         );
     }

@@ -1,57 +1,39 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.type-ahead-modal-wrapper {
+@import "../mixins.less";
+
+.type-ahead-modal-backdrop {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: var(--zindex-modal-wrapper);
-
-    .type-ahead-modal-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(21, 23, 21, 0.7);
-        z-index: var(--zindex-modal-backdrop);
-    }
+    background-color: transparent;
+    z-index: var(--zindex-typeahead-modal-backdrop);
 }
 
 .type-ahead-modal {
-    position: relative;
-    z-index: var(--zindex-modal);
+    position: fixed;
+    z-index: var(--zindex-typeahead-modal);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    padding: 16px;
     border-radius: 8px;
-    border: 0.5px solid var(--modal-border-color);
+    border: 1px solid var(--modal-border-color);
     background: var(--modal-bg-color);
-    box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
-    height: auto;
-
-    .modal-close-btn {
-        position: absolute;
-        right: 8px;
-        top: 8px;
-        padding: 8px 12px;
-
-        i {
-            font-size: 18px;
-        }
-    }
+    box-shadow: 0px 13px 16px 0px rgba(0, 0, 0, 0.4);
 
     .content-wrapper {
         display: flex;
-        flex-direction: column;
         width: 100%;
-        min-width: 100px;
+        padding: 6px;
+        flex-direction: column;
+        align-items: center;
+
+        &.has-suggestions {
+            gap: 6px;
+        }
 
         .label {
             opacity: 0.5;
@@ -59,24 +41,66 @@
             white-space: nowrap;
         }
 
-        input {
-            width: 100%;
-            flex-shrink: 0;
+        .input {
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            height: 24px;
+            border-radius: 0;
+
+            input {
+                width: 100%;
+                flex-shrink: 0;
+                padding: 4px 6px;
+            }
+
+            .input-decoration.end-position {
+                margin: 6px;
+
+                i {
+                    opacity: 0.3;
+                }
+            }
         }
 
         .suggestions-wrapper {
             width: 100%;
             overflow-y: auto;
             overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
 
-            .suggestion {
+            .suggestion-header {
+                font-size: 11px;
+                font-style: normal;
+                font-weight: 500;
+                line-height: 12px;
+                opacity: 0.7;
+                letter-spacing: 0.11px;
+                padding: 4px 0px 0px 4px;
+            }
+
+            .suggestion-item {
                 width: 100%;
                 cursor: pointer;
-                padding: 7px 10px;
+                display: flex;
+                padding: 8px 6px;
+                align-items: center;
+                gap: 8px;
+                align-self: stretch;
 
                 &:hover {
                     background-color: var(--highlight-bg-color);
                     border-radius: 4px;
+                }
+
+                .name {
+                    .ellipsis();
+                    display: flex;
+                    gap: 8px;
+                    font-size: 11px;
+                    font-weight: 400;
+                    line-height: 14px;
                 }
             }
         }

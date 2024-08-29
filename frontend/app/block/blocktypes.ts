@@ -20,4 +20,5 @@ export interface BlockFrameProps {
     preview: boolean;
     numBlocksInTab?: number;
     children?: React.ReactNode;
+    connBtnRef?: React.RefObject<HTMLDivElement>;
 }

@@ -161,6 +161,7 @@ declare global {
     type HeaderText = {
         elemtype: "text";
         text: string;
+        ref?: React.MutableRefObject<HTMLDivElement>;
     };
 
     type HeaderInput = {

@@ -46,7 +46,13 @@ function makeViewModel(blockId: string, blockView: string): ViewModel {
     return makeDefaultViewModel(blockId, blockView);
 }
 
-function getViewElem(blockId: string, blockView: string, viewModel: ViewModel): JSX.Element {
+function getViewElem(
+    blockId: string,
+    blockRef: React.RefObject<HTMLDivElement>,
+    contentRef: React.RefObject<HTMLDivElement>,
+    blockView: string,
+    viewModel: ViewModel
+): JSX.Element {
     if (util.isBlank(blockView)) {
         return <CenteredDiv>No View</CenteredDiv>;
     }
@@ -54,7 +60,15 @@ function getViewElem(blockId: string, blockView: string, viewModel: ViewModel): 
         return <TerminalView key={blockId} blockId={blockId} model={viewModel as TermViewModel} />;
     }
     if (blockView === "preview") {
-        return <PreviewView key={blockId} blockId={blockId} model={viewModel as PreviewModel} />;
+        return (
+            <PreviewView
+                key={blockId}
+                blockId={blockId}
+                blockRef={blockRef}
+                contentRef={contentRef}
+                model={viewModel as PreviewModel}
+            />
+        );
     }
     if (blockView === "plot") {
         return <PlotView key={blockId} />;
@@ -179,7 +193,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
     }, [innerRect, disablePointerEvents, blockContentOffset]);
 
     const viewElem = React.useMemo(
-        () => getViewElem(nodeModel.blockId, blockData?.meta?.view, viewModel),
+        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
         [nodeModel.blockId, blockData?.meta?.view, viewModel]
     );
 

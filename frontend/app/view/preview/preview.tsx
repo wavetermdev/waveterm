@@ -14,7 +14,7 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { loadable } from "jotai/utils";
-import { useCallback, useEffect, useRef } from "react";
+import { createRef, useCallback, useEffect, useState } from "react";
 import { CenteredDiv } from "../../element/quickelems";
 import { CodeEditor } from "../codeeditor/codeeditor";
 import { CSVView } from "./csvview";
@@ -46,6 +46,7 @@ export class PreviewModel implements ViewModel {
     endIconButtons: jotai.Atom<HeaderIconButton[]>;
     ceReadOnly: jotai.PrimitiveAtom<boolean>;
     isCeView: jotai.PrimitiveAtom<boolean>;
+    previewTextRef: React.RefObject<HTMLDivElement>;
 
     fileName: jotai.Atom<string>;
     connection: jotai.Atom<string>;
@@ -70,6 +71,7 @@ export class PreviewModel implements ViewModel {
         this.blockId = blockId;
         this.showHiddenFiles = jotai.atom(true);
         this.refreshVersion = jotai.atom(0);
+        this.previewTextRef = createRef();
         this.ceReadOnly = jotai.atom(true);
         this.isCeView = jotai.atom(false);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
@@ -162,6 +164,7 @@ export class PreviewModel implements ViewModel {
                     {
                         elemtype: "text",
                         text: get(this.fileName),
+                        ref: this.previewTextRef,
                     },
                 ];
             }
@@ -241,12 +244,70 @@ export class PreviewModel implements ViewModel {
         this.goParentDirectory = this.goParentDirectory.bind(this);
     }
 
-    goHistory(newPath: string) {
-        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+    async resolvePath(filePath, basePath) {
+        // Handle paths starting with "~" to refer to the home directory
+        if (filePath.startsWith("~")) {
+            try {
+                const conn = globalStore.get(this.connection);
+                const sf = await services.FileService.StatFile(conn, "~");
+                basePath = sf.path; // Update basePath to the fetched home directory path
+                filePath = basePath + filePath.slice(1); // Replace "~" with the fetched home directory path
+            } catch (error) {
+                console.error("Error fetching home directory:", error);
+                return basePath;
+            }
+        }
+        // If filePath is an absolute path, return it directly
+        if (filePath.startsWith("/")) {
+            return filePath;
+        }
+        const stack = basePath.split("/");
+        // Ensure no empty segments from trailing slashes
+        if (stack[stack.length - 1] === "") {
+            stack.pop();
+        }
+        // Process the filePath parts
+        filePath.split("/").forEach((part) => {
+            if (part === "..") {
+                // Go up one level, avoid going above root level
+                if (stack.length > 1) {
+                    stack.pop();
+                }
+            } else if (part === "." || part === "") {
+                // Ignore current directory marker and empty parts
+            } else {
+                // Normal path part, add to the stack
+                stack.push(part);
+            }
+        });
+        return stack.join("/");
+    }
+
+    async isValidPath(path) {
+        try {
+            const conn = globalStore.get(this.connection);
+            const sf = await services.FileService.StatFile(conn, path);
+            const isValid = !sf.notfound;
+            return isValid;
+        } catch (error) {
+            console.error("Error checking path validity:", error);
+            return false;
+        }
+    }
+
+    async goHistory(newPath, isValidated = false) {
         const fileName = globalStore.get(this.fileName);
         if (fileName == null) {
             return;
         }
+        if (!isValidated) {
+            newPath = await this.resolvePath(newPath, fileName);
+            const isValid = await this.isValidPath(newPath);
+            if (!isValid) {
+                return;
+            }
+        }
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const updateMeta = historyutil.goHistory("file", fileName, newPath, blockMeta);
         if (updateMeta == null) {
             return;
@@ -572,8 +633,17 @@ function iconForFile(mimeType: string, fileName: string): string {
     }
 }
 
-function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel }) {
-    const contentRef = useRef<HTMLDivElement>(null);
+function PreviewView({
+    blockId,
+    blockRef,
+    contentRef,
+    model,
+}: {
+    blockId: string;
+    blockRef: React.RefObject<HTMLDivElement>;
+    contentRef: React.RefObject<HTMLDivElement>;
+    model: PreviewModel;
+}) {
     const fileNameAtom = model.fileName;
     const statFileAtom = model.statFile;
     const fileMimeTypeAtom = model.fileMimeType;
@@ -589,6 +659,10 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     const conn = jotai.useAtomValue(model.connection);
     const typeAhead = jotai.useAtomValue(atoms.typeAheadModalAtom);
     let blockIcon = iconForFile(mimeType, fileName);
+
+    const [filePath, setFilePath] = useState("");
+    const [openFileError, setOpenFileError] = useState("");
+    const [openFileModal, setOpenFileModal] = useState(false);
 
     // ensure consistent hook calls
     const specializedView = (() => {
@@ -646,23 +720,47 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
 
     const handleKeyDown = useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
-            if (keyutil.checkKeyPressed(waveEvent, "Cmd:o")) {
-                globalStore.set(atoms.typeAheadModalAtom, {
-                    ...(typeAhead as TypeAheadModalType),
-                    [blockId]: true,
-                });
-                return true;
-            }
-            if (keyutil.checkKeyPressed(waveEvent, "Cmd:d") || keyutil.checkKeyPressed(waveEvent, "Enter")) {
-                globalStore.set(atoms.typeAheadModalAtom, {
-                    ...(typeAhead as TypeAheadModalType),
-                    [blockId]: false,
-                });
+            const updateModalAndError = (isOpen, errorMsg = "") => {
+                setOpenFileModal(isOpen);
+                setOpenFileError(errorMsg);
+            };
+
+            const handleEnterPress = async () => {
+                const newPath = await model.resolvePath(filePath, fileName);
+                const isValidPath = await model.isValidPath(newPath);
+                if (isValidPath) {
+                    updateModalAndError(false);
+                    await model.goHistory(newPath, true);
+                } else {
+                    updateModalAndError(true, "The path you entered does not exist.");
+                }
                 model.giveFocus();
-                return;
-            }
+                return isValidPath;
+            };
+
+            const handleCommandOperations = async () => {
+                if (keyutil.checkKeyPressed(waveEvent, "Cmd:o")) {
+                    updateModalAndError(true);
+                    return true;
+                }
+                if (keyutil.checkKeyPressed(waveEvent, "Cmd:d")) {
+                    updateModalAndError(false);
+                    return false;
+                }
+                if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+                    return handleEnterPress();
+                }
+                return false;
+            };
+
+            handleCommandOperations().catch((error) => {
+                console.error("Error handling key down:", error);
+                updateModalAndError(true, "An error occurred during operation.");
+                return false;
+            });
+            return false;
         },
-        [typeAhead, model, blockId]
+        [typeAhead, model, blockId, filePath, fileName]
     );
 
     const handleFileSuggestionSelect = (value) => {
@@ -670,6 +768,10 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
             ...(typeAhead as TypeAheadModalType),
             [blockId]: false,
         });
+    };
+
+    const handleFileSuggestionChange = (value) => {
+        setFilePath(value);
     };
 
     useEffect(() => {
@@ -681,12 +783,16 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
 
     return (
         <>
-            {typeAhead[blockId] && (
+            {openFileModal && (
                 <TypeAheadModal
-                    label="Open file:"
-                    anchor={contentRef}
+                    label="Open file"
+                    suggestions={[]}
+                    blockRef={blockRef}
+                    anchorRef={model.previewTextRef}
                     onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
                     onSelect={handleFileSuggestionSelect}
+                    onChange={handleFileSuggestionChange}
+                    onClickBackdrop={() => setOpenFileModal(false)}
                 />
             )}
             <div
