@@ -426,7 +426,8 @@ func GenerateWshServerMethod_ResponseStream(methodDecl *wshrpc.WshRpcMethodDecl,
 	}
 	genRespType := fmt.Sprintf("AsyncGenerator<%s, void, boolean>", respType)
 	if methodDecl.CommandDataType != nil {
-		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), genRespType))
+		cmdDataTsName, _ := TypeToTSType(methodDecl.CommandDataType, tsTypesMap)
+		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, cmdDataTsName, genRespType))
 	} else {
 		sb.WriteString(fmt.Sprintf("	%s(opts?: RpcOpts): %s {\n", methodDecl.MethodName, genRespType))
 	}
@@ -448,7 +449,8 @@ func GenerateWshServerMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMa
 		dataName = "data"
 	}
 	if methodDecl.CommandDataType != nil {
-		sb.WriteString(fmt.Sprintf("    %s(data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), rtnType))
+		cmdDataTsName, _ := TypeToTSType(methodDecl.CommandDataType, tsTypesMap)
+		sb.WriteString(fmt.Sprintf("    %s(data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, cmdDataTsName, rtnType))
 	} else {
 		sb.WriteString(fmt.Sprintf("    %s(opts?: RpcOpts): %s {\n", methodDecl.MethodName, rtnType))
 	}

@@ -28,6 +28,11 @@ contextBridge.exposeInMainWorld("api", {
     installAppUpdate: () => ipcRenderer.send("install-app-update"),
     onMenuItemAbout: (callback) => ipcRenderer.on("menu-item-about", callback),
     updateWindowControlsOverlay: (rect) => ipcRenderer.send("update-window-controls-overlay", rect),
+    onReinjectKey: (callback) => ipcRenderer.on("reinject-key", (_event, waveEvent) => callback(waveEvent)),
+    setWebviewFocus: (focused: number) => ipcRenderer.send("webview-focus", focused),
+    registerGlobalWebviewKeys: (keys) => ipcRenderer.send("register-global-webview-keys", keys),
+    onControlShiftStateUpdate: (callback) =>
+        ipcRenderer.on("control-shift-state-update", (_event, state) => callback(state)),
 });
 
 // Custom event for "new-window"

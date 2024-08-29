@@ -1,9 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WOS, globalStore, openLink } from "@/store/global";
+import { getApi, openLink } from "@/app/store/global";
+import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
+import { NodeModel } from "@/layout/index";
+import { WOS, globalStore } from "@/store/global";
 import * as services from "@/store/services";
-import { checkKeyPressed } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
@@ -27,8 +30,10 @@ export class WebViewModel implements ViewModel {
     refreshIcon: jotai.PrimitiveAtom<string>;
     webviewRef: React.RefObject<WebviewTag>;
     urlInputRef: React.RefObject<HTMLInputElement>;
+    nodeModel: NodeModel;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: NodeModel) {
+        this.nodeModel = nodeModel;
         this.viewType = "web";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
@@ -131,15 +136,19 @@ export class WebViewModel implements ViewModel {
         }
     }
 
-    handleBack(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-        e.preventDefault();
-        e.stopPropagation();
+    handleBack(e?: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         this.webviewRef.current?.goBack();
     }
 
-    handleForward(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-        e.preventDefault();
-        e.stopPropagation();
+    handleForward(e?: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         this.webviewRef.current?.goForward();
     }
 
@@ -165,10 +174,15 @@ export class WebViewModel implements ViewModel {
     }
 
     handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        if (event.key === "Enter") {
+        const waveEvent = adaptFromReactOrNativeKeyEvent(event);
+        if (checkKeyPressed(waveEvent, "Enter")) {
             const url = globalStore.get(this.url);
             this.loadUrl(url);
             this.urlInputRef.current?.blur();
+            return;
+        }
+        if (checkKeyPressed(waveEvent, "Escape")) {
+            this.webviewRef.current?.focus();
         }
     }
 
@@ -268,10 +282,23 @@ export class WebViewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
-        if (this.urlInputRef.current) {
-            this.urlInputRef.current.focus({ preventScroll: true });
-            return true;
+        const ctrlShiftState = globalStore.get(getSimpleControlShiftAtom());
+        if (ctrlShiftState) {
+            // this is really weird, we don't get keyup events from webview
+            const unsubFn = globalStore.sub(getSimpleControlShiftAtom(), () => {
+                const state = globalStore.get(getSimpleControlShiftAtom());
+                if (!state) {
+                    unsubFn();
+                    const isStillFocused = globalStore.get(this.nodeModel.isFocused);
+                    if (isStillFocused) {
+                        this.webviewRef.current?.focus();
+                    }
+                }
+            });
+            return false;
         }
+        this.webviewRef.current?.focus();
+        return true;
     }
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {
@@ -284,12 +311,20 @@ export class WebViewModel implements ViewModel {
             this.webviewRef?.current?.reload();
             return true;
         }
+        if (checkKeyPressed(e, "Cmd:ArrowLeft")) {
+            this.handleBack(null);
+            return true;
+        }
+        if (checkKeyPressed(e, "Cmd:ArrowRight")) {
+            this.handleForward(null);
+            return true;
+        }
         return false;
     }
 }
 
-function makeWebViewModel(blockId: string): WebViewModel {
-    const webviewModel = new WebViewModel(blockId);
+function makeWebViewModel(blockId: string, nodeModel: NodeModel): WebViewModel {
+    const webviewModel = new WebViewModel(blockId, nodeModel);
     return webviewModel;
 }
 
@@ -342,6 +377,13 @@ const WebView = memo(({ model }: WebViewProps) => {
                     console.error(`Failed to load ${e.validatedURL}: ${e.errorDescription}`);
                 }
             };
+            const webviewFocus = () => {
+                getApi().setWebviewFocus(webview.getWebContentsId());
+                model.nodeModel.focusNode();
+            };
+            const webviewBlur = () => {
+                getApi().setWebviewFocus(null);
+            };
 
             webview.addEventListener("did-navigate-in-page", navigateListener);
             webview.addEventListener("did-navigate", navigateListener);
@@ -349,6 +391,9 @@ const WebView = memo(({ model }: WebViewProps) => {
             webview.addEventListener("did-stop-loading", stopLoadingHandler);
             webview.addEventListener("new-window", newWindowHandler);
             webview.addEventListener("did-fail-load", failLoadHandler);
+
+            webview.addEventListener("focus", webviewFocus);
+            webview.addEventListener("blur", webviewBlur);
 
             // Clean up event listeners on component unmount
             return () => {
@@ -358,6 +403,8 @@ const WebView = memo(({ model }: WebViewProps) => {
                 webview.removeEventListener("did-fail-load", failLoadHandler);
                 webview.removeEventListener("did-start-loading", startLoadingHandler);
                 webview.removeEventListener("did-stop-loading", stopLoadingHandler);
+                webview.addEventListener("focus", webviewFocus);
+                webview.addEventListener("blur", webviewBlur);
             };
         }
     }, []);

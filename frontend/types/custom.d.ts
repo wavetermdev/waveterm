@@ -21,6 +21,7 @@ declare global {
         reducedMotionPreferenceAtom: jotai.Atom<boolean>;
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
         typeAheadModalAtom: jotai.PrimitiveAtom<TypeAheadModalType>;
+        modalOpen: jotai.PrimitiveAtom<boolean>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -65,6 +66,10 @@ declare global {
         installAppUpdate: () => void;
         onMenuItemAbout: (callback: () => void) => void;
         updateWindowControlsOverlay: (rect: Dimensions) => void;
+        onReinjectKey: (callback: (waveEvent: WaveKeyboardEvent) => void) => void;
+        setWebviewFocus: (focusedId: number) => void; // focusedId si the getWebContentsId of the webview
+        registerGlobalWebviewKeys: (keys: string[]) => void;
+        onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
     };
 
     type ElectronContextMenuItem = {
@@ -97,7 +102,7 @@ declare global {
     };
 
     interface WaveKeyboardEvent {
-        type: string;
+        type: "keydown" | "keyup" | "keypress" | "unknown";
         /**
          * Equivalent to KeyboardEvent.key.
          */

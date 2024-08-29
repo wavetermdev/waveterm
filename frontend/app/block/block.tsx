@@ -27,7 +27,7 @@ type FullBlockProps = {
     viewModel: ViewModel;
 };
 
-function makeViewModel(blockId: string, blockView: string): ViewModel {
+function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel): ViewModel {
     if (blockView === "term") {
         return makeTerminalModel(blockId);
     }
@@ -35,7 +35,7 @@ function makeViewModel(blockId: string, blockView: string): ViewModel {
         return makePreviewModel(blockId);
     }
     if (blockView === "web") {
-        return makeWebViewModel(blockId);
+        return makeWebViewModel(blockId, nodeModel);
     }
     if (blockView === "waveai") {
         return makeWaveAiViewModel(blockId);
@@ -250,7 +250,7 @@ const Block = React.memo((props: BlockProps) => {
     const [blockData, loading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", props.nodeModel.blockId));
     let viewModel = getViewModel(props.nodeModel.blockId);
     if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
-        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view);
+        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel);
         registerViewModel(props.nodeModel.blockId, viewModel);
     }
     React.useEffect(() => {

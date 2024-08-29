@@ -1,6 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+    registerControlShiftStateUpdateHandler,
+    registerElectronReinjectKeyHandler,
+    registerGlobalKeys,
+} from "@/app/store/keymodel";
 import { WshServer } from "@/app/store/wshserver";
 import {
     atoms,
@@ -57,6 +62,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     initWS();
     await loadConnStatus();
     subscribeToConnEvents();
+    registerGlobalKeys();
+    registerElectronReinjectKeyHandler();
+    registerControlShiftStateUpdateHandler();
     const fullConfig = await services.FileService.GetFullConfig();
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);

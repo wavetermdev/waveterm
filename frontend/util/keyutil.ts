@@ -139,14 +139,24 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     rtn.code = event.code;
     rtn.key = event.key;
     rtn.location = event.location;
-    rtn.type = event.type;
+    if (event.type == "keydown" || event.type == "keyup" || event.type == "keypress") {
+        rtn.type = event.type;
+    } else {
+        rtn.type = "unknown";
+    }
     rtn.repeat = event.repeat;
     return rtn;
 }
 
 function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
-    rtn.type = event.type;
+    if (event.type == "keyUp") {
+        rtn.type = "keyup";
+    } else if (event.type == "keyDown") {
+        rtn.type = "keydown";
+    } else {
+        rtn.type = "unknown";
+    }
     rtn.control = event.control;
     rtn.cmd = PLATFORM == PlatformMacOS ? event.meta : event.alt;
     rtn.option = PLATFORM == PlatformMacOS ? event.alt : event.meta;

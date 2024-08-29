@@ -315,6 +315,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 "block-preview": preview,
                 "block-no-highlight": numBlocksInTab === 1,
             })}
+            data-blockid={nodeModel.blockId}
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}

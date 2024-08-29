@@ -1,18 +1,20 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { appHandleKeyDown, appHandleKeyUp } from "@/app/appkey";
 import { useWaveObjectValue } from "@/app/store/wos";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { PLATFORM, WOS, atoms, getApi, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import { appHandleKeyDown } from "@/store/keymodel";
 import { getWebServerEndpoint } from "@/util/endpoints";
+import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import useResizeObserver from "@react-hook/resize-observer";
 import clsx from "clsx";
 import Color from "color";
 import * as csstree from "css-tree";
+import debug from "debug";
 import * as jotai from "jotai";
 import "overlayscrollbars/overlayscrollbars.css";
 import * as React from "react";
@@ -21,6 +23,9 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { debounce } from "throttle-debounce";
 import "./app.less";
 import { CenteredDiv } from "./element/quickelems";
+
+const dlog = debug("wave:app");
+const focusLog = debug("wave:focus");
 
 const App = () => {
     let Provider = jotai.Provider;
@@ -101,6 +106,40 @@ function AppSettingsUpdater() {
             document.body.style.opacity = null;
         }
     }, [windowSettings]);
+    return null;
+}
+
+function appFocusIn(e: FocusEvent) {
+    focusLog("focusin", getElemAsStr(e.target), "<=", getElemAsStr(e.relatedTarget));
+}
+
+function appFocusOut(e: FocusEvent) {
+    focusLog("focusout", getElemAsStr(e.target), "=>", getElemAsStr(e.relatedTarget));
+}
+
+function appSelectionChange(e: Event) {
+    const selection = document.getSelection();
+    focusLog("selectionchange", getElemAsStr(selection.anchorNode));
+}
+
+function AppFocusHandler() {
+    React.useEffect(() => {
+        document.addEventListener("focusin", appFocusIn);
+        document.addEventListener("focusout", appFocusOut);
+        document.addEventListener("selectionchange", appSelectionChange);
+        const ivId = setInterval(() => {
+            const activeElement = document.activeElement;
+            if (activeElement instanceof HTMLElement) {
+                focusLog("activeElement", getElemAsStr(activeElement));
+            }
+        }, 2000);
+        return () => {
+            document.removeEventListener("focusin", appFocusIn);
+            document.removeEventListener("focusout", appFocusOut);
+            document.removeEventListener("selectionchange", appSelectionChange);
+            clearInterval(ivId);
+        };
+    });
     return null;
 }
 
@@ -202,12 +241,9 @@ const AppKeyHandlers = () => {
     React.useEffect(() => {
         const staticKeyDownHandler = keyutil.keydownWrapper(appHandleKeyDown);
         document.addEventListener("keydown", staticKeyDownHandler);
-        const savedKeyUpHandler = appHandleKeyUp;
-        document.addEventListener("keyup", savedKeyUpHandler);
 
         return () => {
             document.removeEventListener("keydown", staticKeyDownHandler);
-            document.removeEventListener("keyup", savedKeyUpHandler);
         };
     }, []);
     return null;
@@ -247,6 +283,7 @@ const AppInner = () => {
         >
             <AppBackground />
             <AppKeyHandlers />
+            <AppFocusHandler />
             <AppSettingsUpdater />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />

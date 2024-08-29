@@ -126,6 +126,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     }
     const reducedMotionPreferenceAtom = jotai.atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
     const typeAheadModalAtom = jotai.atom({});
+    const modalOpen = jotai.atom(false);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         windowId: windowIdAtom,
@@ -143,6 +144,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         updaterStatusAtom,
         reducedMotionPreferenceAtom,
         typeAheadModalAtom,
+        modalOpen,
     };
 }
 

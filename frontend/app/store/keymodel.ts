@@ -1,7 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock, globalStore, WOS } from "@/app/store/global";
+import { atoms, createBlock, getApi, getViewModel, globalStore, WOS } from "@/app/store/global";
+import * as services from "@/app/store/services";
 import {
     deleteLayoutModelForTab,
     getLayoutModelForActiveTab,
@@ -9,11 +10,15 @@ import {
     getLayoutModelForTabById,
     NavigateDirection,
 } from "@/layout/index";
-import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as jotai from "jotai";
 
 const simpleControlShiftAtom = jotai.atom(false);
+const globalKeyMap = new Map<string, (waveEvent: WaveKeyboardEvent) => boolean>();
+
+function getSimpleControlShiftAtom() {
+    return simpleControlShiftAtom;
+}
 
 function setControlShift() {
     globalStore.set(simpleControlShiftAtom, true);
@@ -28,6 +33,22 @@ function setControlShift() {
 function unsetControlShift() {
     globalStore.set(simpleControlShiftAtom, false);
     globalStore.set(atoms.controlShiftDelayAtom, false);
+}
+
+function shouldDispatchToBlock(): boolean {
+    if (globalStore.get(atoms.modalOpen)) {
+        return false;
+    }
+    const activeElem = document.activeElement;
+    if (activeElem != null && activeElem instanceof HTMLElement) {
+        if (activeElem.tagName == "INPUT" || activeElem.tagName == "TEXTAREA") {
+            return false;
+        }
+        if (activeElem.contentEditable == "true") {
+            return false;
+        }
+    }
+    return true;
 }
 
 function genericClose(tabId: string) {
@@ -88,18 +109,6 @@ function switchTab(offset: number) {
     services.ObjectService.SetActiveTab(newActiveTabId);
 }
 
-function appHandleKeyUp(event: KeyboardEvent) {
-    const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
-    if (waveEvent.key === "Control" || waveEvent.key === "Shift") {
-        unsetControlShift();
-    }
-    if (waveEvent.key == "Meta") {
-        if (waveEvent.control && waveEvent.shift) {
-            setControlShift();
-        }
-    }
-}
-
 async function handleCmdN() {
     const termBlockDef: BlockDef = {
         meta: {
@@ -125,74 +134,130 @@ async function handleCmdN() {
 }
 
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
-    if (waveEvent.key === "Control" || waveEvent.key === "Shift" || waveEvent.key === "Meta") {
-        if (waveEvent.control && waveEvent.shift && !waveEvent.meta) {
-            // Set the control and shift without the Meta key
+    return handleGlobalWaveKeyboardEvents(waveEvent);
+}
+
+function registerControlShiftStateUpdateHandler() {
+    getApi().onControlShiftStateUpdate((state: boolean) => {
+        if (state) {
             setControlShift();
         } else {
-            // Unset if Meta is pressed
             unsetControlShift();
         }
-        return false;
-    }
-    const tabId = globalStore.get(atoms.activeTabId);
+    });
+}
 
-    // global key handler for now (refactor later)
-    if (keyutil.checkKeyPressed(waveEvent, "Cmd:]") || keyutil.checkKeyPressed(waveEvent, "Shift:Cmd:]")) {
+function registerElectronReinjectKeyHandler() {
+    getApi().onReinjectKey((event: WaveKeyboardEvent) => {
+        console.log("reinject key event", event);
+        const handled = handleGlobalWaveKeyboardEvents(event);
+        if (handled) {
+            return;
+        }
+        const layoutModel = getLayoutModelForActiveTab();
+        const focusedNode = globalStore.get(layoutModel.focusedNode);
+        const blockId = focusedNode?.data?.blockId;
+        if (blockId != null && shouldDispatchToBlock()) {
+            const viewModel = getViewModel(blockId);
+            viewModel?.keyDownHandler?.(event);
+        }
+    });
+}
+
+function registerGlobalKeys() {
+    globalKeyMap.set("Cmd:]", () => {
         switchTab(1);
         return true;
-    }
-    if (keyutil.checkKeyPressed(waveEvent, "Cmd:[") || keyutil.checkKeyPressed(waveEvent, "Shift:Cmd:[")) {
+    });
+    globalKeyMap.set("Shift:Cmd:]", () => {
+        switchTab(1);
+        return true;
+    });
+    globalKeyMap.set("Cmd:[", () => {
         switchTab(-1);
         return true;
-    }
-    if (keyutil.checkKeyPressed(waveEvent, "Cmd:n")) {
+    });
+    globalKeyMap.set("Shift:Cmd:[", () => {
+        switchTab(-1);
+        return true;
+    });
+    globalKeyMap.set("Cmd:n", () => {
         handleCmdN();
         return true;
-    }
-    if (keyutil.checkKeyPressed(waveEvent, "Cmd:t")) {
+    });
+    globalKeyMap.set("Cmd:i", () => {
+        // TODO
+        return true;
+    });
+    globalKeyMap.set("Cmd:t", () => {
         const workspace = globalStore.get(atoms.workspace);
         const newTabName = `T${workspace.tabids.length + 1}`;
         services.ObjectService.AddTabToWorkspace(newTabName, true);
         return true;
-    }
-    for (let idx = 1; idx <= 9; idx++) {
-        if (keyutil.checkKeyPressed(waveEvent, `Cmd:${idx}`)) {
-            switchTabAbs(idx);
-            return true;
-        }
-    }
-    for (let idx = 1; idx <= 9; idx++) {
-        if (
-            keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Digit${idx}}`) ||
-            keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Numpad${idx}}`)
-        ) {
-            switchBlockByBlockNum(idx);
-            return true;
-        }
-    }
-    if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowUp")) {
-        switchBlockInDirection(tabId, NavigateDirection.Up);
-        return true;
-    }
-    if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowDown")) {
-        switchBlockInDirection(tabId, NavigateDirection.Down);
-        return true;
-    }
-    if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowLeft")) {
-        switchBlockInDirection(tabId, NavigateDirection.Left);
-        return true;
-    }
-    if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowRight")) {
-        switchBlockInDirection(tabId, NavigateDirection.Right);
-        return true;
-    }
-    if (keyutil.checkKeyPressed(waveEvent, "Cmd:w")) {
-        // close block, if no more blocks, close tab
+    });
+    globalKeyMap.set("Cmd:w", () => {
+        const tabId = globalStore.get(atoms.activeTabId);
         genericClose(tabId);
         return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:ArrowUp", () => {
+        const tabId = globalStore.get(atoms.activeTabId);
+        switchBlockInDirection(tabId, NavigateDirection.Up);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:ArrowDown", () => {
+        const tabId = globalStore.get(atoms.activeTabId);
+        switchBlockInDirection(tabId, NavigateDirection.Down);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:ArrowLeft", () => {
+        const tabId = globalStore.get(atoms.activeTabId);
+        switchBlockInDirection(tabId, NavigateDirection.Left);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:ArrowRight", () => {
+        const tabId = globalStore.get(atoms.activeTabId);
+        switchBlockInDirection(tabId, NavigateDirection.Right);
+        return true;
+    });
+    for (let idx = 1; idx <= 9; idx++) {
+        globalKeyMap.set(`Cmd:${idx}`, () => {
+            switchTabAbs(idx);
+            return true;
+        });
+        globalKeyMap.set(`Ctrl:Shift:c{Digit${idx}}`, () => {
+            switchBlockByBlockNum(idx);
+            return true;
+        });
+        globalKeyMap.set(`Ctrl:Shift:c{Numpad${idx}}`, () => {
+            switchBlockByBlockNum(idx);
+            return true;
+        });
     }
-    return false;
+    const allKeys = Array.from(globalKeyMap.keys());
+    // special case keys, handled by web view
+    allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft");
+    getApi().registerGlobalWebviewKeys(allKeys);
 }
 
-export { appHandleKeyDown, appHandleKeyUp };
+// these keyboard events happen *anywhere*, even if you have focus in an input or somewhere else.
+function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
+    for (const key of globalKeyMap.keys()) {
+        if (keyutil.checkKeyPressed(waveEvent, key)) {
+            const handler = globalKeyMap.get(key);
+            if (handler == null) {
+                return false;
+            }
+            return handler(waveEvent);
+        }
+    }
+}
+
+export {
+    appHandleKeyDown,
+    getSimpleControlShiftAtom,
+    registerControlShiftStateUpdateHandler,
+    registerElectronReinjectKeyHandler,
+    registerGlobalKeys,
+    unsetControlShift,
+};

@@ -123,7 +123,7 @@ class WshServerType {
     }
 
     // command "setconfig" [call]
-    SetConfigCommand(data: MetaMapType, opts?: RpcOpts): Promise<void> {
+    SetConfigCommand(data: MetaType, opts?: RpcOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("setconfig", data, opts);
     }
 

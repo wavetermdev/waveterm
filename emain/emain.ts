@@ -16,6 +16,7 @@ import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
 import { fetch } from "../frontend/util/fetchutil";
+import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
 import { getAppMenu } from "./menu";
@@ -53,6 +54,9 @@ let globalIsRelaunching = false;
 // for activity updates
 let wasActive = true;
 let wasInFg = true;
+
+let webviewFocusId: number = null; // set to the getWebContentsId of the webview that has focus (null if not focused)
+let webviewKeys: string[] = []; // the keys to trap when webview has focus
 
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 
@@ -102,6 +106,42 @@ initGlobal({ windowId: null, clientId: null, platform: unamePlatform, environmen
 function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
     const windowId = event.sender.id;
     return electron.BrowserWindow.fromId(windowId);
+}
+
+function setCtrlShift(wc: Electron.WebContents, state: boolean) {
+    wc.send("control-shift-state-update", state);
+}
+
+function handleCtrlShiftState(sender: Electron.WebContents, waveEvent: WaveKeyboardEvent) {
+    if (waveEvent.type == "keyup") {
+        if (waveEvent.key === "Control" || waveEvent.key === "Shift") {
+            setCtrlShift(sender, false);
+        }
+        if (waveEvent.key == "Meta") {
+            if (waveEvent.control && waveEvent.shift) {
+                setCtrlShift(sender, true);
+            }
+        }
+        return;
+    }
+    if (waveEvent.type == "keydown") {
+        if (waveEvent.key === "Control" || waveEvent.key === "Shift" || waveEvent.key === "Meta") {
+            if (waveEvent.control && waveEvent.shift && !waveEvent.meta) {
+                // Set the control and shift without the Meta key
+                setCtrlShift(sender, true);
+            } else {
+                // Unset if Meta is pressed
+                setCtrlShift(sender, false);
+            }
+        }
+        return;
+    }
+}
+
+function handleCtrlShiftFocus(sender: Electron.WebContents, focused: boolean) {
+    if (!focused) {
+        setCtrlShift(sender, false);
+    }
 }
 
 function runWaveSrv(): Promise<boolean> {
@@ -371,6 +411,9 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         });
     });
     win.webContents.on("before-input-event", (e, input) => {
+        const waveEvent = keyutil.adaptFromElectronKeyEvent(input);
+        // console.log("WIN bie", waveEvent.type, waveEvent.code);
+        handleCtrlShiftState(win.webContents, waveEvent);
         if (win.isFocused()) {
             wasActive = true;
         }
@@ -391,6 +434,9 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         }
         console.log("focus", waveWindow.oid);
         services.ClientService.FocusWindow(waveWindow.oid);
+    });
+    win.on("blur", () => {
+        handleCtrlShiftFocus(win.webContents, false);
     });
     win.on("enter-full-screen", async () => {
         win.webContents.send("fullscreen-change", true);
@@ -551,6 +597,51 @@ electron.ipcMain.on("get-cursor-point", (event) => {
 
 electron.ipcMain.on("get-env", (event, varName) => {
     event.returnValue = process.env[varName] ?? null;
+});
+
+const hasBeforeInputRegisteredMap = new Map<number, boolean>();
+
+electron.ipcMain.on("webview-focus", (event: Electron.IpcMainEvent, focusedId: number) => {
+    webviewFocusId = focusedId;
+    console.log("webview-focus", focusedId);
+    if (focusedId == null) {
+        return;
+    }
+    const parentWc = event.sender;
+    const webviewWc = electron.webContents.fromId(focusedId);
+    if (webviewWc == null) {
+        webviewFocusId = null;
+        return;
+    }
+    if (!hasBeforeInputRegisteredMap.get(focusedId)) {
+        hasBeforeInputRegisteredMap.set(focusedId, true);
+        webviewWc.on("before-input-event", (e, input) => {
+            let waveEvent = keyutil.adaptFromElectronKeyEvent(input);
+            // console.log(`WEB ${focusedId}`, waveEvent.type, waveEvent.code);
+            handleCtrlShiftState(parentWc, waveEvent);
+            if (webviewFocusId != focusedId) {
+                return;
+            }
+            if (input.type != "keyDown") {
+                return;
+            }
+            for (let keyDesc of webviewKeys) {
+                if (keyutil.checkKeyPressed(waveEvent, keyDesc)) {
+                    e.preventDefault();
+                    parentWc.send("reinject-key", waveEvent);
+                    console.log("webview reinject-key", keyDesc);
+                    return;
+                }
+            }
+        });
+        webviewWc.on("destroyed", () => {
+            hasBeforeInputRegisteredMap.delete(focusedId);
+        });
+    }
+});
+
+electron.ipcMain.on("register-global-webview-keys", (event, keys: string[]) => {
+    webviewKeys = keys ?? [];
 });
 
 if (unamePlatform !== "darwin") {
