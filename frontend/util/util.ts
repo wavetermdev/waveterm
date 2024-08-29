@@ -255,12 +255,22 @@ function getPrefixedSettings(settings: SettingsType, prefix: string): SettingsTy
     return rtn;
 }
 
+function countGraphemes(str: string): number {
+    if (str == null) {
+        return 0;
+    }
+    // this exists (need to hack TS to get it to not show an error)
+    const seg = new (Intl as any).Segmenter(undefined, { granularity: "grapheme" });
+    return Array.from(seg.segment(str)).length;
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
     base64ToArray,
     base64ToString,
     boundNumber,
+    countGraphemes,
     fireAndForget,
     getPrefixedSettings,
     getPromiseState,

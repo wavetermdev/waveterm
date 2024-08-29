@@ -3377,7 +3377,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/debug@npm:^4.0.0, @types/debug@npm:^4.1.6":
+"@types/debug@npm:^4, @types/debug@npm:^4.0.0, @types/debug@npm:^4.1.6":
   version: 4.1.12
   resolution: "@types/debug@npm:4.1.12"
   dependencies:
@@ -5689,7 +5689,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"debug@npm:4, debug@npm:^4.0.0, debug@npm:^4.1.0, debug@npm:^4.1.1, debug@npm:^4.3.1, debug@npm:^4.3.2, debug@npm:^4.3.4, debug@npm:^4.3.5":
+"debug@npm:4, debug@npm:^4.0.0, debug@npm:^4.1.0, debug@npm:^4.1.1, debug@npm:^4.3.1, debug@npm:^4.3.2, debug@npm:^4.3.4, debug@npm:^4.3.5, debug@npm:^4.3.6":
   version: 4.3.6
   resolution: "debug@npm:4.3.6"
   dependencies:
@@ -11721,6 +11721,7 @@ __metadata:
     "@tanstack/react-table": "npm:^8.20.1"
     "@types/color": "npm:^3.0.6"
     "@types/css-tree": "npm:^2"
+    "@types/debug": "npm:^4"
     "@types/electron": "npm:^1.6.10"
     "@types/node": "npm:^22.5.0"
     "@types/papaparse": "npm:^5"
@@ -11743,6 +11744,7 @@ __metadata:
     color: "npm:^4.2.3"
     css-tree: "npm:^2.3.1"
     dayjs: "npm:^1.11.13"
+    debug: "npm:^4.3.6"
     electron: "npm:^32.0.1"
     electron-builder: "npm:^24.13.3"
     electron-updater: "npm:6.3.4"
