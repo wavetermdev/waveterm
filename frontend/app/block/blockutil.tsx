@@ -226,6 +226,7 @@ export const Input = React.memo(
                     onKeyDown={(e) => onKeyDown(e)}
                     onFocus={(e) => onFocus(e)}
                     onBlur={(e) => onBlur(e)}
+                    onDragStart={(e) => e.preventDefault()}
                 />
             </div>
         );
