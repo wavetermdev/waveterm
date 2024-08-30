@@ -251,16 +251,6 @@ func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandR
 	return rtn, nil
 }
 
-func sendWStoreUpdatesToEventBus(updates waveobj.UpdatesRtnType) {
-	for _, update := range updates {
-		eventbus.SendEvent(eventbus.WSEventType{
-			EventType: eventbus.WSEvent_WaveObjUpdate,
-			ORef:      waveobj.MakeORef(update.OType, update.OID).String(),
-			Data:      update,
-		})
-	}
-}
-
 func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.CommandCreateBlockData) (*waveobj.ORef, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId := data.TabId
@@ -286,7 +276,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 		return nil, fmt.Errorf("error queuing layout action: %w", err)
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	sendWStoreUpdatesToEventBus(updates)
+	eventbus.SendUpdateEvents(updates)
 	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
 }
 
@@ -303,7 +293,7 @@ func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBloc
 		return fmt.Errorf("error updating block: %w", err)
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	sendWStoreUpdatesToEventBus(updates)
+	eventbus.SendUpdateEvents(updates)
 	return nil
 }
 
@@ -436,7 +426,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 		BlockId:    data.BlockId,
 	})
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	sendWStoreUpdatesToEventBus(updates)
+	eventbus.SendUpdateEvents(updates)
 	return nil
 }
 

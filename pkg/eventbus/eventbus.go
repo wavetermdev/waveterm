@@ -121,6 +121,16 @@ func SendEvent(event WSEventType) {
 	}
 }
 
+func SendUpdateEvents(updates waveobj.UpdatesRtnType) {
+	for _, update := range updates {
+		SendEvent(WSEventType{
+			EventType: WSEvent_WaveObjUpdate,
+			ORef:      waveobj.MakeORef(update.OType, update.OID).String(),
+			Data:      update,
+		})
+	}
+}
+
 func SendEventToElectron(event WSEventType) {
 	barr, err := json.Marshal(event)
 	if err != nil {
