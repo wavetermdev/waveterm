@@ -81,7 +81,7 @@
         "@react-hook/resize-observer": "^2.0.2",
         "@table-nav/core": "^0.0.7",
         "@table-nav/react": "^0.0.7",
-        "@tanstack/react-table": "^8.20.1",
+        "@tanstack/react-table": "^8.20.5",
         "@types/color": "^3.0.6",
         "@xterm/addon-fit": "^0.10.0",
         "@xterm/addon-serialize": "^0.13.0",
