@@ -81,19 +81,19 @@ function jsonDeepEqual(v1: any, v2: any): boolean {
     return false;
 }
 
-function makeIconClass(icon: string, fw: boolean): string {
+function makeIconClass(icon: string, fw: boolean, opts?: { spin: boolean }): string {
     if (icon == null) {
         return null;
     }
     if (icon.match(/^(solid@)?[a-z0-9-]+$/)) {
         // strip off "solid@" prefix if it exists
         icon = icon.replace(/^solid@/, "");
-        return clsx(`fa fa-sharp fa-solid fa-${icon}`, fw ? "fa-fw" : null);
+        return clsx(`fa fa-sharp fa-solid fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
     }
     if (icon.match(/^regular@[a-z0-9-]+$/)) {
         // strip off the "regular@" prefix if it exists
         icon = icon.replace(/^regular@/, "");
-        return clsx(`fa fa-sharp fa-regular fa-${icon}`, fw ? "fa-fw" : null);
+        return clsx(`fa fa-sharp fa-regular fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
     }
     return null;
 }

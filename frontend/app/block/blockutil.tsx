@@ -157,13 +157,14 @@ export const ConnectionButton = React.memo(
             const isLocal = util.isBlank(connection) || connection == "local";
             const connStatusAtom = getConnStatusAtom(connection);
             const connStatus = jotai.useAtomValue(connStatusAtom);
-            const showDisconnectedSlash = !isLocal && !connStatus?.connected;
+            let showDisconnectedSlash = false;
             let connIconElem: React.ReactNode = null;
             let color = "#53b4ea";
             const clickHandler = function () {
                 setConnModalOpen(true);
             };
             let titleText = null;
+            let shouldSpin = false;
             if (isLocal) {
                 color = "var(--grey-text-color)";
                 titleText = "Connected to Local Machine";
@@ -175,13 +176,27 @@ export const ConnectionButton = React.memo(
                 );
             } else {
                 titleText = "Connected to " + connection;
-                if (!connStatus?.connected) {
+                let iconName = "arrow-right-arrow-left";
+                if (connStatus?.status == "connecting") {
+                    color = "var(--warning-color)";
+                    titleText = "Connecting to " + connection;
+                    iconName = "rotate";
+                    shouldSpin = true;
+                } else if (connStatus?.status == "error") {
+                    color = "var(--error-color)";
+                    titleText = "Error connecting to " + connection;
+                    if (connStatus?.error != null) {
+                        titleText += " (" + connStatus.error + ")";
+                    }
+                    showDisconnectedSlash = true;
+                } else if (!connStatus?.connected) {
                     color = "var(--grey-text-color)";
                     titleText = "Disconnected from " + connection;
+                    showDisconnectedSlash = true;
                 }
                 connIconElem = (
                     <i
-                        className={clsx(util.makeIconClass("arrow-right-arrow-left", false), "fa-stack-1x")}
+                        className={clsx(util.makeIconClass(iconName, false), "fa-stack-1x")}
                         style={{ color: color, marginRight: 2 }}
                     />
                 );
@@ -189,7 +204,7 @@ export const ConnectionButton = React.memo(
 
             return (
                 <div ref={ref} className={clsx("connection-button")} onClick={clickHandler} title={titleText}>
-                    <span className="fa-stack connection-icon-box">
+                    <span className={clsx("fa-stack connection-icon-box", shouldSpin ? "fa-spin" : null)}>
                         {connIconElem}
                         <i
                             className="fa-slash fa-solid fa-stack-1x"

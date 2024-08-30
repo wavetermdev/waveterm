@@ -18,6 +18,7 @@ type MetaTSType struct {
 	File           string   `json:"file,omitempty"`
 	Url            string   `json:"url,omitempty"`
 	Connection     string   `json:"connection,omitempty"`
+	Edit           bool     `json:"edit,omitempty"`
 	History        []string `json:"history,omitempty"`
 	HistoryForward []string `json:"history:forward,omitempty"`
 

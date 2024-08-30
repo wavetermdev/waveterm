@@ -237,6 +237,7 @@ declare global {
         file?: string;
         url?: string;
         connection?: string;
+        edit?: boolean;
         history?: string[];
         "history:forward"?: string[];
         "display:name"?: string;

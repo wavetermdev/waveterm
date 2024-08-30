@@ -84,7 +84,7 @@ func (conn *SSHConn) FireConnChangeEvent() {
 		},
 		Data: status,
 	}
-	log.Printf("sending event: %+#v", event)
+	log.Printf("connstatus change %q => %s\n", conn.GetName(), status.Status)
 	wps.Broker.Publish(event)
 }
 

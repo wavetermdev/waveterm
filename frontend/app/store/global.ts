@@ -568,12 +568,17 @@ async function loadConnStatus() {
 
 function subscribeToConnEvents() {
     waveEventSubscribe("connchange", null, (event: WaveEvent) => {
-        const connStatus = event.data as ConnStatus;
-        if (connStatus == null || util.isBlank(connStatus.connection)) {
-            return;
+        try {
+            const connStatus = event.data as ConnStatus;
+            if (connStatus == null || util.isBlank(connStatus.connection)) {
+                console.log("connchange2 early return");
+                return;
+            }
+            let curAtom = getConnStatusAtom(connStatus.connection);
+            globalStore.set(curAtom, connStatus);
+        } catch (e) {
+            console.log("connchange error", e);
         }
-        let curAtom = ConnStatusMap.get(connStatus.connection);
-        globalStore.set(curAtom, connStatus);
     });
 }
 

@@ -47,6 +47,7 @@ export class PreviewModel implements ViewModel {
     ceReadOnly: jotai.PrimitiveAtom<boolean>;
     isCeView: jotai.PrimitiveAtom<boolean>;
     previewTextRef: React.RefObject<HTMLDivElement>;
+    editMode: jotai.Atom<boolean>;
 
     fileName: jotai.Atom<string>;
     connection: jotai.Atom<string>;
@@ -113,6 +114,10 @@ export class PreviewModel implements ViewModel {
             }
             const fileName = get(this.fileName);
             return iconForFile(mimeType, fileName);
+        });
+        this.editMode = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.edit ?? false;
         });
         this.viewName = jotai.atom("Preview");
         this.viewText = jotai.atom((get) => {

@@ -18,6 +18,8 @@ const (
 
 	MetaKey_Connection                       = "connection"
 
+	MetaKey_Edit                             = "edit"
+
 	MetaKey_History                          = "history"
 	MetaKey_HistoryForward                   = "history:forward"
 
