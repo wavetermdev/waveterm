@@ -82,6 +82,13 @@ declare global {
         blockid: string;
     };
 
+    // wshrpc.CommandEventReadHistoryData
+    type CommandEventReadHistoryData = {
+        event: string;
+        scope: string;
+        maxitems: number;
+    };
+
     // wshrpc.CommandFileData
     type CommandFileData = {
         zoneid: string;
@@ -250,6 +257,9 @@ declare global {
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
+        "graph:*"?: boolean;
+        "graph:numpoints"?: number;
+        "graph:metrics"?: string[];
         bg?: string;
         "bg:*"?: boolean;
         "bg:opacity"?: number;
@@ -556,6 +566,7 @@ declare global {
         event: string;
         scopes?: string[];
         sender?: string;
+        persist?: number;
         data?: any;
     };
 

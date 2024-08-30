@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
@@ -100,51 +99,6 @@ func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.Ope
 		return waveai.RunCloudCompletionStream(ctx, request)
 	}
 	return waveai.RunLocalCompletionStream(ctx, request)
-}
-
-func (ws *WshServer) StreamCpuDataCommand(ctx context.Context, request wshrpc.CpuDataRequest) chan wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData] {
-	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData])
-	go func() {
-		defer close(rtn)
-		MakePlotData(ctx, request.Id)
-		// we can use the err from MakePlotData to determine if a routine is already running
-		// but we still need a way to close it or get data from it
-		for {
-			now := time.Now()
-			percent, err := cpu.Percent(0, false)
-			if err != nil {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: err}
-			}
-			var value float64
-			if len(percent) > 0 {
-				value = percent[0]
-			} else {
-				value = 0.0
-			}
-			cpuData := wshrpc.TimeSeriesData{Ts: now.UnixMilli(), Values: map[string]float64{wshrpc.TimeSeries_Cpu: value}}
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Response: cpuData}
-			time.Sleep(time.Second * 1)
-			// this will end the goroutine if the block is closed
-			err = SavePlotData(ctx, request.Id, "")
-			if err != nil {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: err}
-				return
-			}
-			blockData, getBlockDataErr := wstore.DBMustGet[*waveobj.Block](ctx, request.Id)
-			if getBlockDataErr != nil {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: getBlockDataErr}
-				return
-			}
-			count := blockData.Meta.GetInt(waveobj.MetaKey_Count, 0)
-			if count != request.Count {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData]{Error: fmt.Errorf("new instance created. canceling old goroutine")}
-				return
-			}
-
-		}
-	}()
-
-	return rtn
 }
 
 func MakePlotData(ctx context.Context, blockId string) error {
@@ -471,6 +425,11 @@ func (ws *WshServer) EventUnsubAllCommand(ctx context.Context) error {
 	}
 	wps.Broker.UnsubscribeAll(rpcSource)
 	return nil
+}
+
+func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.CommandEventReadHistoryData) ([]*wshrpc.WaveEvent, error) {
+	events := wps.Broker.ReadEventHistory(data.Event, data.Scope, data.MaxItems)
+	return events, nil
 }
 
 func (ws *WshServer) SetConfigCommand(ctx context.Context, data waveobj.MetaMapType) error {

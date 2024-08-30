@@ -43,6 +43,10 @@ type MetaTSType struct {
 	CmdCwd            string            `json:"cmd:cwd,omitempty"`
 	CmdNoWsh          bool              `json:"cmd:nowsh,omitempty"`
 
+	GraphClear     bool     `json:"graph:*,omitempty"`
+	GraphNumPoints int      `json:"graph:numpoints,omitempty"`
+	GraphMetrics   []string `json:"graph:metrics,omitempty"`
+
 	// for tabs
 	Bg          string  `json:"bg,omitempty"`
 	BgClear     bool    `json:"bg:*,omitempty"`

@@ -23,7 +23,8 @@ func init() {
 }
 
 func serverRun(cmd *cobra.Command, args []string) {
-	WriteStdout("running wsh connserver\n")
+	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
+	go wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
 	RpcClient.SetServerImpl(&wshremote.ServerImpl{LogWriter: os.Stdout})
 
 	select {} // run forever

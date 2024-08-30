@@ -5,6 +5,7 @@
 package wps
 
 import (
+	"log"
 	"strings"
 	"sync"
 
@@ -14,6 +15,9 @@ import (
 
 // this broker interface is mostly generic
 // strong typing and event types can be defined elsewhere
+
+const MaxPersist = 4096
+const ReMakeArrThreshold = 10 * 1024
 
 type Client interface {
 	SendEvent(routeId string, event wshrpc.WaveEvent)
@@ -25,15 +29,27 @@ type BrokerSubscription struct {
 	StarSubs  map[string][]string // routeids subscribed to star scope (scopes with "*" or "**" in them)
 }
 
+type persistKey struct {
+	Event string
+	Scope string
+}
+
+type persistEventWrap struct {
+	ArrTotalAdds int
+	Events       []*wshrpc.WaveEvent
+}
+
 type BrokerType struct {
-	Lock   *sync.Mutex
-	Client Client
-	SubMap map[string]*BrokerSubscription
+	Lock       *sync.Mutex
+	Client     Client
+	SubMap     map[string]*BrokerSubscription
+	PersistMap map[persistKey]*persistEventWrap
 }
 
 var Broker = &BrokerType{
-	Lock:   &sync.Mutex{},
-	SubMap: make(map[string]*BrokerSubscription),
+	Lock:       &sync.Mutex{},
+	SubMap:     make(map[string]*BrokerSubscription),
+	PersistMap: make(map[persistKey]*persistEventWrap),
 }
 
 func scopeHasStarMatch(scope string) bool {
@@ -60,6 +76,7 @@ func (b *BrokerType) GetClient() Client {
 
 // if already subscribed, this will *resubscribe* with the new subscription (remove the old one, and replace with this one)
 func (b *BrokerType) Subscribe(subRouteId string, sub wshrpc.SubscriptionRequest) {
+	log.Printf("[wps] sub %s %s\n", subRouteId, sub.Event)
 	if sub.Event == "" {
 		return
 	}
@@ -121,6 +138,7 @@ func addStrToScopeMap(scopeMap map[string][]string, scope string, routeId string
 }
 
 func (b *BrokerType) Unsubscribe(subRouteId string, eventName string) {
+	log.Printf("[wps] unsub %s %s\n", subRouteId, eventName)
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 	b.unsubscribe_nolock(subRouteId, eventName)
@@ -156,7 +174,65 @@ func (b *BrokerType) UnsubscribeAll(subRouteId string) {
 	}
 }
 
+// does not take wildcards, use "" for all
+func (b *BrokerType) ReadEventHistory(eventType string, scope string, maxItems int) []*wshrpc.WaveEvent {
+	if maxItems <= 0 {
+		return nil
+	}
+	b.Lock.Lock()
+	defer b.Lock.Unlock()
+	key := persistKey{Event: eventType, Scope: scope}
+	pe := b.PersistMap[key]
+	if pe == nil || len(pe.Events) == 0 {
+		return nil
+	}
+	if maxItems > len(pe.Events) {
+		maxItems = len(pe.Events)
+	}
+	// return new arr
+	rtn := make([]*wshrpc.WaveEvent, maxItems)
+	copy(rtn, pe.Events[len(pe.Events)-maxItems:])
+	return rtn
+}
+
+func (b *BrokerType) persistEvent(event wshrpc.WaveEvent) {
+	if event.Persist <= 0 {
+		return
+	}
+	numPersist := event.Persist
+	if numPersist > MaxPersist {
+		numPersist = MaxPersist
+	}
+	scopeMap := make(map[string]bool)
+	for _, scope := range event.Scopes {
+		scopeMap[scope] = true
+	}
+	scopeMap[""] = true
+	b.Lock.Lock()
+	defer b.Lock.Unlock()
+	for scope := range scopeMap {
+		key := persistKey{Event: event.Event, Scope: scope}
+		pe := b.PersistMap[key]
+		if pe == nil {
+			pe = &persistEventWrap{
+				ArrTotalAdds: 0,
+				Events:       make([]*wshrpc.WaveEvent, 0, event.Persist),
+			}
+			b.PersistMap[key] = pe
+		}
+		pe.Events = append(pe.Events, &event)
+		pe.ArrTotalAdds++
+		if pe.ArrTotalAdds > ReMakeArrThreshold {
+			pe.Events = append([]*wshrpc.WaveEvent{}, pe.Events...)
+			pe.ArrTotalAdds = len(pe.Events)
+		}
+	}
+}
+
 func (b *BrokerType) Publish(event wshrpc.WaveEvent) {
+	if event.Persist > 0 {
+		b.persistEvent(event)
+	}
 	client := b.GetClient()
 	if client == nil {
 		return

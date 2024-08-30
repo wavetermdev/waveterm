@@ -53,6 +53,12 @@ func EventPublishCommand(w *wshutil.WshRpc, data wshrpc.WaveEvent, opts *wshrpc.
 	return err
 }
 
+// command "eventreadhistory", wshserver.EventReadHistoryCommand
+func EventReadHistoryCommand(w *wshutil.WshRpc, data wshrpc.CommandEventReadHistoryData, opts *wshrpc.RpcOpts) ([]*wshrpc.WaveEvent, error) {
+	resp, err := sendRpcRequestCallHelper[[]*wshrpc.WaveEvent](w, "eventreadhistory", data, opts)
+	return resp, err
+}
+
 // command "eventrecv", wshserver.EventRecvCommand
 func EventRecvCommand(w *wshutil.WshRpc, data wshrpc.WaveEvent, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "eventrecv", data, opts)

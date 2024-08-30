@@ -42,6 +42,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("eventpublish", data, opts);
     }
 
+    // command "eventreadhistory" [call]
+    EventReadHistoryCommand(data: CommandEventReadHistoryData, opts?: RpcOpts): Promise<WaveEvent[]> {
+        return WOS.wshServerRpcHelper_call("eventreadhistory", data, opts);
+    }
+
     // command "eventrecv" [call]
     EventRecvCommand(data: WaveEvent, opts?: RpcOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("eventrecv", data, opts);

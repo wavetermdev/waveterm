@@ -3,8 +3,9 @@
 
 import { useHeight } from "@/app/hook/useHeight";
 import { useWidth } from "@/app/hook/useWidth";
-import { WOS } from "@/store/global";
+import { globalStore, waveEventSubscribe, WOS } from "@/store/global";
 import { WshServer } from "@/store/wshserver";
+import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
 import dayjs from "dayjs";
 import * as htl from "htl";
@@ -13,10 +14,35 @@ import * as React from "react";
 
 import "./cpuplot.less";
 
-type Point = {
-    time: number; // note this is in seconds not milliseconds
-    value: number;
+const DefaultNumPoints = 120;
+
+type DataItem = {
+    ts: number;
+    [k: string]: number;
 };
+
+const SysInfoMetricNames = {
+    cpu: "CPU %",
+    "mem:total": "Memory Total",
+    "mem:used": "Memory Used",
+    "mem:free": "Memory Free",
+    "mem:available": "Memory Available",
+};
+for (let i = 0; i < 32; i++) {
+    SysInfoMetricNames[`cpu:${i}`] = `CPU[${i}] %`;
+}
+
+function convertWaveEventToDataItem(event: WaveEvent): DataItem {
+    const eventData: TimeSeriesData = event.data;
+    if (eventData == null || eventData.ts == null || eventData.values == null) {
+        return null;
+    }
+    const dataItem = { ts: eventData.ts };
+    for (const key in eventData.values) {
+        dataItem[key] = eventData.values[key];
+    }
+    return dataItem;
+}
 
 class CpuPlotViewModel {
     viewType: string;
@@ -27,24 +53,54 @@ class CpuPlotViewModel {
     viewIcon: jotai.Atom<string>;
     viewText: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
-    dataAtom: jotai.PrimitiveAtom<Array<Point>>;
-    addDataAtom: jotai.WritableAtom<unknown, [Point], void>;
-    width: number;
+    dataAtom: jotai.PrimitiveAtom<Array<DataItem>>;
+    addDataAtom: jotai.WritableAtom<unknown, [DataItem[]], void>;
     incrementCount: jotai.WritableAtom<unknown, [], Promise<void>>;
+    loadingAtom: jotai.PrimitiveAtom<boolean>;
+    numPoints: jotai.Atom<number>;
+    metrics: jotai.Atom<string[]>;
+    connection: jotai.Atom<string>;
+    manageConnection: jotai.Atom<boolean>;
 
     constructor(blockId: string) {
         this.viewType = "cpuplot";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-        this.width = 100;
-        this.dataAtom = jotai.atom(this.getDefaultData());
-        this.addDataAtom = jotai.atom(null, (get, set, point) => {
-            // not efficient but should be okay for a demo?
-            const data = get(this.dataAtom);
-            const newData = [...data.slice(1), point];
-            set(this.dataAtom, newData);
+        this.addDataAtom = jotai.atom(null, (get, set, points) => {
+            const targetLen = get(this.numPoints) + 1;
+            let data = get(this.dataAtom);
+            try {
+                if (data.length > targetLen) {
+                    data = data.slice(data.length - targetLen);
+                }
+                if (data.length < targetLen) {
+                    const defaultData = this.getDefaultData();
+                    data = [...defaultData.slice(defaultData.length - targetLen + data.length), ...data];
+                }
+                const newData = [...data.slice(points.length), ...points];
+                set(this.dataAtom, newData);
+            } catch (e) {
+                console.log("Error adding data to cpuplot", e);
+            }
         });
-
+        this.manageConnection = jotai.atom(true);
+        this.loadingAtom = jotai.atom(true);
+        this.numPoints = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const metaNumPoints = blockData?.meta?.["graph:numpoints"];
+            if (metaNumPoints == null || metaNumPoints <= 0) {
+                return DefaultNumPoints;
+            }
+            return metaNumPoints;
+        });
+        this.metrics = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const metrics = blockData?.meta?.["graph:metrics"];
+            if (metrics == null || !Array.isArray(metrics)) {
+                return ["cpu"];
+            }
+            return metrics;
+        });
         this.viewIcon = jotai.atom((get) => {
             return "chart-line"; // should not be hardcoded
         });
@@ -56,14 +112,47 @@ class CpuPlotViewModel {
             const count = meta.count ?? 0;
             await WshServer.SetMetaCommand({ oref: WOS.makeORef("block", this.blockId), meta: { count: count + 1 } });
         });
+        this.connection = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const connValue = blockData?.meta?.connection;
+            if (util.isBlank(connValue)) {
+                return "local";
+            }
+            return connValue;
+        });
+        this.dataAtom = jotai.atom(this.getDefaultData());
+        this.loadInitialData();
     }
 
-    getDefaultData(): Array<Point> {
+    async loadInitialData() {
+        globalStore.set(this.loadingAtom, true);
+        try {
+            const numPoints = globalStore.get(this.numPoints);
+            const connName = globalStore.get(this.connection);
+            const initialData = await WshServer.EventReadHistoryCommand({
+                event: "sysinfo",
+                scope: connName,
+                maxitems: numPoints,
+            });
+            if (initialData == null) {
+                return;
+            }
+            const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
+            globalStore.set(this.addDataAtom, initialDataItems);
+        } catch (e) {
+            console.log("Error loading initial data for cpuplot", e);
+        } finally {
+            globalStore.set(this.loadingAtom, false);
+        }
+    }
+
+    getDefaultData(): Array<DataItem> {
         // set it back one to avoid backwards line being possible
-        const currentTime = Date.now() / 1000 - 1;
-        const points = [];
-        for (let i = this.width; i > -1; i--) {
-            points.push({ time: currentTime - i, value: 0 });
+        const numPoints = globalStore.get(this.numPoints);
+        const currentTime = Date.now() - 1000;
+        const points: DataItem[] = [];
+        for (let i = numPoints; i > -1; i--) {
+            points.push({ ts: currentTime - i * 1000 });
         }
         return points;
     }
@@ -74,59 +163,83 @@ function makeCpuPlotViewModel(blockId: string): CpuPlotViewModel {
     return cpuPlotViewModel;
 }
 
+const plotColors = ["#58C142", "#FFC107", "#FF5722", "#2196F3", "#9C27B0", "#00BCD4", "#FFEB3B", "#795548"];
+
 function CpuPlotView({ model }: { model: CpuPlotViewModel; blockId: string }) {
     const containerRef = React.useRef<HTMLInputElement>();
     const plotData = jotai.useAtomValue(model.dataAtom);
     const addPlotData = jotai.useSetAtom(model.addDataAtom);
     const parentHeight = useHeight(containerRef);
     const parentWidth = useWidth(containerRef);
-    const block = jotai.useAtomValue(model.blockAtom);
-    const incrementCount = jotai.useSetAtom(model.incrementCount); // temporary
+    const yvals = jotai.useAtomValue(model.metrics);
+    const connName = jotai.useAtomValue(model.connection);
+    const lastConnName = React.useRef(connName);
 
     React.useEffect(() => {
-        const temp = async () => {
-            await incrementCount();
-            const dataGen = WshServer.StreamCpuDataCommand(
-                { id: model.blockId, count: (block.meta?.count ?? 0) + 1 },
-                { timeout: 999999999, noresponse: false }
-            );
-            try {
-                for await (const datum of dataGen) {
-                    const data = { time: datum.ts / 1000, value: datum.values?.["cpu"] };
-                    addPlotData(data);
-                }
-            } catch (e) {
-                console.log(e);
+        if (lastConnName.current !== connName) {
+            model.loadInitialData();
+        }
+        const unsubFn = waveEventSubscribe("sysinfo", connName, (event: WaveEvent) => {
+            const loading = globalStore.get(model.loadingAtom);
+            if (loading) {
+                return;
             }
+            const dataItem = convertWaveEventToDataItem(event);
+            addPlotData([dataItem]);
+        });
+        return () => {
+            unsubFn();
         };
-        temp();
-    }, []);
+    }, [connName]);
 
     React.useEffect(() => {
-        const plot = Plot.plot({
-            x: { grid: true, label: "time", tickFormat: (d) => `${dayjs.unix(d).format("HH:mm:ss")}` },
-            y: { label: "%", domain: [0, 100] },
-            width: parentWidth,
-            height: parentHeight,
-            marks: [
-                () => htl.svg`<defs>
+        const marks: Plot.Markish[] = [];
+        marks.push(
+            () => htl.svg`<defs>
       <linearGradient id="gradient" gradientTransform="rotate(90)">
         <stop offset="0%" stop-color="#58C142" stop-opacity="0.7" />
         <stop offset="100%" stop-color="#58C142" stop-opacity="0" />
       </linearGradient>
-	      </defs>`,
+	      </defs>`
+        );
+        if (yvals.length == 0) {
+            // nothing
+        } else if (yvals.length == 1) {
+            marks.push(
                 Plot.lineY(plotData, {
-                    stroke: "#58C142",
+                    stroke: plotColors[0],
                     strokeWidth: 2,
-                    x: "time",
-                    y: "value",
-                }),
+                    x: "ts",
+                    y: yvals[0],
+                })
+            );
+            marks.push(
                 Plot.areaY(plotData, {
                     fill: "url(#gradient)",
-                    x: "time",
-                    y: "value",
-                }),
-            ],
+                    x: "ts",
+                    y: yvals[0],
+                })
+            );
+        } else {
+            let idx = 0;
+            for (const yval of yvals) {
+                marks.push(
+                    Plot.lineY(plotData, {
+                        stroke: plotColors[idx % plotColors.length],
+                        strokeWidth: 1,
+                        x: "ts",
+                        y: yval,
+                    })
+                );
+                idx++;
+            }
+        }
+        const plot = Plot.plot({
+            x: { grid: true, label: "time", tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}` },
+            y: { label: "%", domain: [0, 100] },
+            width: parentWidth,
+            height: parentHeight,
+            marks: marks,
         });
 
         if (plot !== undefined) {

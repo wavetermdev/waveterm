@@ -184,7 +184,7 @@ tasks:
             - "cmd/generatego/*.go"
             - "cmd/generatets/*.go"
             - "pkg/service/**/*.go"
-            - "pkg/waveobj/wtype.go"
+            - "pkg/waveobj/*.go"
             - "pkg/wconfig/**/*.go"
             - "pkg/wstore/*.go"
             - "pkg/wshrpc/**/*.go"

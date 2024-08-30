@@ -27,6 +27,7 @@ const (
 const (
 	Event_BlockClose = "blockclose"
 	Event_ConnChange = "connchange"
+	Event_SysInfo    = "sysinfo"
 )
 
 const (
@@ -50,6 +51,7 @@ const (
 	Command_EventSub          = "eventsub"
 	Command_EventUnsub        = "eventunsub"
 	Command_EventUnsubAll     = "eventunsuball"
+	Command_EventReadHistory  = "eventreadhistory"
 	Command_StreamTest        = "streamtest"
 	Command_StreamWaveAi      = "streamwaveai"
 	Command_StreamCpuData     = "streamcpudata"
@@ -86,6 +88,7 @@ type WshRpcInterface interface {
 	EventSubCommand(ctx context.Context, data SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
 	EventUnsubAllCommand(ctx context.Context) error
+	EventReadHistoryCommand(ctx context.Context, data CommandEventReadHistoryData) ([]*WaveEvent, error)
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
@@ -226,10 +229,11 @@ type CommandDeleteBlockData struct {
 }
 
 type WaveEvent struct {
-	Event  string   `json:"event"`
-	Scopes []string `json:"scopes,omitempty"`
-	Sender string   `json:"sender,omitempty"`
-	Data   any      `json:"data,omitempty"`
+	Event   string   `json:"event"`
+	Scopes  []string `json:"scopes,omitempty"`
+	Sender  string   `json:"sender,omitempty"`
+	Persist int      `json:"persist,omitempty"`
+	Data    any      `json:"data,omitempty"`
 }
 
 func (e WaveEvent) HasScope(scope string) bool {
@@ -240,6 +244,12 @@ type SubscriptionRequest struct {
 	Event     string   `json:"event"`
 	Scopes    []string `json:"scopes,omitempty"`
 	AllScopes bool     `json:"allscopes,omitempty"`
+}
+
+type CommandEventReadHistoryData struct {
+	Event    string `json:"event"`
+	Scope    string `json:"scope"`
+	MaxItems int    `json:"maxitems"`
 }
 
 type OpenAiStreamRequest struct {

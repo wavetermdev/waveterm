@@ -43,6 +43,10 @@ const (
 	MetaKey_CmdCwd                           = "cmd:cwd"
 	MetaKey_CmdNoWsh                         = "cmd:nowsh"
 
+	MetaKey_GraphClear                       = "graph:*"
+	MetaKey_GraphNumPoints                   = "graph:numpoints"
+	MetaKey_GraphMetrics                     = "graph:metrics"
+
 	MetaKey_Bg                               = "bg"
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_BgOpacity                        = "bg:opacity"
