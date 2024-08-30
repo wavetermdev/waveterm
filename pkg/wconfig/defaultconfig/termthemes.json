@@ -1,5 +1,7 @@
 {
     "default-dark": {
+        "display:name": "Default Dark",
+        "display:order": 1,
         "black": "#757575",
         "red": "#cc685c",
         "green": "#76c266",
@@ -24,6 +26,8 @@
         "cursorAccent": ""
     },
     "dracula": {
+        "display:name": "Dracula",
+        "display:order": 2,
         "black": "#21222C",
         "red": "#FF5555",
         "green": "#50FA7B",
@@ -47,7 +51,35 @@
         "background": "#282a36",
         "cursorAccent": "#f8f8f2"
     },
+    "monokai": {
+        "display:name": "Monokai",
+        "display:order": 3,
+        "black": "#1B1D1E",
+        "red": "#F92672",
+        "green": "#A6E22E",
+        "yellow": "#E6DB74",
+        "blue": "#66D9EF",
+        "magenta": "#AE81FF",
+        "cyan": "#A1EFE4",
+        "white": "#F8F8F2",
+        "brightBlack": "#75715E",
+        "brightRed": "#FD5FF1",
+        "brightGreen": "#A6E22E",
+        "brightYellow": "#E6DB74",
+        "brightBlue": "#66D9EF",
+        "brightMagenta": "#AE81FF",
+        "brightCyan": "#A1EFE4",
+        "brightWhite": "#F9F8F5",
+        "gray": "#75715E",
+        "cmdtext": "#F8F8F2",
+        "foreground": "#F8F8F2",
+        "selectionBackground": "#49483E",
+        "background": "#272822",
+        "cursorAccent": "#F8F8F2"
+    },
     "campbell": {
+        "display:name": "Campbell",
+        "display:order": 4,
         "black": "#0C0C0C",
         "red": "#C50F1F",
         "green": "#13A10E",

@@ -438,6 +438,8 @@ declare global {
 
     // wconfig.TermThemeType
     type TermThemeType = {
+        "display:name": string;
+        "display:order": number;
         black: string;
         red: string;
         green: string;

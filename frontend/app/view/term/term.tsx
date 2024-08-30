@@ -169,14 +169,22 @@ class TermViewModel {
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
+        const fullConfig = globalStore.get(atoms.fullConfigAtom);
+        const termThemes = fullConfig?.termthemes ?? {};
+        const termThemeKeys = Object.keys(termThemes);
+        termThemeKeys.sort((a, b) => {
+            return termThemes[a]["display:order"] - termThemes[b]["display:order"];
+        });
+        const submenu: ContextMenuItem[] = termThemeKeys.map((themeName) => {
+            return {
+                label: termThemes[themeName]["display:name"] ?? themeName,
+                click: () => this.setTerminalTheme(themeName),
+            };
+        });
         return [
             {
                 label: "Themes",
-                submenu: [
-                    { label: "Default Dark", click: () => this.setTerminalTheme("default") },
-                    { label: "Dracula", click: () => this.setTerminalTheme("dracula") },
-                    { label: "Campbell", click: () => this.setTerminalTheme("campbell") },
-                ],
+                submenu: submenu,
             },
         ];
     }
