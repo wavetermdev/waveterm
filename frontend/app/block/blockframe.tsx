@@ -36,7 +36,7 @@ function handleHeaderContextMenu(
     e.stopPropagation();
     let menu: ContextMenuItem[] = [
         {
-            label: magnified ? "Un-magnify Block" : "Magnify Block",
+            label: magnified ? "Un-Magnify Block" : "Magnify Block",
             click: () => {
                 onMagnifyToggle();
             },
@@ -60,6 +60,14 @@ function handleHeaderContextMenu(
             },
         },
     ];
+    const blockController = blockData?.meta?.controller;
+    if (!util.isBlank(blockController)) {
+        menu.push({ type: "separator" });
+        menu.push({
+            label: "Restart Controller",
+            click: () => WshServer.ControllerRestartCommand({ blockid: blockData.oid }),
+        });
+    }
     const extraItems = viewModel?.getSettingsMenuItems?.();
     if (extraItems && extraItems.length > 0) menu.push({ type: "separator" }, ...extraItems);
     menu.push(
