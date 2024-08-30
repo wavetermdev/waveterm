@@ -25,9 +25,10 @@ const (
 )
 
 const (
-	Event_BlockClose = "blockclose"
-	Event_ConnChange = "connchange"
-	Event_SysInfo    = "sysinfo"
+	Event_BlockClose       = "blockclose"
+	Event_ConnChange       = "connchange"
+	Event_SysInfo          = "sysinfo"
+	Event_ControllerStatus = "controllerstatus"
 )
 
 const (

@@ -5,6 +5,7 @@ import {
     blockViewToIcon,
     blockViewToName,
     ConnectionButton,
+    ControllerStatusIcon,
     getBlockHeaderIcon,
     IconButton,
     Input,
@@ -192,6 +193,7 @@ const BlockFrame_Header = ({
         );
         headerTextElems.unshift(connButtonElem);
     }
+    headerTextElems.unshift(<ControllerStatusIcon blockId={nodeModel.blockId} />);
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>

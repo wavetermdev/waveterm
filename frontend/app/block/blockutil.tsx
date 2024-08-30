@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useLongClick } from "@/app/hook/useLongClick";
-import { getConnStatusAtom } from "@/app/store/global";
+import { getConnStatusAtom, waveEventSubscribe, WOS } from "@/app/store/global";
+import * as services from "@/app/store/services";
+import { makeORef } from "@/app/store/wos";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -149,6 +151,51 @@ interface ConnectionButtonProps {
     connection: string;
     changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
 }
+
+export const ControllerStatusIcon = React.memo(({ blockId }: { blockId: string }) => {
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const hasController = !util.isBlank(blockData?.meta?.controller);
+    const [controllerStatus, setControllerStatus] = React.useState<BlockControllerRuntimeStatus>(null);
+    const connection = blockData?.meta?.connection ?? "local";
+    const connStatusAtom = getConnStatusAtom(connection);
+    const connStatus = jotai.useAtomValue(connStatusAtom);
+    React.useEffect(() => {
+        if (!hasController) {
+            return;
+        }
+        const initialRTStatus = services.BlockService.GetControllerStatus(blockId);
+        initialRTStatus.then((rts) => {
+            setControllerStatus(rts);
+        });
+        const unsubFn = waveEventSubscribe("controllerstatus", makeORef("block", blockId), (event) => {
+            const cstatus: BlockControllerRuntimeStatus = event.data;
+            setControllerStatus(cstatus);
+        });
+        return () => {
+            unsubFn();
+        };
+    }, [hasController]);
+    if (!hasController) {
+        return null;
+    }
+    if (
+        controllerStatus == null ||
+        (controllerStatus?.status == "running" && controllerStatus?.shellprocstatus == "running")
+    ) {
+        return null;
+    }
+    if (connStatus?.status != "connected") {
+        return null;
+    }
+    const controllerStatusElem = (
+        <i
+            className="fa-sharp fa-solid fa-triangle-exclamation"
+            title="Controller Is Not Running"
+            style={{ color: "var(--error-color)" }}
+        />
+    );
+    return controllerStatusElem;
+});
 
 export const ConnectionButton = React.memo(
     React.forwardRef<HTMLDivElement, ConnectionButtonProps>(

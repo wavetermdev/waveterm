@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
@@ -124,12 +125,21 @@ func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
 		sendUpdate = updateFn()
 	})
 	if sendUpdate {
-		log.Printf("sending blockcontroller update %#v\n", bc.GetRuntimeStatus())
+		rtStatus := bc.GetRuntimeStatus()
+		log.Printf("sending blockcontroller update %#v\n", rtStatus)
 		go eventbus.SendEvent(eventbus.WSEventType{
 			EventType: eventbus.WSEvent_BlockControllerStatus,
 			ORef:      waveobj.MakeORef(waveobj.OType_Block, bc.BlockId).String(),
-			Data:      bc.GetRuntimeStatus(),
+			Data:      rtStatus,
 		})
+		waveEvent := wshrpc.WaveEvent{
+			Event: wshrpc.Event_ControllerStatus,
+			Scopes: []string{
+				waveobj.MakeORef(waveobj.OType_Tab, bc.TabId).String(),
+			},
+			Data: rtStatus,
+		}
+		wps.Broker.Publish(waveEvent)
 	}
 }
 
