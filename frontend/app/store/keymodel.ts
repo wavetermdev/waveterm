@@ -42,6 +42,9 @@ function shouldDispatchToBlock(): boolean {
     const activeElem = document.activeElement;
     if (activeElem != null && activeElem instanceof HTMLElement) {
         if (activeElem.tagName == "INPUT" || activeElem.tagName == "TEXTAREA") {
+            if (activeElem.classList.contains("dummy-focus")) {
+                return true;
+            }
             return false;
         }
         if (activeElem.contentEditable == "true") {
@@ -134,7 +137,23 @@ async function handleCmdN() {
 }
 
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
-    return handleGlobalWaveKeyboardEvents(waveEvent);
+    const handled = handleGlobalWaveKeyboardEvents(waveEvent);
+    if (handled) {
+        return true;
+    }
+    const layoutModel = getLayoutModelForActiveTab();
+    const focusedNode = globalStore.get(layoutModel.focusedNode);
+    const blockId = focusedNode?.data?.blockId;
+    if (blockId != null && shouldDispatchToBlock()) {
+        const viewModel = getViewModel(blockId);
+        if (viewModel?.keyDownHandler) {
+            const handledByBlock = viewModel.keyDownHandler(waveEvent);
+            if (handledByBlock) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 function registerControlShiftStateUpdateHandler() {
@@ -149,18 +168,7 @@ function registerControlShiftStateUpdateHandler() {
 
 function registerElectronReinjectKeyHandler() {
     getApi().onReinjectKey((event: WaveKeyboardEvent) => {
-        console.log("reinject key event", event);
-        const handled = handleGlobalWaveKeyboardEvents(event);
-        if (handled) {
-            return;
-        }
-        const layoutModel = getLayoutModelForActiveTab();
-        const focusedNode = globalStore.get(layoutModel.focusedNode);
-        const blockId = focusedNode?.data?.blockId;
-        if (blockId != null && shouldDispatchToBlock()) {
-            const viewModel = getViewModel(blockId);
-            viewModel?.keyDownHandler?.(event);
-        }
+        appHandleKeyDown(event);
     });
 }
 
@@ -198,6 +206,14 @@ function registerGlobalKeys() {
     globalKeyMap.set("Cmd:w", () => {
         const tabId = globalStore.get(atoms.activeTabId);
         genericClose(tabId);
+        return true;
+    });
+    globalKeyMap.set("Cmd:m", () => {
+        const layoutModel = getLayoutModelForActiveTab();
+        const focusedNode = globalStore.get(layoutModel.focusedNode);
+        if (focusedNode != null) {
+            layoutModel.magnifyNodeToggle(focusedNode.id);
+        }
         return true;
     });
     globalKeyMap.set("Ctrl:Shift:ArrowUp", () => {

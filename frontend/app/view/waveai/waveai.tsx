@@ -6,6 +6,7 @@ import { TypingIndicator } from "@/app/element/typingindicator";
 import { WOS, atoms, fetchWaveFile, getUserName, globalStore } from "@/store/global";
 import * as services from "@/store/services";
 import { WshServer } from "@/store/wshserver";
+import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import * as util from "@/util/util";
 import * as jotai from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
@@ -586,12 +587,13 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     };
 
     const handleTextAreaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Enter") {
+        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
             handleEnterKeyPressed();
-        } else if (e.key === "ArrowUp") {
+        } else if (checkKeyPressed(waveEvent, "ArrowUp")) {
             handleArrowUpPressed(e);
-        } else if (e.key === "ArrowDown") {
+        } else if (checkKeyPressed(waveEvent, "ArrowDown")) {
             handleArrowDownPressed(e);
         }
     };

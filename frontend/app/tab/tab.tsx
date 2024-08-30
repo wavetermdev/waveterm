@@ -104,6 +104,7 @@ const Tab = React.memo(
                 const curLen = Array.from(editableRef.current.innerText).length;
                 if (event.key === "Enter") {
                     event.preventDefault();
+                    event.stopPropagation();
                     if (editableRef.current.innerText.trim() === "") {
                         editableRef.current.innerText = originalName;
                     }
@@ -111,8 +112,11 @@ const Tab = React.memo(
                 } else if (event.key === "Escape") {
                     editableRef.current.innerText = originalName;
                     editableRef.current.blur();
+                    event.preventDefault();
+                    event.stopPropagation();
                 } else if (curLen >= 10 && !["Backspace", "Delete", "ArrowLeft", "ArrowRight"].includes(event.key)) {
                     event.preventDefault();
+                    event.stopPropagation();
                 }
             };
 

@@ -60,7 +60,7 @@ export class PreviewModel implements ViewModel {
     showHiddenFiles: jotai.PrimitiveAtom<boolean>;
     refreshVersion: jotai.PrimitiveAtom<number>;
     refreshCallback: () => void;
-    directoryInputElem: HTMLInputElement;
+    directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
     setPreviewFileName(fileName: string) {
         services.ObjectService.UpdateObjectMeta(`block:${this.blockId}`, { file: fileName });
@@ -416,10 +416,6 @@ export class PreviewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
-        if (this.directoryInputElem) {
-            this.directoryInputElem.focus({ preventScroll: true });
-            return true;
-        }
         return false;
     }
 
@@ -436,6 +432,12 @@ export class PreviewModel implements ViewModel {
             // handle up directory
             this.goParentDirectory();
             return true;
+        }
+        if (this.directoryKeyDownHandler) {
+            const handled = this.directoryKeyDownHandler(e);
+            if (handled) {
+                return true;
+            }
         }
         return false;
     }

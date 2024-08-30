@@ -18,7 +18,6 @@ import { WshServer } from "@/app/store/wshserver";
 import { MagnifyIcon } from "@/element/magnify";
 import { NodeModel } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
-import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -284,19 +283,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
     const connBtnRef = React.useRef<HTMLDivElement>();
-
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
-
-    function handleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
-        if (checkKeyPressed(waveEvent, "Cmd:m")) {
-            nodeModel.toggleMagnify();
-            return true;
-        }
-        if (viewModel?.keyDownHandler) {
-            return viewModel.keyDownHandler(waveEvent);
-        }
-        return false;
-    }
     const innerStyle: React.CSSProperties = {};
     if (!preview && customBg?.bg != null) {
         innerStyle.background = customBg.bg;
@@ -319,7 +306,6 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
-            onKeyDown={keydownWrapper(handleKeyDown)}
         >
             <BlockMask nodeModel={nodeModel} />
             <div className="block-frame-default-inner" style={innerStyle}>

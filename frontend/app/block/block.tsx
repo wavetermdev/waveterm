@@ -232,6 +232,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
                     value=""
                     ref={focusElemRef}
                     id={`${nodeModel.blockId}-dummy-focus`}
+                    className="dummy-focus"
                     onChange={() => {}}
                 />
             </div>

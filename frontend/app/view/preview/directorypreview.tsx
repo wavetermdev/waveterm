@@ -574,8 +574,8 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
         setFilteredData(filtered);
     }, [unfilteredData, showHiddenFiles, searchText]);
 
-    const handleKeyDown = useCallback(
-        (waveEvent: WaveKeyboardEvent): boolean => {
+    useEffect(() => {
+        model.directoryKeyDownHandler = (waveEvent: WaveKeyboardEvent): boolean => {
             if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                 setSearchText("");
                 return;
@@ -596,23 +596,29 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 setSearchText("");
                 return true;
             }
-        },
-        [filteredData, setFocusIndex, selectedPath]
-    );
+            if (keyutil.checkKeyPressed(waveEvent, "Backspace")) {
+                if (searchText.length == 0) {
+                    return true;
+                }
+                setSearchText((current) => current.slice(0, -1));
+                return true;
+            }
+            if (keyutil.isCharacterKeyEvent(waveEvent)) {
+                setSearchText((current) => current + waveEvent.key);
+                return true;
+            }
+            return false;
+        };
+        return () => {
+            model.directoryKeyDownHandler = null;
+        };
+    }, [filteredData, selectedPath]);
 
     useEffect(() => {
         if (filteredData.length != 0 && focusIndex > filteredData.length - 1) {
             setFocusIndex(filteredData.length - 1);
         }
     }, [filteredData]);
-
-    const inputRef = React.useRef<HTMLInputElement>(null);
-    React.useEffect(() => {
-        model.directoryInputElem = inputRef.current;
-        return () => {
-            model.directoryInputElem = null;
-        };
-    }, []);
 
     return (
         <div
@@ -621,19 +627,8 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 const event = e as React.ChangeEvent<HTMLInputElement>;
                 setSearchText(event.target.value.toLowerCase());
             }}
-            onKeyDownCapture={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
-            onFocusCapture={() => document.getSelection().collapseToEnd()}
+            // onFocusCapture={() => document.getSelection().collapseToEnd()}
         >
-            <div className="dir-table-search-line">
-                <input
-                    type="text"
-                    className="dir-table-search-box"
-                    ref={inputRef}
-                    onChange={() => {}} //for nuisance warnings
-                    maxLength={400}
-                    value={searchText}
-                />
-            </div>
             <DirectoryTable
                 model={model}
                 data={filteredData}

@@ -123,6 +123,9 @@ function appSelectionChange(e: Event) {
 }
 
 function AppFocusHandler() {
+    return null;
+
+    // for debugging
     React.useEffect(() => {
         document.addEventListener("focusin", appFocusIn);
         document.addEventListener("focusout", appFocusOut);
