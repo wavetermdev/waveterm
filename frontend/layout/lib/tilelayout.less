@@ -62,7 +62,10 @@
         }
         &:hover .line {
             visibility: visible;
-            transition: visibility 0s var(--animation-time-s);
+
+            // Ignore the prefers-reduced-motion override, since we are not applying a true animation here, just a delay.
+            transition-property: visibility !important;
+            transition-delay: var(--animation-time-s) !important;
         }
     }
 
