@@ -14,7 +14,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 )
 
-var viewNewBlock bool
 var viewMagnified bool
 
 var viewCmd = &cobra.Command{
@@ -26,7 +25,6 @@ var viewCmd = &cobra.Command{
 }
 
 func init() {
-	viewCmd.Flags().BoolVarP(&viewNewBlock, "newblock", "n", false, "open view in a new block")
 	viewCmd.Flags().BoolVarP(&viewMagnified, "magnified", "m", false, "open view in magnified mode")
 	rootCmd.AddCommand(viewCmd)
 }

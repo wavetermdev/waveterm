@@ -91,6 +91,8 @@ function sendRawRpcMessage(msg: RpcMessage) {
     globalWS.pushMessage(wsMsg);
 }
 
+const notFoundLogMap = new Map<string, boolean>();
+
 function handleIncomingRpcMessage(msg: RpcMessage, eventHandlerFn: (event: WaveEvent) => void) {
     const isRequest = msg.command != null || msg.reqid != null;
     if (isRequest) {
@@ -111,7 +113,10 @@ function handleIncomingRpcMessage(msg: RpcMessage, eventHandlerFn: (event: WaveE
     }
     const entry = openRpcs.get(msg.resid);
     if (entry == null) {
-        console.log("rpc response generator not found", msg);
+        if (!notFoundLogMap.has(msg.resid)) {
+            notFoundLogMap.set(msg.resid, true);
+            console.log("rpc response generator not found", msg);
+        }
         return;
     }
     entry.msgFn(msg);
