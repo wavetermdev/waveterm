@@ -361,6 +361,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			}
 			if ic.TermSize != nil {
 				log.Printf("SETTERMSIZE: %dx%d\n", ic.TermSize.Rows, ic.TermSize.Cols)
+				err = setTermSize(ctx, bc.BlockId, *ic.TermSize)
+				if err != nil {
+					log.Printf("error setting pty size: %v\n", err)
+				}
 				err = bc.ShellProc.Cmd.SetSize(ic.TermSize.Rows, ic.TermSize.Cols)
 				if err != nil {
 					log.Printf("error setting pty size: %v\n", err)
@@ -417,6 +421,21 @@ func getTermSize(bdata *waveobj.Block) waveobj.TermSize {
 	}
 }
 
+func setTermSize(ctx context.Context, blockId string, termSize waveobj.TermSize) error {
+	ctx = waveobj.ContextWithUpdates(ctx)
+	bdata, err := wstore.DBMustGet[*waveobj.Block](context.Background(), blockId)
+	if err != nil {
+		return fmt.Errorf("error getting block data: %v", err)
+	}
+	if bdata.RuntimeOpts == nil {
+		return fmt.Errorf("error from nil RuntimeOpts: %v", err)
+	}
+	bdata.RuntimeOpts.TermSize = termSize
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	eventbus.SendUpdateEvents(updates)
+	return nil
+}
+
 func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any) {
 	defer func() {
 		bc.UpdateControllerAndSendUpdate(func() bool {
@@ -466,7 +485,6 @@ func (bc *BlockController) SendInput(inputUnion *BlockInputUnion) error {
 }
 
 func (bc *BlockController) RestartController() error {
-
 	// kill the command if it's running
 	bc.Lock.Lock()
 	if bc.ShellProc != nil {
