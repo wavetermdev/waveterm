@@ -135,3 +135,19 @@ func ContextGetUpdatesRtn(ctx context.Context) UpdatesRtnType {
 	}
 	return rtn
 }
+
+func ContextPrintUpdates(ctx context.Context) {
+	updatesVal := ctx.Value(waveObjUpdateKey)
+	if updatesVal == nil {
+		log.Print("no updates\n")
+		return
+	}
+	updates := updatesVal.(*contextUpdatesType)
+	log.Printf("updates len:%d\n", len(updates.UpdatesStack))
+	for idx, update := range updates.UpdatesStack {
+		log.Printf("  update[%d]:\n", idx)
+		for k, v := range update {
+			log.Printf("    %s:%s %s\n", k.OType, k.OID, v.UpdateType)
+		}
+	}
+}

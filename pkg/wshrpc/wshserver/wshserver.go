@@ -269,8 +269,6 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
 	blockRef := &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}
-	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	sendWStoreUpdatesToEventBus(updates)
 	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error finding window for tab: %w", err)
@@ -278,12 +276,17 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if windowId == "" {
 		return nil, fmt.Errorf("no window found for tab")
 	}
-	wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+	err = wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
 		BlockId:    blockRef.OID,
 		Magnified:  data.Magnified,
 		Focused:    true,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("error queuing layout action: %w", err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	sendWStoreUpdatesToEventBus(updates)
 	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
 }
 
