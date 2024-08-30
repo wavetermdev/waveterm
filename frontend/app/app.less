@@ -91,3 +91,12 @@ body {
 a {
     color: var(--accent-color);
 }
+
+.prefers-reduced-motion {
+    * {
+        transition-duration: none !important;
+        transition-timing-function: none !important;
+        transition-property: none !important;
+        transition-delay: none !important;
+    }
+}
