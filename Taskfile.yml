@@ -10,7 +10,7 @@ vars:
         sh: node version.cjs
     RM: '{{if eq OS "windows"}}cmd --% /c del /S{{else}}rm {{end}}'
     RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse{{else}}rm -rf{{end}}'
-    DATE: '{{if eq OS "windows"}}powershell date -UFormat{{else}}date{{end}}'
+    DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
 
 tasks:
     electron:dev:
@@ -52,11 +52,12 @@ tasks:
         desc: Build the wavesrv component.
         deps:
             - generate
-            - build:server:darwin
-            - build:server:other
+            - build:server:linux
+            - build:server:macos
+            - build:server:windows
 
-    build:server:darwin:
-        desc: Build the wavesrv component for Darwin platforms (generates artifacts for both arm64 and amd64).
+    build:server:macos:
+        desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
         status:
             - exit {{if eq OS "darwin"}}1{{else}}0{{end}}
         cmds:
@@ -64,35 +65,48 @@ tasks:
               ignore_error: true
             - task: build:server:internal
               vars:
-                  GOARCH: arm64
-            - task: build:server:internal
-              vars:
-                  GOARCH: amd64
+                  ARCHS: arm64,amd64
 
-    build:server:other:
-        desc: Build the wavesrv component for non-Darwin platforms (only generates artifacts for the current architecture).
+    build:server:windows:
+        desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
         status:
-            - exit {{if eq OS "darwin"}}0{{else}}1{{end}}
+            - exit {{if eq OS "windows"}}1{{else}}0{{end}}
         cmds:
             - cmd: "{{.RM}} dist/bin/wavesrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
-                  GOARCH:
+                  ARCHS:
+                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
+
+    build:server:linux:
+        desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
+        status:
+            - exit {{if eq OS "linux"}}1{{else}}0{{end}}
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS:
                       sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
                   GO_LDFLAGS: -linkmode 'external' -extldflags=-static
 
     build:server:internal:
         requires:
             vars:
-                - GOARCH
+                - ARCHS
         cmds:
-            - CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{.GOARCH}}{{exeExt}} cmd/server/main-server.go
+            - cmd: CGO_ENABLED=1 GOARCH={{.ARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{.ARCH}}{{exeExt}} cmd/server/main-server.go
+              for:
+                  var: ARCHS
+                  split: ","
+                  as: ARCH
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
         generates:
-            - dist/bin/wavesrv.{{.GOARCH}}{{exeExt}}
+            - dist/bin/wavesrv.*{{exeExt}}
         deps:
             - go:mod:tidy
         internal: true
