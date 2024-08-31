@@ -182,13 +182,18 @@ type LayoutActionData struct {
 	Magnified  bool   `json:"magnified"`
 }
 
+type LeafOrderEntry struct {
+	NodeId  string `json:"nodeid"`
+	BlockId string `json:"blockid"`
+}
+
 type LayoutState struct {
 	OID                   string              `json:"oid"`
 	Version               int                 `json:"version"`
 	RootNode              any                 `json:"rootnode,omitempty"`
 	MagnifiedNodeId       string              `json:"magnifiednodeid,omitempty"`
 	FocusedNodeId         string              `json:"focusednodeid,omitempty"`
-	LeafOrder             *[]string           `json:"leaforder,omitempty"`
+	LeafOrder             *[]LeafOrderEntry   `json:"leaforder,omitempty"`
 	PendingBackendActions *[]LayoutActionData `json:"pendingbackendactions,omitempty"`
 	Meta                  MetaMapType         `json:"meta,omitempty"`
 }

@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +33,8 @@ import (
 )
 
 const SimpleId_This = "this"
+
+var SimpleId_BlockNum_Regex = regexp.MustCompile(`^\d+$`)
 
 type WshServer struct{}
 
@@ -182,7 +186,34 @@ func resolveSimpleId(ctx context.Context, data wshrpc.CommandResolveIdsData, sim
 		}
 		return &waveobj.ORef{OType: waveobj.OType_Block, OID: data.BlockId}, nil
 	}
-	if strings.Contains(simpleId, ":") {
+	blockNum, err := strconv.Atoi(simpleId)
+	if err == nil {
+		tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+		if err != nil {
+			return nil, fmt.Errorf("error finding tab for blockid %s: %w", data.BlockId, err)
+		}
+
+		tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving tab %s: %w", tabId, err)
+		}
+
+		layout, err := wstore.DBGet[*waveobj.LayoutState](ctx, tab.LayoutState)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving layout state %s: %w", tab.LayoutState, err)
+		}
+
+		if layout.LeafOrder == nil {
+			return nil, fmt.Errorf("could not resolve block num %v, leaf order is empty", blockNum)
+		}
+
+		leafIndex := blockNum - 1 // block nums are 1-indexed, we need the 0-indexed version
+		if len(*layout.LeafOrder) <= leafIndex {
+			return nil, fmt.Errorf("could not find a node in the layout matching blockNum %v", blockNum)
+		}
+		leafEntry := (*layout.LeafOrder)[leafIndex]
+		return &waveobj.ORef{OType: waveobj.OType_Block, OID: leafEntry.BlockId}, nil
+	} else if strings.Contains(simpleId, ":") {
 		rtn, err := waveobj.ParseORef(simpleId)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing simple id: %w", err)

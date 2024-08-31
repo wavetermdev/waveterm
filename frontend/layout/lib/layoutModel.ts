@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atomWithThrottle, boundNumber } from "@/util/util";
+import { atomWithThrottle, boundNumber, lazy } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { createRef, CSSProperties } from "react";
@@ -110,7 +110,7 @@ export class LayoutModel {
     /**
      * An ordered list of node ids starting from the top left corner to the bottom right corner.
      */
-    leafOrder: PrimitiveAtom<string[]>;
+    leafOrder: PrimitiveAtom<LeafOrderEntry[]>;
     /**
      * Atom representing the number of leaf nodes in a layout.
      */
@@ -223,6 +223,7 @@ export class LayoutModel {
         this.halfResizeHandleSizePx = this.gapSizePx > 5 ? this.gapSizePx : DefaultGapSizePx;
         this.resizeHandleSizePx = 2 * this.halfResizeHandleSizePx;
         this.animationTimeS = animationTimeS ?? DefaultAnimationTimeS;
+        this.lastTreeStateGeneration = -1;
 
         this.leafs = atom([]);
         this.leafOrder = atom([]);
@@ -283,7 +284,7 @@ export class LayoutModel {
             return this.getPlaceholderTransform(pendingAction);
         });
 
-        this.updateTreeState(true);
+        this.onTreeStateAtomUpdated(true);
     }
 
     /**
@@ -357,24 +358,23 @@ export class LayoutModel {
             default:
                 console.error("Invalid reducer action", this.treeState, action);
         }
-        if (this.lastTreeStateGeneration !== this.treeState.generation) {
-            this.lastTreeStateGeneration = this.treeState.generation;
+        if (this.lastTreeStateGeneration < this.treeState.generation) {
             if (this.magnifiedNodeId !== this.treeState.magnifiedNodeId) {
                 this.lastMagnifiedNodeId = this.magnifiedNodeId;
                 this.magnifiedNodeId = this.treeState.magnifiedNodeId;
             }
             this.updateTree();
-            this.setter(this.treeStateAtom, this.treeState);
+            this.setTreeStateAtom(true);
         }
     }
 
     /**
-     * Callback that is invoked when the tree state has been updated on the backend. This ensures the model is updated if the atom is not fully loaded when the model is first instantiated.
-     * @param force Whether to force the tree state to update, regardless of whether the state is already up to date.
+     * Callback that is invoked when the upstream tree state has been updated. This ensures the model is updated if the atom is not fully loaded when the model is first instantiated.
+     * @param force Whether to force the local tree state to update, regardless of whether the state is already up to date.
      */
-    async updateTreeState(force = false) {
+    async onTreeStateAtomUpdated(force = false) {
         const treeState = this.getter(this.treeStateAtom);
-        // Only update the local tree state if it is different from the one in the backend. This function is called even when the update was initiated by the LayoutModel, so we need to filter out false positives or we'll enter an infinite loop.
+        // Only update the local tree state if it is different from the one in the upstream atom. This function is called even when the update was initiated by the LayoutModel, so we need to filter out false positives or we'll enter an infinite loop.
         if (
             force ||
             !this.treeState?.rootNode ||
@@ -439,15 +439,34 @@ export class LayoutModel {
                 }
             } else {
                 this.updateTree();
+                this.setTreeStateAtom();
             }
         }
     }
 
     /**
+     * Set the upstream tree state atom to the value of the local tree state.
+     * @param bumpGeneration Whether to bump the generation of the tree state before setting the atom.
+     */
+    setTreeStateAtom(bumpGeneration = true) {
+        if (bumpGeneration) {
+            this.treeState.generation++;
+        }
+        this.lastTreeStateGeneration = this.treeState.generation;
+        this.setter(this.treeStateAtom, this.treeState);
+    }
+
+    /**
+     * This is a hack to ensure that when the updateTree first successfully runs, we set the upstream atom state to persist the initial leaf order.
+     * @see updateTree should be the only caller of this method.
+     */
+    setTreeStateAtomOnce = lazy(() => this.setTreeStateAtom());
+
+    /**
      * Recursively walks the tree to find leaf nodes, update the resize handles, and compute additional properties for each node.
      * @param balanceTree Whether the tree should also be balanced as it is walked. This should be done if the tree state has just been updated. Defaults to true.
      */
-    updateTree = (balanceTree: boolean = true) => {
+    updateTree(balanceTree: boolean = true) {
         if (this.displayContainerRef.current) {
             const newLeafs: LayoutNode[] = [];
             const newAdditionalProps = {};
@@ -471,8 +490,9 @@ export class LayoutModel {
             this.setter(this.leafOrder, this.treeState.leafOrder);
             this.validateFocusedNode(this.treeState.leafOrder);
             this.cleanupNodeModels();
+            this.setTreeStateAtomOnce();
         }
-    };
+    }
 
     /**
      * Per-node callback that is invoked recursively to find leaf nodes, update the resize handles, and compute additional properties associated with the given node.
@@ -595,12 +615,13 @@ export class LayoutModel {
      * Checks whether the focused node id has changed and, if so, whether to update the focused node stack. If the focused node was deleted, will pop the latest value from the stack.
      * @param leafOrder The new leaf order array to use when searching for stale nodes in the stack.
      */
-    private validateFocusedNode(leafOrder: string[]) {
+    private validateFocusedNode(leafOrder: LeafOrderEntry[]) {
         if (this.treeState.focusedNodeId !== this.focusedNodeId) {
             // Remove duplicates and stale entries from focus stack.
             const newFocusedNodeIdStack: string[] = [];
             for (const id of this.focusedNodeIdStack) {
-                if (leafOrder.includes(id) && !newFocusedNodeIdStack.includes(id)) newFocusedNodeIdStack.push(id);
+                if (leafOrder.find((leafEntry) => leafEntry.nodeid === id) && !newFocusedNodeIdStack.includes(id))
+                    newFocusedNodeIdStack.push(id);
             }
             this.focusedNodeIdStack = newFocusedNodeIdStack;
 
@@ -610,7 +631,7 @@ export class LayoutModel {
                     this.treeState.focusedNodeId = this.focusedNodeIdStack.shift();
                 } else {
                     // If no nodes are in the stack, use the top left node in the layout.
-                    this.treeState.focusedNodeId = leafOrder[0];
+                    this.treeState.focusedNodeId = leafOrder[0].nodeid;
                 }
             }
             this.focusedNodeIdStack.unshift(this.treeState.focusedNodeId);
@@ -734,7 +755,7 @@ export class LayoutModel {
                 }),
                 nodeId: nodeid,
                 blockId,
-                blockNum: atom((get) => get(this.leafOrder).indexOf(nodeid) + 1),
+                blockNum: atom((get) => get(this.leafOrder).findIndex((leafEntry) => leafEntry.nodeid === nodeid) + 1),
                 isFocused: atom((get) => {
                     const treeState = get(this.treeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;
@@ -759,7 +780,9 @@ export class LayoutModel {
 
     private cleanupNodeModels() {
         const leafOrder = this.getter(this.leafOrder);
-        const orphanedNodeModels = [...this.nodeModels.keys()].filter((id) => !leafOrder.includes(id));
+        const orphanedNodeModels = [...this.nodeModels.keys()].filter(
+            (id) => !leafOrder.find((leafEntry) => leafEntry.nodeid == id)
+        );
         for (const id of orphanedNodeModels) {
             this.nodeModels.delete(id);
         }
@@ -774,7 +797,7 @@ export class LayoutModel {
 
         // If no node is focused, set focus to the first leaf.
         if (!curNodeId) {
-            this.focusNode(this.getter(this.leafOrder)[0]);
+            this.focusNode(this.getter(this.leafOrder)[0].nodeid);
             return;
         }
 
@@ -841,8 +864,8 @@ export class LayoutModel {
         if (newLeafIdx < 0 || newLeafIdx >= leafOrder.length) {
             return;
         }
-        const leafId = leafOrder[newLeafIdx];
-        this.focusNode(leafId);
+        const leaf = leafOrder[newLeafIdx];
+        this.focusNode(leaf.nodeid);
     }
 
     /**
@@ -1087,12 +1110,15 @@ export class LayoutModel {
     }
 }
 
-function getLeafOrder(leafs: LayoutNode[], additionalProps: Record<string, LayoutNodeAdditionalProps>): string[] {
+function getLeafOrder(
+    leafs: LayoutNode[],
+    additionalProps: Record<string, LayoutNodeAdditionalProps>
+): LeafOrderEntry[] {
     return leafs
-        .map((node) => node.id)
+        .map((node) => ({ nodeid: node.id, blockid: node.data.blockId }) as LeafOrderEntry)
         .sort((a, b) => {
-            const treeKeyA = additionalProps[a]?.treeKey;
-            const treeKeyB = additionalProps[b]?.treeKey;
+            const treeKeyA = additionalProps[a.nodeid]?.treeKey;
+            const treeKeyB = additionalProps[b.nodeid]?.treeKey;
             if (!treeKeyA || !treeKeyB) return;
             return treeKeyA.localeCompare(treeKeyB);
         });

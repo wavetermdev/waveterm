@@ -256,7 +256,7 @@ export type LayoutTreeState = {
     /**
      * A computed ordered list of leafs in the layout. This value is driven by the LayoutModel and should not be read when updated from the backend.
      */
-    leafOrder?: string[];
+    leafOrder?: LeafOrderEntry[];
     pendingBackendActions: LayoutActionData[];
     generation: number;
 };

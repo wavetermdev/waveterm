@@ -225,8 +225,14 @@ declare global {
         rootnode?: any;
         magnifiednodeid?: string;
         focusednodeid?: string;
-        leaforder?: string[];
+        leaforder?: LeafOrderEntry[];
         pendingbackendactions?: LayoutActionData[];
+    };
+
+    // waveobj.LeafOrderEntry
+    type LeafOrderEntry = {
+        nodeid: string;
+        blockid: string;
     };
 
     // waveobj.MetaTSType
