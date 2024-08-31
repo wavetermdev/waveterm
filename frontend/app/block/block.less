@@ -1,6 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+@import "../mixins.less";
+
 .block {
     display: flex;
     flex-direction: column;
@@ -111,12 +113,23 @@
                 }
 
                 .block-frame-text {
+                    .ellipsis();
                     font: var(--fixed-font);
                     font-size: 11px;
                     opacity: 0.7;
                     overflow-x: hidden;
-                    text-wrap: nowrap;
-                    text-overflow: ellipsis;
+                    flex-grow: 1;
+
+                    &.preview-filename {
+                        span {
+                            height: 100%;
+                            cursor: pointer;
+
+                            &:hover {
+                                background: var(--highlight-bg-color);
+                            }
+                        }
+                    }
                 }
 
                 .iconbutton {

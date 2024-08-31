@@ -4,7 +4,7 @@
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { Markdown } from "@/element/markdown";
-import { atoms, createBlock, globalStore, useBlockAtom } from "@/store/global";
+import { createBlock, globalStore, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -35,6 +35,10 @@ function isTextFile(mimeType: string): boolean {
     );
 }
 
+function canPreview(mimeType: string): boolean {
+    return mimeType.startsWith("text/markdown") || mimeType.startsWith("text/csv");
+}
+
 export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
@@ -45,9 +49,9 @@ export class PreviewModel implements ViewModel {
     preIconButton: jotai.Atom<HeaderIconButton>;
     endIconButtons: jotai.Atom<HeaderIconButton[]>;
     ceReadOnly: jotai.PrimitiveAtom<boolean>;
-    isCeView: jotai.PrimitiveAtom<boolean>;
     previewTextRef: React.RefObject<HTMLDivElement>;
     editMode: jotai.Atom<boolean>;
+    canPreview: jotai.PrimitiveAtom<boolean>;
 
     fileName: jotai.Atom<string>;
     connection: jotai.Atom<string>;
@@ -57,6 +61,7 @@ export class PreviewModel implements ViewModel {
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
     fileContent: jotai.Atom<Promise<string>>;
     newFileContent: jotai.PrimitiveAtom<string | null>;
+    openFileModal: jotai.PrimitiveAtom<boolean>;
 
     showHiddenFiles: jotai.PrimitiveAtom<boolean>;
     refreshVersion: jotai.PrimitiveAtom<number>;
@@ -74,7 +79,8 @@ export class PreviewModel implements ViewModel {
         this.refreshVersion = jotai.atom(0);
         this.previewTextRef = createRef();
         this.ceReadOnly = jotai.atom(true);
-        this.isCeView = jotai.atom(false);
+        this.canPreview = jotai.atom(false);
+        this.openFileModal = jotai.atom(false);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = jotai.atom((get) => {
             let blockData = get(this.blockAtom);
@@ -121,60 +127,55 @@ export class PreviewModel implements ViewModel {
         });
         this.viewName = jotai.atom("Preview");
         this.viewText = jotai.atom((get) => {
-            if (get(this.isCeView)) {
-                const viewTextChildren: HeaderElem[] = [
-                    {
-                        elemtype: "input",
-                        value: get(this.fileName),
-                        isDisabled: true,
-                    },
-                ];
-                if (get(this.ceReadOnly) == false) {
-                    let saveClassName = "secondary";
-                    if (get(this.newFileContent) !== null) {
-                        saveClassName = "primary";
-                    }
-                    viewTextChildren.push(
-                        {
-                            elemtype: "textbutton",
-                            text: "Save",
-                            className: clsx(
-                                `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10`
-                            ),
-                            onClick: this.handleFileSave.bind(this),
-                        },
-                        {
-                            elemtype: "textbutton",
-                            text: "Cancel",
-                            className: "secondary border-radius-4 vertical-padding-2 horizontal-padding-10",
-                            onClick: () => this.toggleCodeEditorReadOnly(true),
-                        }
-                    );
-                } else {
+            const blockData = get(this.blockAtom);
+            const editMode = blockData?.meta?.edit ?? false;
+            const viewTextChildren: HeaderElem[] = [
+                {
+                    elemtype: "text",
+                    text: get(this.fileName),
+                    ref: this.previewTextRef,
+                    className: "preview-filename",
+                    onClick: () => globalStore.set(this.openFileModal, true),
+                },
+            ];
+            let saveClassName = "secondary";
+            if (get(this.newFileContent) !== null) {
+                saveClassName = "primary";
+            }
+            if (editMode) {
+                viewTextChildren.push({
+                    elemtype: "textbutton",
+                    text: "Save",
+                    className: clsx(
+                        `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                    ),
+                    onClick: this.handleFileSave.bind(this),
+                });
+                if (get(this.canPreview)) {
                     viewTextChildren.push({
                         elemtype: "textbutton",
-                        text: "Edit",
-                        className: "secondary border-radius-4 vertical-padding-2 horizontal-padding-10",
-                        onClick: () => this.toggleCodeEditorReadOnly(false),
+                        text: "Preview",
+                        className:
+                            "secondary border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
+                        onClick: () => this.toggleEditMode(false),
                     });
                 }
-                return [
-                    {
-                        elemtype: "div",
-                        children: viewTextChildren,
-                    },
-                ] as HeaderElem[];
-            } else {
-                return [
-                    {
-                        elemtype: "text",
-                        text: get(this.fileName),
-                        ref: this.previewTextRef,
-                    },
-                ];
+            } else if (get(this.canPreview)) {
+                viewTextChildren.push({
+                    elemtype: "textbutton",
+                    text: "Edit",
+                    className:
+                        "secondary border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
+                    onClick: () => this.toggleEditMode(true),
+                });
             }
+            return [
+                {
+                    elemtype: "div",
+                    children: viewTextChildren,
+                },
+            ] as HeaderElem[];
         });
-
         this.preIconButton = jotai.atom((get) => {
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             if (mimeType == "directory") {
@@ -226,27 +227,15 @@ export class PreviewModel implements ViewModel {
             const statFile = await services.FileService.StatFile(conn, fileName);
             return statFile;
         });
-        this.fullFile = jotai.atom<Promise<FullFile>>(async (get) => {
-            const fileName = get(this.fileName);
-            if (fileName == null) {
-                return null;
-            }
-            const conn = get(this.connection) ?? "";
-            const file = await services.FileService.ReadFile(conn, fileName);
-            return file;
-        });
         this.fileMimeType = jotai.atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
             return fileInfo?.mimetype;
         });
         this.fileMimeTypeLoadable = loadable(this.fileMimeType);
-        this.fileContent = jotai.atom<Promise<string>>(async (get) => {
-            const fullFile = await get(this.fullFile);
-            return util.base64ToString(fullFile?.data64);
-        });
         this.newFileContent = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
-
         this.goParentDirectory = this.goParentDirectory.bind(this);
+        this.toggleEditMode(false);
+        this.setFileContent();
     }
 
     async resolvePath(filePath, basePath) {
@@ -285,6 +274,7 @@ export class PreviewModel implements ViewModel {
                 stack.push(part);
             }
         });
+        console.log("===============================", stack.join("/"));
         return stack.join("/");
     }
 
@@ -332,6 +322,7 @@ export class PreviewModel implements ViewModel {
         if (updateMeta == null) {
             return;
         }
+        updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
         services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
@@ -343,6 +334,7 @@ export class PreviewModel implements ViewModel {
         if (updateMeta == null) {
             return;
         }
+        updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
         services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
@@ -354,12 +346,39 @@ export class PreviewModel implements ViewModel {
         if (updateMeta == null) {
             return;
         }
+        updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
         services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
-    toggleCodeEditorReadOnly(readOnly: boolean) {
-        globalStore.set(this.ceReadOnly, readOnly);
+    setFileContent() {
+        const fullFileAtom = jotai.atom<Promise<FullFile>>(async (get) => {
+            const fileName = get(this.fileName);
+            if (fileName == null) {
+                return null;
+            }
+            const conn = get(this.connection) ?? "";
+            const file = await services.FileService.ReadFile(conn, fileName);
+            return file;
+        });
+
+        const fileContentAtom = jotai.atom<Promise<string>>(async (get) => {
+            const fullFile = await get(fullFileAtom);
+            return util.base64ToString(fullFile?.data64);
+        });
+
+        this.fullFile = fullFileAtom;
+        this.fileContent = fileContentAtom;
+    }
+
+    toggleEditMode(edit: boolean) {
+        if (!edit) {
+            this.setFileContent();
+        }
+
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
     }
 
     async handleFileSave() {
@@ -367,8 +386,10 @@ export class PreviewModel implements ViewModel {
         const newFileContent = globalStore.get(this.newFileContent);
         const conn = globalStore.get(this.connection) ?? "";
         try {
-            services.FileService.SaveFile(conn, fileName, util.stringToBase64(newFileContent));
-            globalStore.set(this.newFileContent, null);
+            if (newFileContent != null) {
+                services.FileService.SaveFile(conn, fileName, util.stringToBase64(newFileContent));
+                globalStore.set(this.newFileContent, null);
+            }
         } catch (error) {
             console.error("Error saving file:", error);
         }
@@ -554,40 +575,27 @@ function CodeEditPreview({
     parentRef,
     contentAtom,
     filename,
-    readonly,
-    isCeViewAtom,
     newFileContentAtom,
     model,
 }: {
     parentRef: React.MutableRefObject<HTMLDivElement>;
     contentAtom: jotai.Atom<Promise<string>>;
     filename: string;
-    readonly: boolean;
-    isCeViewAtom: jotai.PrimitiveAtom<boolean>;
     newFileContentAtom: jotai.PrimitiveAtom<string>;
     model: PreviewModel;
 }) {
     const fileContent = jotai.useAtomValue(contentAtom);
-    const setIsCeView = jotai.useSetAtom(isCeViewAtom);
     const setNewFileContent = jotai.useSetAtom(newFileContentAtom);
-
-    useEffect(() => {
-        setIsCeView(true);
-        return () => {
-            setIsCeView(false);
-        };
-    }, [setIsCeView]);
 
     return (
         <CodeEditor
             parentRef={parentRef}
-            readonly={readonly}
             text={fileContent}
             filename={filename}
             onChange={(text) => setNewFileContent(text)}
             onSave={() => model.handleFileSave()}
-            onCancel={() => model.toggleCodeEditorReadOnly(true)}
-            onEdit={() => model.toggleCodeEditorReadOnly(false)}
+            onCancel={() => model.toggleEditMode(true)}
+            onEdit={() => model.toggleEditMode(false)}
         />
     );
 }
@@ -656,20 +664,20 @@ function PreviewView({
     const fileMimeTypeAtom = model.fileMimeType;
     const fileContentAtom = model.fileContent;
     const newFileContentAtom = model.newFileContent;
-    const ceReadOnlyAtom = model.ceReadOnly;
-    const isCeViewAtom = model.isCeView;
+    const editModeAtom = model.editMode;
+    const openFileModalAtom = model.openFileModal;
+    const canPreviewAtom = model.canPreview;
 
     const mimeType = jotai.useAtomValue(fileMimeTypeAtom) || "";
     const fileName = jotai.useAtomValue(fileNameAtom);
     const fileInfo = jotai.useAtomValue(statFileAtom);
-    const ceReadOnly = jotai.useAtomValue(ceReadOnlyAtom);
     const conn = jotai.useAtomValue(model.connection);
-    const typeAhead = jotai.useAtomValue(atoms.typeAheadModalAtom);
+    const editMode = jotai.useAtomValue(editModeAtom);
+    const openFileModal = jotai.useAtomValue(openFileModalAtom);
     let blockIcon = iconForFile(mimeType, fileName);
 
     const [filePath, setFilePath] = useState("");
     const [openFileError, setOpenFileError] = useState("");
-    const [openFileModal, setOpenFileModal] = useState(false);
 
     // ensure consistent hook calls
     const specializedView = (() => {
@@ -686,9 +694,11 @@ function PreviewView({
             view = <CenteredDiv>File Not Found{util.isBlank(fileName) ? null : JSON.stringify(fileName)}</CenteredDiv>;
         } else if (fileInfo.size > MaxFileSize) {
             view = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
-        } else if (mimeType === "text/markdown") {
+        } else if (mimeType === "text/markdown" && !editMode) {
+            globalStore.set(canPreviewAtom, true);
             view = <MarkdownPreview contentAtom={fileContentAtom} />;
-        } else if (mimeType === "text/csv") {
+        } else if (mimeType === "text/csv" && !editMode) {
+            globalStore.set(canPreviewAtom, true);
             if (fileInfo.size > MaxCSVSize) {
                 view = <CenteredDiv>CSV File Too Large to Preview (1MB Max)</CenteredDiv>;
             } else {
@@ -702,20 +712,26 @@ function PreviewView({
                 );
             }
         } else if (isTextFile(mimeType)) {
+            model.toggleEditMode(true);
             view = (
                 <CodeEditPreview
-                    readonly={ceReadOnly}
                     parentRef={contentRef}
                     contentAtom={fileContentAtom}
                     filename={fileName}
-                    isCeViewAtom={isCeViewAtom}
                     newFileContentAtom={newFileContentAtom}
                     model={model}
                 />
             );
         } else if (mimeType === "directory") {
             view = <DirectoryPreview fileNameAtom={fileNameAtom} model={model} />;
+            if (editMode) {
+                globalStore.set(openFileModalAtom, true);
+            } else {
+                globalStore.set(canPreviewAtom, false);
+            }
         } else {
+            globalStore.set(canPreviewAtom, false);
+            model.toggleEditMode(false);
             view = (
                 <div className="view-preview">
                     <div>Preview ({mimeType})</div>
@@ -728,7 +744,7 @@ function PreviewView({
     const handleKeyDown = useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
             const updateModalAndError = (isOpen, errorMsg = "") => {
-                setOpenFileModal(isOpen);
+                globalStore.set(openFileModalAtom, isOpen);
                 setOpenFileError(errorMsg);
             };
 
@@ -767,18 +783,19 @@ function PreviewView({
             });
             return false;
         },
-        [typeAhead, model, blockId, filePath, fileName]
+        [model, blockId, filePath, fileName]
     );
 
     const handleFileSuggestionSelect = (value) => {
-        globalStore.set(atoms.typeAheadModalAtom, {
-            ...(typeAhead as TypeAheadModalType),
-            [blockId]: false,
-        });
+        globalStore.set(openFileModalAtom, false);
     };
 
     const handleFileSuggestionChange = (value) => {
         setFilePath(value);
+    };
+
+    const handleBackDropClick = () => {
+        globalStore.set(openFileModalAtom, false);
     };
 
     useEffect(() => {
@@ -799,7 +816,7 @@ function PreviewView({
                     onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
                     onSelect={handleFileSuggestionSelect}
                     onChange={handleFileSuggestionChange}
-                    onClickBackdrop={() => setOpenFileModal(false)}
+                    onClickBackdrop={handleBackDropClick}
                 />
             )}
             <div

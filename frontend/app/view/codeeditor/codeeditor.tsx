@@ -64,7 +64,6 @@ interface CodeEditorProps {
     parentRef: React.MutableRefObject<HTMLDivElement>;
     text: string;
     filename: string;
-    readonly: boolean;
     language?: string;
     onChange?: (text: string) => void;
     onSave?: () => void;
@@ -73,7 +72,6 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor({
-    readonly = false,
     parentRef,
     text,
     language,
@@ -150,7 +148,6 @@ export function CodeEditor({
     }
 
     const editorOpts = defaultEditorOptions();
-    editorOpts.readOnly = readonly;
 
     return (
         <div className="code-editor-wrapper">

@@ -217,8 +217,10 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
         return <Input decl={elem} className={clsx("block-frame-input", elem.className)} preview={preview} />;
     } else if (elem.elemtype == "text") {
         return (
-            <div ref={preview ? null : elem.ref} className="block-frame-text">
-                {elem.text}
+            <div className={clsx("block-frame-text", elem.className)}>
+                <span ref={preview ? null : elem.ref} onClick={() => elem?.onClick()}>
+                    {elem.text}
+                </span>
             </div>
         );
     } else if (elem.elemtype == "textbutton") {
