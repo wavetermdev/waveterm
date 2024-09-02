@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
+	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wcore"
@@ -133,6 +134,14 @@ func (svc *ObjectService) SetActiveTab(uiContext waveobj.UIContext, tabId string
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
 	for _, blockId := range tab.BlockIds {
+		blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting block: %w", err)
+		}
+		err = conncontroller.EnsureConnection(ctx, blockData)
+		if err != nil {
+			return nil, fmt.Errorf("unable to ensure connection: %v", err)
+		}
 		blockErr := blockcontroller.StartBlockController(ctx, tabId, blockId)
 		if blockErr != nil {
 			// we don't want to fail the set active tab operation if a block controller fails to start

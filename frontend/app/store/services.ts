@@ -7,6 +7,9 @@ import * as WOS from "./wos";
 
 // blockservice.BlockService (block)
 class BlockServiceType {
+    EnsureConnection(arg2: string): Promise<void> {
+        return WOS.callBackendService("block", "EnsureConnection", Array.from(arguments))
+    }
     GetControllerStatus(arg2: string): Promise<BlockControllerRuntimeStatus> {
         return WOS.callBackendService("block", "GetControllerStatus", Array.from(arguments))
     }

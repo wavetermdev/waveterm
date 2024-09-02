@@ -19,11 +19,13 @@ import (
 	"time"
 
 	"github.com/kevinburke/ssh_config"
+	"github.com/skeema/knownhosts"
 	"github.com/wavetermdev/thenextwave/pkg/remote"
 	"github.com/wavetermdev/thenextwave/pkg/userinput"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
@@ -84,7 +86,7 @@ func (conn *SSHConn) FireConnChangeEvent() {
 		},
 		Data: status,
 	}
-	log.Printf("connstatus change %q => %s\n", conn.GetName(), status.Status)
+	log.Printf("sending event: %+#v", event)
 	wps.Broker.Publish(event)
 }
 
@@ -241,7 +243,7 @@ func (conn *SSHConn) StartConnServer() error {
 	return nil
 }
 
-func (conn *SSHConn) checkAndInstallWsh(ctx context.Context) error {
+func (conn *SSHConn) checkAndInstallWsh(ctx context.Context, clientDisplayName string) error {
 	client := conn.GetClient()
 	if client == nil {
 		return fmt.Errorf("client is nil")
@@ -252,27 +254,33 @@ func (conn *SSHConn) checkAndInstallWsh(ctx context.Context) error {
 	if err == nil && clientVersion == expectedVersion {
 		return nil
 	}
-	// TODO add some progress to SSHConn about install status
 	var queryText string
 	var title string
 	if err != nil {
-		queryText = "Waveterm requires `wsh` shell extensions installed on your client to ensure a seamless experience. Would you like to install them?"
-		title = "Install Wsh Shell Extensions"
+		queryText = fmt.Sprintf("Wave requires Wave Shell Extensions to be  \n"+
+			"installed on `%s`  \n"+
+			"to ensure a seamless experience.  \n\n"+
+			"Would you like to install them?", clientDisplayName)
+		title = "Install Wave Shell Extensions"
 	} else {
-		queryText = fmt.Sprintf("Waveterm requires `wsh` shell extensions installed on your client to be updated from %s to %s. Would you like to update?", clientVersion, expectedVersion)
-		title = "Update Wsh Shell Extensions"
+		queryText = fmt.Sprintf("Wave requires the Wave Shell Extensions  \n"+
+			"installed on `%s`  \n"+
+			"to be updated from %s to %s.  \n\n"+
+			"Would you like to update?", clientDisplayName, clientVersion, expectedVersion)
+		title = "Update Wave Shell Extensions"
 	}
 	request := &userinput.UserInputRequest{
 		ResponseType: "confirm",
 		QueryText:    queryText,
 		Title:        title,
+		Markdown:     true,
 		CheckBoxMsg:  "Don't show me this again",
 	}
 	response, err := userinput.GetUserInput(ctx, request)
 	if err != nil || !response.Confirm {
 		return err
 	}
-	log.Printf("attempting to install wsh to `%s@%s`", client.User(), client.RemoteAddr().String())
+	log.Printf("attempting to install wsh to `%s`", clientDisplayName)
 	clientOs, err := remote.GetClientOs(client)
 	if err != nil {
 		return err
@@ -346,6 +354,8 @@ func (conn *SSHConn) connectInternal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	fmtAddr := knownhosts.Normalize(fmt.Sprintf("%s@%s", client.User(), client.RemoteAddr().String()))
+	clientDisplayName := fmt.Sprintf("%s (%s)", conn.GetName(), fmtAddr)
 	conn.WithLock(func() {
 		conn.Client = client
 	})
@@ -353,7 +363,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	installErr := conn.checkAndInstallWsh(ctx)
+	installErr := conn.checkAndInstallWsh(ctx, clientDisplayName)
 	if installErr != nil {
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
 	}
@@ -406,6 +416,48 @@ func GetConn(ctx context.Context, opts *remote.SSHOpts, shouldConnect bool) *SSH
 		conn.Connect(ctx)
 	}
 	return conn
+}
+
+// Convenience function for ensuring a connection is established
+func EnsureConnection(ctx context.Context, blockData *waveobj.Block) error {
+	connectionName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
+	if connectionName == "" {
+		return nil
+	}
+	credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFunc()
+
+	opts, err := remote.ParseOpts(connectionName)
+	if err != nil {
+		return err
+	}
+	conn := GetConn(credentialCtx, opts, true)
+	statusChan := make(chan string, 1)
+	go func() {
+		// we need to wait for connected/disconnected/error
+		// to ensure the connection has been established before
+		// continuing in the original thread
+		for {
+			// GetStatus has a lock which makes this reasonable to loop over
+			status := conn.GetStatus()
+			if credentialCtx.Err() != nil {
+				// prevent infinite loop from context
+				statusChan <- Status_Error
+				return
+			}
+			if status == Status_Connected || status == Status_Disconnected || status == Status_Error {
+				statusChan <- status
+				return
+			}
+		}
+	}()
+	status := <-statusChan
+	if status == Status_Error {
+		return fmt.Errorf("connection error: %v", conn.Error)
+	} else if status == Status_Disconnected {
+		return fmt.Errorf("disconnected: %v", conn.Error)
+	}
+	return nil
 }
 
 func DisconnectClient(opts *remote.SSHOpts) error {

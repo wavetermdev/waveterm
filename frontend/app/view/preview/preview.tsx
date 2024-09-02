@@ -52,6 +52,7 @@ export class PreviewModel implements ViewModel {
     previewTextRef: React.RefObject<HTMLDivElement>;
     editMode: jotai.Atom<boolean>;
     canPreview: jotai.PrimitiveAtom<boolean>;
+    manageConnection: jotai.Atom<boolean>;
 
     fileName: jotai.Atom<string>;
     connection: jotai.Atom<string>;
@@ -81,6 +82,7 @@ export class PreviewModel implements ViewModel {
         this.ceReadOnly = jotai.atom(true);
         this.canPreview = jotai.atom(false);
         this.openFileModal = jotai.atom(false);
+        this.manageConnection = jotai.atom(true);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = jotai.atom((get) => {
             let blockData = get(this.blockAtom);

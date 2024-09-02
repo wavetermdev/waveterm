@@ -11,6 +11,7 @@ import (
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
+	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
@@ -82,4 +83,12 @@ func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, hist
 		return fmt.Errorf("cannot save terminal state: %w", err)
 	}
 	return nil
+}
+
+func (bs *BlockService) EnsureConnection(ctx context.Context, blockId string) error {
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		return err
+	}
+	return conncontroller.EnsureConnection(ctx, block)
 }

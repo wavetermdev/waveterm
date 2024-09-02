@@ -353,12 +353,21 @@ const ChangeConnectionBlockModal = React.memo(
     }) => {
         const [connSelected, setConnSelected] = React.useState("");
         const changeConnModalOpen = jotai.useAtomValue(changeConnModalAtom);
+        const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
         const changeConnection = React.useCallback(
             async (connName: string) => {
+                const oldCwd = blockData?.meta?.file ?? "";
+                let newCwd: string;
+                if (oldCwd == "") {
+                    newCwd = "";
+                } else {
+                    newCwd = "~";
+                }
                 await WshServer.SetMetaCommand({
                     oref: WOS.makeORef("block", blockId),
-                    meta: { connection: connName },
+                    meta: { connection: connName, file: newCwd },
                 });
+                await services.BlockService.EnsureConnection(blockId).catch((e) => console.log(e));
                 await WshServer.ControllerRestartCommand({ blockid: blockId });
             },
             [blockId]

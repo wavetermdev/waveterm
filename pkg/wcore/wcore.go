@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
+	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
@@ -172,6 +173,10 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 	blockData, err := wstore.CreateBlock(ctx, tabId, blockDef, rtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
+	}
+	err = conncontroller.EnsureConnection(ctx, blockData)
+	if err != nil {
+		return nil, fmt.Errorf("unable to ensure connection: %v", err)
 	}
 	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName != "" {
