@@ -537,6 +537,24 @@ function getViewModel(blockId: string): ViewModel {
     return blockViewModelMap.get(blockId);
 }
 
+function refocusNode(blockId: string) {
+    if (blockId == null) {
+        return;
+    }
+    const layoutModel = getLayoutModelForActiveTab();
+    const layoutNodeId = layoutModel.getNodeByBlockId(blockId);
+    if (layoutNodeId?.id == null) {
+        return;
+    }
+    layoutModel.focusNode(layoutNodeId.id);
+    const viewModel = getViewModel(blockId);
+    const ok = viewModel?.giveFocus?.();
+    if (!ok) {
+        const inputElem = document.getElementById(`${blockId}-dummy-focus`);
+        inputElem?.focus();
+    }
+}
+
 function countersClear() {
     Counters.clear();
 }
@@ -615,6 +633,7 @@ export {
     loadConnStatus,
     openLink,
     PLATFORM,
+    refocusNode,
     registerViewModel,
     sendWSCommand,
     setNodeFocus,

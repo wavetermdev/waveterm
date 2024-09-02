@@ -302,7 +302,8 @@ type CpuDataType struct {
 }
 
 type FileInfo struct {
-	Path     string      `json:"path"` // cleaned path
+	Path     string      `json:"path"` // cleaned path (may have "~")
+	Dir      string      `json:"dir"`  // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
 	Name     string      `json:"name"`
 	NotFound bool        `json:"notfound,omitempty"`
 	Size     int64       `json:"size"`
@@ -311,6 +312,7 @@ type FileInfo struct {
 	ModTime  int64       `json:"modtime"`
 	IsDir    bool        `json:"isdir,omitempty"`
 	MimeType string      `json:"mimetype,omitempty"`
+	ReadOnly bool        `json:"readonly,omitempty"` // this is not set for fileinfo's returned from directory listings
 }
 
 type CommandRemoteStreamFileData struct {

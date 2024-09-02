@@ -530,16 +530,15 @@ const MemoizedTableBody = React.memo(
 ) as typeof TableBody;
 
 interface DirectoryPreviewProps {
-    fileNameAtom: jotai.Atom<string>;
     model: PreviewModel;
 }
 
-function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
+function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [searchText, setSearchText] = useState("");
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
     const [filteredData, setFilteredData] = useState<FileInfo[]>([]);
-    const fileName = jotai.useAtomValue(fileNameAtom);
+    const fileName = jotai.useAtomValue(model.metaFilePath);
     const showHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = jotai.useAtom(model.refreshVersion);

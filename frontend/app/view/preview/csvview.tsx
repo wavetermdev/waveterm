@@ -37,6 +37,7 @@ interface State {
 
 const columnHelper = createColumnHelper<any>();
 
+// TODO remove parentRef dependency -- use own height
 const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
     const csvCacheRef = useRef(new Map<string, string>());
     const rowRef = useRef<(HTMLTableRowElement | null)[]>([]);

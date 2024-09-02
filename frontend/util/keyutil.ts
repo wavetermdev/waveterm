@@ -14,6 +14,10 @@ function setKeyUtilPlatform(platform: NodeJS.Platform) {
     PLATFORM = platform;
 }
 
+function getKeyUtilPlatform(): NodeJS.Platform {
+    return PLATFORM;
+}
+
 function keydownWrapper(
     fn: (waveEvent: WaveKeyboardEvent) => boolean
 ): (event: KeyboardEvent | React.KeyboardEvent) => void {
@@ -83,6 +87,53 @@ function isCharacterKeyEvent(event: WaveKeyboardEvent): boolean {
         return false;
     }
     return util.countGraphemes(event.key) == 1;
+}
+
+const inputKeyMap = new Map<string, boolean>([
+    ["Backspace", true],
+    ["Delete", true],
+    ["Enter", true],
+    ["Space", true],
+    ["Tab", true],
+    ["ArrowLeft", true],
+    ["ArrowRight", true],
+    ["ArrowUp", true],
+    ["ArrowDown", true],
+    ["Home", true],
+    ["End", true],
+    ["PageUp", true],
+    ["PageDown", true],
+    ["Cmd:a", true],
+    ["Cmd:c", true],
+    ["Cmd:v", true],
+    ["Cmd:x", true],
+    ["Cmd:z", true],
+    ["Cmd:Shift:z", true],
+    ["Cmd:ArrowLeft", true],
+    ["Cmd:ArrowRight", true],
+    ["Cmd:Backspace", true],
+    ["Cmd:Delete", true],
+    ["Shift:ArrowLeft", true],
+    ["Shift:ArrowRight", true],
+    ["Shift:ArrowUp", true],
+    ["Shift:ArrowDown", true],
+    ["Shift:Home", true],
+    ["Shift:End", true],
+    ["Cmd:Shift:ArrowLeft", true],
+    ["Cmd:Shift:ArrowRight", true],
+    ["Cmd:Shift:ArrowUp", true],
+    ["Cmd:Shift:ArrowDown", true],
+]);
+
+function isInputEvent(event: WaveKeyboardEvent): boolean {
+    if (isCharacterKeyEvent(event)) {
+        return true;
+    }
+    for (let key of inputKeyMap.keys()) {
+        if (checkKeyPressed(event, key)) {
+            return true;
+        }
+    }
 }
 
 function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
@@ -174,7 +225,9 @@ export {
     adaptFromElectronKeyEvent,
     adaptFromReactOrNativeKeyEvent,
     checkKeyPressed,
+    getKeyUtilPlatform,
     isCharacterKeyEvent,
+    isInputEvent,
     keydownWrapper,
     parseKeyDescription,
     setKeyUtilPlatform,

@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
@@ -88,7 +90,7 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 	}
 	var fileInfoArr []*wshrpc.FileInfo
 	parent := filepath.Dir(path)
-	parentFileInfo, err := impl.RemoteFileInfoCommand(ctx, parent)
+	parentFileInfo, err := impl.fileInfoInternal(parent, false)
 	if err == nil && parent != path {
 		parentFileInfo.Name = ".."
 		parentFileInfo.Size = -1
@@ -102,24 +104,8 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 		if err != nil {
 			continue
 		}
-		mimeType := utilfn.DetectMimeType(filepath.Join(path, innerFileInfoInt.Name()))
-		var fileSize int64
-		if mimeType == "directory" {
-			fileSize = -1
-		} else {
-			fileSize = innerFileInfoInt.Size()
-		}
-		innerFileInfo := wshrpc.FileInfo{
-			Path:     filepath.Join(path, innerFileInfoInt.Name()),
-			Name:     innerFileInfoInt.Name(),
-			Size:     fileSize,
-			Mode:     innerFileInfoInt.Mode(),
-			ModeStr:  innerFileInfoInt.Mode().String(),
-			ModTime:  innerFileInfoInt.ModTime().UnixMilli(),
-			IsDir:    innerFileInfoInt.IsDir(),
-			MimeType: mimeType,
-		}
-		fileInfoArr = append(fileInfoArr, &innerFileInfo)
+		innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt)
+		fileInfoArr = append(fileInfoArr, innerFileInfo)
 		if len(fileInfoArr) >= DirChunkSize {
 			dataCallback(fileInfoArr, nil)
 			fileInfoArr = nil
@@ -179,7 +165,7 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	}
 	path := data.Path
 	path = wavebase.ExpandHomeDir(path)
-	finfo, err := impl.RemoteFileInfoCommand(ctx, path)
+	finfo, err := impl.fileInfoInternal(path, true)
 	if err != nil {
 		return fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
@@ -214,18 +200,11 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 	return ch
 }
 
-func (*ServerImpl) RemoteFileInfoCommand(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
-	finfo, err := os.Stat(cleanedPath)
-	if os.IsNotExist(err) {
-		return &wshrpc.FileInfo{Path: wavebase.ReplaceHomeDir(path), NotFound: true}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
-	}
-	mimeType := utilfn.DetectMimeType(cleanedPath)
-	return &wshrpc.FileInfo{
-		Path:     cleanedPath,
+func statToFileInfo(fullPath string, finfo fs.FileInfo) *wshrpc.FileInfo {
+	mimeType := utilfn.DetectMimeType(fullPath, finfo)
+	rtn := &wshrpc.FileInfo{
+		Path:     wavebase.ReplaceHomeDir(fullPath),
+		Dir:      computeDirPart(fullPath, finfo.IsDir()),
 		Name:     finfo.Name(),
 		Size:     finfo.Size(),
 		Mode:     finfo.Mode(),
@@ -233,7 +212,75 @@ func (*ServerImpl) RemoteFileInfoCommand(ctx context.Context, path string) (*wsh
 		ModTime:  finfo.ModTime().UnixMilli(),
 		IsDir:    finfo.IsDir(),
 		MimeType: mimeType,
-	}, nil
+	}
+	if finfo.IsDir() {
+		rtn.Size = -1
+	}
+	return rtn
+}
+
+// fileInfo might be null
+func checkIsReadOnly(path string, fileInfo fs.FileInfo, exists bool) bool {
+	if !exists || fileInfo.Mode().IsDir() {
+		dirName := filepath.Dir(path)
+		randHexStr, err := utilfn.RandomHexString(12)
+		if err != nil {
+			// we're not sure, just return false
+			return false
+		}
+		tmpFileName := filepath.Join(dirName, "wsh-tmp-"+randHexStr)
+		_, err = os.Create(tmpFileName)
+		if err != nil {
+			return true
+		}
+		os.Remove(tmpFileName)
+		return false
+	}
+	// try to open for writing, if this fails then it is read-only
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return true
+	}
+	file.Close()
+	return false
+}
+
+func computeDirPart(path string, isDir bool) string {
+	path = filepath.Clean(wavebase.ExpandHomeDir(path))
+	path = filepath.ToSlash(path)
+	if path == "/" {
+		return "/"
+	}
+	path = strings.TrimSuffix(path, "/")
+	if isDir {
+		return path
+	}
+	return filepath.Dir(path)
+}
+
+func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInfo, error) {
+	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
+	finfo, err := os.Stat(cleanedPath)
+	if os.IsNotExist(err) {
+		return &wshrpc.FileInfo{
+			Path:     wavebase.ReplaceHomeDir(path),
+			Dir:      computeDirPart(path, false),
+			NotFound: true,
+			ReadOnly: checkIsReadOnly(cleanedPath, finfo, false),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
+	}
+	rtn := statToFileInfo(cleanedPath, finfo)
+	if extended {
+		rtn.ReadOnly = checkIsReadOnly(cleanedPath, finfo, true)
+	}
+	return rtn, nil
+}
+
+func (impl *ServerImpl) RemoteFileInfoCommand(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
+	return impl.fileInfoInternal(path, true)
 }
 
 func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.CommandRemoteWriteFileData) error {

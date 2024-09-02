@@ -189,6 +189,7 @@ export const ControllerStatusIcon = React.memo(({ blockId }: { blockId: string }
     }
     const controllerStatusElem = (
         <i
+            key="controller-status"
             className="fa-sharp fa-solid fa-triangle-exclamation"
             title="Controller Is Not Running"
             style={{ color: "var(--error-color)" }}

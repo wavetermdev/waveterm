@@ -32,7 +32,7 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
         return makeTerminalModel(blockId);
     }
     if (blockView === "preview") {
-        return makePreviewModel(blockId);
+        return makePreviewModel(blockId, nodeModel);
     }
     if (blockView === "web") {
         return makeWebViewModel(blockId, nodeModel);
@@ -231,7 +231,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
                     type="text"
                     value=""
                     ref={focusElemRef}
-                    id={`${nodeModel.blockId}-dummy-focus`}
+                    id={`${nodeModel.blockId}-dummy-focus`} // don't change this name (used in refocusNode)
                     className="dummy-focus"
                     onChange={() => {}}
                 />

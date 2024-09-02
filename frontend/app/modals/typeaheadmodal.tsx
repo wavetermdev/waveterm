@@ -3,7 +3,7 @@ import { InputDecoration } from "@/app/element/inputdecoration";
 import { useDimensions } from "@/app/hook/useDimensions";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import React, { forwardRef, useEffect, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
 import "./typeaheadmodal.less";
@@ -82,6 +82,8 @@ interface TypeAheadModalProps {
     onSelect?: (_: string) => void;
     onClickBackdrop?: () => void;
     onKeyDown?: (_) => void;
+    giveFocusRef?: React.MutableRefObject<() => boolean>;
+    autoFocus?: boolean;
 }
 
 const TypeAheadModal = ({
@@ -95,10 +97,13 @@ const TypeAheadModal = ({
     onSelect,
     onKeyDown,
     onClickBackdrop,
+    giveFocusRef,
+    autoFocus,
 }: TypeAheadModalProps) => {
     const { width, height } = useDimensions(blockRef);
     const modalRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLDivElement>(null);
+    const realInputRef = useRef<HTMLInputElement>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
     const [suggestionsHeight, setSuggestionsHeight] = useState<number | undefined>(undefined);
     const [modalHeight, setModalHeight] = useState<string | undefined>(undefined);
@@ -124,6 +129,20 @@ const TypeAheadModal = ({
             setSuggestionsHeight(computedHeight - inputHeight - padding);
         }
     }, [height, suggestions]);
+
+    useLayoutEffect(() => {
+        if (giveFocusRef) {
+            giveFocusRef.current = () => {
+                realInputRef.current?.focus();
+                return true;
+            };
+        }
+        return () => {
+            if (giveFocusRef) {
+                giveFocusRef.current = null;
+            }
+        };
+    }, [giveFocusRef]);
 
     const renderBackdrop = (onClick) => <div className="type-ahead-modal-backdrop" onClick={onClick}></div>;
 
@@ -167,9 +186,10 @@ const TypeAheadModal = ({
                 <div className={clsx("content-wrapper", { "has-suggestions": suggestions?.length })}>
                     <Input
                         ref={inputRef}
+                        inputRef={realInputRef}
                         onChange={handleChange}
                         value={value}
-                        autoFocus
+                        autoFocus={autoFocus}
                         placeholder={label}
                         decoration={{
                             endDecoration: (

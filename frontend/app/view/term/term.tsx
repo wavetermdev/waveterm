@@ -3,7 +3,7 @@
 
 import { WshServer } from "@/app/store/wshserver";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getEventORefSubject, globalStore, useBlockAtom, useSettingsPrefixAtom } from "@/store/global";
+import { WOS, atoms, getEventORefSubject, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -205,9 +205,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const termRef = React.useRef<TermWrap>(null);
     model.termRef = termRef;
     const shellProcStatusRef = React.useRef<string>(null);
-    const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
-        return jotai.atom<string>(null);
-    }) as jotai.PrimitiveAtom<string>;
     const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
     model.htmlElemFocusRef = htmlElemFocusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
@@ -310,10 +307,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             shellProcStatusRef.current = status;
             if (status == "running") {
                 termRef.current?.setIsRunning(true);
-                globalStore.set(blockIconOverrideAtom, "terminal");
             } else {
                 termRef.current?.setIsRunning(false);
-                globalStore.set(blockIconOverrideAtom, "regular@terminal");
             }
         }
         const initialRTStatus = services.BlockService.GetControllerStatus(blockId);

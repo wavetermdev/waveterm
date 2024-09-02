@@ -7,6 +7,8 @@ import {
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { WshServer } from "@/app/store/wshserver";
+import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
+import { getLayoutModelForActiveTab } from "@/layout/index";
 import {
     atoms,
     countersClear,
@@ -48,6 +50,7 @@ loadFonts();
 (window as any).isFullScreen = false;
 (window as any).countersPrint = countersPrint;
 (window as any).countersClear = countersClear;
+(window as any).getLayoutModelForActiveTab = getLayoutModelForActiveTab;
 
 document.title = `The Next Wave (${windowId.substring(0, 8)})`;
 
@@ -65,6 +68,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
+    setTimeout(loadMonaco, 30);
     const fullConfig = await services.FileService.GetFullConfig();
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);

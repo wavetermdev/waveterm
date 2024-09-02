@@ -24,6 +24,7 @@ interface InputProps {
     autoFocus?: boolean;
     disabled?: boolean;
     isNumber?: boolean;
+    inputRef?: React.MutableRefObject<HTMLInputElement>;
 }
 
 const Input = forwardRef<HTMLDivElement, InputProps>(
@@ -44,6 +45,7 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
             autoFocus,
             disabled,
             isNumber,
+            inputRef,
         }: InputProps,
         ref
     ) => {
@@ -51,7 +53,7 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
         const [internalValue, setInternalValue] = useState(defaultValue);
         const [error, setError] = useState(false);
         const [hasContent, setHasContent] = useState(Boolean(value || defaultValue));
-        const inputRef = useRef<HTMLInputElement>(null);
+        const internalInputRef = useRef<HTMLInputElement>(null);
 
         useEffect(() => {
             if (value !== undefined) {
@@ -60,15 +62,22 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
         }, [value]);
 
         const handleComponentFocus = () => {
-            if (inputRef.current && !inputRef.current.contains(document.activeElement)) {
-                inputRef.current.focus();
+            if (internalInputRef.current && !internalInputRef.current.contains(document.activeElement)) {
+                internalInputRef.current.focus();
             }
         };
 
         const handleComponentBlur = () => {
-            if (inputRef.current?.contains(document.activeElement)) {
-                inputRef.current.blur();
+            if (internalInputRef.current?.contains(document.activeElement)) {
+                internalInputRef.current.blur();
             }
+        };
+
+        const handleSetInputRef = (elem: HTMLInputElement) => {
+            if (inputRef) {
+                inputRef.current = elem;
+            }
+            internalInputRef.current = elem;
         };
 
         const handleFocus = () => {
@@ -77,8 +86,8 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
         };
 
         const handleBlur = () => {
-            if (inputRef.current) {
-                const inputValue = inputRef.current.value;
+            if (internalInputRef.current) {
+                const inputValue = internalInputRef.current.value;
                 if (required && !inputValue) {
                     setError(true);
                     setFocused(false);
@@ -144,7 +153,7 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
                         className={clsx("input-inner-input", {
                             "offset-left": decoration?.startDecoration,
                         })}
-                        ref={inputRef}
+                        ref={handleSetInputRef}
                         id={label}
                         value={inputValue}
                         onChange={handleInputChange}

@@ -4,28 +4,49 @@
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { Markdown } from "@/element/markdown";
-import { createBlock, globalStore, useBlockAtom } from "@/store/global";
+import { createBlock, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import * as historyutil from "@/util/historyutil";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
+import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { loadable } from "jotai/utils";
-import { createRef, useCallback, useEffect, useState } from "react";
+import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import * as React from "react";
+import { createRef, useCallback, useState } from "react";
 import { CenteredDiv } from "../../element/quickelems";
 import { CodeEditor } from "../codeeditor/codeeditor";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
 
+import { tryReinjectKey } from "@/app/store/keymodel";
+import { NodeModel } from "@/layout/index";
 import "./preview.less";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
 
+type SpecializedViewProps = {
+    model: PreviewModel;
+    parentRef: React.RefObject<HTMLDivElement>;
+};
+
+const SpecializedViewMap: { [view: string]: ({ model }: SpecializedViewProps) => React.JSX.Element } = {
+    streaming: StreamingPreview,
+    markdown: MarkdownPreview,
+    codeedit: CodeEditPreview,
+    csv: CSVViewPreview,
+    directory: DirectoryPreview,
+};
+
 function isTextFile(mimeType: string): boolean {
+    if (mimeType == null) {
+        return false;
+    }
     return (
         mimeType.startsWith("text/") ||
         mimeType == "application/sql" ||
@@ -36,25 +57,45 @@ function isTextFile(mimeType: string): boolean {
 }
 
 function canPreview(mimeType: string): boolean {
+    if (mimeType == null) {
+        return false;
+    }
     return mimeType.startsWith("text/markdown") || mimeType.startsWith("text/csv");
+}
+
+function isStreamingType(mimeType: string): boolean {
+    if (mimeType == null) {
+        return false;
+    }
+    return (
+        mimeType.startsWith("application/pdf") ||
+        mimeType.startsWith("video/") ||
+        mimeType.startsWith("audio/") ||
+        mimeType.startsWith("image/")
+    );
 }
 
 export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
+    nodeModel: NodeModel;
     blockAtom: jotai.Atom<Block>;
     viewIcon: jotai.Atom<string | HeaderIconButton>;
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
     preIconButton: jotai.Atom<HeaderIconButton>;
     endIconButtons: jotai.Atom<HeaderIconButton[]>;
-    ceReadOnly: jotai.PrimitiveAtom<boolean>;
     previewTextRef: React.RefObject<HTMLDivElement>;
     editMode: jotai.Atom<boolean>;
     canPreview: jotai.PrimitiveAtom<boolean>;
+    specializedView: jotai.Atom<Promise<{ specializedView?: string; errorStr?: string }>>;
+    loadableSpecializedView: jotai.Atom<Loadable<{ specializedView?: string; errorStr?: string }>>;
     manageConnection: jotai.Atom<boolean>;
 
-    fileName: jotai.Atom<string>;
+    metaFilePath: jotai.Atom<string>;
+    statFilePath: jotai.Atom<Promise<string>>;
+    normFilePath: jotai.Atom<Promise<string>>;
+    loadableStatFilePath: jotai.Atom<Loadable<string>>;
     connection: jotai.Atom<string>;
     statFile: jotai.Atom<Promise<FileInfo>>;
     fullFile: jotai.Atom<Promise<FullFile>>;
@@ -62,28 +103,36 @@ export class PreviewModel implements ViewModel {
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
     fileContent: jotai.Atom<Promise<string>>;
     newFileContent: jotai.PrimitiveAtom<string | null>;
+
     openFileModal: jotai.PrimitiveAtom<boolean>;
+    openFileError: jotai.PrimitiveAtom<string>;
+    openFileModalGiveFocusRef: React.MutableRefObject<() => boolean>;
+
+    monacoRef: React.MutableRefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
 
     showHiddenFiles: jotai.PrimitiveAtom<boolean>;
     refreshVersion: jotai.PrimitiveAtom<number>;
     refreshCallback: () => void;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
+    codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
     setPreviewFileName(fileName: string) {
         services.ObjectService.UpdateObjectMeta(`block:${this.blockId}`, { file: fileName });
     }
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "preview";
         this.blockId = blockId;
+        this.nodeModel = nodeModel;
         this.showHiddenFiles = jotai.atom(true);
         this.refreshVersion = jotai.atom(0);
         this.previewTextRef = createRef();
-        this.ceReadOnly = jotai.atom(true);
-        this.canPreview = jotai.atom(false);
         this.openFileModal = jotai.atom(false);
+        this.openFileError = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+        this.openFileModalGiveFocusRef = createRef();
         this.manageConnection = jotai.atom(true);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.monacoRef = createRef();
         this.viewIcon = jotai.atom((get) => {
             let blockData = get(this.blockAtom);
             if (blockData?.meta?.icon) {
@@ -120,7 +169,7 @@ export class PreviewModel implements ViewModel {
                     },
                 };
             }
-            const fileName = get(this.fileName);
+            const fileName = get(this.metaFilePath);
             return iconForFile(mimeType, fileName);
         });
         this.editMode = jotai.atom((get) => {
@@ -129,22 +178,27 @@ export class PreviewModel implements ViewModel {
         });
         this.viewName = jotai.atom("Preview");
         this.viewText = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const editMode = blockData?.meta?.edit ?? false;
+            const loadableSV = get(this.loadableSpecializedView);
+            const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
+            let headerPath = get(this.metaFilePath);
+            let loadablePath: Loadable<string> = get(this.loadableStatFilePath);
+            if (loadablePath.state == "hasData" && !util.isBlank(loadablePath.data)) {
+                headerPath = loadablePath.data;
+            }
             const viewTextChildren: HeaderElem[] = [
                 {
                     elemtype: "text",
-                    text: get(this.fileName),
+                    text: headerPath,
                     ref: this.previewTextRef,
                     className: "preview-filename",
-                    onClick: () => globalStore.set(this.openFileModal, true),
+                    onClick: () => this.updateOpenFileModalAndError(true),
                 },
             ];
             let saveClassName = "secondary";
             if (get(this.newFileContent) !== null) {
                 saveClassName = "primary";
             }
-            if (editMode) {
+            if (isCeView) {
                 viewTextChildren.push({
                     elemtype: "textbutton",
                     text: "Save",
@@ -159,7 +213,7 @@ export class PreviewModel implements ViewModel {
                         text: "Preview",
                         className:
                             "secondary border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
-                        onClick: () => this.toggleEditMode(false),
+                        onClick: () => this.setEditMode(false),
                     });
                 }
             } else if (get(this.canPreview)) {
@@ -168,7 +222,7 @@ export class PreviewModel implements ViewModel {
                     text: "Edit",
                     className:
                         "secondary border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
-                    onClick: () => this.toggleEditMode(true),
+                    onClick: () => this.setEditMode(true),
                 });
             }
             return [
@@ -210,18 +264,33 @@ export class PreviewModel implements ViewModel {
             }
             return null;
         });
-        this.fileName = jotai.atom<string>((get) => {
+        this.metaFilePath = jotai.atom<string>((get) => {
             const file = get(this.blockAtom)?.meta?.file;
             if (util.isBlank(file)) {
                 return "~";
             }
             return file;
         });
+        this.statFilePath = jotai.atom<Promise<string>>(async (get) => {
+            const fileInfo = await get(this.statFile);
+            return fileInfo?.path;
+        });
+        this.normFilePath = jotai.atom<Promise<string>>(async (get) => {
+            const fileInfo = await get(this.statFile);
+            if (fileInfo == null) {
+                return null;
+            }
+            if (fileInfo.isdir) {
+                return fileInfo.dir + "/";
+            }
+            return fileInfo.dir + "/" + fileInfo.name;
+        });
+        this.loadableStatFilePath = loadable(this.statFilePath);
         this.connection = jotai.atom<string>((get) => {
             return get(this.blockAtom)?.meta?.connection;
         });
         this.statFile = jotai.atom<Promise<FileInfo>>(async (get) => {
-            const fileName = get(this.fileName);
+            const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
             }
@@ -236,126 +305,9 @@ export class PreviewModel implements ViewModel {
         this.fileMimeTypeLoadable = loadable(this.fileMimeType);
         this.newFileContent = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.goParentDirectory = this.goParentDirectory.bind(this);
-        this.toggleEditMode(false);
-        this.setFileContent();
-    }
 
-    async resolvePath(filePath, basePath) {
-        // Handle paths starting with "~" to refer to the home directory
-        if (filePath.startsWith("~")) {
-            try {
-                const conn = globalStore.get(this.connection);
-                const sf = await services.FileService.StatFile(conn, "~");
-                basePath = sf.path; // Update basePath to the fetched home directory path
-                filePath = basePath + filePath.slice(1); // Replace "~" with the fetched home directory path
-            } catch (error) {
-                console.error("Error fetching home directory:", error);
-                return basePath;
-            }
-        }
-        // If filePath is an absolute path, return it directly
-        if (filePath.startsWith("/")) {
-            return filePath;
-        }
-        const stack = basePath.split("/");
-        // Ensure no empty segments from trailing slashes
-        if (stack[stack.length - 1] === "") {
-            stack.pop();
-        }
-        // Process the filePath parts
-        filePath.split("/").forEach((part) => {
-            if (part === "..") {
-                // Go up one level, avoid going above root level
-                if (stack.length > 1) {
-                    stack.pop();
-                }
-            } else if (part === "." || part === "") {
-                // Ignore current directory marker and empty parts
-            } else {
-                // Normal path part, add to the stack
-                stack.push(part);
-            }
-        });
-        console.log("===============================", stack.join("/"));
-        return stack.join("/");
-    }
-
-    async isValidPath(path) {
-        try {
-            const conn = globalStore.get(this.connection);
-            const sf = await services.FileService.StatFile(conn, path);
-            const isValid = !sf.notfound;
-            return isValid;
-        } catch (error) {
-            console.error("Error checking path validity:", error);
-            return false;
-        }
-    }
-
-    async goHistory(newPath, isValidated = false) {
-        const fileName = globalStore.get(this.fileName);
-        if (fileName == null) {
-            return;
-        }
-        if (!isValidated) {
-            newPath = await this.resolvePath(newPath, fileName);
-            const isValid = await this.isValidPath(newPath);
-            if (!isValid) {
-                return;
-            }
-        }
-        const blockMeta = globalStore.get(this.blockAtom)?.meta;
-        const updateMeta = historyutil.goHistory("file", fileName, newPath, blockMeta);
-        if (updateMeta == null) {
-            return;
-        }
-        const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
-    }
-
-    goParentDirectory() {
-        const blockMeta = globalStore.get(this.blockAtom)?.meta;
-        const fileName = globalStore.get(this.fileName);
-        if (fileName == null) {
-            return;
-        }
-        const newPath = historyutil.getParentDirectory(fileName);
-        const updateMeta = historyutil.goHistory("file", fileName, newPath, blockMeta);
-        if (updateMeta == null) {
-            return;
-        }
-        updateMeta.edit = false;
-        const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
-    }
-
-    goHistoryBack() {
-        const blockMeta = globalStore.get(this.blockAtom)?.meta;
-        const curPath = globalStore.get(this.fileName);
-        const updateMeta = historyutil.goHistoryBack("file", curPath, blockMeta, true);
-        if (updateMeta == null) {
-            return;
-        }
-        updateMeta.edit = false;
-        const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
-    }
-
-    goHistoryForward() {
-        const blockMeta = globalStore.get(this.blockAtom)?.meta;
-        const curPath = globalStore.get(this.fileName);
-        const updateMeta = historyutil.goHistoryForward("file", curPath, blockMeta);
-        if (updateMeta == null) {
-            return;
-        }
-        updateMeta.edit = false;
-        const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
-    }
-
-    setFileContent() {
         const fullFileAtom = jotai.atom<Promise<FullFile>>(async (get) => {
-            const fileName = get(this.fileName);
+            const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
             }
@@ -371,57 +323,201 @@ export class PreviewModel implements ViewModel {
 
         this.fullFile = fullFileAtom;
         this.fileContent = fileContentAtom;
+
+        this.specializedView = jotai.atom<Promise<{ specializedView?: string; errorStr?: string }>>(async (get) => {
+            return this.getSpecializedView(get);
+        });
+        this.loadableSpecializedView = loadable(this.specializedView);
+        this.canPreview = jotai.atom(false);
     }
 
-    toggleEditMode(edit: boolean) {
-        if (!edit) {
-            this.setFileContent();
-        }
+    async getSpecializedView(getFn: jotai.Getter): Promise<{ specializedView?: string; errorStr?: string }> {
+        const mimeType = await getFn(this.fileMimeType);
+        const fileInfo = await getFn(this.statFile);
+        const fileName = await getFn(this.statFilePath);
+        const editMode = getFn(this.editMode);
 
+        if (fileInfo?.notfound) {
+            return { errorStr: `File Not Found: ${fileInfo.path}` };
+        }
+        if (mimeType == null) {
+            return { errorStr: `Unable to determine mimetype for: ${fileInfo.path}` };
+        }
+        if (isStreamingType(mimeType)) {
+            return { specializedView: "streaming" };
+        }
+        if (!fileInfo) {
+            let fileNameStr = fileName ? " " + JSON.stringify(fileName) : "";
+            return { errorStr: "File Not Found" + fileNameStr };
+        }
+        if (fileInfo.size > MaxFileSize) {
+            return { errorStr: "File Too Large to Preiview (10 MB Max)" };
+        }
+        if (mimeType == "text/csv" && fileInfo.size > MaxCSVSize) {
+            return { errorStr: "CSV File Too Large to Preiview (1 MB Max)" };
+        }
+        if (mimeType == "directory") {
+            return { specializedView: "directory" };
+        }
+        if (mimeType == "text/csv") {
+            if (editMode) {
+                return { specializedView: "codeedit" };
+            }
+            return { specializedView: "csv" };
+        }
+        if (mimeType.startsWith("text/markdown")) {
+            if (editMode) {
+                return { specializedView: "codeedit" };
+            }
+            return { specializedView: "markdown" };
+        }
+        if (isTextFile(mimeType)) {
+            return { specializedView: "codeedit" };
+        }
+        return { errorStr: `Preview (${mimeType})` };
+    }
+
+    updateOpenFileModalAndError(isOpen, errorMsg = null) {
+        globalStore.set(this.openFileModal, isOpen);
+        globalStore.set(this.openFileError, errorMsg);
+    }
+
+    async goHistory(newPath: string) {
+        let fileName = globalStore.get(this.metaFilePath);
+        if (fileName == null) {
+            fileName = "";
+        }
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+        const updateMeta = historyutil.goHistory("file", fileName, newPath, blockMeta);
+        if (updateMeta == null) {
+            return;
+        }
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+    }
+
+    async goParentDirectory() {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+        const metaPath = globalStore.get(this.metaFilePath);
+        const fileInfo = await globalStore.get(this.statFile);
+        if (fileInfo == null) {
+            return;
+        }
+        let newPath: string = null;
+        if (!fileInfo.isdir) {
+            newPath = fileInfo.dir;
+        } else {
+            const lastSlash = fileInfo.dir.lastIndexOf("/");
+            newPath = fileInfo.dir.slice(0, lastSlash);
+            if (newPath.indexOf("/") == -1) {
+                return;
+            }
+        }
+        const updateMeta = historyutil.goHistory("file", metaPath, newPath, blockMeta);
+        if (updateMeta == null) {
+            return;
+        }
+        updateMeta.edit = false;
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+    }
+
+    goHistoryBack() {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+        const curPath = globalStore.get(this.metaFilePath);
+        const updateMeta = historyutil.goHistoryBack("file", curPath, blockMeta, true);
+        if (updateMeta == null) {
+            return;
+        }
+        updateMeta.edit = false;
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+    }
+
+    goHistoryForward() {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta;
+        const curPath = globalStore.get(this.metaFilePath);
+        const updateMeta = historyutil.goHistoryForward("file", curPath, blockMeta);
+        if (updateMeta == null) {
+            return;
+        }
+        updateMeta.edit = false;
+        const blockOref = WOS.makeORef("block", this.blockId);
+        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+    }
+
+    setEditMode(edit: boolean) {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const blockOref = WOS.makeORef("block", this.blockId);
         services.ObjectService.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
     }
 
     async handleFileSave() {
-        const fileName = globalStore.get(this.fileName);
+        const filePath = await globalStore.get(this.statFilePath);
+        if (filePath == null) {
+            return;
+        }
         const newFileContent = globalStore.get(this.newFileContent);
+        if (newFileContent == null) {
+            console.log("not saving file, newFileContent is null");
+            return;
+        }
         const conn = globalStore.get(this.connection) ?? "";
         try {
-            if (newFileContent != null) {
-                services.FileService.SaveFile(conn, fileName, util.stringToBase64(newFileContent));
-                globalStore.set(this.newFileContent, null);
-            }
+            services.FileService.SaveFile(conn, filePath, util.stringToBase64(newFileContent));
+            globalStore.set(this.newFileContent, null);
+            console.log("saved file", filePath);
         } catch (error) {
             console.error("Error saving file:", error);
         }
+    }
+
+    async handleFileRevert() {
+        const fileContent = await globalStore.get(this.fileContent);
+        this.monacoRef.current?.setValue(fileContent);
+        globalStore.set(this.newFileContent, null);
+    }
+
+    async handleOpenFile(filePath: string) {
+        const fileInfo = await globalStore.get(this.statFile);
+        if (fileInfo == null) {
+            this.updateOpenFileModalAndError(false);
+            return true;
+        }
+        const newPath = fileInfo.dir + "/" + filePath;
+        const conn = globalStore.get(this.connection) ?? "";
+        const newFileInfo = await services.FileService.StatFile(conn, newPath);
+        this.updateOpenFileModalAndError(false);
+        this.goHistory(newFileInfo.path);
+        refocusNode(this.blockId);
+        return true;
+    }
+
+    isSpecializedView(sv: string): boolean {
+        const loadableSV = globalStore.get(this.loadableSpecializedView);
+        return loadableSV.state == "hasData" && loadableSV.data.specializedView == sv;
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
         const menuItems: ContextMenuItem[] = [];
         menuItems.push({
             label: "Copy Full Path",
-            click: () => {
-                const fileName = globalStore.get(this.fileName);
-                if (fileName == null) {
+            click: async () => {
+                const filePath = await globalStore.get(this.normFilePath);
+                if (filePath == null) {
                     return;
                 }
-                navigator.clipboard.writeText(fileName);
+                navigator.clipboard.writeText(filePath);
             },
         });
         menuItems.push({
             label: "Copy File Name",
-            click: () => {
-                let fileName = globalStore.get(this.fileName);
-                if (fileName == null) {
+            click: async () => {
+                const fileInfo = await globalStore.get(this.statFile);
+                if (fileInfo == null || fileInfo.name == null) {
                     return;
                 }
-                if (fileName.endsWith("/")) {
-                    fileName = fileName.substring(0, fileName.length - 1);
-                }
-                const splitPath = fileName.split("/");
-                const baseName = splitPath[splitPath.length - 1];
-                navigator.clipboard.writeText(baseName);
+                navigator.clipboard.writeText(fileInfo.name);
             },
         });
         const mimeType = util.jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
@@ -429,21 +525,47 @@ export class PreviewModel implements ViewModel {
             menuItems.push({
                 label: "Open Terminal in New Block",
                 click: async () => {
+                    const fileInfo = await globalStore.get(this.statFile);
                     const termBlockDef: BlockDef = {
                         meta: {
                             view: "term",
                             controller: "shell",
-                            "cmd:cwd": globalStore.get(this.fileName),
+                            "cmd:cwd": fileInfo.dir,
                         },
                     };
                     await createBlock(termBlockDef);
                 },
             });
         }
+        const loadableSV = globalStore.get(this.loadableSpecializedView);
+        if (loadableSV.state == "hasData") {
+            if (loadableSV.data.specializedView == "codeedit") {
+                if (globalStore.get(this.newFileContent) != null) {
+                    menuItems.push({ type: "separator" });
+                    menuItems.push({
+                        label: "Save File",
+                        click: this.handleFileSave.bind(this),
+                    });
+                    menuItems.push({
+                        label: "Revert File",
+                        click: this.handleFileRevert.bind(this),
+                    });
+                }
+            }
+        }
         return menuItems;
     }
 
     giveFocus(): boolean {
+        const openModalOpen = globalStore.get(this.openFileModal);
+        if (openModalOpen) {
+            this.openFileModalGiveFocusRef.current?.();
+            return true;
+        }
+        if (this.monacoRef.current) {
+            this.monacoRef.current.focus();
+            return true;
+        }
         return false;
     }
 
@@ -461,8 +583,29 @@ export class PreviewModel implements ViewModel {
             this.goParentDirectory();
             return true;
         }
+        const openModalOpen = globalStore.get(this.openFileModal);
+        if (!openModalOpen) {
+            if (keyutil.checkKeyPressed(e, "Cmd:o")) {
+                this.updateOpenFileModalAndError(true);
+                return true;
+            }
+        }
+        const canPreview = globalStore.get(this.canPreview);
+        if (canPreview) {
+            if (keyutil.checkKeyPressed(e, "Cmd:e")) {
+                const editMode = globalStore.get(this.editMode);
+                this.setEditMode(!editMode);
+                return true;
+            }
+        }
         if (this.directoryKeyDownHandler) {
             const handled = this.directoryKeyDownHandler(e);
+            if (handled) {
+                return true;
+            }
+        }
+        if (this.codeEditKeyDownHandler) {
+            const handled = this.codeEditKeyDownHandler(e);
             if (handled) {
                 return true;
             }
@@ -471,58 +614,13 @@ export class PreviewModel implements ViewModel {
     }
 }
 
-function makePreviewModel(blockId: string): PreviewModel {
-    const previewModel = new PreviewModel(blockId);
+function makePreviewModel(blockId: string, nodeModel: NodeModel): PreviewModel {
+    const previewModel = new PreviewModel(blockId, nodeModel);
     return previewModel;
 }
 
-function DirNav({ cwdAtom }: { cwdAtom: jotai.WritableAtom<string, [string], void> }) {
-    const [cwd, setCwd] = jotai.useAtom(cwdAtom);
-    if (cwd == null || cwd == "") {
-        return null;
-    }
-    let splitNav = [cwd];
-    let remaining = cwd;
-
-    let idx = remaining.lastIndexOf("/");
-    while (idx !== -1) {
-        remaining = remaining.substring(0, idx);
-        splitNav.unshift(remaining);
-
-        idx = remaining.lastIndexOf("/");
-    }
-    if (splitNav.length === 0) {
-        splitNav = [cwd];
-    }
-    return (
-        <div className="view-nav">
-            {splitNav.map((item, idx) => {
-                let splitPath = item.split("/");
-                if (splitPath.length === 0) {
-                    splitPath = [item];
-                }
-                const isLast = idx == splitNav.length - 1;
-                let baseName = splitPath[splitPath.length - 1];
-                if (!isLast) {
-                    baseName += "/";
-                }
-                return (
-                    <div
-                        className={clsx("view-nav-item", isLast ? "current-file" : "clickable")}
-                        key={`nav-item-${item}`}
-                        onClick={isLast ? null : () => setCwd(item)}
-                    >
-                        {baseName}
-                    </div>
-                );
-            })}
-            <div className="flex-spacer"></div>
-        </div>
-    );
-}
-
-function MarkdownPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<string>> }) {
-    const readmeText = jotai.useAtomValue(contentAtom);
+function MarkdownPreview({ model }: SpecializedViewProps) {
+    const readmeText = jotai.useAtomValue(model.fileContent);
     return (
         <div className="view-preview view-preview-markdown">
             <Markdown text={readmeText} />
@@ -530,12 +628,14 @@ function MarkdownPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<stri
     );
 }
 
-function StreamingPreview({ connection, fileInfo }: { connection?: string; fileInfo: FileInfo }) {
+function StreamingPreview({ model }: SpecializedViewProps) {
+    const conn = jotai.useAtomValue(model.connection);
+    const fileInfo = jotai.useAtomValue(model.statFile);
     const filePath = fileInfo.path;
     const usp = new URLSearchParams();
     usp.set("path", filePath);
-    if (connection != null) {
-        usp.set("connection", connection);
+    if (conn != null) {
+        usp.set("connection", conn);
     }
     const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
     if (fileInfo.mimetype == "application/pdf") {
@@ -573,48 +673,87 @@ function StreamingPreview({ connection, fileInfo }: { connection?: string; fileI
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
 }
 
-function CodeEditPreview({
-    parentRef,
-    contentAtom,
-    filename,
-    newFileContentAtom,
-    model,
-}: {
-    parentRef: React.MutableRefObject<HTMLDivElement>;
-    contentAtom: jotai.Atom<Promise<string>>;
-    filename: string;
-    newFileContentAtom: jotai.PrimitiveAtom<string>;
-    model: PreviewModel;
-}) {
-    const fileContent = jotai.useAtomValue(contentAtom);
-    const setNewFileContent = jotai.useSetAtom(newFileContentAtom);
+function CodeEditPreview({ parentRef, model }: SpecializedViewProps) {
+    const fileContent = jotai.useAtomValue(model.fileContent);
+    const setNewFileContent = jotai.useSetAtom(model.newFileContent);
+    const fileName = jotai.useAtomValue(model.statFilePath);
+
+    function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
+        if (keyutil.checkKeyPressed(e, "Cmd:e")) {
+            model.setEditMode(false);
+            return true;
+        }
+        if (keyutil.checkKeyPressed(e, "Cmd:s")) {
+            model.handleFileSave();
+            return true;
+        }
+        if (keyutil.checkKeyPressed(e, "Cmd:r")) {
+            model.handleFileRevert();
+            return true;
+        }
+        return false;
+    }
+
+    React.useEffect(() => {
+        model.codeEditKeyDownHandler = codeEditKeyDownHandler;
+        return () => {
+            model.codeEditKeyDownHandler = null;
+            model.monacoRef.current = null;
+        };
+    }, []);
+
+    function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco): () => void {
+        model.monacoRef.current = editor;
+
+        const simpleMod = keyutil.getKeyUtilPlatform() == "darwin" ? monaco.KeyMod.CtrlCmd : monaco.KeyMod.Alt;
+
+        editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+            const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(e.browserEvent);
+            const handled = tryReinjectKey(waveEvent);
+            if (handled) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+        });
+
+        if (false) {
+            // bind Cmd:e
+            editor.addCommand(simpleMod | monaco.KeyCode.KeyE, () => {
+                model.setEditMode(false);
+            });
+            // bind Cmd:s
+            editor.addCommand(simpleMod | monaco.KeyCode.KeyS, () => {
+                model.handleFileSave();
+            });
+            // bind Cmd:o
+            editor.addCommand(simpleMod | monaco.KeyCode.KeyO, () => {
+                model.updateOpenFileModalAndError(true);
+            });
+        }
+
+        const isFocused = globalStore.get(model.nodeModel.isFocused);
+        if (isFocused) {
+            editor.focus();
+        }
+
+        return null;
+    }
 
     return (
         <CodeEditor
             parentRef={parentRef}
             text={fileContent}
-            filename={filename}
+            filename={fileName}
             onChange={(text) => setNewFileContent(text)}
-            onSave={() => model.handleFileSave()}
-            onCancel={() => model.toggleEditMode(true)}
-            onEdit={() => model.toggleEditMode(false)}
+            onMount={onMount}
         />
     );
 }
 
-function CSVViewPreview({
-    parentRef,
-    contentAtom,
-    filename,
-    readonly,
-}: {
-    parentRef: React.MutableRefObject<HTMLDivElement>;
-    contentAtom: jotai.Atom<Promise<string>>;
-    filename: string;
-    readonly: boolean;
-}) {
-    const fileContent = jotai.useAtomValue(contentAtom);
-    return <CSVView parentRef={parentRef} readonly={true} content={fileContent} filename={filename} />;
+function CSVViewPreview({ model, parentRef }: SpecializedViewProps) {
+    const fileContent = jotai.useAtomValue(model.fileContent);
+    const fileName = jotai.useAtomValue(model.statFilePath);
+    return <CSVView parentRef={parentRef} readonly={true} content={fileContent} filename={fileName} />;
 }
 
 function iconForFile(mimeType: string, fileName: string): string {
@@ -650,6 +789,25 @@ function iconForFile(mimeType: string, fileName: string): string {
     }
 }
 
+function SpecializedView({ parentRef, model }: SpecializedViewProps) {
+    const specializedView = jotai.useAtomValue(model.specializedView);
+    const mimeType = jotai.useAtomValue(model.fileMimeType);
+    const setCanPreview = jotai.useSetAtom(model.canPreview);
+
+    React.useEffect(() => {
+        setCanPreview(canPreview(mimeType));
+    }, [mimeType, setCanPreview]);
+
+    if (specializedView.errorStr != null) {
+        return <CenteredDiv>{specializedView.errorStr}</CenteredDiv>;
+    }
+    const SpecializedViewComponent = SpecializedViewMap[specializedView.specializedView];
+    if (!SpecializedViewComponent) {
+        return <CenteredDiv>Invalid Specialzied View Component ({specializedView.specializedView})</CenteredDiv>;
+    }
+    return <SpecializedViewComponent model={model} parentRef={parentRef} />;
+}
+
 function PreviewView({
     blockId,
     blockRef,
@@ -661,176 +819,83 @@ function PreviewView({
     contentRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
 }) {
-    const fileNameAtom = model.fileName;
-    const statFileAtom = model.statFile;
-    const fileMimeTypeAtom = model.fileMimeType;
-    const fileContentAtom = model.fileContent;
-    const newFileContentAtom = model.newFileContent;
-    const editModeAtom = model.editMode;
-    const openFileModalAtom = model.openFileModal;
-    const canPreviewAtom = model.canPreview;
-
-    const mimeType = jotai.useAtomValue(fileMimeTypeAtom) || "";
-    const fileName = jotai.useAtomValue(fileNameAtom);
-    const fileInfo = jotai.useAtomValue(statFileAtom);
-    const conn = jotai.useAtomValue(model.connection);
-    const editMode = jotai.useAtomValue(editModeAtom);
-    const openFileModal = jotai.useAtomValue(openFileModalAtom);
-    let blockIcon = iconForFile(mimeType, fileName);
-
-    const [filePath, setFilePath] = useState("");
-    const [openFileError, setOpenFileError] = useState("");
-
-    // ensure consistent hook calls
-    const specializedView = (() => {
-        let view: React.ReactNode = null;
-        blockIcon = iconForFile(mimeType, fileName);
-        if (
-            mimeType === "application/pdf" ||
-            mimeType.startsWith("video/") ||
-            mimeType.startsWith("audio/") ||
-            mimeType.startsWith("image/")
-        ) {
-            view = <StreamingPreview connection={conn} fileInfo={fileInfo} />;
-        } else if (!fileInfo) {
-            view = <CenteredDiv>File Not Found{util.isBlank(fileName) ? null : JSON.stringify(fileName)}</CenteredDiv>;
-        } else if (fileInfo.size > MaxFileSize) {
-            view = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
-        } else if (mimeType === "text/markdown" && !editMode) {
-            globalStore.set(canPreviewAtom, true);
-            view = <MarkdownPreview contentAtom={fileContentAtom} />;
-        } else if (mimeType === "text/csv" && !editMode) {
-            globalStore.set(canPreviewAtom, true);
-            if (fileInfo.size > MaxCSVSize) {
-                view = <CenteredDiv>CSV File Too Large to Preview (1MB Max)</CenteredDiv>;
-            } else {
-                view = (
-                    <CSVViewPreview
-                        parentRef={contentRef}
-                        contentAtom={fileContentAtom}
-                        filename={fileName}
-                        readonly={true}
-                    />
-                );
-            }
-        } else if (isTextFile(mimeType)) {
-            model.toggleEditMode(true);
-            view = (
-                <CodeEditPreview
-                    parentRef={contentRef}
-                    contentAtom={fileContentAtom}
-                    filename={fileName}
-                    newFileContentAtom={newFileContentAtom}
-                    model={model}
-                />
-            );
-        } else if (mimeType === "directory") {
-            view = <DirectoryPreview fileNameAtom={fileNameAtom} model={model} />;
-            if (editMode) {
-                globalStore.set(openFileModalAtom, true);
-            } else {
-                globalStore.set(canPreviewAtom, false);
-            }
-        } else {
-            globalStore.set(canPreviewAtom, false);
-            model.toggleEditMode(false);
-            view = (
-                <div className="view-preview">
-                    <div>Preview ({mimeType})</div>
-                </div>
-            );
-        }
-        return view;
-    })();
-
-    const handleKeyDown = useCallback(
-        (waveEvent: WaveKeyboardEvent): boolean => {
-            const updateModalAndError = (isOpen, errorMsg = "") => {
-                globalStore.set(openFileModalAtom, isOpen);
-                setOpenFileError(errorMsg);
-            };
-
-            const handleEnterPress = async () => {
-                const newPath = await model.resolvePath(filePath, fileName);
-                const isValidPath = await model.isValidPath(newPath);
-                if (isValidPath) {
-                    updateModalAndError(false);
-                    await model.goHistory(newPath, true);
-                } else {
-                    updateModalAndError(true, "The path you entered does not exist.");
-                }
-                model.giveFocus();
-                return isValidPath;
-            };
-
-            const handleCommandOperations = async () => {
-                if (keyutil.checkKeyPressed(waveEvent, "Cmd:o")) {
-                    updateModalAndError(true);
-                    return true;
-                }
-                if (keyutil.checkKeyPressed(waveEvent, "Cmd:d")) {
-                    updateModalAndError(false);
-                    return false;
-                }
-                if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
-                    return handleEnterPress();
-                }
-                return false;
-            };
-
-            handleCommandOperations().catch((error) => {
-                console.error("Error handling key down:", error);
-                updateModalAndError(true, "An error occurred during operation.");
-                return false;
-            });
-            return false;
-        },
-        [model, blockId, filePath, fileName]
-    );
-
-    const handleFileSuggestionSelect = (value) => {
-        globalStore.set(openFileModalAtom, false);
-    };
-
-    const handleFileSuggestionChange = (value) => {
-        setFilePath(value);
-    };
-
-    const handleBackDropClick = () => {
-        globalStore.set(openFileModalAtom, false);
-    };
-
-    useEffect(() => {
-        const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
-            return jotai.atom<string>(null);
-        }) as jotai.PrimitiveAtom<string>;
-        globalStore.set(blockIconOverrideAtom, blockIcon);
-    }, [blockId, blockIcon]);
-
     return (
         <>
-            {openFileModal && (
-                <TypeAheadModal
-                    label="Open file"
-                    suggestions={[]}
-                    blockRef={blockRef}
-                    anchorRef={model.previewTextRef}
-                    onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
-                    onSelect={handleFileSuggestionSelect}
-                    onChange={handleFileSuggestionChange}
-                    onClickBackdrop={handleBackDropClick}
-                />
-            )}
-            <div
-                className="full-preview scrollbar-hide-until-hover"
-                onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
-            >
+            <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} />
+            <div className="full-preview scrollbar-hide-until-hover">
                 <div ref={contentRef} className="full-preview-content">
-                    {specializedView}
+                    <SpecializedView parentRef={contentRef} model={model} />
                 </div>
             </div>
         </>
     );
 }
+
+const OpenFileModal = React.memo(
+    ({
+        model,
+        blockRef,
+        blockId,
+    }: {
+        model: PreviewModel;
+        blockRef: React.RefObject<HTMLDivElement>;
+        blockId: string;
+    }) => {
+        const openFileModal = jotai.useAtomValue(model.openFileModal);
+        const curFileName = jotai.useAtomValue(model.metaFilePath);
+        const [filePath, setFilePath] = useState("");
+        const isNodeFocused = jotai.useAtomValue(model.nodeModel.isFocused);
+        const handleKeyDown = useCallback(
+            keyutil.keydownWrapper((waveEvent: WaveKeyboardEvent): boolean => {
+                if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+                    model.updateOpenFileModalAndError(false);
+                    return true;
+                }
+
+                const handleCommandOperations = async () => {
+                    if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+                        model.handleOpenFile(filePath);
+                        return true;
+                    }
+                    return false;
+                };
+
+                handleCommandOperations().catch((error) => {
+                    console.error("Error handling key down:", error);
+                    model.updateOpenFileModalAndError(true, "An error occurred during operation.");
+                    return false;
+                });
+                return false;
+            }),
+            [model, blockId, filePath, curFileName]
+        );
+        const handleFileSuggestionSelect = (value) => {
+            globalStore.set(model.openFileModal, false);
+        };
+        const handleFileSuggestionChange = (value) => {
+            setFilePath(value);
+        };
+        const handleBackDropClick = () => {
+            globalStore.set(model.openFileModal, false);
+        };
+        if (!openFileModal) {
+            return null;
+        }
+        return (
+            <TypeAheadModal
+                label="Open file"
+                suggestions={[]}
+                blockRef={blockRef}
+                anchorRef={model.previewTextRef}
+                onKeyDown={handleKeyDown}
+                onSelect={handleFileSuggestionSelect}
+                onChange={handleFileSuggestionChange}
+                onClickBackdrop={handleBackDropClick}
+                autoFocus={isNodeFocused}
+                giveFocusRef={model.openFileModalGiveFocusRef}
+            />
+        );
+    }
+);
 
 export { makePreviewModel, PreviewView };

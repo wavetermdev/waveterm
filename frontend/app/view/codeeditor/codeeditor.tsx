@@ -5,15 +5,14 @@ import { useHeight } from "@/app/hook/useHeight";
 import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 
-import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import "./codeeditor.less";
 
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: Monaco;
 
-function loadMonaco() {
+export function loadMonaco() {
     loader.config({ paths: { vs: "monaco" } });
     loader
         .init()
@@ -40,11 +39,6 @@ function loadMonaco() {
         });
 }
 
-// TODO: need to update these on theme change (pull from CSS vars)
-document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(loadMonaco, 30);
-});
-
 function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
     const opts: MonacoTypes.editor.IEditorOptions = {
         scrollBeyondLastLine: false,
@@ -66,59 +60,23 @@ interface CodeEditorProps {
     filename: string;
     language?: string;
     onChange?: (text: string) => void;
-    onSave?: () => void;
-    onCancel?: () => void;
-    onEdit?: () => void;
+    onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
 
-export function CodeEditor({
-    parentRef,
-    text,
-    language,
-    filename,
-    onChange,
-    onSave,
-    onCancel,
-    onEdit,
-}: CodeEditorProps) {
+export function CodeEditor({ parentRef, text, language, filename, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
-
+    const unmountRef = useRef<() => void>(null);
     const parentHeight = useHeight(parentRef);
     const theme = "wave-theme-dark";
 
-    useEffect(() => {
-        function handleKeyDown(e: KeyboardEvent) {
-            const waveEvent = adaptFromReactOrNativeKeyEvent(e);
-            if (onSave) {
-                if (checkKeyPressed(waveEvent, "Cmd:s")) {
-                    e.preventDefault();
-                    onSave();
-                    return;
-                }
-            }
-            if (onCancel) {
-                if (checkKeyPressed(waveEvent, "Cmd:r")) {
-                    e.preventDefault();
-                    onCancel();
-                    return;
-                }
-            }
-            if (onEdit) {
-                if (checkKeyPressed(waveEvent, "Cmd:e")) {
-                    e.preventDefault();
-                    onEdit();
-                    return;
-                }
-            }
-        }
-
-        const currentParentRef = parentRef.current;
-        currentParentRef.addEventListener("keydown", handleKeyDown);
-
+    React.useEffect(() => {
         return () => {
-            currentParentRef.removeEventListener("keydown", handleKeyDown);
+            // unmount function
+            if (unmountRef.current) {
+                unmountRef.current();
+            }
         };
-    }, [onSave, onCancel, onEdit]);
+    }, []);
 
     function handleEditorChange(text: string, ev: MonacoTypes.editor.IModelContentChangedEvent) {
         if (onChange) {
@@ -127,24 +85,9 @@ export function CodeEditor({
     }
 
     function handleEditorOnMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) {
-        // bind Cmd:e
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyE, () => {
-            if (onEdit) {
-                onEdit();
-            }
-        });
-        // bind Cmd:s
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-            if (onSave) {
-                onSave();
-            }
-        });
-        // bind Cmd:r
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR, () => {
-            if (onCancel) {
-                onCancel();
-            }
-        });
+        if (onMount) {
+            unmountRef.current = onMount(editor, monaco);
+        }
     }
 
     const editorOpts = defaultEditorOptions();

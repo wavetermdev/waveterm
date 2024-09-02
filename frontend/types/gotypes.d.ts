@@ -175,6 +175,7 @@ declare global {
     // wshrpc.FileInfo
     type FileInfo = {
         path: string;
+        dir: string;
         name: string;
         notfound?: boolean;
         size: number;
@@ -183,6 +184,7 @@ declare global {
         modtime: number;
         isdir?: boolean;
         mimetype?: string;
+        readonly?: boolean;
     };
 
     // filestore.FileOptsType

@@ -35,20 +35,20 @@ function unsetControlShift() {
     globalStore.set(atoms.controlShiftDelayAtom, false);
 }
 
-function shouldDispatchToBlock(): boolean {
+function shouldDispatchToBlock(e: WaveKeyboardEvent): boolean {
     if (globalStore.get(atoms.modalOpen)) {
         return false;
     }
     const activeElem = document.activeElement;
     if (activeElem != null && activeElem instanceof HTMLElement) {
-        if (activeElem.tagName == "INPUT" || activeElem.tagName == "TEXTAREA") {
+        if (activeElem.tagName == "INPUT" || activeElem.tagName == "TEXTAREA" || activeElem.contentEditable == "true") {
             if (activeElem.classList.contains("dummy-focus")) {
                 return true;
             }
-            return false;
-        }
-        if (activeElem.contentEditable == "true") {
-            return false;
+            if (keyutil.isInputEvent(e)) {
+                return false;
+            }
+            return true;
         }
     }
     return true;
@@ -144,7 +144,7 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     const layoutModel = getLayoutModelForActiveTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     const blockId = focusedNode?.data?.blockId;
-    if (blockId != null && shouldDispatchToBlock()) {
+    if (blockId != null && shouldDispatchToBlock(waveEvent)) {
         const viewModel = getViewModel(blockId);
         if (viewModel?.keyDownHandler) {
             const handledByBlock = viewModel.keyDownHandler(waveEvent);
@@ -170,6 +170,10 @@ function registerElectronReinjectKeyHandler() {
     getApi().onReinjectKey((event: WaveKeyboardEvent) => {
         appHandleKeyDown(event);
     });
+}
+
+function tryReinjectKey(event: WaveKeyboardEvent): boolean {
+    return appHandleKeyDown(event);
 }
 
 function registerGlobalKeys() {
@@ -275,5 +279,6 @@ export {
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
+    tryReinjectKey,
     unsetControlShift,
 };

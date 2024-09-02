@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math"
 	mathrand "math/rand"
 	"mime"
@@ -627,7 +628,8 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 
 // on error just returns ""
 // does not return "application/octet-stream" as this is considered a detection failure
-func DetectMimeType(path string) string {
+// can pass an existing fileInfo to avoid re-statting the file
+func DetectMimeType(path string, fileInfo fs.FileInfo) string {
 	ext := filepath.Ext(path)
 	if mimeType, ok := StaticMimeTypeMap[ext]; ok {
 		return mimeType
@@ -635,21 +637,24 @@ func DetectMimeType(path string) string {
 	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
 		return mimeType
 	}
-	stats, err := os.Stat(path)
-	if err != nil {
-		return ""
+	if fileInfo == nil {
+		statRtn, err := os.Stat(path)
+		if err != nil {
+			return ""
+		}
+		fileInfo = statRtn
 	}
-	if stats.IsDir() {
+	if fileInfo.IsDir() {
 		return "directory"
 	}
-	if stats.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
+	if fileInfo.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
 		return "pipe"
 	}
 	charDevice := os.ModeDevice | os.ModeCharDevice
-	if stats.Mode()&charDevice == charDevice {
+	if fileInfo.Mode()&charDevice == charDevice {
 		return "character-special"
 	}
-	if stats.Mode()&os.ModeDevice == os.ModeDevice {
+	if fileInfo.Mode()&os.ModeDevice == os.ModeDevice {
 		return "block-special"
 	}
 	fd, err := os.Open(path)

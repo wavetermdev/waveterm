@@ -142,7 +142,6 @@ const BlockFrame_Header = ({
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.meta?.view);
     const showBlockIds = jotai.useAtomValue(useSettingsKeyAtom("blockheader:showblockids"));
-    const settingsConfig = jotai.useAtomValue(atoms.settingsAtom);
     const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
     const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
@@ -186,14 +185,14 @@ const BlockFrame_Header = ({
         const connButtonElem = (
             <ConnectionButton
                 ref={connBtnRef}
-                key={nodeModel.blockId}
+                key="connbutton"
                 connection={blockData?.meta?.connection}
                 changeConnModalAtom={changeConnModalAtom}
             />
         );
         headerTextElems.unshift(connButtonElem);
     }
-    headerTextElems.unshift(<ControllerStatusIcon blockId={nodeModel.blockId} />);
+    headerTextElems.unshift(<ControllerStatusIcon key="connstatus" blockId={nodeModel.blockId} />);
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
@@ -327,6 +326,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             {preview ? null : (
                 <ChangeConnectionBlockModal
                     blockId={nodeModel.blockId}
+                    nodeModel={nodeModel}
                     viewModel={viewModel}
                     blockRef={blockModel?.blockRef}
                     changeConnModalAtom={changeConnModalAtom}
@@ -344,16 +344,19 @@ const ChangeConnectionBlockModal = React.memo(
         blockRef,
         connBtnRef,
         changeConnModalAtom,
+        nodeModel,
     }: {
         blockId: string;
         viewModel: ViewModel;
         blockRef: React.RefObject<HTMLDivElement>;
         connBtnRef: React.RefObject<HTMLDivElement>;
         changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
+        nodeModel: NodeModel;
     }) => {
         const [connSelected, setConnSelected] = React.useState("");
         const changeConnModalOpen = jotai.useAtomValue(changeConnModalAtom);
         const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+        const isNodeFocused = jotai.useAtomValue(nodeModel.isFocused);
         const changeConnection = React.useCallback(
             async (connName: string) => {
                 const oldCwd = blockData?.meta?.file ?? "";
@@ -401,6 +404,7 @@ const ChangeConnectionBlockModal = React.memo(
                     changeConnection(selected);
                     globalStore.set(changeConnModalAtom, false);
                 }}
+                autoFocus={isNodeFocused}
                 onKeyDown={(e) => keyutil.keydownWrapper(handleTypeAheadKeyDown)(e)}
                 onChange={(current: string) => setConnSelected(current)}
                 value={connSelected}
