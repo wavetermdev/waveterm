@@ -56,6 +56,7 @@ var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
 var anyRType = reflect.TypeOf((*interface{})(nil)).Elem()
 var metaRType = reflect.TypeOf((*waveobj.MetaMapType)(nil)).Elem()
+var metaSettingsType = reflect.TypeOf((*wconfig.MetaSettingsType)(nil)).Elem()
 var uiContextRType = reflect.TypeOf((*waveobj.UIContext)(nil)).Elem()
 var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 var updatesRtnRType = reflect.TypeOf(waveobj.UpdatesRtnType{})
@@ -160,9 +161,10 @@ func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, [
 }
 
 var tsRenameMap = map[string]string{
-	"Window":     "WaveWindow",
-	"Elem":       "VDomElem",
-	"MetaTSType": "MetaType",
+	"Window":           "WaveWindow",
+	"Elem":             "VDomElem",
+	"MetaTSType":       "MetaType",
+	"MetaSettingsType": "SettingsType",
 }
 
 func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]string) (string, []reflect.Type) {
@@ -284,6 +286,9 @@ func GenerateTSType(rtype reflect.Type, tsTypesMap map[reflect.Type]string) {
 	}
 	if rtype == waveObjRType {
 		tsTypesMap[rtype] = GenerateWaveObjTSType()
+		return
+	}
+	if rtype == metaSettingsType {
 		return
 	}
 	if rtype.Kind() != reflect.Struct {

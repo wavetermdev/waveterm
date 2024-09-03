@@ -10,6 +10,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { CenteredDiv } from "../element/quickelems";
 
+import { ErrorBoundary } from "@/app/element/errorboundary";
 import "./workspace.less";
 
 const iconRegex = /^[a-z0-9-]+$/;
@@ -107,15 +108,17 @@ const WorkspaceElem = React.memo(() => {
         <div className="workspace">
             <TabBar key={ws.oid} workspace={ws} />
             <div className="workspace-tabcontent">
-                {activeTabId == "" ? (
-                    <CenteredDiv>No Active Tab</CenteredDiv>
-                ) : (
-                    <>
-                        <TabContent key={activeTabId} tabId={activeTabId} />
-                        <Widgets />
-                        <ModalsRenderer />
-                    </>
-                )}
+                <ErrorBoundary>
+                    {activeTabId == "" ? (
+                        <CenteredDiv>No Active Tab</CenteredDiv>
+                    ) : (
+                        <>
+                            <TabContent key={activeTabId} tabId={activeTabId} />
+                            <Widgets />
+                            <ModalsRenderer />
+                        </>
+                    )}
+                </ErrorBoundary>
             </div>
         </div>
     );

@@ -7,12 +7,17 @@ import { Toggle } from "@/app/element/toggle";
 import * as services from "@/store/services";
 import { FlexiModal } from "./modal";
 
+import { WshServer } from "@/app/store/wshserver";
 import "./tos.less";
 
 const TosModal = () => {
     const acceptTos = () => {
         services.ClientService.AgreeTos();
     };
+
+    function setTelemetry(value: boolean) {
+        WshServer.SetConfigCommand({ "telemetry:enabled": value });
+    }
 
     return (
         <FlexiModal className="tos-modal">
@@ -76,7 +81,7 @@ const TosModal = () => {
                                 </a>
                                 to help us understand how people are using Wave.
                             </div>
-                            <Toggle checked={true} onChange={() => {}} label="Telemetry enabled" />
+                            <Toggle checked={true} onChange={setTelemetry} label="Telemetry enabled" />
                         </div>
                     </div>
                 </div>

@@ -13,6 +13,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/ijson"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 )
 
 const LocalConnName = "local"
@@ -94,7 +95,7 @@ type WshRpcInterface interface {
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
-	SetConfigCommand(ctx context.Context, data waveobj.MetaMapType) error
+	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data WaveEvent) error

@@ -874,12 +874,24 @@ export class LayoutModel {
      */
     focusNode(nodeId: string) {
         if (this.focusedNodeId === nodeId) return;
+        const layoutNode = findNode(this.treeState?.rootNode, nodeId);
+        if (!layoutNode) {
+            console.error("unable to focus node, cannot find it in tree", nodeId);
+            return;
+        }
         const action: LayoutTreeFocusNodeAction = {
             type: LayoutTreeActionType.FocusNode,
             nodeId: nodeId,
         };
 
         this.treeReducer(action);
+    }
+
+    focusFirstNode() {
+        const leafOrder = this.getter(this.leafOrder);
+        if (leafOrder.length > 0) {
+            this.focusNode(leafOrder[0].nodeid);
+        }
     }
 
     /**

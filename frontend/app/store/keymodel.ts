@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock, getApi, getViewModel, globalStore, WOS } from "@/app/store/global";
+import { atoms, createBlock, getApi, getViewModel, globalStore, refocusNode, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import {
     deleteLayoutModelForTab,
@@ -112,6 +112,21 @@ function switchTab(offset: number) {
     services.ObjectService.SetActiveTab(newActiveTabId);
 }
 
+function handleCmdI() {
+    const layoutModel = getLayoutModelForActiveTab();
+    const focusedNode = globalStore.get(layoutModel.focusedNode);
+    if (focusedNode == null) {
+        // focus a node
+        layoutModel.focusFirstNode();
+        return;
+    }
+    const blockId = focusedNode?.data?.blockId;
+    if (blockId == null) {
+        return;
+    }
+    refocusNode(blockId);
+}
+
 async function handleCmdN() {
     const termBlockDef: BlockDef = {
         meta: {
@@ -198,7 +213,7 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Cmd:i", () => {
-        // TODO
+        handleCmdI();
         return true;
     });
     globalKeyMap.set("Cmd:t", () => {

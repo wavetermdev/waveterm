@@ -716,21 +716,6 @@ function CodeEditPreview({ parentRef, model }: SpecializedViewProps) {
             }
         });
 
-        if (false) {
-            // bind Cmd:e
-            editor.addCommand(simpleMod | monaco.KeyCode.KeyE, () => {
-                model.setEditMode(false);
-            });
-            // bind Cmd:s
-            editor.addCommand(simpleMod | monaco.KeyCode.KeyS, () => {
-                model.handleFileSave();
-            });
-            // bind Cmd:o
-            editor.addCommand(simpleMod | monaco.KeyCode.KeyO, () => {
-                model.updateOpenFileModalAndError(true);
-            });
-        }
-
         const isFocused = globalStore.get(model.nodeModel.isFocused);
         if (isFocused) {
             editor.focus();

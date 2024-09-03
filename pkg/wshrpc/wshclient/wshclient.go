@@ -9,6 +9,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 )
 
 // command "announce", wshserver.AnnounceCommand
@@ -154,7 +155,7 @@ func ResolveIdsCommand(w *wshutil.WshRpc, data wshrpc.CommandResolveIdsData, opt
 }
 
 // command "setconfig", wshserver.SetConfigCommand
-func SetConfigCommand(w *wshutil.WshRpc, data waveobj.MetaMapType, opts *wshrpc.RpcOpts) error {
+func SetConfigCommand(w *wshutil.WshRpc, data wconfig.MetaSettingsType, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setconfig", data, opts)
 	return err
 }

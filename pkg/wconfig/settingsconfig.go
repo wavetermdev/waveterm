@@ -20,19 +20,36 @@ import (
 
 const SettingsFile = "settings.json"
 
-type SettingsType struct {
-	AiClear     bool   `json:"ai:*,omitempty"`
-	AiBaseURL   string `json:"ai:baseurl,omitempty"`
-	AiApiToken  string `json:"ai:apitoken,omitempty"`
-	AiName      string `json:"ai:name,omitempty"`
-	AiModel     string `json:"ai:model,omitempty"`
-	AiMaxTokens int    `json:"ai:maxtokens,omitempty"`
-	AiTimeoutMs int    `json:"ai:timeoutms,omitempty"`
+type MetaSettingsType struct {
+	waveobj.MetaMapType
+}
 
-	TermClear        bool   `json:"term:*,omitempty"`
-	TermFontSize     int    `json:"term:fontsize,omitempty"`
-	TermFontFamily   string `json:"term:fontfamily,omitempty"`
-	TermDisableWebGl bool   `json:"term:disablewebgl,omitempty"`
+func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
+	var metaMap waveobj.MetaMapType
+	if err := json.Unmarshal(data, &metaMap); err != nil {
+		return err
+	}
+	*m = MetaSettingsType{MetaMapType: metaMap}
+	return nil
+}
+
+func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.MetaMapType)
+}
+
+type SettingsType struct {
+	AiClear     bool    `json:"ai:*,omitempty"`
+	AiBaseURL   string  `json:"ai:baseurl,omitempty"`
+	AiApiToken  string  `json:"ai:apitoken,omitempty"`
+	AiName      string  `json:"ai:name,omitempty"`
+	AiModel     string  `json:"ai:model,omitempty"`
+	AiMaxTokens float64 `json:"ai:maxtokens,omitempty"`
+	AiTimeoutMs float64 `json:"ai:timeoutms,omitempty"`
+
+	TermClear        bool    `json:"term:*,omitempty"`
+	TermFontSize     float64 `json:"term:fontsize,omitempty"`
+	TermFontFamily   string  `json:"term:fontfamily,omitempty"`
+	TermDisableWebGl bool    `json:"term:disablewebgl,omitempty"`
 
 	WebClear               bool `json:"web:*,omitempty"`
 	WebOpenLinksInternally bool `json:"web:openlinksinternally,omitempty"`
@@ -40,10 +57,10 @@ type SettingsType struct {
 	BlockHeaderClear        bool `json:"blockheader:*,omitempty"`
 	BlockHeaderShowBlockIds bool `json:"blockheader:showblockids,omitempty"`
 
-	AutoUpdateClear         bool `json:"autoupdate:*,omitempty"`
-	AutoUpdateEnabled       bool `json:"autoupdate:enabled,omitempty"`
-	AutoUpdateIntervalMs    int  `json:"autoupdate:intervalms,omitempty"`
-	AutoUpdateInstallOnQuit bool `json:"autoupdate:installonquit,omitempty"`
+	AutoUpdateClear         bool    `json:"autoupdate:*,omitempty"`
+	AutoUpdateEnabled       bool    `json:"autoupdate:enabled,omitempty"`
+	AutoUpdateIntervalMs    float64 `json:"autoupdate:intervalms,omitempty"`
+	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
 
 	WidgetClear    bool `json:"widget:*,omitempty"`
 	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
