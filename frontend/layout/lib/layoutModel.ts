@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atomWithThrottle, boundNumber, lazy } from "@/util/util";
+import { atomWithThrottle, boundNumber } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { createRef, CSSProperties } from "react";
@@ -439,6 +439,7 @@ export class LayoutModel {
                 }
             } else {
                 this.updateTree();
+                this.setTreeStateAtom(force);
             }
         }
     }
@@ -456,16 +457,10 @@ export class LayoutModel {
     }
 
     /**
-     * This is a hack to ensure that when the updateTree first successfully runs, we set the upstream atom state to persist the initial leaf order.
-     * @see updateTree should be the only caller of this method.
-     */
-    setTreeStateAtomOnce = lazy(() => this.setTreeStateAtom(true));
-
-    /**
      * Recursively walks the tree to find leaf nodes, update the resize handles, and compute additional properties for each node.
      * @param balanceTree Whether the tree should also be balanced as it is walked. This should be done if the tree state has just been updated. Defaults to true.
      */
-    updateTree(balanceTree: boolean = true) {
+    updateTree(balanceTree = true) {
         if (this.displayContainerRef.current) {
             const newLeafs: LayoutNode[] = [];
             const newAdditionalProps = {};
@@ -480,16 +475,16 @@ export class LayoutModel {
             if (balanceTree) this.treeState.rootNode = balanceNode(this.treeState.rootNode, callback);
             else walkNodes(this.treeState.rootNode, callback);
 
-            this.setter(this.additionalProps, newAdditionalProps);
+            this.treeState.leafOrder = getLeafOrder(newLeafs, newAdditionalProps);
+            this.validateFocusedNode(this.treeState.leafOrder);
+            this.validateMagnifiedNode(this.treeState.leafOrder, newAdditionalProps);
+            this.cleanupNodeModels(this.treeState.leafOrder);
             this.setter(
                 this.leafs,
                 newLeafs.sort((a, b) => a.id.localeCompare(b.id))
             );
-            this.treeState.leafOrder = getLeafOrder(newLeafs, newAdditionalProps);
             this.setter(this.leafOrder, this.treeState.leafOrder);
-            this.validateFocusedNode(this.treeState.leafOrder);
-            this.cleanupNodeModels();
-            this.setTreeStateAtomOnce();
+            this.setter(this.additionalProps, newAdditionalProps);
         }
     }
 
@@ -638,6 +633,22 @@ export class LayoutModel {
     }
 
     /**
+     * When a layout is modified and only one leaf is remaining, we need to make sure it is no longer magnified.
+     * @param leafOrder The new leaf order array to use when validating the number of leafs remaining.
+     * @param addlProps The new additional properties object for all leafs in the layout.
+     */
+    private validateMagnifiedNode(leafOrder: LeafOrderEntry[], addlProps: Record<string, LayoutNodeAdditionalProps>) {
+        if (leafOrder.length == 1) {
+            const lastLeafId = leafOrder[0].nodeid;
+            this.treeState.magnifiedNodeId = undefined;
+            this.magnifiedNodeId = undefined;
+
+            // Unset the transform for the sole leaf.
+            if (addlProps.hasOwnProperty(lastLeafId)) addlProps[lastLeafId].transform = undefined;
+        }
+    }
+
+    /**
      * Helper function for the placeholderTransform atom, which computes the new transform value when the pending action changes.
      * @param pendingAction The new pending action value.
      * @returns The computed placeholder transform.
@@ -778,8 +789,11 @@ export class LayoutModel {
         return nodeModel;
     }
 
-    private cleanupNodeModels() {
-        const leafOrder = this.getter(this.leafOrder);
+    /**
+     * Remove orphaned node models when their corresponding leaf is deleted.
+     * @param leafOrder The new leaf order array to use when locating orphaned nodes.
+     */
+    private cleanupNodeModels(leafOrder: LeafOrderEntry[]) {
         const orphanedNodeModels = [...this.nodeModels.keys()].filter(
             (id) => !leafOrder.find((leafEntry) => leafEntry.nodeid == id)
         );
