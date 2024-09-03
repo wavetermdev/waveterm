@@ -134,7 +134,7 @@ func validateEasyORef(oref string) error {
 	}
 	_, err := uuid.Parse(oref)
 	if err != nil {
-		return fmt.Errorf("invalid object reference (must be UUID, or a positive nonzero integer): %v", err)
+		return fmt.Errorf("invalid object reference (must be UUID, or a positive integer): %v", err)
 	}
 	return nil
 }

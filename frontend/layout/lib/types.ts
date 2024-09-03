@@ -328,6 +328,7 @@ export interface NodeModel {
     animationTimeS: number;
     innerRect: Atom<CSSProperties>;
     blockNum: Atom<number>;
+    numLeafs: Atom<number>;
     nodeId: string;
     blockId: string;
     isFocused: Atom<boolean>;

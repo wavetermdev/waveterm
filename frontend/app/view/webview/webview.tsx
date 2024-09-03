@@ -63,15 +63,15 @@ export class WebViewModel implements ViewModel {
             return [
                 {
                     elemtype: "iconbutton",
-                    className: this.shouldDisabledBackButton() ? "disabled" : "",
                     icon: "chevron-left",
                     click: this.handleBack.bind(this),
+                    disabled: this.shouldDisabledBackButton(),
                 },
                 {
                     elemtype: "iconbutton",
-                    className: this.shouldDisabledForwardButton() ? "disabled" : "",
                     icon: "chevron-right",
                     click: this.handleForward.bind(this),
+                    disabled: this.shouldDisabledForwardButton(),
                 },
                 {
                     elemtype: "div",

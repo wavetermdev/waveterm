@@ -439,7 +439,6 @@ export class LayoutModel {
                 }
             } else {
                 this.updateTree();
-                this.setTreeStateAtom();
             }
         }
     }
@@ -448,7 +447,7 @@ export class LayoutModel {
      * Set the upstream tree state atom to the value of the local tree state.
      * @param bumpGeneration Whether to bump the generation of the tree state before setting the atom.
      */
-    setTreeStateAtom(bumpGeneration = true) {
+    setTreeStateAtom(bumpGeneration = false) {
         if (bumpGeneration) {
             this.treeState.generation++;
         }
@@ -460,7 +459,7 @@ export class LayoutModel {
      * This is a hack to ensure that when the updateTree first successfully runs, we set the upstream atom state to persist the initial leaf order.
      * @see updateTree should be the only caller of this method.
      */
-    setTreeStateAtomOnce = lazy(() => this.setTreeStateAtom());
+    setTreeStateAtomOnce = lazy(() => this.setTreeStateAtom(true));
 
     /**
      * Recursively walks the tree to find leaf nodes, update the resize handles, and compute additional properties for each node.
@@ -761,6 +760,7 @@ export class LayoutModel {
                     const isFocused = treeState.focusedNodeId === nodeid;
                     return isFocused;
                 }),
+                numLeafs: this.numLeafs,
                 isMagnified: atom((get) => {
                     const treeState = get(this.treeStateAtom);
                     return treeState.magnifiedNodeId === nodeid;

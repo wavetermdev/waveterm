@@ -139,9 +139,13 @@ export function getBlockHeaderIcon(blockIcon: string, blockData: Block): React.R
 
 export const IconButton = React.memo(({ decl, className }: { decl: HeaderIconButton; className?: string }) => {
     const buttonRef = React.useRef<HTMLDivElement>(null);
-    useLongClick(buttonRef, decl.click, decl.longClick);
+    useLongClick(buttonRef, decl.click, decl.longClick, decl.disabled);
     return (
-        <div ref={buttonRef} className={clsx("iconbutton", className)} title={decl.title}>
+        <div
+            ref={buttonRef}
+            className={clsx("iconbutton", className, decl.className, { disabled: decl.disabled })}
+            title={decl.title}
+        >
             {typeof decl.icon === "string" ? <i className={util.makeIconClass(decl.icon, true)} /> : decl.icon}
         </div>
     );

@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export const useLongClick = (ref, onClick, onLongClick, ms = 300) => {
+export const useLongClick = (ref, onClick, onLongClick, disabled = false, ms = 300) => {
     const timerRef = useRef(null);
     const [longClickTriggered, setLongClickTriggered] = useState(false);
 
@@ -40,7 +40,7 @@ export const useLongClick = (ref, onClick, onLongClick, ms = 300) => {
     useEffect(() => {
         const element = ref.current;
 
-        if (!element) return;
+        if (!element || disabled) return;
 
         element.addEventListener("mousedown", startPress);
         element.addEventListener("mouseup", stopPress);

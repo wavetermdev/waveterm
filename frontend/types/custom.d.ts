@@ -154,6 +154,7 @@ declare global {
         title?: string;
         click?: (e: React.MouseEvent<any>) => void;
         longClick?: (e: React.MouseEvent<any>) => void;
+        disabled?: boolean;
     };
 
     type HeaderTextButton = {

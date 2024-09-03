@@ -91,12 +91,13 @@ function getViewIconElem(viewIconUnion: string | HeaderIconButton, blockData: Bl
 }
 
 const OptMagnifyButton = React.memo(
-    ({ magnified, toggleMagnify }: { magnified: boolean; toggleMagnify: () => void }) => {
+    ({ magnified, toggleMagnify, disabled }: { magnified: boolean; toggleMagnify: () => void; disabled: boolean }) => {
         const magnifyDecl: HeaderIconButton = {
             elemtype: "iconbutton",
             icon: <MagnifyIcon enabled={magnified} />,
             title: magnified ? "Minimize" : "Magnify",
             click: toggleMagnify,
+            disabled,
         };
         return <IconButton key="magnify" decl={magnifyDecl} className="block-frame-magnify" />;
     }
@@ -104,13 +105,15 @@ const OptMagnifyButton = React.memo(
 
 function computeEndIcons(
     viewModel: ViewModel,
-    magnified: boolean,
-    toggleMagnify: () => void,
-    onClose: () => void,
+    nodeModel: NodeModel,
     onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void
 ): JSX.Element[] {
     const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
+    const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
+    const magnifyDisabled = numLeafs <= 1;
+
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(...endIconButtons.map((button, idx) => <IconButton key={idx} decl={button} />));
     }
@@ -121,12 +124,19 @@ function computeEndIcons(
         click: onContextMenu,
     };
     endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
-    endIconsElem.push(<OptMagnifyButton key="unmagnify" magnified={magnified} toggleMagnify={toggleMagnify} />);
+    endIconsElem.push(
+        <OptMagnifyButton
+            key="unmagnify"
+            magnified={magnified}
+            toggleMagnify={nodeModel.toggleMagnify}
+            disabled={magnifyDisabled}
+        />
+    );
     const closeDecl: HeaderIconButton = {
         elemtype: "iconbutton",
         icon: "xmark-large",
         title: "Close",
-        click: onClose,
+        click: nodeModel.onClose,
     };
     endIconsElem.push(<IconButton key="close" decl={closeDecl} className="block-frame-default-close" />);
     return endIconsElem;
@@ -156,13 +166,7 @@ const BlockFrame_Header = ({
         [magnified]
     );
 
-    const endIconsElem = computeEndIcons(
-        viewModel,
-        magnified,
-        nodeModel.toggleMagnify,
-        nodeModel.onClose,
-        onContextMenu
-    );
+    const endIconsElem = computeEndIcons(viewModel, nodeModel, onContextMenu);
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
     let preIconButtonElem: JSX.Element = null;
     if (preIconButton) {
