@@ -16,33 +16,21 @@ import (
 
 var editMagnified bool
 
-var editCmd = &cobra.Command{
-	Use:     "edit",
-	Short:   "edit a file",
+var editorCmd = &cobra.Command{
+	Use:     "editor",
+	Short:   "edit a file (blocks until editor is closed)",
 	Args:    cobra.ExactArgs(1),
-	Run:     editRun,
+	Run:     editorRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {
 	editCmd.Flags().BoolVarP(&editMagnified, "magnified", "m", false, "open view in magnified mode")
-	rootCmd.AddCommand(editCmd)
+	rootCmd.AddCommand(editorCmd)
 }
 
-func editRun(cmd *cobra.Command, args []string) {
+func editorRun(cmd *cobra.Command, args []string) {
 	fileArg := args[0]
-	wshCmd := wshrpc.CommandCreateBlockData{
-		BlockDef: &waveobj.BlockDef{
-			Meta: map[string]any{
-				waveobj.MetaKey_View: "preview",
-				waveobj.MetaKey_File: fileArg,
-			},
-		},
-		Magnified: editMagnified,
-	}
-	if RpcContext.Conn != "" {
-		wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn
-	}
 	absFile, err := filepath.Abs(fileArg)
 	if err != nil {
 		WriteStderr("[error] getting absolute path: %v\n", err)
@@ -56,6 +44,19 @@ func editRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		WriteStderr("[error] getting file info: %v\n", err)
 		return
+	}
+	wshCmd := wshrpc.CommandCreateBlockData{
+		BlockDef: &waveobj.BlockDef{
+			Meta: map[string]any{
+				waveobj.MetaKey_View: "preview",
+				waveobj.MetaKey_File: absFile,
+				waveobj.MetaKey_Edit: true,
+			},
+		},
+		Magnified: editMagnified,
+	}
+	if RpcContext.Conn != "" {
+		wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn
 	}
 	blockRef, err := wshclient.CreateBlockCommand(RpcClient, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {

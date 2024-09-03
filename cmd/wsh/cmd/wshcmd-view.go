@@ -18,7 +18,15 @@ var viewMagnified bool
 
 var viewCmd = &cobra.Command{
 	Use:     "view",
-	Short:   "preview a file or directory",
+	Short:   "preview/edit a file or directory",
+	Args:    cobra.ExactArgs(1),
+	Run:     viewRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
+var editCmd = &cobra.Command{
+	Use:     "edit",
+	Short:   "preview/edit a file or directory",
 	Args:    cobra.ExactArgs(1),
 	Run:     viewRun,
 	PreRunE: preRunSetupRpcClient,
@@ -27,6 +35,7 @@ var viewCmd = &cobra.Command{
 func init() {
 	viewCmd.Flags().BoolVarP(&viewMagnified, "magnified", "m", false, "open view in magnified mode")
 	rootCmd.AddCommand(viewCmd)
+	rootCmd.AddCommand(editCmd)
 }
 
 func viewRun(cmd *cobra.Command, args []string) {
@@ -66,6 +75,9 @@ func viewRun(cmd *cobra.Command, args []string) {
 				},
 			},
 			Magnified: viewMagnified,
+		}
+		if cmd.Use == "edit" {
+			wshCmd.BlockDef.Meta[waveobj.MetaKey_Edit] = true
 		}
 		if conn != "" {
 			wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = conn
