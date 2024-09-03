@@ -151,14 +151,18 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
         if (!focusWithin) {
             setFocusTarget();
         }
-        nodeModel.focusNode();
+        if (!isFocused) {
+            nodeModel.focusNode();
+        }
     }, [blockClicked]);
 
     React.useLayoutEffect(() => {
         if (focusedChild == null) {
             return;
         }
-        nodeModel.focusNode();
+        if (!isFocused) {
+            nodeModel.focusNode();
+        }
     }, [focusedChild]);
 
     // treat the block as clicked on creation

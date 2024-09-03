@@ -214,6 +214,9 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     React.useEffect(() => {
         function handleTerminalKeydown(event: KeyboardEvent): boolean {
             const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
+            if (waveEvent.type != "keydown") {
+                return true;
+            }
             if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -235,6 +238,22 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 ) {
                     return false;
                 }
+            }
+            if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
+                const p = navigator.clipboard.readText();
+                p.then((text) => {
+                    termRef.current?.terminal.paste(text);
+                    // termRef.current?.handleTermData(text);
+                });
+                event.preventDefault();
+                event.stopPropagation();
+                return true;
+            } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
+                const sel = termRef.current?.terminal.getSelection();
+                navigator.clipboard.writeText(sel);
+                event.preventDefault();
+                event.stopPropagation();
+                return true;
             }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
@@ -331,35 +350,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         blockId: blockId,
     };
 
-    function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-        const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(e);
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Shift:v")) {
-            const p = navigator.clipboard.readText();
-            p.then((text) => {
-                termRef.current?.handleTermData(text);
-            });
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-        } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:Shift:c")) {
-            const sel = termRef.current?.terminal.getSelection();
-            navigator.clipboard.writeText(sel);
-            e.preventDefault();
-            e.stopPropagation();
-            return true;
-        }
-    }
-
-    const changeConnection = React.useCallback(
-        async (connName: string) => {
-            await WshServer.SetMetaCommand({ oref: WOS.makeORef("block", blockId), meta: { connection: connName } });
-            await WshServer.ControllerRestartCommand({ blockid: blockId });
-        },
-        [blockId]
-    );
-
     return (
-        <div className={clsx("view-term", "term-mode-" + termMode)} onKeyDown={handleKeyDown} ref={viewRef}>
+        <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
             <TermThemeUpdater blockId={blockId} termRef={termRef} />
             <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
