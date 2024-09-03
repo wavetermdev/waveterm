@@ -9,6 +9,7 @@ import { CenteredDiv } from "@/element/quickelems";
 import { NodeModel, useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc, getViewModel, registerViewModel, unregisterViewModel } from "@/store/global";
 import * as WOS from "@/store/wos";
+import { getElemAsStr } from "@/util/focusutil";
 import * as util from "@/util/util";
 import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
 import { HelpView } from "@/view/helpview/helpview";
@@ -133,7 +134,6 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const contentRef = React.useRef<HTMLDivElement>(null);
     const [blockClicked, setBlockClicked] = React.useState(false);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
-    const [focusedChild, setFocusedChild] = React.useState(null);
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = jotai.useAtomValue(nodeModel.disablePointerEvents);
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
@@ -152,20 +152,11 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
             setFocusTarget();
         }
         if (!isFocused) {
+            console.log("blockClicked focus", nodeModel.blockId);
             nodeModel.focusNode();
         }
-    }, [blockClicked]);
+    }, [blockClicked, isFocused]);
 
-    React.useLayoutEffect(() => {
-        if (focusedChild == null) {
-            return;
-        }
-        if (!isFocused) {
-            nodeModel.focusNode();
-        }
-    }, [focusedChild]);
-
-    // treat the block as clicked on creation
     const setBlockClickedTrue = React.useCallback(() => {
         setBlockClicked(true);
     }, []);
@@ -201,11 +192,15 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
         [nodeModel.blockId, blockData?.meta?.view, viewModel]
     );
 
-    const determineFocusedChild = React.useCallback(
+    const handleChildFocus = React.useCallback(
         (event: React.FocusEvent<HTMLDivElement, Element>) => {
-            setFocusedChild(event.target);
+            console.log("setFocusedChild", nodeModel.blockId, getElemAsStr(event.target));
+            if (!isFocused) {
+                console.log("focusedChild focus", nodeModel.blockId);
+                nodeModel.focusNode();
+            }
         },
-        [setFocusedChild]
+        [isFocused]
     );
 
     const setFocusTarget = React.useCallback(() => {
@@ -218,7 +213,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
 
     const blockModel: BlockComponentModel = {
         onClick: setBlockClickedTrue,
-        onFocusCapture: determineFocusedChild,
+        onFocusCapture: handleChildFocus,
         blockRef: blockRef,
     };
 
