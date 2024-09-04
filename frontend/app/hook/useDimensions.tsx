@@ -1,6 +1,13 @@
-import debounce from "lodash.debounce";
-import { useCallback, useEffect, useRef, useState } from "react";
+import useResizeObserver from "@react-hook/resize-observer";
+import { useCallback, useRef, useState } from "react";
+import { debounce } from "throttle-debounce";
 
+/**
+ * Get the current dimensions for the specified element, and whether it is currently changing size. Update when the element resizes.
+ * @param ref The reference to the element to observe.
+ * @param delay The debounce delay to use for updating the dimensions.
+ * @returns The dimensions of the element, and direction in which the dimensions are changing.
+ */
 const useDimensions = (ref: React.RefObject<HTMLElement>, delay = 0) => {
     const [dimensions, setDimensions] = useState<{
         height: number | null;
@@ -17,73 +24,42 @@ const useDimensions = (ref: React.RefObject<HTMLElement>, delay = 0) => {
         width: null,
     });
 
-    const updateDimensions = useCallback(() => {
-        if (ref.current) {
-            const element = ref.current;
-            const style = window.getComputedStyle(element);
-            const paddingTop = parseFloat(style.paddingTop);
-            const paddingBottom = parseFloat(style.paddingBottom);
-            const paddingLeft = parseFloat(style.paddingLeft);
-            const paddingRight = parseFloat(style.paddingRight);
-            const marginTop = parseFloat(style.marginTop);
-            const marginBottom = parseFloat(style.marginBottom);
-            const marginLeft = parseFloat(style.marginLeft);
-            const marginRight = parseFloat(style.marginRight);
+    const updateDimensions = useCallback((entry: ResizeObserverEntry) => {
+        const parentHeight = entry.contentRect.height;
+        const parentWidth = entry.contentRect.width;
 
-            const parentHeight = element.clientHeight - paddingTop - paddingBottom - marginTop - marginBottom;
-            const parentWidth = element.clientWidth - paddingLeft - paddingRight - marginLeft - marginRight;
+        let widthDirection = "";
+        let heightDirection = "";
 
-            let widthDirection = "";
-            let heightDirection = "";
-
-            if (previousDimensions.current.width !== null && previousDimensions.current.height !== null) {
-                if (parentWidth > previousDimensions.current.width) {
-                    widthDirection = "expanding";
-                } else if (parentWidth < previousDimensions.current.width) {
-                    widthDirection = "shrinking";
-                } else {
-                    widthDirection = "unchanged";
-                }
-
-                if (parentHeight > previousDimensions.current.height) {
-                    heightDirection = "expanding";
-                } else if (parentHeight < previousDimensions.current.height) {
-                    heightDirection = "shrinking";
-                } else {
-                    heightDirection = "unchanged";
-                }
+        if (previousDimensions.current.width !== null && previousDimensions.current.height !== null) {
+            if (parentWidth > previousDimensions.current.width) {
+                widthDirection = "expanding";
+            } else if (parentWidth < previousDimensions.current.width) {
+                widthDirection = "shrinking";
+            } else {
+                widthDirection = "unchanged";
             }
 
-            previousDimensions.current = { height: parentHeight, width: parentWidth };
-
-            setDimensions({ height: parentHeight, width: parentWidth, widthDirection, heightDirection });
+            if (parentHeight > previousDimensions.current.height) {
+                heightDirection = "expanding";
+            } else if (parentHeight < previousDimensions.current.height) {
+                heightDirection = "shrinking";
+            } else {
+                heightDirection = "unchanged";
+            }
         }
-    }, [ref]);
 
-    const fUpdateDimensions = useCallback(delay > 0 ? debounce(updateDimensions, delay) : updateDimensions, [
+        previousDimensions.current = { height: parentHeight, width: parentWidth };
+
+        setDimensions({ height: parentHeight, width: parentWidth, widthDirection, heightDirection });
+    }, []);
+
+    const fUpdateDimensions = useCallback(delay > 0 ? debounce(delay, updateDimensions) : updateDimensions, [
         updateDimensions,
         delay,
     ]);
 
-    useEffect(() => {
-        const resizeObserver = new ResizeObserver(() => {
-            fUpdateDimensions();
-        });
-
-        if (ref.current) {
-            resizeObserver.observe(ref.current);
-            fUpdateDimensions();
-        }
-
-        return () => {
-            if (ref.current) {
-                resizeObserver.unobserve(ref.current);
-            }
-            if (delay > 0) {
-                fUpdateDimensions.cancel();
-            }
-        };
-    }, [fUpdateDimensions]);
+    useResizeObserver(ref, fUpdateDimensions);
 
     return dimensions;
 };

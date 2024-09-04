@@ -1,46 +1,26 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import debounce from "lodash.debounce";
-import { useCallback, useEffect, useState } from "react";
+import useResizeObserver from "@react-hook/resize-observer";
+import { useCallback, useState } from "react";
+import { debounce } from "throttle-debounce";
 
+/**
+ * Get the width of the specified element and update it when the element resizes.
+ * @param ref The reference to the element to observe.
+ * @param delay The debounce delay to use for updating the width.
+ * @returns The current width of the element, or null if the element is not yet mounted.
+ */
 const useWidth = (ref: React.RefObject<HTMLElement>, delay = 0) => {
     const [width, setWidth] = useState<number | null>(null);
 
-    const updateWidth = useCallback(() => {
-        if (ref.current) {
-            const element = ref.current;
-            const style = window.getComputedStyle(element);
-            const paddingLeft = parseFloat(style.paddingLeft);
-            const paddingRight = parseFloat(style.paddingRight);
-            const marginLeft = parseFloat(style.marginLeft);
-            const marginRight = parseFloat(style.marginRight);
-            const parentWidth = element.clientWidth - paddingLeft - paddingRight - marginLeft - marginRight;
-            setWidth(parentWidth);
-        }
+    const updateWidth = useCallback((entry: ResizeObserverEntry) => {
+        setWidth(entry.contentRect.width);
     }, []);
 
-    const fUpdateWidth = useCallback(delay > 0 ? debounce(updateWidth, delay) : updateWidth, [updateWidth, delay]);
+    const fUpdateWidth = useCallback(delay > 0 ? debounce(delay, updateWidth) : updateWidth, [updateWidth, delay]);
 
-    useEffect(() => {
-        const resizeObserver = new ResizeObserver(() => {
-            fUpdateWidth();
-        });
-
-        if (ref.current) {
-            resizeObserver.observe(ref.current);
-            fUpdateWidth();
-        }
-
-        return () => {
-            if (ref.current) {
-                resizeObserver.unobserve(ref.current);
-            }
-            if (delay > 0) {
-                fUpdateWidth.cancel();
-            }
-        };
-    }, [fUpdateWidth]);
+    useResizeObserver(ref, fUpdateWidth);
 
     return width;
 };

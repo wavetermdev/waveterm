@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useHeight } from "@/app/hook/useHeight";
+import { useWidth } from "@/app/hook/useWidth";
 import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import React, { useRef } from "react";
-
 import "./codeeditor.less";
 
 // there is a global monaco variable (TODO get the correct TS type)
@@ -18,20 +18,28 @@ export function loadMonaco() {
         .init()
         .then(() => {
             monaco.editor.defineTheme("wave-theme-dark", {
-                base: "hc-black",
+                base: "vs-dark",
                 inherit: true,
                 rules: [],
                 colors: {
-                    "editor.background": "#000000",
+                    "editor.background": "#00000000",
+                    "minimap.background": "#00000077",
+                    focusBorder: "#00000000",
                 },
             });
             monaco.editor.defineTheme("wave-theme-light", {
-                base: "hc-light",
+                base: "vs",
                 inherit: true,
                 rules: [],
                 colors: {
                     "editor.background": "#fefefe",
+                    focusBorder: "#00000000",
                 },
+            });
+
+            // Disable default validation errors for typescript and javascript
+            monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+                noSemanticValidation: true,
             });
         })
         .catch((e) => {
@@ -50,6 +58,9 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
             verticalScrollbarSize: 5,
             horizontalScrollbarSize: 5,
         },
+        minimap: {
+            enabled: true,
+        },
     };
     return opts;
 }
@@ -67,6 +78,7 @@ export function CodeEditor({ parentRef, text, language, filename, onChange, onMo
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
     const parentHeight = useHeight(parentRef);
+    const parentWidth = useWidth(parentRef);
     const theme = "wave-theme-dark";
 
     React.useEffect(() => {
@@ -97,9 +109,10 @@ export function CodeEditor({ parentRef, text, language, filename, onChange, onMo
             <div className="code-editor" ref={divRef}>
                 <Editor
                     theme={theme}
-                    height={parentHeight}
                     value={text}
                     options={editorOpts}
+                    height={parentHeight}
+                    width={parentWidth}
                     onChange={handleEditorChange}
                     onMount={handleEditorOnMount}
                     path={filename}
