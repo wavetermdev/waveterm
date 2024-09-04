@@ -1,10 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { atoms } from "@/app/store/global";
 import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
+import { atom, useAtomValue } from "jotai";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import "./codeeditor.less";
 
 // there is a global monaco variable (TODO get the correct TS type)
@@ -71,9 +73,16 @@ interface CodeEditorProps {
     onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
 
+const minimapEnabledAtom = atom((get) => {
+    const settings = get(atoms.settingsAtom);
+    console.log("settings", settings);
+    return settings["editor:minimapenabled"] ?? false;
+});
+
 export function CodeEditor({ text, language, filename, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
+    const minimapEnabled = useAtomValue(minimapEnabledAtom);
     const theme = "wave-theme-dark";
 
     React.useEffect(() => {
@@ -97,7 +106,12 @@ export function CodeEditor({ text, language, filename, onChange, onMount }: Code
         }
     }
 
-    const editorOpts = defaultEditorOptions();
+    const editorOpts = useMemo(() => {
+        const opts = defaultEditorOptions();
+        console.log("minimapEnabled", minimapEnabled);
+        opts.minimap.enabled = minimapEnabled;
+        return opts;
+    }, [minimapEnabled]);
 
     return (
         <div className="code-editor-wrapper">

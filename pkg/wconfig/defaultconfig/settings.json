@@ -4,5 +4,6 @@
     "ai:timeoutms": 10000,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
-    "autoupdate:intervalms": 3600000
+    "autoupdate:intervalms": 3600000,
+    "editor:minimapenabled": true
 }

@@ -19,6 +19,8 @@ const (
 	ConfigKey_TermFontFamily                 = "term:fontfamily"
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
 
+	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
+
 	ConfigKey_WebClear                       = "web:*"
 	ConfigKey_WebOpenLinksInternally         = "web:openlinksinternally"
 

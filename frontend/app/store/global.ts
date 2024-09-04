@@ -359,7 +359,9 @@ function handleWSEventMessage(msg: WSEventType) {
         return;
     }
     if (msg.eventtype == "config") {
-        globalStore.set(atoms.fullConfigAtom, (msg.data as WatcherUpdate).fullconfig);
+        const fullConfig = (msg.data as WatcherUpdate).fullconfig;
+        console.log("fullConfig", fullConfig);
+        globalStore.set(atoms.fullConfigAtom, fullConfig);
         return;
     }
     if (msg.eventtype == "userinput") {
