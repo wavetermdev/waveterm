@@ -11,8 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
-	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -91,18 +89,6 @@ func ExitCodeFromWaitErr(err error) int {
 
 }
 
-func setBoolConditionally(rval reflect.Value, field string, value bool) {
-	if rval.Elem().FieldByName(field).IsValid() {
-		rval.Elem().FieldByName(field).SetBool(value)
-	}
-}
-
-func setSysProcAttrs(cmd *exec.Cmd) {
-	rval := reflect.ValueOf(cmd.SysProcAttr)
-	setBoolConditionally(rval, "Setsid", true)
-	setBoolConditionally(rval, "Setctty", true)
-}
-
 func checkCwd(cwd string) error {
 	if cwd == "" {
 		return fmt.Errorf("cwd is empty")
@@ -112,8 +98,6 @@ func checkCwd(cwd string) error {
 	}
 	return nil
 }
-
-var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
 
 type PipePty struct {
 	remoteStdinWrite *os.File
@@ -174,6 +158,10 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 			// add --rcfile
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`"%s"/.waveterm/bash-integration/.bashrc`, homeDir))
+		} else if remote.IsPowershell(shellPath) {
+			// powershell is weird about quoted path executables and requires an ampersand first
+			shellPath = "& " + shellPath
+			shellOpts = append(shellOpts, "-NoExit", "-File", homeDir+"/.waveterm/pwsh-integration/wavepwsh.ps1")
 		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
@@ -241,7 +229,12 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 	if !ok {
 		return nil, fmt.Errorf("no jwt token provided to connection")
 	}
-	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
+
+	if remote.IsPowershell(shellPath) {
+		cmdCombined = fmt.Sprintf(`$env:%s="%s"; %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
+	} else {
+		cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
+	}
 
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 
@@ -277,7 +270,9 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 			// add --rcfile
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", shellutil.GetBashRcFileOverride())
-		} else if runtime.GOOS != "windows" {
+		} else if remote.IsPowershell(shellPath) {
+			shellOpts = append(shellOpts, "-NoExit", "-File", shellutil.GetWavePowershellEnv())
+		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
 			}

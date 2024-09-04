@@ -212,7 +212,16 @@ func (conn *SSHConn) StartConnServer() error {
 	pipeRead, pipeWrite := io.Pipe()
 	sshSession.Stdout = pipeWrite
 	sshSession.Stderr = pipeWrite
-	cmdStr := fmt.Sprintf("%s=\"%s\" %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
+	shellPath, err := remote.DetectShell(client)
+	if err != nil {
+		return err
+	}
+	var cmdStr string
+	if remote.IsPowershell(shellPath) {
+		cmdStr = fmt.Sprintf("$env:%s=\"%s\"; %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
+	} else {
+		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
+	}
 	log.Printf("starting conn controller: %s\n", cmdStr)
 	err = sshSession.Start(cmdStr)
 	if err != nil {

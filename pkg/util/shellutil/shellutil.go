@@ -38,6 +38,7 @@ const AppPathBinDir = "bin"
 const (
 	ZshIntegrationDir  = "zsh-integration"
 	BashIntegrationDir = "bash-integration"
+	PwshIntegrationDir = "pwsh-integration"
 	WaveHomeBinDir     = "bin"
 
 	ZshStartup_Zprofile = `
@@ -77,6 +78,12 @@ elif [ -f ~/.profile ]; then
 fi
 
 export PATH={{.WSHBINDIR}}:$PATH
+`
+	PwshStartup_wavepwsh = `
+# no need to source regular profiles since we cannot
+# overwrite those with powershell. Instead we will source
+# this file with -NoExit
+$env:PATH = "{{.WSHBINDIR}}" + "{{.PATHSEP}}" + $env:PATH
 `
 )
 
@@ -194,6 +201,10 @@ func GetBashRcFileOverride() string {
 	return filepath.Join(wavebase.GetWaveHomeDir(), BashIntegrationDir, ".bashrc")
 }
 
+func GetWavePowershellEnv() string {
+	return filepath.Join(wavebase.GetWaveHomeDir(), PwshIntegrationDir, "wavepwsh.ps1")
+}
+
 func GetZshZDotDir() string {
 	return filepath.Join(wavebase.GetWaveHomeDir(), ZshIntegrationDir)
 }
@@ -215,6 +226,11 @@ func InitRcFiles(waveHome string, wshBinDir string) error {
 	}
 	bashDir := filepath.Join(waveHome, BashIntegrationDir)
 	err = wavebase.CacheEnsureDir(bashDir, BashIntegrationDir, 0755, BashIntegrationDir)
+	if err != nil {
+		return err
+	}
+	pwshDir := filepath.Join(waveHome, PwshIntegrationDir)
+	err = wavebase.CacheEnsureDir(pwshDir, PwshIntegrationDir, 0755, PwshIntegrationDir)
 	if err != nil {
 		return err
 	}
@@ -242,6 +258,16 @@ func InitRcFiles(waveHome string, wshBinDir string) error {
 	err = utilfn.WriteTemplateToFile(filepath.Join(bashDir, ".bashrc"), BashStartup_Bashrc, map[string]string{"WSHBINDIR": fmt.Sprintf(`"%s"`, wshBinDir)})
 	if err != nil {
 		return fmt.Errorf("error writing bash-integration .bashrc: %v", err)
+	}
+	var pathSep string
+	if runtime.GOOS == "windows" {
+		pathSep = ";"
+	} else {
+		pathSep = ":"
+	}
+	err = utilfn.WriteTemplateToFile(filepath.Join(pwshDir, "wavepwsh.ps1"), PwshStartup_wavepwsh, map[string]string{"WSHBINDIR": toPwshEnvVarRef(wshBinDir), "PATHSEP": pathSep})
+	if err != nil {
+		return fmt.Errorf("error writing pwsh-integration wavepwsh.ps1: %v", err)
 	}
 
 	return nil
@@ -281,4 +307,8 @@ func initCustomShellStartupFilesInternal() error {
 
 func computeWshBaseName() string {
 	return fmt.Sprintf("wsh-%s-%s.%s", wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
+}
+
+func toPwshEnvVarRef(input string) string {
+	return strings.Replace(input, "$", "$env:", -1)
 }

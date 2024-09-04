@@ -311,10 +311,25 @@ func GetHomeDir(client *ssh.Client) string {
 		return "~"
 	}
 
-	out, err := session.Output("pwd")
+	out, err := session.Output(`echo "$HOME"`)
+	if err == nil {
+		return strings.TrimSpace(string(out))
+	}
+
+	session, err = client.NewSession()
 	if err != nil {
 		return "~"
 	}
-	return strings.TrimSpace(string(out))
+	out, err = session.Output(`echo %userprofile%`)
+	if err == nil {
+		return strings.TrimSpace(string(out))
+	}
 
+	return "~"
+}
+
+func IsPowershell(shellPath string) bool {
+	// get the base path, and then check contains
+	shellBase := filepath.Base(shellPath)
+	return strings.Contains(shellBase, "powershell") || strings.Contains(shellBase, "pwsh")
 }
