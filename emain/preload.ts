@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("api", {
     getPlatform: () => ipcRenderer.sendSync("get-platform"),
     getCursorPoint: () => ipcRenderer.sendSync("get-cursor-point"),
     getUserName: () => ipcRenderer.sendSync("get-user-name"),
+    getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),

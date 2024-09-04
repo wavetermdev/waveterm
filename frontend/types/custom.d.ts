@@ -54,6 +54,7 @@ declare global {
         getPlatform: () => NodeJS.Platform;
         getEnv: (varName: string) => string;
         getUserName: () => string;
+        getAboutModalDetails: () => AboutModalDetails;
         showContextMenu: (menu?: ElectronContextMenuItem[]) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
         onNavigate: (callback: (url: string) => void) => void;
@@ -234,6 +235,11 @@ declare global {
     }
 
     type TypeAheadModalType = { [key: string]: boolean };
+
+    interface AboutModalDetails {
+        version: string;
+        buildTime: number;
+    }
 }
 
 export {};

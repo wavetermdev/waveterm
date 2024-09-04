@@ -200,10 +200,6 @@ function runWaveSrv(): Promise<boolean> {
             process.env[WebServerEndpointVarName] = startParams[2];
             WaveVersion = startParams[3];
             WaveBuildTime = parseInt(startParams[4]);
-            electron.app.setAboutPanelOptions({
-                applicationVersion: "v" + WaveVersion,
-                version: (isDev ? "dev-" : "") + String(WaveBuildTime),
-            });
             waveSrvReadyResolve(true);
             return;
         }
@@ -597,6 +593,10 @@ electron.ipcMain.on("get-cursor-point", (event) => {
 
 electron.ipcMain.on("get-env", (event, varName) => {
     event.returnValue = process.env[varName] ?? null;
+});
+
+electron.ipcMain.on("get-about-modal-details", (event) => {
+    event.returnValue = { version: WaveVersion, buildTime: WaveBuildTime } as AboutModalDetails;
 });
 
 const hasBeforeInputRegisteredMap = new Map<number, boolean>();

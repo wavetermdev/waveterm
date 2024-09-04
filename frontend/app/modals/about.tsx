@@ -6,12 +6,16 @@ import { LinkButton } from "@/app/element/linkbutton";
 import { modalsModel } from "@/app/store/modalmodel";
 import { Modal } from "./modal";
 
+import { isDev } from "@/util/isdev";
+import { useState } from "react";
+import { getApi } from "../store/global";
 import "./about.less";
 
 interface AboutModalProps {}
 
 const AboutModal = ({}: AboutModalProps) => {
     const currentDate = new Date();
+    const [details] = useState(() => getApi().getAboutModalDetails());
 
     return (
         <Modal className="about-modal" onClose={() => modalsModel.popModal()}>
@@ -25,7 +29,10 @@ const AboutModal = ({}: AboutModalProps) => {
                         Built for Seamless Workflows
                     </div>
                 </div>
-                <div className="section text-standard">Client Version 0.1.8 (20240615-002636)</div>
+                <div className="section text-standard">
+                    Client Version {details.version} ({isDev() ? "dev-" : ""}
+                    {details.buildTime})
+                </div>
                 <div className="section">
                     <LinkButton
                         className="secondary solid"
