@@ -9,12 +9,12 @@ import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
-import "public/xterm.css";
 import * as React from "react";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
 import { computeTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
+import "./xterm.css";
 
 const keyMap = {
     Enter: "\r",
