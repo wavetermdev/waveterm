@@ -3,7 +3,9 @@
 
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { tryReinjectKey } from "@/app/store/keymodel";
 import { Markdown } from "@/element/markdown";
+import { NodeModel } from "@/layout/index";
 import { createBlock, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
@@ -22,9 +24,6 @@ import { CenteredDiv } from "../../element/quickelems";
 import { CodeEditor } from "../codeeditor/codeeditor";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
-
-import { tryReinjectKey } from "@/app/store/keymodel";
-import { NodeModel } from "@/layout/index";
 import "./preview.less";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
@@ -134,17 +133,19 @@ export class PreviewModel implements ViewModel {
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.monacoRef = createRef();
         this.viewIcon = jotai.atom((get) => {
-            let blockData = get(this.blockAtom);
+            const blockData = get(this.blockAtom);
+            const fileName = get(this.metaFilePath);
+            const mimeTypeLoadable = get(this.fileMimeTypeLoadable);
             if (blockData?.meta?.icon) {
                 return blockData.meta.icon;
             }
-            const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
+            const mimeType = util.jotaiLoadableValue(mimeTypeLoadable, "");
             if (mimeType == "directory") {
                 return {
                     elemtype: "iconbutton",
                     icon: "folder-open",
                     longClick: (e: React.MouseEvent<any>) => {
-                        let menuItems: ContextMenuItem[] = [];
+                        const menuItems: ContextMenuItem[] = [];
                         menuItems.push({
                             label: "Go to Home",
                             click: () => this.goHistory("~"),
@@ -169,8 +170,7 @@ export class PreviewModel implements ViewModel {
                     },
                 };
             }
-            const fileName = get(this.metaFilePath);
-            return iconForFile(mimeType, fileName);
+            return iconForFile(mimeType);
         });
         this.editMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -181,7 +181,7 @@ export class PreviewModel implements ViewModel {
             const loadableSV = get(this.loadableSpecializedView);
             const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
             let headerPath = get(this.metaFilePath);
-            let loadablePath: Loadable<string> = get(this.loadableStatFilePath);
+            const loadablePath: Loadable<string> = get(this.loadableStatFilePath);
             if (loadablePath.state == "hasData" && !util.isBlank(loadablePath.data)) {
                 headerPath = loadablePath.data;
             }
@@ -246,7 +246,7 @@ export class PreviewModel implements ViewModel {
         this.endIconButtons = jotai.atom((get) => {
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             if (mimeType == "directory") {
-                let showHiddenFiles = get(this.showHiddenFiles);
+                const showHiddenFiles = get(this.showHiddenFiles);
                 return [
                     {
                         elemtype: "iconbutton",
@@ -347,7 +347,7 @@ export class PreviewModel implements ViewModel {
             return { specializedView: "streaming" };
         }
         if (!fileInfo) {
-            let fileNameStr = fileName ? " " + JSON.stringify(fileName) : "";
+            const fileNameStr = fileName ? " " + JSON.stringify(fileName) : "";
             return { errorStr: "File Not Found" + fileNameStr };
         }
         if (fileInfo.size > MaxFileSize) {
@@ -741,7 +741,7 @@ function CSVViewPreview({ model, parentRef }: SpecializedViewProps) {
     return <CSVView parentRef={parentRef} readonly={true} content={fileContent} filename={fileName} />;
 }
 
-function iconForFile(mimeType: string, fileName: string): string {
+function iconForFile(mimeType: string): string {
     if (mimeType == null) {
         mimeType = "unknown";
     }
@@ -764,11 +764,6 @@ function iconForFile(mimeType: string, fileName: string): string {
             (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
     ) {
         return "file-code";
-    } else if (mimeType === "directory") {
-        if (fileName == "~" || fileName == "~/") {
-            return "home";
-        }
-        return "folder-open";
     } else {
         return "file";
     }
