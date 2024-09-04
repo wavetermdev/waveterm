@@ -72,7 +72,7 @@ const config = {
     },
     win: {
         icon: "build/icons.icns",
-        publisherName: "Command Line, Inc.",
+        publisherName: "Command Line Inc",
         target: ["nsis", "msi", "zip"],
         certificateSubjectName: "Command Line Inc",
         certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
