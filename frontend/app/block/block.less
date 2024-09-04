@@ -79,7 +79,6 @@
                 padding: 4px 5px 4px 10px;
                 align-items: center;
                 gap: 8px;
-                align-self: stretch;
                 font: var(--header-font);
                 border-bottom: 1px solid var(--border-color);
                 border-radius: var(--block-border-radius) var(--block-border-radius) 0 0;
@@ -150,7 +149,6 @@
                 .connection-button {
                     display: flex;
                     align-items: center;
-                    gap: 2px;
                     flex-wrap: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
@@ -158,7 +156,7 @@
                     font-weight: 400;
                     color: var(--main-text-color);
                     border-radius: 2px;
-                    padding-right: 2px;
+                    padding: auto;
 
                     &:hover {
                         background-color: var(--highlight-bg-color);
@@ -190,7 +188,6 @@
                         height: 100%;
                         justify-content: space-between;
                         align-items: center;
-                        padding-left: 7px;
 
                         .input-wrapper {
                             flex-grow: 1;
