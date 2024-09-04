@@ -154,6 +154,7 @@ declare global {
         status: string;
         connection: string;
         connected: boolean;
+        hasconnected: boolean;
         error?: string;
     };
 

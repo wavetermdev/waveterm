@@ -20,6 +20,8 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
+	"github.com/wavetermdev/thenextwave/pkg/remote"
+	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
 	"github.com/wavetermdev/thenextwave/pkg/waveai"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
@@ -466,4 +468,28 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 func (ws *WshServer) SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error {
 	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
+}
+
+func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
+	return nil
+}
+
+func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
+	return nil
+}
+
+func (ws *WshServer) ConnForceConnectCommand(ctx context.Context, connName string) error {
+	return nil
+}
+
+func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(ctx, connOpts, false)
+	if conn == nil {
+		return fmt.Errorf("connection not found: %s", connName)
+	}
+	return conn.CheckAndInstallWsh(ctx, connName, &conncontroller.WshInstallOpts{Force: true, NoUserPrompt: true})
 }

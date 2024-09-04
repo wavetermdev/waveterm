@@ -53,6 +53,7 @@ type SSHConn struct {
 	ConnController     *ssh.Session
 	Error              string
 	HasWaiter          *atomic.Bool
+	LastConnectTime    int64
 }
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
@@ -70,10 +71,11 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	conn.Lock.Lock()
 	defer conn.Lock.Unlock()
 	return wshrpc.ConnStatus{
-		Status:     conn.Status,
-		Connected:  conn.Status == Status_Connected,
-		Connection: conn.Opts.String(),
-		Error:      conn.Error,
+		Status:       conn.Status,
+		Connected:    conn.Status == Status_Connected,
+		Connection:   conn.Opts.String(),
+		HasConnected: (conn.LastConnectTime > 0),
+		Error:        conn.Error,
 	}
 }
 
@@ -243,7 +245,15 @@ func (conn *SSHConn) StartConnServer() error {
 	return nil
 }
 
-func (conn *SSHConn) checkAndInstallWsh(ctx context.Context, clientDisplayName string) error {
+type WshInstallOpts struct {
+	Force        bool
+	NoUserPrompt bool
+}
+
+func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName string, opts *WshInstallOpts) error {
+	if opts == nil {
+		opts = &WshInstallOpts{}
+	}
 	client := conn.GetClient()
 	if client == nil {
 		return fmt.Errorf("client is nil")
@@ -251,12 +261,15 @@ func (conn *SSHConn) checkAndInstallWsh(ctx context.Context, clientDisplayName s
 	// check that correct wsh extensions are installed
 	expectedVersion := fmt.Sprintf("wsh v%s", wavebase.WaveVersion)
 	clientVersion, err := remote.GetWshVersion(client)
-	if err == nil && clientVersion == expectedVersion {
+	if err == nil && clientVersion == expectedVersion && !opts.Force {
 		return nil
 	}
 	var queryText string
 	var title string
-	if err != nil {
+	if opts.Force {
+		queryText = fmt.Sprintf("ReInstalling Wave Shell Extensions (%s) on `%s`\n", wavebase.WaveVersion, clientDisplayName)
+		title = "Install Wave Shell Extensions"
+	} else if err != nil {
 		queryText = fmt.Sprintf("Wave requires Wave Shell Extensions to be  \n"+
 			"installed on `%s`  \n"+
 			"to ensure a seamless experience.  \n\n"+
@@ -269,16 +282,18 @@ func (conn *SSHConn) checkAndInstallWsh(ctx context.Context, clientDisplayName s
 			"Would you like to update?", clientDisplayName, clientVersion, expectedVersion)
 		title = "Update Wave Shell Extensions"
 	}
-	request := &userinput.UserInputRequest{
-		ResponseType: "confirm",
-		QueryText:    queryText,
-		Title:        title,
-		Markdown:     true,
-		CheckBoxMsg:  "Don't show me this again",
-	}
-	response, err := userinput.GetUserInput(ctx, request)
-	if err != nil || !response.Confirm {
-		return err
+	if !opts.NoUserPrompt {
+		request := &userinput.UserInputRequest{
+			ResponseType: "confirm",
+			QueryText:    queryText,
+			Title:        title,
+			Markdown:     true,
+			CheckBoxMsg:  "Don't show me this again",
+		}
+		response, err := userinput.GetUserInput(ctx, request)
+		if err != nil || !response.Confirm {
+			return err
+		}
 	}
 	log.Printf("attempting to install wsh to `%s`", clientDisplayName)
 	clientOs, err := remote.GetClientOs(client)
@@ -337,6 +352,7 @@ func (conn *SSHConn) Connect(ctx context.Context) error {
 			conn.close_nolock()
 		} else {
 			conn.Status = Status_Connected
+			conn.LastConnectTime = time.Now().UnixMilli()
 		}
 	})
 	conn.FireConnChangeEvent()
@@ -363,7 +379,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	installErr := conn.checkAndInstallWsh(ctx, clientDisplayName)
+	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, nil)
 	if installErr != nil {
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
 	}
@@ -385,14 +401,13 @@ func (conn *SSHConn) waitForDisconnect() {
 	}
 	err := client.Wait()
 	conn.WithLock(func() {
-		if err != nil {
-			if conn.Status != Status_Disconnected {
-				// don't set the error if our status is disconnected (because this error was caused by an explicit close)
-				conn.Status = Status_Error
-				conn.Error = err.Error()
-			}
-		} else {
-			// not sure if this is possible, because I think Wait() always returns an error (although that's not in the docs)
+		// disconnects happen for a variety of reasons (like network, etc. and are typically transient)
+		// so we just set the status to "disconnected" here (not error)
+		// don't overwrite any existing error (or error status)
+		if err != nil && conn.Error == "" {
+			conn.Error = err.Error()
+		}
+		if conn.Status != Status_Error {
 			conn.Status = Status_Disconnected
 		}
 		conn.close_nolock()

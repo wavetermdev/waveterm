@@ -63,6 +63,11 @@ const (
 	Command_RemoteWriteFile   = "remotewritefile"
 	Command_RemoteFileDelete  = "remotefiledelete"
 	Command_RemoteFileJoiin   = "remotefilejoin"
+
+	Command_ConnEnsure       = "connensure"
+	Command_ConnReinstallWsh = "connreinstallwsh"
+	Command_ConnForceConnect = "connforceconnect"
+	Command_ConnDisconnect   = "conndisconnect"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -97,6 +102,12 @@ type WshRpcInterface interface {
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
+
+	// connection functions
+	ConnEnsureCommand(ctx context.Context, connName string) error
+	ConnReinstallWshCommand(ctx context.Context, connName string) error
+	ConnForceConnectCommand(ctx context.Context, connName string) error
+	ConnDisconnectCommand(ctx context.Context, connName string) error
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data WaveEvent) error
@@ -344,8 +355,9 @@ type TimeSeriesData struct {
 }
 
 type ConnStatus struct {
-	Status     string `json:"status"`
-	Connection string `json:"connection"`
-	Connected  bool   `json:"connected"`
-	Error      string `json:"error,omitempty"`
+	Status       string `json:"status"`
+	Connection   string `json:"connection"`
+	Connected    bool   `json:"connected"`
+	HasConnected bool   `json:"hasconnected"` // true if it has *ever* connected successfully
+	Error        string `json:"error,omitempty"`
 }
