@@ -143,7 +143,6 @@ export class PreviewModel implements ViewModel {
         this.monacoRef = createRef();
         this.viewIcon = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
-            const fileName = get(this.metaFilePath);
             const mimeTypeLoadable = get(this.fileMimeTypeLoadable);
             if (blockData?.meta?.icon) {
                 return blockData.meta.icon;

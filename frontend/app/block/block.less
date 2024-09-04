@@ -85,7 +85,8 @@
 
                 .block-frame-default-header-iconview {
                     display: flex;
-                    flex: 0 1 auto;
+                    flex-shrink: 3;
+                    min-width: 17px;
                     align-items: center;
                     gap: 8px;
                     overflow-x: hidden;
@@ -100,10 +101,11 @@
                     }
 
                     .block-frame-view-type {
-                        font-weight: 700;
                         overflow-x: hidden;
                         text-wrap: nowrap;
                         text-overflow: ellipsis;
+                        flex-shrink: 1;
+                        min-width: 0;
                     }
 
                     .block-frame-blockid {
@@ -116,12 +118,12 @@
                     font: var(--fixed-font);
                     font-size: 11px;
                     opacity: 0.7;
-                    overflow-x: hidden;
                     flex-grow: 1;
 
                     &.preview-filename {
+                        direction: rtl;
+                        text-align: left;
                         span {
-                            height: 100%;
                             cursor: pointer;
 
                             &:hover {
@@ -168,7 +170,7 @@
                     }
 
                     .connection-name {
-                        flex: 1 100 auto;
+                        flex: 1 2 auto;
                         overflow: hidden;
                         padding-right: 4px;
                     }
@@ -176,11 +178,10 @@
 
                 .block-frame-textelems-wrapper {
                     display: flex;
-                    flex: 1 100 auto;
+                    flex: 1 2 auto;
                     min-width: 0;
                     gap: 8px;
                     align-items: center;
-                    overflow-x: hidden;
 
                     .block-frame-div {
                         display: flex;

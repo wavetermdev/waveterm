@@ -178,23 +178,12 @@ const BlockFrame_Header = ({
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(
                 <div key="text" className="block-frame-text">
-                    {headerTextUnion}
+                    &lrm;{headerTextUnion}
                 </div>
             );
         }
     } else if (Array.isArray(headerTextUnion)) {
         headerTextElems.push(...renderHeaderElements(headerTextUnion, preview));
-    }
-    if (manageConnection) {
-        const connButtonElem = (
-            <ConnectionButton
-                ref={connBtnRef}
-                key="connbutton"
-                connection={blockData?.meta?.connection}
-                changeConnModalAtom={changeConnModalAtom}
-            />
-        );
-        headerTextElems.unshift(connButtonElem);
     }
     headerTextElems.unshift(<ControllerStatusIcon key="connstatus" blockId={nodeModel.blockId} />);
 
@@ -206,7 +195,14 @@ const BlockFrame_Header = ({
                 <div className="block-frame-view-type">{viewName}</div>
                 {showBlockIds && <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>}
             </div>
-
+            {manageConnection && (
+                <ConnectionButton
+                    ref={connBtnRef}
+                    key="connbutton"
+                    connection={blockData?.meta?.connection}
+                    changeConnModalAtom={changeConnModalAtom}
+                />
+            )}
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
             <div className="block-frame-end-icons">{endIconsElem}</div>
         </div>
@@ -222,7 +218,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
         return (
             <div className={clsx("block-frame-text", elem.className)}>
                 <span ref={preview ? null : elem.ref} onClick={() => elem?.onClick()}>
-                    {elem.text}
+                    &lrm;{elem.text}
                 </span>
             </div>
         );
