@@ -107,6 +107,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("remotefileinfo", data, opts);
     }
 
+    // command "remotefilejoin" [call]
+    RemoteFileJoinCommand(data: string[], opts?: RpcOpts): Promise<FileInfo> {
+        return WOS.wshServerRpcHelper_call("remotefilejoin", data, opts);
+    }
+
     // command "remotestreamcpudata" [responsestream]
 	RemoteStreamCpuDataCommand(opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
         return WOS.wshServerRpcHelper_responsestream("remotestreamcpudata", null, opts);

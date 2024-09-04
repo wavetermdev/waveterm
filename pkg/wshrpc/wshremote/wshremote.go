@@ -279,6 +279,27 @@ func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInf
 	return rtn, nil
 }
 
+func resolvePaths(paths []string) string {
+	if len(paths) == 0 {
+		return wavebase.ExpandHomeDir("~")
+	}
+	var rtnPath = wavebase.ExpandHomeDir(paths[0])
+	for _, path := range paths[1:] {
+		path = wavebase.ExpandHomeDir(path)
+		if filepath.IsAbs(path) {
+			rtnPath = path
+			continue
+		}
+		rtnPath = filepath.Join(rtnPath, path)
+	}
+	return rtnPath
+}
+
+func (impl *ServerImpl) RemoteFileJoinCommand(ctx context.Context, paths []string) (*wshrpc.FileInfo, error) {
+	rtnPath := resolvePaths(paths)
+	return impl.fileInfoInternal(rtnPath, true)
+}
+
 func (impl *ServerImpl) RemoteFileInfoCommand(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
 	return impl.fileInfoInternal(path, true)
 }

@@ -4,6 +4,7 @@
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
+import { WshServer } from "@/app/store/wshserver";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
 import { createBlock, globalStore, refocusNode } from "@/store/global";
@@ -41,6 +42,13 @@ const SpecializedViewMap: { [view: string]: ({ model }: SpecializedViewProps) =>
     csv: CSVViewPreview,
     directory: DirectoryPreview,
 };
+
+function makeConnRoute(conn: string): string {
+    if (util.isBlank(conn)) {
+        return "conn:local";
+    }
+    return "conn:" + conn;
+}
 
 function isTextFile(mimeType: string): boolean {
     if (mimeType == null) {
@@ -484,13 +492,18 @@ export class PreviewModel implements ViewModel {
             this.updateOpenFileModalAndError(false);
             return true;
         }
-        const newPath = fileInfo.dir + "/" + filePath;
-        const conn = globalStore.get(this.connection) ?? "";
-        const newFileInfo = await services.FileService.StatFile(conn, newPath);
-        this.updateOpenFileModalAndError(false);
-        this.goHistory(newFileInfo.path);
-        refocusNode(this.blockId);
-        return true;
+        const conn = globalStore.get(this.connection);
+        try {
+            const newFileInfo = await WshServer.RemoteFileJoinCommand([fileInfo.dir, filePath], {
+                route: makeConnRoute(conn),
+            });
+            this.updateOpenFileModalAndError(false);
+            this.goHistory(newFileInfo.path);
+            refocusNode(this.blockId);
+        } catch (e) {
+            globalStore.set(this.openFileError, e.message);
+            console.error("Error opening file", fileInfo.dir, filePath, e);
+        }
     }
 
     isSpecializedView(sv: string): boolean {

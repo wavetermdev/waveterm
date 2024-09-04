@@ -103,6 +103,14 @@ function handleIncomingRpcMessage(msg: RpcMessage, eventHandlerFn: (event: WaveE
             }
             return;
         }
+        if (msg.command == "message") {
+            if (msg.data?.oref != null) {
+                console.log("rpc:message", msg.data?.oref, msg.data?.message);
+            } else {
+                console.log("rpc:message", msg.data?.message);
+            }
+            return;
+        }
 
         console.log("rpc command not supported", msg);
         return;

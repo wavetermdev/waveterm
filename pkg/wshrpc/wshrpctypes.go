@@ -62,6 +62,7 @@ const (
 	Command_RemoteFileInfo    = "remotefileinfo"
 	Command_RemoteWriteFile   = "remotewritefile"
 	Command_RemoteFileDelete  = "remotefiledelete"
+	Command_RemoteFileJoiin   = "remotefilejoin"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -105,6 +106,7 @@ type WshRpcInterface interface {
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileDeleteCommand(ctx context.Context, path string) error
 	RemoteWriteFileCommand(ctx context.Context, data CommandRemoteWriteFileData) error
+	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 }
 

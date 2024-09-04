@@ -111,12 +111,11 @@ func (router *WshRouter) handleNoRoute(msg RpcMessage) {
 	}
 	// send error response
 	response := RpcMessage{
-		Route: msg.Source,
 		ResId: msg.ReqId,
 		Error: nrErr.Error(),
 	}
 	respBytes, _ := json.Marshal(response)
-	router.InputCh <- msgAndRoute{msgBytes: respBytes, fromRouteId: SysRoute}
+	router.sendRoutedMessage(respBytes, msg.Source)
 }
 
 func (router *WshRouter) registerRouteInfo(rpcId string, sourceRouteId string, destRouteId string) {
