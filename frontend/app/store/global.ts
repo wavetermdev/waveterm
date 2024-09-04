@@ -589,9 +589,9 @@ function subscribeToConnEvents() {
         try {
             const connStatus = event.data as ConnStatus;
             if (connStatus == null || util.isBlank(connStatus.connection)) {
-                console.log("connchange2 early return");
                 return;
             }
+            console.log("connstatus update", connStatus);
             let curAtom = getConnStatusAtom(connStatus.connection);
             globalStore.set(curAtom, connStatus);
         } catch (e) {
@@ -603,7 +603,13 @@ function subscribeToConnEvents() {
 function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
     let rtn = ConnStatusMap.get(conn);
     if (rtn == null) {
-        const connStatus: ConnStatus = { connection: conn, connected: false, error: null, status: "disconnected" };
+        const connStatus: ConnStatus = {
+            connection: conn,
+            connected: false,
+            error: null,
+            status: "disconnected",
+            hasconnected: false,
+        };
         rtn = jotai.atom(connStatus);
         ConnStatusMap.set(conn, rtn);
     }

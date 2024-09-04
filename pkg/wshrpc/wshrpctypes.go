@@ -66,7 +66,7 @@ const (
 
 	Command_ConnEnsure       = "connensure"
 	Command_ConnReinstallWsh = "connreinstallwsh"
-	Command_ConnForceConnect = "connforceconnect"
+	Command_ConnConnect      = "connconnect"
 	Command_ConnDisconnect   = "conndisconnect"
 )
 
@@ -104,9 +104,10 @@ type WshRpcInterface interface {
 	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
 
 	// connection functions
+	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	ConnEnsureCommand(ctx context.Context, connName string) error
 	ConnReinstallWshCommand(ctx context.Context, connName string) error
-	ConnForceConnectCommand(ctx context.Context, connName string) error
+	ConnConnectCommand(ctx context.Context, connName string) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener

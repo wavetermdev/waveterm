@@ -470,16 +470,57 @@ func (ws *WshServer) SetConfigCommand(ctx context.Context, data wconfig.MetaSett
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }
 
+func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
+	rtn := conncontroller.GetAllConnStatus()
+	return rtn, nil
+}
+
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
-	return nil
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(ctx, connOpts, false)
+	if conn == nil {
+		return fmt.Errorf("connection not found: %s", connName)
+	}
+	connStatus := conn.DeriveConnStatus()
+	switch connStatus.Status {
+	case conncontroller.Status_Connected:
+		return nil
+	case conncontroller.Status_Connecting:
+		return conn.WaitForConnect(ctx)
+	case conncontroller.Status_Init, conncontroller.Status_Disconnected:
+		return conn.Connect(ctx)
+	case conncontroller.Status_Error:
+		return fmt.Errorf("connection error: %s", connStatus.Error)
+	default:
+		return fmt.Errorf("unknown connection status %q", connStatus.Status)
+	}
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
-	return nil
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(ctx, connOpts, false)
+	if conn == nil {
+		return fmt.Errorf("connection not found: %s", connName)
+	}
+	return conn.Close()
 }
 
-func (ws *WshServer) ConnForceConnectCommand(ctx context.Context, connName string) error {
-	return nil
+func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) error {
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(ctx, connOpts, false)
+	if conn == nil {
+		return fmt.Errorf("connection not found: %s", connName)
+	}
+	return conn.Connect(ctx)
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {

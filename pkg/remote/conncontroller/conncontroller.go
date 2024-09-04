@@ -328,6 +328,30 @@ func (conn *SSHConn) Reconnect(ctx context.Context) error {
 	return conn.Connect(ctx)
 }
 
+func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
+	for {
+		status := conn.DeriveConnStatus()
+		if status.Status == Status_Connected {
+			return nil
+		}
+		if status.Status == Status_Connecting {
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("context timeout")
+			case <-time.After(100 * time.Millisecond):
+				continue
+			}
+		}
+		if status.Status == Status_Init || status.Status == Status_Disconnected {
+			return fmt.Errorf("disconnected")
+		}
+		if status.Status == Status_Error {
+			return fmt.Errorf("error: %v", status.Error)
+		}
+		return fmt.Errorf("unknown status: %q", status.Status)
+	}
+}
+
 // does not return an error since that error is stored inside of SSHConn
 func (conn *SSHConn) Connect(ctx context.Context) error {
 	var connectAllowed bool

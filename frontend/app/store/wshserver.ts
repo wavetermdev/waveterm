@@ -17,6 +17,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("authenticate", data, opts);
     }
 
+    // command "connconnect" [call]
+    ConnConnectCommand(data: string, opts?: RpcOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("connconnect", data, opts);
+    }
+
     // command "conndisconnect" [call]
     ConnDisconnectCommand(data: string, opts?: RpcOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("conndisconnect", data, opts);
@@ -27,14 +32,14 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("connensure", data, opts);
     }
 
-    // command "connforceconnect" [call]
-    ConnForceConnectCommand(data: string, opts?: RpcOpts): Promise<void> {
-        return WOS.wshServerRpcHelper_call("connforceconnect", data, opts);
-    }
-
     // command "connreinstallwsh" [call]
     ConnReinstallWshCommand(data: string, opts?: RpcOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("connreinstallwsh", data, opts);
+    }
+
+    // command "connstatus" [call]
+    ConnStatusCommand(opts?: RpcOpts): Promise<ConnStatus[]> {
+        return WOS.wshServerRpcHelper_call("connstatus", null, opts);
     }
 
     // command "controllerinput" [call]
