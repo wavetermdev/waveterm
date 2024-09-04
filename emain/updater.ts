@@ -18,16 +18,16 @@ export class Updater {
     private _status: UpdaterStatus;
     lastUpdateCheck: Date;
 
-    constructor(options: AutoUpdateOpts) {
-        this.intervalms = options.intervalms;
-        this.autoCheckEnabled = options.enabled;
+    constructor(settings: SettingsType) {
+        this.intervalms = settings["autoupdate:intervalms"];
+        this.autoCheckEnabled = settings["autoupdate:enabled"];
 
         this._status = "up-to-date";
         this.lastUpdateCheck = new Date(0);
         this.autoCheckInterval = null;
         this.availableUpdateReleaseName = null;
 
-        autoUpdater.autoInstallOnAppQuit = options.installonquit;
+        autoUpdater.autoInstallOnAppQuit = settings["autoupdate:installonquit"];
 
         autoUpdater.removeAllListeners();
 
@@ -195,8 +195,8 @@ export async function configureAutoUpdater() {
 
     try {
         console.log("Configuring updater");
-        const autoUpdateOpts = (await services.FileService.GetSettingsConfig()).autoupdate;
-        updater = new Updater(autoUpdateOpts);
+        const settings = (await services.FileService.GetFullConfig()).settings;
+        updater = new Updater(settings);
         await updater.start();
     } catch (e) {
         console.warn("error configuring updater", e.toString());
