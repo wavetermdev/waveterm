@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useHeight } from "@/app/hook/useHeight";
-import { useWidth } from "@/app/hook/useWidth";
 import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
@@ -66,7 +64,6 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
 }
 
 interface CodeEditorProps {
-    parentRef: React.MutableRefObject<HTMLDivElement>;
     text: string;
     filename: string;
     language?: string;
@@ -74,11 +71,9 @@ interface CodeEditorProps {
     onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
 
-export function CodeEditor({ parentRef, text, language, filename, onChange, onMount }: CodeEditorProps) {
+export function CodeEditor({ text, language, filename, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
-    const parentHeight = useHeight(parentRef);
-    const parentWidth = useWidth(parentRef);
     const theme = "wave-theme-dark";
 
     React.useEffect(() => {
@@ -111,8 +106,6 @@ export function CodeEditor({ parentRef, text, language, filename, onChange, onMo
                     theme={theme}
                     value={text}
                     options={editorOpts}
-                    height={parentHeight}
-                    width={parentWidth}
                     onChange={handleEditorChange}
                     onMount={handleEditorOnMount}
                     path={filename}

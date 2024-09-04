@@ -691,7 +691,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
 }
 
-function CodeEditPreview({ parentRef, model }: SpecializedViewProps) {
+function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = jotai.useAtomValue(model.fileContent);
     const setNewFileContent = jotai.useSetAtom(model.newFileContent);
     const fileName = jotai.useAtomValue(model.statFilePath);
@@ -723,8 +723,6 @@ function CodeEditPreview({ parentRef, model }: SpecializedViewProps) {
     function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco): () => void {
         model.monacoRef.current = editor;
 
-        const simpleMod = keyutil.getKeyUtilPlatform() == "darwin" ? monaco.KeyMod.CtrlCmd : monaco.KeyMod.Alt;
-
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(e.browserEvent);
             const handled = tryReinjectKey(waveEvent);
@@ -744,7 +742,6 @@ function CodeEditPreview({ parentRef, model }: SpecializedViewProps) {
 
     return (
         <CodeEditor
-            parentRef={parentRef}
             text={fileContent}
             filename={fileName}
             onChange={(text) => setNewFileContent(text)}
