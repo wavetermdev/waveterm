@@ -193,7 +193,7 @@ func GetClientArch(client *ssh.Client) (string, error) {
 		formatted := strings.ToLower(string(out))
 		formatted = strings.TrimSpace(formatted)
 		if formatted == "x86_64" {
-			return "amd64", nil
+			return "x64", nil
 		}
 		return formatted, nil
 	}

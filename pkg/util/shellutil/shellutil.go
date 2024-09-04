@@ -209,12 +209,19 @@ func GetZshZDotDir() string {
 	return filepath.Join(wavebase.GetWaveHomeDir(), ZshIntegrationDir)
 }
 
-func GetWshBinaryPath(version string, goos string, goarch string) string {
+func GetWshBaseName(version string, goos string, goarch string) string {
 	ext := ""
+	if goarch == "amd64" {
+		goarch = "x64"
+	}
 	if goos == "windows" {
 		ext = ".exe"
 	}
-	return filepath.Join(os.Getenv(WaveAppPathVarName), AppPathBinDir, fmt.Sprintf("wsh-%s-%s.%s%s", version, goos, goarch, ext))
+	return fmt.Sprintf("wsh-%s-%s.%s%s", version, goos, goarch, ext)
+}
+
+func GetWshBinaryPath(version string, goos string, goarch string) string {
+	return filepath.Join(os.Getenv(WaveAppPathVarName), AppPathBinDir, GetWshBaseName(version, goos, goarch))
 }
 
 func InitRcFiles(waveHome string, wshBinDir string) error {
@@ -288,6 +295,7 @@ func initCustomShellStartupFilesInternal() error {
 	}
 
 	// copy the correct binary to bin
+	wshBaseName := GetWshBaseName(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
 	wshFullPath := GetWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
 	if _, err := os.Stat(wshFullPath); err != nil {
 		log.Printf("error (non-fatal), could not resolve wsh binary %q: %v\n", wshFullPath, err)
@@ -301,12 +309,8 @@ func initCustomShellStartupFilesInternal() error {
 	if err != nil {
 		return fmt.Errorf("error copying wsh binary to bin: %v", err)
 	}
-	log.Printf("wsh binary successfully %q copied to %q\n", computeWshBaseName(), wshDstPath)
+	log.Printf("wsh binary successfully %q copied to %q\n", wshBaseName, wshDstPath)
 	return nil
-}
-
-func computeWshBaseName() string {
-	return fmt.Sprintf("wsh-%s-%s.%s", wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
 }
 
 func toPwshEnvVarRef(input string) string {

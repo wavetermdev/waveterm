@@ -17,7 +17,7 @@ const config = {
         {
             from: "./dist",
             to: "./dist",
-            filter: ["**/*"],
+            filter: ["**/*", "!bin/*", "bin/wavesrv.${arch}*", "bin/wsh*"],
         },
         {
             from: ".",
@@ -51,10 +51,17 @@ const config = {
                   teamId: process.env.APPLE_TEAM_ID,
               }
             : false,
+        mergeASARs: true,
+        singleArchFiles: "dist/bin/wavesrv.*",
         binaries: fs
-            .readdirSync("dist/bin", { recursive: true, withFileTypes: true })
+            .readdirSync("./dist/bin", { recursive: true, withFileTypes: true })
             .filter((f) => f.isFile() && (f.name.startsWith("wavesrv") || f.name.includes("darwin")))
-            .map((f) => path.resolve(f.parentPath, f.name)),
+            .map((f) => {
+                const resolvedPath = path.resolve(f.parentPath ?? f.path, f.name);
+                console.log("resolvedPath", resolvedPath);
+                return resolvedPath;
+            })
+            .filter((path) => path),
     },
     linux: {
         executableName: pkg.productName,

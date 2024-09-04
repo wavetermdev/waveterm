@@ -97,11 +97,11 @@ tasks:
             vars:
                 - ARCHS
         cmds:
-            - cmd: CGO_ENABLED=1 GOARCH={{.ARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{.ARCH}}{{exeExt}} cmd/server/main-server.go
+            - cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
               for:
                   var: ARCHS
                   split: ","
-                  as: ARCH
+                  as: GOARCH
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
@@ -159,6 +159,8 @@ tasks:
         vars:
             EXT:
                 sh: echo {{if eq .GOOS "windows"}}.exe{{end}}
+            NORMALIZEDARCH:
+                sh: echo {{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}
         requires:
             vars:
                 - GOOS
@@ -168,9 +170,9 @@ tasks:
             - "cmd/wsh/**/*.go"
             - "pkg/**/*.go"
         generates:
-            - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}}
+            - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}}
         cmds:
-            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         deps:
             - go:mod:tidy
         internal: true

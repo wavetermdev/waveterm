@@ -18,7 +18,7 @@ if (isDevVite) {
 
 app.setName(isDev ? "TheNextWave (Dev)" : "TheNextWave");
 const unamePlatform = process.platform;
-const unameArch: string = process.arch === "x64" ? "amd64" : process.arch;
+const unameArch: string = process.arch;
 keyutil.setKeyUtilPlatform(unamePlatform);
 
 ipcMain.on("get-is-dev", (event) => {
