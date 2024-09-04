@@ -103,6 +103,7 @@ export class PreviewModel implements ViewModel {
     statFilePath: jotai.Atom<Promise<string>>;
     normFilePath: jotai.Atom<Promise<string>>;
     loadableStatFilePath: jotai.Atom<Loadable<string>>;
+    loadableFileInfo: jotai.Atom<Loadable<FileInfo>>;
     connection: jotai.Atom<string>;
     statFile: jotai.Atom<Promise<FileInfo>>;
     fullFile: jotai.Atom<Promise<FullFile>>;
@@ -189,9 +190,12 @@ export class PreviewModel implements ViewModel {
             const loadableSV = get(this.loadableSpecializedView);
             const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
             let headerPath = get(this.metaFilePath);
-            const loadablePath: Loadable<string> = get(this.loadableStatFilePath);
-            if (loadablePath.state == "hasData" && !util.isBlank(loadablePath.data)) {
-                headerPath = loadablePath.data;
+            const loadableFileInfo = get(this.loadableFileInfo);
+            if (loadableFileInfo.state == "hasData") {
+                headerPath = loadableFileInfo.data?.path;
+                if (headerPath == "~") {
+                    headerPath = `~ (${loadableFileInfo.data?.dir})`;
+                }
             }
             const viewTextChildren: HeaderElem[] = [
                 {
@@ -337,6 +341,7 @@ export class PreviewModel implements ViewModel {
         });
         this.loadableSpecializedView = loadable(this.specializedView);
         this.canPreview = jotai.atom(false);
+        this.loadableFileInfo = loadable(this.statFile);
     }
 
     async getSpecializedView(getFn: jotai.Getter): Promise<{ specializedView?: string; errorStr?: string }> {
@@ -876,7 +881,7 @@ const OpenFileModal = React.memo(
         }
         return (
             <TypeAheadModal
-                label="Open file"
+                label="Open path"
                 suggestions={[]}
                 blockRef={blockRef}
                 anchorRef={model.previewTextRef}
