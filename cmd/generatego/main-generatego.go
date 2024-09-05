@@ -9,11 +9,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/thenextwave/pkg/gogen"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wconfig"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/gogen"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const WshClientFileName = "pkg/wshrpc/wshclient/wshclient.go"
@@ -24,10 +24,10 @@ func GenerateWshClient() {
 	fmt.Fprintf(os.Stderr, "generating wshclient file to %s\n", WshClientFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "wshclient", []string{
-		"github.com/wavetermdev/thenextwave/pkg/wshutil",
-		"github.com/wavetermdev/thenextwave/pkg/wshrpc",
-		"github.com/wavetermdev/thenextwave/pkg/waveobj",
-		"github.com/wavetermdev/thenextwave/pkg/wconfig",
+		"github.com/wavetermdev/waveterm/pkg/wshutil",
+		"github.com/wavetermdev/waveterm/pkg/wshrpc",
+		"github.com/wavetermdev/waveterm/pkg/waveobj",
+		"github.com/wavetermdev/waveterm/pkg/wconfig",
 	})
 	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
 	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {

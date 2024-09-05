@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wps"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
+	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 // the wcore package coordinates actions across the storage layer

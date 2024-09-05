@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wcore"
-	"github.com/wavetermdev/thenextwave/pkg/wlayout"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
+	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
+	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 type ClientService struct{}

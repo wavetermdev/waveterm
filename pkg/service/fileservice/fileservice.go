@@ -9,13 +9,13 @@ import (
 	"io"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/filestore"
-	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/thenextwave/pkg/wconfig"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 const MaxFileSize = 10 * 1024 * 1024 // 10M

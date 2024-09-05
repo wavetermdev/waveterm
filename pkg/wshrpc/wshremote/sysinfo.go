@@ -10,9 +10,9 @@ import (
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 func getCpuData(values map[string]float64) {

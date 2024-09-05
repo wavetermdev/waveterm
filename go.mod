@@ -1,4 +1,4 @@
-module github.com/wavetermdev/thenextwave
+module github.com/wavetermdev/waveterm
 
 go 1.22.4
 

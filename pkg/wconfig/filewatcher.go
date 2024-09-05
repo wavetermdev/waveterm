@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/wavetermdev/thenextwave/pkg/eventbus"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/eventbus"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 const configDir = "config"

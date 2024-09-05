@@ -13,9 +13,9 @@ import (
 	"time"
 
 	openaiapi "github.com/sashabaranov/go-openai"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"github.com/wavetermdev/thenextwave/pkg/wcloud"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wcloud"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 
 	"github.com/gorilla/websocket"
 )

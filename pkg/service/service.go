@@ -9,16 +9,16 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
-	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
-	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
-	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
-	"github.com/wavetermdev/thenextwave/pkg/service/userinputservice"
-	"github.com/wavetermdev/thenextwave/pkg/service/windowservice"
-	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
+	"github.com/wavetermdev/waveterm/pkg/service/blockservice"
+	"github.com/wavetermdev/waveterm/pkg/service/clientservice"
+	"github.com/wavetermdev/waveterm/pkg/service/fileservice"
+	"github.com/wavetermdev/waveterm/pkg/service/objectservice"
+	"github.com/wavetermdev/waveterm/pkg/service/userinputservice"
+	"github.com/wavetermdev/waveterm/pkg/service/windowservice"
+	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
 )
 
 var ServiceMap = map[string]any{

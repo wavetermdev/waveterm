@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
 
 const (

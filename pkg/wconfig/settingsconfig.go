@@ -13,9 +13,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wconfig/defaultconfig"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
 )
 
 const SettingsFile = "settings.json"

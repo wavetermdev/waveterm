@@ -9,9 +9,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wcore"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const (

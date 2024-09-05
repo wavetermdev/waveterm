@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshremote"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
 )
 
 var serverCmd = &cobra.Command{

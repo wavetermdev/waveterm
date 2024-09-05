@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 type WshRpcProxy struct {

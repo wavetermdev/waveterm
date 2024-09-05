@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 func init() {

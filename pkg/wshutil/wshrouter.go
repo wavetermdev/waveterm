@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/wps"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const DefaultRoute = "wavesrv"

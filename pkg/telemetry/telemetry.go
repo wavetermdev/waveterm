@@ -9,11 +9,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/util/daystr"
-	"github.com/wavetermdev/thenextwave/pkg/util/dbutil"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"github.com/wavetermdev/thenextwave/pkg/wconfig"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
+	"github.com/wavetermdev/waveterm/pkg/util/daystr"
+	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const MaxTzNameLen = 50

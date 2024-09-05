@@ -6,10 +6,10 @@
 package wshclient
 
 import (
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 )
 
 // command "announce", wshserver.AnnounceCommand

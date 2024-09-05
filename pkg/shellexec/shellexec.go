@@ -18,12 +18,12 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/wavetermdev/thenextwave/pkg/remote"
-	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
-	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/remote"
+	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 const DefaultGracefulKillWait = 400 * time.Millisecond

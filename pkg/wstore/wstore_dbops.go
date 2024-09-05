@@ -10,9 +10,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/filestore"
-	"github.com/wavetermdev/thenextwave/pkg/util/dbutil"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
 
 var ErrNotFound = fmt.Errorf("not found")

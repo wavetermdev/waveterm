@@ -17,7 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/ijson"
+	"github.com/wavetermdev/waveterm/pkg/ijson"
 )
 
 const (

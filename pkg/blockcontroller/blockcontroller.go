@@ -14,17 +14,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/eventbus"
-	"github.com/wavetermdev/thenextwave/pkg/filestore"
-	"github.com/wavetermdev/thenextwave/pkg/remote"
-	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
-	"github.com/wavetermdev/thenextwave/pkg/shellexec"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
-	"github.com/wavetermdev/thenextwave/pkg/wps"
-	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
-	"github.com/wavetermdev/thenextwave/pkg/wstore"
+	"github.com/wavetermdev/waveterm/pkg/eventbus"
+	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/remote"
+	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/shellexec"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const (

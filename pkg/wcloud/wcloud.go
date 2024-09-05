@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/thenextwave/pkg/telemetry"
-	"github.com/wavetermdev/thenextwave/pkg/util/daystr"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/util/daystr"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 const WCloudEndpoint = "https://api.waveterm.dev/central"

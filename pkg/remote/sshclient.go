@@ -23,8 +23,8 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
-	"github.com/wavetermdev/thenextwave/pkg/userinput"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/userinput"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"golang.org/x/crypto/ssh"
 	xknownhosts "golang.org/x/crypto/ssh/knownhosts"
 )

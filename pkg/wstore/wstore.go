@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
 
 func init() {

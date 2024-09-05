@@ -13,7 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 const (
