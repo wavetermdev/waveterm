@@ -1,3 +1,4 @@
+const { Arch } = require("electron-builder");
 const pkg = require("./package.json");
 const fs = require("fs");
 const path = require("path");
@@ -54,15 +55,6 @@ const config = {
             : false,
         mergeASARs: true,
         singleArchFiles: "dist/bin/wavesrv.*",
-        binaries: fs
-            .readdirSync("./dist/bin", { recursive: true, withFileTypes: true })
-            .filter((f) => f.isFile() && (f.name.startsWith("wavesrv") || f.name.includes("darwin")))
-            .map((f) => {
-                const resolvedPath = path.resolve(f.parentPath ?? f.path, f.name);
-                console.log("resolvedPath", resolvedPath);
-                return resolvedPath;
-            })
-            .filter((path) => path),
     },
     linux: {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
@@ -92,6 +84,23 @@ const config = {
     publish: {
         provider: "generic",
         url: "https://dl.waveterm.dev/releases-w2",
+    },
+    afterPack: (context) => {
+        // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.
+        if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {
+            const packageBinDir = path.join(
+                context.appOutDir,
+                `${pkg.name}.app/Contents/Resources/app.asar.unpacked/dist/bin`
+            );
+
+            // Reapply file permissions to the wavesrv binaries in the final app package
+            fs.readdirSync(packageBinDir, {
+                recursive: true,
+                withFileTypes: true,
+            })
+                .filter((f) => f.isFile() && f.name.startsWith("wavesrv"))
+                .forEach((f) => fs.chmodSync(path.resolve(f.parentPath ?? f.path, f.name), 0o755));
+        }
     },
 };
 
