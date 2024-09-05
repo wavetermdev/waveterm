@@ -3,11 +3,15 @@
 
 import { CopyButton } from "@/app/element/copybutton";
 import { clsx } from "clsx";
-import React from "react";
+import React, { CSSProperties, useCallback, useMemo, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 
+import { Atom, useAtomValue } from "jotai";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
+import { useHeight } from "../hook/useHeight";
 import "./markdown.less";
 
 const Link = ({ href, children }: { href: string; children: React.ReactNode }) => {
@@ -19,8 +23,8 @@ const Link = ({ href, children }: { href: string; children: React.ReactNode }) =
     );
 };
 
-const Header = ({ children, hnum }: { children: React.ReactNode; hnum: number }) => {
-    return <div className={clsx("title", `is-${hnum}`)}>{children}</div>;
+const Heading = ({ children, hnum }: { children: React.ReactNode; hnum: number }) => {
+    return <div className={clsx("heading", `is-${hnum}`)}>{children}</div>;
 };
 
 const Code = ({ children }: { children: React.ReactNode }) => {
@@ -71,30 +75,87 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
 };
 
 type MarkdownProps = {
-    text: string;
+    textAtom: Atom<string> | Atom<Promise<string>>;
+    showTocAtom: Atom<boolean>;
     style?: React.CSSProperties;
     className?: string;
     onClickExecute?: (cmd: string) => void;
 };
 
-const Markdown = ({ text, style, className, onClickExecute }: MarkdownProps) => {
+const Markdown = ({ textAtom, showTocAtom, style, className, onClickExecute }: MarkdownProps) => {
+    const text = useAtomValue(textAtom);
+    const tocRef = useRef<TocItem[]>([]);
+    const showToc = useAtomValue(showTocAtom);
+    const contentsRef = useRef<HTMLDivElement>(null);
+    const contentsHeight = useHeight(contentsRef, 200);
+
+    const halfContentsHeight = useMemo(() => {
+        return `${contentsHeight / 2}px`;
+    }, [contentsHeight]);
+
+    const onTocClick = useCallback((data: string) => {
+        if (contentsRef.current) {
+            const headings = contentsRef.current.getElementsByClassName("heading");
+            for (const heading of headings) {
+                if (heading.textContent === data) {
+                    heading.scrollIntoView({ inline: "nearest", block: "end" });
+                }
+            }
+        }
+    }, []);
+
     const markdownComponents = {
         a: Link,
-        h1: (props: any) => <Header {...props} hnum={1} />,
-        h2: (props: any) => <Header {...props} hnum={2} />,
-        h3: (props: any) => <Header {...props} hnum={3} />,
-        h4: (props: any) => <Header {...props} hnum={4} />,
-        h5: (props: any) => <Header {...props} hnum={5} />,
-        h6: (props: any) => <Header {...props} hnum={6} />,
+        h1: (props: any) => <Heading {...props} hnum={1} />,
+        h2: (props: any) => <Heading {...props} hnum={2} />,
+        h3: (props: any) => <Heading {...props} hnum={3} />,
+        h4: (props: any) => <Heading {...props} hnum={4} />,
+        h5: (props: any) => <Heading {...props} hnum={5} />,
+        h6: (props: any) => <Heading {...props} hnum={6} />,
         code: Code,
         pre: (props: any) => <CodeBlock {...props} onClickExecute={onClickExecute} />,
     };
 
+    const toc = useMemo(() => {
+        if (showToc && tocRef.current.length > 0) {
+            return tocRef.current.map((item) => {
+                return (
+                    <a
+                        key={item.href}
+                        className="toc-item"
+                        style={{ "--indent-factor": item.depth } as CSSProperties}
+                        onClick={() => onTocClick(item.value)}
+                    >
+                        {item.value}
+                    </a>
+                );
+            });
+        }
+    }, [showToc, tocRef]);
+
     return (
-        <div className={clsx("markdown content", className)} style={style}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={markdownComponents}>
-                {text}
-            </ReactMarkdown>
+        <div className={clsx("markdown", className)} style={style} ref={contentsRef}>
+            <OverlayScrollbarsComponent
+                className="content"
+                style={{ "--half-contents-height": halfContentsHeight } as CSSProperties}
+                options={{ scrollbars: { autoHide: "leave" } }}
+            >
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
+                    rehypePlugins={[rehypeRaw]}
+                    components={markdownComponents}
+                >
+                    {text}
+                </ReactMarkdown>
+            </OverlayScrollbarsComponent>
+            {showToc && (
+                <OverlayScrollbarsComponent className="toc" options={{ scrollbars: { autoHide: "leave" } }}>
+                    <div className="toc-inner">
+                        <h4>Table of Contents</h4>
+                        {toc}
+                    </div>
+                </OverlayScrollbarsComponent>
+            )}
         </div>
     );
 };

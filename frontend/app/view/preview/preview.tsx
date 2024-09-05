@@ -116,6 +116,8 @@ export class PreviewModel implements ViewModel {
     openFileError: jotai.PrimitiveAtom<string>;
     openFileModalGiveFocusRef: React.MutableRefObject<() => boolean>;
 
+    markdownShowToc: jotai.PrimitiveAtom<boolean>;
+
     monacoRef: React.MutableRefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
 
     showHiddenFiles: jotai.PrimitiveAtom<boolean>;
@@ -140,6 +142,7 @@ export class PreviewModel implements ViewModel {
         this.openFileModalGiveFocusRef = createRef();
         this.manageConnection = jotai.atom(true);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.markdownShowToc = jotai.atom(false);
         this.monacoRef = createRef();
         this.viewIcon = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -196,6 +199,7 @@ export class PreviewModel implements ViewModel {
                     headerPath = `~ (${loadableFileInfo.data?.dir})`;
                 }
             }
+
             const viewTextChildren: HeaderElem[] = [
                 {
                     elemtype: "text",
@@ -256,6 +260,8 @@ export class PreviewModel implements ViewModel {
         });
         this.endIconButtons = jotai.atom((get) => {
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
+            const loadableSV = get(this.loadableSpecializedView);
+            const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
             if (mimeType == "directory") {
                 const showHiddenFiles = get(this.showHiddenFiles);
                 return [
@@ -271,7 +277,16 @@ export class PreviewModel implements ViewModel {
                         icon: "arrows-rotate",
                         click: () => this.refreshCallback?.(),
                     },
-                ];
+                ] as HeaderIconButton[];
+            } else if (!isCeView && mimeType.startsWith("text/markdown")) {
+                return [
+                    {
+                        elemtype: "iconbutton",
+                        icon: "book",
+                        title: "Table of Contents",
+                        click: () => this.markdownShowTocToggle(),
+                    },
+                ] as HeaderIconButton[];
             }
             return null;
         });
@@ -341,6 +356,10 @@ export class PreviewModel implements ViewModel {
         this.loadableSpecializedView = loadable(this.specializedView);
         this.canPreview = jotai.atom(false);
         this.loadableFileInfo = loadable(this.statFile);
+    }
+
+    markdownShowTocToggle() {
+        globalStore.set(this.markdownShowToc, !globalStore.get(this.markdownShowToc));
     }
 
     async getSpecializedView(getFn: jotai.Getter): Promise<{ specializedView?: string; errorStr?: string }> {
@@ -637,10 +656,9 @@ function makePreviewModel(blockId: string, nodeModel: NodeModel): PreviewModel {
 }
 
 function MarkdownPreview({ model }: SpecializedViewProps) {
-    const readmeText = jotai.useAtomValue(model.fileContent);
     return (
         <div className="view-preview view-preview-markdown">
-            <Markdown text={readmeText} />
+            <Markdown textAtom={model.fileContent} showTocAtom={model.markdownShowToc} />
         </div>
     );
 }

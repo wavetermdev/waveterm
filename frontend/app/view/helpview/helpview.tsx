@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Markdown } from "@/app/element/markdown";
-
+import { globalStore } from "@/app/store/global";
+import { Atom, atom, PrimitiveAtom } from "jotai";
 import "./helpview.less";
 
 const helpText = `
@@ -179,8 +180,37 @@ Other useful metadata values to override block titles, icons, colors, themes, et
 
 `;
 
-function HelpView({ blockId }: { blockId: string }) {
-    return <Markdown text={helpText} className="help-view" />;
+const helpTextAtom = atom(helpText);
+
+class HelpViewModel implements ViewModel {
+    viewType: string;
+    showTocAtom: PrimitiveAtom<boolean>;
+    endIconButtons: Atom<HeaderIconButton[]>;
+
+    constructor() {
+        this.viewType = "help";
+        this.showTocAtom = atom(false);
+        this.endIconButtons = atom([
+            {
+                elemtype: "iconbutton",
+                icon: "book",
+                title: "Table of Contents",
+                click: () => this.showTocToggle(),
+            },
+        ] as HeaderIconButton[]);
+    }
+
+    showTocToggle() {
+        globalStore.set(this.showTocAtom, !globalStore.get(this.showTocAtom));
+    }
 }
 
-export { HelpView };
+function makeHelpViewModel() {
+    return new HelpViewModel();
+}
+
+function HelpView({ model }: { model: HelpViewModel }) {
+    return <Markdown textAtom={helpTextAtom} showTocAtom={model.showTocAtom} className="help-view" />;
+}
+
+export { HelpView, HelpViewModel, makeHelpViewModel };
