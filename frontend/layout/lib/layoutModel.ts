@@ -56,7 +56,7 @@ interface ResizeContext {
     afterNodeStartSize: number;
 }
 
-const DefaultGapSizePx = 5;
+const DefaultGapSizePx = 3;
 const MinNodeSizePx = 40;
 const DefaultAnimationTimeS = 0.15;
 
@@ -96,12 +96,12 @@ export class LayoutModel {
     /**
      * The size of the gap between nodes in CSS pixels.
      */
-    gapSizePx: number;
+    gapSizePx: PrimitiveAtom<number>;
 
     /**
      * The time a transition animation takes, in seconds.
      */
-    animationTimeS: number;
+    animationTimeS: PrimitiveAtom<number>;
 
     /**
      * List of nodes that are leafs and should be rendered as a DisplayNode.
@@ -183,13 +183,7 @@ export class LayoutModel {
      * The resize handle size is double the gap size, or double the default gap size, whichever is greater.
      * @see gapSizePx @see DefaultGapSizePx
      */
-    private resizeHandleSizePx: number;
-    /**
-     * Half of the size of the resize handles, in CSS pixels.
-     *
-     * @see resizeHandleSizePx This is just a precomputed halving of the resize handle size.
-     */
-    private halfResizeHandleSizePx: number;
+    private resizeHandleSizePx: Atom<number>;
     /**
      * A context used by the resize handles to keep track of precomputed values for the current resize operation.
      */
@@ -219,10 +213,12 @@ export class LayoutModel {
         this.renderContent = renderContent;
         this.renderPreview = renderPreview;
         this.onNodeDelete = onNodeDelete;
-        this.gapSizePx = gapSizePx ?? DefaultGapSizePx;
-        this.halfResizeHandleSizePx = this.gapSizePx > 5 ? this.gapSizePx : DefaultGapSizePx;
-        this.resizeHandleSizePx = 2 * this.halfResizeHandleSizePx;
-        this.animationTimeS = animationTimeS ?? DefaultAnimationTimeS;
+        this.gapSizePx = atom(gapSizePx ?? DefaultGapSizePx);
+        this.resizeHandleSizePx = atom((get) => {
+            const gapSizePx = get(this.gapSizePx);
+            return 2 * (gapSizePx > 5 ? gapSizePx : DefaultGapSizePx);
+        });
+        this.animationTimeS = atom(animationTimeS ?? DefaultAnimationTimeS);
         this.lastTreeStateGeneration = -1;
 
         this.leafs = atom([]);
@@ -292,9 +288,14 @@ export class LayoutModel {
      * @param contents Contains callbacks provided by the TileLayout component.
      */
     registerTileLayout(contents: TileLayoutContents) {
+        console.log("registerTileLayout", contents);
         this.renderContent = contents.renderContent;
         this.renderPreview = contents.renderPreview;
         this.onNodeDelete = contents.onNodeDelete;
+        if (contents.gapSizePx !== undefined) {
+            console.log("setting gapSizePx", contents.gapSizePx);
+            this.setter(this.gapSizePx, contents.gapSizePx);
+        }
     }
 
     /**
@@ -470,8 +471,9 @@ export class LayoutModel {
                 pendingAction?.type === LayoutTreeActionType.ResizeNode
                     ? (pendingAction as LayoutTreeResizeNodeAction)
                     : null;
+            const resizeHandleSizePx = this.getter(this.resizeHandleSizePx);
             const callback = (node: LayoutNode) =>
-                this.updateTreeHelper(node, newAdditionalProps, newLeafs, resizeAction);
+                this.updateTreeHelper(node, newAdditionalProps, newLeafs, resizeHandleSizePx, resizeAction);
             if (balanceTree) this.treeState.rootNode = balanceNode(this.treeState.rootNode, callback);
             else walkNodes(this.treeState.rootNode, callback);
 
@@ -499,6 +501,7 @@ export class LayoutModel {
         node: LayoutNode,
         additionalPropsMap: Record<string, LayoutNodeAdditionalProps>,
         leafs: LayoutNode[],
+        resizeHandleSizePx: number,
         resizeAction?: LayoutTreeResizeNodeAction
     ) {
         /**
@@ -567,15 +570,16 @@ export class LayoutModel {
             // We only want the resize handles in between nodes, this ensures we have n-1 handles.
             if (lastChildRect) {
                 const resizeHandleIndex = resizeHandles.length;
+                const halfResizeHandleSizePx = resizeHandleSizePx / 2;
                 const resizeHandleDimensions: Dimensions = {
                     top: nodeIsRow
                         ? lastChildRect.top
-                        : lastChildRect.top + lastChildRect.height - this.halfResizeHandleSizePx,
+                        : lastChildRect.top + lastChildRect.height - halfResizeHandleSizePx,
                     left: nodeIsRow
-                        ? lastChildRect.left + lastChildRect.width - this.halfResizeHandleSizePx
+                        ? lastChildRect.left + lastChildRect.width - halfResizeHandleSizePx
                         : lastChildRect.left,
-                    width: nodeIsRow ? this.resizeHandleSizePx : lastChildRect.width,
-                    height: nodeIsRow ? lastChildRect.height : this.resizeHandleSizePx,
+                    width: nodeIsRow ? resizeHandleSizePx : lastChildRect.width,
+                    height: nodeIsRow ? lastChildRect.height : resizeHandleSizePx,
                 };
                 resizeHandles.push({
                     id: `${node.id}-${resizeHandleIndex}`,
@@ -584,8 +588,7 @@ export class LayoutModel {
                     transform: setTransform(resizeHandleDimensions, true, false),
                     flexDirection: node.flexDirection,
                     centerPx:
-                        (nodeIsRow ? resizeHandleDimensions.left : resizeHandleDimensions.top) +
-                        this.halfResizeHandleSizePx,
+                        (nodeIsRow ? resizeHandleDimensions.left : resizeHandleDimensions.top) + halfResizeHandleSizePx,
                 });
             }
             lastChildRect = rect;
@@ -750,7 +753,6 @@ export class LayoutModel {
         if (!this.nodeModels.has(nodeid)) {
             this.nodeModels.set(nodeid, {
                 additionalProps: addlPropsAtom,
-                animationTimeS: this.animationTimeS,
                 innerRect: atom((get) => {
                     const addlProps = get(addlPropsAtom);
                     const numLeafs = get(this.numLeafs);

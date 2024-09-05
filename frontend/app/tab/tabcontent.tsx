@@ -4,13 +4,19 @@
 import { Block } from "@/app/block/block";
 import { CenteredDiv } from "@/element/quickelems";
 import { ContentRenderer, NodeModel, PreviewRenderer, TileLayout } from "@/layout/index";
-import { getApi } from "@/store/global";
+import { TileLayoutContents } from "@/layout/lib/types";
+import { atoms, getApi } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
-import { useAtomValue } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import * as React from "react";
 import { useMemo } from "react";
 import "./tabcontent.less";
+
+const tileGapSizeAtom = atom((get) => {
+    const settings = get(atoms.settingsAtom);
+    return settings["window:tilegapsize"];
+});
 
 const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     const oref = useMemo(() => WOS.makeORef("tab", tabId), [tabId]);
@@ -18,9 +24,10 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     const tabLoading = useAtomValue(loadingAtom);
     const tabAtom = useMemo(() => WOS.getWaveObjectAtom<Tab>(oref), [oref]);
     const tabData = useAtomValue(tabAtom);
+    const tileGapSize = useAtomValue(tileGapSizeAtom);
 
     const tileLayoutContents = useMemo(() => {
-        const renderBlock: ContentRenderer = (nodeModel: NodeModel) => {
+        const renderContent: ContentRenderer = (nodeModel: NodeModel) => {
             return <Block key={nodeModel.blockId} nodeModel={nodeModel} preview={false} />;
         };
 
@@ -33,12 +40,13 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
         }
 
         return {
-            renderContent: renderBlock,
-            renderPreview: renderPreview,
-            tabId: tabId,
-            onNodeDelete: onNodeDelete,
-        };
-    }, [tabId]);
+            renderContent,
+            renderPreview,
+            tabId,
+            onNodeDelete,
+            gapSizePx: tileGapSize,
+        } as TileLayoutContents;
+    }, [tabId, tileGapSize]);
 
     if (tabLoading) {
         return (

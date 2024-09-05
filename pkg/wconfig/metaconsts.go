@@ -41,6 +41,7 @@ const (
 	ConfigKey_WindowOpacity                  = "window:opacity"
 	ConfigKey_WindowBgColor                  = "window:bgcolor"
 	ConfigKey_WindowReducedMotion            = "window:reducedmotion"
+	ConfigKey_WindowTileGapSize              = "window:tilegapsize"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"

@@ -75,7 +75,6 @@ interface CodeEditorProps {
 
 const minimapEnabledAtom = atom((get) => {
     const settings = get(atoms.settingsAtom);
-    console.log("settings", settings);
     return settings["editor:minimapenabled"] ?? false;
 });
 
@@ -108,7 +107,6 @@ export function CodeEditor({ text, language, filename, onChange, onMount }: Code
 
     const editorOpts = useMemo(() => {
         const opts = defaultEditorOptions();
-        console.log("minimapEnabled", minimapEnabled);
         opts.minimap.enabled = minimapEnabled;
         return opts;
     }, [minimapEnabled]);

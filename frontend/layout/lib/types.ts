@@ -275,6 +275,21 @@ export const DefaultNodeSize = 10;
  */
 export interface TileLayoutContents {
     /**
+     * The tabId with which this TileLayout is associated.
+     */
+    tabId?: string;
+
+    /**
+     * The class name to use for the top-level div of the tile layout.
+     */
+    className?: string;
+
+    /**
+     * The gap between tiles in a layout, in CSS pixels.
+     */
+    gapSizePx?: number;
+
+    /**
      * A callback that accepts the data from the leaf node and displays the leaf contents to the user.
      */
     renderContent: ContentRenderer;
@@ -288,20 +303,10 @@ export interface TileLayoutContents {
      */
     onNodeDelete?: (data: TabLayoutData) => Promise<void>;
     /**
-     * The class name to use for the top-level div of the tile layout.
-     */
-    className?: string;
-
-    /**
      * A callback for getting the cursor point in reference to the current window. This removes Electron as a runtime dependency, allowing for better integration with Storybook.
      * @returns The cursor position relative to the current window.
      */
     getCursorPoint?: () => Point;
-
-    /**
-     * tabId this TileLayout is associated with
-     */
-    tabId?: string;
 }
 
 export interface ResizeHandleProps {
@@ -325,7 +330,6 @@ export interface LayoutNodeAdditionalProps {
 
 export interface NodeModel {
     additionalProps: Atom<LayoutNodeAdditionalProps>;
-    animationTimeS: number;
     innerRect: Atom<CSSProperties>;
     blockNum: Atom<number>;
     numLeafs: Atom<number>;

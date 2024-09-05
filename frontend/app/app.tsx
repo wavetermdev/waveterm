@@ -91,7 +91,6 @@ function AppSettingsUpdater() {
             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
         const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
         let baseBgColor = windowSettings?.["window:bgcolor"];
-        console.log("window settings", windowSettings);
         if (isTransparentOrBlur) {
             document.body.classList.add("is-transparent");
             const rootStyles = getComputedStyle(document.documentElement);

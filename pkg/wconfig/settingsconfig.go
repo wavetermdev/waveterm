@@ -73,6 +73,7 @@ type SettingsType struct {
 	WindowOpacity       float64 `json:"window:opacity,omitempty"`
 	WindowBgColor       string  `json:"window:bgcolor,omitempty"`
 	WindowReducedMotion bool    `json:"window:reducedmotion,omitempty"`
+	WindowTileGapSize   int8    `json:"window:tilegapsize"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`

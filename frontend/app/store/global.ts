@@ -360,7 +360,6 @@ function handleWSEventMessage(msg: WSEventType) {
     }
     if (msg.eventtype == "config") {
         const fullConfig = (msg.data as WatcherUpdate).fullconfig;
-        console.log("fullConfig", fullConfig);
         globalStore.set(atoms.fullConfigAtom, fullConfig);
         return;
     }

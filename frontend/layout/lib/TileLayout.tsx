@@ -101,13 +101,15 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
         }, 50);
     }, []);
 
+    const gapSizePx = useAtomValue(layoutModel.gapSizePx);
+    const animationTimeS = useAtomValue(layoutModel.animationTimeS);
     const tileStyle = useMemo(
         () =>
             ({
-                "--gap-size-px": `${layoutModel.gapSizePx}px`,
-                "--animation-time-s": `${layoutModel.animationTimeS}s`,
+                "--gap-size-px": `${gapSizePx}px`,
+                "--animation-time-s": `${animationTimeS}s`,
             }) as CSSProperties,
-        [layoutModel.gapSizePx, layoutModel.animationTimeS]
+        [gapSizePx, animationTimeS]
     );
 
     return (
