@@ -396,6 +396,7 @@ declare global {
         "term:fontfamily"?: string;
         "term:disablewebgl"?: boolean;
         "editor:minimapenabled"?: boolean;
+        "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
         "web:openlinksinternally"?: boolean;
         "blockheader:*"?: boolean;

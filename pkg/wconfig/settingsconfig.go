@@ -51,7 +51,8 @@ type SettingsType struct {
 	TermFontFamily   string  `json:"term:fontfamily,omitempty"`
 	TermDisableWebGl bool    `json:"term:disablewebgl,omitempty"`
 
-	EditorMinimapEnabled bool `json:"editor:minimapenabled,omitempty"`
+	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
+	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
 
 	WebClear               bool `json:"web:*,omitempty"`
 	WebOpenLinksInternally bool `json:"web:openlinksinternally,omitempty"`

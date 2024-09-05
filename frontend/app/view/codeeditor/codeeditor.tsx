@@ -82,10 +82,16 @@ const minimapEnabledAtom = atom((get) => {
     return settings["editor:minimapenabled"] ?? false;
 });
 
+const stickyScrollEnabledAtom = atom((get) => {
+    const settings = get(atoms.settingsAtom);
+    return settings["editor:stickyscrollenabled"] ?? false;
+});
+
 export function CodeEditor({ text, language, filename, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
     const minimapEnabled = useAtomValue(minimapEnabledAtom);
+    const stickyScrollEnabled = useAtomValue(stickyScrollEnabledAtom);
     const theme = "wave-theme-dark";
 
     React.useEffect(() => {
@@ -112,8 +118,9 @@ export function CodeEditor({ text, language, filename, onChange, onMount }: Code
     const editorOpts = useMemo(() => {
         const opts = defaultEditorOptions();
         opts.minimap.enabled = minimapEnabled;
+        opts.stickyScroll.enabled = stickyScrollEnabled;
         return opts;
-    }, [minimapEnabled]);
+    }, [minimapEnabled, stickyScrollEnabled]);
 
     return (
         <div className="code-editor-wrapper">

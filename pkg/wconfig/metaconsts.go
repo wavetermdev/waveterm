@@ -20,6 +20,7 @@ const (
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
+	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
 
 	ConfigKey_WebClear                       = "web:*"
 	ConfigKey_WebOpenLinksInternally         = "web:openlinksinternally"
