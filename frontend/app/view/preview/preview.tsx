@@ -930,7 +930,6 @@ const OpenFileModal = React.memo(
         return (
             <TypeAheadModal
                 label="Open path"
-                suggestions={[]}
                 blockRef={blockRef}
                 anchorRef={model.previewTextRef}
                 onKeyDown={handleKeyDown}

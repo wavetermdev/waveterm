@@ -4,7 +4,7 @@
 @import "../mixins.less";
 
 .type-ahead-modal-backdrop {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;
@@ -14,94 +14,90 @@
 }
 
 .type-ahead-modal {
-    position: fixed;
+    position: absolute;
     z-index: var(--zindex-typeahead-modal);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid var(--modal-border-color);
     background: var(--modal-bg-color);
     box-shadow: 0px 13px 16px 0px rgba(0, 0, 0, 0.4);
+    padding: 6px;
+    flex-direction: column;
 
-    .content-wrapper {
-        display: flex;
-        width: 100%;
-        padding: 6px;
-        flex-direction: column;
-        align-items: center;
+    .label {
+        opacity: 0.5;
+        font-size: 13px;
+        white-space: nowrap;
+    }
 
-        &.has-suggestions {
-            gap: 6px;
-        }
+    .input {
+        border: none;
+        border-bottom: none;
+        height: 24px;
+        border-radius: 0;
 
-        .label {
-            opacity: 0.5;
-            font-size: 13px;
-            white-space: nowrap;
-        }
-
-        .input {
-            border: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            height: 24px;
-            border-radius: 0;
-
-            input {
-                width: 100%;
-                flex-shrink: 0;
-                padding: 4px 6px;
-            }
-
-            .input-decoration.end-position {
-                margin: 6px;
-
-                i {
-                    opacity: 0.3;
-                }
-            }
-        }
-
-        .suggestions-wrapper {
+        input {
             width: 100%;
-            overflow-y: auto;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            flex-shrink: 0;
+            padding: 4px 6px;
+            height: 24px;
+        }
 
-            .suggestion-header {
-                font-size: 11px;
-                font-style: normal;
-                font-weight: 500;
-                line-height: 12px;
-                opacity: 0.7;
-                letter-spacing: 0.11px;
-                padding: 4px 0px 0px 4px;
+        .input-decoration.end-position {
+            margin: 6px;
+
+            i {
+                opacity: 0.3;
+            }
+        }
+    }
+
+    &.has-suggestions {
+        .input {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    }
+
+    .suggestions-wrapper {
+        width: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+
+        .suggestion-header {
+            font-size: 11px;
+            font-style: normal;
+            font-weight: 500;
+            line-height: 12px;
+            opacity: 0.7;
+            letter-spacing: 0.11px;
+            padding: 4px 0px 0px 4px;
+        }
+
+        .suggestion-item {
+            width: 100%;
+            cursor: pointer;
+            display: flex;
+            padding: 6px 8px;
+            align-items: center;
+            gap: 8px;
+            align-self: stretch;
+
+            &:hover {
+                background-color: var(--highlight-bg-color);
+                border-radius: 4px;
             }
 
-            .suggestion-item {
-                width: 100%;
-                cursor: pointer;
+            .name {
+                .ellipsis();
                 display: flex;
-                padding: 8px 6px;
-                align-items: center;
                 gap: 8px;
-                align-self: stretch;
-
-                &:hover {
-                    background-color: var(--highlight-bg-color);
-                    border-radius: 4px;
-                }
-
-                .name {
-                    .ellipsis();
-                    display: flex;
-                    gap: 8px;
-                    font-size: 11px;
-                    font-weight: 400;
-                    line-height: 14px;
-                }
+                font-size: 11px;
+                font-weight: 400;
+                line-height: 14px;
             }
         }
     }

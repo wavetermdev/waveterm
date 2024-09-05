@@ -3,7 +3,7 @@ import { InputDecoration } from "@/app/element/inputdecoration";
 import { useDimensions } from "@/app/hook/useDimensions";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import React, { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { forwardRef, useLayoutEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 
 import "./typeaheadmodal.less";
@@ -12,13 +12,9 @@ type ConnStatus = "connected" | "connecting" | "disconnected" | "error";
 
 interface BaseItem {
     label: string;
+    value: string;
     icon?: string | React.ReactNode;
 }
-
-interface FileItem extends BaseItem {
-    value: string;
-}
-
 interface ConnectionItem extends BaseItem {
     status: ConnStatus;
     iconColor: string;
@@ -29,7 +25,7 @@ interface ConnectionScope {
     items: ConnectionItem[];
 }
 
-type SuggestionsType = FileItem | ConnectionItem | ConnectionScope;
+type SuggestionsType = ConnectionItem | ConnectionScope;
 
 interface SuggestionsProps {
     suggestions?: SuggestionsType[];
@@ -104,31 +100,73 @@ const TypeAheadModal = ({
     const modalRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLDivElement>(null);
     const realInputRef = useRef<HTMLInputElement>(null);
+    const suggestionsWrapperRef = useRef<HTMLDivElement>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
-    const [suggestionsHeight, setSuggestionsHeight] = useState<number | undefined>(undefined);
-    const [modalHeight, setModalHeight] = useState<string | undefined>(undefined);
 
-    useEffect(() => {
-        if (modalRef.current && inputRef.current && suggestionsRef.current) {
-            const modalPadding = 32;
-            const inputHeight = inputRef.current.getBoundingClientRect().height;
-            let suggestionsTotalHeight = 0;
+    useLayoutEffect(() => {
+        if (modalRef.current || inputRef.current || suggestionsRef.current || suggestionsWrapperRef.current) return;
 
-            const suggestionItems = suggestionsRef.current.children;
-            for (let i = 0; i < suggestionItems.length; i++) {
-                suggestionsTotalHeight += suggestionItems[i].getBoundingClientRect().height;
-            }
+        const modalStyles = window.getComputedStyle(modalRef.current);
+        const paddingTop = parseFloat(modalStyles.paddingTop) || 0;
+        const paddingBottom = parseFloat(modalStyles.paddingBottom) || 0;
+        const borderTop = parseFloat(modalStyles.borderTopWidth) || 0;
+        const borderBottom = parseFloat(modalStyles.borderBottomWidth) || 0;
+        const modalPadding = paddingTop + paddingBottom;
+        const modalBorder = borderTop + borderBottom;
 
-            const totalHeight = modalPadding + inputHeight + suggestionsTotalHeight;
-            const maxHeight = height * 0.8;
-            const computedHeight = totalHeight > maxHeight ? maxHeight : totalHeight;
+        const suggestionsWrapperStyles = window.getComputedStyle(suggestionsWrapperRef.current);
+        const suggestionsWrapperMarginTop = parseFloat(suggestionsWrapperStyles.marginTop) || 0;
 
-            setModalHeight(`${computedHeight}px`);
+        const inputHeight = inputRef.current.getBoundingClientRect().height;
+        let suggestionsTotalHeight = 0;
 
-            const padding = 16 * 2;
-            setSuggestionsHeight(computedHeight - inputHeight - padding);
+        const suggestionItems = suggestionsRef.current.children;
+        for (let i = 0; i < suggestionItems.length; i++) {
+            suggestionsTotalHeight += suggestionItems[i].getBoundingClientRect().height;
         }
+
+        const totalHeight =
+            modalPadding + modalBorder + inputHeight + suggestionsTotalHeight + suggestionsWrapperMarginTop;
+        const maxHeight = height * 0.8;
+        const computedHeight = totalHeight > maxHeight ? maxHeight : totalHeight;
+
+        modalRef.current.style.height = `${computedHeight}px`;
+
+        suggestionsWrapperRef.current.style.height = `${computedHeight - inputHeight - modalPadding - modalBorder - suggestionsWrapperMarginTop}px`;
     }, [height, suggestions]);
+
+    useLayoutEffect(() => {
+        if (!blockRef.current || !modalRef.current) return;
+
+        const blockRect = blockRef.current.getBoundingClientRect();
+        const anchorRect = anchorRef.current.getBoundingClientRect();
+
+        const minGap = 20;
+
+        const availableWidth = blockRect.width - minGap * 2;
+        let modalWidth = 300;
+
+        if (modalWidth > availableWidth) {
+            console.log("got here!!!!!");
+            modalWidth = availableWidth;
+        }
+
+        let leftPosition = anchorRect.left - blockRect.left;
+
+        const modalRightEdge = leftPosition + modalWidth;
+        const blockRightEdge = blockRect.width - (minGap - 4);
+
+        if (modalRightEdge > blockRightEdge) {
+            leftPosition -= modalRightEdge - blockRightEdge;
+        }
+
+        if (leftPosition < minGap) {
+            leftPosition = minGap;
+        }
+
+        modalRef.current.style.width = `${modalWidth}px`;
+        modalRef.current.style.left = `${leftPosition}px`;
+    }, [width]);
 
     useLayoutEffect(() => {
         if (giveFocusRef) {
@@ -142,7 +180,14 @@ const TypeAheadModal = ({
                 giveFocusRef.current = null;
             }
         };
-    }, [giveFocusRef]);
+    }, []);
+
+    useLayoutEffect(() => {
+        if (anchorRef.current && modalRef.current) {
+            const parentElement = anchorRef.current.closest(".block-frame-default-header");
+            modalRef.current.style.top = `${parentElement?.getBoundingClientRect().height}px`;
+        }
+    }, []);
 
     const renderBackdrop = (onClick) => <div className="type-ahead-modal-backdrop" onClick={onClick}></div>;
 
@@ -158,59 +203,39 @@ const TypeAheadModal = ({
         onSelect && onSelect(value);
     };
 
-    let modalWidth = 300;
-    if (modalWidth < 300) {
-        modalWidth = Math.min(300, width * 0.95);
-    }
-
-    const anchorRect = anchorRef.current.getBoundingClientRect();
-    const blockRect = blockRef.current.getBoundingClientRect();
-
-    // Calculate positions relative to the wrapper
-    const topPosition = 30; // Adjusting the modal to be just below the anchor
-    const leftPosition = anchorRect.left - blockRect.left; // Relative left position to the wrapper div
-
     const renderModal = () => (
         <div className="type-ahead-modal-wrapper" onKeyDown={handleKeyDown}>
             {renderBackdrop(onClickBackdrop)}
             <div
                 ref={modalRef}
-                className={clsx("type-ahead-modal", className)}
-                style={{
-                    top: topPosition,
-                    left: leftPosition,
-                    width: modalWidth,
-                    maxHeight: modalHeight,
-                }}
+                className={clsx("type-ahead-modal", className, { "has-suggestions": suggestions?.length > 0 })}
             >
-                <div className={clsx("content-wrapper", { "has-suggestions": suggestions?.length })}>
-                    <Input
-                        ref={inputRef}
-                        inputRef={realInputRef}
-                        onChange={handleChange}
-                        value={value}
-                        autoFocus={autoFocus}
-                        placeholder={label}
-                        decoration={{
-                            endDecoration: (
-                                <InputDecoration>
-                                    <i className="fa-regular fa-magnifying-glass"></i>
-                                </InputDecoration>
-                            ),
-                        }}
-                    />
-                    <div
-                        className="suggestions-wrapper"
-                        style={{
-                            marginTop: suggestions?.length > 0 ? "8px" : "0",
-                            height: suggestionsHeight,
-                            overflowY: "auto",
-                        }}
-                    >
-                        {suggestions && (
-                            <Suggestions ref={suggestionsRef} suggestions={suggestions} onSelect={handleSelect} />
-                        )}
-                    </div>
+                <Input
+                    ref={inputRef}
+                    inputRef={realInputRef}
+                    onChange={handleChange}
+                    value={value}
+                    autoFocus={autoFocus}
+                    placeholder={label}
+                    decoration={{
+                        endDecoration: (
+                            <InputDecoration>
+                                <i className="fa-regular fa-magnifying-glass"></i>
+                            </InputDecoration>
+                        ),
+                    }}
+                />
+                <div
+                    ref={suggestionsWrapperRef}
+                    className="suggestions-wrapper"
+                    style={{
+                        marginTop: suggestions?.length > 0 ? "8px" : "0",
+                        overflowY: "auto",
+                    }}
+                >
+                    {suggestions?.length > 0 && (
+                        <Suggestions ref={suggestionsRef} suggestions={suggestions} onSelect={handleSelect} />
+                    )}
                 </div>
             </div>
         </div>
