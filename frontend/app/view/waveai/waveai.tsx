@@ -3,15 +3,15 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { WOS, atoms, fetchWaveFile, getUserName, globalStore } from "@/store/global";
+import { atoms, fetchWaveFile, getUserName, globalStore, WOS } from "@/store/global";
 import * as services from "@/store/services";
 import { WshServer } from "@/store/wshserver";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import * as util from "@/util/util";
-import * as jotai from "jotai";
+import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import tinycolor from "tinycolor2";
 import "./waveai.less";
 
@@ -43,34 +43,34 @@ function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
 export class WaveAiModel implements ViewModel {
     viewType: string;
     blockId: string;
-    blockAtom: jotai.Atom<Block>;
-    viewIcon?: jotai.Atom<string | HeaderIconButton>;
-    viewName?: jotai.Atom<string>;
-    viewText?: jotai.Atom<string | HeaderElem[]>;
-    preIconButton?: jotai.Atom<HeaderIconButton>;
-    endIconButtons?: jotai.Atom<HeaderIconButton[]>;
-    messagesAtom: jotai.PrimitiveAtom<Array<ChatMessageType>>;
-    addMessageAtom: jotai.WritableAtom<unknown, [message: ChatMessageType], void>;
-    updateLastMessageAtom: jotai.WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
-    simulateAssistantResponseAtom: jotai.WritableAtom<unknown, [userMessage: ChatMessageType], Promise<void>>;
+    blockAtom: Atom<Block>;
+    viewIcon?: Atom<string | HeaderIconButton>;
+    viewName?: Atom<string>;
+    viewText?: Atom<string | HeaderElem[]>;
+    preIconButton?: Atom<HeaderIconButton>;
+    endIconButtons?: Atom<HeaderIconButton[]>;
+    messagesAtom: PrimitiveAtom<Array<ChatMessageType>>;
+    addMessageAtom: WritableAtom<unknown, [message: ChatMessageType], void>;
+    updateLastMessageAtom: WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
+    simulateAssistantResponseAtom: WritableAtom<unknown, [userMessage: ChatMessageType], Promise<void>>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
 
     constructor(blockId: string) {
         this.viewType = "waveai";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-        this.viewIcon = jotai.atom((get) => {
+        this.viewIcon = atom((get) => {
             return "sparkles"; // should not be hardcoded
         });
-        this.viewName = jotai.atom("Wave Ai");
-        this.messagesAtom = jotai.atom([]);
+        this.viewName = atom("Wave Ai");
+        this.messagesAtom = atom([]);
 
-        this.addMessageAtom = jotai.atom(null, (get, set, message: ChatMessageType) => {
+        this.addMessageAtom = atom(null, (get, set, message: ChatMessageType) => {
             const messages = get(this.messagesAtom);
             set(this.messagesAtom, [...messages, message]);
         });
 
-        this.updateLastMessageAtom = jotai.atom(null, (get, set, text: string, isUpdating: boolean) => {
+        this.updateLastMessageAtom = atom(null, (get, set, text: string, isUpdating: boolean) => {
             const messages = get(this.messagesAtom);
             const lastMessage = messages[messages.length - 1];
             if (lastMessage.isAssistant && !lastMessage.isError) {
@@ -78,7 +78,7 @@ export class WaveAiModel implements ViewModel {
                 set(this.messagesAtom, [...messages.slice(0, -1), updatedMessage]);
             }
         });
-        this.simulateAssistantResponseAtom = jotai.atom(null, async (get, set, userMessage: ChatMessageType) => {
+        this.simulateAssistantResponseAtom = atom(null, async (get, set, userMessage: ChatMessageType) => {
             const typingMessage: ChatMessageType = {
                 id: crypto.randomUUID(),
                 user: "assistant",
@@ -105,7 +105,7 @@ export class WaveAiModel implements ViewModel {
                 }, 100);
             }, 1500);
         });
-        this.viewText = jotai.atom((get) => {
+        this.viewText = atom((get) => {
             const settings = get(atoms.settingsAtom);
             const isCloud = util.isBlank(settings?.["ai:apitoken"]) && util.isBlank(settings?.["ai:baseurl"]);
             let modelText = "gpt-4o-mini";
@@ -145,10 +145,10 @@ export class WaveAiModel implements ViewModel {
     }
 
     useWaveAi() {
-        const [messages] = jotai.useAtom(this.messagesAtom);
-        const [, addMessage] = jotai.useAtom(this.addMessageAtom);
-        const [, simulateResponse] = jotai.useAtom(this.simulateAssistantResponseAtom);
-        const clientId = jotai.useAtomValue(atoms.clientId);
+        const messages = useAtomValue(this.messagesAtom);
+        const addMessage = useSetAtom(this.addMessageAtom);
+        const simulateResponse = useSetAtom(this.simulateAssistantResponseAtom);
+        const clientId = useAtomValue(atoms.clientId);
         const blockId = this.blockId;
 
         const sendMessage = (text: string, user: string = "user") => {
@@ -221,8 +221,11 @@ function makeWaveAiViewModel(blockId): WaveAiModel {
     return waveAiModel;
 }
 
+const showTocAtomDummy = atom(false);
+
 const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
     const { isAssistant, text, isError } = chatItem;
+    const textAtom = useMemo(() => atom(text), [text]);
     const senderClassName = isAssistant ? "chat-msg-assistant" : "chat-msg-user";
     const msgClassName = `chat-msg ${senderClassName}`;
     const cssVar = "--panel-bg-color";
@@ -243,7 +246,7 @@ const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
                     <div className="chat-msg-header">
                         <i className="fa-sharp fa-solid fa-sparkles"></i>
                     </div>
-                    <Markdown text={text} />
+                    <Markdown textAtom={textAtom} showTocAtom={showTocAtomDummy} />
                 </>
             ) : (
                 <>
@@ -259,7 +262,7 @@ const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
                 <div className="chat-msg-header">
                     <i className="fa-sharp fa-solid fa-user"></i>
                 </div>
-                <Markdown className="msg-text" text={text} />
+                <Markdown className="msg-text" textAtom={textAtom} showTocAtom={showTocAtomDummy} />
             </>
         );
     };
@@ -281,16 +284,15 @@ const ChatWindow = React.memo(
         const [isUserScrolling, setIsUserScrolling] = useState(false);
 
         const osRef = useRef<OverlayScrollbarsComponentRef>(null);
-        const prevMessagesRef = useRef<ChatMessageType[]>(messages);
+        const prevMessagesLenRef = useRef(messages.length);
 
         useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
 
         useEffect(() => {
-            const prevMessages = prevMessagesRef.current;
             if (osRef.current && osRef.current.osInstance()) {
                 const { viewport } = osRef.current.osInstance().elements();
-
-                if (prevMessages.length !== messages.length || !isUserScrolling) {
+                const curMessagesLen = messages.length;
+                if (prevMessagesLenRef.current !== curMessagesLen || !isUserScrolling) {
                     setIsUserScrolling(false);
                     viewport.scrollTo({
                         behavior: "auto",
@@ -298,7 +300,7 @@ const ChatWindow = React.memo(
                     });
                 }
 
-                prevMessagesRef.current = messages;
+                prevMessagesLenRef.current = curMessagesLen;
             }
         }, [messages, isUserScrolling]);
 
@@ -316,16 +318,11 @@ const ChatWindow = React.memo(
                 return () => {
                     viewport.removeEventListener("wheel", handleUserScroll);
                     viewport.removeEventListener("touchmove", handleUserScroll);
+                    if (osRef.current && osRef.current.osInstance()) {
+                        osRef.current.osInstance().destroy();
+                    }
                 };
             }
-        }, []);
-
-        useEffect(() => {
-            return () => {
-                if (osRef.current && osRef.current.osInstance()) {
-                    osRef.current.osInstance().destroy();
-                }
-            };
         }, []);
 
         const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
@@ -616,4 +613,4 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     );
 };
 
-export { WaveAi, makeWaveAiViewModel };
+export { makeWaveAiViewModel, WaveAi };
