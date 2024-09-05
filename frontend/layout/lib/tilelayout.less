@@ -79,6 +79,11 @@
             filter: blur(8px);
         }
 
+        &.resizing {
+            border: 1px solid var(--accent-color);
+            backdrop-filter: blur(8px);
+        }
+
         &.magnified {
             background-color: var(--block-bg-solid-color);
             z-index: var(--zindex-layout-magnified-node);
@@ -102,11 +107,6 @@
                 width: 100%;
                 height: 100%;
             }
-        }
-
-        &.resizing {
-            border: 1px solid var(--accent-color);
-            backdrop-filter: blur(8px);
         }
 
         &:not(:only-child, .magnified) .tile-leaf {
