@@ -11,7 +11,7 @@ import { isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import tinycolor from "tinycolor2";
 import "./waveai.less";
 
@@ -217,11 +217,8 @@ function makeWaveAiViewModel(blockId): WaveAiModel {
     return waveAiModel;
 }
 
-const showTocAtomDummy = atom(false);
-
 const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
     const { isAssistant, text, isError } = chatItem;
-    const textAtom = useMemo(() => atom(text), [text]);
     const senderClassName = isAssistant ? "chat-msg-assistant" : "chat-msg-user";
     const msgClassName = `chat-msg ${senderClassName}`;
     const cssVar = "--panel-bg-color";
@@ -242,7 +239,7 @@ const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
                     <div className="chat-msg-header">
                         <i className="fa-sharp fa-solid fa-sparkles"></i>
                     </div>
-                    <Markdown textAtom={textAtom} showTocAtom={showTocAtomDummy} />
+                    <Markdown text={text} />
                 </>
             ) : (
                 <>
@@ -258,7 +255,7 @@ const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
                 <div className="chat-msg-header">
                     <i className="fa-sharp fa-solid fa-user"></i>
                 </div>
-                <Markdown className="msg-text" textAtom={textAtom} showTocAtom={showTocAtomDummy} />
+                <Markdown className="msg-text" text={text} />
             </>
         );
     };

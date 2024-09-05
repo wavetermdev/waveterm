@@ -5,17 +5,18 @@ import { Modal } from "@/app/modals/modal";
 import { Markdown } from "@/element/markdown";
 import { modalsModel } from "@/store/modalmodel";
 import * as keyutil from "@/util/keyutil";
-import * as React from "react";
 import { UserInputService } from "../store/services";
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./userinputmodal.less";
 
 const UserInputModal = (userInputRequest: UserInputRequest) => {
-    const [responseText, setResponseText] = React.useState("");
-    const [countdown, setCountdown] = React.useState(Math.floor(userInputRequest.timeoutms / 1000));
-    const checkboxStatus = React.useRef(false);
+    const [responseText, setResponseText] = useState("");
+    const [countdown, setCountdown] = useState(Math.floor(userInputRequest.timeoutms / 1000));
+    const checkboxStatus = useRef(false);
+    const queryTextAtom = useState;
 
-    const handleSendCancel = React.useCallback(() => {
+    const handleSendCancel = useCallback(() => {
         UserInputService.SendUserInputResponse({
             type: "userinputresp",
             requestid: userInputRequest.requestid,
@@ -24,7 +25,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         modalsModel.popModal();
     }, [responseText, userInputRequest]);
 
-    const handleSendText = React.useCallback(() => {
+    const handleSendText = useCallback(() => {
         UserInputService.SendUserInputResponse({
             type: "userinputresp",
             requestid: userInputRequest.requestid,
@@ -34,7 +35,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         modalsModel.popModal();
     }, [responseText, userInputRequest]);
 
-    const handleSendConfirm = React.useCallback(() => {
+    const handleSendConfirm = useCallback(() => {
         UserInputService.SendUserInputResponse({
             type: "userinputresp",
             requestid: userInputRequest.requestid,
@@ -44,7 +45,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         modalsModel.popModal();
     }, [userInputRequest]);
 
-    const handleSubmit = React.useCallback(() => {
+    const handleSubmit = useCallback(() => {
         switch (userInputRequest.responsetype) {
             case "text":
                 handleSendText();
@@ -55,7 +56,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
     }, [handleSendConfirm, handleSendText, userInputRequest.responsetype]);
 
-    const handleKeyDown = React.useCallback(
+    const handleKeyDown = useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
             if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                 handleSendCancel();
@@ -69,14 +70,14 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         [handleSendCancel, handleSubmit]
     );
 
-    const queryText = React.useMemo(() => {
+    const queryText = useMemo(() => {
         if (userInputRequest.markdown) {
             return <Markdown text={userInputRequest.querytext} className="userinput-markdown" />;
         }
         return <span className="userinput-text">{userInputRequest.querytext}</span>;
     }, [userInputRequest.markdown, userInputRequest.querytext]);
 
-    const inputBox = React.useMemo(() => {
+    const inputBox = useMemo(() => {
         if (userInputRequest.responsetype === "confirm") {
             return <></>;
         }
@@ -93,7 +94,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         );
     }, [userInputRequest.responsetype, userInputRequest.publictext, responseText, handleKeyDown, setResponseText]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
         if (countdown == 0) {
             timeout = setTimeout(() => {

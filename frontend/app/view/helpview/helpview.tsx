@@ -180,8 +180,6 @@ Other useful metadata values to override block titles, icons, colors, themes, et
 
 `;
 
-const helpTextAtom = atom(helpText);
-
 class HelpViewModel implements ViewModel {
     viewType: string;
     showTocAtom: PrimitiveAtom<boolean>;
@@ -210,7 +208,7 @@ function makeHelpViewModel() {
 }
 
 function HelpView({ model }: { model: HelpViewModel }) {
-    return <Markdown textAtom={helpTextAtom} showTocAtom={model.showTocAtom} className="help-view" />;
+    return <Markdown text={helpText} showTocAtom={model.showTocAtom} className="help-view" />;
 }
 
 export { HelpView, HelpViewModel, makeHelpViewModel };

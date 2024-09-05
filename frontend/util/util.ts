@@ -163,7 +163,7 @@ function jotaiLoadableValue<T>(value: Loadable<T>, def: T): T {
 
 const NullAtom = atom(null);
 
-function useAtomValueSafe<T>(atom: Atom<T>): T {
+function useAtomValueSafe<T>(atom: Atom<T> | Atom<Promise<T>>): T {
     if (atom == null) {
         return useAtomValue(NullAtom) as T;
     }

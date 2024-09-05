@@ -8,7 +8,8 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 
-import { Atom, useAtomValue } from "jotai";
+import { useAtomValueSafe } from "@/util/util";
+import { Atom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import { useHeight } from "../hook/useHeight";
@@ -75,17 +76,18 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
 };
 
 type MarkdownProps = {
-    textAtom: Atom<string> | Atom<Promise<string>>;
-    showTocAtom: Atom<boolean>;
+    text?: string;
+    textAtom?: Atom<string> | Atom<Promise<string>>;
+    showTocAtom?: Atom<boolean>;
     style?: React.CSSProperties;
     className?: string;
     onClickExecute?: (cmd: string) => void;
 };
 
-const Markdown = ({ textAtom, showTocAtom, style, className, onClickExecute }: MarkdownProps) => {
-    const text = useAtomValue(textAtom);
+const Markdown = ({ text, textAtom, showTocAtom, style, className, onClickExecute }: MarkdownProps) => {
+    const textAtomValue = useAtomValueSafe(textAtom);
     const tocRef = useRef<TocItem[]>([]);
-    const showToc = useAtomValue(showTocAtom);
+    const showToc = useAtomValueSafe(showTocAtom) ?? false;
     const contentsRef = useRef<HTMLDivElement>(null);
     const contentsHeight = useHeight(contentsRef, 200);
 
@@ -132,6 +134,8 @@ const Markdown = ({ textAtom, showTocAtom, style, className, onClickExecute }: M
             });
         }
     }, [showToc, tocRef]);
+
+    text = textAtomValue ?? text;
 
     return (
         <div className={clsx("markdown", className)} style={style} ref={contentsRef}>
