@@ -9,6 +9,7 @@ const path = require("path");
 const config = {
     appId: pkg.build.appId,
     productName: pkg.productName,
+    executableName: pkg.name,
     artifactName: "${productName}-${platform}-${arch}-${version}.${ext}",
     npmRebuild: false,
     nodeGypRebuild: false,
@@ -64,7 +65,7 @@ const config = {
             .filter((path) => path),
     },
     linux: {
-        executableName: pkg.productName,
+        artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
         icon: "build/icons.icns",
         target: ["zip", "deb", "rpm", "AppImage", "pacman"],
