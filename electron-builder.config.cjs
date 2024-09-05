@@ -99,7 +99,7 @@ const config = {
                 withFileTypes: true,
             })
                 .filter((f) => f.isFile() && f.name.startsWith("wavesrv"))
-                .forEach((f) => fs.chmodSync(path.resolve(f.parentPath ?? f.path, f.name), 0o755));
+                .forEach((f) => fs.chmodSync(path.resolve(f.parentPath ?? f.path, f.name), 0o755)); // 0o755 corresponds to -rwxr-xr-x
         }
     },
 };
