@@ -34,7 +34,7 @@ ipcMain.on("get-user-name", (event) => {
 
 // must match golang
 function getWaveHomeDir() {
-    return path.join(os.homedir(), isDev ? ".w2-dev" : ".w2");
+    return path.join(os.homedir(), isDev ? ".waveterm-dev" : ".waveterm");
 }
 
 function getElectronAppBasePath(): string {
