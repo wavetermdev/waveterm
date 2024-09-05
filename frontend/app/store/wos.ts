@@ -3,15 +3,12 @@
 
 // WaveObjectStore
 
-import { sendRpcCommand } from "@/app/store/wshrpc";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import * as jotai from "jotai";
 import * as React from "react";
 import { atoms, globalStore } from "./global";
 import * as services from "./services";
-
-const IsElectron = true;
 
 type WaveObjectDataItemType<T extends WaveObj> = {
     value: T;
@@ -123,53 +120,6 @@ function callBackendService(service: string, method: string, args: any[], noUICo
             return respData.data;
         });
     return prtn;
-}
-
-function wshServerRpcHelper_responsestream(
-    command: string,
-    data: any,
-    opts: RpcOpts
-): AsyncGenerator<any, void, boolean> {
-    if (opts?.noresponse) {
-        throw new Error("noresponse not supported for responsestream calls");
-    }
-    const msg: RpcMessage = {
-        command: command,
-        data: data,
-        reqid: crypto.randomUUID(),
-    };
-    if (opts?.timeout) {
-        msg.timeout = opts.timeout;
-    }
-    if (opts?.route) {
-        msg.route = opts.route;
-    }
-    const rpcGen = sendRpcCommand(msg);
-    return rpcGen;
-}
-
-function wshServerRpcHelper_call(command: string, data: any, opts: RpcOpts): Promise<any> {
-    const msg: RpcMessage = {
-        command: command,
-        data: data,
-    };
-    if (!opts?.noresponse) {
-        msg.reqid = crypto.randomUUID();
-    }
-    if (opts?.timeout) {
-        msg.timeout = opts.timeout;
-    }
-    if (opts?.route) {
-        msg.route = opts.route;
-    }
-    const rpcGen = sendRpcCommand(msg);
-    if (rpcGen == null) {
-        return null;
-    }
-    const respMsgPromise = rpcGen.next(true); // pass true to force termination of rpc after 1 response (not streaming)
-    return respMsgPromise.then((msg: IteratorResult<any, void>) => {
-        return msg.value;
-    });
 }
 
 const waveObjectValueCache = new Map<string, WaveObjectValue<any>>();
@@ -344,6 +294,4 @@ export {
     updateWaveObject,
     updateWaveObjects,
     useWaveObjectValue,
-    wshServerRpcHelper_call,
-    wshServerRpcHelper_responsestream,
 };

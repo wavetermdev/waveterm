@@ -436,7 +436,7 @@ func GenerateWshServerMethod_ResponseStream(methodDecl *wshrpc.WshRpcMethodDecl,
 	} else {
 		sb.WriteString(fmt.Sprintf("	%s(opts?: RpcOpts): %s {\n", methodDecl.MethodName, genRespType))
 	}
-	sb.WriteString(fmt.Sprintf("        return WOS.wshServerRpcHelper_responsestream(%q, %s, opts);\n", methodDecl.Command, dataName))
+	sb.WriteString(fmt.Sprintf("        return wshServerRpcHelper_responsestream(%q, %s, opts);\n", methodDecl.Command, dataName))
 	sb.WriteString("    }\n")
 	return sb.String()
 }
@@ -459,7 +459,7 @@ func GenerateWshServerMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMa
 	} else {
 		sb.WriteString(fmt.Sprintf("    %s(opts?: RpcOpts): %s {\n", methodDecl.MethodName, rtnType))
 	}
-	methodBody := fmt.Sprintf("        return WOS.wshServerRpcHelper_call(%q, %s, opts);\n", methodDecl.Command, dataName)
+	methodBody := fmt.Sprintf("        return wshServerRpcHelper_call(%q, %s, opts);\n", methodDecl.Command, dataName)
 	sb.WriteString(methodBody)
 	sb.WriteString("    }\n")
 	return sb.String()
