@@ -88,7 +88,7 @@ const config = {
     afterPack: (context) => {
         // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.
         if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {
-            const packageBinDir = path.join(
+            const packageBinDir = path.resolve(
                 context.appOutDir,
                 `${pkg.name}.app/Contents/Resources/app.asar.unpacked/dist/bin`
             );
