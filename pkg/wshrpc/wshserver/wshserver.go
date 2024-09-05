@@ -284,12 +284,20 @@ func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBloc
 	return nil
 }
 
-func (ws *WshServer) ControllerRestartCommand(ctx context.Context, data wshrpc.CommandBlockRestartData) error {
-	bc := blockcontroller.GetBlockController(data.BlockId)
+func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
+	bc := blockcontroller.GetBlockController(blockId)
 	if bc == nil {
-		return fmt.Errorf("block controller not found for block %q", data.BlockId)
+		return nil
 	}
-	return bc.RestartController()
+	bc.StopShellProc(true)
+	return nil
+}
+
+func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.CommandControllerResyncData) error {
+	if data.ForceRestart {
+		blockcontroller.StopBlockController(data.BlockId)
+	}
+	return blockcontroller.ResyncController(ctx, data.TabId, data.BlockId, data.RtOpts)
 }
 
 func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
@@ -476,27 +484,7 @@ func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus
 }
 
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
-	connOpts, err := remote.ParseOpts(connName)
-	if err != nil {
-		return fmt.Errorf("error parsing connection name: %w", err)
-	}
-	conn := conncontroller.GetConn(ctx, connOpts, false)
-	if conn == nil {
-		return fmt.Errorf("connection not found: %s", connName)
-	}
-	connStatus := conn.DeriveConnStatus()
-	switch connStatus.Status {
-	case conncontroller.Status_Connected:
-		return nil
-	case conncontroller.Status_Connecting:
-		return conn.WaitForConnect(ctx)
-	case conncontroller.Status_Init, conncontroller.Status_Disconnected:
-		return conn.Connect(ctx)
-	case conncontroller.Status_Error:
-		return fmt.Errorf("connection error: %s", connStatus.Error)
-	default:
-		return fmt.Errorf("unknown connection status %q", connStatus.Status)
-	}
+	return conncontroller.EnsureConnection(ctx, connName)
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {

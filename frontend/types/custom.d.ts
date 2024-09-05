@@ -240,6 +240,11 @@ declare global {
         version: string;
         buildTime: number;
     }
+
+    type BlockComponentModel = {
+        openSwitchConnection?: () => void;
+        viewModel: ViewModel;
+    };
 }
 
 export {};

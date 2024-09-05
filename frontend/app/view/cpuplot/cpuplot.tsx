@@ -3,7 +3,7 @@
 
 import { useHeight } from "@/app/hook/useHeight";
 import { useWidth } from "@/app/hook/useWidth";
-import { globalStore, waveEventSubscribe, WOS } from "@/store/global";
+import { getConnStatusAtom, globalStore, waveEventSubscribe, WOS } from "@/store/global";
 import { WshServer } from "@/store/wshserver";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
@@ -61,6 +61,7 @@ class CpuPlotViewModel {
     metrics: jotai.Atom<string[]>;
     connection: jotai.Atom<string>;
     manageConnection: jotai.Atom<boolean>;
+    connStatus: jotai.Atom<ConnStatus>;
 
     constructor(blockId: string) {
         this.viewType = "cpuplot";
@@ -122,6 +123,12 @@ class CpuPlotViewModel {
         });
         this.dataAtom = jotai.atom(this.getDefaultData());
         this.loadInitialData();
+        this.connStatus = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const connName = blockData?.meta?.connection;
+            const connAtom = getConnStatusAtom(connName);
+            return get(connAtom);
+        });
     }
 
     async loadInitialData() {
@@ -165,18 +172,24 @@ function makeCpuPlotViewModel(blockId: string): CpuPlotViewModel {
 
 const plotColors = ["#58C142", "#FFC107", "#FF5722", "#2196F3", "#9C27B0", "#00BCD4", "#FFEB3B", "#795548"];
 
-function CpuPlotView({ model }: { model: CpuPlotViewModel; blockId: string }) {
-    const containerRef = React.useRef<HTMLInputElement>();
-    const plotData = jotai.useAtomValue(model.dataAtom);
-    const addPlotData = jotai.useSetAtom(model.addDataAtom);
-    const parentHeight = useHeight(containerRef);
-    const parentWidth = useWidth(containerRef);
-    const yvals = jotai.useAtomValue(model.metrics);
+type CpuPlotViewProps = {
+    blockId: string;
+    model: CpuPlotViewModel;
+};
+
+function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
     const connName = jotai.useAtomValue(model.connection);
     const lastConnName = React.useRef(connName);
+    const connStatus = jotai.useAtomValue(model.connStatus);
+    const addPlotData = jotai.useSetAtom(model.addDataAtom);
+    const loading = jotai.useAtomValue(model.loadingAtom);
 
     React.useEffect(() => {
+        if (connStatus?.status != "connected") {
+            return;
+        }
         if (lastConnName.current !== connName) {
+            lastConnName.current = connName;
             model.loadInitialData();
         }
         const unsubFn = waveEventSubscribe("sysinfo", connName, (event: WaveEvent) => {
@@ -191,6 +204,22 @@ function CpuPlotView({ model }: { model: CpuPlotViewModel; blockId: string }) {
             unsubFn();
         };
     }, [connName]);
+    React.useEffect(() => {}, [connName]);
+    if (connStatus?.status != "connected") {
+        return null;
+    }
+    if (loading) {
+        return null;
+    }
+    return <CpuPlotViewInner key={connStatus?.connection ?? "local"} blockId={blockId} model={model} />;
+}
+
+const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
+    const containerRef = React.useRef<HTMLInputElement>();
+    const plotData = jotai.useAtomValue(model.dataAtom);
+    const parentHeight = useHeight(containerRef);
+    const parentWidth = useWidth(containerRef);
+    const yvals = jotai.useAtomValue(model.metrics);
 
     React.useEffect(() => {
         const marks: Plot.Markish[] = [];
@@ -254,6 +283,6 @@ function CpuPlotView({ model }: { model: CpuPlotViewModel; blockId: string }) {
     }, [plotData, parentHeight, parentWidth]);
 
     return <div className="plot-view" ref={containerRef} />;
-}
+});
 
 export { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel };

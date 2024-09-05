@@ -15,8 +15,8 @@ declare global {
     // blockcontroller.BlockControllerRuntimeStatus
     type BlockControllerRuntimeStatus = {
         blockid: string;
-        status: string;
         shellprocstatus?: string;
+        shellprocconnname?: string;
     };
 
     // waveobj.BlockDef
@@ -58,15 +58,18 @@ declare global {
         termsize?: TermSize;
     };
 
-    // wshrpc.CommandBlockRestartData
-    type CommandBlockRestartData = {
-        blockid: string;
-    };
-
     // wshrpc.CommandBlockSetViewData
     type CommandBlockSetViewData = {
         blockid: string;
         view: string;
+    };
+
+    // wshrpc.CommandControllerResyncData
+    type CommandControllerResyncData = {
+        forcerestart?: boolean;
+        tabid: string;
+        blockid: string;
+        rtopts?: RuntimeOpts;
     };
 
     // wshrpc.CommandCreateBlockData

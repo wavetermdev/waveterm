@@ -72,7 +72,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fullConfig = await services.FileService.GetFullConfig();
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
-    services.ObjectService.SetActiveTab(waveWindow.activetabid); // no need to wait
+    const prtn = services.ObjectService.SetActiveTab(waveWindow.activetabid); // no need to wait
+    prtn.catch((e) => {
+        console.log("error on initial SetActiveTab", e);
+    });
     const reactElem = React.createElement(App, null, null);
     const elem = document.getElementById("main");
     const root = createRoot(elem);

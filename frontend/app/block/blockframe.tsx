@@ -13,7 +13,15 @@ import {
 import { Button } from "@/app/element/button";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, globalStore, useBlockAtom, useSettingsKeyAtom, WOS } from "@/app/store/global";
+import {
+    atoms,
+    getBlockComponentModel,
+    getConnStatusAtom,
+    globalStore,
+    useBlockAtom,
+    useSettingsKeyAtom,
+    WOS,
+} from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { WshServer } from "@/app/store/wshserver";
 import { MagnifyIcon } from "@/element/magnify";
@@ -61,14 +69,6 @@ function handleHeaderContextMenu(
             },
         },
     ];
-    const blockController = blockData?.meta?.controller;
-    if (!util.isBlank(blockController)) {
-        menu.push({ type: "separator" });
-        menu.push({
-            label: "Restart Controller",
-            click: () => WshServer.ControllerRestartCommand({ blockid: blockData.oid }),
-        });
-    }
     const extraItems = viewModel?.getSettingsMenuItems?.();
     if (extraItems && extraItems.length > 0) menu.push({ type: "separator" }, ...extraItems);
     menu.push(
@@ -256,13 +256,70 @@ function renderHeaderElements(headerTextUnion: HeaderElem[], preview: boolean): 
     return headerTextElems;
 }
 
-const BlockMask = ({ nodeModel }: { nodeModel: NodeModel }) => {
+const ConnStatusOverlay = React.memo(
+    ({
+        nodeModel,
+        viewModel,
+        changeConnModalAtom,
+    }: {
+        nodeModel: NodeModel;
+        viewModel: ViewModel;
+        changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
+    }) => {
+        const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+        const [connModalOpen, setConnModalOpen] = jotai.useAtom(changeConnModalAtom);
+        const connName = blockData.meta?.connection;
+        const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
+        const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
+        const handleTryReconnect = React.useCallback(() => {
+            const prtn = WshServer.ConnConnectCommand(connName, { timeout: 60000 });
+            prtn.catch((e) => console.log("error reconnecting", connName, e));
+        }, [connName]);
+        const handleSwitchConnection = React.useCallback(() => {
+            setConnModalOpen(true);
+        }, [setConnModalOpen]);
+        if (isLayoutMode || connStatus.status == "connected" || connModalOpen) {
+            return null;
+        }
+        let statusText = `Disconnected from "${connName}"`;
+        let showReconnect = true;
+        if (connStatus.status == "connecting") {
+            statusText = `Connecting to "${connName}"...`;
+            showReconnect = false;
+        }
+        return (
+            <div className="connstatus-overlay">
+                <div className="connstatus-mainelem">
+                    <div style={{ marginBottom: 5 }}>{statusText}</div>
+                    {!util.isBlank(connStatus.error) ? (
+                        <div className="connstatus-error">error: {connStatus.error}</div>
+                    ) : null}
+                    {showReconnect ? (
+                        <div className="connstatus-actions">
+                            <Button className="secondary" onClick={handleTryReconnect}>
+                                <i className="fa-sharp fa-solid fa-arrow-right-arrow-left" style={{ marginRight: 5 }} />
+                                Reconnect Now
+                            </Button>
+                            <Button className="secondary" onClick={handleSwitchConnection}>
+                                <i className="fa-sharp fa-solid fa-arrow-right-arrow-left" style={{ marginRight: 5 }} />
+                                Switch Connection
+                            </Button>
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        );
+    }
+);
+
+const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const blockNum = jotai.useAtomValue(nodeModel.blockNum);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
-
     const style: React.CSSProperties = {};
+    let showBlockMask = false;
+
     if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
         style.borderColor = blockData.meta["frame:bordercolor"];
     }
@@ -271,6 +328,7 @@ const BlockMask = ({ nodeModel }: { nodeModel: NodeModel }) => {
     }
     let innerElem = null;
     if (isLayoutMode) {
+        showBlockMask = true;
         innerElem = (
             <div className="block-mask-inner">
                 <div className="bignum">{blockNum}</div>
@@ -278,11 +336,11 @@ const BlockMask = ({ nodeModel }: { nodeModel: NodeModel }) => {
         );
     }
     return (
-        <div className={clsx("block-mask", { "is-layoutmode": isLayoutMode })} style={style}>
+        <div className={clsx("block-mask", { "show-block-mask": showBlockMask })} style={style}>
             {innerElem}
         </div>
     );
-};
+});
 
 const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const { nodeModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
@@ -290,10 +348,42 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const customBg = util.useAtomValueSafe(viewModel.blockBg);
+    const manageConnection = util.useAtomValueSafe(viewModel.manageConnection);
     const changeConnModalAtom = useBlockAtom(nodeModel.blockId, "changeConn", () => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
     const connBtnRef = React.useRef<HTMLDivElement>();
+    React.useEffect(() => {
+        if (!manageConnection) {
+            return;
+        }
+        const bcm = getBlockComponentModel(nodeModel.blockId);
+        if (bcm != null) {
+            bcm.openSwitchConnection = () => {
+                globalStore.set(changeConnModalAtom, true);
+            };
+        }
+        return () => {
+            const bcm = getBlockComponentModel(nodeModel.blockId);
+            if (bcm != null) {
+                bcm.openSwitchConnection = null;
+            }
+        };
+    }, [manageConnection]);
+    React.useEffect(() => {
+        // on mount, if manageConnection, call ConnEnsure
+        if (!manageConnection || blockData == null || preview) {
+            return;
+        }
+        const connName = blockData?.meta?.connection;
+        if (!util.isBlank(connName)) {
+            console.log("ensure conn", nodeModel.blockId, connName);
+            WshServer.ConnEnsureCommand(connName, { timeout: 60000 }).catch((e) => {
+                console.log("error ensuring connection", nodeModel.blockId, connName, e);
+            });
+        }
+    }, [manageConnection, blockData]);
+
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
     const innerStyle: React.CSSProperties = {};
     if (!preview && customBg?.bg != null) {
@@ -319,6 +409,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             ref={blockModel?.blockRef}
         >
             <BlockMask nodeModel={nodeModel} />
+            <ConnStatusOverlay nodeModel={nodeModel} viewModel={viewModel} changeConnModalAtom={changeConnModalAtom} />
             <div className="block-frame-default-inner" style={innerStyle}>
                 <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
                 {preview ? previewElem : children}
@@ -359,6 +450,12 @@ const ChangeConnectionBlockModal = React.memo(
         const isNodeFocused = jotai.useAtomValue(nodeModel.isFocused);
         const changeConnection = React.useCallback(
             async (connName: string) => {
+                if (connName == "") {
+                    connName = null;
+                }
+                if (connName == blockData?.meta?.connection) {
+                    return;
+                }
                 const oldCwd = blockData?.meta?.file ?? "";
                 let newCwd: string;
                 if (oldCwd == "") {
@@ -370,10 +467,14 @@ const ChangeConnectionBlockModal = React.memo(
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newCwd },
                 });
-                await services.BlockService.EnsureConnection(blockId).catch((e) => console.log(e));
-                await WshServer.ControllerRestartCommand({ blockid: blockId });
+                const tabId = globalStore.get(atoms.activeTabId);
+                try {
+                    await WshServer.ConnEnsureCommand(connName, { timeout: 60000 });
+                } catch (e) {
+                    console.log("error connecting", blockId, connName, e);
+                }
             },
-            [blockId]
+            [blockId, blockData]
         );
         const handleTypeAheadKeyDown = React.useCallback(
             (waveEvent: WaveKeyboardEvent): boolean => {

@@ -276,6 +276,45 @@
             }
         }
 
+        .connstatus-overlay {
+            position: absolute;
+            top: var(--header-height);
+            left: 2px;
+            right: 2px;
+            background-color: rgba(0, 0, 0, 0.3);
+            z-index: var(--zindex-block-mask-inner);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            flex-direction: column;
+            overflow: hidden;
+
+            .connstatus-mainelem {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                width: 100%;
+                background-color: rgba(60, 60, 60, 0.65);
+                backdrop-filter: blur(3px);
+                font: var(--base-font);
+                color: var(--secondary-text-color);
+
+                .connstatus-error {
+                    color: var(--error-color);
+                }
+
+                .connstatus-actions {
+                    margin-top: 10px;
+                    display: flex;
+                    gap: 5px;
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                }
+            }
+        }
+
         .block-mask {
             position: absolute;
             top: 0;
@@ -288,12 +327,12 @@
             border-radius: calc(var(--block-border-radius) + 2px);
             z-index: var(--zindex-block-mask-inner);
 
-            &.is-layoutmode {
+            &.show-block-mask {
                 user-select: none;
                 pointer-events: auto;
             }
 
-            &.is-layoutmode .block-mask-inner {
+            &.show-block-mask .block-mask-inner {
                 margin-top: var(--header-height); // TODO fix this magic
                 background-color: rgba(0, 0, 0, 0.5);
                 height: calc(100% - var(--header-height));

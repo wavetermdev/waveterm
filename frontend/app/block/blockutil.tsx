@@ -160,6 +160,7 @@ export const ControllerStatusIcon = React.memo(({ blockId }: { blockId: string }
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const hasController = !util.isBlank(blockData?.meta?.controller);
     const [controllerStatus, setControllerStatus] = React.useState<BlockControllerRuntimeStatus>(null);
+    const [gotInitialStatus, setGotInitialStatus] = React.useState(false);
     const connection = blockData?.meta?.connection ?? "local";
     const connStatusAtom = getConnStatusAtom(connection);
     const connStatus = jotai.useAtomValue(connStatusAtom);
@@ -169,6 +170,7 @@ export const ControllerStatusIcon = React.memo(({ blockId }: { blockId: string }
         }
         const initialRTStatus = services.BlockService.GetControllerStatus(blockId);
         initialRTStatus.then((rts) => {
+            setGotInitialStatus(true);
             setControllerStatus(rts);
         });
         const unsubFn = waveEventSubscribe("controllerstatus", makeORef("block", blockId), (event) => {
@@ -179,25 +181,19 @@ export const ControllerStatusIcon = React.memo(({ blockId }: { blockId: string }
             unsubFn();
         };
     }, [hasController]);
-    if (!hasController) {
+    if (!hasController || !gotInitialStatus) {
         return null;
     }
-    if (
-        controllerStatus == null ||
-        (controllerStatus?.status == "running" && controllerStatus?.shellprocstatus == "running")
-    ) {
+    if (controllerStatus?.shellprocstatus == "running") {
         return null;
     }
     if (connStatus?.status != "connected") {
         return null;
     }
     const controllerStatusElem = (
-        <i
-            key="controller-status"
-            className="fa-sharp fa-solid fa-triangle-exclamation"
-            title="Controller Is Not Running"
-            style={{ color: "var(--error-color)" }}
-        />
+        <div className="iconbutton disabled" key="controller-status">
+            <i className="fa-sharp fa-solid fa-triangle-exclamation" title="Shell Process Is Not Running" />
+        </div>
     );
     return controllerStatusElem;
 });
@@ -206,7 +202,7 @@ export const ConnectionButton = React.memo(
     React.forwardRef<HTMLDivElement, ConnectionButtonProps>(
         ({ connection, changeConnModalAtom }: ConnectionButtonProps, ref) => {
             const [connModalOpen, setConnModalOpen] = jotai.useAtom(changeConnModalAtom);
-            const isLocal = util.isBlank(connection) || connection == "local";
+            const isLocal = util.isBlank(connection);
             const connStatusAtom = getConnStatusAtom(connection);
             const connStatus = jotai.useAtomValue(connStatusAtom);
             let showDisconnectedSlash = false;

@@ -47,9 +47,14 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("controllerinput", data, opts);
     }
 
-    // command "controllerrestart" [call]
-    ControllerRestartCommand(data: CommandBlockRestartData, opts?: RpcOpts): Promise<void> {
-        return WOS.wshServerRpcHelper_call("controllerrestart", data, opts);
+    // command "controllerresync" [call]
+    ControllerResyncCommand(data: CommandControllerResyncData, opts?: RpcOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("controllerresync", data, opts);
+    }
+
+    // command "controllerstop" [call]
+    ControllerStopCommand(data: string, opts?: RpcOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("controllerstop", data, opts);
     }
 
     // command "createblock" [call]

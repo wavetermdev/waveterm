@@ -3,7 +3,7 @@
 
 import { WshServer } from "@/app/store/wshserver";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getEventORefSubject, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import { WOS, atoms, getConnStatusAtom, getEventORefSubject, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -108,6 +108,7 @@ class TermViewModel {
     viewName: jotai.Atom<string>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
+    connStatus: jotai.Atom<ConnStatus>;
 
     constructor(blockId: string) {
         this.viewType = "term";
@@ -142,10 +143,12 @@ class TermViewModel {
             }
             return null;
         });
-    }
-
-    resetConnection() {
-        WshServer.ControllerRestartCommand({ blockid: this.blockId });
+        this.connStatus = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const connName = blockData?.meta?.connection;
+            const connAtom = getConnStatusAtom(connName);
+            return get(connAtom);
+        });
     }
 
     giveFocus(): boolean {
@@ -172,21 +175,39 @@ class TermViewModel {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
         const termThemeKeys = Object.keys(termThemes);
+
         termThemeKeys.sort((a, b) => {
             return termThemes[a]["display:order"] - termThemes[b]["display:order"];
         });
+        const fullMenu: ContextMenuItem[] = [];
         const submenu: ContextMenuItem[] = termThemeKeys.map((themeName) => {
             return {
                 label: termThemes[themeName]["display:name"] ?? themeName,
                 click: () => this.setTerminalTheme(themeName),
             };
         });
-        return [
-            {
-                label: "Themes",
-                submenu: submenu,
+        fullMenu.push({
+            label: "Themes",
+            submenu: submenu,
+        });
+        fullMenu.push({ type: "separator" });
+        fullMenu.push({
+            label: "Force Restart Controller",
+            click: () => {
+                const termsize = {
+                    rows: this.termRef.current?.terminal?.rows,
+                    cols: this.termRef.current?.terminal?.cols,
+                };
+                const prtn = WshServer.ControllerResyncCommand({
+                    tabid: globalStore.get(atoms.activeTabId),
+                    blockid: this.blockId,
+                    forcerestart: true,
+                    rtopts: { termsize: termsize },
+                });
+                prtn.catch((e) => console.log("error controller resync (force restart)", e));
             },
-        ];
+        });
+        return fullMenu;
     }
 }
 
@@ -198,6 +219,28 @@ interface TerminalViewProps {
     blockId: string;
     model: TermViewModel;
 }
+
+const TermResyncHandler = React.memo(({ blockId, model }: TerminalViewProps) => {
+    const connStatus = jotai.useAtomValue(model.connStatus);
+    const [lastConnStatus, setLastConnStatus] = React.useState<ConnStatus>(connStatus);
+
+    React.useEffect(() => {
+        if (!model.termRef.current?.hasResized) {
+            return;
+        }
+        const isConnected = connStatus?.status == "connected";
+        const wasConnected = lastConnStatus?.status == "connected";
+        const curConnName = connStatus?.connection;
+        const lastConnName = lastConnStatus?.connection;
+        if (isConnected == wasConnected && curConnName == lastConnName) {
+            return;
+        }
+        model.termRef.current?.resyncController("resync handler");
+        setLastConnStatus(connStatus);
+    }, [connStatus]);
+
+    return null;
+});
 
 const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const viewRef = React.createRef<HTMLDivElement>();
@@ -257,7 +300,9 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
-                WshServer.ControllerRestartCommand({ blockid: blockId });
+                const tabId = globalStore.get(atoms.activeTabId);
+                const prtn = WshServer.ControllerResyncCommand({ tabid: tabId, blockid: blockId });
+                prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
                 return false;
             }
             return true;
@@ -352,6 +397,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
 
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
+            <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} termRef={termRef} />
             <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>

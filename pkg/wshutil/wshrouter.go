@@ -4,11 +4,13 @@
 package wshutil
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
@@ -232,6 +234,20 @@ func (router *WshRouter) runServer() {
 			continue
 		} else {
 			// this is a bad message (no command, reqid, or resid)
+			continue
+		}
+	}
+}
+
+func (router *WshRouter) WaitForRegister(ctx context.Context, routeId string) error {
+	for {
+		if router.GetRpc(routeId) != nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(30 * time.Millisecond):
 			continue
 		}
 	}

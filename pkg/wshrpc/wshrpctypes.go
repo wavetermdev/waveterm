@@ -41,6 +41,8 @@ const (
 	Command_SetView           = "setview"
 	Command_ControllerInput   = "controllerinput"
 	Command_ControllerRestart = "controllerrestart"
+	Command_ControllerStop    = "controllerstop"
+	Command_ControllerResync  = "controllerresync"
 	Command_FileAppend        = "fileappend"
 	Command_FileAppendIJson   = "fileappendijson"
 	Command_ResolveIds        = "resolveids"
@@ -84,7 +86,8 @@ type WshRpcInterface interface {
 	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
 	SetViewCommand(ctx context.Context, data CommandBlockSetViewData) error
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
-	ControllerRestartCommand(ctx context.Context, data CommandBlockRestartData) error
+	ControllerStopCommand(ctx context.Context, blockId string) error
+	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
 	FileAppendCommand(ctx context.Context, data CommandFileData) error
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
@@ -217,8 +220,11 @@ type CommandBlockSetViewData struct {
 	View    string `json:"view"`
 }
 
-type CommandBlockRestartData struct {
-	BlockId string `json:"blockid" wshcontext:"BlockId"`
+type CommandControllerResyncData struct {
+	ForceRestart bool                 `json:"forcerestart,omitempty"`
+	TabId        string               `json:"tabid" wshcontext:"TabId"`
+	BlockId      string               `json:"blockid" wshcontext:"BlockId"`
+	RtOpts       *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 }
 
 type CommandBlockInputData struct {

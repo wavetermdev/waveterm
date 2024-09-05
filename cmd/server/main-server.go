@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/authkey"
+	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/telemetry"
@@ -53,6 +54,7 @@ func doShutdown(reason string) {
 		log.Printf("shutting down: %s\n", reason)
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
+		go blockcontroller.StopAllBlockControllers()
 		shutdownActivityUpdate()
 		sendTelemetryWrapper()
 		// TODO deal with flush in progress
@@ -61,7 +63,7 @@ func doShutdown(reason string) {
 		if watcher != nil {
 			watcher.Close()
 		}
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		os.Exit(0)
 	})
 }

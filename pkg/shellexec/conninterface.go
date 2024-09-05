@@ -2,7 +2,9 @@ package shellexec
 
 import (
 	"io"
+	"os"
 	"os/exec"
+	"time"
 
 	"github.com/creack/pty"
 	"golang.org/x/crypto/ssh"
@@ -10,6 +12,7 @@ import (
 
 type ConnInterface interface {
 	Kill()
+	KillGraceful(time.Duration)
 	Wait() error
 	Start() error
 	StdinPipe() (io.WriteCloser, error)
@@ -30,6 +33,22 @@ func (cw CmdWrap) Kill() {
 
 func (cw CmdWrap) Wait() error {
 	return cw.Cmd.Wait()
+}
+
+func (cw CmdWrap) KillGraceful(timeout time.Duration) {
+	if cw.Cmd.Process == nil {
+		return
+	}
+	if cw.Cmd.ProcessState != nil && cw.Cmd.ProcessState.Exited() {
+		return
+	}
+	cw.Cmd.Process.Signal(os.Interrupt)
+	go func() {
+		time.Sleep(timeout)
+		if cw.Cmd.ProcessState == nil || !cw.Cmd.ProcessState.Exited() {
+			cw.Cmd.Process.Kill() // force kill if it is already not exited
+		}
+	}()
 }
 
 func (cw CmdWrap) Start() error {
@@ -73,6 +92,10 @@ type SessionWrap struct {
 func (sw SessionWrap) Kill() {
 	sw.Tty.Close()
 	sw.Session.Close()
+}
+
+func (sw SessionWrap) KillGraceful(timeout time.Duration) {
+	sw.Kill()
 }
 
 func (sw SessionWrap) Wait() error {

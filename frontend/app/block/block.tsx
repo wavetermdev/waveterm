@@ -7,7 +7,12 @@ import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { NodeModel, useDebouncedNodeInnerRect } from "@/layout/index";
-import { counterInc, getViewModel, registerViewModel, unregisterViewModel } from "@/store/global";
+import {
+    counterInc,
+    getBlockComponentModel,
+    registerBlockComponentModel,
+    unregisterBlockComponentModel,
+} from "@/store/global";
 import * as WOS from "@/store/wos";
 import { getElemAsStr } from "@/util/focusutil";
 import * as util from "@/util/util";
@@ -251,14 +256,15 @@ const Block = React.memo((props: BlockProps) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.nodeModel.blockId.substring(0, 8));
     const [blockData, loading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", props.nodeModel.blockId));
-    let viewModel = getViewModel(props.nodeModel.blockId);
+    const bcm = getBlockComponentModel(props.nodeModel.blockId);
+    let viewModel = bcm?.viewModel;
     if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
         viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel);
-        registerViewModel(props.nodeModel.blockId, viewModel);
+        registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     React.useEffect(() => {
         return () => {
-            unregisterViewModel(props.nodeModel.blockId);
+            unregisterBlockComponentModel(props.nodeModel.blockId);
         };
     }, []);
     if (loading || util.isBlank(props.nodeModel.blockId) || blockData == null) {

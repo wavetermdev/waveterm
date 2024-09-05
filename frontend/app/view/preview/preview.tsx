@@ -7,7 +7,7 @@ import { tryReinjectKey } from "@/app/store/keymodel";
 import { WshServer } from "@/app/store/wshserver";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
-import { createBlock, globalStore, refocusNode } from "@/store/global";
+import { createBlock, getConnStatusAtom, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -98,6 +98,7 @@ export class PreviewModel implements ViewModel {
     specializedView: jotai.Atom<Promise<{ specializedView?: string; errorStr?: string }>>;
     loadableSpecializedView: jotai.Atom<Loadable<{ specializedView?: string; errorStr?: string }>>;
     manageConnection: jotai.Atom<boolean>;
+    connStatus: jotai.Atom<ConnStatus>;
 
     metaFilePath: jotai.Atom<string>;
     statFilePath: jotai.Atom<Promise<string>>;
@@ -146,10 +147,15 @@ export class PreviewModel implements ViewModel {
         this.monacoRef = createRef();
         this.viewIcon = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
-            const mimeTypeLoadable = get(this.fileMimeTypeLoadable);
             if (blockData?.meta?.icon) {
                 return blockData.meta.icon;
             }
+            const connStatus = get(this.connStatus);
+            if (connStatus?.status != "connected") {
+                return null;
+            }
+            const fileName = get(this.metaFilePath);
+            const mimeTypeLoadable = get(this.fileMimeTypeLoadable);
             const mimeType = util.jotaiLoadableValue(mimeTypeLoadable, "");
             if (mimeType == "directory") {
                 return {
@@ -189,9 +195,19 @@ export class PreviewModel implements ViewModel {
         });
         this.viewName = jotai.atom("Preview");
         this.viewText = jotai.atom((get) => {
+            let headerPath = get(this.metaFilePath);
+            const connStatus = get(this.connStatus);
+            if (connStatus?.status != "connected") {
+                return [
+                    {
+                        elemtype: "text",
+                        text: headerPath,
+                        className: "preview-filename",
+                    },
+                ];
+            }
             const loadableSV = get(this.loadableSpecializedView);
             const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
-            let headerPath = get(this.metaFilePath);
             const loadableFileInfo = get(this.loadableFileInfo);
             if (loadableFileInfo.state == "hasData") {
                 headerPath = loadableFileInfo.data?.path;
@@ -248,6 +264,10 @@ export class PreviewModel implements ViewModel {
             ] as HeaderElem[];
         });
         this.preIconButton = jotai.atom((get) => {
+            const connStatus = get(this.connStatus);
+            if (connStatus?.status != "connected") {
+                return null;
+            }
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             if (mimeType == "directory") {
                 return null;
@@ -259,6 +279,10 @@ export class PreviewModel implements ViewModel {
             };
         });
         this.endIconButtons = jotai.atom((get) => {
+            const connStatus = get(this.connStatus);
+            if (connStatus?.status != "connected") {
+                return null;
+            }
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             const loadableSV = get(this.loadableSpecializedView);
             const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
@@ -356,6 +380,12 @@ export class PreviewModel implements ViewModel {
         this.loadableSpecializedView = loadable(this.specializedView);
         this.canPreview = jotai.atom(false);
         this.loadableFileInfo = loadable(this.statFile);
+        this.connStatus = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const connName = blockData?.meta?.connection;
+            const connAtom = getConnStatusAtom(connName);
+            return get(connAtom);
+        });
     }
 
     markdownShowTocToggle() {
@@ -831,6 +861,10 @@ function PreviewView({
     contentRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
 }) {
+    const connStatus = jotai.useAtomValue(model.connStatus);
+    if (connStatus?.status != "connected") {
+        return null;
+    }
     return (
         <>
             <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} />

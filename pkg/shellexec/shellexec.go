@@ -15,15 +15,18 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/creack/pty"
 	"github.com/wavetermdev/thenextwave/pkg/remote"
+	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
-	"golang.org/x/crypto/ssh"
 )
+
+const DefaultGracefulKillWait = 400 * time.Millisecond
 
 type CommandOptsType struct {
 	Interactive bool              `json:"interactive,omitempty"`
@@ -33,6 +36,7 @@ type CommandOptsType struct {
 }
 
 type ShellProc struct {
+	ConnName  string
 	Cmd       ConnInterface
 	CloseOnce *sync.Once
 	DoneCh    chan any // closed after proc.Wait() returns
@@ -40,7 +44,7 @@ type ShellProc struct {
 }
 
 func (sp *ShellProc) Close() {
-	sp.Cmd.Kill()
+	sp.Cmd.KillGraceful(DefaultGracefulKillWait)
 	go func() {
 		waitErr := sp.Cmd.Wait()
 		sp.SetWaitErrorAndSignalDone(waitErr)
@@ -134,7 +138,8 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 	return pp.Write([]byte(s))
 }
 
-func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, client *ssh.Client) (*ShellProc, error) {
+func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
+	client := conn.GetClient()
 	shellPath, err := remote.DetectShell(client)
 	if err != nil {
 		return nil, err
@@ -244,7 +249,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		pipePty.Close()
 		return nil, err
 	}
-	return &ShellProc{Cmd: sessionWrap, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	return &ShellProc{Cmd: sessionWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func isZshShell(shellPath string) bool {

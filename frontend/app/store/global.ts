@@ -23,7 +23,7 @@ let PLATFORM: NodeJS.Platform = "darwin";
 const globalStore = jotai.createStore();
 let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
-const blockViewModelMap = new Map<string, ViewModel>();
+const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMap = new Map<string, jotai.PrimitiveAtom<ConnStatus>>();
 
@@ -526,16 +526,16 @@ async function openLink(uri: string, forceOpenInternally = false) {
     }
 }
 
-function registerViewModel(blockId: string, viewModel: ViewModel) {
-    blockViewModelMap.set(blockId, viewModel);
+function registerBlockComponentModel(blockId: string, bcm: BlockComponentModel) {
+    blockComponentModelMap.set(blockId, bcm);
 }
 
-function unregisterViewModel(blockId: string) {
-    blockViewModelMap.delete(blockId);
+function unregisterBlockComponentModel(blockId: string) {
+    blockComponentModelMap.delete(blockId);
 }
 
-function getViewModel(blockId: string): ViewModel {
-    return blockViewModelMap.get(blockId);
+function getBlockComponentModel(blockId: string): BlockComponentModel {
+    return blockComponentModelMap.get(blockId);
 }
 
 function refocusNode(blockId: string) {
@@ -548,8 +548,8 @@ function refocusNode(blockId: string) {
         return;
     }
     layoutModel.focusNode(layoutNodeId.id);
-    const viewModel = getViewModel(blockId);
-    const ok = viewModel?.giveFocus?.();
+    const bcm = getBlockComponentModel(blockId);
+    const ok = bcm?.viewModel?.giveFocus?.();
     if (!ok) {
         const inputElem = document.getElementById(`${blockId}-dummy-focus`);
         inputElem?.focus();
@@ -604,14 +604,26 @@ function subscribeToConnEvents() {
 function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
     let rtn = ConnStatusMap.get(conn);
     if (rtn == null) {
-        const connStatus: ConnStatus = {
-            connection: conn,
-            connected: false,
-            error: null,
-            status: "disconnected",
-            hasconnected: false,
-        };
-        rtn = jotai.atom(connStatus);
+        if (util.isBlank(conn)) {
+            // create a fake "local" status atom that's always connected
+            const connStatus: ConnStatus = {
+                connection: conn,
+                connected: true,
+                error: null,
+                status: "connected",
+                hasconnected: true,
+            };
+            rtn = jotai.atom(connStatus);
+        } else {
+            const connStatus: ConnStatus = {
+                connection: conn,
+                connected: false,
+                error: null,
+                status: "disconnected",
+                hasconnected: false,
+            };
+            rtn = jotai.atom(connStatus);
+        }
         ConnStatusMap.set(conn, rtn);
     }
     return rtn;
@@ -625,13 +637,13 @@ export {
     createBlock,
     fetchWaveFile,
     getApi,
+    getBlockComponentModel,
     getConnStatusAtom,
     getEventORefSubject,
     getEventSubject,
     getFileSubject,
     getObjectId,
     getUserName,
-    getViewModel,
     globalStore,
     globalWS,
     initGlobal,
@@ -641,12 +653,12 @@ export {
     openLink,
     PLATFORM,
     refocusNode,
-    registerViewModel,
+    registerBlockComponentModel,
     sendWSCommand,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,
-    unregisterViewModel,
+    unregisterBlockComponentModel,
     useBlockAtom,
     useBlockCache,
     useBlockDataLoaded,

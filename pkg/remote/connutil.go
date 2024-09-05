@@ -292,9 +292,6 @@ func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) erro
 func InstallClientRcFiles(client *ssh.Client) error {
 	path := GetWshPath(client)
 	log.Printf("path to wsh searched is: %s", path)
-	log.Printf("in bytes is: %v", []byte(path))
-	log.Printf("in bytes expected would be: %v", []byte("~/.waveterm/bin/wsh"))
-
 	session, err := client.NewSession()
 	if err != nil {
 		// this is a true error that should stop further progress

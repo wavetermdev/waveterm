@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -39,7 +38,6 @@ const (
 )
 
 const (
-	Status_Init    = "init"
 	Status_Running = "running"
 	Status_Done    = "done"
 )
@@ -66,18 +64,16 @@ type BlockController struct {
 	TabId           string
 	BlockId         string
 	BlockDef        *waveobj.BlockDef
-	Status          string
 	CreatedHtmlFile bool
 	ShellProc       *shellexec.ShellProc
 	ShellInputCh    chan *BlockInputUnion
 	ShellProcStatus string
-	StopCh          chan bool
 }
 
 type BlockControllerRuntimeStatus struct {
-	BlockId         string `json:"blockid"`
-	Status          string `json:"status"`
-	ShellProcStatus string `json:"shellprocstatus,omitempty"`
+	BlockId           string `json:"blockid"`
+	ShellProcStatus   string `json:"shellprocstatus,omitempty"`
+	ShellProcConnName string `json:"shellprocconnname,omitempty"`
 }
 
 func (bc *BlockController) WithLock(f func()) {
@@ -90,23 +86,12 @@ func (bc *BlockController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 	var rtn BlockControllerRuntimeStatus
 	bc.WithLock(func() {
 		rtn.BlockId = bc.BlockId
-		rtn.Status = bc.Status
 		rtn.ShellProcStatus = bc.ShellProcStatus
+		if bc.ShellProc != nil {
+			rtn.ShellProcConnName = bc.ShellProc.ConnName
+		}
 	})
 	return &rtn
-}
-
-func jsonDeepCopy(val map[string]any) (map[string]any, error) {
-	barr, err := json.Marshal(val)
-	if err != nil {
-		return nil, err
-	}
-	var rtn map[string]any
-	err = json.Unmarshal(barr, &rtn)
-	if err != nil {
-		return nil, err
-	}
-	return rtn, nil
 }
 
 func (bc *BlockController) getShellProc() *shellexec.ShellProc {
@@ -136,6 +121,7 @@ func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
 			Event: wshrpc.Event_ControllerStatus,
 			Scopes: []string{
 				waveobj.MakeORef(waveobj.OType_Tab, bc.TabId).String(),
+				waveobj.MakeORef(waveobj.OType_Block, bc.BlockId).String(),
 			},
 			Data: rtStatus,
 		}
@@ -228,19 +214,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		bc.resetTerminalState()
 	}
 	err = nil
-	if bc.getShellProc() != nil {
+	bcInitStatus := bc.GetRuntimeStatus()
+	if bcInitStatus.ShellProcStatus == Status_Running {
 		return nil
 	}
-	var shellProcErr error
-	bc.WithLock(func() {
-		if bc.ShellProc != nil {
-			shellProcErr = fmt.Errorf("shell process already running")
-			return
-		}
-	})
-	if shellProcErr != nil {
-		return shellProcErr
-	}
+	// TODO better sync here (don't let two starts happen at the same times)
 	remoteName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
 	var cmdStr string
 	cmdOpts := shellexec.CommandOptsType{
@@ -288,10 +266,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		if err != nil {
 			return err
 		}
-		conn := conncontroller.GetConn(credentialCtx, opts, true)
+		conn := conncontroller.GetConn(credentialCtx, opts, false)
 		connStatus := conn.DeriveConnStatus()
-		if connStatus.Error != "" {
-			return fmt.Errorf("error connecting to remote: %s", connStatus.Error)
+		if connStatus.Status != conncontroller.Status_Connected {
+			return fmt.Errorf("not connected, cannot start shellproc")
 		}
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.GetDomainSocketName())
@@ -300,7 +278,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			}
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
-		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, conn.Client)
+		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, conn)
 		if err != nil {
 			return err
 		}
@@ -335,12 +313,14 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
 			log.Printf("[shellproc] pty-read loop done\n")
-
-			// needs synchronization
 			bc.ShellProc.Close()
-			close(bc.ShellInputCh)
-			bc.ShellProc = nil
-			bc.ShellInputCh = nil
+			bc.WithLock(func() {
+				// so no other events are sent
+				bc.ShellInputCh = nil
+			})
+			// to stop the inputCh loop
+			time.Sleep(100 * time.Millisecond)
+			close(shellInputCh) // don't use bc.ShellInputCh (it's nil)
 		}()
 		buf := make([]byte, 4096)
 		for {
@@ -365,6 +345,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			log.Printf("[shellproc] shellInputCh loop done\n")
 		}()
 		// handles input from the shellInputCh, sent to pty
+		// use shellInputCh instead of bc.ShellInputCh (because we want to be attached to *this* ch.  bc.ShellInputCh can be updated)
 		for ic := range shellInputCh {
 			if len(ic.InputData) > 0 {
 				bc.ShellProc.Cmd.Write(ic.InputData)
@@ -446,23 +427,7 @@ func setTermSize(ctx context.Context, blockId string, termSize waveobj.TermSize)
 	return nil
 }
 
-func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any) {
-	defer func() {
-		bc.UpdateControllerAndSendUpdate(func() bool {
-			if bc.Status == Status_Running {
-				bc.Status = Status_Done
-				return true
-			}
-			return false
-		})
-		globalLock.Lock()
-		defer globalLock.Unlock()
-		delete(blockControllerMap, bc.BlockId)
-	}()
-	bc.UpdateControllerAndSendUpdate(func() bool {
-		bc.Status = Status_Running
-		return true
-	})
+func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, rtOpts *waveobj.RuntimeOpts) {
 	controllerName := bdata.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
 		log.Printf("unknown controller %q\n", controllerName)
@@ -477,51 +442,136 @@ func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any) {
 	runOnStart := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnStart, true)
 	if runOnStart {
 		go func() {
-			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: getTermSize(bdata)}, bdata.Meta)
+			var termSize waveobj.TermSize
+			if rtOpts != nil {
+				termSize = rtOpts.TermSize
+			} else {
+				termSize = getTermSize(bdata)
+			}
+			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: termSize}, bdata.Meta)
 			if err != nil {
 				log.Printf("error running shell: %v\n", err)
 			}
 		}()
 	}
-	<-bc.StopCh
 }
 
 func (bc *BlockController) SendInput(inputUnion *BlockInputUnion) error {
-	if bc.ShellInputCh == nil {
+	var shellInputCh chan *BlockInputUnion
+	bc.WithLock(func() {
+		shellInputCh = bc.ShellInputCh
+	})
+	if shellInputCh == nil {
 		return fmt.Errorf("no shell input chan")
 	}
-	bc.ShellInputCh <- inputUnion
+	shellInputCh <- inputUnion
 	return nil
 }
 
-func (bc *BlockController) RestartController() error {
-	// kill the command if it's running
-	bc.Lock.Lock()
-	if bc.ShellProc != nil {
-		bc.ShellProc.Close()
-	}
-	bc.Lock.Unlock()
-
-	// wait for process to complete
-	if bc.ShellProc != nil {
-		doneCh := bc.ShellProc.DoneCh
-		<-doneCh
-	}
-
-	// restart controller
-	bdata, err := wstore.DBMustGet[*waveobj.Block](context.Background(), bc.BlockId)
+func CheckConnStatus(blockId string) error {
+	bdata, err := wstore.DBMustGet[*waveobj.Block](context.Background(), blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
-	err = bc.DoRunShellCommand(&RunShellOpts{TermSize: getTermSize(bdata)}, bdata.Meta)
+	connName := bdata.Meta.GetString(waveobj.MetaKey_Connection, "")
+	if connName == "" {
+		return nil
+	}
+	opts, err := remote.ParseOpts(connName)
 	if err != nil {
-		log.Printf("error running shell command: %v\n", err)
+		return fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(context.Background(), opts, false)
+	connStatus := conn.DeriveConnStatus()
+	if connStatus.Status != conncontroller.Status_Connected {
+		return fmt.Errorf("not connected: %s", connStatus.Status)
 	}
 	return nil
 }
 
-func StartBlockController(ctx context.Context, tabId string, blockId string) error {
-	log.Printf("start blockcontroller %q\n", blockId)
+func (bc *BlockController) StopShellProc(shouldWait bool) {
+	bc.Lock.Lock()
+	defer bc.Lock.Unlock()
+	if bc.ShellProc == nil || bc.ShellProcStatus == Status_Done {
+		return
+	}
+	bc.ShellProc.Close()
+	if shouldWait {
+		doneCh := bc.ShellProc.DoneCh
+		<-doneCh
+	}
+}
+
+func getOrCreateBlockController(tabId string, blockId string, controllerName string) *BlockController {
+	var createdController bool
+	var bc *BlockController
+	defer func() {
+		if !createdController || bc == nil {
+			return
+		}
+		bc.UpdateControllerAndSendUpdate(func() bool {
+			return true
+		})
+	}()
+	globalLock.Lock()
+	defer globalLock.Unlock()
+	bc = blockControllerMap[blockId]
+	if bc == nil {
+		bc = &BlockController{
+			Lock:            &sync.Mutex{},
+			ControllerType:  controllerName,
+			TabId:           tabId,
+			BlockId:         blockId,
+			ShellProcStatus: Status_Done,
+		}
+		blockControllerMap[blockId] = bc
+		createdController = true
+	}
+	return bc
+}
+
+func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts) error {
+	if tabId == "" || blockId == "" {
+		return fmt.Errorf("invalid tabId or blockId passed to ResyncController")
+	}
+	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
+	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
+	curBc := GetBlockController(blockId)
+	if controllerName == "" {
+		if curBc != nil {
+			StopBlockController(blockId)
+		}
+		return nil
+	}
+	// check if conn is different, if so, stop the current controller
+	if curBc != nil {
+		bcStatus := curBc.GetRuntimeStatus()
+		if bcStatus.ShellProcStatus == Status_Running && bcStatus.ShellProcConnName != connName {
+			StopBlockController(blockId)
+		}
+	}
+	// now if there is a conn, ensure it is connected
+	if connName != "" {
+		err = CheckConnStatus(blockId)
+		if err != nil {
+			return fmt.Errorf("cannot start shellproc: %w", err)
+		}
+	}
+	if curBc == nil {
+		return startBlockController(ctx, tabId, blockId, rtOpts)
+	}
+	bcStatus := curBc.GetRuntimeStatus()
+	if bcStatus.ShellProcStatus != Status_Running {
+		return startBlockController(ctx, tabId, blockId, rtOpts)
+	}
+	return nil
+}
+
+func startBlockController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts) error {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
@@ -534,23 +584,17 @@ func StartBlockController(ctx context.Context, tabId string, blockId string) err
 	if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
 		return fmt.Errorf("unknown controller %q", controllerName)
 	}
-	globalLock.Lock()
-	defer globalLock.Unlock()
-	if _, ok := blockControllerMap[blockId]; ok {
-		// already running
-		return nil
+	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
+	log.Printf("start blockcontroller %s %q (%q)\n", blockId, controllerName, connName)
+	err = CheckConnStatus(blockId)
+	if err != nil {
+		return fmt.Errorf("cannot start shellproc: %w", err)
 	}
-	bc := &BlockController{
-		Lock:            &sync.Mutex{},
-		ControllerType:  controllerName,
-		TabId:           tabId,
-		BlockId:         blockId,
-		Status:          Status_Init,
-		ShellProcStatus: Status_Init,
-		StopCh:          make(chan bool),
+	bc := getOrCreateBlockController(tabId, blockId, controllerName)
+	bcStatus := bc.GetRuntimeStatus()
+	if bcStatus.ShellProcStatus == Status_Done {
+		go bc.run(blockData, blockData.Meta, rtOpts)
 	}
-	blockControllerMap[blockId] = bc
-	go bc.run(blockData, blockData.Meta)
 	return nil
 }
 
@@ -561,8 +605,32 @@ func StopBlockController(blockId string) {
 	}
 	if bc.getShellProc() != nil {
 		bc.ShellProc.Close()
+		<-bc.ShellProc.DoneCh
+		bc.UpdateControllerAndSendUpdate(func() bool {
+			bc.ShellProcStatus = Status_Done
+			return true
+		})
 	}
-	close(bc.StopCh)
+
+}
+
+func getControllerList() []*BlockController {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+	var rtn []*BlockController
+	for _, bc := range blockControllerMap {
+		rtn = append(rtn, bc)
+	}
+	return rtn
+}
+
+func StopAllBlockControllers() {
+	clist := getControllerList()
+	for _, bc := range clist {
+		if bc.ShellProcStatus == Status_Running {
+			go StopBlockController(bc.BlockId)
+		}
+	}
 }
 
 func GetBlockController(blockId string) *BlockController {

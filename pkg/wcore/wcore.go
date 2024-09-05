@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
-	"github.com/wavetermdev/thenextwave/pkg/remote/conncontroller"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
@@ -24,6 +23,7 @@ import (
 // TODO bring Tx infra into wcore
 
 const DefaultTimeout = 2 * time.Second
+const DefaultActivateBlockTimeout = 60 * time.Second
 
 func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 	err := wstore.DeleteBlock(ctx, tabId, blockId)
@@ -174,17 +174,5 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	err = conncontroller.EnsureConnection(ctx, blockData)
-	if err != nil {
-		return nil, fmt.Errorf("unable to ensure connection: %v", err)
-	}
-	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
-	if controllerName != "" {
-		err = blockcontroller.StartBlockController(ctx, tabId, blockData.OID)
-		if err != nil {
-			return nil, fmt.Errorf("error starting block controller: %w", err)
-		}
-	}
-
 	return blockData, nil
 }

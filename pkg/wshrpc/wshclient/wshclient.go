@@ -60,9 +60,15 @@ func ControllerInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInputData
 	return err
 }
 
-// command "controllerrestart", wshserver.ControllerRestartCommand
-func ControllerRestartCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockRestartData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "controllerrestart", data, opts)
+// command "controllerresync", wshserver.ControllerResyncCommand
+func ControllerResyncCommand(w *wshutil.WshRpc, data wshrpc.CommandControllerResyncData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "controllerresync", data, opts)
+	return err
+}
+
+// command "controllerstop", wshserver.ControllerStopCommand
+func ControllerStopCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "controllerstop", data, opts)
 	return err
 }
 

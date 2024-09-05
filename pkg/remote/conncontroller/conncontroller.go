@@ -25,7 +25,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wps"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
@@ -39,6 +38,8 @@ const (
 	Status_Disconnected = "disconnected"
 	Status_Error        = "error"
 )
+
+const DefaultConnectionTimeout = 60 * time.Second
 
 var globalLock = &sync.Mutex{}
 var clientControllerMap = make(map[remote.SSHOpts]*SSHConn)
@@ -163,7 +164,7 @@ func (conn *SSHConn) OpenDomainSocketListener() error {
 		return fmt.Errorf("error generating random string: %w", err)
 	}
 	sockName := fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
-	log.Printf("remote domain socket %s %q\n", conn.GetName(), sockName)
+	log.Printf("remote domain socket %s %q\n", conn.GetName(), conn.GetDomainSocketName())
 	listener, err := client.ListenUnix(sockName)
 	if err != nil {
 		return fmt.Errorf("unable to request connection domain socket: %v", err)
@@ -251,6 +252,13 @@ func (conn *SSHConn) StartConnServer() error {
 			log.Printf("[conncontroller:%s] error reading output: %v\n", conn.GetName(), readErr)
 		}
 	}()
+	regCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	err = wshutil.DefaultRouter.WaitForRegister(regCtx, wshutil.MakeConnectionRouteId(rpcCtx.Conn))
+	if err != nil {
+		return fmt.Errorf("timeout waiting for connserver to register")
+	}
+	time.Sleep(300 * time.Millisecond) // TODO remove this sleep (but we need to wait until connserver is "ready")
 	return nil
 }
 
@@ -373,6 +381,7 @@ func (conn *SSHConn) Connect(ctx context.Context) error {
 			connectAllowed = true
 		}
 	})
+	log.Printf("Connect %s\n", conn.GetName())
 	if !connectAllowed {
 		return fmt.Errorf("cannot connect to %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
@@ -467,45 +476,31 @@ func GetConn(ctx context.Context, opts *remote.SSHOpts, shouldConnect bool) *SSH
 }
 
 // Convenience function for ensuring a connection is established
-func EnsureConnection(ctx context.Context, blockData *waveobj.Block) error {
-	connectionName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
-	if connectionName == "" {
+func EnsureConnection(ctx context.Context, connName string) error {
+	if connName == "" {
 		return nil
 	}
-	credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancelFunc()
-
-	opts, err := remote.ParseOpts(connectionName)
+	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
-		return err
+		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := GetConn(credentialCtx, opts, true)
-	statusChan := make(chan string, 1)
-	go func() {
-		// we need to wait for connected/disconnected/error
-		// to ensure the connection has been established before
-		// continuing in the original thread
-		for {
-			// GetStatus has a lock which makes this reasonable to loop over
-			status := conn.GetStatus()
-			if credentialCtx.Err() != nil {
-				// prevent infinite loop from context
-				statusChan <- Status_Error
-				return
-			}
-			if status == Status_Connected || status == Status_Disconnected || status == Status_Error {
-				statusChan <- status
-				return
-			}
-		}
-	}()
-	status := <-statusChan
-	if status == Status_Error {
-		return fmt.Errorf("connection error: %v", conn.Error)
-	} else if status == Status_Disconnected {
-		return fmt.Errorf("disconnected: %v", conn.Error)
+	conn := GetConn(ctx, connOpts, false)
+	if conn == nil {
+		return fmt.Errorf("connection not found: %s", connName)
 	}
-	return nil
+	connStatus := conn.DeriveConnStatus()
+	switch connStatus.Status {
+	case Status_Connected:
+		return nil
+	case Status_Connecting:
+		return conn.WaitForConnect(ctx)
+	case Status_Init, Status_Disconnected:
+		return conn.Connect(ctx)
+	case Status_Error:
+		return fmt.Errorf("connection error: %s", connStatus.Error)
+	default:
+		return fmt.Errorf("unknown connection status %q", connStatus.Status)
+	}
 }
 
 func DisconnectClient(opts *remote.SSHOpts) error {

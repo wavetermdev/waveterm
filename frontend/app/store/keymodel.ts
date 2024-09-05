@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock, getApi, getViewModel, globalStore, refocusNode, WOS } from "@/app/store/global";
+import { atoms, createBlock, getApi, getBlockComponentModel, globalStore, refocusNode, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import {
     deleteLayoutModelForTab,
@@ -160,7 +160,14 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     const blockId = focusedNode?.data?.blockId;
     if (blockId != null && shouldDispatchToBlock(waveEvent)) {
-        const viewModel = getViewModel(blockId);
+        const bcm = getBlockComponentModel(blockId);
+        if (bcm.openSwitchConnection != null) {
+            if (keyutil.checkKeyPressed(waveEvent, "Cmd:g")) {
+                bcm.openSwitchConnection();
+                return true;
+            }
+        }
+        const viewModel = bcm?.viewModel;
         if (viewModel?.keyDownHandler) {
             const handledByBlock = viewModel.keyDownHandler(waveEvent);
             if (handledByBlock) {

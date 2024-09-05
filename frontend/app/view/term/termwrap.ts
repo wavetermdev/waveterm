@@ -2,7 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WshServer } from "@/app/store/wshserver";
-import { PLATFORM, WOS, fetchWaveFile, getFileSubject, openLink, sendWSCommand } from "@/store/global";
+import {
+    PLATFORM,
+    WOS,
+    atoms,
+    fetchWaveFile,
+    getFileSubject,
+    globalStore,
+    openLink,
+    sendWSCommand,
+} from "@/store/global";
 import * as services from "@/store/services";
 import * as util from "@/util/util";
 import { base64ToArray, fireAndForget } from "@/util/util";
@@ -11,8 +20,11 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import * as TermTypes from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
+import debug from "debug";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
+
+const dlog = debug("wave:termwrap");
 
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
@@ -49,6 +61,7 @@ export class TermWrap {
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
     isRunning: boolean;
+    hasResized: boolean;
 
     constructor(
         blockId: string,
@@ -60,13 +73,13 @@ export class TermWrap {
         this.blockId = blockId;
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
+        this.hasResized = false;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM == "darwin";
         this.serializeAddon = new SerializeAddon();
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
-
         this.terminal.loadAddon(
             new WebLinksAddon((e, uri) => {
                 e.preventDefault();
@@ -208,17 +221,34 @@ export class TermWrap {
         }
     }
 
+    async resyncController(reason: string) {
+        dlog("resync controller", this.blockId, reason);
+        const tabId = globalStore.get(atoms.activeTabId);
+        const rtOpts: RuntimeOpts = { termsize: { rows: this.terminal.rows, cols: this.terminal.cols } };
+        try {
+            await WshServer.ControllerResyncCommand({ tabid: tabId, blockid: this.blockId, rtopts: rtOpts });
+        } catch (e) {
+            console.log(`error controller resync (${reason})`, this.blockId, e);
+        }
+    }
+
     handleResize() {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
+            const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
             const wsCommand: SetBlockTermSizeWSCommand = {
                 wscommand: "setblocktermsize",
                 blockid: this.blockId,
-                termsize: { rows: this.terminal.rows, cols: this.terminal.cols },
+                termsize: termSize,
             };
             sendWSCommand(wsCommand);
+        }
+        dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
+        if (!this.hasResized) {
+            this.hasResized = true;
+            this.resyncController("initial resize");
         }
     }
 
