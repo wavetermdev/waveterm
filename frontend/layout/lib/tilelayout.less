@@ -87,6 +87,10 @@
             z-index: var(--zindex-layout-last-magnified-node);
         }
 
+        .tile-leaf {
+            overflow: hidden;
+        }
+
         .tile-preview-container {
             position: absolute;
             top: 10000px;
@@ -105,15 +109,8 @@
             backdrop-filter: blur(8px);
         }
 
-        .tile-leaf {
-            overflow: hidden;
-        }
-
-        &:not(:only-child),
-        &:not(.magnified) {
-            .tile-leaf {
-                padding: calc(var(--gap-size-px) / 2);
-            }
+        &:not(:only-child, .magnified) .tile-leaf {
+            padding: calc(var(--gap-size-px) / 2);
         }
     }
 
