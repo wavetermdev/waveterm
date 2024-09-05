@@ -416,7 +416,7 @@ declare global {
         "window:opacity"?: number;
         "window:bgcolor"?: string;
         "window:reducedmotion"?: boolean;
-        "window:tilegapsize": number;
+        "window:tilegapsize"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
     };
