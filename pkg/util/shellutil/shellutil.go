@@ -36,9 +36,9 @@ const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const AppPathBinDir = "bin"
 
 const (
-	ZshIntegrationDir  = "zsh-integration"
-	BashIntegrationDir = "bash-integration"
-	PwshIntegrationDir = "pwsh-integration"
+	ZshIntegrationDir  = "shell/zsh"
+	BashIntegrationDir = "shell/bash"
+	PwshIntegrationDir = "shell/pwsh"
 	WaveHomeBinDir     = "bin"
 
 	ZshStartup_Zprofile = `

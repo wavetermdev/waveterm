@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 16 16">
+<title>dots anim 4</title>
+<g class="nc-icon-wrapper">
+<g class="nc-loop-dots-4-16-icon-f">
+<circle cx="3" cy="8" r="2"></circle>
+<circle cx="8" cy="8" r="2" data-color="color-2"></circle>
+<circle cx="13" cy="8" r="2"></circle>
+</g>
+<style>
+.nc-loop-dots-4-16-icon-f{--animation-duration:0.8s}
+.nc-loop-dots-4-16-icon-f *{opacity:.4;transform:scale(.75);animation:nc-loop-dots-4-anim var(--animation-duration) infinite}
+.nc-loop-dots-4-16-icon-f :nth-child(1){transform-origin:3px 8px;animation-delay:-.3s;animation-delay:calc(var(--animation-duration)/-2.666)}
+.nc-loop-dots-4-16-icon-f :nth-child(2){transform-origin:8px 8px;animation-delay:-.15s;animation-delay:calc(var(--animation-duration)/-5.333)}
+.nc-loop-dots-4-16-icon-f :nth-child(3){transform-origin:13px 8px}
+@keyframes nc-loop-dots-4-anim{0%,100%{opacity:.4;transform:scale(.75)}50%{opacity:1;transform:scale(1)}}
+</style>
+</g>
+</svg>

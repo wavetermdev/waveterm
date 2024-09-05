@@ -175,7 +175,6 @@ func main() {
 		log.Printf("error setting auth key: %v\n", err)
 		return
 	}
-
 	err = service.ValidateServiceMap()
 	if err != nil {
 		log.Printf("error validating service map: %v\n", err)
@@ -184,6 +183,11 @@ func main() {
 	err = wavebase.EnsureWaveHomeDir()
 	if err != nil {
 		log.Printf("error ensuring wave home dir: %v\n", err)
+		return
+	}
+	err = wavebase.EnsureWaveDBDir()
+	if err != nil {
+		log.Printf("error ensuring wave db dir: %v\n", err)
 		return
 	}
 	waveLock, err := wavebase.AcquireWaveLock()
@@ -197,7 +201,6 @@ func main() {
 			log.Printf("error releasing wave lock: %v\n", err)
 		}
 	}()
-
 	log.Printf("wave version: %s (%s)\n", WaveVersion, BuildTime)
 	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
 	err = filestore.InitFilestore()
@@ -209,6 +212,10 @@ func main() {
 	if err != nil {
 		log.Printf("error initializing wstore: %v\n", err)
 		return
+	}
+	migrateErr := wstore.TryMigrateOldHistory()
+	if migrateErr != nil {
+		log.Printf("error migrating old history: %v\n", migrateErr)
 	}
 	go func() {
 		err := shellutil.InitCustomShellStartupFiles()

@@ -51,7 +51,7 @@ func InitFilestore() error {
 
 func GetDBName() string {
 	waveHome := wavebase.GetWaveHomeDir()
-	return filepath.Join(waveHome, FilestoreDBName)
+	return filepath.Join(waveHome, wavebase.WaveDBDir, FilestoreDBName)
 }
 
 func MakeDB(ctx context.Context) (*sqlx.DB, error) {

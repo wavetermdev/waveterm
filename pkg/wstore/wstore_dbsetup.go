@@ -43,7 +43,7 @@ func InitWStore() error {
 
 func GetDBName() string {
 	waveHome := wavebase.GetWaveHomeDir()
-	return filepath.Join(waveHome, WStoreDBName)
+	return filepath.Join(waveHome, wavebase.WaveDBDir, WStoreDBName)
 }
 
 func MakeDB(ctx context.Context) (*sqlx.DB, error) {

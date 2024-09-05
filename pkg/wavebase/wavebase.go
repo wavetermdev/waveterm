@@ -25,12 +25,13 @@ import (
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
-const DefaultWaveHome = "~/.w2"
-const DevWaveHome = "~/.w2-dev"
+const DefaultWaveHome = "~/.waveterm"
+const DevWaveHome = "~/.waveterm-dev"
 const WaveHomeVarName = "WAVETERM_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
-const WaveLockFile = "waveterm.lock"
+const WaveLockFile = "wave.lock"
 const DomainSocketBaseName = "wave.sock"
+const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 
 var baseLock = &sync.Mutex{}
@@ -88,6 +89,10 @@ func GetWaveHomeDir() string {
 
 func EnsureWaveHomeDir() error {
 	return CacheEnsureDir(GetWaveHomeDir(), "wavehome", 0700, "wave home directory")
+}
+
+func EnsureWaveDBDir() error {
+	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), WaveDBDir), "wavedb", 0700, "wave db directory")
 }
 
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {

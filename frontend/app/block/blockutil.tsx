@@ -9,6 +9,7 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
+import DotsSvg from "../asset/dots-anim-4.svg";
 
 export const colorRegex = /^((#[0-9a-f]{6,8})|([a-z]+))$/;
 
@@ -225,11 +226,16 @@ export const ConnectionButton = React.memo(
             } else {
                 titleText = "Connected to " + connection;
                 let iconName = "arrow-right-arrow-left";
+                let iconSvg = null;
                 if (connStatus?.status == "connecting") {
                     color = "var(--warning-color)";
                     titleText = "Connecting to " + connection;
-                    iconName = "rotate";
-                    shouldSpin = true;
+                    shouldSpin = false;
+                    iconSvg = (
+                        <div className="connecting-svg">
+                            <DotsSvg />
+                        </div>
+                    );
                 } else if (connStatus?.status == "error") {
                     color = "var(--error-color)";
                     titleText = "Error connecting to " + connection;
@@ -242,12 +248,16 @@ export const ConnectionButton = React.memo(
                     titleText = "Disconnected from " + connection;
                     showDisconnectedSlash = true;
                 }
-                connIconElem = (
-                    <i
-                        className={clsx(util.makeIconClass(iconName, false), "fa-stack-1x")}
-                        style={{ color: color, marginRight: 2 }}
-                    />
-                );
+                if (iconSvg != null) {
+                    connIconElem = iconSvg;
+                } else {
+                    connIconElem = (
+                        <i
+                            className={clsx(util.makeIconClass(iconName, false), "fa-stack-1x")}
+                            style={{ color: color, marginRight: 2 }}
+                        />
+                    );
+                }
             }
 
             return (
