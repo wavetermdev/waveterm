@@ -62,6 +62,9 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
         minimap: {
             enabled: true,
         },
+        stickyScroll: {
+            enabled: false,
+        },
     };
     return opts;
 }
