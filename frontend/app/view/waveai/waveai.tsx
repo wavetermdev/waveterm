@@ -4,14 +4,14 @@
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
 import { atoms, fetchWaveFile, getUserName, globalStore, WOS } from "@/store/global";
-import * as services from "@/store/services";
+import { BlockService } from "@/store/services";
 import { WshServer } from "@/store/wshserver";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import * as util from "@/util/util";
+import { isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import tinycolor from "tinycolor2";
 import "./waveai.less";
 
@@ -107,9 +107,9 @@ export class WaveAiModel implements ViewModel {
         });
         this.viewText = atom((get) => {
             const settings = get(atoms.settingsAtom);
-            const isCloud = util.isBlank(settings?.["ai:apitoken"]) && util.isBlank(settings?.["ai:baseurl"]);
+            const isCloud = isBlank(settings?.["ai:apitoken"]) && isBlank(settings?.["ai:baseurl"]);
             let modelText = "gpt-4o-mini";
-            if (!isCloud && !util.isBlank(settings?.["ai:model"])) {
+            if (!isCloud && !isBlank(settings?.["ai:model"])) {
                 modelText = settings["ai:model"];
             }
             const viewTextChildren: HeaderElem[] = [
@@ -198,11 +198,7 @@ export class WaveAiModel implements ViewModel {
                     role: "assistant",
                     content: fullMsg,
                 };
-                const writeToHistory = services.BlockService.SaveWaveAiData(blockId, [
-                    ...history,
-                    newPrompt,
-                    responsePrompt,
-                ]);
+                const writeToHistory = BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
                 const typeResponse = simulateResponse(response);
                 Promise.all([writeToHistory, typeResponse]);
             };
@@ -279,7 +275,7 @@ interface ChatWindowProps {
     messages: ChatMessageType[];
 }
 
-const ChatWindow = React.memo(
+const ChatWindow = memo(
     forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages }, ref) => {
         const [isUserScrolling, setIsUserScrolling] = useState(false);
 
