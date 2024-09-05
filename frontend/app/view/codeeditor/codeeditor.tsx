@@ -23,6 +23,7 @@ export function loadMonaco() {
                 rules: [],
                 colors: {
                     "editor.background": "#00000000",
+                    "editorStickyScroll.background": "#00000055",
                     "minimap.background": "#00000077",
                     focusBorder: "#00000000",
                 },
