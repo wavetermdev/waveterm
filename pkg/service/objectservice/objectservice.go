@@ -199,12 +199,6 @@ func (svc *ObjectService) DeleteBlock(uiContext waveobj.UIContext, blockId strin
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) CloseTab_Meta() tsgenmeta.MethodMeta {
-	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"uiContext", "tabId"},
-	}
-}
-
 func (svc *ObjectService) UpdateObjectMeta_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"uiContext", "oref", "meta"},

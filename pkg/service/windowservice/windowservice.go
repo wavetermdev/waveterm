@@ -66,9 +66,11 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext waveobj.UICont
 			break
 		}
 	}
-	for _, blockId := range tab.BlockIds {
-		blockcontroller.StopBlockController(blockId)
-	}
+	go func() {
+		for _, blockId := range tab.BlockIds {
+			blockcontroller.StopBlockController(blockId)
+		}
+	}()
 	if err := wcore.DeleteTab(ctx, window.WorkspaceId, tabId); err != nil {
 		return nil, fmt.Errorf("error closing tab: %w", err)
 	}

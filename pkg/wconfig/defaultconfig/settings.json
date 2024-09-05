@@ -6,5 +6,6 @@
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
     "editor:minimapenabled": true,
-    "window:tilegapsize": 3
+    "window:tilegapsize": 3,
+    "telemetry:enabled": true
 }
