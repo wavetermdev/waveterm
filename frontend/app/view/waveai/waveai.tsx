@@ -175,7 +175,7 @@ export class WaveAiModel implements ViewModel {
             if (newPrompt.name == "*username") {
                 newPrompt.name = getUserName();
             }
-            let temp = async () => {
+            const temp = async () => {
                 const history = await this.fetchAiData();
                 const beMsg: OpenAiStreamRequest = {
                     clientid: clientId,
