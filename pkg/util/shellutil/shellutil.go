@@ -214,6 +214,9 @@ func GetWshBaseName(version string, goos string, goarch string) string {
 	if goarch == "amd64" {
 		goarch = "x64"
 	}
+	if goarch == "aarch64" {
+		goarch = "arm64"
+	}
 	if goos == "windows" {
 		ext = ".exe"
 	}
