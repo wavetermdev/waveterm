@@ -208,7 +208,7 @@ export const ConnectionButton = React.memo(
             const connStatus = jotai.useAtomValue(connStatusAtom);
             let showDisconnectedSlash = false;
             let connIconElem: React.ReactNode = null;
-            let color = "#53b4ea";
+            let color = "var(--conn-icon-color)";
             const clickHandler = function () {
                 setConnModalOpen(true);
             };

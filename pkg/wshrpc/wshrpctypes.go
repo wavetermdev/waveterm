@@ -70,6 +70,7 @@ const (
 	Command_ConnReinstallWsh = "connreinstallwsh"
 	Command_ConnConnect      = "connconnect"
 	Command_ConnDisconnect   = "conndisconnect"
+	Command_ConnList         = "connlist"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -112,6 +113,7 @@ type WshRpcInterface interface {
 	ConnReinstallWshCommand(ctx context.Context, connName string) error
 	ConnConnectCommand(ctx context.Context, connName string) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
+	ConnListCommand(ctx context.Context) ([]string, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data WaveEvent) error

@@ -32,6 +32,11 @@ class WshServerType {
         return wshServerRpcHelper_call("connensure", data, opts);
     }
 
+    // command "connlist" [call]
+    ConnListCommand(opts?: RpcOpts): Promise<string[]> {
+        return wshServerRpcHelper_call("connlist", null, opts);
+    }
+
     // command "connreinstallwsh" [call]
     ConnReinstallWshCommand(data: string, opts?: RpcOpts): Promise<void> {
         return wshServerRpcHelper_call("connreinstallwsh", data, opts);

@@ -8,45 +8,35 @@ import ReactDOM from "react-dom";
 
 import "./typeaheadmodal.less";
 
-type ConnStatus = "connected" | "connecting" | "disconnected" | "error";
-
-interface BaseItem {
-    label: string;
-    value: string;
-    icon?: string | React.ReactNode;
-}
-interface ConnectionItem extends BaseItem {
-    status: ConnStatus;
-    iconColor: string;
-}
-
-interface ConnectionScope {
-    headerText?: string;
-    items: ConnectionItem[];
-}
-
-type SuggestionsType = ConnectionItem | ConnectionScope;
-
 interface SuggestionsProps {
     suggestions?: SuggestionsType[];
     onSelect?: (_: string) => void;
 }
 
 const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(({ suggestions, onSelect }: SuggestionsProps, ref) => {
-    const renderIcon = (icon: string | React.ReactNode) => {
+    const renderIcon = (icon: string | React.ReactNode, color: string) => {
         if (typeof icon === "string") {
-            return <i className={makeIconClass(icon, false)}></i>;
+            return <i className={makeIconClass(icon, false)} style={{ color: color }}></i>;
         }
         return icon;
     };
 
-    const renderItem = (item: BaseItem | ConnectionItem, index: number) => (
-        <div key={index} onClick={() => onSelect(item.label)} className="suggestion-item">
+    const renderItem = (item: SuggestionBaseItem | SuggestionConnectionItem, index: number) => (
+        <div
+            key={index}
+            onClick={() => {
+                if ("onSelect" in item && item.onSelect) {
+                    item.onSelect(item.label);
+                } else {
+                    onSelect(item.label);
+                }
+            }}
+            className="suggestion-item"
+        >
             <div className="name">
-                {item.icon && renderIcon(item.icon)}
+                {item.icon && renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
                 {item.label}
             </div>
-            {"status" in item && item.status == "connected" && <i className={makeIconClass("fa-check", false)}></i>}
         </div>
     );
 
@@ -61,7 +51,7 @@ const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(({ suggestions,
                         </div>
                     );
                 }
-                return renderItem(item as BaseItem, index);
+                return renderItem(item as SuggestionBaseItem, index);
             })}
         </div>
     );
@@ -249,4 +239,3 @@ const TypeAheadModal = ({
 };
 
 export { TypeAheadModal };
-export type { SuggestionsType };

@@ -245,6 +245,27 @@ declare global {
         openSwitchConnection?: () => void;
         viewModel: ViewModel;
     };
+
+    type ConnStatusType = "connected" | "connecting" | "disconnected" | "error" | "init";
+
+    interface SuggestionBaseItem {
+        label: string;
+        value: string;
+        icon?: string | React.ReactNode;
+    }
+
+    interface SuggestionConnectionItem extends SuggestionBaseItem {
+        status: ConnStatusType;
+        iconColor: string;
+        onSelect?: (_: string) => void;
+    }
+
+    interface SuggestionConnectionScope {
+        headerText?: string;
+        items: SuggestionConnectionItem[];
+    }
+
+    type SuggestionsType = SuggestionConnectionItem | SuggestionConnectionScope;
 }
 
 export {};

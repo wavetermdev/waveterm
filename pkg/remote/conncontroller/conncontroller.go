@@ -540,16 +540,17 @@ func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
 			// for each host, find the first good alias
 			for _, hostPattern := range host.Patterns {
 				hostPatternStr := hostPattern.String()
-				if !strings.Contains(hostPatternStr, "*") || alreadyUsed[hostPatternStr] {
-					discoveredPatterns = append(discoveredPatterns, hostPatternStr)
-					alreadyUsed[hostPatternStr] = true
+				normalized := remote.NormalizeConfigPattern(hostPatternStr)
+				if (!strings.Contains(hostPatternStr, "*") && !strings.Contains(hostPatternStr, "?") && !strings.Contains(hostPatternStr, "!")) || alreadyUsed[normalized] {
+					discoveredPatterns = append(discoveredPatterns, normalized)
+					alreadyUsed[normalized] = true
 					break
 				}
 			}
 		}
 	}
 	if len(errs) == len(configFiles) {
-		errs = append([]error{fmt.Errorf("no ssh config files could be opened:\n")}, errs...)
+		errs = append([]error{fmt.Errorf("no ssh config files could be opened: ")}, errs...)
 		return nil, errors.Join(errs...)
 	}
 	if len(discoveredPatterns) == 0 {
@@ -557,6 +558,42 @@ func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
 	}
 
 	return discoveredPatterns, nil
+}
+
+func GetConnectionsList() ([]string, error) {
+	existing := GetAllConnStatus()
+	var currentlyRunning []string
+	var hasConnected []string
+
+	// populate all lists
+	for _, stat := range existing {
+		if stat.Connected {
+			currentlyRunning = append(currentlyRunning, stat.Connection)
+		}
+
+		if stat.HasConnected {
+			hasConnected = append(hasConnected, stat.Connection)
+		}
+	}
+	fromConfig, err := GetConnectionsFromConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// sort into one final list and remove duplicates
+	alreadyUsed := make(map[string]struct{})
+	var connList []string
+
+	for _, subList := range [][]string{currentlyRunning, hasConnected, fromConfig} {
+		for _, pattern := range subList {
+			if _, used := alreadyUsed[pattern]; !used {
+				connList = append(connList, pattern)
+				alreadyUsed[pattern] = struct{}{}
+			}
+		}
+	}
+
+	return connList, nil
 }
 
 func GetConnectionsFromConfig() ([]string, error) {

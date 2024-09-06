@@ -448,6 +448,10 @@ const ChangeConnectionBlockModal = React.memo(
         const changeConnModalOpen = jotai.useAtomValue(changeConnModalAtom);
         const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
         const isNodeFocused = jotai.useAtomValue(nodeModel.isFocused);
+        const connection = blockData?.meta?.connection ?? "local";
+        const connStatusAtom = getConnStatusAtom(connection);
+        const connStatus = jotai.useAtomValue(connStatusAtom);
+        const [suggestions, setSuggestions] = React.useState([]);
         const changeConnection = React.useCallback(
             async (connName: string) => {
                 if (connName == "") {
@@ -476,6 +480,109 @@ const ChangeConnectionBlockModal = React.memo(
             },
             [blockId, blockData]
         );
+        React.useEffect(() => {
+            const loadFromBackend = async () => {
+                let connList: Array<string>;
+
+                try {
+                    connList = await WshServer.ConnListCommand({ timeout: 2000 });
+                } catch (e) {
+                    console.log("unable to load conn list from backend. using blank list: ", e);
+                }
+                let createNew: boolean = true;
+                if (connSelected == "") {
+                    createNew = false;
+                }
+                const filteredList: Array<string> = [];
+                for (const conn of connList) {
+                    if (conn === connSelected) {
+                        createNew = false;
+                    }
+                    if (conn.includes(connSelected)) {
+                        filteredList.push(conn);
+                    }
+                }
+                // priority handles special suggestions when necessary
+                // for instance, when reconnecting
+                const newConnectionSuggestion: SuggestionConnectionItem = {
+                    status: "connected",
+                    icon: "arrow-right-arrow-left",
+                    iconColor: "var(--conn-icon-color)",
+                    label: `(+) ${connSelected}`,
+                    value: "",
+                    onSelect: (_: string) => {
+                        changeConnection(connSelected);
+                        globalStore.set(changeConnModalAtom, false);
+                    },
+                };
+                const reconnectSuggestion: SuggestionConnectionItem = {
+                    status: "connected",
+                    icon: "arrow-right-arrow-left",
+                    iconColor: "var(--conn-icon-color)",
+                    label: `Reconnect to ${connStatus.connection}`,
+                    value: "",
+                    onSelect: async (_: string) => {
+                        console.log("unimplemented: reconnect");
+                    },
+                };
+                const priorityItems: Array<SuggestionConnectionItem> = [];
+                if (createNew) {
+                    console.log("added to priority items");
+                    priorityItems.push(newConnectionSuggestion);
+                }
+                if (connStatus.status == "disconnected" || connStatus.status == "error") {
+                    priorityItems.push(reconnectSuggestion);
+                }
+                const prioritySuggestions: SuggestionConnectionScope = {
+                    headerText: "",
+                    items: priorityItems,
+                };
+                const localSuggestion: SuggestionConnectionScope = {
+                    headerText: "Local",
+                    items: [
+                        {
+                            status: "connected",
+                            icon: "laptop",
+                            iconColor: "var(--grey-text-color)",
+                            value: "",
+                            label: "Switch to Local Connection",
+                            // TODO: need to specify user name and host name
+                            onSelect: (_: string) => {
+                                changeConnection("");
+                                globalStore.set(changeConnModalAtom, false);
+                            },
+                        },
+                    ],
+                };
+                const remoteItems = filteredList.map((connName) => {
+                    const item: SuggestionConnectionItem = {
+                        status: "connected",
+                        icon: "arrow-right-arrow-left",
+                        iconColor: "var(--conn-icon-color)",
+                        value: connName,
+                        label: connName,
+                    };
+                    return item;
+                });
+                const remoteSuggestions: SuggestionConnectionScope = {
+                    headerText: "Remote",
+                    items: remoteItems,
+                };
+
+                let out: Array<SuggestionsType> = [];
+                if (prioritySuggestions.items.length > 0) {
+                    out.push(prioritySuggestions);
+                }
+                if (localSuggestion.items.length > 0) {
+                    out.push(localSuggestion);
+                }
+                if (remoteSuggestions.items.length > 0) {
+                    out.push(remoteSuggestions);
+                }
+                setSuggestions(out);
+            };
+            loadFromBackend();
+        }, [connStatus, setSuggestions, connSelected, changeConnection]);
         const handleTypeAheadKeyDown = React.useCallback(
             (waveEvent: WaveKeyboardEvent): boolean => {
                 if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
@@ -493,6 +600,9 @@ const ChangeConnectionBlockModal = React.memo(
             },
             [changeConnModalAtom, viewModel, blockId, connSelected]
         );
+        React.useEffect(() => {
+            console.log("connSelected is: ", connSelected);
+        }, [connSelected]);
         if (!changeConnModalOpen) {
             return null;
         }
@@ -500,7 +610,7 @@ const ChangeConnectionBlockModal = React.memo(
             <TypeAheadModal
                 blockRef={blockRef}
                 anchorRef={connBtnRef}
-                // suggestions={[]}
+                suggestions={suggestions}
                 onSelect={(selected: string) => {
                     changeConnection(selected);
                     globalStore.set(changeConnModalAtom, false);
@@ -509,7 +619,7 @@ const ChangeConnectionBlockModal = React.memo(
                 onKeyDown={(e) => keyutil.keydownWrapper(handleTypeAheadKeyDown)(e)}
                 onChange={(current: string) => setConnSelected(current)}
                 value={connSelected}
-                label="Switch connection"
+                label="username@host"
                 onClickBackdrop={() => globalStore.set(changeConnModalAtom, false)}
             />
         );

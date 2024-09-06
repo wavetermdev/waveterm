@@ -7,11 +7,14 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/kevinburke/ssh_config"
+	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -329,4 +332,28 @@ func IsPowershell(shellPath string) bool {
 	// get the base path, and then check contains
 	shellBase := filepath.Base(shellPath)
 	return strings.Contains(shellBase, "powershell") || strings.Contains(shellBase, "pwsh")
+}
+
+func NormalizeConfigPattern(pattern string) string {
+	userName, err := ssh_config.GetStrict(pattern, "User")
+	if err != nil {
+		localUser, err := user.Current()
+		if err == nil {
+			userName = localUser.Username
+		}
+	}
+	port, err := ssh_config.GetStrict(pattern, "Port")
+	if err != nil {
+		port = "22"
+	}
+	if userName != "" {
+		userName += "@"
+	}
+	if port == "22" {
+		port = ""
+	} else {
+		port = ":" + port
+	}
+	unnormalized := fmt.Sprintf("%s%s%s", userName, pattern, port)
+	return knownhosts.Normalize(unnormalized)
 }

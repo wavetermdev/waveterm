@@ -42,6 +42,12 @@ func ConnEnsureCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) err
 	return err
 }
 
+// command "connlist", wshserver.ConnListCommand
+func ConnListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
+	resp, err := sendRpcRequestCallHelper[[]string](w, "connlist", nil, opts)
+	return resp, err
+}
+
 // command "connreinstallwsh", wshserver.ConnReinstallWshCommand
 func ConnReinstallWshCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connreinstallwsh", data, opts)

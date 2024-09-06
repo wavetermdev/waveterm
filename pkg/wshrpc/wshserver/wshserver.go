@@ -522,3 +522,7 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 	}
 	return conn.CheckAndInstallWsh(ctx, connName, &conncontroller.WshInstallOpts{Force: true, NoUserPrompt: true})
 }
+
+func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
+	return conncontroller.GetConnectionsList()
+}
