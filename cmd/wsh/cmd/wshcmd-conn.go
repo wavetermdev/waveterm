@@ -46,6 +46,25 @@ func connStatus() error {
 	return nil
 }
 
+func connDisconnectAll() error {
+	resp, err := wshclient.ConnStatusCommand(RpcClient, nil)
+	if err != nil {
+		return fmt.Errorf("getting connection status: %w", err)
+	}
+	if len(resp) == 0 {
+		return nil
+	}
+	for _, conn := range resp {
+		if conn.Status == "connected" {
+			err := connDisconnect(conn.Connection)
+			if err != nil {
+				WriteStdout("error disconnecting %q: %v\n", conn.Connection, err)
+			}
+		}
+	}
+	return nil
+}
+
 func connEnsure(connName string) error {
 	err := wshclient.ConnEnsureCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
@@ -67,9 +86,9 @@ func connReinstall(connName string) error {
 func connDisconnect(connName string) error {
 	err := wshclient.ConnDisconnectCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 10000})
 	if err != nil {
-		return fmt.Errorf("disconnecting connection: %w", err)
+		return fmt.Errorf("disconnecting %q error: %w", connName, err)
 	}
-	WriteStdout("disconnected connection %q\n", connName)
+	WriteStdout("disconnected %q\n", connName)
 	return nil
 }
 
@@ -85,9 +104,9 @@ func connConnect(connName string) error {
 func connRun(cmd *cobra.Command, args []string) error {
 	connCmd := args[0]
 	var connName string
-	if connCmd != "status" {
+	if connCmd != "status" && connCmd != "disconnectall" {
 		if len(args) < 2 {
-			return fmt.Errorf("connection name is required")
+			return fmt.Errorf("connection name is required %q", connCmd)
 		}
 		connName = args[1]
 		_, err := remote.ParseOpts(connName)
@@ -103,6 +122,8 @@ func connRun(cmd *cobra.Command, args []string) error {
 		return connReinstall(connName)
 	} else if connCmd == "disconnect" {
 		return connDisconnect(connName)
+	} else if connCmd == "disconnectall" {
+		return connDisconnectAll()
 	} else if connCmd == "connect" {
 		return connConnect(connName)
 	} else {
