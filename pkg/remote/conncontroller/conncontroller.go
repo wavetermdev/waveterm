@@ -43,6 +43,7 @@ const DefaultConnectionTimeout = 60 * time.Second
 
 var globalLock = &sync.Mutex{}
 var clientControllerMap = make(map[remote.SSHOpts]*SSHConn)
+var activeConnCounter = &atomic.Int32{}
 
 type SSHConn struct {
 	Lock               *sync.Mutex
@@ -55,6 +56,7 @@ type SSHConn struct {
 	Error              string
 	HasWaiter          *atomic.Bool
 	LastConnectTime    int64
+	ActiveConnNum      int
 }
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
@@ -72,11 +74,12 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	conn.Lock.Lock()
 	defer conn.Lock.Unlock()
 	return wshrpc.ConnStatus{
-		Status:       conn.Status,
-		Connected:    conn.Status == Status_Connected,
-		Connection:   conn.Opts.String(),
-		HasConnected: (conn.LastConnectTime > 0),
-		Error:        conn.Error,
+		Status:        conn.Status,
+		Connected:     conn.Status == Status_Connected,
+		Connection:    conn.Opts.String(),
+		HasConnected:  (conn.LastConnectTime > 0),
+		ActiveConnNum: conn.ActiveConnNum,
+		Error:         conn.Error,
 	}
 }
 
@@ -395,6 +398,9 @@ func (conn *SSHConn) Connect(ctx context.Context) error {
 		} else {
 			conn.Status = Status_Connected
 			conn.LastConnectTime = time.Now().UnixMilli()
+			if conn.ActiveConnNum == 0 {
+				conn.ActiveConnNum = int(activeConnCounter.Add(1))
+			}
 		}
 	})
 	conn.FireConnChangeEvent()

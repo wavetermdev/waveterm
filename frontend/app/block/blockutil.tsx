@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { NumActiveConnColors } from "@/app/block/blockframe";
 import { useLongClick } from "@/app/hook/useLongClick";
 import { getConnStatusAtom, waveEventSubscribe, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
@@ -199,6 +200,15 @@ export const ControllerStatusIcon = React.memo(({ blockId }: { blockId: string }
     return controllerStatusElem;
 });
 
+export function computeConnColorNum(connStatus: ConnStatus): number {
+    // activeconnnum is 1-indexed, so we need to adjust for when mod is 0
+    const connColorNum = (connStatus?.activeconnnum ?? 1) % NumActiveConnColors;
+    if (connColorNum == 0) {
+        return NumActiveConnColors;
+    }
+    return connColorNum;
+}
+
 export const ConnectionButton = React.memo(
     React.forwardRef<HTMLDivElement, ConnectionButtonProps>(
         ({ connection, changeConnModalAtom }: ConnectionButtonProps, ref) => {
@@ -208,7 +218,8 @@ export const ConnectionButton = React.memo(
             const connStatus = jotai.useAtomValue(connStatusAtom);
             let showDisconnectedSlash = false;
             let connIconElem: React.ReactNode = null;
-            let color = "var(--conn-icon-color)";
+            const connColorNum = computeConnColorNum(connStatus);
+            let color = `var(--conn-icon-color-${connColorNum})`;
             const clickHandler = function () {
                 setConnModalOpen(true);
             };

@@ -364,9 +364,10 @@ type TimeSeriesData struct {
 }
 
 type ConnStatus struct {
-	Status       string `json:"status"`
-	Connection   string `json:"connection"`
-	Connected    bool   `json:"connected"`
-	HasConnected bool   `json:"hasconnected"` // true if it has *ever* connected successfully
-	Error        string `json:"error,omitempty"`
+	Status        string `json:"status"`
+	Connection    string `json:"connection"`
+	Connected     bool   `json:"connected"`
+	HasConnected  bool   `json:"hasconnected"` // true if it has *ever* connected successfully
+	ActiveConnNum int    `json:"activeconnnum"`
+	Error         string `json:"error,omitempty"`
 }

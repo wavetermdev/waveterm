@@ -4,6 +4,7 @@
 import {
     blockViewToIcon,
     blockViewToName,
+    computeConnColorNum,
     ConnectionButton,
     ControllerStatusIcon,
     getBlockHeaderIcon,
@@ -20,6 +21,7 @@ import {
     getHostName,
     getUserName,
     globalStore,
+    refocusNode,
     useBlockAtom,
     useSettingsKeyAtom,
     WOS,
@@ -34,6 +36,8 @@ import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
+
+const NumActiveConnColors = 8;
 
 function handleHeaderContextMenu(
     e: React.MouseEvent<HTMLDivElement>,
@@ -354,6 +358,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const changeConnModalAtom = useBlockAtom(nodeModel.blockId, "changeConn", () => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
+    const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
+
     const connBtnRef = React.useRef<HTMLDivElement>();
     React.useEffect(() => {
         if (!manageConnection) {
@@ -416,7 +422,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
                 {preview ? previewElem : children}
             </div>
-            {preview ? null : (
+            {preview || !connModalOpen ? null : (
                 <ChangeConnectionBlockModal
                     blockId={nodeModel.blockId}
                     nodeModel={nodeModel}
@@ -454,7 +460,15 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusAtom = getConnStatusAtom(connection);
         const connStatus = jotai.useAtomValue(connStatusAtom);
         const [connList, setConnList] = React.useState<Array<string>>([]);
-
+        const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
+        const connStatusMap = new Map<string, ConnStatus>();
+        let maxActiveConnNum = 1;
+        for (const conn of allConnStatus) {
+            if (conn.activeconnnum > maxActiveConnNum) {
+                maxActiveConnNum = conn.activeconnnum;
+            }
+            connStatusMap.set(conn.connection, conn);
+        }
         React.useEffect(() => {
             if (!changeConnModalOpen) {
                 setConnList([]);
@@ -533,7 +547,7 @@ const ChangeConnectionBlockModal = React.memo(
         const reconnectSuggestion: SuggestionConnectionItem = {
             status: "connected",
             icon: "arrow-right-arrow-left",
-            iconColor: "var(--conn-icon-color)",
+            iconColor: "var(--grey-text-color)",
             label: `Reconnect to ${connStatus.connection}`,
             value: "",
             onSelect: async (_: string) => {
@@ -565,7 +579,6 @@ const ChangeConnectionBlockModal = React.memo(
                 iconColor: "var(--grey-text-color)",
                 value: "",
                 label: localName,
-                // TODO: need to specify user name and host name
                 onSelect: (_: string) => {
                     changeConnection("");
                     globalStore.set(changeConnModalAtom, false);
@@ -573,10 +586,15 @@ const ChangeConnectionBlockModal = React.memo(
             });
         }
         const remoteItems = filteredList.map((connName) => {
+            const connStatus = connStatusMap.get(connName);
+            const connColorNum = computeConnColorNum(connStatus);
             const item: SuggestionConnectionItem = {
                 status: "connected",
                 icon: "arrow-right-arrow-left",
-                iconColor: "var(--conn-icon-color)",
+                iconColor:
+                    connStatus?.status == "connected"
+                        ? `var(--conn-icon-color-${connColorNum})`
+                        : "var(--grey-text-color)",
                 value: connName,
                 label: connName,
             };
@@ -604,18 +622,19 @@ const ChangeConnectionBlockModal = React.memo(
                     changeConnection(connSelected);
                     globalStore.set(changeConnModalAtom, false);
                     setConnSelected("");
+                    refocusNode(blockId);
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                     globalStore.set(changeConnModalAtom, false);
                     setConnSelected("");
-                    viewModel.giveFocus();
+                    refocusNode(blockId);
                     return true;
                 }
             },
             [changeConnModalAtom, viewModel, blockId, connSelected]
         );
-
+        // this check was also moved to BlockFrame to prevent all the above code from running unnecessarily
         if (!changeConnModalOpen) {
             return null;
         }
@@ -654,4 +673,4 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
     return <FrameElem {...props} numBlocksInTab={numBlocks} />;
 });
 
-export { BlockFrame };
+export { BlockFrame, NumActiveConnColors };
