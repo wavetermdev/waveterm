@@ -264,6 +264,13 @@ function countGraphemes(str: string): number {
     return Array.from(seg.segment(str)).length;
 }
 
+function makeConnRoute(conn: string): string {
+    if (isBlank(conn)) {
+        return "conn:local";
+    }
+    return "conn:" + conn;
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -279,6 +286,7 @@ export {
     jotaiLoadableValue,
     jsonDeepEqual,
     lazy,
+    makeConnRoute,
     makeExternLink,
     makeIconClass,
     stringToBase64,

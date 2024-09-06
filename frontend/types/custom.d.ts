@@ -268,6 +268,11 @@ declare global {
     }
 
     type SuggestionsType = SuggestionConnectionItem | SuggestionConnectionScope;
+
+    type MarkdownResolveOpts = {
+        connName: string;
+        baseDir: string;
+    };
 }
 
 export {};

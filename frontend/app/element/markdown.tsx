@@ -2,16 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CopyButton } from "@/app/element/copybutton";
+import { WshServer } from "@/app/store/wshserver";
+import { getWebServerEndpoint } from "@/util/endpoints";
+import * as util from "@/util/util";
+import { useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
+import { Atom } from "jotai";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import React, { CSSProperties, useCallback, useMemo, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
-import remarkGfm from "remark-gfm";
-
-import { useAtomValueSafe } from "@/util/util";
-import { Atom } from "jotai";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
+import remarkGfm from "remark-gfm";
 import { useHeight } from "../hook/useHeight";
 import "./markdown.less";
 
@@ -75,6 +77,63 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
     );
 };
 
+const MarkdownSource = (props: any) => {
+    return null;
+};
+
+const MarkdownImg = (props: any) => {
+    const [resolvedSrc, setResolvedSrc] = React.useState<string>(props.src);
+    const [resolvedStr, setResolvedStr] = React.useState<string>(null);
+    const [resolving, setResolving] = React.useState<boolean>(true);
+    const resolveOpts: MarkdownResolveOpts = props.resolveOpts;
+
+    React.useEffect(() => {
+        if (props.src.startsWith("http://") || props.src.startsWith("https://")) {
+            setResolving(false);
+            setResolvedSrc(props.src);
+            setResolvedStr(null);
+            return;
+        }
+        if (props.src.startsWith("data:image/")) {
+            setResolving(false);
+            setResolvedSrc(props.src);
+            setResolvedStr(null);
+            return;
+        }
+        if (resolveOpts == null) {
+            setResolving(false);
+            setResolvedSrc(null);
+            setResolvedStr(`[img:${props.src}]`);
+            return;
+        }
+        const resolveFn = async () => {
+            const route = util.makeConnRoute(resolveOpts.connName);
+            const fileInfo = await WshServer.RemoteFileJoinCommand([resolveOpts.baseDir, props.src], { route: route });
+            const usp = new URLSearchParams();
+            usp.set("path", fileInfo.path);
+            if (!util.isBlank(resolveOpts.connName)) {
+                usp.set("connection", resolveOpts.connName);
+            }
+            const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
+            setResolvedSrc(streamingUrl);
+            setResolvedStr(null);
+            setResolving(false);
+        };
+        resolveFn();
+    }, [props.src]);
+
+    if (resolving) {
+        return null;
+    }
+    if (resolvedStr != null) {
+        return <span>{resolvedStr}</span>;
+    }
+    if (resolvedSrc != null) {
+        return <img {...props} src={resolvedSrc} />;
+    }
+    return <span>[img]</span>;
+};
+
 type MarkdownProps = {
     text?: string;
     textAtom?: Atom<string> | Atom<Promise<string>>;
@@ -82,9 +141,10 @@ type MarkdownProps = {
     style?: React.CSSProperties;
     className?: string;
     onClickExecute?: (cmd: string) => void;
+    resolveOpts?: MarkdownResolveOpts;
 };
 
-const Markdown = ({ text, textAtom, showTocAtom, style, className, onClickExecute }: MarkdownProps) => {
+const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, onClickExecute }: MarkdownProps) => {
     const textAtomValue = useAtomValueSafe(textAtom);
     const tocRef = useRef<TocItem[]>([]);
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
@@ -114,6 +174,8 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, onClickExecut
         h4: (props: any) => <Heading {...props} hnum={4} />,
         h5: (props: any) => <Heading {...props} hnum={5} />,
         h6: (props: any) => <Heading {...props} hnum={6} />,
+        img: (props: any) => <MarkdownImg {...props} resolveOpts={resolveOpts} />,
+        source: (props: any) => <MarkdownSource {...props} resolveOpts={resolveOpts} />,
         code: Code,
         pre: (props: any) => <CodeBlock {...props} onClickExecute={onClickExecute} />,
     };

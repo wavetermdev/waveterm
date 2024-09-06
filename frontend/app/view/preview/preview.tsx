@@ -43,13 +43,6 @@ const SpecializedViewMap: { [view: string]: ({ model }: SpecializedViewProps) =>
     directory: DirectoryPreview,
 };
 
-function makeConnRoute(conn: string): string {
-    if (util.isBlank(conn)) {
-        return "conn:local";
-    }
-    return "conn:" + conn;
-}
-
 function isTextFile(mimeType: string): boolean {
     if (mimeType == null) {
         return false;
@@ -686,9 +679,17 @@ function makePreviewModel(blockId: string, nodeModel: NodeModel): PreviewModel {
 }
 
 function MarkdownPreview({ model }: SpecializedViewProps) {
+    const connName = jotai.useAtomValue(model.connection);
+    const fileInfo = jotai.useAtomValue(model.statFile);
+    const resolveOpts: MarkdownResolveOpts = React.useMemo<MarkdownResolveOpts>(() => {
+        return {
+            connName: connName,
+            baseDir: fileInfo.dir,
+        };
+    }, [connName, fileInfo.dir]);
     return (
         <div className="view-preview view-preview-markdown">
-            <Markdown textAtom={model.fileContent} showTocAtom={model.markdownShowToc} />
+            <Markdown textAtom={model.fileContent} showTocAtom={model.markdownShowToc} resolveOpts={resolveOpts} />
         </div>
     );
 }

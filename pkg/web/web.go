@@ -310,6 +310,7 @@ func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	} else {
 		err := handleRemoteStreamFile(w, r, conn, fileName, no404 != "")
 		if err != nil {
+			log.Printf("error streaming remote file %q %q: %v\n", conn, fileName, err)
 			http.Error(w, fmt.Sprintf("error streaming file: %v", err), http.StatusInternalServerError)
 		}
 	}
