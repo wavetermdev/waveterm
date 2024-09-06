@@ -453,7 +453,23 @@ const ChangeConnectionBlockModal = React.memo(
         const connection = blockData?.meta?.connection;
         const connStatusAtom = getConnStatusAtom(connection);
         const connStatus = jotai.useAtomValue(connStatusAtom);
-        const [suggestions, setSuggestions] = React.useState<SuggestionsType[]>([]);
+        const [connList, setConnList] = React.useState<Array<string>>([]);
+
+        React.useEffect(() => {
+            if (!changeConnModalOpen) {
+                setConnList([]);
+                return;
+            }
+            const prtn = WshServer.ConnListCommand({ timeout: 2000 });
+            prtn.then((connList) => {
+                setConnList(connList ?? []);
+            }).catch((e) => console.log("unable to load conn list from backend. using blank list: ", e));
+        }, [changeConnModalOpen]);
+
+        React.useEffect(() => {
+            console.log("connSelected is: ", connSelected);
+        }, [connSelected]);
+
         const changeConnection = React.useCallback(
             async (connName: string) => {
                 if (connName == "") {
@@ -482,114 +498,106 @@ const ChangeConnectionBlockModal = React.memo(
             },
             [blockId, blockData]
         );
-        React.useEffect(() => {
-            const loadFromBackend = async () => {
-                let connList: Array<string>;
 
-                try {
-                    connList = await WshServer.ConnListCommand({ timeout: 2000 });
-                } catch (e) {
-                    console.log("unable to load conn list from backend. using blank list: ", e);
-                }
-                if (!connList) {
-                    connList = [];
-                }
-                let createNew: boolean = true;
-                if (connSelected == "") {
-                    createNew = false;
-                }
-                const filteredList: Array<string> = [];
-                for (const conn of connList) {
-                    if (conn === connSelected) {
-                        createNew = false;
-                    }
-                    if (conn.includes(connSelected)) {
-                        filteredList.push(conn);
-                    }
-                }
-                // priority handles special suggestions when necessary
-                // for instance, when reconnecting
-                const newConnectionSuggestion: SuggestionConnectionItem = {
-                    status: "connected",
-                    icon: "plus",
-                    iconColor: "var(--conn-icon-color)",
-                    label: `${connSelected} (New Connection)`,
-                    value: "",
-                    onSelect: (_: string) => {
-                        changeConnection(connSelected);
-                        globalStore.set(changeConnModalAtom, false);
-                    },
-                };
-                const reconnectSuggestion: SuggestionConnectionItem = {
-                    status: "connected",
-                    icon: "arrow-right-arrow-left",
-                    iconColor: "var(--conn-icon-color)",
-                    label: `Reconnect to ${connStatus.connection}`,
-                    value: "",
-                    onSelect: async (_: string) => {
-                        const prtn = WshServer.ConnConnectCommand(connStatus.connection, { timeout: 60000 });
-                        prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
-                    },
-                };
-                const priorityItems: Array<SuggestionConnectionItem> = [];
-                if (createNew) {
-                    console.log("added to priority items");
-                    priorityItems.push(newConnectionSuggestion);
-                }
-                if (connStatus.status == "disconnected" || connStatus.status == "error") {
-                    priorityItems.push(reconnectSuggestion);
-                }
-                const prioritySuggestions: SuggestionConnectionScope = {
-                    headerText: "",
-                    items: priorityItems,
-                };
-                const localName = getUserName() + "@" + getHostName();
-                const localSuggestion: SuggestionConnectionScope = {
-                    headerText: "Local",
-                    items: [
-                        {
-                            status: "connected",
-                            icon: "laptop",
-                            iconColor: "var(--grey-text-color)",
-                            value: "",
-                            label: localName,
-                            // TODO: need to specify user name and host name
-                            onSelect: (_: string) => {
-                                changeConnection("");
-                                globalStore.set(changeConnModalAtom, false);
-                            },
-                        },
-                    ],
-                };
-                const remoteItems = filteredList.map((connName) => {
-                    const item: SuggestionConnectionItem = {
-                        status: "connected",
-                        icon: "arrow-right-arrow-left",
-                        iconColor: "var(--conn-icon-color)",
-                        value: connName,
-                        label: connName,
-                    };
-                    return item;
-                });
-                const remoteSuggestions: SuggestionConnectionScope = {
-                    headerText: "Remote",
-                    items: remoteItems,
-                };
-
-                let out: Array<SuggestionsType> = [];
-                if (prioritySuggestions.items.length > 0) {
-                    out.push(prioritySuggestions);
-                }
-                if (localSuggestion.items.length > 0) {
-                    out.push(localSuggestion);
-                }
-                if (remoteSuggestions.items.length > 0) {
-                    out.push(remoteSuggestions);
-                }
-                setSuggestions(out);
+        let createNew: boolean = true;
+        let showLocal: boolean = true;
+        let showReconnect: boolean = true;
+        if (connSelected == "") {
+            createNew = false;
+        } else {
+            showLocal = false;
+            showReconnect = false;
+        }
+        const filteredList: Array<string> = [];
+        for (const conn of connList) {
+            if (conn === connSelected) {
+                createNew = false;
+            }
+            if (conn.includes(connSelected)) {
+                filteredList.push(conn);
+            }
+        }
+        // priority handles special suggestions when necessary
+        // for instance, when reconnecting
+        const newConnectionSuggestion: SuggestionConnectionItem = {
+            status: "connected",
+            icon: "plus",
+            iconColor: "var(--conn-icon-color)",
+            label: `${connSelected} (New Connection)`,
+            value: "",
+            onSelect: (_: string) => {
+                changeConnection(connSelected);
+                globalStore.set(changeConnModalAtom, false);
+            },
+        };
+        const reconnectSuggestion: SuggestionConnectionItem = {
+            status: "connected",
+            icon: "arrow-right-arrow-left",
+            iconColor: "var(--conn-icon-color)",
+            label: `Reconnect to ${connStatus.connection}`,
+            value: "",
+            onSelect: async (_: string) => {
+                const prtn = WshServer.ConnConnectCommand(connStatus.connection, { timeout: 60000 });
+                prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
+            },
+        };
+        const priorityItems: Array<SuggestionConnectionItem> = [];
+        if (createNew) {
+            console.log("added to priority items");
+            priorityItems.push(newConnectionSuggestion);
+        }
+        if (showReconnect && (connStatus.status == "disconnected" || connStatus.status == "error")) {
+            priorityItems.push(reconnectSuggestion);
+        }
+        const prioritySuggestions: SuggestionConnectionScope = {
+            headerText: "",
+            items: priorityItems,
+        };
+        const localName = getUserName() + "@" + getHostName();
+        const localSuggestion: SuggestionConnectionScope = {
+            headerText: "Local",
+            items: [],
+        };
+        if (showLocal) {
+            localSuggestion.items.push({
+                status: "connected",
+                icon: "laptop",
+                iconColor: "var(--grey-text-color)",
+                value: "",
+                label: localName,
+                // TODO: need to specify user name and host name
+                onSelect: (_: string) => {
+                    changeConnection("");
+                    globalStore.set(changeConnModalAtom, false);
+                },
+            });
+        }
+        const remoteItems = filteredList.map((connName) => {
+            const item: SuggestionConnectionItem = {
+                status: "connected",
+                icon: "arrow-right-arrow-left",
+                iconColor: "var(--conn-icon-color)",
+                value: connName,
+                label: connName,
             };
-            loadFromBackend();
-        }, [connStatus, setSuggestions, connSelected, changeConnection]);
+            return item;
+        });
+        const remoteSuggestions: SuggestionConnectionScope = {
+            headerText: "Remote",
+            items: remoteItems,
+        };
+
+        let suggestions: Array<SuggestionsType> = [];
+        if (prioritySuggestions.items.length > 0) {
+            suggestions.push(prioritySuggestions);
+        }
+        if (localSuggestion.items.length > 0) {
+            suggestions.push(localSuggestion);
+        }
+        if (remoteSuggestions.items.length > 0) {
+            suggestions.push(remoteSuggestions);
+        }
+
         const handleTypeAheadKeyDown = React.useCallback(
             (waveEvent: WaveKeyboardEvent): boolean => {
                 if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
@@ -607,9 +615,7 @@ const ChangeConnectionBlockModal = React.memo(
             },
             [changeConnModalAtom, viewModel, blockId, connSelected]
         );
-        React.useEffect(() => {
-            console.log("connSelected is: ", connSelected);
-        }, [connSelected]);
+
         if (!changeConnModalOpen) {
             return null;
         }
