@@ -8,13 +8,12 @@ import * as util from "@/util/util";
 import { useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
 import { Atom } from "jotai";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import React, { CSSProperties, useCallback, useMemo, useRef } from "react";
+import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
+import React, { CSSProperties, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
-import { useHeight } from "../hook/useHeight";
 import "./markdown.less";
 
 const Link = ({ href, children }: { href: string; children: React.ReactNode }) => {
@@ -148,23 +147,23 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
     const textAtomValue = useAtomValueSafe(textAtom);
     const tocRef = useRef<TocItem[]>([]);
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
-    const contentsRef = useRef<HTMLDivElement>(null);
-    const contentsHeight = useHeight(contentsRef, 200);
+    const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
 
-    const halfContentsHeight = useMemo(() => {
-        return `${contentsHeight / 2}px`;
-    }, [contentsHeight]);
-
-    const onTocClick = useCallback((data: string) => {
-        if (contentsRef.current) {
-            const headings = contentsRef.current.getElementsByClassName("heading");
+    const onTocClick = (data: string) => {
+        if (contentsOsRef.current && contentsOsRef.current.osInstance()) {
+            const { viewport } = contentsOsRef.current.osInstance().elements();
+            const headings = viewport.getElementsByClassName("heading");
             for (const heading of headings) {
                 if (heading.textContent === data) {
-                    heading.scrollIntoView({ inline: "nearest", block: "end" });
+                    const headingBoundingRect = heading.getBoundingClientRect();
+                    const viewportBoundingRect = viewport.getBoundingClientRect();
+                    const headingTop = headingBoundingRect.top - viewportBoundingRect.top;
+                    viewport.scrollBy({ top: headingTop });
+                    break;
                 }
             }
         }
-    }, []);
+    };
 
     const markdownComponents = {
         a: Link,
@@ -180,30 +179,19 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
         pre: (props: any) => <CodeBlock {...props} onClickExecute={onClickExecute} />,
     };
 
-    const toc = useMemo(() => {
-        if (showToc && tocRef.current.length > 0) {
-            return tocRef.current.map((item) => {
-                return (
-                    <a
-                        key={item.href}
-                        className="toc-item"
-                        style={{ "--indent-factor": item.depth } as CSSProperties}
-                        onClick={() => onTocClick(item.value)}
-                    >
-                        {item.value}
-                    </a>
-                );
-            });
-        }
-    }, [showToc, tocRef]);
+    // const toc = useMemo(() => {
+    //     if (showToc && tocRef.current.length > 0) {
+    //         return
+    //     }
+    // }, [showToc, tocRef]);
 
     text = textAtomValue ?? text;
 
     return (
-        <div className={clsx("markdown", className)} style={style} ref={contentsRef}>
+        <div className={clsx("markdown", className)} style={style}>
             <OverlayScrollbarsComponent
+                ref={contentsOsRef}
                 className="content"
-                style={{ "--half-contents-height": halfContentsHeight } as CSSProperties}
                 options={{ scrollbars: { autoHide: "leave" } }}
             >
                 <ReactMarkdown
@@ -218,7 +206,18 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                 <OverlayScrollbarsComponent className="toc" options={{ scrollbars: { autoHide: "leave" } }}>
                     <div className="toc-inner">
                         <h4>Table of Contents</h4>
-                        {toc}
+                        {tocRef.current.map((item) => {
+                            return (
+                                <a
+                                    key={item.href}
+                                    className="toc-item"
+                                    style={{ "--indent-factor": item.depth } as CSSProperties}
+                                    onClick={() => onTocClick(item.value)}
+                                >
+                                    {item.value}
+                                </a>
+                            );
+                        })}
                     </div>
                 </OverlayScrollbarsComponent>
             )}
