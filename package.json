@@ -27,7 +27,7 @@
         "postinstall": "electron-builder install-app-deps"
     },
     "devDependencies": {
-        "@chromatic-com/storybook": "^1.8.0",
+        "@chromatic-com/storybook": "^1.9.0",
         "@eslint/js": "^9.9.0",
         "@rollup/plugin-node-resolve": "^15.2.3",
         "@storybook/addon-essentials": "^8.2.9",

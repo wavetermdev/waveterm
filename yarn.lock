@@ -1444,16 +1444,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chromatic-com/storybook@npm:^1.8.0":
-  version: 1.8.0
-  resolution: "@chromatic-com/storybook@npm:1.8.0"
+"@chromatic-com/storybook@npm:^1.9.0":
+  version: 1.9.0
+  resolution: "@chromatic-com/storybook@npm:1.9.0"
   dependencies:
     chromatic: "npm:^11.4.0"
     filesize: "npm:^10.0.12"
     jsonfile: "npm:^6.1.0"
     react-confetti: "npm:^6.1.0"
     strip-ansi: "npm:^7.1.0"
-  checksum: 10c0/90f6c95eb498640a5f0006bcf71e9cd63890fcacba493ac2ad6bc37813ba32424f8df79d4d017fdb4dadbcbffa8c4c849f151404b7b4d5740df41cf4c223b376
+  checksum: 10c0/c4b0fbfcb3394c2814e445471b1528179c2144d70d4a13c9a70545c2f2052c6366f73893b16e1490e658d43d905fc726bbb78d7c126c839a3c7ee3d8f3ad21c2
   languageName: node
   linkType: hard
 
@@ -11697,7 +11697,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "thenextwave@workspace:."
   dependencies:
-    "@chromatic-com/storybook": "npm:^1.8.0"
+    "@chromatic-com/storybook": "npm:^1.9.0"
     "@eslint/js": "npm:^9.9.0"
     "@monaco-editor/loader": "npm:^1.4.0"
     "@monaco-editor/react": "npm:^4.6.0"
