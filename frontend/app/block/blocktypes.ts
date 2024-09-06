@@ -7,14 +7,14 @@ export interface BlockProps {
     nodeModel: NodeModel;
 }
 
-export interface BlockComponentModel {
+export interface BlockComponentModel2 {
     onClick?: () => void;
     onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
     blockRef?: React.RefObject<HTMLDivElement>;
 }
 
 export interface BlockFrameProps {
-    blockModel?: BlockComponentModel;
+    blockModel?: BlockComponentModel2;
     nodeModel?: NodeModel;
     viewModel?: ViewModel;
     preview: boolean;

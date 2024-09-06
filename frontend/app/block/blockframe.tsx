@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BlockComponentModel } from "@/app/block/blocktypes";
 import {
     blockViewToIcon,
     blockViewToName,
@@ -266,12 +265,10 @@ function renderHeaderElements(headerTextUnion: HeaderElem[], preview: boolean): 
 
 const ConnStatusOverlay = React.memo(
     ({
-        blockModel,
         nodeModel,
         viewModel,
         changeConnModalAtom,
     }: {
-        blockModel: BlockComponentModel;
         nodeModel: NodeModel;
         viewModel: ViewModel;
         changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
@@ -281,8 +278,10 @@ const ConnStatusOverlay = React.memo(
         const connName = blockData.meta?.connection;
         const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
         const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
-        const width = useWidth(blockModel?.blockRef);
+        const overlayRef = React.useRef<HTMLDivElement>(null);
+        const width = useWidth(overlayRef);
         const [showError, setShowError] = React.useState(false);
+        const blockNum = jotai.useAtomValue(nodeModel.blockNum);
 
         React.useEffect(() => {
             if (width) {
@@ -319,7 +318,7 @@ const ConnStatusOverlay = React.memo(
         }
 
         return (
-            <div className="connstatus-overlay">
+            <div className="connstatus-overlay" ref={overlayRef}>
                 <div className="connstatus-content">
                     <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError })}>
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
@@ -443,12 +442,13 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             ref={blockModel?.blockRef}
         >
             <BlockMask nodeModel={nodeModel} />
-            <ConnStatusOverlay
-                blockModel={blockModel}
-                nodeModel={nodeModel}
-                viewModel={viewModel}
-                changeConnModalAtom={changeConnModalAtom}
-            />
+            {preview ? null : (
+                <ConnStatusOverlay
+                    nodeModel={nodeModel}
+                    viewModel={viewModel}
+                    changeConnModalAtom={changeConnModalAtom}
+                />
+            )}
             <div className="block-frame-default-inner" style={innerStyle}>
                 <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
                 {preview ? previewElem : children}

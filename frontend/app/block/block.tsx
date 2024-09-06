@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BlockComponentModel, BlockProps } from "@/app/block/blocktypes";
+import { BlockComponentModel2, BlockProps } from "@/app/block/blocktypes";
 import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -220,7 +220,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
         focusElemRef.current?.focus({ preventScroll: true });
     }, []);
 
-    const blockModel: BlockComponentModel = {
+    const blockModel: BlockComponentModel2 = {
         onClick: setBlockClickedTrue,
         onFocusCapture: handleChildFocus,
         blockRef: blockRef,
