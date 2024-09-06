@@ -4,12 +4,11 @@
 import { CopyButton } from "@/app/element/copybutton";
 import { WshServer } from "@/app/store/wshserver";
 import { getWebServerEndpoint } from "@/util/endpoints";
-import * as util from "@/util/util";
-import { useAtomValueSafe } from "@/util/util";
+import { isBlank, makeConnRoute, useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { CSSProperties, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
@@ -81,12 +80,12 @@ const MarkdownSource = (props: any) => {
 };
 
 const MarkdownImg = (props: any) => {
-    const [resolvedSrc, setResolvedSrc] = React.useState<string>(props.src);
-    const [resolvedStr, setResolvedStr] = React.useState<string>(null);
-    const [resolving, setResolving] = React.useState<boolean>(true);
+    const [resolvedSrc, setResolvedSrc] = useState<string>(props.src);
+    const [resolvedStr, setResolvedStr] = useState<string>(null);
+    const [resolving, setResolving] = useState<boolean>(true);
     const resolveOpts: MarkdownResolveOpts = props.resolveOpts;
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (props.src.startsWith("http://") || props.src.startsWith("https://")) {
             setResolving(false);
             setResolvedSrc(props.src);
@@ -106,11 +105,11 @@ const MarkdownImg = (props: any) => {
             return;
         }
         const resolveFn = async () => {
-            const route = util.makeConnRoute(resolveOpts.connName);
+            const route = makeConnRoute(resolveOpts.connName);
             const fileInfo = await WshServer.RemoteFileJoinCommand([resolveOpts.baseDir, props.src], { route: route });
             const usp = new URLSearchParams();
             usp.set("path", fileInfo.path);
-            if (!util.isBlank(resolveOpts.connName)) {
+            if (!isBlank(resolveOpts.connName)) {
                 usp.set("connection", resolveOpts.connName);
             }
             const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
@@ -211,7 +210,7 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                                 <a
                                     key={item.href}
                                     className="toc-item"
-                                    style={{ "--indent-factor": item.depth } as CSSProperties}
+                                    style={{ "--indent-factor": item.depth } as React.CSSProperties}
                                     onClick={() => onTocClick(item.value)}
                                 >
                                     {item.value}
