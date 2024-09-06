@@ -8,7 +8,7 @@ import { isBlank, makeConnRoute, useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
@@ -148,7 +148,7 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
     const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
 
-    const onTocClick = (data: string) => {
+    const onTocClick = useCallback((data: string) => {
         if (contentsOsRef.current && contentsOsRef.current.osInstance()) {
             const { viewport } = contentsOsRef.current.osInstance().elements();
             const headings = viewport.getElementsByClassName("heading");
@@ -162,7 +162,7 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                 }
             }
         }
-    };
+    }, []);
 
     const markdownComponents = {
         a: Link,
@@ -178,11 +178,22 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
         pre: (props: any) => <CodeBlock {...props} onClickExecute={onClickExecute} />,
     };
 
-    // const toc = useMemo(() => {
-    //     if (showToc && tocRef.current.length > 0) {
-    //         return
-    //     }
-    // }, [showToc, tocRef]);
+    const toc = useMemo(() => {
+        if (showToc && tocRef.current.length > 0) {
+            return tocRef.current.map((item) => {
+                return (
+                    <a
+                        key={item.href}
+                        className="toc-item"
+                        style={{ "--indent-factor": item.depth } as React.CSSProperties}
+                        onClick={() => onTocClick(item.value)}
+                    >
+                        {item.value}
+                    </a>
+                );
+            });
+        }
+    }, [showToc, tocRef]);
 
     text = textAtomValue ?? text;
 
@@ -201,22 +212,11 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                     {text}
                 </ReactMarkdown>
             </OverlayScrollbarsComponent>
-            {showToc && (
+            {toc && (
                 <OverlayScrollbarsComponent className="toc" options={{ scrollbars: { autoHide: "leave" } }}>
                     <div className="toc-inner">
                         <h4>Table of Contents</h4>
-                        {tocRef.current.map((item) => {
-                            return (
-                                <a
-                                    key={item.href}
-                                    className="toc-item"
-                                    style={{ "--indent-factor": item.depth } as React.CSSProperties}
-                                    onClick={() => onTocClick(item.value)}
-                                >
-                                    {item.value}
-                                </a>
-                            );
-                        })}
+                        {toc}
                     </div>
                 </OverlayScrollbarsComponent>
             )}
