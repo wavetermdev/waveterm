@@ -111,10 +111,6 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 		}
 
 		unencryptedPrivateKey, err := ssh.ParseRawPrivateKey(privateKey)
-		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
-			// skip this key and try with the next
-			return createDummySigner()
-		}
 		if err == nil {
 			signer, err := ssh.NewSignerFromKey(unencryptedPrivateKey)
 			if err == nil {
@@ -125,6 +121,10 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 				}
 				return []ssh.Signer{signer}, err
 			}
+		}
+		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
+			// skip this key and try with the next
+			return createDummySigner()
 		}
 
 		// batch mode deactivates user input
