@@ -33,7 +33,7 @@ const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(({ suggestions,
             }}
             className="suggestion-item"
         >
-            <div className="name">
+            <div className="typeahead-item-name">
                 {item.icon && renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
                 {item.label}
             </div>

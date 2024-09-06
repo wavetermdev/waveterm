@@ -511,9 +511,9 @@ const ChangeConnectionBlockModal = React.memo(
                 // for instance, when reconnecting
                 const newConnectionSuggestion: SuggestionConnectionItem = {
                     status: "connected",
-                    icon: "arrow-right-arrow-left",
+                    icon: "plus",
                     iconColor: "var(--conn-icon-color)",
-                    label: `(+) ${connSelected}`,
+                    label: `${connSelected} (New Connection)`,
                     value: "",
                     onSelect: (_: string) => {
                         changeConnection(connSelected);
