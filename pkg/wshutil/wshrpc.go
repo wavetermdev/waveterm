@@ -335,7 +335,7 @@ func (w *WshRpc) runServer() {
 			continue
 		}
 		if msg.IsRpcRequest() {
-			w.handleRequest(&msg)
+			go w.handleRequest(&msg)
 		} else {
 			respCh := w.getResponseCh(msg.ResId)
 			if respCh == nil {
