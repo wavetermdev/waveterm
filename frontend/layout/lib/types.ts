@@ -335,6 +335,8 @@ export interface NodeModel {
     numLeafs: Atom<number>;
     nodeId: string;
     blockId: string;
+    animationTimeS: Atom<number>;
+    isResizing: Atom<boolean>;
     isFocused: Atom<boolean>;
     isMagnified: Atom<boolean>;
     ready: Atom<boolean>;

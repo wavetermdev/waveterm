@@ -18,7 +18,7 @@ declare global {
         activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
-        reducedMotionPreferenceAtom: jotai.Atom<boolean>;
+        prefersReducedMotionAtom: jotai.Atom<boolean>;
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
         typeAheadModalAtom: jotai.PrimitiveAtom<TypeAheadModalType>;
         modalOpen: jotai.PrimitiveAtom<boolean>;

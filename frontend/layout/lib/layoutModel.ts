@@ -773,10 +773,12 @@ export class LayoutModel {
                     return isFocused;
                 }),
                 numLeafs: this.numLeafs,
+                isResizing: this.isResizing,
                 isMagnified: atom((get) => {
                     const treeState = get(this.treeStateAtom);
                     return treeState.magnifiedNodeId === nodeid;
                 }),
+                animationTimeS: this.animationTimeS,
                 ready: this.ready,
                 disablePointerEvents: this.activeDrag,
                 onClose: async () => await this.closeNode(nodeid),

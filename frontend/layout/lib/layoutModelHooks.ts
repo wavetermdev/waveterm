@@ -5,7 +5,8 @@ import { atoms, globalStore, WOS } from "@/app/store/global";
 import { fireAndForget } from "@/util/util";
 import useResizeObserver from "@react-hook/resize-observer";
 import { Atom, useAtomValue } from "jotai";
-import { CSSProperties, useEffect, useLayoutEffect, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { debounce } from "throttle-debounce";
 import { withLayoutTreeStateAtomFromTab } from "./layoutAtom";
 import { LayoutModel } from "./layoutModel";
 import { LayoutNode, NodeModel, TileLayoutContents } from "./types";
@@ -67,32 +68,26 @@ export function useNodeModel(layoutModel: LayoutModel, layoutNode: LayoutNode): 
 
 export function useDebouncedNodeInnerRect(nodeModel: NodeModel): CSSProperties {
     const nodeInnerRect = useAtomValue(nodeModel.innerRect);
+    const animationTimeS = useAtomValue(nodeModel.animationTimeS);
+    const isMagnified = useAtomValue(nodeModel.isMagnified);
+    const isResizing = useAtomValue(nodeModel.isResizing);
+    const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
     const [innerRect, setInnerRect] = useState<CSSProperties>();
-    const [isTransitioning, setIsTransitioning] = useState(false);
 
-    useEffect(() => {
-        const onTransitionStart = () => {
-            setIsTransitioning(true);
-        };
-        const onTransitionEnd = () => {
-            setIsTransitioning(false);
-        };
-        if (nodeModel.displayContainerRef.current) {
-            nodeModel.displayContainerRef.current.addEventListener("transitionstart", onTransitionStart);
-            nodeModel.displayContainerRef.current.addEventListener("transitionend", onTransitionEnd);
-        }
-
-        return () => {
-            nodeModel.displayContainerRef.current?.removeEventListener("transitionstart", onTransitionStart);
-            nodeModel.displayContainerRef.current?.removeEventListener("transitionend", onTransitionEnd);
-        };
-    }, [nodeModel]);
+    const setInnerRectDebounced = useCallback(
+        debounce(animationTimeS * 1000, (nodeInnerRect) => {
+            setInnerRect(nodeInnerRect);
+        }),
+        [animationTimeS]
+    );
 
     useLayoutEffect(() => {
-        if (!isTransitioning) {
+        if (prefersReducedMotion || isMagnified || isResizing) {
             setInnerRect(nodeInnerRect);
+        } else {
+            setInnerRectDebounced(nodeInnerRect);
         }
-    }, [nodeInnerRect, isTransitioning]);
+    }, [nodeInnerRect]);
 
     return innerRect;
 }

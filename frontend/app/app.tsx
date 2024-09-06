@@ -252,19 +252,10 @@ const AppKeyHandlers = () => {
 };
 
 const AppInner = () => {
-    const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
-    const prefersReducedMotionSetting = jotai.useAtomValue(atoms.reducedMotionPreferenceAtom);
+    const prefersReducedMotion = jotai.useAtomValue(atoms.prefersReducedMotionAtom);
     const client = jotai.useAtomValue(atoms.client);
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const isFullScreen = jotai.useAtomValue(atoms.isFullScreen);
-
-    React.useEffect(() => {
-        const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-        setPrefersReducedMotion(!reducedMotionQuery || reducedMotionQuery.matches);
-        reducedMotionQuery.addEventListener("change", () => {
-            setPrefersReducedMotion(reducedMotionQuery.matches);
-        });
-    }, []);
 
     if (client == null || windowData == null) {
         return (
@@ -279,7 +270,7 @@ const AppInner = () => {
         <div
             className={clsx("mainapp", PLATFORM, {
                 fullscreen: isFullScreen,
-                "prefers-reduced-motion": prefersReducedMotion || prefersReducedMotionSetting,
+                "prefers-reduced-motion": prefersReducedMotion,
             })}
             onContextMenu={handleContextMenu}
         >

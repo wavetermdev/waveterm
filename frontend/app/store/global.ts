@@ -124,7 +124,26 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     } catch (_) {
         // do nothing
     }
-    const reducedMotionPreferenceAtom = jotai.atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
+
+    const reducedMotionSettingAtom = jotai.atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
+    const reducedMotionSystemPreferenceAtom = jotai.atom(false);
+
+    // Composite of the prefers-reduced-motion media query and the window:reducedmotion user setting.
+    const prefersReducedMotionAtom = jotai.atom((get) => {
+        const reducedMotionSetting = get(reducedMotionSettingAtom);
+        const reducedMotionSystemPreference = get(reducedMotionSystemPreferenceAtom);
+        return reducedMotionSetting || reducedMotionSystemPreference;
+    });
+
+    // Set up a handler for changes to the prefers-reduced-motion media query.
+    if (globalThis.window != null) {
+        const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+        globalStore.set(reducedMotionSystemPreferenceAtom, !reducedMotionQuery || reducedMotionQuery.matches);
+        reducedMotionQuery?.addEventListener("change", () => {
+            globalStore.set(reducedMotionSystemPreferenceAtom, reducedMotionQuery.matches);
+        });
+    }
+
     const typeAheadModalAtom = jotai.atom({});
     const modalOpen = jotai.atom(false);
     const allConnStatusAtom = jotai.atom<ConnStatus[]>((get) => {
@@ -146,7 +165,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         isFullScreen: isFullScreenAtom,
         controlShiftDelayAtom,
         updaterStatusAtom,
-        reducedMotionPreferenceAtom,
+        prefersReducedMotionAtom,
         typeAheadModalAtom,
         modalOpen,
         allConnStatus: allConnStatusAtom,
