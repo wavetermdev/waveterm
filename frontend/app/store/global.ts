@@ -626,6 +626,7 @@ function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
                 error: null,
                 status: "connected",
                 hasconnected: true,
+                activeconnnum: 0,
             };
             rtn = jotai.atom(connStatus);
         } else {
@@ -635,6 +636,7 @@ function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
                 error: null,
                 status: "disconnected",
                 hasconnected: false,
+                activeconnnum: 0,
             };
             rtn = jotai.atom(connStatus);
         }
