@@ -54,6 +54,7 @@ declare global {
         getPlatform: () => NodeJS.Platform;
         getEnv: (varName: string) => string;
         getUserName: () => string;
+        getHostName: () => string;
         getAboutModalDetails: () => AboutModalDetails;
         showContextMenu: (menu?: ElectronContextMenuItem[]) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;

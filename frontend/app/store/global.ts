@@ -507,6 +507,15 @@ function getUserName(): string {
     return cachedUserName;
 }
 
+let cachedHostName: string = null;
+
+function getHostName(): string {
+    if (cachedHostName == null) {
+        cachedHostName = getApi().getHostName();
+    }
+    return cachedHostName;
+}
+
 /**
  * Open a link in a new window, or in a new web widget. The user can set all links to open in a new web widget using the `web:openlinksinternally` setting.
  * @param uri The link to open.
@@ -642,6 +651,7 @@ export {
     getEventORefSubject,
     getEventSubject,
     getFileSubject,
+    getHostName,
     getObjectId,
     getUserName,
     globalStore,

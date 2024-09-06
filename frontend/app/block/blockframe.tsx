@@ -17,6 +17,8 @@ import {
     atoms,
     getBlockComponentModel,
     getConnStatusAtom,
+    getHostName,
+    getUserName,
     globalStore,
     useBlockAtom,
     useSettingsKeyAtom,
@@ -489,6 +491,9 @@ const ChangeConnectionBlockModal = React.memo(
                 } catch (e) {
                     console.log("unable to load conn list from backend. using blank list: ", e);
                 }
+                if (!connList) {
+                    connList = [];
+                }
                 let createNew: boolean = true;
                 if (connSelected == "") {
                     createNew = false;
@@ -537,6 +542,7 @@ const ChangeConnectionBlockModal = React.memo(
                     headerText: "",
                     items: priorityItems,
                 };
+                const localName = getUserName() + "@" + getHostName();
                 const localSuggestion: SuggestionConnectionScope = {
                     headerText: "Local",
                     items: [
@@ -545,7 +551,7 @@ const ChangeConnectionBlockModal = React.memo(
                             icon: "laptop",
                             iconColor: "var(--grey-text-color)",
                             value: "",
-                            label: "Switch to Local Connection",
+                            label: localName,
                             // TODO: need to specify user name and host name
                             onSelect: (_: string) => {
                                 changeConnection("");
@@ -619,7 +625,7 @@ const ChangeConnectionBlockModal = React.memo(
                 onKeyDown={(e) => keyutil.keydownWrapper(handleTypeAheadKeyDown)(e)}
                 onChange={(current: string) => setConnSelected(current)}
                 value={connSelected}
-                label="username@host"
+                label="Connect to (username@host)..."
                 onClickBackdrop={() => globalStore.set(changeConnModalAtom, false)}
             />
         );

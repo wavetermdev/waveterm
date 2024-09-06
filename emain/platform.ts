@@ -31,6 +31,9 @@ ipcMain.on("get-user-name", (event) => {
     const userInfo = os.userInfo();
     event.returnValue = userInfo.username;
 });
+ipcMain.on("get-host-name", (event) => {
+    event.returnValue = os.hostname();
+});
 
 // must match golang
 function getWaveHomeDir() {
