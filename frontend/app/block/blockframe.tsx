@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockComponentModel } from "@/app/block/blocktypes";
 import {
     blockViewToIcon,
     blockViewToName,
@@ -12,6 +13,7 @@ import {
     Input,
 } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
+import { useWidth } from "@/app/hook/useWidth";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import {
@@ -264,52 +266,76 @@ function renderHeaderElements(headerTextUnion: HeaderElem[], preview: boolean): 
 
 const ConnStatusOverlay = React.memo(
     ({
+        blockModel,
         nodeModel,
         viewModel,
         changeConnModalAtom,
     }: {
+        blockModel: BlockComponentModel;
         nodeModel: NodeModel;
         viewModel: ViewModel;
         changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
     }) => {
         const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
-        const [connModalOpen, setConnModalOpen] = jotai.useAtom(changeConnModalAtom);
+        const [connModalOpen] = jotai.useAtom(changeConnModalAtom);
         const connName = blockData.meta?.connection;
         const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
         const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
+        const width = useWidth(blockModel?.blockRef);
+        const [showError, setShowError] = React.useState(false);
+
+        React.useEffect(() => {
+            if (width) {
+                const hasError = !util.isBlank(connStatus.error);
+                const showError = hasError && width >= 250 && connStatus.status != "connecting";
+                setShowError(showError);
+            }
+        }, [width, connStatus, setShowError]);
+
         const handleTryReconnect = React.useCallback(() => {
             const prtn = WshServer.ConnConnectCommand(connName, { timeout: 60000 });
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
-        const handleSwitchConnection = React.useCallback(() => {
-            setConnModalOpen(true);
-        }, [setConnModalOpen]);
-        if (isLayoutMode || connStatus.status == "connected" || connModalOpen) {
-            return null;
-        }
+
         let statusText = `Disconnected from "${connName}"`;
         let showReconnect = true;
         if (connStatus.status == "connecting") {
             statusText = `Connecting to "${connName}"...`;
             showReconnect = false;
         }
+        let reconDisplay = null;
+        let reconClassName = "outlined";
+        if (width && width < 350) {
+            reconDisplay = <i className="fa-sharp fa-solid fa-rotate-right"></i>;
+            reconClassName = clsx(reconClassName, "font-size-12 vertical-padding-5 horizontal-padding-6");
+        } else {
+            reconDisplay = "Reconnect";
+            reconClassName = clsx(reconClassName, "font-size-11 vertical-padding-3 horizontal-padding-7");
+        }
+        const showIcon = connStatus.status != "connecting";
+
+        if (isLayoutMode || connStatus.status == "connected" || connModalOpen) {
+            return null;
+        }
+
         return (
             <div className="connstatus-overlay">
-                <div className="connstatus-mainelem">
-                    <div style={{ marginBottom: 5 }}>{statusText}</div>
-                    {!util.isBlank(connStatus.error) ? (
-                        <div className="connstatus-error">error: {connStatus.error}</div>
-                    ) : null}
+                <div className="connstatus-content">
+                    <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError })}>
+                        {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
+                        <div className="connstatus-status">
+                            <div className="connstatus-status-text">{statusText}</div>
+                            {showError ? <div className="connstatus-error">error: {connStatus.error}</div> : null}
+                        </div>
+                    </div>
                     {showReconnect ? (
                         <div className="connstatus-actions">
-                            <Button className="secondary" onClick={handleTryReconnect}>
-                                <i className="fa-sharp fa-solid fa-arrow-right-arrow-left" style={{ marginRight: 5 }} />
-                                Reconnect Now
+                            <Button className={reconClassName} onClick={handleTryReconnect}>
+                                {reconDisplay}
                             </Button>
-                            <Button className="secondary" onClick={handleSwitchConnection}>
-                                <i className="fa-sharp fa-solid fa-arrow-right-arrow-left" style={{ marginRight: 5 }} />
-                                Switch Connection
-                            </Button>
+                            {/* <Button className="secondary ghost vertical-padding-5 horizontal-padding-6">
+                                <i className="fa-sharp fa-regular fa-xmark-large"></i>
+                            </Button> */}
                         </div>
                     ) : null}
                 </div>
@@ -417,7 +443,12 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             ref={blockModel?.blockRef}
         >
             <BlockMask nodeModel={nodeModel} />
-            <ConnStatusOverlay nodeModel={nodeModel} viewModel={viewModel} changeConnModalAtom={changeConnModalAtom} />
+            <ConnStatusOverlay
+                blockModel={blockModel}
+                nodeModel={nodeModel}
+                viewModel={viewModel}
+                changeConnModalAtom={changeConnModalAtom}
+            />
             <div className="block-frame-default-inner" style={innerStyle}>
                 <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
                 {preview ? previewElem : children}
