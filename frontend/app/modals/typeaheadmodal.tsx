@@ -94,7 +94,9 @@ const TypeAheadModal = ({
     const suggestionsRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
-        if (modalRef.current || inputRef.current || suggestionsRef.current || suggestionsWrapperRef.current) return;
+        if (!modalRef.current || !inputRef.current || !suggestionsRef.current || !suggestionsWrapperRef.current) {
+            return;
+        }
 
         const modalStyles = window.getComputedStyle(modalRef.current);
         const paddingTop = parseFloat(modalStyles.paddingTop) || 0;
