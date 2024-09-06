@@ -5812,7 +5812,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"debug@npm:4, debug@npm:^4.0.0, debug@npm:^4.1.0, debug@npm:^4.1.1, debug@npm:^4.3.1, debug@npm:^4.3.2, debug@npm:^4.3.4, debug@npm:^4.3.5, debug@npm:^4.3.6":
+"debug@npm:4, debug@npm:^4.0.0, debug@npm:^4.1.0, debug@npm:^4.1.1, debug@npm:^4.3.1, debug@npm:^4.3.2, debug@npm:^4.3.4, debug@npm:^4.3.5":
   version: 4.3.6
   resolution: "debug@npm:4.3.6"
   dependencies:
@@ -5824,7 +5824,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"debug@npm:^4.3.3":
+"debug@npm:^4.3.3, debug@npm:^4.3.7":
   version: 4.3.7
   resolution: "debug@npm:4.3.7"
   dependencies:
@@ -12152,7 +12152,7 @@ __metadata:
     color: "npm:^4.2.3"
     css-tree: "npm:^2.3.1"
     dayjs: "npm:^1.11.13"
-    debug: "npm:^4.3.6"
+    debug: "npm:^4.3.7"
     electron: "npm:^32.0.2"
     electron-builder: "npm:^25.0.5"
     electron-updater: "npm:6.3.4"
