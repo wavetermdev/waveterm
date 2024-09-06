@@ -14,7 +14,6 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = useState("");
     const [countdown, setCountdown] = useState(Math.floor(userInputRequest.timeoutms / 1000));
     const checkboxStatus = useRef(false);
-    const queryTextAtom = useState;
 
     const handleSendCancel = useCallback(() => {
         UserInputService.SendUserInputResponse({
@@ -96,7 +95,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
 
     useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
-        if (countdown == 0) {
+        if (countdown <= 0) {
             timeout = setTimeout(() => {
                 handleSendCancel();
             }, 300);
@@ -109,9 +108,9 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
     }, [countdown]);
 
     return (
-        <Modal onOk={() => handleSubmit()} onCancel={() => handleSendCancel()}>
+        <Modal onOk={() => handleSubmit()} onCancel={() => handleSendCancel()} onClose={() => handleSendCancel()}>
+            <div className="userinput-header">{userInputRequest.title + ` (${countdown}s)`}</div>
             <div className="userinput-body">
-                {userInputRequest.title + ` (${countdown}s)`}
                 {queryText}
                 {inputBox}
             </div>
