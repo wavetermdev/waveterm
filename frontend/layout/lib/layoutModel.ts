@@ -288,12 +288,10 @@ export class LayoutModel {
      * @param contents Contains callbacks provided by the TileLayout component.
      */
     registerTileLayout(contents: TileLayoutContents) {
-        console.log("registerTileLayout", contents);
         this.renderContent = contents.renderContent;
         this.renderPreview = contents.renderPreview;
         this.onNodeDelete = contents.onNodeDelete;
         if (contents.gapSizePx !== undefined) {
-            console.log("setting gapSizePx", contents.gapSizePx);
             this.setter(this.gapSizePx, contents.gapSizePx);
         }
     }
@@ -756,10 +754,11 @@ export class LayoutModel {
                 innerRect: atom((get) => {
                     const addlProps = get(addlPropsAtom);
                     const numLeafs = get(this.numLeafs);
+                    const gapSizePx = get(this.gapSizePx);
                     if (numLeafs > 1 && addlProps?.rect) {
                         return {
-                            width: `${addlProps.transform.width} - ${this.gapSizePx}px`,
-                            height: `${addlProps.transform.height} - ${this.gapSizePx}px`,
+                            width: `${addlProps.transform.width} - ${gapSizePx}px`,
+                            height: `${addlProps.transform.height} - ${gapSizePx}px`,
                         } as CSSProperties;
                     } else {
                         return null;
