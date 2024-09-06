@@ -450,10 +450,10 @@ const ChangeConnectionBlockModal = React.memo(
         const changeConnModalOpen = jotai.useAtomValue(changeConnModalAtom);
         const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
         const isNodeFocused = jotai.useAtomValue(nodeModel.isFocused);
-        const connection = blockData?.meta?.connection ?? "local";
+        const connection = blockData?.meta?.connection;
         const connStatusAtom = getConnStatusAtom(connection);
         const connStatus = jotai.useAtomValue(connStatusAtom);
-        const [suggestions, setSuggestions] = React.useState([]);
+        const [suggestions, setSuggestions] = React.useState<SuggestionsType[]>([]);
         const changeConnection = React.useCallback(
             async (connName: string) => {
                 if (connName == "") {
@@ -527,7 +527,8 @@ const ChangeConnectionBlockModal = React.memo(
                     label: `Reconnect to ${connStatus.connection}`,
                     value: "",
                     onSelect: async (_: string) => {
-                        console.log("unimplemented: reconnect");
+                        const prtn = WshServer.ConnConnectCommand(connStatus.connection, { timeout: 60000 });
+                        prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
                     },
                 };
                 const priorityItems: Array<SuggestionConnectionItem> = [];
