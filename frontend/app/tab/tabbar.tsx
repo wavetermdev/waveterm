@@ -70,6 +70,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
+    const prevAllLoadedRef = useRef<boolean>(false);
 
     const windowData = useAtomValue(atoms.waveWindow);
     const { activetabid } = windowData;
@@ -202,8 +203,11 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);
         if (allLoaded) {
-            updateSizeAndPosition(newTabId === null);
+            updateSizeAndPosition(newTabId === null && prevAllLoadedRef.current);
             saveTabsPosition();
+            if (!prevAllLoadedRef.current) {
+                prevAllLoadedRef.current = true;
+            }
         }
     }, [tabIds, tabsLoaded, newTabId, handleResizeTabs, saveTabsPosition]);
 
