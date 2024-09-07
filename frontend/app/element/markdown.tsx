@@ -84,7 +84,7 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
     );
 };
 
-const MarkdownSource = (props: any) => {
+const MarkdownSource = (props: React.HTMLAttributes<HTMLSourceElement>) => {
     return null;
 };
 
@@ -92,7 +92,7 @@ const MarkdownImg = ({
     props,
     resolveOpts,
 }: {
-    props: React.ImgHTMLAttributes<any>;
+    props: React.ImgHTMLAttributes<HTMLImageElement>;
     resolveOpts: MarkdownResolveOpts;
 }) => {
     const [resolvedSrc, setResolvedSrc] = useState<string>(props.src);
@@ -185,28 +185,28 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
 
     const markdownComponents = {
         a: Link,
-        h1: (props: React.HTMLAttributes<any>) => (
+        h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
             <Heading children={props.children} id={idPrefix + props.id} hnum={1} />
         ),
-        h2: (props: React.HTMLAttributes<any>) => (
+        h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
             <Heading children={props.children} id={idPrefix + props.id} hnum={2} />
         ),
-        h3: (props: React.HTMLAttributes<any>) => (
+        h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
             <Heading children={props.children} id={idPrefix + props.id} hnum={3} />
         ),
-        h4: (props: React.HTMLAttributes<any>) => (
+        h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
             <Heading children={props.children} id={idPrefix + props.id} hnum={4} />
         ),
-        h5: (props: React.HTMLAttributes<any>) => (
+        h5: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
             <Heading children={props.children} id={idPrefix + props.id} hnum={5} />
         ),
-        h6: (props: React.HTMLAttributes<any>) => (
+        h6: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
             <Heading children={props.children} id={idPrefix + props.id} hnum={6} />
         ),
-        img: (props: React.HTMLAttributes<any>) => <MarkdownImg props={props} resolveOpts={resolveOpts} />,
-        source: (props: React.HTMLAttributes<any>) => <MarkdownSource {...props} />,
+        img: (props: React.HTMLAttributes<HTMLImageElement>) => <MarkdownImg props={props} resolveOpts={resolveOpts} />,
+        source: (props: React.HTMLAttributes<HTMLSourceElement>) => <MarkdownSource {...props} />,
         code: Code,
-        pre: (props: React.HTMLAttributes<any>) => (
+        pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
             <CodeBlock children={props.children} onClickExecute={onClickExecute} />
         ),
     };
