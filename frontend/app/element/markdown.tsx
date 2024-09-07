@@ -9,7 +9,7 @@ import { clsx } from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
@@ -17,14 +17,24 @@ import remarkGfm from "remark-gfm";
 import { openLink } from "../store/global";
 import "./markdown.less";
 
-const Link = ({ href, children }: { href: string; children: React.ReactNode }) => {
+const Link = ({
+    setFocusedHeading,
+    props,
+}: {
+    props: React.AnchorHTMLAttributes<HTMLAnchorElement>;
+    setFocusedHeading: (href: string) => void;
+}) => {
     const onClick = (e: React.MouseEvent) => {
         e.preventDefault();
-        openLink(href);
+        if (props.href.startsWith("#")) {
+            setFocusedHeading(props.href);
+        } else {
+            openLink(props.href);
+        }
     };
     return (
-        <a href={href} onClick={onClick}>
-            {children}
+        <a href={props.href} onClick={onClick}>
+            {props.children}
         </a>
     );
 };
@@ -183,8 +193,10 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
         }
     }, [focusedHeading]);
 
-    const markdownComponents = {
-        a: Link,
+    const markdownComponents: Partial<Components> = {
+        a: (props: React.HTMLAttributes<HTMLAnchorElement>) => (
+            <Link props={props} setFocusedHeading={setFocusedHeading} />
+        ),
         h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
             <Heading children={props.children} id={idPrefix + props.id} hnum={1} />
         ),
