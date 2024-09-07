@@ -14,12 +14,16 @@ import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
+import { openLink } from "../store/global";
 import "./markdown.less";
 
 const Link = ({ href, children }: { href: string; children: React.ReactNode }) => {
-    const newUrl = "https://extern?" + encodeURIComponent(href);
+    const onClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        openLink(href);
+    };
     return (
-        <a href={newUrl} target="_blank" rel="noopener">
+        <a href={href} onClick={onClick}>
             {children}
         </a>
     );
