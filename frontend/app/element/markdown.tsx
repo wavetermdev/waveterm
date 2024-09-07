@@ -39,10 +39,10 @@ const Link = ({
     );
 };
 
-const Heading = ({ id, children, hnum }: { id?: string; children: React.ReactNode; hnum: number }) => {
+const Heading = ({ props, hnum }: { props: React.HTMLAttributes<HTMLHeadingElement>; hnum: number }) => {
     return (
-        <div id={id} className={clsx("heading", `is-${hnum}`)}>
-            {children}
+        <div id={props.id} className={clsx("heading", `is-${hnum}`)}>
+            {props.children}
         </div>
     );
 };
@@ -197,24 +197,12 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
         a: (props: React.HTMLAttributes<HTMLAnchorElement>) => (
             <Link props={props} setFocusedHeading={setFocusedHeading} />
         ),
-        h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-            <Heading children={props.children} id={idPrefix + props.id} hnum={1} />
-        ),
-        h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-            <Heading children={props.children} id={idPrefix + props.id} hnum={2} />
-        ),
-        h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-            <Heading children={props.children} id={idPrefix + props.id} hnum={3} />
-        ),
-        h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-            <Heading children={props.children} id={idPrefix + props.id} hnum={4} />
-        ),
-        h5: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-            <Heading children={props.children} id={idPrefix + props.id} hnum={5} />
-        ),
-        h6: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-            <Heading children={props.children} id={idPrefix + props.id} hnum={6} />
-        ),
+        h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={1} />,
+        h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={2} />,
+        h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={3} />,
+        h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={4} />,
+        h5: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={5} />,
+        h6: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={6} />,
         img: (props: React.HTMLAttributes<HTMLImageElement>) => <MarkdownImg props={props} resolveOpts={resolveOpts} />,
         source: (props: React.HTMLAttributes<HTMLSourceElement>) => <MarkdownSource {...props} />,
         code: Code,
@@ -251,7 +239,7 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
             >
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
-                    rehypePlugins={[rehypeRaw, rehypeSlug]}
+                    rehypePlugins={[rehypeRaw, () => rehypeSlug({ prefix: idPrefix })]}
                     components={markdownComponents}
                 >
                     {text}
