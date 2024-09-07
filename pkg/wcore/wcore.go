@@ -30,7 +30,7 @@ func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
-	blockcontroller.StopBlockController(blockId)
+	go blockcontroller.StopBlockController(blockId)
 	sendBlockCloseEvent(tabId, blockId)
 	return nil
 }
