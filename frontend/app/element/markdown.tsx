@@ -11,6 +11,7 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import "./markdown.less";
@@ -24,8 +25,12 @@ const Link = ({ href, children }: { href: string; children: React.ReactNode }) =
     );
 };
 
-const Heading = ({ children, hnum }: { children: React.ReactNode; hnum: number }) => {
-    return <div className={clsx("heading", `is-${hnum}`)}>{children}</div>;
+const Heading = ({ id, children, hnum }: { id?: string; children: React.ReactNode; hnum: number }) => {
+    return (
+        <div id={id} className={clsx("heading", `is-${hnum}`)}>
+            {children}
+        </div>
+    );
 };
 
 const Code = ({ children }: { children: React.ReactNode }) => {
@@ -148,30 +153,30 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
     const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
 
-    const onTocClick = useCallback((data: string) => {
+    // Ensure uniqueness of ids between MD preview instances.
+    const [idPrefix] = useState<string>(crypto.randomUUID());
+
+    const onTocClick = useCallback((href: string) => {
         if (contentsOsRef.current && contentsOsRef.current.osInstance()) {
             const { viewport } = contentsOsRef.current.osInstance().elements();
-            const headings = viewport.getElementsByClassName("heading");
-            for (const heading of headings) {
-                if (heading.textContent === data) {
-                    const headingBoundingRect = heading.getBoundingClientRect();
-                    const viewportBoundingRect = viewport.getBoundingClientRect();
-                    const headingTop = headingBoundingRect.top - viewportBoundingRect.top;
-                    viewport.scrollBy({ top: headingTop });
-                    break;
-                }
+            const heading = document.getElementById(idPrefix + href.slice(1));
+            if (heading) {
+                const headingBoundingRect = heading.getBoundingClientRect();
+                const viewportBoundingRect = viewport.getBoundingClientRect();
+                const headingTop = headingBoundingRect.top - viewportBoundingRect.top;
+                viewport.scrollBy({ top: headingTop });
             }
         }
     }, []);
 
     const markdownComponents = {
         a: Link,
-        h1: (props: any) => <Heading {...props} hnum={1} />,
-        h2: (props: any) => <Heading {...props} hnum={2} />,
-        h3: (props: any) => <Heading {...props} hnum={3} />,
-        h4: (props: any) => <Heading {...props} hnum={4} />,
-        h5: (props: any) => <Heading {...props} hnum={5} />,
-        h6: (props: any) => <Heading {...props} hnum={6} />,
+        h1: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={1} />,
+        h2: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={2} />,
+        h3: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={3} />,
+        h4: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={4} />,
+        h5: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={5} />,
+        h6: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={6} />,
         img: (props: any) => <MarkdownImg {...props} resolveOpts={resolveOpts} />,
         source: (props: any) => <MarkdownSource {...props} resolveOpts={resolveOpts} />,
         code: Code,
@@ -186,7 +191,7 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                         key={item.href}
                         className="toc-item"
                         style={{ "--indent-factor": item.depth } as React.CSSProperties}
-                        onClick={() => onTocClick(item.value)}
+                        onClick={() => onTocClick(item.href)}
                     >
                         {item.value}
                     </a>
@@ -206,7 +211,7 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
             >
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
-                    rehypePlugins={[rehypeRaw]}
+                    rehypePlugins={[rehypeRaw, rehypeSlug]}
                     components={markdownComponents}
                 >
                     {text}

@@ -12181,6 +12181,7 @@ __metadata:
     react-gauge-chart: "npm:^0.5.1"
     react-markdown: "npm:^9.0.1"
     rehype-raw: "npm:^7.0.0"
+    rehype-slug: "npm:^6.0.0"
     remark-flexible-toc: "npm:^1.1.1"
     remark-gfm: "npm:^4.0.0"
     rollup-plugin-flow: "npm:^1.1.1"
