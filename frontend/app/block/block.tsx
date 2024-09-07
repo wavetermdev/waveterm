@@ -185,7 +185,6 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
     }, [blockRef, contentRef]);
 
     const blockContentStyle = React.useMemo<React.CSSProperties>(() => {
-        console.log("blockContentStyle", disablePointerEvents, innerRect);
         const retVal: React.CSSProperties = {
             pointerEvents: disablePointerEvents ? "none" : undefined,
         };
