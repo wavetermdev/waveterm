@@ -88,13 +88,16 @@ const MarkdownSource = (props: any) => {
     return null;
 };
 
-const MarkdownImg = (props: any) => {
+const MarkdownImg = ({
+    props,
+    resolveOpts,
+}: {
+    props: React.ImgHTMLAttributes<any>;
+    resolveOpts: MarkdownResolveOpts;
+}) => {
     const [resolvedSrc, setResolvedSrc] = useState<string>(props.src);
     const [resolvedStr, setResolvedStr] = useState<string>(null);
     const [resolving, setResolving] = useState<boolean>(true);
-    const resolveOpts: MarkdownResolveOpts = props.resolveOpts;
-    const propsScrubbed = { ...props };
-    delete propsScrubbed.resolveOpts;
 
     useEffect(() => {
         if (props.src.startsWith("http://") || props.src.startsWith("https://")) {
@@ -138,7 +141,7 @@ const MarkdownImg = (props: any) => {
         return <span>{resolvedStr}</span>;
     }
     if (resolvedSrc != null) {
-        return <img {...propsScrubbed} src={resolvedSrc} />;
+        return <img {...props} src={resolvedSrc} />;
     }
     return <span>[img]</span>;
 };
@@ -158,14 +161,19 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
     const tocRef = useRef<TocItem[]>([]);
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
     const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
+    const [focusedHeading, setFocusedHeading] = useState<string>(null);
 
     // Ensure uniqueness of ids between MD preview instances.
     const [idPrefix] = useState<string>(crypto.randomUUID());
 
     const onTocClick = useCallback((href: string) => {
-        if (contentsOsRef.current && contentsOsRef.current.osInstance()) {
+        setFocusedHeading(href);
+    }, []);
+
+    useEffect(() => {
+        if (focusedHeading && contentsOsRef.current && contentsOsRef.current.osInstance()) {
             const { viewport } = contentsOsRef.current.osInstance().elements();
-            const heading = document.getElementById(idPrefix + href.slice(1));
+            const heading = document.getElementById(idPrefix + focusedHeading.slice(1));
             if (heading) {
                 const headingBoundingRect = heading.getBoundingClientRect();
                 const viewportBoundingRect = viewport.getBoundingClientRect();
@@ -173,20 +181,34 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                 viewport.scrollBy({ top: headingTop });
             }
         }
-    }, []);
+    }, [focusedHeading]);
 
     const markdownComponents = {
         a: Link,
-        h1: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={1} />,
-        h2: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={2} />,
-        h3: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={3} />,
-        h4: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={4} />,
-        h5: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={5} />,
-        h6: (props: any) => <Heading {...props} id={idPrefix + props.id} hnum={6} />,
-        img: (props: any) => <MarkdownImg {...props} resolveOpts={resolveOpts} />,
-        source: (props: any) => <MarkdownSource {...props} resolveOpts={resolveOpts} />,
+        h1: (props: React.HTMLAttributes<any>) => (
+            <Heading children={props.children} id={idPrefix + props.id} hnum={1} />
+        ),
+        h2: (props: React.HTMLAttributes<any>) => (
+            <Heading children={props.children} id={idPrefix + props.id} hnum={2} />
+        ),
+        h3: (props: React.HTMLAttributes<any>) => (
+            <Heading children={props.children} id={idPrefix + props.id} hnum={3} />
+        ),
+        h4: (props: React.HTMLAttributes<any>) => (
+            <Heading children={props.children} id={idPrefix + props.id} hnum={4} />
+        ),
+        h5: (props: React.HTMLAttributes<any>) => (
+            <Heading children={props.children} id={idPrefix + props.id} hnum={5} />
+        ),
+        h6: (props: React.HTMLAttributes<any>) => (
+            <Heading children={props.children} id={idPrefix + props.id} hnum={6} />
+        ),
+        img: (props: React.HTMLAttributes<any>) => <MarkdownImg props={props} resolveOpts={resolveOpts} />,
+        source: (props: React.HTMLAttributes<any>) => <MarkdownSource {...props} />,
         code: Code,
-        pre: (props: any) => <CodeBlock {...props} onClickExecute={onClickExecute} />,
+        pre: (props: React.HTMLAttributes<any>) => (
+            <CodeBlock children={props.children} onClickExecute={onClickExecute} />
+        ),
     };
 
     const toc = useMemo(() => {
