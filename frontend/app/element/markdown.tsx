@@ -89,6 +89,8 @@ const MarkdownImg = (props: any) => {
     const [resolvedStr, setResolvedStr] = useState<string>(null);
     const [resolving, setResolving] = useState<boolean>(true);
     const resolveOpts: MarkdownResolveOpts = props.resolveOpts;
+    const propsScrubbed = { ...props };
+    delete propsScrubbed.resolveOpts;
 
     useEffect(() => {
         if (props.src.startsWith("http://") || props.src.startsWith("https://")) {
@@ -132,7 +134,7 @@ const MarkdownImg = (props: any) => {
         return <span>{resolvedStr}</span>;
     }
     if (resolvedSrc != null) {
-        return <img {...props} src={resolvedSrc} />;
+        return <img {...propsScrubbed} src={resolvedSrc} />;
     }
     return <span>[img]</span>;
 };
