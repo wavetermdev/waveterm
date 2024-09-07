@@ -8,7 +8,7 @@ import { isBlank, makeConnRoute, useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
@@ -176,10 +176,6 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
     // Ensure uniqueness of ids between MD preview instances.
     const [idPrefix] = useState<string>(crypto.randomUUID());
 
-    const onTocClick = useCallback((href: string) => {
-        setFocusedHeading(href);
-    }, []);
-
     useEffect(() => {
         if (focusedHeading && contentsOsRef.current && contentsOsRef.current.osInstance()) {
             const { viewport } = contentsOsRef.current.osInstance().elements();
@@ -219,7 +215,7 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                         key={item.href}
                         className="toc-item"
                         style={{ "--indent-factor": item.depth } as React.CSSProperties}
-                        onClick={() => onTocClick(item.href)}
+                        onClick={() => setFocusedHeading(item.href)}
                     >
                         {item.value}
                     </a>
