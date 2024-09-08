@@ -177,7 +177,7 @@ export class WebViewModel implements ViewModel {
         const waveEvent = adaptFromReactOrNativeKeyEvent(event);
         if (checkKeyPressed(waveEvent, "Enter")) {
             const url = globalStore.get(this.url);
-            this.loadUrl(url);
+            this.loadUrl(url, "enter");
             this.urlInputRef.current?.blur();
             return;
         }
@@ -254,14 +254,17 @@ export class WebViewModel implements ViewModel {
      * Load a new URL in the webview.
      * @param newUrl The new URL to load in the webview.
      */
-    loadUrl(newUrl: string) {
-        console.log("loadUrl", newUrl);
+    loadUrl(newUrl: string, reason: string) {
         const nextUrl = this.ensureUrlScheme(newUrl);
-        const normalizedNextUrl = this.normalizeUrl(nextUrl);
-        const normalizedCurUrl = this.normalizeUrl(globalStore.get(this.url));
-
-        if (normalizedCurUrl !== normalizedNextUrl) {
-            this.webviewRef?.current.loadURL(normalizedNextUrl);
+        console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef?.current.getURL());
+        if (newUrl != nextUrl) {
+            globalStore.set(this.url, nextUrl);
+        }
+        if (!this.webviewRef.current) {
+            return;
+        }
+        if (this.webviewRef.current.getURL() != nextUrl) {
+            this.webviewRef.current.loadURL(nextUrl);
         }
     }
 
@@ -345,7 +348,7 @@ const WebView = memo(({ model }: WebViewProps) => {
     useEffect(() => {
         if (metaUrlRef.current != metaUrl) {
             metaUrlRef.current = metaUrl;
-            model.loadUrl(metaUrl);
+            model.loadUrl(metaUrl, "meta");
         }
     }, [metaUrl]);
 
