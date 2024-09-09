@@ -239,7 +239,6 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                     remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
                     rehypePlugins={[
                         rehypeRaw,
-                        () => rehypeSlug({ prefix: idPrefix }),
                         rehypeHighlight,
                         () =>
                             rehypeSanitize({
@@ -256,6 +255,7 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                                 },
                                 tagNames: [...(defaultSchema.tagNames || []), "span"],
                             }),
+                        () => rehypeSlug({ prefix: idPrefix }),
                     ]}
                     components={markdownComponents}
                 >
