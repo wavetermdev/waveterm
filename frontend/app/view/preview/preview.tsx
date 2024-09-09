@@ -80,11 +80,11 @@ export class PreviewModel implements ViewModel {
     blockId: string;
     nodeModel: NodeModel;
     blockAtom: jotai.Atom<Block>;
-    viewIcon: jotai.Atom<string | HeaderIconButton>;
+    viewIcon: jotai.Atom<string | IconButtonDecl>;
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
-    preIconButton: jotai.Atom<HeaderIconButton>;
-    endIconButtons: jotai.Atom<HeaderIconButton[]>;
+    preIconButton: jotai.Atom<IconButtonDecl>;
+    endIconButtons: jotai.Atom<IconButtonDecl[]>;
     previewTextRef: React.RefObject<HTMLDivElement>;
     editMode: jotai.Atom<boolean>;
     canPreview: jotai.PrimitiveAtom<boolean>;
@@ -294,7 +294,7 @@ export class PreviewModel implements ViewModel {
                         icon: "arrows-rotate",
                         click: () => this.refreshCallback?.(),
                     },
-                ] as HeaderIconButton[];
+                ] as IconButtonDecl[];
             } else if (!isCeView && mimeType.startsWith("text/markdown")) {
                 return [
                     {
@@ -303,7 +303,7 @@ export class PreviewModel implements ViewModel {
                         title: "Table of Contents",
                         click: () => this.markdownShowTocToggle(),
                     },
-                ] as HeaderIconButton[];
+                ] as IconButtonDecl[];
             }
             return null;
         });

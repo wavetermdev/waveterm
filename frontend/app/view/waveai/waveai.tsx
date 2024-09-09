@@ -44,11 +44,11 @@ export class WaveAiModel implements ViewModel {
     viewType: string;
     blockId: string;
     blockAtom: Atom<Block>;
-    viewIcon?: Atom<string | HeaderIconButton>;
+    viewIcon?: Atom<string | IconButtonDecl>;
     viewName?: Atom<string>;
     viewText?: Atom<string | HeaderElem[]>;
-    preIconButton?: Atom<HeaderIconButton>;
-    endIconButtons?: Atom<HeaderIconButton[]>;
+    preIconButton?: Atom<IconButtonDecl>;
+    endIconButtons?: Atom<IconButtonDecl[]>;
     messagesAtom: PrimitiveAtom<Array<ChatMessageType>>;
     addMessageAtom: WritableAtom<unknown, [message: ChatMessageType], void>;
     updateLastMessageAtom: WritableAtom<unknown, [text: string, isUpdating: boolean], void>;

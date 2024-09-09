@@ -17,6 +17,7 @@ import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import { openLink } from "../store/global";
+import { IconButton } from "./iconbutton";
 import "./markdown.less";
 
 const Link = ({
@@ -90,7 +91,16 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
             {children}
             <div className="codeblock-actions">
                 <CopyButton onClick={handleCopy} title="Copy" />
-                {onClickExecute && <i className="fa-regular fa-square-terminal" onClick={handleExecute}></i>}
+                {onClickExecute && (
+                    <IconButton
+                        decl={{
+                            elemtype: "iconbutton",
+                            icon: "square-terminal",
+                            click: handleExecute,
+                            className: "fa-regular",
+                        }}
+                    />
+                )}
             </div>
         </pre>
     );

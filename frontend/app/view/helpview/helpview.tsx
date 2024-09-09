@@ -183,7 +183,7 @@ Other useful metadata values to override block titles, icons, colors, themes, et
 class HelpViewModel implements ViewModel {
     viewType: string;
     showTocAtom: PrimitiveAtom<boolean>;
-    endIconButtons: Atom<HeaderIconButton[]>;
+    endIconButtons: Atom<IconButtonDecl[]>;
 
     constructor() {
         this.viewType = "help";
@@ -195,7 +195,7 @@ class HelpViewModel implements ViewModel {
                 title: "Table of Contents",
                 click: () => this.showTocToggle(),
             },
-        ] as HeaderIconButton[]);
+        ] as IconButtonDecl[]);
     }
 
     showTocToggle() {

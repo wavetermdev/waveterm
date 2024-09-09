@@ -3,8 +3,8 @@
 
 import { clsx } from "clsx";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "./button";
 import "./copybutton.less";
+import { IconButton } from "./iconbutton";
 
 type CopyButtonProps = {
     title: string;
@@ -43,13 +43,16 @@ const CopyButton = ({ title, className, onClick }: CopyButtonProps) => {
     }, []);
 
     return (
-        <Button
-            onClick={handleOnClick}
-            className={clsx("copy-button secondary ghost", className, { copied: isCopied })}
-            title={title}
-        >
-            {isCopied ? <i className="fa-sharp fa-solid fa-check"></i> : <i className="fa-sharp fa-solid fa-copy"></i>}
-        </Button>
+        <IconButton
+            decl={{
+                elemtype: "iconbutton",
+                icon: isCopied ? "check" : "copy",
+                title,
+                className: clsx("copy-button", { copied: isCopied }),
+                click: handleOnClick,
+            }}
+            className={className}
+        ></IconButton>
     );
 };
 

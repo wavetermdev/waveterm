@@ -18,7 +18,7 @@ export class WebViewModel implements ViewModel {
     viewType: string;
     blockId: string;
     blockAtom: jotai.Atom<Block>;
-    viewIcon: jotai.Atom<string | HeaderIconButton>;
+    viewIcon: jotai.Atom<string | IconButtonDecl>;
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
     url: jotai.PrimitiveAtom<string>;

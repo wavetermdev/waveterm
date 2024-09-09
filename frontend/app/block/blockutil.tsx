@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { NumActiveConnColors } from "@/app/block/blockframe";
-import { useLongClick } from "@/app/hook/useLongClick";
 import { getConnStatusAtom, waveEventSubscribe, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { makeORef } from "@/app/store/wos";
@@ -138,20 +137,6 @@ export function getBlockHeaderIcon(blockIcon: string, blockData: Block): React.R
     }
     return blockIconElem;
 }
-
-export const IconButton = React.memo(({ decl, className }: { decl: HeaderIconButton; className?: string }) => {
-    const buttonRef = React.useRef<HTMLDivElement>(null);
-    useLongClick(buttonRef, decl.click, decl.longClick, decl.disabled);
-    return (
-        <div
-            ref={buttonRef}
-            className={clsx("iconbutton", className, decl.className, { disabled: decl.disabled })}
-            title={decl.title}
-        >
-            {typeof decl.icon === "string" ? <i className={util.makeIconClass(decl.icon, true)} /> : decl.icon}
-        </div>
-    );
-});
 
 interface ConnectionButtonProps {
     connection: string;

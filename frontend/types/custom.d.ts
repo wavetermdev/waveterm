@@ -148,9 +148,9 @@ declare global {
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
-    type HeaderElem = HeaderIconButton | HeaderText | HeaderInput | HeaderDiv | HeaderTextButton | ConnectionButton;
+    type HeaderElem = IconButtonDecl | HeaderText | HeaderInput | HeaderDiv | HeaderTextButton | ConnectionButton;
 
-    type HeaderIconButton = {
+    type IconButtonDecl = {
         elemtype: "iconbutton";
         icon: string | React.ReactNode;
         className?: string;
@@ -207,11 +207,11 @@ declare global {
 
     interface ViewModel {
         viewType: string;
-        viewIcon?: jotai.Atom<string | HeaderIconButton>;
+        viewIcon?: jotai.Atom<string | IconButtonDecl>;
         viewName?: jotai.Atom<string>;
         viewText?: jotai.Atom<string | HeaderElem[]>;
-        preIconButton?: jotai.Atom<HeaderIconButton>;
-        endIconButtons?: jotai.Atom<HeaderIconButton[]>;
+        preIconButton?: jotai.Atom<IconButtonDecl>;
+        endIconButtons?: jotai.Atom<IconButtonDecl[]>;
         blockBg?: jotai.Atom<MetaType>;
         manageConnection?: jotai.Atom<boolean>;
 

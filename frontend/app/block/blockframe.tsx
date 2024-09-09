@@ -8,7 +8,6 @@ import {
     ConnectionButton,
     ControllerStatusIcon,
     getBlockHeaderIcon,
-    IconButton,
     Input,
 } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
@@ -29,6 +28,7 @@ import {
 } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { WshServer } from "@/app/store/wshserver";
+import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
 import { NodeModel } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
@@ -88,7 +88,7 @@ function handleHeaderContextMenu(
     ContextMenuModel.showContextMenu(menu, e);
 }
 
-function getViewIconElem(viewIconUnion: string | HeaderIconButton, blockData: Block): JSX.Element {
+function getViewIconElem(viewIconUnion: string | IconButtonDecl, blockData: Block): JSX.Element {
     if (viewIconUnion == null || typeof viewIconUnion === "string") {
         const viewIcon = viewIconUnion as string;
         return <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>;
@@ -99,7 +99,7 @@ function getViewIconElem(viewIconUnion: string | HeaderIconButton, blockData: Bl
 
 const OptMagnifyButton = React.memo(
     ({ magnified, toggleMagnify, disabled }: { magnified: boolean; toggleMagnify: () => void; disabled: boolean }) => {
-        const magnifyDecl: HeaderIconButton = {
+        const magnifyDecl: IconButtonDecl = {
             elemtype: "iconbutton",
             icon: <MagnifyIcon enabled={magnified} />,
             title: magnified ? "Minimize" : "Magnify",
@@ -124,7 +124,7 @@ function computeEndIcons(
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(...endIconButtons.map((button, idx) => <IconButton key={idx} decl={button} />));
     }
-    const settingsDecl: HeaderIconButton = {
+    const settingsDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "cog",
         title: "Settings",
@@ -139,7 +139,7 @@ function computeEndIcons(
             disabled={magnifyDisabled}
         />
     );
-    const closeDecl: HeaderIconButton = {
+    const closeDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "xmark-large",
         title: "Close",

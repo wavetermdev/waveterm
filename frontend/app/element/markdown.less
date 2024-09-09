@@ -85,29 +85,12 @@
                 top: 0;
                 right: 0;
                 border-radius: 4px;
+                backdrop-filter: blur(8px);
+                margin: 2px 2px;
+                padding: 4px 4px;
                 align-items: center;
                 justify-content: flex-end;
-
-                i {
-                    color: var(--line-actions-inactive-color);
-                    margin-left: 4px;
-
-                    &:first-child {
-                        margin-left: 0px;
-                    }
-
-                    &:hover {
-                        color: var(--line-actions-active-color);
-                    }
-
-                    &.fa-check {
-                        color: var(--success-color);
-                    }
-
-                    &.fa-square-terminal {
-                        cursor: pointer;
-                    }
-                }
+                gap: 4px;
             }
 
             &:hover .codeblock-actions {
