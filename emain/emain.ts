@@ -445,7 +445,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
             return;
         }
         const numWindows = electron.BrowserWindow.getAllWindows().length;
-        if ((unamePlatform == "win32" || unamePlatform == "linux") && numWindows == 1) {
+        if (numWindows == 1) {
             return;
         }
         const choice = electron.dialog.showMessageBoxSync(win, {
@@ -463,7 +463,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
             return;
         }
         const numWindows = electron.BrowserWindow.getAllWindows().length;
-        if ((unamePlatform == "win32" || unamePlatform == "linux") && numWindows == 0) {
+        if (numWindows == 0) {
             return;
         }
         services.WindowService.CloseWindow(waveWindow.oid);
@@ -669,9 +669,25 @@ if (unamePlatform !== "darwin") {
 
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
-    const newWindow = await services.ClientService.MakeWindow();
     const fullConfig = await services.FileService.GetFullConfig();
+    let recreatedWindow = false;
+    if (electron.BrowserWindow.getAllWindows().length === 0 && clientData?.windowids?.length >= 1) {
+        // reopen the first window
+        const existingWindowId = clientData.windowids[0];
+        const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
+        if (existingWindowData != null) {
+            const win = createBrowserWindow(clientData.oid, existingWindowData, fullConfig);
+            await win.readyPromise;
+            win.show();
+            recreatedWindow = true;
+        }
+    }
+    if (recreatedWindow) {
+        return;
+    }
+    const newWindow = await services.ClientService.MakeWindow();
     const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig);
+    await newBrowserWindow.readyPromise;
     newBrowserWindow.show();
 }
 
