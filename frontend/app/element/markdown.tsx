@@ -89,7 +89,7 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
         <pre className="codeblock">
             {children}
             <div className="codeblock-actions">
-                <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
+                <CopyButton onClick={handleCopy} title="Copy" />
                 {onClickExecute && <i className="fa-regular fa-square-terminal" onClick={handleExecute}></i>}
             </div>
         </pre>
