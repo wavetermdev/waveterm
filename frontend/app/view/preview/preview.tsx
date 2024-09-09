@@ -14,6 +14,7 @@ import { getWebServerEndpoint } from "@/util/endpoints";
 import * as historyutil from "@/util/historyutil";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
+import { makeConnRoute } from "@/util/util";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
 import * as jotai from "jotai";
