@@ -11,51 +11,59 @@ import "./typeaheadmodal.less";
 interface SuggestionsProps {
     suggestions?: SuggestionsType[];
     onSelect?: (_: string) => void;
+    selectIndex: number;
 }
 
-const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(({ suggestions, onSelect }: SuggestionsProps, ref) => {
-    const renderIcon = (icon: string | React.ReactNode, color: string) => {
-        if (typeof icon === "string") {
-            return <i className={makeIconClass(icon, false)} style={{ color: color }}></i>;
-        }
-        return icon;
-    };
+const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(
+    ({ suggestions, onSelect, selectIndex }: SuggestionsProps, ref) => {
+        const renderIcon = (icon: string | React.ReactNode, color: string) => {
+            if (typeof icon === "string") {
+                return <i className={makeIconClass(icon, false)} style={{ color: color }}></i>;
+            }
+            return icon;
+        };
 
-    const renderItem = (item: SuggestionBaseItem | SuggestionConnectionItem, index: number) => (
-        <div
-            key={index}
-            onClick={() => {
-                if ("onSelect" in item && item.onSelect) {
-                    item.onSelect(item.label);
-                } else {
-                    onSelect(item.label);
-                }
-            }}
-            className="suggestion-item"
-        >
-            <div className="typeahead-item-name">
-                {item.icon && renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
-                {item.label}
+        const renderItem = (item: SuggestionBaseItem | SuggestionConnectionItem, index: number) => (
+            <div
+                key={index}
+                onClick={() => {
+                    if ("onSelect" in item && item.onSelect) {
+                        item.onSelect(item.value);
+                    } else {
+                        onSelect(item.value);
+                    }
+                }}
+                className={clsx("suggestion-item", { selected: selectIndex === index })}
+            >
+                <div className="typeahead-item-name">
+                    {item.icon &&
+                        renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
+                    {item.label}
+                </div>
             </div>
-        </div>
-    );
+        );
 
-    return (
-        <div ref={ref} className="suggestions">
-            {suggestions.map((item, index) => {
-                if ("headerText" in item) {
-                    return (
-                        <div key={index}>
-                            {item.headerText && <div className="suggestion-header">{item.headerText}</div>}
-                            {item.items.map((subItem, subIndex) => renderItem(subItem, subIndex))}
-                        </div>
-                    );
-                }
-                return renderItem(item as SuggestionBaseItem, index);
-            })}
-        </div>
-    );
-});
+        let fullIndex = -1;
+        return (
+            <div ref={ref} className="suggestions">
+                {suggestions.map((item, index) => {
+                    if ("headerText" in item) {
+                        return (
+                            <div key={index}>
+                                {item.headerText && <div className="suggestion-header">{item.headerText}</div>}
+                                {item.items.map((subItem, subIndex) => {
+                                    fullIndex += 1;
+                                    return renderItem(subItem, fullIndex);
+                                })}
+                            </div>
+                        );
+                    }
+                    return renderItem(item as SuggestionBaseItem, index);
+                })}
+            </div>
+        );
+    }
+);
 
 interface TypeAheadModalProps {
     anchorRef: React.RefObject<HTMLDivElement>;
@@ -70,6 +78,7 @@ interface TypeAheadModalProps {
     onKeyDown?: (_) => void;
     giveFocusRef?: React.MutableRefObject<() => boolean>;
     autoFocus?: boolean;
+    selectIndex?: number;
 }
 
 const TypeAheadModal = ({
@@ -85,6 +94,7 @@ const TypeAheadModal = ({
     onClickBackdrop,
     giveFocusRef,
     autoFocus,
+    selectIndex,
 }: TypeAheadModalProps) => {
     const { width, height } = useDimensions(blockRef);
     const modalRef = useRef<HTMLDivElement>(null);
@@ -139,7 +149,6 @@ const TypeAheadModal = ({
         let modalWidth = 300;
 
         if (modalWidth > availableWidth) {
-            console.log("got here!!!!!");
             modalWidth = availableWidth;
         }
 
@@ -226,7 +235,12 @@ const TypeAheadModal = ({
                     }}
                 >
                     {suggestions?.length > 0 && (
-                        <Suggestions ref={suggestionsRef} suggestions={suggestions} onSelect={handleSelect} />
+                        <Suggestions
+                            ref={suggestionsRef}
+                            suggestions={suggestions}
+                            onSelect={handleSelect}
+                            selectIndex={selectIndex}
+                        />
                     )}
                 </div>
             </div>

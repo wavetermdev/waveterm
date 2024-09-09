@@ -492,6 +492,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatus = jotai.useAtomValue(connStatusAtom);
         const [connList, setConnList] = React.useState<Array<string>>([]);
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
+        const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
@@ -506,14 +507,10 @@ const ChangeConnectionBlockModal = React.memo(
                 return;
             }
             const prtn = WshServer.ConnListCommand({ timeout: 2000 });
-            prtn.then((connList) => {
-                setConnList(connList ?? []);
+            prtn.then((newConnList) => {
+                setConnList(newConnList ?? []);
             }).catch((e) => console.log("unable to load conn list from backend. using blank list: ", e));
-        }, [changeConnModalOpen]);
-
-        React.useEffect(() => {
-            console.log("connSelected is: ", connSelected);
-        }, [connSelected]);
+        }, [changeConnModalOpen, setConnList]);
 
         const changeConnection = React.useCallback(
             async (connName: string) => {
@@ -534,7 +531,6 @@ const ChangeConnectionBlockModal = React.memo(
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newCwd },
                 });
-                const tabId = globalStore.get(atoms.activeTabId);
                 try {
                     await WshServer.ConnEnsureCommand(connName, { timeout: 60000 });
                 } catch (e) {
@@ -588,7 +584,6 @@ const ChangeConnectionBlockModal = React.memo(
         };
         const priorityItems: Array<SuggestionConnectionItem> = [];
         if (createNew) {
-            console.log("added to priority items");
             priorityItems.push(newConnectionSuggestion);
         }
         if (showReconnect && (connStatus.status == "disconnected" || connStatus.status == "error")) {
@@ -610,10 +605,6 @@ const ChangeConnectionBlockModal = React.memo(
                 iconColor: "var(--grey-text-color)",
                 value: "",
                 label: localName,
-                onSelect: (_: string) => {
-                    changeConnection("");
-                    globalStore.set(changeConnModalAtom, false);
-                },
             });
         }
         const remoteItems = filteredList.map((connName) => {
@@ -647,14 +638,30 @@ const ChangeConnectionBlockModal = React.memo(
             suggestions.push(remoteSuggestions);
         }
 
+        let selectionList: Array<SuggestionConnectionItem> = [
+            ...prioritySuggestions.items,
+            ...localSuggestion.items,
+            ...remoteSuggestions.items,
+        ];
+
+        // quick way to change icon color when highlighted
+        selectionList = selectionList.map((item, index) => {
+            if (index == rowIndex && item.iconColor == "var(--grey-text-color)") {
+                item.iconColor = "var(--main-text-color)";
+            }
+            return item;
+        });
+
         const handleTypeAheadKeyDown = React.useCallback(
             (waveEvent: WaveKeyboardEvent): boolean => {
                 if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
-                    changeConnection(connSelected);
-                    globalStore.set(changeConnModalAtom, false);
-                    setConnSelected("");
-                    refocusNode(blockId);
-                    return true;
+                    const rowItem = selectionList[rowIndex];
+                    if ("onSelect" in rowItem && rowItem.onSelect) {
+                        rowItem.onSelect(rowItem.value);
+                    } else {
+                        changeConnection(rowItem.value);
+                        globalStore.set(changeConnModalAtom, false);
+                    }
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                     globalStore.set(changeConnModalAtom, false);
@@ -662,8 +669,16 @@ const ChangeConnectionBlockModal = React.memo(
                     refocusNode(blockId);
                     return true;
                 }
+                if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
+                    setRowIndex((idx) => Math.max(idx - 1, 0));
+                    return true;
+                }
+                if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
+                    setRowIndex((idx) => Math.min(idx + 1, filteredList.length));
+                    return true;
+                }
             },
-            [changeConnModalAtom, viewModel, blockId, connSelected]
+            [changeConnModalAtom, viewModel, blockId, connSelected, selectionList]
         );
         // this check was also moved to BlockFrame to prevent all the above code from running unnecessarily
         if (!changeConnModalOpen) {
@@ -678,6 +693,7 @@ const ChangeConnectionBlockModal = React.memo(
                     changeConnection(selected);
                     globalStore.set(changeConnModalAtom, false);
                 }}
+                selectIndex={rowIndex}
                 autoFocus={isNodeFocused}
                 onKeyDown={(e) => keyutil.keydownWrapper(handleTypeAheadKeyDown)(e)}
                 onChange={(current: string) => setConnSelected(current)}

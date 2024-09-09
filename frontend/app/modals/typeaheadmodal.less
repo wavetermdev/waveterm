@@ -85,10 +85,15 @@
             align-items: center;
             gap: 8px;
             align-self: stretch;
+            border-radius: 4px;
 
-            &:hover {
+            &.selected {
+                background-color: rgb(from var(--accent-color) r g b / 0.5);
+                color: var(--main-text-color);
+            }
+
+            &:hover:not(.selected) {
                 background-color: var(--highlight-bg-color);
-                border-radius: 4px;
             }
 
             .typeahead-item-name {
