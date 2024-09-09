@@ -2,9 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { clsx } from "clsx";
-import * as React from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./button";
-
 import "./copybutton.less";
 
 type CopyButtonProps = {
@@ -14,8 +13,8 @@ type CopyButtonProps = {
 };
 
 const CopyButton = ({ title, className, onClick }: CopyButtonProps) => {
-    const [isCopied, setIsCopied] = React.useState(false);
-    const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const [isCopied, setIsCopied] = useState(false);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleOnClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         if (isCopied) {
@@ -35,7 +34,7 @@ const CopyButton = ({ title, className, onClick }: CopyButtonProps) => {
         }
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
         return () => {
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
@@ -44,7 +43,11 @@ const CopyButton = ({ title, className, onClick }: CopyButtonProps) => {
     }, []);
 
     return (
-        <Button onClick={handleOnClick} className={clsx("copy-button secondary ghost", className)} title={title}>
+        <Button
+            onClick={handleOnClick}
+            className={clsx("copy-button secondary ghost", className, { copied: isCopied })}
+            title={title}
+        >
             {isCopied ? <i className="fa-sharp fa-solid fa-check"></i> : <i className="fa-sharp fa-solid fa-copy"></i>}
         </Button>
     );

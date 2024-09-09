@@ -10,7 +10,9 @@ import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
@@ -47,8 +49,8 @@ const Heading = ({ props, hnum }: { props: React.HTMLAttributes<HTMLHeadingEleme
     );
 };
 
-const Code = ({ children }: { children: React.ReactNode }) => {
-    return <code>{children}</code>;
+const Code = ({ className, children }: { className: string; children: React.ReactNode }) => {
+    return <code className={className}>{children}</code>;
 };
 
 type CodeBlockProps = {
@@ -235,7 +237,26 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
             >
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
-                    rehypePlugins={[rehypeRaw, () => rehypeSlug({ prefix: idPrefix })]}
+                    rehypePlugins={[
+                        rehypeRaw,
+                        () => rehypeSlug({ prefix: idPrefix }),
+                        rehypeHighlight,
+                        () =>
+                            rehypeSanitize({
+                                ...defaultSchema,
+                                attributes: {
+                                    ...defaultSchema.attributes,
+                                    span: [
+                                        ...(defaultSchema.attributes?.span || []),
+                                        // Allow all class names starting with `hljs-`.
+                                        ["className", /^hljs-./],
+                                        // Alternatively, to allow only certain class names:
+                                        // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
+                                    ],
+                                },
+                                tagNames: [...(defaultSchema.tagNames || []), "span"],
+                            }),
+                    ]}
                     components={markdownComponents}
                 >
                     {text}
