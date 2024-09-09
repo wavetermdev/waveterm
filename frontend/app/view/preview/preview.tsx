@@ -296,7 +296,7 @@ export class PreviewModel implements ViewModel {
                         click: () => this.refreshCallback?.(),
                     },
                 ] as IconButtonDecl[];
-            } else if (!isCeView && mimeType.startsWith("text/markdown")) {
+            } else if (!isCeView && mimeType?.startsWith("text/markdown")) {
                 return [
                     {
                         elemtype: "iconbutton",
