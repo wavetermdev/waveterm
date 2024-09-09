@@ -324,6 +324,23 @@ export class WebViewModel implements ViewModel {
         }
         return false;
     }
+
+    getSettingsMenuItems() {
+        return [
+            {
+                label: this.webviewRef.current?.isDevToolsOpened() ? "Close DevTools" : "Open DevTools",
+                click: async () => {
+                    if (this.webviewRef.current) {
+                        if (this.webviewRef.current.isDevToolsOpened()) {
+                            this.webviewRef.current.closeDevTools();
+                        } else {
+                            this.webviewRef.current.openDevTools();
+                        }
+                    }
+                },
+            },
+        ];
+    }
 }
 
 function makeWebViewModel(blockId: string, nodeModel: NodeModel): WebViewModel {
