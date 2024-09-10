@@ -18,8 +18,9 @@ func init() {
 }
 
 var rcfilesCmd = &cobra.Command{
-	Use:   "rcfiles",
-	Short: "Generate the rc files needed for various shells",
+	Use:    "rcfiles",
+	Hidden: true,
+	Short:  "Generate the rc files needed for various shells",
 	Run: func(cmd *cobra.Command, args []string) {
 		home := wavebase.GetHomeDir()
 		waveDir := filepath.Join(home, ".waveterm")

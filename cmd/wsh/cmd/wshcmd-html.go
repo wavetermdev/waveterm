@@ -16,6 +16,7 @@ func init() {
 
 var htmlCmd = &cobra.Command{
 	Use:     "html",
+	Hidden:  true,
 	Short:   "Launch a demo html-mode terminal",
 	Run:     htmlRun,
 	PreRunE: preRunSetupRpcClient,
