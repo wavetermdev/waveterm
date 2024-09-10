@@ -362,6 +362,18 @@ const WebView = memo(({ model }: WebViewProps) => {
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(metaUrl);
 
+    const [webContentsId, setWebContentsId] = useState(null);
+    const [domReady, setDomReady] = useState(false);
+
+    useEffect(() => {
+        if (model.webviewRef.current && domReady) {
+            const wcId = model.webviewRef.current.getWebContentsId?.();
+            if (wcId) {
+                setWebContentsId(wcId);
+            }
+        }
+    }, [model.webviewRef.current, domReady]);
+
     // Load a new URL if the block metadata is updated.
     useEffect(() => {
         if (metaUrlRef.current != metaUrl) {
@@ -409,6 +421,9 @@ const WebView = memo(({ model }: WebViewProps) => {
             const webviewBlur = () => {
                 getApi().setWebviewFocus(null);
             };
+            const handleDomReady = () => {
+                setDomReady(true);
+            };
 
             webview.addEventListener("did-navigate-in-page", navigateListener);
             webview.addEventListener("did-navigate", navigateListener);
@@ -416,9 +431,9 @@ const WebView = memo(({ model }: WebViewProps) => {
             webview.addEventListener("did-stop-loading", stopLoadingHandler);
             webview.addEventListener("new-window", newWindowHandler);
             webview.addEventListener("did-fail-load", failLoadHandler);
-
             webview.addEventListener("focus", webviewFocus);
             webview.addEventListener("blur", webviewBlur);
+            webview.addEventListener("dom-ready", handleDomReady);
 
             // Clean up event listeners on component unmount
             return () => {
@@ -428,8 +443,9 @@ const WebView = memo(({ model }: WebViewProps) => {
                 webview.removeEventListener("did-fail-load", failLoadHandler);
                 webview.removeEventListener("did-start-loading", startLoadingHandler);
                 webview.removeEventListener("did-stop-loading", stopLoadingHandler);
-                webview.addEventListener("focus", webviewFocus);
-                webview.addEventListener("blur", webviewBlur);
+                webview.removeEventListener("focus", webviewFocus);
+                webview.removeEventListener("blur", webviewBlur);
+                webview.removeEventListener("dom-ready", handleDomReady);
             };
         }
     }, []);
@@ -440,6 +456,8 @@ const WebView = memo(({ model }: WebViewProps) => {
             className="webview"
             ref={model.webviewRef}
             src={metaUrlInitial}
+            data-blockid={model.blockId}
+            data-webcontentsid={webContentsId} // needed for emain
             // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
             allowpopups="true"
         ></webview>

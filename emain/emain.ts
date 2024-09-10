@@ -824,6 +824,12 @@ async function relaunchBrowserWindows(): Promise<void> {
     }
 }
 
+process.on("uncaughtException", (error) => {
+    console.error("Uncaught Exception:", error);
+    console.error("Stack Trace:", error.stack);
+    electron.app.quit();
+});
+
 async function appMain() {
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();

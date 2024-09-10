@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-const { contextBridge, ipcRenderer } = require("electron");
+import { contextBridge, ipcRenderer, WebviewTag } from "electron";
 
 contextBridge.exposeInMainWorld("api", {
     getAuthKey: () => ipcRenderer.sendSync("get-auth-key"),
@@ -41,4 +41,10 @@ contextBridge.exposeInMainWorld("api", {
 ipcRenderer.on("webview-new-window", (e, webContentsId, details) => {
     const event = new CustomEvent("new-window", { detail: details });
     document.getElementById("webview").dispatchEvent(event);
+});
+
+ipcRenderer.on("webcontentsid-from-blockid", (e, blockId, responseCh) => {
+    const webviewElem: WebviewTag = document.querySelector("div[data-blockid='" + blockId + "'] webview");
+    const wcId = webviewElem?.dataset?.webcontentsid;
+    ipcRenderer.send(responseCh, wcId);
 });

@@ -18,16 +18,36 @@ var webCmd = &cobra.Command{
 	PersistentPreRunE: preRunSetupRpcClient,
 }
 
-var webOpenCommand = &cobra.Command{
+var webOpenCmd = &cobra.Command{
 	Use:   "open url",
 	Short: "open a url a web widget",
 	Args:  cobra.ExactArgs(1),
 	RunE:  webOpenRun,
 }
 
+var webGetCmd = &cobra.Command{
+	Use:    "get [--inner] [--all] css-selector",
+	Short:  "get the html for a css selector",
+	Args:   cobra.ExactArgs(1),
+	Hidden: true,
+	RunE:   webGetRun,
+}
+
+var webGetInner bool
+var webGetAll bool
+var webOpenMagnified bool
+
 func init() {
-	webCmd.AddCommand(webOpenCommand)
+	webOpenCmd.Flags().BoolVarP(&webOpenMagnified, "magnified", "m", false, "open view in magnified mode")
+	webCmd.AddCommand(webOpenCmd)
+	webGetCmd.Flags().BoolVarP(&webGetInner, "inner", "", false, "get inner html (instead of outer)")
+	webGetCmd.Flags().BoolVarP(&webGetAll, "all", "", false, "get all matches (querySelectorAll)")
+	webCmd.AddCommand(webGetCmd)
 	rootCmd.AddCommand(webCmd)
+}
+
+func webGetRun(cmd *cobra.Command, args []string) error {
+	return nil
 }
 
 func webOpenRun(cmd *cobra.Command, args []string) error {
@@ -38,7 +58,7 @@ func webOpenRun(cmd *cobra.Command, args []string) error {
 				waveobj.MetaKey_Url:  args[0],
 			},
 		},
-		Magnified: viewMagnified,
+		Magnified: webOpenMagnified,
 	}
 	oref, err := wshclient.CreateBlockCommand(RpcClient, wshCmd, nil)
 	if err != nil {
