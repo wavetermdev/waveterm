@@ -53,9 +53,6 @@ export class WebViewModel implements ViewModel {
 
         this.viewText = jotai.atom((get) => {
             let url = get(this.blockAtom)?.meta?.url || "";
-            if (url && get(this.url) === undefined) {
-                globalStore.set(this.url, url);
-            }
             const urlIsDirty = get(this.isUrlDirty);
             if (urlIsDirty) {
                 const currUrl = get(this.url);
