@@ -44,16 +44,37 @@ const SpecializedViewMap: { [view: string]: ({ model }: SpecializedViewProps) =>
     directory: DirectoryPreview,
 };
 
+const textApplicationMimetypes = [
+    "application/sql",
+    "application/pem-certificate-chain",
+    "application/x-php",
+    "application/x-httpd-php",
+    "application/liquid",
+    "application/graphql",
+    "application/javascript",
+    "application/typescript",
+    "application/x-javascript",
+    "application/x-typescript",
+    "application/dart",
+    "application/vnd.dart",
+    "application/x-ruby",
+    "application/sql",
+    "application/wasm",
+    "application/x-latex",
+    "application/x-sh",
+    "application/x-python",
+];
+
 function isTextFile(mimeType: string): boolean {
     if (mimeType == null) {
         return false;
     }
     return (
         mimeType.startsWith("text/") ||
-        mimeType == "application/sql" ||
+        textApplicationMimetypes.includes(mimeType) ||
         (mimeType.startsWith("application/") &&
             (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml"))) ||
-        mimeType == "application/pem-certificate-chain"
+        mimeType.includes("xml")
     );
 }
 

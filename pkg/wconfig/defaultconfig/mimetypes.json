@@ -5,6 +5,12 @@
     "application/pdf": {
         "icon": "file-pdf"
     },
+    "application/javascript": {
+        "icon": "js fa-brands"
+    },
+    "application/typescript": {
+        "icon": "js fa-brands"
+    },
     "application/json": {
         "icon": "file-lines"
     },
@@ -53,5 +59,14 @@
     },
     "text/csv": {
         "icon": "file-csv"
+    },
+    "text/x-dart": {
+        "icon": "dart-lang fa-brands"
+    },
+    "text/x-go": {
+        "icon": "golang fa-brands"
+    },
+    "text/x-rust": {
+        "icon": "rust fa-brands"
     }
 }
