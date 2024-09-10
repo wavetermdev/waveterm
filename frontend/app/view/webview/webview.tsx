@@ -12,6 +12,7 @@ import clsx from "clsx";
 import { WebviewTag } from "electron";
 import * as jotai from "jotai";
 import React, { memo, useEffect, useState } from "react";
+import { debounce } from "throttle-debounce";
 import "./webview.less";
 
 export class WebViewModel implements ViewModel {
@@ -385,10 +386,14 @@ const WebView = memo(({ model }: WebViewProps) => {
             const startLoadingHandler = () => {
                 model.setRefreshIcon("xmark-large");
                 model.setIsLoading(true);
+                webview.style.backgroundColor = "transparent";
             };
             const stopLoadingHandler = () => {
                 model.setRefreshIcon("rotate-right");
                 model.setIsLoading(false);
+                debounce(1000, () => {
+                    webview.style.backgroundColor = "white";
+                })();
             };
             const failLoadHandler = (e: any) => {
                 if (e.errorCode === -3) {
