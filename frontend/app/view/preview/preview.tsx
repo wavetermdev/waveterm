@@ -126,9 +126,7 @@ export class PreviewModel implements ViewModel {
     fileMimeType: jotai.Atom<Promise<string>>;
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
     fileContent: jotai.Atom<Promise<string>>;
-    fileContentLastSaved: jotai.PrimitiveAtom<string>;
-    fileContentModified: jotai.PrimitiveAtom<string>;
-    previewFileContent: jotai.WritableAtom<Promise<string>, [value: string], void>;
+    newFileContent: jotai.PrimitiveAtom<string | null>;
 
     openFileModal: jotai.PrimitiveAtom<boolean>;
     openFileError: jotai.PrimitiveAtom<string>;
@@ -210,7 +208,6 @@ export class PreviewModel implements ViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.edit ?? false;
         });
-
         this.viewName = jotai.atom("Preview");
         this.viewText = jotai.atom((get) => {
             let headerPath = get(this.metaFilePath);
@@ -244,7 +241,7 @@ export class PreviewModel implements ViewModel {
                 },
             ];
             let saveClassName = "secondary";
-            if (get(this.fileContentModified) !== null) {
+            if (get(this.newFileContent) !== null) {
                 saveClassName = "primary";
             }
             if (isCeView) {
@@ -371,6 +368,7 @@ export class PreviewModel implements ViewModel {
             return fileInfo?.mimetype;
         });
         this.fileMimeTypeLoadable = loadable(this.fileMimeType);
+        this.newFileContent = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.goParentDirectory = this.goParentDirectory.bind(this);
 
         const fullFileAtom = jotai.atom<Promise<FullFile>>(async (get) => {
@@ -390,23 +388,6 @@ export class PreviewModel implements ViewModel {
 
         this.fullFile = fullFileAtom;
         this.fileContent = fileContentAtom;
-
-        this.fileContentModified = jotai.atom();
-        this.fileContentLastSaved = jotai.atom();
-        this.previewFileContent = jotai.atom(
-            async (get) => {
-                const fileContentModified = get(this.fileContentModified);
-                const fileContentLastSaved = get(this.fileContentLastSaved);
-                if (!fileContentModified) {
-                    return fileContentLastSaved ?? (await get(this.fileContent));
-                } else {
-                    return fileContentModified;
-                }
-            },
-            (_get, set, value) => {
-                set(this.fileContentModified, value);
-            }
-        );
 
         this.specializedView = jotai.atom<Promise<{ specializedView?: string; errorStr?: string }>>(async (get) => {
             return this.getSpecializedView(get);
@@ -552,7 +533,7 @@ export class PreviewModel implements ViewModel {
         if (filePath == null) {
             return;
         }
-        const newFileContent = globalStore.get(this.fileContentModified);
+        const newFileContent = globalStore.get(this.newFileContent);
         if (newFileContent == null) {
             console.log("not saving file, newFileContent is null");
             return;
@@ -560,8 +541,7 @@ export class PreviewModel implements ViewModel {
         const conn = globalStore.get(this.connection) ?? "";
         try {
             services.FileService.SaveFile(conn, filePath, util.stringToBase64(newFileContent));
-            globalStore.set(this.fileContentModified, null);
-            globalStore.set(this.fileContentLastSaved, newFileContent);
+            globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
         } catch (error) {
             console.error("Error saving file:", error);
@@ -569,7 +549,9 @@ export class PreviewModel implements ViewModel {
     }
 
     async handleFileRevert() {
-        globalStore.set(this.fileContentModified, null);
+        const fileContent = await globalStore.get(this.fileContent);
+        this.monacoRef.current?.setValue(fileContent);
+        globalStore.set(this.newFileContent, null);
     }
 
     async handleOpenFile(filePath: string) {
@@ -639,7 +621,7 @@ export class PreviewModel implements ViewModel {
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         if (loadableSV.state == "hasData") {
             if (loadableSV.data.specializedView == "codeedit") {
-                if (globalStore.get(this.fileContentModified) != null) {
+                if (globalStore.get(this.newFileContent) != null) {
                     menuItems.push({ type: "separator" });
                     menuItems.push({
                         label: "Save File",
@@ -729,11 +711,7 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
     }, [connName, fileInfo.dir]);
     return (
         <div className="view-preview view-preview-markdown">
-            <Markdown
-                textAtom={model.previewFileContent}
-                showTocAtom={model.markdownShowToc}
-                resolveOpts={resolveOpts}
-            />
+            <Markdown textAtom={model.fileContent} showTocAtom={model.markdownShowToc} resolveOpts={resolveOpts} />
         </div>
     );
 }
@@ -784,7 +762,8 @@ function StreamingPreview({ model }: SpecializedViewProps) {
 }
 
 function CodeEditPreview({ model }: SpecializedViewProps) {
-    const setNewFileContent = jotai.useSetAtom(model.previewFileContent);
+    const fileContent = jotai.useAtomValue(model.fileContent);
+    const setNewFileContent = jotai.useSetAtom(model.newFileContent);
     const fileName = jotai.useAtomValue(model.statFilePath);
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
@@ -833,16 +812,16 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 
     return (
         <CodeEditor
-            textAtom={model.previewFileContent}
+            text={fileContent}
             filename={fileName}
-            onChange={setNewFileContent}
+            onChange={(text) => setNewFileContent(text)}
             onMount={onMount}
         />
     );
 }
 
 function CSVViewPreview({ model, parentRef }: SpecializedViewProps) {
-    const fileContent = jotai.useAtomValue(model.previewFileContent);
+    const fileContent = jotai.useAtomValue(model.fileContent);
     const fileName = jotai.useAtomValue(model.statFilePath);
     return <CSVView parentRef={parentRef} readonly={true} content={fileContent} filename={fileName} />;
 }

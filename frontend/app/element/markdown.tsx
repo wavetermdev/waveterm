@@ -178,7 +178,7 @@ type MarkdownProps = {
 };
 
 const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, onClickExecute }: MarkdownProps) => {
-    const textAtomValue = useAtomValueSafe<string>(textAtom);
+    const textAtomValue = useAtomValueSafe(textAtom);
     const tocRef = useRef<TocItem[]>([]);
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
     const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
