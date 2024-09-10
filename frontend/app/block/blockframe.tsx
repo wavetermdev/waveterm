@@ -680,6 +680,9 @@ const ChangeConnectionBlockModal = React.memo(
             },
             [changeConnModalAtom, viewModel, blockId, connSelected, selectionList]
         );
+        React.useEffect(() => {
+            setRowIndex((idx) => Math.min(idx, filteredList.length));
+        }, [selectionList, setRowIndex]);
         // this check was also moved to BlockFrame to prevent all the above code from running unnecessarily
         if (!changeConnModalOpen) {
             return null;
