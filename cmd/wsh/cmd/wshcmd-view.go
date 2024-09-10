@@ -17,7 +17,7 @@ import (
 var viewMagnified bool
 
 var viewCmd = &cobra.Command{
-	Use:     "view",
+	Use:     "view {file|directory|URL}",
 	Short:   "preview/edit a file or directory",
 	Args:    cobra.ExactArgs(1),
 	Run:     viewRun,
@@ -25,8 +25,8 @@ var viewCmd = &cobra.Command{
 }
 
 var editCmd = &cobra.Command{
-	Use:     "edit",
-	Short:   "preview/edit a file or directory",
+	Use:     "edit {file}",
+	Short:   "edit a file",
 	Args:    cobra.ExactArgs(1),
 	Run:     viewRun,
 	PreRunE: preRunSetupRpcClient,

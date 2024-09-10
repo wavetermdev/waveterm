@@ -12,7 +12,7 @@ import (
 )
 
 var getMetaCmd = &cobra.Command{
-	Use:     "getmeta",
+	Use:     "getmeta {blockid|blocknum|this} [key]",
 	Short:   "get metadata for an entity",
 	Args:    cobra.RangeArgs(1, 2),
 	Run:     getMetaRun,

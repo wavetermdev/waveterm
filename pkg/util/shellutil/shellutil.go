@@ -51,6 +51,7 @@ const (
 [ -f ~/.zshrc ] && source ~/.zshrc
 
 export PATH={{.WSHBINDIR}}:$PATH
+source <(wsh completion zsh)
 `
 
 	ZshStartup_Zlogin = `
@@ -78,6 +79,9 @@ elif [ -f ~/.profile ]; then
 fi
 
 export PATH={{.WSHBINDIR}}:$PATH
+
+source <(wsh completion bash)
+
 `
 	PwshStartup_wavepwsh = `
 # no need to source regular profiles since we cannot

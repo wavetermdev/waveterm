@@ -14,7 +14,7 @@ import (
 )
 
 var setMetaCmd = &cobra.Command{
-	Use:     "setmeta",
+	Use:     "setmeta {blockid|blocknum|this} key=value ...",
 	Short:   "set metadata for an entity",
 	Args:    cobra.MinimumNArgs(2),
 	Run:     setMetaRun,
