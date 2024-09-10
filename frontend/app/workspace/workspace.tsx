@@ -108,7 +108,7 @@ const WorkspaceElem = React.memo(() => {
         <div className="workspace">
             <TabBar key={ws.oid} workspace={ws} />
             <div className="workspace-tabcontent">
-                <ErrorBoundary>
+                <ErrorBoundary key={activeTabId}>
                     {activeTabId == "" ? (
                         <CenteredDiv>No Active Tab</CenteredDiv>
                     ) : (

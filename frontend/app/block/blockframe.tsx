@@ -28,6 +28,7 @@ import {
 } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { WshServer } from "@/app/store/wshserver";
+import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
 import { NodeModel } from "@/layout/index";
@@ -116,7 +117,7 @@ function computeEndIcons(
     onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void
 ): JSX.Element[] {
     const endIconsElem: JSX.Element[] = [];
-    const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
+    const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
@@ -155,15 +156,16 @@ const BlockFrame_Header = ({
     preview,
     connBtnRef,
     changeConnModalAtom,
-}: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean> }) => {
+    error,
+}: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
-    const viewName = util.useAtomValueSafe(viewModel.viewName) ?? blockViewToName(blockData?.meta?.view);
+    const viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     const showBlockIds = jotai.useAtomValue(useSettingsKeyAtom("blockheader:showblockids"));
-    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
-    const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
-    const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
+    const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
+    const headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
-    const manageConnection = util.useAtomValueSafe(viewModel.manageConnection);
+    const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
 
     const onContextMenu = React.useCallback(
@@ -193,6 +195,19 @@ const BlockFrame_Header = ({
         headerTextElems.push(...renderHeaderElements(headerTextUnion, preview));
     }
     headerTextElems.unshift(<ControllerStatusIcon key="connstatus" blockId={nodeModel.blockId} />);
+    if (error != null) {
+        const copyHeaderErr = () => {
+            navigator.clipboard.writeText(error.message + "\n" + error.stack);
+        };
+        headerTextElems.push(
+            <div className="iconbutton disabled" key="controller-status" onClick={copyHeaderErr}>
+                <i
+                    className="fa-sharp fa-solid fa-triangle-exclamation"
+                    title={"Error Rendering View Header: " + error.message}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
@@ -377,9 +392,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const { nodeModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
-    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
-    const customBg = util.useAtomValueSafe(viewModel.blockBg);
-    const manageConnection = util.useAtomValueSafe(viewModel.manageConnection);
+    const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    const customBg = util.useAtomValueSafe(viewModel?.blockBg);
+    const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const changeConnModalAtom = useBlockAtom(nodeModel.blockId, "changeConn", () => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
@@ -429,6 +444,10 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         }
     }
     const previewElem = <div className="block-frame-preview">{viewIconElem}</div>;
+    const headerElem = (
+        <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
+    );
+    const headerElemNoView = React.cloneElement(headerElem, { viewModel: null });
     return (
         <div
             className={clsx("block", "block-frame-default", "block-" + nodeModel.blockId, {
@@ -442,7 +461,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             ref={blockModel?.blockRef}
         >
             <BlockMask nodeModel={nodeModel} />
-            {preview ? null : (
+            {preview || viewModel == null ? null : (
                 <ConnStatusOverlay
                     nodeModel={nodeModel}
                     viewModel={viewModel}
@@ -450,10 +469,10 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 />
             )}
             <div className="block-frame-default-inner" style={innerStyle}>
-                <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
+                <ErrorBoundary fallback={headerElemNoView}>{headerElem}</ErrorBoundary>
                 {preview ? previewElem : children}
             </div>
-            {preview || !connModalOpen ? null : (
+            {preview || viewModel == null || !connModalOpen ? null : (
                 <ChangeConnectionBlockModal
                     blockId={nodeModel.blockId}
                     nodeModel={nodeModel}
