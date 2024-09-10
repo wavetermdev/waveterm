@@ -23,7 +23,6 @@ export class WebViewModel implements ViewModel {
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
     url: jotai.PrimitiveAtom<string>;
-    urlInput: jotai.PrimitiveAtom<string>;
     urlInputFocused: jotai.PrimitiveAtom<boolean>;
     isLoading: jotai.PrimitiveAtom<boolean>;
     urlWrapperClassName: jotai.PrimitiveAtom<string>;
@@ -39,7 +38,6 @@ export class WebViewModel implements ViewModel {
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
 
         this.url = jotai.atom();
-        this.urlInput = jotai.atom("");
         this.urlWrapperClassName = jotai.atom("");
         this.urlInputFocused = jotai.atom(false);
         this.isLoading = jotai.atom(false);
