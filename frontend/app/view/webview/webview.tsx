@@ -39,7 +39,7 @@ export class WebViewModel implements ViewModel {
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
 
-        this.url = jotai.atom("");
+        this.url = jotai.atom();
         this.isUrlDirty = jotai.atom(false);
         this.urlInput = jotai.atom("");
         this.urlWrapperClassName = jotai.atom("");
@@ -53,7 +53,7 @@ export class WebViewModel implements ViewModel {
 
         this.viewText = jotai.atom((get) => {
             let url = get(this.blockAtom)?.meta?.url || "";
-            if (url && !get(this.url)) {
+            if (url && get(this.url) === undefined) {
                 globalStore.set(this.url, url);
             }
             const urlIsDirty = get(this.isUrlDirty);
