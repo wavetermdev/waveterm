@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms } from "@/app/store/global";
+import { useAtomValueSafe } from "@/util/util";
 import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
-import { atom, useAtomValue } from "jotai";
+import { Atom, atom, useAtomValue } from "jotai";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import "./codeeditor.less";
 
 // there is a global monaco variable (TODO get the correct TS type)
@@ -70,7 +71,8 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
 }
 
 interface CodeEditorProps {
-    text: string;
+    text?: string;
+    textAtom?: Atom<string> | Atom<Promise<string>>;
     filename: string;
     language?: string;
     onChange?: (text: string) => void;
@@ -87,11 +89,13 @@ const stickyScrollEnabledAtom = atom((get) => {
     return settings["editor:stickyscrollenabled"] ?? false;
 });
 
-export function CodeEditor({ text, language, filename, onChange, onMount }: CodeEditorProps) {
+export function CodeEditor({ text, textAtom, language, filename, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
     const minimapEnabled = useAtomValue(minimapEnabledAtom);
     const stickyScrollEnabled = useAtomValue(stickyScrollEnabledAtom);
+    const textAtomValue = useAtomValueSafe<string>(textAtom);
+    const [textValue] = useState(() => textAtomValue ?? text);
     const theme = "wave-theme-dark";
 
     React.useEffect(() => {
@@ -127,7 +131,7 @@ export function CodeEditor({ text, language, filename, onChange, onMount }: Code
             <div className="code-editor" ref={divRef}>
                 <Editor
                     theme={theme}
-                    value={text}
+                    value={textValue}
                     options={editorOpts}
                     onChange={handleEditorChange}
                     onMount={handleEditorOnMount}
