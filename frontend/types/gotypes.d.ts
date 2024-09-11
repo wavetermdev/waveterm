@@ -169,6 +169,16 @@ declare global {
         count: number;
     };
 
+    // vdom.DomRect
+    type DomRect = {
+        top: number;
+        left: number;
+        right: number;
+        bottom: number;
+        width: number;
+        height: number;
+    };
+
     // waveobj.FileDef
     type FileDef = {
         filetype?: string;
@@ -526,27 +536,40 @@ declare global {
         checkboxstat?: boolean;
     };
 
-    // vdom.Elem
-    type VDomElem = {
-        id?: string;
-        tag: string;
-        props?: {[key: string]: any};
-        children?: VDomElem[];
-        text?: string;
-    };
-
-    // vdom.VDomFuncType
-    type VDomFuncType = {
-        #func: string;
-        #stopPropagation?: boolean;
-        #preventDefault?: boolean;
+    // vdom.VDomFunc
+    type VDomFunc = {
+        type: "func";
+        stoppropagation?: boolean;
+        preventdefault?: boolean;
         #keys?: string[];
     };
 
-    // vdom.VDomRefType
-    type VDomRefType = {
-        #ref: string;
-        current: any;
+    // vdom.VDomRef
+    type VDomRef = {
+        type: "ref";
+        refid: string;
+        trackposition?: boolean;
+        current?: any;
+        position?: VDomRefPosition;
+    };
+
+    // vdom.VDomRefPosition
+    type VDomRefPosition = {
+        offsetheight: number;
+        offsetwidth: number;
+        scrollheight: number;
+        scrollwidth: number;
+        scrolltop: number;
+        boundingclientrect: DomRect;
+    };
+
+    // vdom.VElem
+    type VElem = {
+        waveid: string;
+        tag: string;
+        props?: {[key: string]: any};
+        children?: VElem[];
+        text?: string;
     };
 
     type WSCommandType = {

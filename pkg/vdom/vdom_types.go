@@ -32,14 +32,15 @@ type AsyncInitiationRequest struct {
 }
 
 type FrontendUpdate struct {
-	Type       string         `json:"type" static:"frontendupdate"`
-	Ts         int64          `json:"ts"`
-	RequestId  string         `json:"requestid"`
-	Initialize bool           `json:"initialize,omitempty"`
-	Events     []Event        `json:"events,omitempty"`
-	StateSync  []StateSync    `json:"statesync,omitempty"`
-	RefUpdates []RefUpdate    `json:"refupdates,omitempty"`
-	Messages   []MessageEvent `json:"messages,omitempty"`
+	Type          string            `json:"type" static:"frontendupdate"`
+	Ts            int64             `json:"ts"`
+	RequestId     string            `json:"requestid"`
+	Initialize    bool              `json:"initialize,omitempty"`
+	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
+	Events        []Event           `json:"events,omitempty"`
+	StateSync     []StateSync       `json:"statesync,omitempty"`
+	RefUpdates    []RefUpdate       `json:"refupdates,omitempty"`
+	Messages      []MessageEvent    `json:"messages,omitempty"`
 }
 
 type BackendUpdate struct {
@@ -69,11 +70,31 @@ type VDomFunc struct {
 	Keys            []string `json:"#keys,omitempty"` // special for keyDown events a list of keys to "capture"
 }
 
+type DomRect struct {
+	Top    int `json:"top"`
+	Left   int `json:"left"`
+	Right  int `json:"right"`
+	Bottom int `json:"bottom"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+type VDomRefPosition struct {
+	OffsetHeight       int     `json:"offsetheight"`
+	OffsetWidth        int     `json:"offsetwidth"`
+	ScrollHeight       int     `json:"scrollheight"`
+	ScrollWidth        int     `json:"scrollwidth"`
+	ScrollTop          int     `json:"scrolltop"`
+	BoundingClientRect DomRect `json:"boundingclientrect"`
+}
+
 // used in props
 type VDomRef struct {
-	Type    string `json:"type" tstype:"\"ref\""`
-	RefId   string `json:"refid"`
-	Current any    `json:"current,omitempty"`
+	Type          string           `json:"type" tstype:"\"ref\""`
+	RefId         string           `json:"refid"`
+	TrackPosition bool             `json:"trackposition,omitempty"`
+	Current       any              `json:"current,omitempty"`
+	Position      *VDomRefPosition `json:"position,omitempty"`
 }
 
 ///// subbordinate protocol types
@@ -82,6 +103,14 @@ type Event struct {
 	WaveId    string `json:"waveid"`
 	EventType string `json:"eventtype"`
 	EventData any    `json:"eventdata"`
+}
+
+type VDomRenderContext struct {
+	BlockId   string `json:"blockid"`
+	Focused   bool   `json:"focused"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+	ViewRefId string `json:"viewrefid"`
 }
 
 type StateSync struct {
