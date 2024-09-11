@@ -429,7 +429,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
-        debounce(300, () => {
+        debounce(30, () => {
             if (scrollableRef.current) {
                 const { viewport } = osInstanceRef.current.elements();
                 viewport.scrollLeft = tabIds.length * tabWidthRef.current;
