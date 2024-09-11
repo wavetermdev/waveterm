@@ -51,9 +51,6 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const tabsWrapperRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<React.RefObject<HTMLDivElement>[]>([]);
     const addBtnRef = useRef<HTMLDivElement>(null);
-    const draggingTimeoutIdRef = useRef<NodeJS.Timeout>(null);
-    const scrollToNewTabTimeoutIdRef = useRef<NodeJS.Timeout>(null);
-    const newTabIdTimeoutIdRef = useRef<NodeJS.Timeout>(null);
     const draggingRemovedRef = useRef(false);
     const draggingTabDataRef = useRef({
         tabId: "",
@@ -119,9 +116,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         setDragStartPositions(newStartPositions);
     }, []);
 
-    const debouncedSaveTabsPosition = debounce(100, () => saveTabsPosition());
-
-    const updateSizeAndPosition = (animate?: boolean) => {
+    const setSizeAndPosition = (animate?: boolean) => {
         const tabBar = tabBarRef.current;
         if (tabBar === null) return;
 
@@ -166,6 +161,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 }
                 ref.current.style.width = `${newTabWidth}px`;
                 ref.current.style.transform = `translate3d(${index * newTabWidth}px,0,0)`;
+                ref.current.style.opacity = "1";
             }
         });
 
@@ -188,8 +184,8 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     };
 
     const handleResizeTabs = useCallback(() => {
-        updateSizeAndPosition();
-        debouncedSaveTabsPosition();
+        setSizeAndPosition();
+        debounce(100, () => saveTabsPosition())();
     }, [tabIds, newTabId, isFullScreen]);
 
     useEffect(() => {
@@ -203,28 +199,13 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);
         if (allLoaded) {
-            updateSizeAndPosition(newTabId === null && prevAllLoadedRef.current);
+            setSizeAndPosition(newTabId === null && prevAllLoadedRef.current);
             saveTabsPosition();
             if (!prevAllLoadedRef.current) {
                 prevAllLoadedRef.current = true;
             }
         }
-    }, [tabIds, tabsLoaded, newTabId, handleResizeTabs, saveTabsPosition]);
-
-    // Make sure timeouts are cleared when component is unmounted
-    useEffect(() => {
-        return () => {
-            if (draggingTimeoutIdRef.current) {
-                clearTimeout(draggingTimeoutIdRef.current);
-            }
-            if (scrollToNewTabTimeoutIdRef.current) {
-                clearTimeout(scrollToNewTabTimeoutIdRef.current);
-            }
-            if (newTabIdTimeoutIdRef.current) {
-                clearTimeout(newTabIdTimeoutIdRef.current);
-            }
-        };
-    }, []);
+    }, [tabIds, tabsLoaded, newTabId, saveTabsPosition]);
 
     const getDragDirection = (currentX: number) => {
         let dragDirection;
@@ -381,7 +362,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         }
 
         if (dragged) {
-            draggingTimeoutIdRef.current = setTimeout(() => {
+            debounce(300, () => {
                 // Reset styles
                 tabRefs.current.forEach((ref) => {
                     ref.current.style.zIndex = "0";
@@ -391,7 +372,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 setDraggingTab(null);
                 // Update workspace tab ids
                 services.ObjectService.UpdateWorkspaceTabIds(workspace.oid, tabIds);
-            }, 300);
+            })();
         } else {
             // Reset styles
             tabRefs.current.forEach((ref) => {
@@ -427,10 +408,6 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
                 document.addEventListener("mousemove", handleMouseMove);
                 document.addEventListener("mouseup", handleMouseUp);
-
-                if (draggingTimeoutIdRef.current) {
-                    clearTimeout(draggingTimeoutIdRef.current);
-                }
             }
         },
         [tabIds, dragStartPositions]
@@ -452,16 +429,14 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
-        scrollToNewTabTimeoutIdRef.current = setTimeout(() => {
+        debounce(300, () => {
             if (scrollableRef.current) {
                 const { viewport } = osInstanceRef.current.elements();
                 viewport.scrollLeft = tabIds.length * tabWidthRef.current;
             }
-        }, 30);
+        })();
 
-        newTabIdTimeoutIdRef.current = setTimeout(() => {
-            setNewTabId(null);
-        }, 100);
+        debounce(100, () => setNewTabId(null))();
     };
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
