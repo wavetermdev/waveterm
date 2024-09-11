@@ -35,7 +35,8 @@ type FrontendUpdate struct {
 	Type          string            `json:"type" static:"frontendupdate"`
 	Ts            int64             `json:"ts"`
 	RequestId     string            `json:"requestid"`
-	Initialize    bool              `json:"initialize,omitempty"`
+	Initialize    bool              `json:"initialize,omitempty"` // initialize the app
+	Resync        bool              `json:"resync,omitempty"`     // resync (send all backend data).  useful when the FE reloads
 	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
 	Events        []Event           `json:"events,omitempty"`
 	StateSync     []StateSync       `json:"statesync,omitempty"`
