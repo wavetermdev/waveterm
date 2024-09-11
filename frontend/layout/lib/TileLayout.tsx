@@ -303,8 +303,8 @@ const OverlayNode = memo(({ node, layoutModel }: OverlayNodeProps) => {
         () => ({
             accept: dragItemType,
             canDrop: (_, monitor) => {
-                const dragItem = monitor.getItem<LayoutNode>();
-                if (monitor.isOver({ shallow: true }) && dragItem?.id !== node.id) {
+                const dragItemId = monitor.getItem<string>();
+                if (monitor.isOver({ shallow: true }) && dragItemId !== node.id) {
                     return true;
                 }
                 return false;
@@ -325,8 +325,8 @@ const OverlayNode = memo(({ node, layoutModel }: OverlayNodeProps) => {
                         offset.y -= containerRect.y;
                         layoutModel.treeReducer({
                             type: LayoutTreeActionType.ComputeMove,
-                            node: node,
-                            nodeToMove: dragItem,
+                            nodeId: node.id,
+                            nodeToMoveId: dragItem.id,
                             direction: determineDropDirection(additionalProps.rect, offset),
                         } as LayoutTreeComputeMoveNodeAction);
                     } else {
@@ -337,7 +337,7 @@ const OverlayNode = memo(({ node, layoutModel }: OverlayNodeProps) => {
                 }
             }),
         }),
-        [node, additionalProps?.rect, layoutModel.displayContainerRef, layoutModel.onDrop, layoutModel.treeReducer]
+        [node.id, additionalProps?.rect, layoutModel.displayContainerRef, layoutModel.onDrop, layoutModel.treeReducer]
     );
 
     // Register the overlay node as a drop target
