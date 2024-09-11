@@ -26,7 +26,7 @@ type RootElem struct {
 	OuterCtx        context.Context
 	Root            *Component
 	CFuncs          map[string]CFunc
-	CompMap         map[string]*Component // component id -> component
+	CompMap         map[string]*Component // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
 }
@@ -68,9 +68,20 @@ func (r *RootElem) RegisterComponent(name string, cfunc CFunc) {
 	r.CFuncs[name] = cfunc
 }
 
-func (r *RootElem) Render(elem *Elem) {
+func (r *RootElem) Render(elem *VElem) {
 	log.Printf("Render %s\n", elem.Tag)
 	r.render(elem, &r.Root)
+}
+
+func (vdf *VDomFunc) CallFn() {
+	if vdf.Fn == nil {
+		return
+	}
+	rval := reflect.ValueOf(vdf.Fn)
+	if rval.Kind() != reflect.Func {
+		return
+	}
+	rval.Call(nil)
 }
 
 func (r *RootElem) Event(id string, propName string) {
@@ -83,10 +94,15 @@ func (r *RootElem) Event(id string, propName string) {
 		return
 	}
 	fn, ok := fnVal.(func())
-	if !ok {
+	if ok {
+		fn()
 		return
 	}
-	fn()
+	vdomFn, ok := fnVal.(*VDomFunc)
+	if ok {
+		vdomFn.CallFn()
+		return
+	}
 }
 
 // this will be called by the frontend to say the DOM has been mounted
@@ -123,7 +139,7 @@ func (r *RootElem) runWork() {
 	}
 }
 
-func (r *RootElem) render(elem *Elem, comp **Component) {
+func (r *RootElem) render(elem *VElem, comp **Component) {
 	if elem == nil || elem.Tag == "" {
 		r.unmount(comp)
 		return
@@ -171,13 +187,13 @@ func (r *RootElem) unmount(comp **Component) {
 			r.unmount(&child)
 		}
 	}
-	delete(r.CompMap, (*comp).Id)
+	delete(r.CompMap, (*comp).WaveId)
 	*comp = nil
 }
 
 func (r *RootElem) createComp(tag string, key string, comp **Component) {
-	*comp = &Component{Id: uuid.New().String(), Tag: tag, Key: key}
-	r.CompMap[(*comp).Id] = *comp
+	*comp = &Component{WaveId: uuid.New().String(), Tag: tag, Key: key}
+	r.CompMap[(*comp).WaveId] = *comp
 }
 
 func (r *RootElem) renderText(text string, comp **Component) {
@@ -186,7 +202,7 @@ func (r *RootElem) renderText(text string, comp **Component) {
 	}
 }
 
-func (r *RootElem) renderChildren(elems []Elem, curChildren []*Component) []*Component {
+func (r *RootElem) renderChildren(elems []VElem, curChildren []*Component) []*Component {
 	newChildren := make([]*Component, len(elems))
 	curCM := make(map[ChildKey]*Component)
 	usedMap := make(map[*Component]bool)
@@ -217,7 +233,7 @@ func (r *RootElem) renderChildren(elems []Elem, curChildren []*Component) []*Com
 	return newChildren
 }
 
-func (r *RootElem) renderSimple(elem *Elem, comp **Component) {
+func (r *RootElem) renderSimple(elem *VElem, comp **Component) {
 	if (*comp).Comp != nil {
 		r.unmount(&(*comp).Comp)
 	}
@@ -243,7 +259,7 @@ func getRenderContext(ctx context.Context) *VDomContextVal {
 	return v.(*VDomContextVal)
 }
 
-func (r *RootElem) renderComponent(cfunc CFunc, elem *Elem, comp **Component) {
+func (r *RootElem) renderComponent(cfunc CFunc, elem *VElem, comp **Component) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
 			r.unmount(&child)
@@ -262,11 +278,11 @@ func (r *RootElem) renderComponent(cfunc CFunc, elem *Elem, comp **Component) {
 		r.unmount(&(*comp).Comp)
 		return
 	}
-	var rtnElem *Elem
+	var rtnElem *VElem
 	if len(rtnElemArr) == 1 {
 		rtnElem = &rtnElemArr[0]
 	} else {
-		rtnElem = &Elem{Tag: FragmentTag, Children: rtnElemArr}
+		rtnElem = &VElem{Tag: FragmentTag, Children: rtnElemArr}
 	}
 	r.render(rtnElem, &(*comp).Comp)
 }
@@ -282,7 +298,7 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 		}
 		val := reflect.ValueOf(v)
 		if val.Kind() == reflect.Func {
-			vdomProps[k] = VDomFuncType{FuncType: "server"}
+			vdomProps[k] = VDomFunc{Type: ObjectType_Func}
 			continue
 		}
 		vdomProps[k] = v
@@ -290,8 +306,8 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 	return vdomProps
 }
 
-func convertBaseToVDom(c *Component) *Elem {
-	elem := &Elem{Id: c.Id, Tag: c.Tag}
+func convertBaseToVDom(c *Component) *VElem {
+	elem := &VElem{WaveId: c.WaveId, Tag: c.Tag}
 	if c.Elem != nil {
 		elem.Props = convertPropsToVDom(c.Elem.Props)
 	}
@@ -304,12 +320,12 @@ func convertBaseToVDom(c *Component) *Elem {
 	return elem
 }
 
-func convertToVDom(c *Component) *Elem {
+func convertToVDom(c *Component) *VElem {
 	if c == nil {
 		return nil
 	}
 	if c.Tag == TextTag {
-		return &Elem{Tag: TextTag, Text: c.Text}
+		return &VElem{Tag: TextTag, Text: c.Text}
 	}
 	if isBaseTag(c.Tag) {
 		return convertBaseToVDom(c)
@@ -318,11 +334,11 @@ func convertToVDom(c *Component) *Elem {
 	}
 }
 
-func (r *RootElem) makeVDom(comp *Component) *Elem {
+func (r *RootElem) makeVDom(comp *Component) *VElem {
 	vdomElem := convertToVDom(comp)
 	return vdomElem
 }
 
-func (r *RootElem) MakeVDom() *Elem {
+func (r *RootElem) MakeVDom() *VElem {
 	return r.makeVDom(r.Root)
 }

@@ -15,35 +15,6 @@ import (
 
 // ReactNode types = nil | string | Elem
 
-const TextTag = "#text"
-const FragmentTag = "#fragment"
-
-const ChildrenPropKey = "children"
-const KeyPropKey = "key"
-
-// doubles as VDOM structure
-type Elem struct {
-	Id       string         `json:"id,omitempty"` // used for vdom
-	Tag      string         `json:"tag"`
-	Props    map[string]any `json:"props,omitempty"`
-	Children []Elem         `json:"children,omitempty"`
-	Text     string         `json:"text,omitempty"`
-}
-
-type VDomRefType struct {
-	RefId   string `json:"#ref"`
-	Current any    `json:"current"`
-}
-
-// can be used to set preventDefault/stopPropagation
-type VDomFuncType struct {
-	Fn              any      `json:"-"` // the actual function to call (called via reflection)
-	FuncType        string   `json:"#func"`
-	StopPropagation bool     `json:"#stopPropagation,omitempty"`
-	PreventDefault  bool     `json:"#preventDefault,omitempty"`
-	Keys            []string `json:"#keys,omitempty"` // special for keyDown events a list of keys to "capture"
-}
-
 // generic hook structure
 type Hook struct {
 	Init      bool          // is initialized
@@ -56,7 +27,7 @@ type Hook struct {
 
 type CFunc = func(ctx context.Context, props map[string]any) any
 
-func (e *Elem) Key() string {
+func (e *VElem) Key() string {
 	keyVal, ok := e.Props[KeyPropKey]
 	if !ok {
 		return ""
@@ -68,8 +39,8 @@ func (e *Elem) Key() string {
 	return ""
 }
 
-func TextElem(text string) Elem {
-	return Elem{Tag: TextTag, Text: text}
+func TextElem(text string) VElem {
+	return VElem{Tag: TextTag, Text: text}
 }
 
 func mergeProps(props *map[string]any, newProps map[string]any) {
@@ -85,8 +56,8 @@ func mergeProps(props *map[string]any, newProps map[string]any) {
 	}
 }
 
-func E(tag string, parts ...any) *Elem {
-	rtn := &Elem{Tag: tag}
+func E(tag string, parts ...any) *VElem {
+	rtn := &VElem{Tag: tag}
 	for _, part := range parts {
 		if part == nil {
 			continue
@@ -135,19 +106,19 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T)) {
 	}
 	setVal := func(newVal T) {
 		hookVal.Val = newVal
-		vc.Root.AddRenderWork(vc.Comp.Id)
+		vc.Root.AddRenderWork(vc.Comp.WaveId)
 	}
 	return rtnVal, setVal
 }
 
-func UseRef(ctx context.Context, initialVal any) *VDomRefType {
+func UseRef(ctx context.Context, initialVal any) *VDomRef {
 	vc, hookVal := getHookFromCtx(ctx)
 	if !hookVal.Init {
 		hookVal.Init = true
-		refId := vc.Comp.Id + ":" + strconv.Itoa(hookVal.Idx)
-		hookVal.Val = &VDomRefType{RefId: refId, Current: initialVal}
+		refId := vc.Comp.WaveId + ":" + strconv.Itoa(hookVal.Idx)
+		hookVal.Val = &VDomRef{Type: ObjectType_Ref, RefId: refId, Current: initialVal}
 	}
-	refVal, ok := hookVal.Val.(*VDomRefType)
+	refVal, ok := hookVal.Val.(*VDomRef)
 	if !ok {
 		panic("UseRef hook value is not a ref (possible out of order or conditional hooks)")
 	}
@@ -159,7 +130,7 @@ func UseId(ctx context.Context) string {
 	if vc == nil {
 		panic("UseId must be called within a component (no context)")
 	}
-	return vc.Comp.Id
+	return vc.Comp.WaveId
 }
 
 func depsEqual(deps1 []any, deps2 []any) bool {
@@ -181,7 +152,7 @@ func UseEffect(ctx context.Context, fn func() func(), deps []any) {
 		hookVal.Init = true
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.AddEffectWork(vc.Comp.Id, hookVal.Idx)
+		vc.Root.AddEffectWork(vc.Comp.WaveId, hookVal.Idx)
 		return
 	}
 	if depsEqual(hookVal.Deps, deps) {
@@ -189,7 +160,7 @@ func UseEffect(ctx context.Context, fn func() func(), deps []any) {
 	}
 	hookVal.Fn = fn
 	hookVal.Deps = deps
-	vc.Root.AddEffectWork(vc.Comp.Id, hookVal.Idx)
+	vc.Root.AddEffectWork(vc.Comp.WaveId, hookVal.Idx)
 }
 
 func numToString[T any](value T) (string, bool) {
@@ -207,24 +178,24 @@ func numToString[T any](value T) (string, bool) {
 	}
 }
 
-func partToElems(part any) []Elem {
+func partToElems(part any) []VElem {
 	if part == nil {
 		return nil
 	}
 	switch part := part.(type) {
 	case string:
-		return []Elem{TextElem(part)}
-	case *Elem:
+		return []VElem{TextElem(part)}
+	case *VElem:
 		if part == nil {
 			return nil
 		}
-		return []Elem{*part}
-	case Elem:
-		return []Elem{part}
-	case []Elem:
+		return []VElem{*part}
+	case VElem:
+		return []VElem{part}
+	case []VElem:
 		return part
-	case []*Elem:
-		var rtn []Elem
+	case []*VElem:
+		var rtn []VElem
 		for _, e := range part {
 			if e == nil {
 				continue
@@ -235,11 +206,11 @@ func partToElems(part any) []Elem {
 	}
 	sval, ok := numToString(part)
 	if ok {
-		return []Elem{TextElem(sval)}
+		return []VElem{TextElem(sval)}
 	}
 	partVal := reflect.ValueOf(part)
 	if partVal.Kind() == reflect.Slice {
-		var rtn []Elem
+		var rtn []VElem
 		for i := 0; i < partVal.Len(); i++ {
 			subPart := partVal.Index(i).Interface()
 			rtn = append(rtn, partToElems(subPart)...)
@@ -248,14 +219,14 @@ func partToElems(part any) []Elem {
 	}
 	stringer, ok := part.(fmt.Stringer)
 	if ok {
-		return []Elem{TextElem(stringer.String())}
+		return []VElem{TextElem(stringer.String())}
 	}
 	jsonStr, jsonErr := json.Marshal(part)
 	if jsonErr == nil {
-		return []Elem{TextElem(string(jsonStr))}
+		return []VElem{TextElem(string(jsonStr))}
 	}
 	typeText := "invalid:" + reflect.TypeOf(part).String()
-	return []Elem{TextElem(typeText)}
+	return []VElem{TextElem(typeText)}
 }
 
 func isWaveTag(tag string) bool {

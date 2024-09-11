@@ -18,7 +18,7 @@ type TestContext struct {
 
 func Page(ctx context.Context, props map[string]any) any {
 	clicked, setClicked := UseState(ctx, false)
-	var clickedDiv *Elem
+	var clickedDiv *VElem
 	if clicked {
 		clickedDiv = Bind(`<div>clicked</div>`, nil)
 	}
@@ -30,8 +30,8 @@ func Page(ctx context.Context, props map[string]any) any {
 		`
 <div>
     <h1>hello world</h1>
-	<Button onClick="#bind:clickFn">hello</Button>
-	<bind key="clickedDiv"/>
+	<Button onClick="#param:clickFn">hello</Button>
+	<bindparam key="clickedDiv"/>
 </div>
 `,
 		map[string]any{"clickFn": clickFn, "clickedDiv": clickedDiv},
@@ -52,8 +52,8 @@ func Button(ctx context.Context, props map[string]any) any {
 		testContext.ButtonId = compId
 	}
 	return Bind(`
-		<div className="#bind:clName" ref="#bind:ref" onClick="#bind:onClick">
-			<bind key="children"/>
+		<div className="#param:clName" ref="#param:ref" onClick="#param:onClick">
+			<bindparam key="children"/>
 		</div>
 	`, map[string]any{"clName": clName, "ref": ref, "onClick": props["onClick"], "children": props["children"]})
 }
@@ -111,8 +111,8 @@ func TestBind(t *testing.T) {
 	elem = Bind(`
 <div>
     <h1>hello world</h1>
-	<Button onClick="#bind:clickFn">hello</Button>
-	<bind key="clickedDiv"/>
+	<Button onClick="#param:clickFn">hello</Button>
+	<bindparam key="clickedDiv"/>
 </div>
 `, nil)
 	jsonBytes, _ = json.MarshalIndent(elem, "", "  ")

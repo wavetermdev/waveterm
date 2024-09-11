@@ -14,7 +14,12 @@ import (
 
 // can tokenize and bind HTML to Elems
 
-func appendChildToStack(stack []*Elem, child *Elem) {
+const Html_BindPrefix = "#bind:"
+const Html_ParamPrefix = "#param:"
+const Html_BindParamTagName = "bindparam"
+const Html_BindTagName = "bind"
+
+func appendChildToStack(stack []*VElem, child *VElem) {
 	if child == nil {
 		return
 	}
@@ -25,14 +30,14 @@ func appendChildToStack(stack []*Elem, child *Elem) {
 	parent.Children = append(parent.Children, *child)
 }
 
-func pushElemStack(stack []*Elem, elem *Elem) []*Elem {
+func pushElemStack(stack []*VElem, elem *VElem) []*VElem {
 	if elem == nil {
 		return stack
 	}
 	return append(stack, elem)
 }
 
-func popElemStack(stack []*Elem) []*Elem {
+func popElemStack(stack []*VElem) []*VElem {
 	if len(stack) <= 1 {
 		return stack
 	}
@@ -41,14 +46,14 @@ func popElemStack(stack []*Elem) []*Elem {
 	return stack[:len(stack)-1]
 }
 
-func curElemTag(stack []*Elem) string {
+func curElemTag(stack []*VElem) string {
 	if len(stack) == 0 {
 		return ""
 	}
 	return stack[len(stack)-1].Tag
 }
 
-func finalizeStack(stack []*Elem) *Elem {
+func finalizeStack(stack []*VElem) *VElem {
 	if len(stack) == 0 {
 		return nil
 	}
@@ -74,8 +79,27 @@ func getAttr(token htmltoken.Token, key string) string {
 	return ""
 }
 
-func tokenToElem(token htmltoken.Token, data map[string]any) *Elem {
-	elem := &Elem{Tag: token.Data}
+func attrToProp(attrVal string, params map[string]any) any {
+	if strings.HasPrefix(attrVal, Html_ParamPrefix) {
+		bindKey := attrVal[len(Html_ParamPrefix):]
+		bindVal, ok := params[bindKey]
+		if !ok {
+			return nil
+		}
+		return bindVal
+	}
+	if strings.HasPrefix(attrVal, Html_BindPrefix) {
+		bindKey := attrVal[len(Html_BindPrefix):]
+		if bindKey == "" {
+			return nil
+		}
+		return &VDomBinding{Type: ObjectType_Binding, Bind: bindKey}
+	}
+	return attrVal
+}
+
+func tokenToElem(token htmltoken.Token, params map[string]any) *VElem {
+	elem := &VElem{Tag: token.Data}
 	if len(token.Attr) > 0 {
 		elem.Props = make(map[string]any)
 	}
@@ -83,16 +107,8 @@ func tokenToElem(token htmltoken.Token, data map[string]any) *Elem {
 		if attr.Key == "" || attr.Val == "" {
 			continue
 		}
-		if strings.HasPrefix(attr.Val, "#bind:") {
-			bindKey := attr.Val[6:]
-			bindVal, ok := data[bindKey]
-			if !ok {
-				continue
-			}
-			elem.Props[attr.Key] = bindVal
-			continue
-		}
-		elem.Props[attr.Key] = attr.Val
+		propVal := attrToProp(attr.Val, params)
+		elem.Props[attr.Key] = propVal
 	}
 	return elem
 }
@@ -177,12 +193,12 @@ func processTextStr(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func Bind(htmlStr string, data map[string]any) *Elem {
+func Bind(htmlStr string, data map[string]any) *VElem {
 	htmlStr = processWhitespace(htmlStr)
 	r := strings.NewReader(htmlStr)
 	iter := htmltoken.NewTokenizer(r)
-	var elemStack []*Elem
-	elemStack = append(elemStack, &Elem{Tag: FragmentTag})
+	var elemStack []*VElem
+	elemStack = append(elemStack, &VElem{Tag: FragmentTag})
 	var tokenErr error
 outer:
 	for {
@@ -190,15 +206,15 @@ outer:
 		token := iter.Token()
 		switch tokenType {
 		case htmltoken.StartTagToken:
-			if token.Data == "bind" {
-				tokenErr = errors.New("bind tag must be self closing")
+			if token.Data == Html_BindTagName || token.Data == Html_BindParamTagName {
+				tokenErr = errors.New("bind tags must be self closing")
 				break outer
 			}
 			elem := tokenToElem(token, data)
 			elemStack = pushElemStack(elemStack, elem)
 		case htmltoken.EndTagToken:
-			if token.Data == "bind" {
-				tokenErr = errors.New("bind tag must be self closing")
+			if token.Data == Html_BindTagName || token.Data == Html_BindParamTagName {
+				tokenErr = errors.New("bind tags must be self closing")
 				break outer
 			}
 			if len(elemStack) <= 1 {
@@ -211,7 +227,7 @@ outer:
 			}
 			elemStack = popElemStack(elemStack)
 		case htmltoken.SelfClosingTagToken:
-			if token.Data == "bind" {
+			if token.Data == Html_BindParamTagName {
 				keyAttr := getAttr(token, "key")
 				dataVal := data[keyAttr]
 				elemList := partToElems(dataVal)
@@ -219,6 +235,11 @@ outer:
 					appendChildToStack(elemStack, &elem)
 				}
 				continue
+			}
+			if token.Data == Html_BindTagName {
+				keyAttr := getAttr(token, "key")
+				binding := &VDomBinding{Type: ObjectType_Binding, Bind: keyAttr}
+				appendChildToStack(elemStack, &VElem{Tag: WaveTextTag, Props: map[string]any{"text": binding}})
 			}
 			elem := tokenToElem(token, data)
 			appendChildToStack(elemStack, elem)
