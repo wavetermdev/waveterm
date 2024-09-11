@@ -35,6 +35,7 @@ type FrontendUpdate struct {
 	Type       string         `json:"type" static:"frontendupdate"`
 	Ts         int64          `json:"ts"`
 	RequestId  string         `json:"requestid"`
+	Initialize bool           `json:"initialize,omitempty"`
 	Events     []Event        `json:"events,omitempty"`
 	StateSync  []StateSync    `json:"statesync,omitempty"`
 	RefUpdates []RefUpdate    `json:"refupdates,omitempty"`

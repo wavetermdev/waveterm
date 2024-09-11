@@ -22,6 +22,12 @@ type VDomContextVal struct {
 	HookIdx int
 }
 
+type Atom struct {
+	Val    any             // the current value
+	FeVal  any             // the value from the frontend
+	UsedBy map[string]bool // component waveid -> true
+}
+
 type RootElem struct {
 	OuterCtx        context.Context
 	Root            *Component
@@ -29,6 +35,7 @@ type RootElem struct {
 	CompMap         map[string]*Component // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
+	Atoms           map[string]*Atom
 }
 
 const (
@@ -57,7 +64,27 @@ func MakeRoot() *RootElem {
 		Root:    nil,
 		CFuncs:  make(map[string]CFunc),
 		CompMap: make(map[string]*Component),
+		Atoms:   make(map[string]*Atom),
 	}
+}
+
+func (r *RootElem) GetAtom(name string) *Atom {
+	atom, ok := r.Atoms[name]
+	if !ok {
+		atom = &Atom{UsedBy: make(map[string]bool)}
+		r.Atoms[name] = atom
+	}
+	return atom
+}
+
+func (r *RootElem) GetAtomVal(name string) any {
+	atom := r.GetAtom(name)
+	return atom.Val
+}
+
+func (r *RootElem) SetAtomVal(name string, val any) {
+	atom := r.GetAtom(name)
+	atom.Val = val
 }
 
 func (r *RootElem) SetOuterCtx(ctx context.Context) {

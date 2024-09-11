@@ -111,6 +111,31 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T)) {
 	return rtnVal, setVal
 }
 
+func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
+	vc, hookVal := getHookFromCtx(ctx)
+	if !hookVal.Init {
+		hookVal.Init = true
+		closedWaveId := vc.Comp.WaveId
+		hookVal.UnmountFn = func() {
+			atom := vc.Root.GetAtom(atomName)
+			delete(atom.UsedBy, closedWaveId)
+		}
+	}
+	atom := vc.Root.GetAtom(atomName)
+	atom.UsedBy[vc.Comp.WaveId] = true
+	atomVal, ok := atom.Val.(T)
+	if !ok {
+		panic(fmt.Sprintf("UseAtom %q value type mismatch (expected %T, got %T)", atomName, atomVal, atom.Val))
+	}
+	setVal := func(newVal T) {
+		atom.Val = newVal
+		for waveId := range atom.UsedBy {
+			vc.Root.AddRenderWork(waveId)
+		}
+	}
+	return atomVal, setVal
+}
+
 func UseRef(ctx context.Context, initialVal any) *VDomRef {
 	vc, hookVal := getHookFromCtx(ctx)
 	if !hookVal.Init {
