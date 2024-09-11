@@ -51,7 +51,9 @@ const (
 [ -f ~/.zshrc ] && source ~/.zshrc
 
 export PATH={{.WSHBINDIR}}:$PATH
-source <(wsh completion zsh)
+if [[ -n ${_comps+x} ]]; then
+  source <(wsh completion zsh)
+fi
 `
 
 	ZshStartup_Zlogin = `
@@ -79,8 +81,9 @@ elif [ -f ~/.profile ]; then
 fi
 
 export PATH={{.WSHBINDIR}}:$PATH
-
-source <(wsh completion bash)
+if type _init_completion &>/dev/null; then
+  source <(wsh completion bash)
+fi
 
 `
 	PwshStartup_wavepwsh = `
