@@ -303,8 +303,8 @@ const OverlayNode = memo(({ node, layoutModel }: OverlayNodeProps) => {
         () => ({
             accept: dragItemType,
             canDrop: (_, monitor) => {
-                const dragItemId = monitor.getItem<string>();
-                if (monitor.isOver({ shallow: true }) && dragItemId !== node.id) {
+                const dragItem = monitor.getItem<LayoutNode>();
+                if (monitor.isOver({ shallow: true }) && dragItem.id !== node.id) {
                     return true;
                 }
                 return false;
