@@ -14,9 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
-const configDir = "config"
-
-var configDirAbsPath = filepath.Join(wavebase.GetWaveHomeDir(), configDir)
+var configDirAbsPath = filepath.Join(wavebase.GetWaveHomeDir(), wavebase.ConfigDir)
 
 var instance *Watcher
 var once sync.Once
