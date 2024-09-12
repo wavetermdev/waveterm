@@ -41,7 +41,7 @@ const AllowedTags: { [tagName: string]: boolean } = {
     form: true,
 };
 
-function convertVDomFunc(fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
+function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
     return (e: any) => {
         if ((propName == "onKeyDown" || propName == "onKeyDownCapture") && fnDecl["#keys"]) {
             let waveEvent = adaptFromReactOrNativeKeyEvent(e);
@@ -49,7 +49,7 @@ function convertVDomFunc(fnDecl: VDomFunc, compId: string, propName: string): (e
                 if (checkKeyPressed(waveEvent, keyDesc)) {
                     e.preventDefault();
                     e.stopPropagation();
-                    callFunc(e, compId, propName);
+                    model.callVDomFunc(e, compId, propName);
                     return;
                 }
             }
@@ -61,7 +61,7 @@ function convertVDomFunc(fnDecl: VDomFunc, compId: string, propName: string): (e
         if (fnDecl.stoppropagation) {
             e.stopPropagation();
         }
-        callFunc(e, compId, propName);
+        model.callVDomFunc(e, compId, propName);
     };
 }
 
@@ -81,14 +81,6 @@ function isObject(v: any): boolean {
 
 function isArray(v: any): boolean {
     return Array.isArray(v);
-}
-
-function callFunc(e: any, compId: string, propName: string) {
-    console.log("callfunc", compId, propName);
-}
-
-function updateRefFunc(elem: any, ref: VDomRef) {
-    console.log("updateref", ref["#ref"], elem);
 }
 
 function resolveBinding(binding: VDomBinding, model: VDomModel): [any, string[]] {
@@ -131,15 +123,14 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             }
             if (isObject(val) && val.type == VDomObjType_Ref) {
                 const valRef = val as VDomRef;
-                props[key] = (elem: HTMLElement) => {
-                    updateRefFunc(elem, valRef);
-                };
+                const refContainer = model.getOrCreateRefContainer(valRef);
+                props[key] = refContainer.refFn;
             }
             continue;
         }
         if (isObject(val) && val.type == VDomObjType_Func) {
             const valFunc = val as VDomFunc;
-            props[key] = convertVDomFunc(valFunc, elem.waveid, key);
+            props[key] = convertVDomFunc(model, valFunc, elem.waveid, key);
             continue;
         }
         if (isObject(val) && val.type == VDomObjType_Binding) {

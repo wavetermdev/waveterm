@@ -10,6 +10,12 @@ type AtomContainer = {
     usedBy: Set<string>;
 };
 
+type RefContainer = {
+    refFn: (elem: HTMLElement) => void;
+    vdomRef: VDomRef;
+    elem: HTMLElement;
+};
+
 function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
     if (vdom == null) {
         return;
@@ -25,12 +31,15 @@ function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
     }
 }
 
+function updateTrackedPosition(container: RefContainer) {
+    // TODO
+}
+
 export class VDomModel {
     blockId: string;
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
-    atoms: Map<string, AtomContainer> = new Map();
-    refs: Map<string, VDomRef> = new Map();
-    domRefs: Map<string, React.RefObject<HTMLElement>> = new Map();
+    atoms: Map<string, AtomContainer> = new Map(); // key is atomname
+    refs: Map<string, RefContainer> = new Map(); // key is refid
     batchedEvents: VDomEvent[] = [];
     messages: VDomMessage[] = [];
     initialized: boolean = false;
@@ -50,6 +59,24 @@ export class VDomModel {
                 usedBy: new Set(),
             };
             this.atoms.set(atomName, container);
+        }
+        return container;
+    }
+
+    getOrCreateRefContainer(vdomRef: VDomRef): RefContainer {
+        let container = this.refs.get(vdomRef.refid);
+        if (container == null) {
+            container = {
+                refFn: (elem: HTMLElement) => {
+                    container.elem = elem;
+                    if (vdomRef.trackposition) {
+                        updateTrackedPosition(container);
+                    }
+                },
+                vdomRef: vdomRef,
+                elem: null,
+            };
+            this.refs.set(vdomRef.refid, container);
         }
         return container;
     }
@@ -188,16 +215,21 @@ export class VDomModel {
             return;
         }
         for (let refOp of update.refoperations) {
-            const ref = this.domRefs.get(refOp.refid);
+            const ref = this.refs.get(refOp.refid);
             if (ref == null) {
                 this.addErrorMessage(`Could not find ref with id ${refOp.refid}`);
                 continue;
             }
-            if (ref.current == null) {
-                continue;
-            }
             if (refOp.op == "focus") {
-                ref.current.focus();
+                if (ref.elem == null) {
+                    this.addErrorMessage(`Could not focus ref with id ${refOp.refid}: elem is null`);
+                    continue;
+                }
+                try {
+                    ref.elem.focus();
+                } catch (e) {
+                    this.addErrorMessage(`Could not focus ref with id ${refOp.refid}: ${e.message}`);
+                }
             } else {
                 this.addErrorMessage(`Unknown ref operation ${refOp.refid} ${refOp.op}`);
             }
@@ -220,4 +252,10 @@ export class VDomModel {
             }
         }
     }
+
+    callVDomFunc(e: any, compId: string, propName: string) {
+        console.log("callfunc", e, compId, propName);
+    }
+
+    updateRefFunc(elem: any, ref: VDomRef) {}
 }
