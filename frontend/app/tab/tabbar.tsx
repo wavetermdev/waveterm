@@ -486,9 +486,10 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         updateAvailableLabel = (
             <Button
                 forwardedRef={updateStatusButtonRef}
-                className="update-available-button"
+                className="update-available-button primary"
                 title="Click to Install Update"
                 onClick={onUpdateAvailableClick}
+                outerStyle={{ margin: 0, marginTop: 3, padding: 0, marginRight: 3, height: 30 }}
             >
                 Update Available
             </Button>

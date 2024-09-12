@@ -7,17 +7,18 @@ import "./button.less";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     forwardedRef?: React.RefObject<HTMLButtonElement>;
+    outerStyle?: React.CSSProperties;
     className?: string;
     children?: React.ReactNode;
 }
 
-const Button = React.memo(({ className = "primary", children, disabled, ...props }: ButtonProps) => {
+const Button = React.memo(({ className = "primary", children, outerStyle, disabled, ...props }: ButtonProps) => {
     const hasIcon = React.Children.toArray(children).some(
         (child) => React.isValidElement(child) && (child as React.ReactElement).type === "svg"
     );
 
     return (
-        <div className="button">
+        <div className="button" style={outerStyle}>
             <button
                 className={clsx("button-inner", className, {
                     disabled,
