@@ -536,12 +536,61 @@ declare global {
         checkboxstat?: boolean;
     };
 
+    // vdom.VDomBackendUpdate
+    type VDomBackendUpdate = {
+        type: string;
+        ts: number;
+        responseid: string;
+        renderupdates?: VDomRenderUpdate[];
+        statesync?: VDomStateSync[];
+        refoperations?: VDomRefOperation[];
+        messages?: VDomMessage[];
+    };
+
+    // vdom.VDomElem
+    type VDomElem = {
+        waveid?: string;
+        tag: string;
+        props?: {[key: string]: any};
+        children?: VDomElem[];
+        text?: string;
+    };
+
+    // vdom.VDomEvent
+    type VDomEvent = {
+        waveid: string;
+        eventtype: string;
+        eventdata: any;
+    };
+
+    // vdom.VDomFrontendUpdate
+    type VDomFrontendUpdate = {
+        type: string;
+        ts: number;
+        requestid: string;
+        initialize?: boolean;
+        resync?: boolean;
+        rendercontext?: VDomRenderContext;
+        events?: VDomEvent[];
+        statesync?: VDomStateSync[];
+        refupdates?: VDomRefUpdate[];
+        messages?: VDomMessage[];
+    };
+
     // vdom.VDomFunc
     type VDomFunc = {
         type: "func";
         stoppropagation?: boolean;
         preventdefault?: boolean;
         #keys?: string[];
+    };
+
+    // vdom.VDomMessage
+    type VDomMessage = {
+        messagetype: string;
+        message: string;
+        stacktrace?: string;
+        params?: any[];
     };
 
     // vdom.VDomRef
@@ -551,6 +600,13 @@ declare global {
         trackposition?: boolean;
         current?: any;
         position?: VDomRefPosition;
+    };
+
+    // vdom.VDomRefOperation
+    type VDomRefOperation = {
+        refid: string;
+        operation: string;
+        params?: any[];
     };
 
     // vdom.VDomRefPosition
@@ -563,13 +619,33 @@ declare global {
         boundingclientrect: DomRect;
     };
 
-    // vdom.VElem
-    type VElem = {
+    // vdom.VDomRefUpdate
+    type VDomRefUpdate = {
+        refid: string;
+        current: any;
+    };
+
+    // vdom.VDomRenderContext
+    type VDomRenderContext = {
+        blockid: string;
+        focused: boolean;
+        width: number;
+        height: number;
+        viewrefid: string;
+    };
+
+    // vdom.VDomRenderUpdate
+    type VDomRenderUpdate = {
+        updatetype: string;
         waveid: string;
-        tag: string;
-        props?: {[key: string]: any};
-        children?: VElem[];
-        text?: string;
+        vdom: VDomElem;
+        index?: number;
+    };
+
+    // vdom.VDomStateSync
+    type VDomStateSync = {
+        atom: string;
+        value: any;
     };
 
     type WSCommandType = {

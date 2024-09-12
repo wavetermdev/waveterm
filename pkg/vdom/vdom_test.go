@@ -18,7 +18,7 @@ type TestContext struct {
 
 func Page(ctx context.Context, props map[string]any) any {
 	clicked, setClicked := UseState(ctx, false)
-	var clickedDiv *VElem
+	var clickedDiv *VDomElem
 	if clicked {
 		clickedDiv = Bind(`<div>clicked</div>`, nil)
 	}

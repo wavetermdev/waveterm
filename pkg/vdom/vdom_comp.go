@@ -16,7 +16,7 @@ type Component struct {
 	WaveId  string
 	Tag     string
 	Key     string
-	Elem    *VElem
+	Elem    *VDomElem
 	Mounted bool
 
 	// hooks

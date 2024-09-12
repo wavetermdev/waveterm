@@ -41,9 +41,11 @@ var ExtraTypes = []any{
 	wshutil.RpcMessage{},
 	wshrpc.WshServerCommandMeta{},
 	userinput.UserInputRequest{},
-	vdom.VElem{},
+	vdom.VDomElem{},
 	vdom.VDomFunc{},
 	vdom.VDomRef{},
+	vdom.VDomFrontendUpdate{},
+	vdom.VDomBackendUpdate{},
 	waveobj.MetaTSType{},
 }
 

@@ -27,7 +27,7 @@ type Hook struct {
 
 type CFunc = func(ctx context.Context, props map[string]any) any
 
-func (e *VElem) Key() string {
+func (e *VDomElem) Key() string {
 	keyVal, ok := e.Props[KeyPropKey]
 	if !ok {
 		return ""
@@ -39,8 +39,8 @@ func (e *VElem) Key() string {
 	return ""
 }
 
-func TextElem(text string) VElem {
-	return VElem{Tag: TextTag, Text: text}
+func TextElem(text string) VDomElem {
+	return VDomElem{Tag: TextTag, Text: text}
 }
 
 func mergeProps(props *map[string]any, newProps map[string]any) {
@@ -56,8 +56,8 @@ func mergeProps(props *map[string]any, newProps map[string]any) {
 	}
 }
 
-func E(tag string, parts ...any) *VElem {
-	rtn := &VElem{Tag: tag}
+func E(tag string, parts ...any) *VDomElem {
+	rtn := &VDomElem{Tag: tag}
 	for _, part := range parts {
 		if part == nil {
 			continue
@@ -203,24 +203,24 @@ func numToString[T any](value T) (string, bool) {
 	}
 }
 
-func partToElems(part any) []VElem {
+func partToElems(part any) []VDomElem {
 	if part == nil {
 		return nil
 	}
 	switch part := part.(type) {
 	case string:
-		return []VElem{TextElem(part)}
-	case *VElem:
+		return []VDomElem{TextElem(part)}
+	case *VDomElem:
 		if part == nil {
 			return nil
 		}
-		return []VElem{*part}
-	case VElem:
-		return []VElem{part}
-	case []VElem:
+		return []VDomElem{*part}
+	case VDomElem:
+		return []VDomElem{part}
+	case []VDomElem:
 		return part
-	case []*VElem:
-		var rtn []VElem
+	case []*VDomElem:
+		var rtn []VDomElem
 		for _, e := range part {
 			if e == nil {
 				continue
@@ -231,11 +231,11 @@ func partToElems(part any) []VElem {
 	}
 	sval, ok := numToString(part)
 	if ok {
-		return []VElem{TextElem(sval)}
+		return []VDomElem{TextElem(sval)}
 	}
 	partVal := reflect.ValueOf(part)
 	if partVal.Kind() == reflect.Slice {
-		var rtn []VElem
+		var rtn []VDomElem
 		for i := 0; i < partVal.Len(); i++ {
 			subPart := partVal.Index(i).Interface()
 			rtn = append(rtn, partToElems(subPart)...)
@@ -244,14 +244,14 @@ func partToElems(part any) []VElem {
 	}
 	stringer, ok := part.(fmt.Stringer)
 	if ok {
-		return []VElem{TextElem(stringer.String())}
+		return []VDomElem{TextElem(stringer.String())}
 	}
 	jsonStr, jsonErr := json.Marshal(part)
 	if jsonErr == nil {
-		return []VElem{TextElem(string(jsonStr))}
+		return []VDomElem{TextElem(string(jsonStr))}
 	}
 	typeText := "invalid:" + reflect.TypeOf(part).String()
-	return []VElem{TextElem(typeText)}
+	return []VDomElem{TextElem(typeText)}
 }
 
 func isWaveTag(tag string) bool {

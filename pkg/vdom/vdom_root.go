@@ -95,7 +95,7 @@ func (r *RootElem) RegisterComponent(name string, cfunc CFunc) {
 	r.CFuncs[name] = cfunc
 }
 
-func (r *RootElem) Render(elem *VElem) {
+func (r *RootElem) Render(elem *VDomElem) {
 	log.Printf("Render %s\n", elem.Tag)
 	r.render(elem, &r.Root)
 }
@@ -166,7 +166,7 @@ func (r *RootElem) runWork() {
 	}
 }
 
-func (r *RootElem) render(elem *VElem, comp **Component) {
+func (r *RootElem) render(elem *VDomElem, comp **Component) {
 	if elem == nil || elem.Tag == "" {
 		r.unmount(comp)
 		return
@@ -229,7 +229,7 @@ func (r *RootElem) renderText(text string, comp **Component) {
 	}
 }
 
-func (r *RootElem) renderChildren(elems []VElem, curChildren []*Component) []*Component {
+func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*Component) []*Component {
 	newChildren := make([]*Component, len(elems))
 	curCM := make(map[ChildKey]*Component)
 	usedMap := make(map[*Component]bool)
@@ -260,7 +260,7 @@ func (r *RootElem) renderChildren(elems []VElem, curChildren []*Component) []*Co
 	return newChildren
 }
 
-func (r *RootElem) renderSimple(elem *VElem, comp **Component) {
+func (r *RootElem) renderSimple(elem *VDomElem, comp **Component) {
 	if (*comp).Comp != nil {
 		r.unmount(&(*comp).Comp)
 	}
@@ -286,7 +286,7 @@ func getRenderContext(ctx context.Context) *VDomContextVal {
 	return v.(*VDomContextVal)
 }
 
-func (r *RootElem) renderComponent(cfunc CFunc, elem *VElem, comp **Component) {
+func (r *RootElem) renderComponent(cfunc CFunc, elem *VDomElem, comp **Component) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
 			r.unmount(&child)
@@ -305,11 +305,11 @@ func (r *RootElem) renderComponent(cfunc CFunc, elem *VElem, comp **Component) {
 		r.unmount(&(*comp).Comp)
 		return
 	}
-	var rtnElem *VElem
+	var rtnElem *VDomElem
 	if len(rtnElemArr) == 1 {
 		rtnElem = &rtnElemArr[0]
 	} else {
-		rtnElem = &VElem{Tag: FragmentTag, Children: rtnElemArr}
+		rtnElem = &VDomElem{Tag: FragmentTag, Children: rtnElemArr}
 	}
 	r.render(rtnElem, &(*comp).Comp)
 }
@@ -333,8 +333,8 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 	return vdomProps
 }
 
-func convertBaseToVDom(c *Component) *VElem {
-	elem := &VElem{WaveId: c.WaveId, Tag: c.Tag}
+func convertBaseToVDom(c *Component) *VDomElem {
+	elem := &VDomElem{WaveId: c.WaveId, Tag: c.Tag}
 	if c.Elem != nil {
 		elem.Props = convertPropsToVDom(c.Elem.Props)
 	}
@@ -347,12 +347,12 @@ func convertBaseToVDom(c *Component) *VElem {
 	return elem
 }
 
-func convertToVDom(c *Component) *VElem {
+func convertToVDom(c *Component) *VDomElem {
 	if c == nil {
 		return nil
 	}
 	if c.Tag == TextTag {
-		return &VElem{Tag: TextTag, Text: c.Text}
+		return &VDomElem{Tag: TextTag, Text: c.Text}
 	}
 	if isBaseTag(c.Tag) {
 		return convertBaseToVDom(c)
@@ -361,11 +361,11 @@ func convertToVDom(c *Component) *VElem {
 	}
 }
 
-func (r *RootElem) makeVDom(comp *Component) *VElem {
+func (r *RootElem) makeVDom(comp *Component) *VDomElem {
 	vdomElem := convertToVDom(comp)
 	return vdomElem
 }
 
-func (r *RootElem) MakeVDom() *VElem {
+func (r *RootElem) MakeVDom() *VDomElem {
 	return r.makeVDom(r.Root)
 }

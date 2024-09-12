@@ -16,11 +16,11 @@ const ObjectType_Binding = "binding"
 const ObjectType_Func = "func"
 
 // vdom element
-type VElem struct {
-	WaveId   string         `json:"waveid"`
+type VDomElem struct {
+	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
 	Tag      string         `json:"tag"`
 	Props    map[string]any `json:"props,omitempty"`
-	Children []VElem        `json:"children,omitempty"`
+	Children []VDomElem     `json:"children,omitempty"`
 	Text     string         `json:"text,omitempty"`
 }
 
@@ -31,27 +31,27 @@ type AsyncInitiationRequest struct {
 	Ts   int64  `json:"ts"`
 }
 
-type FrontendUpdate struct {
+type VDomFrontendUpdate struct {
 	Type          string            `json:"type" static:"frontendupdate"`
 	Ts            int64             `json:"ts"`
 	RequestId     string            `json:"requestid"`
 	Initialize    bool              `json:"initialize,omitempty"` // initialize the app
 	Resync        bool              `json:"resync,omitempty"`     // resync (send all backend data).  useful when the FE reloads
 	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
-	Events        []Event           `json:"events,omitempty"`
-	StateSync     []StateSync       `json:"statesync,omitempty"`
-	RefUpdates    []RefUpdate       `json:"refupdates,omitempty"`
-	Messages      []MessageEvent    `json:"messages,omitempty"`
+	Events        []VDomEvent       `json:"events,omitempty"`
+	StateSync     []VDomStateSync   `json:"statesync,omitempty"`
+	RefUpdates    []VDomRefUpdate   `json:"refupdates,omitempty"`
+	Messages      []VDomMessage     `json:"messages,omitempty"`
 }
 
-type BackendUpdate struct {
-	Type          string         `json:"type" static:"backendupdate"`
-	Ts            int64          `json:"ts"`
-	ResponseId    string         `json:"responseid"`
-	RenderUpdates []RenderUpdate `json:"renderupdates,omitempty"`
-	StateSync     []StateSync    `json:"statesync,omitempty"`
-	RefOperations []RefOperation `json:"refoperations,omitempty"`
-	Messages      []MessageEvent `json:"messages,omitempty"`
+type VDomBackendUpdate struct {
+	Type          string             `json:"type" static:"backendupdate"`
+	Ts            int64              `json:"ts"`
+	ResponseId    string             `json:"responseid"`
+	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
+	StateSync     []VDomStateSync    `json:"statesync,omitempty"`
+	RefOperations []VDomRefOperation `json:"refoperations,omitempty"`
+	Messages      []VDomMessage      `json:"messages,omitempty"`
 }
 
 ///// prop types
@@ -100,7 +100,7 @@ type VDomRef struct {
 
 ///// subbordinate protocol types
 
-type Event struct {
+type VDomEvent struct {
 	WaveId    string `json:"waveid"`
 	EventType string `json:"eventtype"`
 	EventData any    `json:"eventdata"`
@@ -114,30 +114,32 @@ type VDomRenderContext struct {
 	ViewRefId string `json:"viewrefid"`
 }
 
-type StateSync struct {
+type VDomStateSync struct {
 	Atom  string `json:"atom"`
 	Value any    `json:"value"`
 }
 
-type RefUpdate struct {
+type VDomRefUpdate struct {
 	RefId   string `json:"refid"`
 	Current any    `json:"current"`
 }
 
-type RenderUpdate struct {
-	WaveId string `json:"waveid"`
-	VDom   VElem  `json:"vdom"`
+type VDomRenderUpdate struct {
+	UpdateType string   `json:"updatetype" tstype:"\"root\"|\"append\"|\"replace\"|\"remove\"|\"insert\""`
+	WaveId     string   `json:"waveid"`
+	VDom       VDomElem `json:"vdom"`
+	Index      *int     `json:"index,omitempty"`
 }
 
-type RefOperation struct {
+type VDomRefOperation struct {
 	RefId     string `json:"refid"`
 	Operation string `json:"operation"`
 	Params    []any  `json:"params,omitempty"`
 }
 
-type MessageEvent struct {
+type VDomMessage struct {
 	MessageType string `json:"messagetype"`
-	Message     string `json:"content"`
+	Message     string `json:"message"`
 	StackTrace  string `json:"stacktrace,omitempty"`
 	Params      []any  `json:"params,omitempty"`
 }

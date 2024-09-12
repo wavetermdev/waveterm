@@ -1,8 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { globalStore } from "@/app/store/global";
+import { VDomModel } from "@/app/view/term/vdom-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import * as jotai from "jotai";
 import * as React from "react";
+
+const TextTag = "#text";
+const FragmentTag = "#fragment";
+const WaveTextTag = "wave:text";
 
 const AllowedTags: { [tagName: string]: boolean } = {
     div: true,
@@ -30,7 +37,7 @@ const AllowedTags: { [tagName: string]: boolean } = {
     form: true,
 };
 
-function convertVDomFunc(fnDecl: VDomFuncType, compId: string, propName: string): (e: any) => void {
+function convertVDomFunc(fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
     return (e: any) => {
         if ((propName == "onKeyDown" || propName == "onKeyDownCapture") && fnDecl["#keys"]) {
             let waveEvent = adaptFromReactOrNativeKeyEvent(e);
@@ -58,10 +65,10 @@ function convertElemToTag(elem: VDomElem): JSX.Element | string {
     if (elem == null) {
         return null;
     }
-    if (elem.tag == "#text") {
+    if (elem.tag == TextTag) {
         return elem.text;
     }
-    return React.createElement(VDomTag, { elem: elem, key: elem.id });
+    return React.createElement(VDomTag, { elem: elem, key: elem.waveid });
 }
 
 function isObject(v: any): boolean {
@@ -76,7 +83,7 @@ function callFunc(e: any, compId: string, propName: string) {
     console.log("callfunc", compId, propName);
 }
 
-function updateRefFunc(elem: any, ref: VDomRefType) {
+function updateRefFunc(elem: any, ref: VDomRef) {
     console.log("updateref", ref["#ref"], elem);
 }
 
@@ -102,7 +109,7 @@ function VDomTag({ elem }: { elem: VDomElem }) {
             continue;
         }
         if (isObject(val) && "#func" in val) {
-            props[key] = convertVDomFunc(val, elem.id, key);
+            props[key] = convertVDomFunc(val, elem.waveid, key);
             continue;
         }
     }
@@ -115,13 +122,47 @@ function VDomTag({ elem }: { elem: VDomElem }) {
             childrenComps.push(convertElemToTag(child));
         }
     }
-    if (elem.tag == "#fragment") {
+    if (elem.tag == FragmentTag) {
         return childrenComps;
     }
     return React.createElement(elem.tag, props, childrenComps);
 }
 
-function VDomView({ rootNode }: { rootNode: VDomElem }) {
+function vdomText(text: string): VDomElem {
+    return {
+        tag: "#text",
+        text: text,
+    };
+}
+
+const testVDom: VDomElem = {
+    waveid: "testid1",
+    tag: "div",
+    children: [
+        {
+            waveid: "testh1",
+            tag: "h1",
+            children: [vdomText("Hello World")],
+        },
+        {
+            waveid: "testp",
+            tag: "p",
+            children: [vdomText("This is a paragraph (from VDOM)")],
+        },
+    ],
+};
+
+function VDomView({ blockId }: { blockId: string }) {
+    let [model, setModel] = React.useState<VDomModel>(null);
+    React.useEffect(() => {
+        const model = new VDomModel(blockId);
+        globalStore.set(model.vdomRoot, testVDom);
+        setModel(model);
+    }, []);
+    if (!model) {
+        return null;
+    }
+    let rootNode = jotai.useAtomValue(model.vdomRoot);
     let rtn = convertElemToTag(rootNode);
     return <div className="vdom">{rtn}</div>;
 }

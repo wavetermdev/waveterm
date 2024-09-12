@@ -19,7 +19,7 @@ const Html_ParamPrefix = "#param:"
 const Html_BindParamTagName = "bindparam"
 const Html_BindTagName = "bind"
 
-func appendChildToStack(stack []*VElem, child *VElem) {
+func appendChildToStack(stack []*VDomElem, child *VDomElem) {
 	if child == nil {
 		return
 	}
@@ -30,14 +30,14 @@ func appendChildToStack(stack []*VElem, child *VElem) {
 	parent.Children = append(parent.Children, *child)
 }
 
-func pushElemStack(stack []*VElem, elem *VElem) []*VElem {
+func pushElemStack(stack []*VDomElem, elem *VDomElem) []*VDomElem {
 	if elem == nil {
 		return stack
 	}
 	return append(stack, elem)
 }
 
-func popElemStack(stack []*VElem) []*VElem {
+func popElemStack(stack []*VDomElem) []*VDomElem {
 	if len(stack) <= 1 {
 		return stack
 	}
@@ -46,14 +46,14 @@ func popElemStack(stack []*VElem) []*VElem {
 	return stack[:len(stack)-1]
 }
 
-func curElemTag(stack []*VElem) string {
+func curElemTag(stack []*VDomElem) string {
 	if len(stack) == 0 {
 		return ""
 	}
 	return stack[len(stack)-1].Tag
 }
 
-func finalizeStack(stack []*VElem) *VElem {
+func finalizeStack(stack []*VDomElem) *VDomElem {
 	if len(stack) == 0 {
 		return nil
 	}
@@ -98,8 +98,8 @@ func attrToProp(attrVal string, params map[string]any) any {
 	return attrVal
 }
 
-func tokenToElem(token htmltoken.Token, params map[string]any) *VElem {
-	elem := &VElem{Tag: token.Data}
+func tokenToElem(token htmltoken.Token, params map[string]any) *VDomElem {
+	elem := &VDomElem{Tag: token.Data}
 	if len(token.Attr) > 0 {
 		elem.Props = make(map[string]any)
 	}
@@ -193,12 +193,12 @@ func processTextStr(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func Bind(htmlStr string, data map[string]any) *VElem {
+func Bind(htmlStr string, data map[string]any) *VDomElem {
 	htmlStr = processWhitespace(htmlStr)
 	r := strings.NewReader(htmlStr)
 	iter := htmltoken.NewTokenizer(r)
-	var elemStack []*VElem
-	elemStack = append(elemStack, &VElem{Tag: FragmentTag})
+	var elemStack []*VDomElem
+	elemStack = append(elemStack, &VDomElem{Tag: FragmentTag})
 	var tokenErr error
 outer:
 	for {
@@ -239,7 +239,7 @@ outer:
 			if token.Data == Html_BindTagName {
 				keyAttr := getAttr(token, "key")
 				binding := &VDomBinding{Type: ObjectType_Binding, Bind: keyAttr}
-				appendChildToStack(elemStack, &VElem{Tag: WaveTextTag, Props: map[string]any{"text": binding}})
+				appendChildToStack(elemStack, &VDomElem{Tag: WaveTextTag, Props: map[string]any{"text": binding}})
 			}
 			elem := tokenToElem(token, data)
 			appendChildToStack(elemStack, elem)

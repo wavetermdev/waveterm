@@ -71,30 +71,6 @@ type InitialLoadDataType = {
     heldData: Uint8Array[];
 };
 
-function vdomText(text: string): VDomElem {
-    return {
-        tag: "#text",
-        text: text,
-    };
-}
-
-const testVDom: VDomElem = {
-    id: "testid1",
-    tag: "div",
-    children: [
-        {
-            id: "testh1",
-            tag: "h1",
-            children: [vdomText("Hello World")],
-        },
-        {
-            id: "testp",
-            tag: "p",
-            children: [vdomText("This is a paragraph (from VDOM)")],
-        },
-    ],
-};
-
 class TermViewModel {
     viewType: string;
     connected: boolean;
@@ -420,7 +396,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                     />
                 </div>
                 <div key="htmlElemContent" className="term-htmlelem-content">
-                    <VDomView rootNode={testVDom} />
+                    <VDomView blockId={blockId} />
                 </div>
             </div>
         </div>
