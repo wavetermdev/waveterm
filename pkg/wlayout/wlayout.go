@@ -145,6 +145,17 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 	return nil
 }
 
+func BootstrapNewWindowLayout(ctx context.Context, window *waveobj.Window) error {
+	tabId := window.ActiveTabId
+	newTabLayout := GetNewTabLayout()
+
+	err := ApplyPortableLayout(ctx, tabId, newTabLayout)
+	if err != nil {
+		return fmt.Errorf("error applying new window layout: %w", err)
+	}
+	return nil
+}
+
 func BootstrapStarterLayout(ctx context.Context) error {
 	ctx, cancelFn := context.WithTimeout(ctx, 2*time.Second)
 	defer cancelFn()
@@ -171,7 +182,7 @@ func BootstrapStarterLayout(ctx context.Context) error {
 
 	err = ApplyPortableLayout(ctx, tabId, starterLayout)
 	if err != nil {
-		return fmt.Errorf("error applying portable layout: %w", err)
+		return fmt.Errorf("error applying starter layout: %w", err)
 	}
 
 	return nil
