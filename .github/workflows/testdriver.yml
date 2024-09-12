@@ -42,8 +42,6 @@ jobs:
             echo "Starting Electron"
             scripthaus run electron 1>/dev/null 2>&1 &
             echo "Electron Done"
-            cd /Users/ec2-user/Downloads/td/
-            npm rebuild
             exit       
           prompt: |
             1. /run /testdriver/theme.yml
