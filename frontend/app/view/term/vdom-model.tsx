@@ -54,6 +54,20 @@ export class VDomModel {
         return container;
     }
 
+    tagUseAtoms(waveId: string, atomNames: Set<string>) {
+        for (let atomName of atomNames) {
+            let container = this.getAtomContainer(atomName);
+            container.usedBy.add(waveId);
+        }
+    }
+
+    tagUnuseAtoms(waveId: string, atomNames: Set<string>) {
+        for (let atomName of atomNames) {
+            let container = this.getAtomContainer(atomName);
+            container.usedBy.delete(waveId);
+        }
+    }
+
     getVDomNodeVersionAtom(vdom: VDomElem) {
         let atom = this.vdomNodeVersion.get(vdom);
         if (atom == null) {
@@ -149,17 +163,23 @@ export class VDomModel {
         }
     }
 
+    setAtomValue(atomName: string, value: any, fromBe: boolean, idMap: Map<string, VDomElem>) {
+        let container = this.getAtomContainer(atomName);
+        container.val = value;
+        if (fromBe) {
+            container.beVal = value;
+        }
+        for (let id of container.usedBy) {
+            this.incVDomNodeVersion(idMap.get(id));
+        }
+    }
+
     handleStateSync(update: VDomBackendUpdate, idMap: Map<string, VDomElem>) {
         if (update.statesync == null) {
             return;
         }
         for (let sync of update.statesync) {
-            let container = this.getAtomContainer(sync.atom);
-            container.val = sync.value;
-            container.beVal = sync.value;
-            for (let id of container.usedBy) {
-                this.incVDomNodeVersion(idMap.get(id));
-            }
+            this.setAtomValue(sync.atom, sync.value, true, idMap);
         }
     }
 

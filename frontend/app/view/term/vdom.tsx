@@ -89,10 +89,12 @@ function updateRefFunc(elem: any, ref: VDomRef) {
 
 type GenericPropsType = { [key: string]: any };
 
-function convertProps(elem: VDomElem, model: VDomModel): GenericPropsType {
+// returns props, and a set of atom keys used in the props
+function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<string>] {
     let props: GenericPropsType = {};
+    let atomKeys = new Set<string>();
     if (elem.props == null) {
-        return props;
+        return [props, atomKeys];
     }
     for (let key in elem.props) {
         let val = elem.props[key];
@@ -115,7 +117,7 @@ function convertProps(elem: VDomElem, model: VDomModel): GenericPropsType {
             continue;
         }
     }
-    return props;
+    return [props, atomKeys];
 }
 
 function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Element)[] {
@@ -132,11 +134,39 @@ function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Elemen
     return childrenComps;
 }
 
+function stringSetsEqual(set1: Set<string>, set2: Set<string>): boolean {
+    if (set1.size != set2.size) {
+        return false;
+    }
+    for (let elem of set1) {
+        if (!set2.has(elem)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const version = jotai.useAtomValue(model.getVDomNodeVersionAtom(elem));
+    const [oldAtomKeys, setOldAtomKeys] = React.useState<Set<string>>(new Set());
+    let [props, atomKeys] = convertProps(elem, model);
+    React.useEffect(() => {
+        if (stringSetsEqual(atomKeys, oldAtomKeys)) {
+            return;
+        }
+        model.tagUnuseAtoms(elem.waveid, oldAtomKeys);
+        model.tagUseAtoms(elem.waveid, atomKeys);
+        setOldAtomKeys(atomKeys);
+    }, [atomKeys]);
+    React.useEffect(() => {
+        return () => {
+            model.tagUnuseAtoms(elem.waveid, oldAtomKeys);
+        };
+    }, []);
+
     if (!AllowedTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
     }
-    let props = convertProps(elem, model);
     let childrenComps = convertChildren(elem, model);
     if (elem.tag == FragmentTag) {
         return childrenComps;
