@@ -35,7 +35,7 @@ func Page(ctx context.Context, props map[string]any) any {
 }
 
 func Button(ctx context.Context, props map[string]any) any {
-	ref := vdom.UseRef(ctx, nil)
+	ref := vdom.UseVDomRef(ctx)
 	clName, setClName := vdom.UseState(ctx, "button")
 	vdom.UseEffect(ctx, func() func() {
 		fmt.Printf("Button useEffect\n")

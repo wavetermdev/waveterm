@@ -136,12 +136,12 @@ func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
 	return atomVal, setVal
 }
 
-func UseRef(ctx context.Context, initialVal any) *VDomRef {
+func UseVDomRef(ctx context.Context) *VDomRef {
 	vc, hookVal := getHookFromCtx(ctx)
 	if !hookVal.Init {
 		hookVal.Init = true
 		refId := vc.Comp.WaveId + ":" + strconv.Itoa(hookVal.Idx)
-		hookVal.Val = &VDomRef{Type: ObjectType_Ref, RefId: refId, Current: initialVal}
+		hookVal.Val = &VDomRef{Type: ObjectType_Ref, RefId: refId}
 	}
 	refVal, ok := hookVal.Val.(*VDomRef)
 	if !ok {

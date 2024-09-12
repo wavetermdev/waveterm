@@ -76,8 +76,8 @@ type VDomRef struct {
 	Type          string           `json:"type" tstype:"\"ref\""`
 	RefId         string           `json:"refid"`
 	TrackPosition bool             `json:"trackposition,omitempty"`
-	Current       any              `json:"current,omitempty"`
 	Position      *VDomRefPosition `json:"position,omitempty"`
+	HasCurrent    bool             `json:"hascurrent,omitempty"`
 }
 
 type DomRect struct {
@@ -120,8 +120,9 @@ type VDomStateSync struct {
 }
 
 type VDomRefUpdate struct {
-	RefId   string `json:"refid"`
-	Current any    `json:"current"`
+	RefId      string           `json:"refid"`
+	HasCurrent bool             `json:"hascurrent"`
+	Position   *VDomRefPosition `json:"position,omitempty"`
 }
 
 type VDomRenderUpdate struct {

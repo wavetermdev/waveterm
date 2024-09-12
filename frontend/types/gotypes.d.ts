@@ -604,8 +604,8 @@ declare global {
         type: "ref";
         refid: string;
         trackposition?: boolean;
-        current?: any;
         position?: VDomRefPosition;
+        hascurrent?: boolean;
     };
 
     // vdom.VDomRefOperation
@@ -628,7 +628,8 @@ declare global {
     // vdom.VDomRefUpdate
     type VDomRefUpdate = {
         refid: string;
-        current: any;
+        hascurrent: boolean;
+        position?: VDomRefPosition;
     };
 
     // vdom.VDomRenderContext

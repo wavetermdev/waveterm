@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { globalStore } from "@/app/store/global";
+import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import * as jotai from "jotai";
 
 type AtomContainer = {
@@ -14,6 +15,7 @@ type RefContainer = {
     refFn: (elem: HTMLElement) => void;
     vdomRef: VDomRef;
     elem: HTMLElement;
+    updated: boolean;
 };
 
 function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
@@ -35,12 +37,33 @@ function updateTrackedPosition(container: RefContainer) {
     // TODO
 }
 
+function convertEvent(e: React.SyntheticEvent, fromProp: string): any {
+    if (e == null) {
+        return null;
+    }
+    if (fromProp == "onClick") {
+        return { type: "click" };
+    }
+    if (fromProp == "onKeyDown") {
+        const waveKeyEvent = adaptFromReactOrNativeKeyEvent(e as React.KeyboardEvent);
+        return waveKeyEvent;
+    }
+    if (fromProp == "onFocus") {
+        return { type: "focus" };
+    }
+    if (fromProp == "onBlur") {
+        return { type: "blur" };
+    }
+    return { type: "unknown" };
+}
+
 export class VDomModel {
     blockId: string;
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
     batchedEvents: VDomEvent[] = [];
+    refUpdates: VDomRefUpdate[] = [];
     messages: VDomMessage[] = [];
     initialized: boolean = false;
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
@@ -69,12 +92,18 @@ export class VDomModel {
             container = {
                 refFn: (elem: HTMLElement) => {
                     container.elem = elem;
+                    const hasElem = elem != null;
+                    if (vdomRef.hascurrent != hasElem) {
+                        container.updated = true;
+                        vdomRef.hascurrent = hasElem;
+                    }
                     if (vdomRef.trackposition) {
                         updateTrackedPosition(container);
                     }
                 },
                 vdomRef: vdomRef,
                 elem: null,
+                updated: false,
             };
             this.refs.set(vdomRef.refid, container);
         }
@@ -254,7 +283,13 @@ export class VDomModel {
     }
 
     callVDomFunc(e: any, compId: string, propName: string) {
-        console.log("callfunc", e, compId, propName);
+        const eventData = convertEvent(e, propName);
+        const vdomEvent: VDomEvent = {
+            waveid: compId,
+            eventtype: propName,
+            eventdata: eventData,
+        };
+        this.batchedEvents.push(vdomEvent);
     }
 
     updateRefFunc(elem: any, ref: VDomRef) {}
