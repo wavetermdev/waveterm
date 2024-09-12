@@ -454,7 +454,7 @@ declare global {
         display: StickerDisplayOptsType;
     };
 
-    // wshrpc.SubscriptionRequest
+    // wps.SubscriptionRequest
     type SubscriptionRequest = {
         event: string;
         scopes?: string[];
@@ -659,7 +659,7 @@ declare global {
         data: any;
     };
 
-    // eventbus.WSFileEventData
+    // wps.WSFileEventData
     type WSFileEventData = {
         zoneid: string;
         filename: string;
@@ -678,7 +678,7 @@ declare global {
         fullconfig: FullConfigType;
     };
 
-    // wshrpc.WaveEvent
+    // wps.WaveEvent
     type WaveEvent = {
         event: string;
         scopes?: string[];

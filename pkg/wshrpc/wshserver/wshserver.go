@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
-	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -169,9 +168,9 @@ func sendWaveObjUpdate(oref waveobj.ORef) {
 		log.Printf("error getting object for update event: %v", err)
 		return
 	}
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_WaveObjUpdate,
-		ORef:      oref.String(),
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_WaveObjUpdate,
+		Scopes: []string{oref.String()},
 		Data: waveobj.WaveObjUpdate{
 			UpdateType: waveobj.UpdateType_Update,
 			OType:      waveObj.GetOType(),
@@ -263,7 +262,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 		return nil, fmt.Errorf("error queuing layout action: %w", err)
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	eventbus.SendUpdateEvents(updates)
+	wps.Broker.SendUpdateEvents(updates)
 	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
 }
 
@@ -280,7 +279,7 @@ func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBloc
 		return fmt.Errorf("error updating block: %w", err)
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	eventbus.SendUpdateEvents(updates)
+	wps.Broker.SendUpdateEvents(updates)
 	return nil
 }
 
@@ -329,13 +328,13 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFi
 	if err != nil {
 		return fmt.Errorf("error writing to blockfile: %w", err)
 	}
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String(),
-		Data: &eventbus.WSFileEventData{
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
+		Data: &wps.WSFileEventData{
 			ZoneId:   data.ZoneId,
 			FileName: data.FileName,
-			FileOp:   eventbus.FileOp_Invalidate,
+			FileOp:   wps.FileOp_Invalidate,
 		},
 	})
 	return nil
@@ -358,13 +357,13 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandF
 	if err != nil {
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String(),
-		Data: &eventbus.WSFileEventData{
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
+		Data: &wps.WSFileEventData{
 			ZoneId:   data.ZoneId,
 			FileName: data.FileName,
-			FileOp:   eventbus.FileOp_Append,
+			FileOp:   wps.FileOp_Append,
 			Data64:   base64.StdEncoding.EncodeToString(dataBuf),
 		},
 	})
@@ -383,13 +382,13 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 	if err != nil {
 		return fmt.Errorf("error appending to blockfile(ijson): %w", err)
 	}
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String(),
-		Data: &eventbus.WSFileEventData{
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
+		Data: &wps.WSFileEventData{
 			ZoneId:   data.ZoneId,
 			FileName: data.FileName,
-			FileOp:   eventbus.FileOp_Append,
+			FileOp:   wps.FileOp_Append,
 			Data64:   base64.StdEncoding.EncodeToString([]byte("{}")),
 		},
 	})
@@ -421,15 +420,15 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 		BlockId:    data.BlockId,
 	})
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	eventbus.SendUpdateEvents(updates)
+	wps.Broker.SendUpdateEvents(updates)
 	return nil
 }
 
-func (ws *WshServer) EventRecvCommand(ctx context.Context, data wshrpc.WaveEvent) error {
+func (ws *WshServer) EventRecvCommand(ctx context.Context, data wps.WaveEvent) error {
 	return nil
 }
 
-func (ws *WshServer) EventPublishCommand(ctx context.Context, data wshrpc.WaveEvent) error {
+func (ws *WshServer) EventPublishCommand(ctx context.Context, data wps.WaveEvent) error {
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	if rpcSource == "" {
 		return fmt.Errorf("no rpc source set")
@@ -441,7 +440,8 @@ func (ws *WshServer) EventPublishCommand(ctx context.Context, data wshrpc.WaveEv
 	return nil
 }
 
-func (ws *WshServer) EventSubCommand(ctx context.Context, data wshrpc.SubscriptionRequest) error {
+func (ws *WshServer) EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error {
+	log.Printf("EventSubCommand: %v\n", data)
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	if rpcSource == "" {
 		return fmt.Errorf("no rpc source set")
@@ -468,7 +468,7 @@ func (ws *WshServer) EventUnsubAllCommand(ctx context.Context) error {
 	return nil
 }
 
-func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.CommandEventReadHistoryData) ([]*wshrpc.WaveEvent, error) {
+func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.CommandEventReadHistoryData) ([]*wps.WaveEvent, error) {
 	events := wps.Broker.ReadEventHistory(data.Event, data.Scope, data.MaxItems)
 	return events, nil
 }

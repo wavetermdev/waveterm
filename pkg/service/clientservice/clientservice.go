@@ -62,7 +62,15 @@ func (cs *ClientService) GetWindow(windowId string) (*waveobj.Window, error) {
 }
 
 func (cs *ClientService) MakeWindow(ctx context.Context) (*waveobj.Window, error) {
-	return wcore.CreateWindow(ctx, nil)
+	window, err := wcore.CreateWindow(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	err = wlayout.BootstrapNewWindowLayout(ctx, window)
+	if err != nil {
+		return window, err
+	}
+	return window, nil
 }
 
 func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnStatus, error) {

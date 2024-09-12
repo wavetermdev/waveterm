@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { handleIncomingRpcMessage, sendRawRpcMessage } from "@/app/store/wshrpc";
 import {
     getLayoutModelForActiveTab,
     getLayoutModelForTabById,
@@ -9,23 +8,22 @@ import {
     LayoutTreeInsertNodeAction,
     newLayoutNode,
 } from "@/layout/index";
-import { getWebServerEndpoint, getWSServerEndpoint } from "@/util/endpoints";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
-import * as util from "@/util/util";
-import * as jotai from "jotai";
-import * as rxjs from "rxjs";
+import { getPrefixedSettings, isBlank } from "@/util/util";
+import { atom, Atom, createStore, PrimitiveAtom, useAtomValue } from "jotai";
 import { modalsModel } from "./modalmodel";
-import * as services from "./services";
+import { ClientService, ObjectService } from "./services";
 import * as WOS from "./wos";
-import { WSControl } from "./ws";
+import { getFileSubject, waveEventSubscribe } from "./wps";
 
 let PLATFORM: NodeJS.Platform = "darwin";
-const globalStore = jotai.createStore();
+const globalStore = createStore();
 let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
-const ConnStatusMap = new Map<string, jotai.PrimitiveAtom<ConnStatus>>();
+const ConnStatusMap = new Map<string, PrimitiveAtom<ConnStatus>>();
 
 type GlobalInitOptions = {
     platform: NodeJS.Platform;
@@ -45,18 +43,18 @@ function setPlatform(platform: NodeJS.Platform) {
 }
 
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
-    const windowIdAtom = jotai.atom(initOpts.windowId) as jotai.PrimitiveAtom<string>;
-    const clientIdAtom = jotai.atom(initOpts.clientId) as jotai.PrimitiveAtom<string>;
-    const uiContextAtom = jotai.atom((get) => {
+    const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
+    const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
+    const uiContextAtom = atom((get) => {
         const windowData = get(windowDataAtom);
         const uiContext: UIContext = {
             windowid: get(atoms.windowId),
             activetabid: windowData?.activetabid,
         };
         return uiContext;
-    }) as jotai.Atom<UIContext>;
+    }) as Atom<UIContext>;
 
-    const isFullScreenAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
+    const isFullScreenAtom = atom(false) as PrimitiveAtom<boolean>;
     try {
         getApi().onFullScreenChange((isFullScreen) => {
             globalStore.set(isFullScreenAtom, isFullScreen);
@@ -65,7 +63,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // do nothing
     }
 
-    const showAboutModalAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
+    const showAboutModalAtom = atom(false) as PrimitiveAtom<boolean>;
     try {
         getApi().onMenuItemAbout(() => {
             modalsModel.pushModal("AboutModal");
@@ -74,14 +72,14 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // do nothing
     }
 
-    const clientAtom: jotai.Atom<Client> = jotai.atom((get) => {
+    const clientAtom: Atom<Client> = atom((get) => {
         const clientId = get(clientIdAtom);
         if (clientId == null) {
             return null;
         }
         return WOS.getObjectValue(WOS.makeORef("client", clientId), get);
     });
-    const windowDataAtom: jotai.Atom<WaveWindow> = jotai.atom((get) => {
+    const windowDataAtom: Atom<WaveWindow> = atom((get) => {
         const windowId = get(windowIdAtom);
         if (windowId == null) {
             return null;
@@ -89,33 +87,33 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         const rtn = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", windowId), get);
         return rtn;
     });
-    const workspaceAtom: jotai.Atom<Workspace> = jotai.atom((get) => {
+    const workspaceAtom: Atom<Workspace> = atom((get) => {
         const windowData = get(windowDataAtom);
         if (windowData == null) {
             return null;
         }
         return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
     });
-    const fullConfigAtom = jotai.atom(null) as jotai.PrimitiveAtom<FullConfigType>;
-    const settingsAtom = jotai.atom((get) => {
+    const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
+    const settingsAtom = atom((get) => {
         return get(fullConfigAtom)?.settings ?? {};
-    }) as jotai.Atom<SettingsType>;
-    const tabAtom: jotai.Atom<Tab> = jotai.atom((get) => {
+    }) as Atom<SettingsType>;
+    const tabAtom: Atom<Tab> = atom((get) => {
         const windowData = get(windowDataAtom);
         if (windowData == null) {
             return null;
         }
         return WOS.getObjectValue(WOS.makeORef("tab", windowData.activetabid), get);
     });
-    const activeTabIdAtom: jotai.Atom<string> = jotai.atom((get) => {
+    const activeTabIdAtom: Atom<string> = atom((get) => {
         const windowData = get(windowDataAtom);
         if (windowData == null) {
             return null;
         }
         return windowData.activetabid;
     });
-    const controlShiftDelayAtom = jotai.atom(false);
-    const updaterStatusAtom = jotai.atom<UpdaterStatus>("up-to-date") as jotai.PrimitiveAtom<UpdaterStatus>;
+    const controlShiftDelayAtom = atom(false);
+    const updaterStatusAtom = atom<UpdaterStatus>("up-to-date") as PrimitiveAtom<UpdaterStatus>;
     try {
         globalStore.set(updaterStatusAtom, getApi().getUpdaterStatus());
         getApi().onUpdaterStatusChange((status) => {
@@ -125,11 +123,11 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // do nothing
     }
 
-    const reducedMotionSettingAtom = jotai.atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
-    const reducedMotionSystemPreferenceAtom = jotai.atom(false);
+    const reducedMotionSettingAtom = atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
+    const reducedMotionSystemPreferenceAtom = atom(false);
 
     // Composite of the prefers-reduced-motion media query and the window:reducedmotion user setting.
-    const prefersReducedMotionAtom = jotai.atom((get) => {
+    const prefersReducedMotionAtom = atom((get) => {
         const reducedMotionSetting = get(reducedMotionSettingAtom);
         const reducedMotionSystemPreference = get(reducedMotionSystemPreferenceAtom);
         return reducedMotionSetting || reducedMotionSystemPreference;
@@ -144,9 +142,9 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         });
     }
 
-    const typeAheadModalAtom = jotai.atom({});
-    const modalOpen = jotai.atom(false);
-    const allConnStatusAtom = jotai.atom<ConnStatus[]>((get) => {
+    const typeAheadModalAtom = atom({});
+    const modalOpen = atom(false);
+    const allConnStatusAtom = atom<ConnStatus[]>((get) => {
         const connStatuses = Array.from(ConnStatusMap.values()).map((atom) => get(atom));
         return connStatuses;
     });
@@ -172,115 +170,44 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     };
 }
 
-type WaveEventSubjectContainer = {
-    id: string;
-    handler: (event: WaveEvent) => void;
-    scope: string;
-};
-
-// key is "eventType" or "eventType|oref"
-const eventSubjects = new Map<string, SubjectWithRef<WSEventType>>();
-const fileSubjects = new Map<string, SubjectWithRef<WSFileEventData>>();
-const waveEventSubjects = new Map<string, WaveEventSubjectContainer[]>();
-
-function getSubjectInternal(subjectKey: string): SubjectWithRef<WSEventType> {
-    let subject = eventSubjects.get(subjectKey);
-    if (subject == null) {
-        subject = new rxjs.Subject<any>() as any;
-        subject.refCount = 0;
-        subject.release = () => {
-            subject.refCount--;
-            if (subject.refCount === 0) {
-                subject.complete();
-                eventSubjects.delete(subjectKey);
-            }
-        };
-        eventSubjects.set(subjectKey, subject);
-    }
-    subject.refCount++;
-    return subject;
-}
-
-function getEventSubject(eventType: string): SubjectWithRef<WSEventType> {
-    return getSubjectInternal(eventType);
-}
-
-function getEventORefSubject(eventType: string, oref: string): SubjectWithRef<WSEventType> {
-    return getSubjectInternal(eventType + "|" + oref);
-}
-
-function makeWaveReSubCommand(eventType: string): RpcMessage {
-    let subjects = waveEventSubjects.get(eventType);
-    if (subjects == null) {
-        return { command: "eventunsub", data: eventType };
-    }
-    let subreq: SubscriptionRequest = { event: eventType, scopes: [], allscopes: false };
-    for (const scont of subjects) {
-        if (util.isBlank(scont.scope)) {
-            subreq.allscopes = true;
-            subreq.scopes = [];
-            break;
+function initGlobalWaveEventSubs() {
+    waveEventSubscribe(
+        {
+            eventType: "waveobj:update",
+            handler: (event) => {
+                // console.log("waveobj:update wave event handler", event);
+                const update: WaveObjUpdate = event.data;
+                WOS.updateWaveObject(update);
+            },
+        },
+        {
+            eventType: "config",
+            handler: (event) => {
+                // console.log("config wave event handler", event);
+                const fullConfig = (event.data as WatcherUpdate).fullconfig;
+                globalStore.set(atoms.fullConfigAtom, fullConfig);
+            },
+        },
+        {
+            eventType: "userinput",
+            handler: (event) => {
+                // console.log("userinput event handler", event);
+                const data: UserInputRequest = event.data;
+                modalsModel.pushModal("UserInputModal", { ...data });
+            },
+        },
+        {
+            eventType: "blockfile",
+            handler: (event) => {
+                // console.log("blockfile event update", event);
+                const fileData: WSFileEventData = event.data;
+                const fileSubject = getFileSubject(fileData.zoneid, fileData.filename);
+                if (fileSubject != null) {
+                    fileSubject.next(fileData);
+                }
+            },
         }
-        subreq.scopes.push(scont.scope);
-    }
-    return { command: "eventsub", data: subreq };
-}
-
-function updateWaveEventSub(eventType: string) {
-    const command = makeWaveReSubCommand(eventType);
-    sendRawRpcMessage(command);
-}
-
-function waveEventSubscribe(eventType: string, scope: string, handler: (event: WaveEvent) => void): () => void {
-    if (handler == null) {
-        return;
-    }
-    const id = crypto.randomUUID();
-    const subject = new rxjs.Subject() as any;
-    const scont: WaveEventSubjectContainer = { id, scope, handler };
-    let subjects = waveEventSubjects.get(eventType);
-    if (subjects == null) {
-        subjects = [];
-        waveEventSubjects.set(eventType, subjects);
-    }
-    subjects.push(scont);
-    updateWaveEventSub(eventType);
-    return () => waveEventUnsubscribe(eventType, id);
-}
-
-function waveEventUnsubscribe(eventType: string, id: string) {
-    let subjects = waveEventSubjects.get(eventType);
-    if (subjects == null) {
-        return;
-    }
-    const idx = subjects.findIndex((s) => s.id === id);
-    if (idx === -1) {
-        return;
-    }
-    subjects.splice(idx, 1);
-    if (subjects.length === 0) {
-        waveEventSubjects.delete(eventType);
-    }
-    updateWaveEventSub(eventType);
-}
-
-function getFileSubject(zoneId: string, fileName: string): SubjectWithRef<WSFileEventData> {
-    const subjectKey = zoneId + "|" + fileName;
-    let subject = fileSubjects.get(subjectKey);
-    if (subject == null) {
-        subject = new rxjs.Subject<any>() as any;
-        subject.refCount = 0;
-        subject.release = () => {
-            subject.refCount--;
-            if (subject.refCount === 0) {
-                subject.complete();
-                fileSubjects.delete(subjectKey);
-            }
-        };
-        fileSubjects.set(subjectKey, subject);
-    }
-    subject.refCount++;
-    return subject;
+    );
 }
 
 const blockCache = new Map<string, Map<string, any>>();
@@ -299,45 +226,45 @@ function useBlockCache<T>(blockId: string, name: string, makeFn: () => T): T {
     return value as T;
 }
 
-const settingsAtomCache = new Map<string, jotai.Atom<any>>();
+const settingsAtomCache = new Map<string, Atom<any>>();
 
-function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): jotai.Atom<SettingsType[T]> {
-    let atom = settingsAtomCache.get(key) as jotai.Atom<SettingsType[T]>;
-    if (atom == null) {
-        atom = jotai.atom((get) => {
+function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): Atom<SettingsType[T]> {
+    let settingsKeyAtom = settingsAtomCache.get(key) as Atom<SettingsType[T]>;
+    if (settingsKeyAtom == null) {
+        settingsKeyAtom = atom((get) => {
             const settings = get(atoms.settingsAtom);
             if (settings == null) {
                 return null;
             }
             return settings[key];
         });
-        settingsAtomCache.set(key, atom);
+        settingsAtomCache.set(key, settingsKeyAtom);
     }
-    return atom;
+    return settingsKeyAtom;
 }
 
-function useSettingsPrefixAtom(prefix: string): jotai.Atom<SettingsType> {
+function useSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
     // TODO: use a shallow equal here to make this more efficient
-    let atom = settingsAtomCache.get(prefix + ":");
-    if (atom == null) {
-        atom = jotai.atom((get) => {
+    let settingsPrefixAtom = settingsAtomCache.get(prefix + ":") as Atom<SettingsType>;
+    if (settingsPrefixAtom == null) {
+        settingsPrefixAtom = atom((get) => {
             const settings = get(atoms.settingsAtom);
             if (settings == null) {
                 return {};
             }
-            return util.getPrefixedSettings(settings, prefix);
+            return getPrefixedSettings(settings, prefix);
         });
-        settingsAtomCache.set(prefix + ":", atom);
+        settingsAtomCache.set(prefix + ":", settingsPrefixAtom);
     }
-    return atom;
+    return settingsPrefixAtom;
 }
 
-const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
+const blockAtomCache = new Map<string, Map<string, Atom<any>>>();
 
-function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom<T>): jotai.Atom<T> {
+function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): Atom<T> {
     let blockCache = blockAtomCache.get(blockId);
     if (blockCache == null) {
-        blockCache = new Map<string, jotai.Atom<any>>();
+        blockCache = new Map<string, Atom<any>>();
         blockAtomCache.set(blockId, blockCache);
     }
     let atom = blockCache.get(name);
@@ -346,105 +273,15 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
         blockCache.set(name, atom);
         console.log("New BlockAtom", blockId, name);
     }
-    return atom as jotai.Atom<T>;
+    return atom as Atom<T>;
 }
 
 function useBlockDataLoaded(blockId: string): boolean {
     const loadedAtom = useBlockAtom<boolean>(blockId, "block-loaded", () => {
         return WOS.getWaveObjectLoadingAtom(WOS.makeORef("block", blockId));
     });
-    return jotai.useAtomValue(loadedAtom);
+    return useAtomValue(loadedAtom);
 }
-
-let globalWS: WSControl = null;
-
-function handleWaveEvent(event: WaveEvent) {
-    const subjects = waveEventSubjects.get(event.event);
-    if (subjects == null) {
-        return;
-    }
-    for (const scont of subjects) {
-        if (util.isBlank(scont.scope)) {
-            scont.handler(event);
-            continue;
-        }
-        if (event.scopes == null) {
-            continue;
-        }
-        if (event.scopes.includes(scont.scope)) {
-            scont.handler(event);
-        }
-    }
-}
-
-function handleWSEventMessage(msg: WSEventType) {
-    if (msg.eventtype == null) {
-        console.warn("unsupported WSEvent", msg);
-        return;
-    }
-    if (msg.eventtype == "config") {
-        const fullConfig = (msg.data as WatcherUpdate).fullconfig;
-        globalStore.set(atoms.fullConfigAtom, fullConfig);
-        return;
-    }
-    if (msg.eventtype == "userinput") {
-        const data: UserInputRequest = msg.data;
-        modalsModel.pushModal("UserInputModal", { ...data });
-        return;
-    }
-    if (msg.eventtype == "blockfile") {
-        const fileData: WSFileEventData = msg.data;
-        const fileSubject = getFileSubject(fileData.zoneid, fileData.filename);
-        if (fileSubject != null) {
-            fileSubject.next(fileData);
-        }
-        return;
-    }
-    if (msg.eventtype == "rpc") {
-        const rpcMsg: RpcMessage = msg.data;
-        handleIncomingRpcMessage(rpcMsg, handleWaveEvent);
-        return;
-    }
-    // we send to two subjects just eventType and eventType|oref
-    // we don't use getORefSubject here because we don't want to create a new subject
-    const eventSubject = eventSubjects.get(msg.eventtype);
-    if (eventSubject != null) {
-        eventSubject.next(msg);
-    }
-    const eventOrefSubject = eventSubjects.get(msg.eventtype + "|" + msg.oref);
-    if (eventOrefSubject != null) {
-        eventOrefSubject.next(msg);
-    }
-}
-
-function handleWSMessage(msg: any) {
-    if (msg == null) {
-        return;
-    }
-    if (msg.eventtype != null) {
-        handleWSEventMessage(msg);
-    }
-}
-
-function initWS() {
-    const windowId = globalStore.get(atoms.windowId);
-    globalWS = new WSControl(getWSServerEndpoint(), globalStore, windowId, "", (msg) => {
-        handleWSMessage(msg);
-    });
-    globalWS.connectNow("initWS");
-}
-
-function sendWSCommand(command: WSCommandType) {
-    globalWS.pushMessage(command);
-}
-
-// more code that could be moved into an init
-// here we want to set up a "waveobj:update" handler
-const waveobjUpdateSubject = getEventSubject("waveobj:update");
-waveobjUpdateSubject.subscribe((msg: WSEventType) => {
-    const update: WaveObjUpdate = msg.data;
-    WOS.updateWaveObject(update);
-});
 
 /**
  * Get the preload api.
@@ -455,7 +292,7 @@ function getApi(): ElectronApi {
 
 async function createBlock(blockDef: BlockDef, magnified = false): Promise<string> {
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
-    const blockId = await services.ObjectService.CreateBlock(blockDef, rtOpts);
+    const blockId = await ObjectService.CreateBlock(blockDef, rtOpts);
     const insertNodeAction: LayoutTreeInsertNodeAction = {
         type: LayoutTreeActionType.InsertNode,
         node: newLayoutNode(undefined, undefined, undefined, { blockId }),
@@ -608,7 +445,7 @@ function countersPrint() {
 }
 
 async function loadConnStatus() {
-    const connStatusArr = await services.ClientService.GetAllConnStatus();
+    const connStatusArr = await ClientService.GetAllConnStatus();
     if (connStatusArr == null) {
         return;
     }
@@ -619,25 +456,28 @@ async function loadConnStatus() {
 }
 
 function subscribeToConnEvents() {
-    waveEventSubscribe("connchange", null, (event: WaveEvent) => {
-        try {
-            const connStatus = event.data as ConnStatus;
-            if (connStatus == null || util.isBlank(connStatus.connection)) {
-                return;
+    waveEventSubscribe({
+        eventType: "connchange",
+        handler: (event: WaveEvent) => {
+            try {
+                const connStatus = event.data as ConnStatus;
+                if (connStatus == null || isBlank(connStatus.connection)) {
+                    return;
+                }
+                console.log("connstatus update", connStatus);
+                let curAtom = getConnStatusAtom(connStatus.connection);
+                globalStore.set(curAtom, connStatus);
+            } catch (e) {
+                console.log("connchange error", e);
             }
-            console.log("connstatus update", connStatus);
-            let curAtom = getConnStatusAtom(connStatus.connection);
-            globalStore.set(curAtom, connStatus);
-        } catch (e) {
-            console.log("connchange error", e);
-        }
+        },
     });
 }
 
-function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
+function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     let rtn = ConnStatusMap.get(conn);
     if (rtn == null) {
-        if (util.isBlank(conn)) {
+        if (isBlank(conn)) {
             // create a fake "local" status atom that's always connected
             const connStatus: ConnStatus = {
                 connection: conn,
@@ -647,7 +487,7 @@ function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
                 hasconnected: true,
                 activeconnnum: 0,
             };
-            rtn = jotai.atom(connStatus);
+            rtn = atom(connStatus);
         } else {
             const connStatus: ConnStatus = {
                 connection: conn,
@@ -657,7 +497,7 @@ function getConnStatusAtom(conn: string): jotai.PrimitiveAtom<ConnStatus> {
                 hasconnected: false,
                 activeconnnum: 0,
             };
-            rtn = jotai.atom(connStatus);
+            rtn = atom(connStatus);
         }
         ConnStatusMap.set(conn, rtn);
     }
@@ -674,23 +514,18 @@ export {
     getApi,
     getBlockComponentModel,
     getConnStatusAtom,
-    getEventORefSubject,
-    getEventSubject,
-    getFileSubject,
     getHostName,
     getObjectId,
     getUserName,
     globalStore,
-    globalWS,
     initGlobal,
-    initWS,
+    initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
     openLink,
     PLATFORM,
     refocusNode,
     registerBlockComponentModel,
-    sendWSCommand,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,
@@ -700,7 +535,5 @@ export {
     useBlockDataLoaded,
     useSettingsKeyAtom,
     useSettingsPrefixAtom,
-    waveEventSubscribe,
-    waveEventUnsubscribe,
     WOS,
 };

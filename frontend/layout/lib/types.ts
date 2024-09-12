@@ -86,8 +86,8 @@ export interface LayoutTreeAction {
  */
 export interface LayoutTreeComputeMoveNodeAction extends LayoutTreeAction {
     type: LayoutTreeActionType.ComputeMove;
-    node: LayoutNode;
-    nodeToMove: LayoutNode;
+    nodeId: string;
+    nodeToMoveId: string;
     direction: DropDirection;
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
@@ -33,7 +34,7 @@ var ExtraTypes = []any{
 	service.WebReturnType{},
 	waveobj.UIContext{},
 	eventbus.WSEventType{},
-	eventbus.WSFileEventData{},
+	wps.WSFileEventData{},
 	waveobj.LayoutActionData{},
 	filestore.WaveFile{},
 	wconfig.FullConfigType{},

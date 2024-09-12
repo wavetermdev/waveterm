@@ -85,8 +85,8 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 
 func (conn *SSHConn) FireConnChangeEvent() {
 	status := conn.DeriveConnStatus()
-	event := wshrpc.WaveEvent{
-		Event: wshrpc.Event_ConnChange,
+	event := wps.WaveEvent{
+		Event: wps.Event_ConnChange,
 		Scopes: []string{
 			fmt.Sprintf("connection:%s", conn.GetName()),
 		},

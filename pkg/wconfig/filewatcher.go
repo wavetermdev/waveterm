@@ -10,13 +10,11 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
-const configDir = "config"
-
-var configDirAbsPath = filepath.Join(wavebase.GetWaveHomeDir(), configDir)
+var configDirAbsPath = filepath.Join(wavebase.GetWaveHomeDir(), wavebase.ConfigDir)
 
 var instance *Watcher
 var once sync.Once
@@ -97,9 +95,9 @@ func (w *Watcher) Close() {
 
 func (w *Watcher) broadcast(message WatcherUpdate) {
 	// send to frontend
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_Config,
-		Data:      message,
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_Config,
+		Data:  message,
 	})
 }
 

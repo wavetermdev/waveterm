@@ -1,45 +1,31 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as jotai from "jotai";
 import { sprintf } from "sprintf-js";
 
 const MaxWebSocketSendSize = 1024 * 1024; // 1MB
 
-type JotaiStore = {
-    get: <Value>(atom: jotai.Atom<Value>) => Value;
-    set: <Value>(atom: jotai.WritableAtom<Value, [Value], void>, value: Value) => void;
-};
+type WSEventCallback = (arg0: WSEventType) => void;
 
 class WSControl {
     wsConn: any;
-    open: jotai.WritableAtom<boolean, [boolean], void>;
+    open: boolean;
     opening: boolean = false;
     reconnectTimes: number = 0;
     msgQueue: any[] = [];
     windowId: string;
-    messageCallback: (any) => void = null;
+    messageCallback: WSEventCallback;
     watchSessionId: string = null;
     watchScreenId: string = null;
     wsLog: string[] = [];
-    authKey: string;
     baseHostPort: string;
     lastReconnectTime: number = 0;
-    jotaiStore: JotaiStore;
 
-    constructor(
-        baseHostPort: string,
-        jotaiStore: JotaiStore,
-        windowId: string,
-        authKey: string,
-        messageCallback: (any) => void
-    ) {
+    constructor(baseHostPort: string, windowId: string, messageCallback: WSEventCallback) {
         this.baseHostPort = baseHostPort;
         this.messageCallback = messageCallback;
         this.windowId = windowId;
-        this.authKey = authKey;
-        this.open = jotai.atom(false);
-        this.jotaiStore = jotaiStore;
+        this.open = false;
         setInterval(this.sendPing.bind(this), 5000);
     }
 
@@ -51,16 +37,8 @@ class WSControl {
         }
     }
 
-    setOpen(val: boolean) {
-        this.jotaiStore.set(this.open, val);
-    }
-
-    isOpen() {
-        return this.jotaiStore.get(this.open);
-    }
-
     connectNow(desc: string) {
-        if (this.isOpen()) {
+        if (this.open) {
             return;
         }
         this.lastReconnectTime = Date.now();
@@ -75,7 +53,7 @@ class WSControl {
     }
 
     reconnect(forceClose?: boolean) {
-        if (this.isOpen()) {
+        if (this.open) {
             if (forceClose) {
                 this.wsConn.close(); // this will force a reconnect
             }
@@ -109,8 +87,8 @@ class WSControl {
         } else {
             this.log("connection error/disconnected");
         }
-        if (this.isOpen() || this.opening) {
-            this.setOpen(false);
+        if (this.open || this.opening) {
+            this.open = false;
             this.opening = false;
             this.reconnect();
         }
@@ -118,14 +96,14 @@ class WSControl {
 
     onopen() {
         this.log("connection open");
-        this.setOpen(true);
+        this.open = true;
         this.opening = false;
         this.runMsgQueue();
         // reconnectTimes is reset in onmessage:hello
     }
 
     runMsgQueue() {
-        if (!this.isOpen()) {
+        if (!this.open) {
             return;
         }
         if (this.msgQueue.length == 0) {
@@ -168,14 +146,14 @@ class WSControl {
     }
 
     sendPing() {
-        if (!this.isOpen()) {
+        if (!this.open) {
             return;
         }
         this.wsConn.send(JSON.stringify({ type: "ping", stime: Date.now() }));
     }
 
     sendMessage(data: WSCommandType) {
-        if (!this.isOpen()) {
+        if (!this.open) {
             return;
         }
         const msg = JSON.stringify(data);
@@ -188,7 +166,7 @@ class WSControl {
     }
 
     pushMessage(data: WSCommandType) {
-        if (!this.isOpen()) {
+        if (!this.open) {
             this.msgQueue.push(data);
             return;
         }

@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -257,7 +258,7 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 			// invalid
 			return
 		}
-		var waveEvent wshrpc.WaveEvent
+		var waveEvent wps.WaveEvent
 		err := utilfn.ReUnmarshal(&waveEvent, req.Data)
 		if err != nil {
 			// invalid

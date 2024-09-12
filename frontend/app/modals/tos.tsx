@@ -4,20 +4,45 @@
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { Toggle } from "@/app/element/toggle";
+import { WshServer } from "@/app/store/wshserver";
 import * as services from "@/store/services";
+import { useEffect, useState } from "react";
 import { FlexiModal } from "./modal";
 
-import { WshServer } from "@/app/store/wshserver";
 import "./tos.less";
 
 const TosModal = () => {
+    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(true);
+
     const acceptTos = () => {
         services.ClientService.AgreeTos();
     };
 
     function setTelemetry(value: boolean) {
-        WshServer.SetConfigCommand({ "telemetry:enabled": value });
+        WshServer.SetConfigCommand({ "telemetry:enabled": value })
+            .then(() => {
+                setTelemetryEnabled(value);
+            })
+            .catch((error) => {
+                console.error("failed to set telemetry:", error);
+            });
     }
+
+    useEffect(() => {
+        services.FileService.GetFullConfig()
+            .then((data) => {
+                if ("telemetry:enabled" in data.settings) {
+                    setTelemetryEnabled(true);
+                } else {
+                    setTelemetryEnabled(false);
+                }
+            })
+            .catch((error) => {
+                console.error("failed to get config:", error);
+            });
+    }, []);
+
+    const label = telemetryEnabled ? "Telemetry enabled" : "Telemetry disabled";
 
     return (
         <FlexiModal className="tos-modal">
@@ -81,7 +106,7 @@ const TosModal = () => {
                                 </a>
                                 to help us understand how people are using Wave.
                             </div>
-                            <Toggle checked={true} onChange={setTelemetry} label="Telemetry enabled" />
+                            <Toggle checked={telemetryEnabled} onChange={setTelemetry} label={label} />
                         </div>
                     </div>
                 </div>

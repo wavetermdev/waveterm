@@ -7,7 +7,7 @@
     "productName": "TheNextWave",
     "description": "An Open-Source, AI-Native, Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.1.11",
+    "version": "0.1.12",
     "homepage": "https://waveterm.dev",
     "build": {
         "appId": "dev.commandline.thenextwave"
@@ -44,6 +44,7 @@
         "@types/papaparse": "^5",
         "@types/pngjs": "^6.0.5",
         "@types/react": "^18.3.5",
+        "@types/react-dom": "^18.3.0",
         "@types/shell-quote": "^1",
         "@types/sprintf-js": "^1",
         "@types/throttle-debounce": "^5",

@@ -1,7 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalWS } from "./global";
+import { getWSServerEndpoint } from "@/util/endpoints";
+import { WSControl } from "./ws";
 
 type RpcEntry = {
     reqId: string;
@@ -119,12 +120,12 @@ async function* rpcResponseGenerator(
 function sendRpcCancel(reqid: string) {
     const rpcMsg: RpcMessage = { reqid: reqid, cancel: true };
     const wsMsg: WSRpcCommand = { wscommand: "rpc", message: rpcMsg };
-    globalWS.pushMessage(wsMsg);
+    sendWSCommand(wsMsg);
 }
 
 function sendRpcCommand(msg: RpcMessage): AsyncGenerator<RpcMessage, void, boolean> {
     const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
-    globalWS.pushMessage(wsMsg);
+    sendWSCommand(wsMsg);
     if (msg.reqid == null) {
         return null;
     }
@@ -135,19 +136,30 @@ function sendRpcCommand(msg: RpcMessage): AsyncGenerator<RpcMessage, void, boole
 
 function sendRawRpcMessage(msg: RpcMessage) {
     const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
-    globalWS.pushMessage(wsMsg);
+    sendWSCommand(wsMsg);
 }
 
 const notFoundLogMap = new Map<string, boolean>();
 
-function handleIncomingRpcMessage(msg: RpcMessage, eventHandlerFn: (event: WaveEvent) => void) {
+let rpcEventHandlerFn: (evt: WaveEvent) => void;
+
+function setRpcEventHandlerFn(fn: (evt: WaveEvent) => void) {
+    if (rpcEventHandlerFn) {
+        throw new Error("wshrpc.setRpcEventHandlerFn called more than once");
+    }
+    rpcEventHandlerFn = fn;
+}
+
+function handleIncomingRpcMessage(event: WSEventType) {
+    if (event.eventtype !== "rpc") {
+        console.warn("unsupported ws event type:", event.eventtype, event);
+    }
+    const msg: RpcMessage = event.data;
     const isRequest = msg.command != null || msg.reqid != null;
     if (isRequest) {
         // handle events
         if (msg.command == "eventrecv") {
-            if (eventHandlerFn != null) {
-                eventHandlerFn(msg.data);
-            }
+            rpcEventHandlerFn?.(msg.data);
             return;
         }
         if (msg.command == "message") {
@@ -195,10 +207,24 @@ if (globalThis.window != null) {
     globalThis["consumeGenerator"] = consumeGenerator;
 }
 
+let globalWS: WSControl;
+
+function initWshrpc(windowId: string) {
+    globalWS = new WSControl(getWSServerEndpoint(), windowId, handleIncomingRpcMessage);
+    globalWS.connectNow("connectWshrpc");
+}
+
+function sendWSCommand(cmd: WSCommandType) {
+    globalWS?.sendMessage(cmd);
+}
+
 export {
     handleIncomingRpcMessage,
+    initWshrpc,
     sendRawRpcMessage,
     sendRpcCommand,
+    sendWSCommand,
+    setRpcEventHandlerFn,
     wshServerRpcHelper_call,
     wshServerRpcHelper_responsestream,
 };

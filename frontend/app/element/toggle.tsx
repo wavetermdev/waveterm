@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useRef } from "react";
 import "./toggle.less";
 
 interface ToggleProps {
@@ -11,9 +12,17 @@ interface ToggleProps {
 }
 
 const Toggle = ({ checked, onChange, label, id }: ToggleProps) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+
     const handleChange = (e: any) => {
         if (onChange != null) {
             onChange(e.target.checked);
+        }
+    };
+
+    const handleLabelClick = () => {
+        if (inputRef.current) {
+            inputRef.current.click();
         }
     };
 
@@ -21,14 +30,14 @@ const Toggle = ({ checked, onChange, label, id }: ToggleProps) => {
 
     return (
         <div className="check-toggle-wrapper">
-            <div className="checkbox-toggle">
-                <input id={inputId} type="checkbox" checked={checked} onChange={handleChange} />
+            <label htmlFor={inputId} className="checkbox-toggle">
+                <input id={inputId} type="checkbox" checked={checked} onChange={handleChange} ref={inputRef} />
                 <span className="slider" />
-            </div>
+            </label>
             {label && (
-                <label htmlFor={inputId} className="toggle-label">
+                <span className="toggle-label" onClick={handleLabelClick}>
                     {label}
-                </label>
+                </span>
             )}
         </div>
     );

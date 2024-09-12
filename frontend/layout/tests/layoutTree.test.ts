@@ -18,8 +18,8 @@ test("layoutTreeStateReducer - compute move", () => {
     let node1 = newLayoutNode(undefined, undefined, undefined, { blockId: "node1" });
     let pendingAction = computeMoveNode(treeState, {
         type: LayoutTreeActionType.ComputeMove,
-        node: treeState.rootNode,
-        nodeToMove: node1,
+        nodeId: treeState.rootNode.id,
+        nodeToMoveId: node1.id,
         direction: DropDirection.Bottom,
     });
     const insertOperation = pendingAction as LayoutTreeMoveNodeAction;
@@ -37,8 +37,8 @@ test("layoutTreeStateReducer - compute move", () => {
     let node2 = newLayoutNode(undefined, undefined, undefined, { blockId: "node2" });
     pendingAction = computeMoveNode(treeState, {
         type: LayoutTreeActionType.ComputeMove,
-        node: node1,
-        nodeToMove: node2,
+        nodeId: node1.id,
+        nodeToMoveId: node2.id,
         direction: DropDirection.Bottom,
     });
     const insertOperation2 = pendingAction as LayoutTreeMoveNodeAction;
@@ -64,8 +64,8 @@ test("computeMove - noop action", () => {
     );
     let moveAction: LayoutTreeComputeMoveNodeAction = {
         type: LayoutTreeActionType.ComputeMove,
-        node: treeState.rootNode,
-        nodeToMove,
+        nodeId: treeState.rootNode.id,
+        nodeToMoveId: nodeToMove.id,
         direction: DropDirection.Left,
     };
     let pendingAction = computeMoveNode(treeState, moveAction);
@@ -74,8 +74,8 @@ test("computeMove - noop action", () => {
 
     moveAction = {
         type: LayoutTreeActionType.ComputeMove,
-        node: treeState.rootNode,
-        nodeToMove,
+        nodeId: treeState.rootNode.id,
+        nodeToMoveId: nodeToMove.id,
         direction: DropDirection.Right,
     };
 

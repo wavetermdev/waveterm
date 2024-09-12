@@ -33,6 +33,7 @@ const WaveLockFile = "wave.lock"
 const DomainSocketBaseName = "wave.sock"
 const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
+const ConfigDir = "config"
 
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
@@ -93,6 +94,10 @@ func EnsureWaveHomeDir() error {
 
 func EnsureWaveDBDir() error {
 	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), WaveDBDir), "wavedb", 0700, "wave db directory")
+}
+
+func EnsureWaveConfigDir() error {
+	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), ConfigDir), "waveconfig", 0700, "wave config directory")
 }
 
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {

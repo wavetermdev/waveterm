@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
 
 // this broker interface is mostly generic
@@ -20,7 +20,7 @@ const MaxPersist = 4096
 const ReMakeArrThreshold = 10 * 1024
 
 type Client interface {
-	SendEvent(routeId string, event wshrpc.WaveEvent)
+	SendEvent(routeId string, event WaveEvent)
 }
 
 type BrokerSubscription struct {
@@ -36,7 +36,7 @@ type persistKey struct {
 
 type persistEventWrap struct {
 	ArrTotalAdds int
-	Events       []*wshrpc.WaveEvent
+	Events       []*WaveEvent
 }
 
 type BrokerType struct {
@@ -75,7 +75,7 @@ func (b *BrokerType) GetClient() Client {
 }
 
 // if already subscribed, this will *resubscribe* with the new subscription (remove the old one, and replace with this one)
-func (b *BrokerType) Subscribe(subRouteId string, sub wshrpc.SubscriptionRequest) {
+func (b *BrokerType) Subscribe(subRouteId string, sub SubscriptionRequest) {
 	log.Printf("[wps] sub %s %s\n", subRouteId, sub.Event)
 	if sub.Event == "" {
 		return
@@ -175,7 +175,7 @@ func (b *BrokerType) UnsubscribeAll(subRouteId string) {
 }
 
 // does not take wildcards, use "" for all
-func (b *BrokerType) ReadEventHistory(eventType string, scope string, maxItems int) []*wshrpc.WaveEvent {
+func (b *BrokerType) ReadEventHistory(eventType string, scope string, maxItems int) []*WaveEvent {
 	if maxItems <= 0 {
 		return nil
 	}
@@ -190,12 +190,12 @@ func (b *BrokerType) ReadEventHistory(eventType string, scope string, maxItems i
 		maxItems = len(pe.Events)
 	}
 	// return new arr
-	rtn := make([]*wshrpc.WaveEvent, maxItems)
+	rtn := make([]*WaveEvent, maxItems)
 	copy(rtn, pe.Events[len(pe.Events)-maxItems:])
 	return rtn
 }
 
-func (b *BrokerType) persistEvent(event wshrpc.WaveEvent) {
+func (b *BrokerType) persistEvent(event WaveEvent) {
 	if event.Persist <= 0 {
 		return
 	}
@@ -216,20 +216,21 @@ func (b *BrokerType) persistEvent(event wshrpc.WaveEvent) {
 		if pe == nil {
 			pe = &persistEventWrap{
 				ArrTotalAdds: 0,
-				Events:       make([]*wshrpc.WaveEvent, 0, event.Persist),
+				Events:       make([]*WaveEvent, 0, event.Persist),
 			}
 			b.PersistMap[key] = pe
 		}
 		pe.Events = append(pe.Events, &event)
 		pe.ArrTotalAdds++
 		if pe.ArrTotalAdds > ReMakeArrThreshold {
-			pe.Events = append([]*wshrpc.WaveEvent{}, pe.Events...)
+			pe.Events = append([]*WaveEvent{}, pe.Events...)
 			pe.ArrTotalAdds = len(pe.Events)
 		}
 	}
 }
 
-func (b *BrokerType) Publish(event wshrpc.WaveEvent) {
+func (b *BrokerType) Publish(event WaveEvent) {
+	// log.Printf("BrokerType.Publish: %v\n", event)
 	if event.Persist > 0 {
 		b.persistEvent(event)
 	}
@@ -243,7 +244,17 @@ func (b *BrokerType) Publish(event wshrpc.WaveEvent) {
 	}
 }
 
-func (b *BrokerType) getMatchingRouteIds(event wshrpc.WaveEvent) []string {
+func (b *BrokerType) SendUpdateEvents(updates waveobj.UpdatesRtnType) {
+	for _, update := range updates {
+		b.Publish(WaveEvent{
+			Event:  Event_WaveObjUpdate,
+			Scopes: []string{waveobj.MakeORef(update.OType, update.OID).String()},
+			Data:   update,
+		})
+	}
+}
+
+func (b *BrokerType) getMatchingRouteIds(event WaveEvent) []string {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 	bs := b.SubMap[event.Event]
@@ -270,5 +281,6 @@ func (b *BrokerType) getMatchingRouteIds(event wshrpc.WaveEvent) []string {
 	for routeId := range routeIds {
 		rtn = append(rtn, routeId)
 	}
+	// log.Printf("getMatchingRouteIds %v %v\n", event, rtn)
 	return rtn
 }

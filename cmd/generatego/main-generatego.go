@@ -28,6 +28,7 @@ func GenerateWshClient() {
 		"github.com/wavetermdev/waveterm/pkg/wshrpc",
 		"github.com/wavetermdev/waveterm/pkg/waveobj",
 		"github.com/wavetermdev/waveterm/pkg/wconfig",
+		"github.com/wavetermdev/waveterm/pkg/wps",
 	})
 	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
 	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {

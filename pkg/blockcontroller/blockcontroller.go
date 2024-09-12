@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -112,20 +111,14 @@ func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
 	if sendUpdate {
 		rtStatus := bc.GetRuntimeStatus()
 		log.Printf("sending blockcontroller update %#v\n", rtStatus)
-		go eventbus.SendEvent(eventbus.WSEventType{
-			EventType: eventbus.WSEvent_BlockControllerStatus,
-			ORef:      waveobj.MakeORef(waveobj.OType_Block, bc.BlockId).String(),
-			Data:      rtStatus,
-		})
-		waveEvent := wshrpc.WaveEvent{
-			Event: wshrpc.Event_ControllerStatus,
+		wps.Broker.Publish(wps.WaveEvent{
+			Event: wps.Event_ControllerStatus,
 			Scopes: []string{
 				waveobj.MakeORef(waveobj.OType_Tab, bc.TabId).String(),
 				waveobj.MakeORef(waveobj.OType_Block, bc.BlockId).String(),
 			},
 			Data: rtStatus,
-		}
-		wps.Broker.Publish(waveEvent)
+		})
 	}
 }
 
@@ -139,13 +132,13 @@ func HandleTruncateBlockFile(blockId string, blockFile string) error {
 	if err != nil {
 		return fmt.Errorf("error truncating blockfile: %w", err)
 	}
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
-		Data: &eventbus.WSFileEventData{
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, blockId).String()},
+		Data: &wps.WSFileEventData{
 			ZoneId:   blockId,
 			FileName: blockFile,
-			FileOp:   eventbus.FileOp_Truncate,
+			FileOp:   wps.FileOp_Truncate,
 		},
 	})
 	return nil
@@ -159,13 +152,15 @@ func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 	if err != nil {
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_BlockFile,
-		ORef:      waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
-		Data: &eventbus.WSFileEventData{
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_BlockFile,
+		Scopes: []string{
+			waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
+		},
+		Data: &wps.WSFileEventData{
 			ZoneId:   blockId,
 			FileName: blockFile,
-			FileOp:   eventbus.FileOp_Append,
+			FileOp:   wps.FileOp_Append,
 			Data64:   base64.StdEncoding.EncodeToString(data),
 		},
 	})
@@ -423,7 +418,7 @@ func setTermSize(ctx context.Context, blockId string, termSize waveobj.TermSize)
 	}
 	bdata.RuntimeOpts.TermSize = termSize
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	eventbus.SendUpdateEvents(updates)
+	wps.Broker.SendUpdateEvents(updates)
 	return nil
 }
 

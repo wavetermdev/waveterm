@@ -80,7 +80,7 @@ func noRouteErr(routeId string) error {
 	return fmt.Errorf("no route for %q", routeId)
 }
 
-func (router *WshRouter) SendEvent(routeId string, event wshrpc.WaveEvent) {
+func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
 	rpc := router.GetRpc(routeId)
 	if rpc == nil {
 		return

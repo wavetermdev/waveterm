@@ -11,9 +11,9 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
 const LocalConnName = "local"
@@ -23,13 +23,6 @@ const (
 	RpcType_ResponseStream   = "responsestream"   // stream of responses (streaming rpc)
 	RpcType_StreamingRequest = "streamingrequest" // streaming request
 	RpcType_Complex          = "complex"          // streaming request/response
-)
-
-const (
-	Event_BlockClose       = "blockclose"
-	Event_ConnChange       = "connchange"
-	Event_SysInfo          = "sysinfo"
-	Event_ControllerStatus = "controllerstatus"
 )
 
 const (
@@ -96,11 +89,11 @@ type WshRpcInterface interface {
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	FileWriteCommand(ctx context.Context, data CommandFileData) error
 	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
-	EventPublishCommand(ctx context.Context, data WaveEvent) error
-	EventSubCommand(ctx context.Context, data SubscriptionRequest) error
+	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
+	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
 	EventUnsubAllCommand(ctx context.Context) error
-	EventReadHistoryCommand(ctx context.Context, data CommandEventReadHistoryData) ([]*WaveEvent, error)
+	EventReadHistoryCommand(ctx context.Context, data CommandEventReadHistoryData) ([]*wps.WaveEvent, error)
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
@@ -116,7 +109,7 @@ type WshRpcInterface interface {
 	ConnListCommand(ctx context.Context) ([]string, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
-	EventRecvCommand(ctx context.Context, data WaveEvent) error
+	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
 
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[CommandRemoteStreamFileRtnData]
@@ -250,24 +243,6 @@ type CommandAppendIJsonData struct {
 
 type CommandDeleteBlockData struct {
 	BlockId string `json:"blockid" wshcontext:"BlockId"`
-}
-
-type WaveEvent struct {
-	Event   string   `json:"event"`
-	Scopes  []string `json:"scopes,omitempty"`
-	Sender  string   `json:"sender,omitempty"`
-	Persist int      `json:"persist,omitempty"`
-	Data    any      `json:"data,omitempty"`
-}
-
-func (e WaveEvent) HasScope(scope string) bool {
-	return utilfn.ContainsStr(e.Scopes, scope)
-}
-
-type SubscriptionRequest struct {
-	Event     string   `json:"event"`
-	Scopes    []string `json:"scopes,omitempty"`
-	AllScopes bool     `json:"allscopes,omitempty"`
 }
 
 type CommandEventReadHistoryData struct {

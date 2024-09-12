@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/eventbus"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
 var MainUserInputHandler = UserInputHandler{Channels: make(map[string](chan *UserInputResponse), 1)}
@@ -60,9 +60,9 @@ func (ui *UserInputHandler) unregisterChannel(id string) {
 }
 
 func (ui *UserInputHandler) sendRequestToFrontend(request *UserInputRequest) {
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_UserInput,
-		Data:      request,
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_UserInput,
+		Data:  request,
 	})
 }
 

@@ -39,27 +39,40 @@ export const DEFAULT_MAX_CHILDREN = 5;
  */
 export function computeMoveNode(layoutState: LayoutTreeState, computeInsertAction: LayoutTreeComputeMoveNodeAction) {
     const rootNode = layoutState.rootNode;
-    const { node, nodeToMove, direction } = computeInsertAction;
+    const { nodeId, nodeToMoveId, direction } = computeInsertAction;
+    if (!nodeId || !nodeToMoveId) {
+        console.warn("either nodeId or nodeToMoveId not set", nodeId, nodeToMoveId);
+        return;
+    }
     if (direction === undefined) {
         console.warn("No direction provided for insertItemInDirection");
         return;
     }
 
-    if (node.id === nodeToMove.id) {
+    if (nodeId === nodeToMoveId) {
         console.warn("Cannot compute move node action since both nodes are equal");
         return;
     }
 
     let newMoveOperation: MoveOperation;
-    const parent = lazy(() => findParent(rootNode, node.id));
+    const parent = lazy(() => findParent(rootNode, nodeId));
     const grandparent = lazy(() => findParent(rootNode, parent().id));
-    const indexInParent = lazy(() => parent()?.children.findIndex((child) => node.id === child.id));
+    const indexInParent = lazy(() => parent()?.children.findIndex((child) => nodeId === child.id));
     const indexInGrandparent = lazy(() => grandparent()?.children.findIndex((child) => parent().id === child.id));
-    const nodeToMoveParent = lazy(() => findParent(rootNode, nodeToMove.id));
+    const nodeToMoveParent = lazy(() => findParent(rootNode, nodeToMoveId));
     const nodeToMoveIndexInParent = lazy(() =>
-        nodeToMoveParent()?.children.findIndex((child) => nodeToMove.id === child.id)
+        nodeToMoveParent()?.children.findIndex((child) => nodeToMoveId === child.id)
     );
-    const isRoot = rootNode.id === node.id;
+    const isRoot = rootNode.id === nodeId;
+
+    // TODO: this should not be necessary. The drag layer is having trouble tracking changes to the LayoutNode fields, so I need to grab the node again here to get the latest data.
+    const node = findNode(rootNode, nodeId);
+    const nodeToMove = findNode(rootNode, nodeToMoveId);
+
+    if (!node || !nodeToMove) {
+        console.warn("node or nodeToMove not set", nodeId, nodeToMoveId);
+        return;
+    }
 
     switch (direction) {
         case DropDirection.OuterTop:
@@ -77,7 +90,7 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
             }
         case DropDirection.Top:
             if (node.flexDirection === FlexDirection.Column) {
-                newMoveOperation = { parentId: node.id, index: 0, node: nodeToMove };
+                newMoveOperation = { parentId: nodeId, index: 0, node: nodeToMove };
             } else {
                 if (isRoot)
                     newMoveOperation = {
@@ -110,7 +123,7 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
             }
         case DropDirection.Bottom:
             if (node.flexDirection === FlexDirection.Column) {
-                newMoveOperation = { parentId: node.id, index: 1, node: nodeToMove };
+                newMoveOperation = { parentId: nodeId, index: 1, node: nodeToMove };
             } else {
                 if (isRoot)
                     newMoveOperation = {
@@ -143,7 +156,7 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
             }
         case DropDirection.Left:
             if (node.flexDirection === FlexDirection.Row) {
-                newMoveOperation = { parentId: node.id, index: 0, node: nodeToMove };
+                newMoveOperation = { parentId: nodeId, index: 0, node: nodeToMove };
             } else {
                 const parentNode = parent();
                 if (parentNode)
@@ -169,7 +182,7 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
             }
         case DropDirection.Right:
             if (node.flexDirection === FlexDirection.Row) {
-                newMoveOperation = { parentId: node.id, index: 1, node: nodeToMove };
+                newMoveOperation = { parentId: nodeId, index: 1, node: nodeToMove };
             } else {
                 const parentNode = parent();
                 if (parentNode)
@@ -181,11 +194,11 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
             }
             break;
         case DropDirection.Center:
-            if (node.id !== rootNode.id && nodeToMove.id !== rootNode.id) {
+            if (nodeId !== rootNode.id && nodeToMoveId !== rootNode.id) {
                 const swapAction: LayoutTreeSwapNodeAction = {
                     type: LayoutTreeActionType.Swap,
-                    node1Id: node.id,
-                    node2Id: nodeToMove.id,
+                    node1Id: nodeId,
+                    node2Id: nodeToMoveId,
                 };
                 return swapAction;
             } else {
@@ -208,6 +221,7 @@ export function computeMoveNode(layoutState: LayoutTreeState, computeInsertActio
 }
 
 export function moveNode(layoutState: LayoutTreeState, action: LayoutTreeMoveNodeAction) {
+    console.log("moveNode", layoutState, action);
     const rootNode = layoutState.rootNode;
     if (!action) {
         console.error("no move node action provided");

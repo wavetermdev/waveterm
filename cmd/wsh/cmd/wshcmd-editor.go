@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
@@ -64,11 +65,11 @@ func editorRun(cmd *cobra.Command, args []string) {
 		return
 	}
 	doneCh := make(chan bool)
-	RpcClient.EventListener.On("blockclose", func(event *wshrpc.WaveEvent) {
+	RpcClient.EventListener.On("blockclose", func(event *wps.WaveEvent) {
 		if event.HasScope(blockRef.String()) {
 			close(doneCh)
 		}
 	})
-	wshclient.EventSubCommand(RpcClient, wshrpc.SubscriptionRequest{Event: "blockclose", Scopes: []string{blockRef.String()}}, nil)
+	wshclient.EventSubCommand(RpcClient, wps.SubscriptionRequest{Event: "blockclose", Scopes: []string{blockRef.String()}}, nil)
 	<-doneCh
 }

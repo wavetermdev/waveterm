@@ -13,7 +13,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -36,8 +35,8 @@ func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 }
 
 func sendBlockCloseEvent(tabId string, blockId string) {
-	waveEvent := wshrpc.WaveEvent{
-		Event: wshrpc.Event_BlockClose,
+	waveEvent := wps.WaveEvent{
+		Event: wps.Event_BlockClose,
 		Scopes: []string{
 			waveobj.MakeORef(waveobj.OType_Tab, tabId).String(),
 			waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
@@ -136,7 +135,7 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Windo
 	return wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 }
 
-func EnsureInitialData() error {
+func EnsureInitialData() (*waveobj.Window, error) {
 	// does not need to run in a transaction since it is called on startup
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
@@ -144,17 +143,17 @@ func EnsureInitialData() error {
 	if err == wstore.ErrNotFound {
 		client, err = CreateClient(ctx)
 		if err != nil {
-			return fmt.Errorf("error creating client: %w", err)
+			return nil, fmt.Errorf("error creating client: %w", err)
 		}
 	}
 	if len(client.WindowIds) > 0 {
-		return nil
+		return nil, nil
 	}
-	_, err = CreateWindow(ctx, &waveobj.WinSize{Height: 0, Width: 0})
+	window, err := CreateWindow(ctx, &waveobj.WinSize{Height: 0, Width: 0})
 	if err != nil {
-		return fmt.Errorf("error creating window: %w", err)
+		return nil, fmt.Errorf("error creating window: %w", err)
 	}
-	return nil
+	return window, nil
 }
 
 func CreateClient(ctx context.Context) (*waveobj.Client, error) {
