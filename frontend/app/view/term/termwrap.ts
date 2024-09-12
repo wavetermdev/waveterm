@@ -1,17 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getFileSubject } from "@/app/store/wps";
+import { sendWSCommand } from "@/app/store/wshrpc";
 import { WshServer } from "@/app/store/wshserver";
-import {
-    PLATFORM,
-    WOS,
-    atoms,
-    fetchWaveFile,
-    getFileSubject,
-    globalStore,
-    openLink,
-    sendWSCommand,
-} from "@/store/global";
+import { PLATFORM, WOS, atoms, fetchWaveFile, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import * as util from "@/util/util";
 import { base64ToArray, fireAndForget } from "@/util/util";

@@ -5,10 +5,10 @@
 
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
-import * as jotai from "jotai";
-import * as React from "react";
+import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
+import { useEffect } from "react";
 import { atoms, globalStore } from "./global";
-import * as services from "./services";
+import { ObjectService } from "./services";
 
 type WaveObjectDataItemType<T extends WaveObj> = {
     value: T;
@@ -17,7 +17,7 @@ type WaveObjectDataItemType<T extends WaveObj> = {
 
 type WaveObjectValue<T extends WaveObj> = {
     pendingPromise: Promise<T>;
-    dataAtom: jotai.PrimitiveAtom<WaveObjectDataItemType<T>>;
+    dataAtom: PrimitiveAtom<WaveObjectDataItemType<T>>;
     refCount: number;
     holdTime: number;
 };
@@ -132,7 +132,7 @@ const defaultHoldTime = 5000; // 5-seconds
 
 function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boolean): WaveObjectValue<T> {
     const wov = { pendingPromise: null, dataAtom: null, refCount: 0, holdTime: Date.now() + 5000 };
-    wov.dataAtom = jotai.atom({ value: null, loading: true });
+    wov.dataAtom = atom({ value: null, loading: true });
     if (!shouldFetch) {
         return wov;
     }
@@ -180,7 +180,7 @@ function loadAndPinWaveObject<T extends WaveObj>(oref: string): Promise<T> {
 
 function getWaveObjectAtom<T extends WaveObj>(oref: string): WritableWaveObjectAtom<T> {
     const wov = getWaveObjectValue<T>(oref);
-    return jotai.atom(
+    return atom(
         (get) => get(wov.dataAtom).value,
         (_get, set, value: T) => {
             setObjectValue(value, set, true);
@@ -188,9 +188,9 @@ function getWaveObjectAtom<T extends WaveObj>(oref: string): WritableWaveObjectA
     );
 }
 
-function getWaveObjectLoadingAtom(oref: string): jotai.Atom<boolean> {
+function getWaveObjectLoadingAtom(oref: string): Atom<boolean> {
     const wov = getWaveObjectValue(oref);
-    return jotai.atom((get) => {
+    return atom((get) => {
         const dataValue = get(wov.dataAtom);
         if (dataValue.loading) {
             return null;
@@ -201,13 +201,13 @@ function getWaveObjectLoadingAtom(oref: string): jotai.Atom<boolean> {
 
 function useWaveObjectValue<T extends WaveObj>(oref: string): [T, boolean] {
     const wov = getWaveObjectValue<T>(oref);
-    React.useEffect(() => {
+    useEffect(() => {
         wov.refCount++;
         return () => {
             wov.refCount--;
         };
     }, [oref]);
-    const atomVal = jotai.useAtomValue(wov.dataAtom);
+    const atomVal = useAtomValue(wov.dataAtom);
     return [atomVal.value, atomVal.loading];
 }
 
@@ -254,7 +254,7 @@ function cleanWaveObjectCache() {
 // gets the value of a WaveObject from the cache.
 // should provide getFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.get function
-function getObjectValue<T extends WaveObj>(oref: string, getFn?: jotai.Getter): T {
+function getObjectValue<T extends WaveObj>(oref: string, getFn?: Getter): T {
     const wov = getWaveObjectValue<T>(oref);
     if (getFn == null) {
         getFn = globalStore.get;
@@ -266,7 +266,7 @@ function getObjectValue<T extends WaveObj>(oref: string, getFn?: jotai.Getter): 
 // sets the value of a WaveObject in the cache.
 // should provide setFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.set function
-function setObjectValue<T extends WaveObj>(value: T, setFn?: jotai.Setter, pushToServer?: boolean) {
+function setObjectValue<T extends WaveObj>(value: T, setFn?: Setter, pushToServer?: boolean) {
     const oref = makeORef(value.otype, value.oid);
     const wov = getWaveObjectValue(oref, false);
     if (wov === undefined) {
@@ -277,7 +277,7 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: jotai.Setter, pushT
     }
     setFn(wov.dataAtom, { value: value, loading: false });
     if (pushToServer) {
-        services.ObjectService.UpdateObject(value, false);
+        ObjectService.UpdateObject(value, false);
     }
 }
 

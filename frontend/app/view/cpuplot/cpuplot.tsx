@@ -3,7 +3,7 @@
 
 import { useHeight } from "@/app/hook/useHeight";
 import { useWidth } from "@/app/hook/useWidth";
-import { getConnStatusAtom, globalStore, waveEventSubscribe, WOS } from "@/store/global";
+import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
 import { WshServer } from "@/store/wshserver";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
@@ -12,6 +12,7 @@ import * as htl from "htl";
 import * as jotai from "jotai";
 import * as React from "react";
 
+import { waveEventSubscribe } from "@/app/store/wps";
 import "./cpuplot.less";
 
 const DefaultNumPoints = 120;
@@ -192,13 +193,17 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
             lastConnName.current = connName;
             model.loadInitialData();
         }
-        const unsubFn = waveEventSubscribe("sysinfo", connName, (event: WaveEvent) => {
-            const loading = globalStore.get(model.loadingAtom);
-            if (loading) {
-                return;
-            }
-            const dataItem = convertWaveEventToDataItem(event);
-            addPlotData([dataItem]);
+        const unsubFn = waveEventSubscribe({
+            eventType: "sysinfo",
+            scope: connName,
+            handler: (event) => {
+                const loading = globalStore.get(model.loadingAtom);
+                if (loading) {
+                    return;
+                }
+                const dataItem = convertWaveEventToDataItem(event);
+                addPlotData([dataItem]);
+            },
         });
         return () => {
             unsubFn();

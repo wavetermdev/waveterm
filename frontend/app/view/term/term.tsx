@@ -1,9 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { waveEventSubscribe } from "@/app/store/wps";
 import { WshServer } from "@/app/store/wshserver";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getConnStatusAtom, getEventORefSubject, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import { WOS, atoms, getConnStatusAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -379,12 +380,15 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         initialRTStatus.then((rts) => {
             updateShellProcStatus(rts?.shellprocstatus);
         });
-        const bcSubject = getEventORefSubject("blockcontroller:status", WOS.makeORef("block", blockId));
-        const sub = bcSubject.subscribe((data: WSEventType) => {
-            let bcRTS: BlockControllerRuntimeStatus = data.data;
-            updateShellProcStatus(bcRTS?.shellprocstatus);
+        return waveEventSubscribe({
+            eventType: "controllerstatus",
+            scope: WOS.makeORef("block", blockId),
+            handler: (event) => {
+                console.log("term waveEvent handler", event);
+                let bcRTS: BlockControllerRuntimeStatus = event.data;
+                updateShellProcStatus(bcRTS?.shellprocstatus);
+            },
         });
-        return () => sub.unsubscribe();
     }, []);
 
     let stickerConfig = {

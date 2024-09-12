@@ -7,14 +7,14 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
 // event inverter.  converts WaveEvents to a listener.On() API
 
 type singleListener struct {
 	Id string
-	Fn func(*wshrpc.WaveEvent)
+	Fn func(*wps.WaveEvent)
 }
 
 type EventListener struct {
@@ -29,7 +29,7 @@ func MakeEventListener() *EventListener {
 	}
 }
 
-func (el *EventListener) On(eventName string, fn func(*wshrpc.WaveEvent)) string {
+func (el *EventListener) On(eventName string, fn func(*wps.WaveEvent)) string {
 	id := uuid.New().String()
 	el.Lock.Lock()
 	defer el.Lock.Unlock()
@@ -59,7 +59,7 @@ func (el *EventListener) getListeners(eventName string) []singleListener {
 	return el.Listeners[eventName]
 }
 
-func (el *EventListener) RecvEvent(e *wshrpc.WaveEvent) {
+func (el *EventListener) RecvEvent(e *wps.WaveEvent) {
 	larr := el.getListeners(e.Event)
 	for _, sl := range larr {
 		sl.Fn(e)

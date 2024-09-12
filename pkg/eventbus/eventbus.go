@@ -15,34 +15,15 @@ import (
 )
 
 const (
-	WSEvent_WaveObjUpdate         = "waveobj:update"
-	WSEvent_BlockFile             = "blockfile"
-	WSEvent_Config                = "config"
-	WSEvent_UserInput             = "userinput"
-	WSEvent_BlockControllerStatus = "blockcontroller:status"
-	WSEvent_LayoutAction          = "layoutaction"
-	WSEvent_ElectronNewWindow     = "electron:newwindow"
-	WSEvent_ElectronCloseWindow   = "electron:closewindow"
-	WSEvent_Rpc                   = "rpc"
+	WSEvent_ElectronNewWindow   = "electron:newwindow"
+	WSEvent_ElectronCloseWindow = "electron:closewindow"
+	WSEvent_Rpc                 = "rpc"
 )
 
 type WSEventType struct {
 	EventType string `json:"eventtype"`
 	ORef      string `json:"oref,omitempty"`
 	Data      any    `json:"data"`
-}
-
-const (
-	FileOp_Append     = "append"
-	FileOp_Truncate   = "truncate"
-	FileOp_Invalidate = "invalidate"
-)
-
-type WSFileEventData struct {
-	ZoneId   string `json:"zoneid"`
-	FileName string `json:"filename"`
-	FileOp   string `json:"fileop"`
-	Data64   string `json:"data64"`
 }
 
 type WindowWatchData struct {
@@ -94,40 +75,6 @@ func BusyWaitForWindowId(windowId string, timeout time.Duration) bool {
 			return false
 		}
 		time.Sleep(20 * time.Millisecond)
-	}
-}
-
-func getAllWatches() []*WindowWatchData {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-	watches := make([]*WindowWatchData, 0, len(wsMap))
-	for _, wdata := range wsMap {
-		watches = append(watches, wdata)
-	}
-	return watches
-}
-
-func SendEventToWindow(windowId string, event WSEventType) {
-	wwdArr := getWindowWatchesForWindowId(windowId)
-	for _, wdata := range wwdArr {
-		wdata.WindowWSCh <- event
-	}
-}
-
-func SendEvent(event WSEventType) {
-	wwdArr := getAllWatches()
-	for _, wdata := range wwdArr {
-		wdata.WindowWSCh <- event
-	}
-}
-
-func SendUpdateEvents(updates waveobj.UpdatesRtnType) {
-	for _, update := range updates {
-		SendEvent(WSEventType{
-			EventType: WSEvent_WaveObjUpdate,
-			ORef:      waveobj.MakeORef(update.OType, update.OID).String(),
-			Data:      update,
-		})
 	}
 }
 

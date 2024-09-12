@@ -10,6 +10,7 @@ import (
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -49,8 +50,8 @@ func generateSingleServerData(client *wshutil.WshRpc, connName string) {
 	getCpuData(values)
 	getMemData(values)
 	tsData := wshrpc.TimeSeriesData{Ts: now.UnixMilli(), Values: values}
-	event := wshrpc.WaveEvent{
-		Event:   wshrpc.Event_SysInfo,
+	event := wps.WaveEvent{
+		Event:   wps.Event_SysInfo,
 		Scopes:  []string{connName},
 		Data:    tsData,
 		Persist: 1024,

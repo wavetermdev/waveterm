@@ -13,7 +13,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -36,8 +35,8 @@ func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 }
 
 func sendBlockCloseEvent(tabId string, blockId string) {
-	waveEvent := wshrpc.WaveEvent{
-		Event: wshrpc.Event_BlockClose,
+	waveEvent := wps.WaveEvent{
+		Event: wps.Event_BlockClose,
 		Scopes: []string{
 			waveobj.MakeORef(waveobj.OType_Tab, tabId).String(),
 			waveobj.MakeORef(waveobj.OType_Block, blockId).String(),

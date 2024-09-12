@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { NumActiveConnColors } from "@/app/block/blockframe";
-import { getConnStatusAtom, waveEventSubscribe, WOS } from "@/app/store/global";
+import { getConnStatusAtom, WOS } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { makeORef } from "@/app/store/wos";
+import { waveEventSubscribe } from "@/store/wps";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -160,9 +161,13 @@ export const ControllerStatusIcon = React.memo(({ blockId }: { blockId: string }
             setGotInitialStatus(true);
             setControllerStatus(rts);
         });
-        const unsubFn = waveEventSubscribe("controllerstatus", makeORef("block", blockId), (event) => {
-            const cstatus: BlockControllerRuntimeStatus = event.data;
-            setControllerStatus(cstatus);
+        const unsubFn = waveEventSubscribe({
+            eventType: "controllerstatus",
+            scope: makeORef("block", blockId),
+            handler: (event) => {
+                const cstatus: BlockControllerRuntimeStatus = event.data;
+                setControllerStatus(cstatus);
+            },
         });
         return () => {
             unsubFn();
