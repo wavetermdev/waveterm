@@ -547,6 +547,12 @@ declare global {
         messages?: VDomMessage[];
     };
 
+    // vdom.VDomBinding
+    type VDomBinding = {
+        type: "binding";
+        bind: string;
+    };
+
     // vdom.VDomElem
     type VDomElem = {
         waveid?: string;
@@ -582,7 +588,7 @@ declare global {
         type: "func";
         stoppropagation?: boolean;
         preventdefault?: boolean;
-        #keys?: string[];
+        keys?: string[];
     };
 
     // vdom.VDomMessage

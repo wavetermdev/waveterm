@@ -11,6 +11,10 @@ const TextTag = "#text";
 const FragmentTag = "#fragment";
 const WaveTextTag = "wave:text";
 
+const VDomObjType_Ref = "ref";
+const VDomObjType_Binding = "binding";
+const VDomObjType_Func = "func";
+
 const AllowedTags: { [tagName: string]: boolean } = {
     div: true,
     b: true,
@@ -41,7 +45,7 @@ function convertVDomFunc(fnDecl: VDomFunc, compId: string, propName: string): (e
     return (e: any) => {
         if ((propName == "onKeyDown" || propName == "onKeyDownCapture") && fnDecl["#keys"]) {
             let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-            for (let keyDesc of fnDecl["#keys"]) {
+            for (let keyDesc of fnDecl.keys || []) {
                 if (checkKeyPressed(waveEvent, keyDesc)) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -51,10 +55,10 @@ function convertVDomFunc(fnDecl: VDomFunc, compId: string, propName: string): (e
             }
             return;
         }
-        if (fnDecl["#preventDefault"]) {
+        if (fnDecl.preventdefault) {
             e.preventDefault();
         }
-        if (fnDecl["#stopPropagation"]) {
+        if (fnDecl.stoppropagation) {
             e.stopPropagation();
         }
         callFunc(e, compId, propName);
@@ -87,6 +91,26 @@ function updateRefFunc(elem: any, ref: VDomRef) {
     console.log("updateref", ref["#ref"], elem);
 }
 
+function resolveBinding(binding: VDomBinding, model: VDomModel): [any, string[]] {
+    const bindName = binding.bind;
+    if (bindName == null || bindName == "") {
+        return [null, []];
+    }
+    // for now we only recognize $.[atomname] bindings
+    if (!bindName.startsWith("$.")) {
+        return [null, []];
+    }
+    const atomName = bindName.substring(2);
+    if (atomName == "") {
+        return [null, []];
+    }
+    const atom = model.getAtomContainer(atomName);
+    if (atom == null) {
+        return [null, []];
+    }
+    return [atom.val, [atomName]];
+}
+
 type GenericPropsType = { [key: string]: any };
 
 // returns props, and a set of atom keys used in the props
@@ -105,17 +129,28 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             if (val == null) {
                 continue;
             }
-            if (isObject(val) && "#ref" in val) {
+            if (isObject(val) && val.type == VDomObjType_Ref) {
+                const valRef = val as VDomRef;
                 props[key] = (elem: HTMLElement) => {
-                    updateRefFunc(elem, val);
+                    updateRefFunc(elem, valRef);
                 };
             }
             continue;
         }
-        if (isObject(val) && "#func" in val) {
-            props[key] = convertVDomFunc(val, elem.waveid, key);
+        if (isObject(val) && val.type == VDomObjType_Func) {
+            const valFunc = val as VDomFunc;
+            props[key] = convertVDomFunc(valFunc, elem.waveid, key);
             continue;
         }
+        if (isObject(val) && val.type == VDomObjType_Binding) {
+            const [propVal, atomDeps] = resolveBinding(val as VDomBinding, model);
+            props[key] = propVal;
+            for (let atomDep of atomDeps) {
+                atomKeys.add(atomDep);
+            }
+            continue;
+        }
+        props[key] = val;
     }
     return [props, atomKeys];
 }

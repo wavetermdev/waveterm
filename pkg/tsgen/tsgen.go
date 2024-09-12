@@ -45,6 +45,7 @@ var ExtraTypes = []any{
 	vdom.VDomElem{},
 	vdom.VDomFunc{},
 	vdom.VDomRef{},
+	vdom.VDomBinding{},
 	vdom.VDomFrontendUpdate{},
 	vdom.VDomBackendUpdate{},
 	waveobj.MetaTSType{},

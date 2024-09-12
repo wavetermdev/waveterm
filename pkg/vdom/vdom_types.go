@@ -68,7 +68,16 @@ type VDomFunc struct {
 	Type            string   `json:"type" tstype:"\"func\""`
 	StopPropagation bool     `json:"stoppropagation,omitempty"`
 	PreventDefault  bool     `json:"preventdefault,omitempty"`
-	Keys            []string `json:"#keys,omitempty"` // special for keyDown events a list of keys to "capture"
+	Keys            []string `json:"keys,omitempty"` // special for keyDown events a list of keys to "capture"
+}
+
+// used in props
+type VDomRef struct {
+	Type          string           `json:"type" tstype:"\"ref\""`
+	RefId         string           `json:"refid"`
+	TrackPosition bool             `json:"trackposition,omitempty"`
+	Current       any              `json:"current,omitempty"`
+	Position      *VDomRefPosition `json:"position,omitempty"`
 }
 
 type DomRect struct {
@@ -87,15 +96,6 @@ type VDomRefPosition struct {
 	ScrollWidth        int     `json:"scrollwidth"`
 	ScrollTop          int     `json:"scrolltop"`
 	BoundingClientRect DomRect `json:"boundingclientrect"`
-}
-
-// used in props
-type VDomRef struct {
-	Type          string           `json:"type" tstype:"\"ref\""`
-	RefId         string           `json:"refid"`
-	TrackPosition bool             `json:"trackposition,omitempty"`
-	Current       any              `json:"current,omitempty"`
-	Position      *VDomRefPosition `json:"position,omitempty"`
 }
 
 ///// subbordinate protocol types
