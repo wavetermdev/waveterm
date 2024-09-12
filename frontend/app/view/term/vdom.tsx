@@ -61,14 +61,14 @@ function convertVDomFunc(fnDecl: VDomFunc, compId: string, propName: string): (e
     };
 }
 
-function convertElemToTag(elem: VDomElem): JSX.Element | string {
+function convertElemToTag(elem: VDomElem, model: VDomModel): JSX.Element | string {
     if (elem == null) {
         return null;
     }
     if (elem.tag == TextTag) {
         return elem.text;
     }
-    return React.createElement(VDomTag, { elem: elem, key: elem.waveid });
+    return React.createElement(VDomTag, { key: elem.waveid, elem, model });
 }
 
 function isObject(v: any): boolean {
@@ -87,11 +87,13 @@ function updateRefFunc(elem: any, ref: VDomRef) {
     console.log("updateref", ref["#ref"], elem);
 }
 
-function VDomTag({ elem }: { elem: VDomElem }) {
-    if (!AllowedTags[elem.tag]) {
-        return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
+type GenericPropsType = { [key: string]: any };
+
+function convertProps(elem: VDomElem, model: VDomModel): GenericPropsType {
+    let props: GenericPropsType = {};
+    if (elem.props == null) {
+        return props;
     }
-    let props = {};
     for (let key in elem.props) {
         let val = elem.props[key];
         if (val == null) {
@@ -113,15 +115,29 @@ function VDomTag({ elem }: { elem: VDomElem }) {
             continue;
         }
     }
+    return props;
+}
+
+function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Element)[] {
     let childrenComps: (string | JSX.Element)[] = [];
-    if (elem.children) {
-        for (let child of elem.children) {
-            if (child == null) {
-                continue;
-            }
-            childrenComps.push(convertElemToTag(child));
-        }
+    if (elem.children == null) {
+        return childrenComps;
     }
+    for (let child of elem.children) {
+        if (child == null) {
+            continue;
+        }
+        childrenComps.push(convertElemToTag(child, model));
+    }
+    return childrenComps;
+}
+
+function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    if (!AllowedTags[elem.tag]) {
+        return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
+    }
+    let props = convertProps(elem, model);
+    let childrenComps = convertChildren(elem, model);
     if (elem.tag == FragmentTag) {
         return childrenComps;
     }
@@ -163,7 +179,7 @@ function VDomView({ blockId }: { blockId: string }) {
         return null;
     }
     let rootNode = jotai.useAtomValue(model.vdomRoot);
-    let rtn = convertElemToTag(rootNode);
+    let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }
 

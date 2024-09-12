@@ -14,7 +14,7 @@ import (
 
 func Page(ctx context.Context, props map[string]any) any {
 	clicked, setClicked := vdom.UseState(ctx, false)
-	var clickedDiv *vdom.VElem
+	var clickedDiv *vdom.VDomElem
 	if clicked {
 		clickedDiv = vdom.Bind(`<div>clicked</div>`, nil)
 	}
