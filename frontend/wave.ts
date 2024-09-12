@@ -22,6 +22,7 @@ import {
     initGlobal,
     initGlobalWaveEventSubs,
     loadConnStatus,
+    pushFlashError,
     subscribeToConnEvents,
 } from "@/store/global";
 import * as WOS from "@/store/wos";
@@ -51,6 +52,7 @@ loadFonts();
 (window as any).countersPrint = countersPrint;
 (window as any).countersClear = countersClear;
 (window as any).getLayoutModelForActiveTab = getLayoutModelForActiveTab;
+(window as any).pushFlashError = pushFlashError;
 
 document.title = `The Next Wave (${windowId.substring(0, 8)})`;
 

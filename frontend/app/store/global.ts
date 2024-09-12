@@ -148,6 +148,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         const connStatuses = Array.from(ConnStatusMap.values()).map((atom) => get(atom));
         return connStatuses;
     });
+    const flashErrorsAtom = atom<FlashErrorType[]>([]);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         windowId: windowIdAtom,
@@ -167,6 +168,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         typeAheadModalAtom,
         modalOpen,
         allConnStatus: allConnStatusAtom,
+        flashErrors: flashErrorsAtom,
     };
 }
 
@@ -504,6 +506,22 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     return rtn;
 }
 
+function pushFlashError(ferr: FlashErrorType) {
+    if (ferr.expiration == null) {
+        ferr.expiration = Date.now() + 5000;
+    }
+    ferr.id = crypto.randomUUID();
+    globalStore.set(atoms.flashErrors, (prev) => {
+        return [...prev, ferr];
+    });
+}
+
+function removeFlashError(id: string) {
+    globalStore.set(atoms.flashErrors, (prev) => {
+        return prev.filter((ferr) => ferr.id !== id);
+    });
+}
+
 export {
     atoms,
     counterInc,
@@ -524,8 +542,10 @@ export {
     loadConnStatus,
     openLink,
     PLATFORM,
+    pushFlashError,
     refocusNode,
     registerBlockComponentModel,
+    removeFlashError,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,
