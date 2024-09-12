@@ -605,7 +605,7 @@ declare global {
     // vdom.VDomRefOperation
     type VDomRefOperation = {
         refid: string;
-        operation: string;
+        op: string;
         params?: any[];
     };
 
@@ -636,7 +636,7 @@ declare global {
 
     // vdom.VDomRenderUpdate
     type VDomRenderUpdate = {
-        updatetype: string;
+        updatetype: "root"|"append"|"replace"|"remove"|"insert";
         waveid: string;
         vdom: VDomElem;
         index?: number;

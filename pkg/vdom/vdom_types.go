@@ -132,9 +132,9 @@ type VDomRenderUpdate struct {
 }
 
 type VDomRefOperation struct {
-	RefId     string `json:"refid"`
-	Operation string `json:"operation"`
-	Params    []any  `json:"params,omitempty"`
+	RefId  string `json:"refid"`
+	Op     string `json:"op" tsype:"\"focus\""`
+	Params []any  `json:"params,omitempty"`
 }
 
 type VDomMessage struct {

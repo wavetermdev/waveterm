@@ -30,6 +30,7 @@ export class VDomModel {
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map();
     refs: Map<string, VDomRef> = new Map();
+    domRefs: Map<string, React.RefObject<HTMLElement>> = new Map();
     batchedEvents: VDomEvent[] = [];
     messages: VDomMessage[] = [];
     initialized: boolean = false;
@@ -162,13 +163,34 @@ export class VDomModel {
         }
     }
 
+    handleRefOperations(update: VDomBackendUpdate, idMap: Map<string, VDomElem>) {
+        if (update.refoperations == null) {
+            return;
+        }
+        for (let refOp of update.refoperations) {
+            const ref = this.domRefs.get(refOp.refid);
+            if (ref == null) {
+                this.addErrorMessage(`Could not find ref with id ${refOp.refid}`);
+                continue;
+            }
+            if (ref.current == null) {
+                continue;
+            }
+            if (refOp.op == "focus") {
+                ref.current.focus();
+            } else {
+                this.addErrorMessage(`Unknown ref operation ${refOp.refid} ${refOp.op}`);
+            }
+        }
+    }
+
     handleBackendUpdate(update: VDomBackendUpdate) {
         const idMap = new Map<string, VDomElem>();
         const vdomRoot = globalStore.get(this.vdomRoot);
         makeVDomIdMap(vdomRoot, idMap);
         this.handleRenderUpdates(update, idMap);
         this.handleStateSync(update, idMap);
-
+        this.handleRefOperations(update, idMap);
         if (update.messages) {
             for (let message of update.messages) {
                 console.log("vdom-message", this.blockId, message.messagetype, message.message);
