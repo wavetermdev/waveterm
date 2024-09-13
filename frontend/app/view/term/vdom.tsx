@@ -5,6 +5,7 @@ import { globalStore } from "@/app/store/global";
 import { VDomModel } from "@/app/view/term/vdom-model";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import { useAtomValueSafe } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -240,10 +241,10 @@ function VDomView({
         globalStore.set(model.vdomRoot, testVDom);
         setModel(model);
     }, []);
-    if (!model || viewRef.current == null) {
+    let rootNode = useAtomValueSafe(model?.vdomRoot);
+    if (!model || viewRef.current == null || rootNode == null) {
         return null;
     }
-    let rootNode = jotai.useAtomValue(model.vdomRoot);
     let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }

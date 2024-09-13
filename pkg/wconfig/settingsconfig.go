@@ -78,6 +78,9 @@ type SettingsType struct {
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
+
+	TipsClear bool `json:"tips:*,omitempty"`
+	TipsShow  bool `json:"tips:show,omitempty"`
 }
 
 type ConfigError struct {

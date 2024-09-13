@@ -6,19 +6,43 @@ import { Button } from "@/app/element/button";
 import { Toggle } from "@/app/element/toggle";
 import { WshServer } from "@/app/store/wshserver";
 import * as services from "@/store/services";
-import { useEffect, useState } from "react";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import { useEffect, useRef, useState } from "react";
 import { FlexiModal } from "./modal";
 
 import "./tos.less";
 
 const TosModal = () => {
     const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(true);
+    const modalRef = useRef<HTMLDivElement | null>(null);
+
+    const updateModalHeight = () => {
+        const windowHeight = window.innerHeight;
+        if (modalRef.current) {
+            const modalHeight = modalRef.current.offsetHeight;
+            const maxHeight = windowHeight * 0.9;
+            if (maxHeight < modalHeight) {
+                modalRef.current.style.height = `${maxHeight}px`;
+            } else {
+                modalRef.current.style.height = "auto";
+            }
+        }
+    };
+
+    useEffect(() => {
+        updateModalHeight(); // Run on initial render
+
+        window.addEventListener("resize", updateModalHeight); // Run on window resize
+        return () => {
+            window.removeEventListener("resize", updateModalHeight);
+        };
+    }, []);
 
     const acceptTos = () => {
         services.ClientService.AgreeTos();
     };
 
-    function setTelemetry(value: boolean) {
+    const setTelemetry = (value: boolean) => {
         WshServer.SetConfigCommand({ "telemetry:enabled": value })
             .then(() => {
                 setTelemetryEnabled(value);
@@ -26,7 +50,7 @@ const TosModal = () => {
             .catch((error) => {
                 console.error("failed to set telemetry:", error);
             });
-    }
+    };
 
     useEffect(() => {
         services.FileService.GetFullConfig()
@@ -42,16 +66,16 @@ const TosModal = () => {
             });
     }, []);
 
-    const label = telemetryEnabled ? "Telemetry enabled" : "Telemetry disabled";
+    const label = telemetryEnabled ? "Telemetry Enabled" : "Telemetry Disabled";
 
     return (
-        <FlexiModal className="tos-modal">
-            <div className="modal-inner">
+        <FlexiModal className="tos-modal" ref={modalRef}>
+            <OverlayScrollbarsComponent className="modal-inner" options={{ scrollbars: { autoHide: "leave" } }}>
                 <header className="modal-header tos-header unselectable">
                     <div className="logo">
                         <Logo />
                     </div>
-                    <div className="modal-title">Welcome to Wave Terminal!</div>
+                    <div className="modal-title">Welcome to Wave Terminal</div>
                 </header>
                 <div className="modal-content tos-content unselectable">
                     <div className="content-section">
@@ -73,7 +97,7 @@ const TosModal = () => {
                     </div>
                     <div className="content-section">
                         <div className="icon-wrapper">
-                            <a target="_blank" href="https://github.com/wavetermdev/thenextwave" rel={"noopener"}>
+                            <a target="_blank" href="https://discord.gg/XfvZ334gwU" rel={"noopener"}>
                                 <i className="icon fa-solid fa-people-group"></i>
                             </a>
                         </div>
@@ -96,15 +120,24 @@ const TosModal = () => {
                         <div className="content-section-inner">
                             <div className="content-section-title">Telemetry</div>
                             <div className="content-section-text">
-                                We collect minimal anonymous
+                                We collect minimal anonymous{" "}
                                 <a
                                     target="_blank"
                                     href="https://docs.waveterm.dev/reference/telemetry"
                                     rel={"noopener"}
                                 >
-                                    &nbsp;telemetry data&nbsp;
+                                    telemetry data
+                                </a>{" "}
+                                to help us understand how people are using Wave (
+                                <a
+                                    className="plain-link"
+                                    target="_blank"
+                                    href="https://waveterm.dev/privacy"
+                                    rel="noopener"
+                                >
+                                    Privacy Policy
                                 </a>
-                                to help us understand how people are using Wave.
+                                ).
                             </div>
                             <Toggle checked={telemetryEnabled} onChange={setTelemetry} label={label} />
                         </div>
@@ -116,12 +149,8 @@ const TosModal = () => {
                             Get Started
                         </Button>
                     </div>
-                    <div className="content-section-text">
-                        By continuing, I accept the&nbsp;
-                        <a href="https://www.waveterm.dev/tos">Terms of Service</a>
-                    </div>
                 </footer>
-            </div>
+            </OverlayScrollbarsComponent>
         </FlexiModal>
     );
 };
