@@ -17,7 +17,7 @@ Adding a block can be done using the widget bar on the right hand side of the wi
 Blocks can be closed by clicking the &#x2715; button on the right side of the header. Alternatively, the currently focused block can be closed by pressing \`Cmd + w\`.
 
 ### How to Navigate Blocks
-At most, it is possible to have one block be focused. Depending on the type of block, this allows you to directly interact with the content in that block. A focused block is always outlined with a distinct border. A block may be focused by clicking on it. Alternatively, you can change the focused block by pressing <code>Cmd + &uarr;</code>, <code>Cmd + &darr;</code>, <code>Cmd + &larr;</code>, or <code>Cmd + &rarr;</code>to navigate relative to the currently selected block.
+At most, it is possible to have one block be focused. Depending on the type of block, this allows you to directly interact with the content in that block. A focused block is always outlined with a distinct border. A block may be focused by clicking on it. Alternatively, you can change the focused block by pressing <code>Ctrl + Shift + &uarr;</code>, <code>Ctrl + Shift + &darr;</code>, <code>Ctrl + Shift + &larr;</code>, or <code>Ctrl + Shift + &rarr;</code>to navigate relative to the currently selected block.
 1
 ### How to Magnify Blocks
 Magnifying a block will pop the block out in front of everything else. You can magnify using the header icon, or with \`Cmd + m\`.
