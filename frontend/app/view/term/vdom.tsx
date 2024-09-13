@@ -3,6 +3,7 @@
 
 import { globalStore } from "@/app/store/global";
 import { VDomModel } from "@/app/view/term/vdom-model";
+import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -224,14 +225,22 @@ const testVDom: VDomElem = {
     ],
 };
 
-function VDomView({ blockId }: { blockId: string }) {
+function VDomView({
+    blockId,
+    nodeModel,
+    viewRef,
+}: {
+    blockId: string;
+    nodeModel: NodeModel;
+    viewRef: React.RefObject<HTMLDivElement>;
+}) {
     let [model, setModel] = React.useState<VDomModel>(null);
     React.useEffect(() => {
-        const model = new VDomModel(blockId);
+        const model = new VDomModel(blockId, nodeModel, viewRef);
         globalStore.set(model.vdomRoot, testVDom);
         setModel(model);
     }, []);
-    if (!model) {
+    if (!model || viewRef.current == null) {
         return null;
     }
     let rootNode = jotai.useAtomValue(model.vdomRoot);

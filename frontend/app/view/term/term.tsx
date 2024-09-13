@@ -4,6 +4,7 @@
 import { waveEventSubscribe } from "@/app/store/wps";
 import { WshServer } from "@/app/store/wshserver";
 import { VDomView } from "@/app/view/term/vdom";
+import { NodeModel } from "@/layout/index";
 import { WOS, atoms, getConnStatusAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
@@ -74,6 +75,7 @@ type InitialLoadDataType = {
 
 class TermViewModel {
     viewType: string;
+    nodeModel: NodeModel;
     connected: boolean;
     termRef: React.RefObject<TermWrap>;
     blockAtom: jotai.Atom<Block>;
@@ -87,9 +89,10 @@ class TermViewModel {
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "term";
         this.blockId = blockId;
+        this.nodeModel = nodeModel;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -188,8 +191,8 @@ class TermViewModel {
     }
 }
 
-function makeTerminalModel(blockId: string): TermViewModel {
-    return new TermViewModel(blockId);
+function makeTerminalModel(blockId: string, nodeModel: NodeModel): TermViewModel {
+    return new TermViewModel(blockId, nodeModel);
 }
 
 interface TerminalViewProps {
@@ -400,7 +403,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                     />
                 </div>
                 <div key="htmlElemContent" className="term-htmlelem-content">
-                    <VDomView blockId={blockId} />
+                    <VDomView blockId={blockId} nodeModel={model.nodeModel} viewRef={viewRef} />
                 </div>
             </div>
         </div>

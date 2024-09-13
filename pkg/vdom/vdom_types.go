@@ -27,12 +27,12 @@ type VDomElem struct {
 //// protocol messages
 
 type AsyncInitiationRequest struct {
-	Type string `json:"type" static:"asyncinitiationrequest"`
+	Type string `json:"type" tstype:"\"asyncinitiationrequest\""`
 	Ts   int64  `json:"ts"`
 }
 
 type VDomFrontendUpdate struct {
-	Type          string            `json:"type" static:"frontendupdate"`
+	Type          string            `json:"type" tstype:"\"frontendupdate\""`
 	Ts            int64             `json:"ts"`
 	RequestId     string            `json:"requestid"`
 	Initialize    bool              `json:"initialize,omitempty"` // initialize the app
@@ -45,7 +45,7 @@ type VDomFrontendUpdate struct {
 }
 
 type VDomBackendUpdate struct {
-	Type          string             `json:"type" static:"backendupdate"`
+	Type          string             `json:"type" tstype:"\"backendupdate\""`
 	Ts            int64              `json:"ts"`
 	ResponseId    string             `json:"responseid"`
 	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
@@ -111,7 +111,7 @@ type VDomRenderContext struct {
 	Focused   bool   `json:"focused"`
 	Width     int    `json:"width"`
 	Height    int    `json:"height"`
-	ViewRefId string `json:"viewrefid"`
+	RootRefId string `json:"rootrefid"`
 }
 
 type VDomStateSync struct {

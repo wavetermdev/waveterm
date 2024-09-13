@@ -59,7 +59,11 @@ type MetaTSType struct {
 	TermFontFamily string `json:"term:fontfamily,omitempty"`
 	TermMode       string `json:"term:mode,omitempty"`
 	TermTheme      string `json:"term:theme,omitempty"`
-	Count          int    `json:"count,omitempty"` // temp for cpu plot. will remove later
+
+	VDomClear       bool `json:"vdom:*,omitempty"`
+	VDomInitialized bool `json:"vdom:initialized,omitempty"`
+
+	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }
 
 type MetaDataDecl struct {

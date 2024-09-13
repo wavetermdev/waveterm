@@ -194,6 +194,7 @@ tasks:
             - "pkg/gogen/**/*.go"
             - "pkg/wconfig/**/*.go"
             - "pkg/eventbus/eventbus.go"
+            - "pkg/vdom/vdom_types.go"
         generates:
             - frontend/types/gotypes.d.ts
             - pkg/wshrpc/wshclient/wshclient.go

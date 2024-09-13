@@ -1,7 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore } from "@/app/store/global";
+import { globalStore, WOS } from "@/app/store/global";
+import { ObjectService } from "@/app/store/services";
+import { makeORef } from "@/app/store/wos";
+import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import * as jotai from "jotai";
 
@@ -59,18 +62,23 @@ function convertEvent(e: React.SyntheticEvent, fromProp: string): any {
 
 export class VDomModel {
     blockId: string;
+    nodeModel: NodeModel;
+    viewRef: React.RefObject<HTMLDivElement>;
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
     batchedEvents: VDomEvent[] = [];
     refUpdates: VDomRefUpdate[] = [];
     messages: VDomMessage[] = [];
-    initialized: boolean = false;
+    needsResync: boolean = true;
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
     compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
+    rootRefId: string = crypto.randomUUID();
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: NodeModel, viewRef: React.RefObject<HTMLDivElement>) {
         this.blockId = blockId;
+        this.nodeModel = nodeModel;
+        this.viewRef = viewRef;
     }
 
     getAtomContainer(atomName: string): AtomContainer {
@@ -239,23 +247,31 @@ export class VDomModel {
         }
     }
 
+    getRefElem(refId: string): HTMLElement {
+        if (refId == this.rootRefId) {
+            return this.viewRef.current;
+        }
+        const ref = this.refs.get(refId);
+        return ref?.elem;
+    }
+
     handleRefOperations(update: VDomBackendUpdate, idMap: Map<string, VDomElem>) {
         if (update.refoperations == null) {
             return;
         }
         for (let refOp of update.refoperations) {
-            const ref = this.refs.get(refOp.refid);
-            if (ref == null) {
+            const elem = this.getRefElem(refOp.refid);
+            if (elem == null) {
                 this.addErrorMessage(`Could not find ref with id ${refOp.refid}`);
                 continue;
             }
             if (refOp.op == "focus") {
-                if (ref.elem == null) {
+                if (elem == null) {
                     this.addErrorMessage(`Could not focus ref with id ${refOp.refid}: elem is null`);
                     continue;
                 }
                 try {
-                    ref.elem.focus();
+                    elem.focus();
                 } catch (e) {
                     this.addErrorMessage(`Could not focus ref with id ${refOp.refid}: ${e.message}`);
                 }
@@ -292,5 +308,35 @@ export class VDomModel {
         this.batchedEvents.push(vdomEvent);
     }
 
-    updateRefFunc(elem: any, ref: VDomRef) {}
+    createFeUpdate(): VDomFrontendUpdate {
+        const blockORef = makeORef("block", this.blockId);
+        const blockAtom = WOS.getWaveObjectAtom<Block>(blockORef);
+        const blockData = globalStore.get(blockAtom);
+        const needsInitialize = !blockData?.meta?.["vdom:initialized"];
+        const isBlockFocused = globalStore.get(this.nodeModel.isFocused);
+        const renderContext: VDomRenderContext = {
+            blockid: this.blockId,
+            focused: isBlockFocused,
+            width: this.viewRef?.current?.offsetWidth ?? 0,
+            height: this.viewRef?.current?.offsetHeight ?? 0,
+            rootrefid: this.rootRefId,
+        };
+        const feUpdate: VDomFrontendUpdate = {
+            type: "frontendupdate",
+            ts: Date.now(),
+            requestid: crypto.randomUUID(),
+            initialize: needsInitialize,
+            rendercontext: renderContext,
+            resync: this.needsResync,
+            events: this.batchedEvents,
+            refupdates: this.refUpdates,
+        };
+        this.needsResync = false;
+        if (needsInitialize) {
+            ObjectService.UpdateObjectMeta(blockORef, { "vdom:initialized": true });
+        }
+        this.batchedEvents = [];
+        this.refUpdates = [];
+        return feUpdate;
+    }
 }

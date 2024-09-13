@@ -294,6 +294,8 @@ declare global {
         "term:fontfamily"?: string;
         "term:mode"?: string;
         "term:theme"?: string;
+        "vdom:*"?: boolean;
+        "vdom:initialized"?: boolean;
         count?: number;
     };
 
@@ -538,7 +540,7 @@ declare global {
 
     // vdom.VDomBackendUpdate
     type VDomBackendUpdate = {
-        type: string;
+        type: "backendupdate";
         ts: number;
         responseid: string;
         renderupdates?: VDomRenderUpdate[];
@@ -571,7 +573,7 @@ declare global {
 
     // vdom.VDomFrontendUpdate
     type VDomFrontendUpdate = {
-        type: string;
+        type: "frontendupdate";
         ts: number;
         requestid: string;
         initialize?: boolean;
@@ -638,7 +640,7 @@ declare global {
         focused: boolean;
         width: number;
         height: number;
-        viewrefid: string;
+        rootrefid: string;
     };
 
     // vdom.VDomRenderUpdate

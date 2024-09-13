@@ -60,6 +60,9 @@ const (
 	MetaKey_TermMode                         = "term:mode"
 	MetaKey_TermTheme                        = "term:theme"
 
+	MetaKey_VDomClear                        = "vdom:*"
+	MetaKey_VDomInitialized                  = "vdom:initialized"
+
 	MetaKey_Count                            = "count"
 )
 
