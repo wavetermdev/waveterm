@@ -33,6 +33,9 @@
     &.primary,
     &.secondary {
         background: var(--accent-color);
+        &:hover {
+            color: var(--main-text-color);
+        }
 
         i {
             fill: var(--main-text-color);
@@ -49,6 +52,7 @@
 
     &.primary.ghost {
         background: none;
+        border: 1px solid var(--accent-color);
 
         i {
             fill: var(--accent-color);
@@ -68,6 +72,13 @@
 
     &.secondary.ghost {
         background: none;
+        border: 1px solid var(--secondary-text-color);
+        color: var(--secondary-text-color);
+
+        &:hover {
+            border: 1px solid var(--main-text-color);
+            color: 1px solid var(--main-text-color);
+        }
     }
 
     &.secondary.danger {

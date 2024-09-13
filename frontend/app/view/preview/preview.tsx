@@ -357,8 +357,9 @@ export class PreviewModel implements ViewModel {
                     tipIcon = [
                         {
                             elemtype: "iconbutton",
-                            icon: "lightbulb-on",
+                            icon: "lightbulb",
                             iconColor: "var(--warning-color)",
+                            className: "bulb",
                             click: () => {
                                 const tips: UserInputRequest = {
                                     requestid: "",
