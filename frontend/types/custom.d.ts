@@ -154,6 +154,7 @@ declare global {
     type IconButtonDecl = {
         elemtype: "iconbutton";
         icon: string | React.ReactNode;
+        iconColor?: string;
         className?: string;
         title?: string;
         click?: (e: React.MouseEvent<any>) => void;

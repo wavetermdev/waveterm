@@ -46,5 +46,8 @@ const (
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
+
+	ConfigKey_TipsClear                      = "tips:*"
+	ConfigKey_TipsShow                       = "tips:show"
 )
 
