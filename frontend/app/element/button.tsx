@@ -17,18 +17,17 @@ const Button = React.memo(({ className = "primary", children, disabled, ...props
     );
 
     return (
-        <div className="button">
-            <button
-                className={clsx("button-inner", className, {
-                    disabled,
-                    hasIcon,
-                })}
-                disabled={disabled}
-                {...props}
-            >
-                {children}
-            </button>
-        </div>
+        <button
+            tabIndex={disabled ? -1 : 0}
+            className={clsx("button", className, {
+                disabled,
+                hasIcon,
+            })}
+            disabled={disabled}
+            {...props}
+        >
+            {children}
+        </button>
     );
 });
 

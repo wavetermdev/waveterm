@@ -2,200 +2,219 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 .button {
-    padding: 1px;
+    // override default button appearance
     border: 1px solid transparent;
-    border-radius: 8px;
+    outline: 1px solid transparent;
 
-    &:focus,
-    &.focus {
-        border: 1px solid var(--button-focus-border-color);
+    background: var(--accent-color);
+    border: none;
+    cursor: pointer;
+    outline: inherit;
+    display: flex;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    padding-left: 20px;
+    padding-right: 20px;
+    align-items: center;
+    gap: 4px;
+    border-radius: 6px;
+    height: auto;
+    line-height: 16px;
+    white-space: nowrap;
+    user-select: none;
+    font-size: 14px;
+    color: var(--button-text-color);
+    font-weight: normal;
+
+    i {
+        fill: var(--main-text-color);
     }
 
-    .button-inner {
+    &.primary,
+    &.secondary {
         background: var(--accent-color);
-        border: none;
-        cursor: pointer;
-        outline: inherit;
-        display: flex;
-        padding-top: 8px;
-        padding-bottom: 8px;
-        padding-left: 20px;
-        padding-right: 20px;
-        align-items: center;
-        gap: 4px;
-        border-radius: 6px;
-        height: auto;
-        line-height: 16px;
-        white-space: nowrap;
-        user-select: none;
-        font-size: 14px;
-        color: var(--button-text-color);
-        font-weight: normal;
 
         i {
             fill: var(--main-text-color);
         }
+    }
 
-        &.primary,
-        &.secondary {
-            background: var(--accent-color);
+    &.primary.danger {
+        background: var(--error-color);
+    }
 
-            i {
-                fill: var(--main-text-color);
-            }
+    &.primary.warning {
+        background: #e6ba1e;
+    }
+
+    &.primary.ghost {
+        background: none;
+
+        i {
+            fill: var(--accent-color);
         }
+    }
 
-        &.primary.danger {
-            background: var(--error-color);
+    &.primary.ghost.danger {
+        i {
+            fill: var(--app-error-color);
         }
+    }
 
-        &.primary.warning {
-            background: #e6ba1e;
-        }
+    &.secondary,
+    &.link-button {
+        background: var(--highlight-bg-color);
+    }
 
-        &.primary.ghost {
-            background: none;
+    &.secondary.ghost {
+        background: none;
+    }
 
-            i {
-                fill: var(--accent-color);
-            }
-        }
+    &.secondary.danger {
+        color: var(--error-color);
+    }
 
-        &.primary.ghost.danger {
-            i {
-                fill: var(--app-error-color);
-            }
-        }
+    &.outlined {
+        background: none;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
 
-        &.secondary,
-        &.link-button {
-            background: var(--highlight-bg-color);
-        }
+    &.disabled {
+        opacity: 0.5;
+    }
 
-        &.secondary.ghost {
-            background: none;
-        }
-
-        &.secondary.danger {
-            color: var(--error-color);
-        }
-
-        &.outlined {
-            background: none;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-
-        &.disabled {
-            opacity: 0.5;
-        }
+    &:focus,
+    &.focus {
+        outline: 1px solid var(--button-focus-border-color);
+        outline-offset: 2px;
     }
 
     /* 
 	 *	customs styles here
 	 */
-    .border-radius-4 {
+    &.border-radius-2 {
         border-radius: 4px;
     }
 
-    .vertical-padding-2 {
+    &.border-radius-3 {
+        border-radius: 4px;
+    }
+
+    &.border-radius-4 {
+        border-radius: 4px;
+    }
+
+    &.border-radius-5 {
+        border-radius: 4px;
+    }
+
+    &.border-radius-6 {
+        border-radius: 4px;
+    }
+
+    &.border-radius-10 {
+        border-radius: 10px;
+    }
+
+    &.vertical-padding-2 {
         padding-top: 2px;
         padding-bottom: 2px;
     }
 
-    .vertical-padding-3 {
+    &.vertical-padding-3 {
         padding-top: 3px;
         padding-bottom: 3px;
     }
 
-    .vertical-padding-4 {
+    &.vertical-padding-4 {
         padding-top: 4px;
         padding-bottom: 4px;
     }
 
-    .vertical-padding-5 {
+    &.vertical-padding-5 {
         padding-top: 5px;
         padding-bottom: 5px;
     }
 
-    .vertical-padding-6 {
+    &.vertical-padding-6 {
         padding-top: 6px;
         padding-bottom: 6px;
     }
 
-    .vertical-padding-7 {
+    &.vertical-padding-7 {
         padding-top: 7px;
         padding-bottom: 7px;
     }
 
-    .vertical-padding-8 {
+    &.vertical-padding-8 {
         padding-top: 8px;
         padding-bottom: 8px;
     }
 
-    .vertical-padding-9 {
+    &.vertical-padding-9 {
         padding-top: 9px;
         padding-bottom: 9px;
     }
 
-    .vertical-padding-10 {
+    &.vertical-padding-10 {
         padding-top: 10px;
         padding-bottom: 10px;
     }
 
-    .horizontal-padding-2 {
+    &.horizontal-padding-2 {
         padding-left: 2px;
         padding-right: 2px;
     }
 
-    .horizontal-padding-3 {
+    &.horizontal-padding-3 {
         padding-left: 3px;
         padding-right: 3px;
     }
 
-    .horizontal-padding-4 {
+    &.horizontal-padding-4 {
         padding-left: 4px;
         padding-right: 4px;
     }
 
-    .horizontal-padding-5 {
+    &.horizontal-padding-5 {
         padding-left: 5px;
         padding-right: 5px;
     }
 
-    .horizontal-padding-6 {
+    &.horizontal-padding-6 {
         padding-left: 6px;
         padding-right: 6px;
     }
 
-    .horizontal-padding-7 {
+    &.horizontal-padding-7 {
         padding-left: 7px;
         padding-right: 7px;
     }
 
-    .horizontal-padding-8 {
+    &.horizontal-padding-8 {
         padding-left: 8px;
         padding-right: 8px;
     }
 
-    .horizontal-padding-9 {
+    &.horizontal-padding-9 {
         padding-left: 9px;
         padding-right: 9px;
     }
 
-    .horizontal-padding-10 {
+    &.horizontal-padding-10 {
         padding-left: 10px;
         padding-right: 10px;
     }
 
-    .font-size-11 {
+    &.font-size-11 {
         font-size: 11px;
     }
 
-    .font-weight-500 {
+    &.font-weight-500 {
         font-weight: 500;
     }
 
-    .font-weight-600 {
-        font-weight: 500;
+    &.font-weight-600 {
+        font-weight: 600;
     }
 }
