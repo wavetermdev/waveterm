@@ -100,3 +100,44 @@ a {
         transition-delay: none !important;
     }
 }
+
+.flash-error-container {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: var(--zindex-flash-error-container);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .flash-error {
+        background: var(--error-color);
+        color: var(--main-text-color);
+        border-radius: 4px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        width: 280px;
+        border: 1px solid transparent;
+        max-height: 100px;
+        cursor: pointer;
+
+        .flash-error-scroll {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        &.hovered {
+            border: 1px solid var(--main-text-color);
+        }
+
+        .flash-error-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .flash-error-message {
+        }
+    }
+}

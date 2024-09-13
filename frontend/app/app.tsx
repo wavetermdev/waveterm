@@ -4,7 +4,7 @@
 import { useWaveObjectValue } from "@/app/store/wos";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { PLATFORM, WOS, atoms, getApi, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import { PLATFORM, WOS, atoms, getApi, globalStore, removeFlashError, useSettingsPrefixAtom } from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { getElemAsStr } from "@/util/focusutil";
@@ -251,6 +251,78 @@ const AppKeyHandlers = () => {
     return null;
 };
 
+const FlashError = () => {
+    const flashErrors = jotai.useAtomValue(atoms.flashErrors);
+    const [hoveredId, setHoveredId] = React.useState<string>(null);
+    const [ticker, setTicker] = React.useState<number>(0);
+
+    React.useEffect(() => {
+        if (flashErrors.length == 0 || hoveredId != null) {
+            return;
+        }
+        const now = Date.now();
+        for (let ferr of flashErrors) {
+            if (ferr.expiration == null || ferr.expiration < now) {
+                removeFlashError(ferr.id);
+            }
+        }
+        setTimeout(() => setTicker(ticker + 1), 1000);
+    }, [flashErrors, ticker, hoveredId]);
+
+    if (flashErrors.length == 0) {
+        return null;
+    }
+
+    function copyError(id: string) {
+        const ferr = flashErrors.find((f) => f.id === id);
+        if (ferr == null) {
+            return;
+        }
+        let text = "";
+        if (ferr.title != null) {
+            text += ferr.title;
+        }
+        if (ferr.message != null) {
+            if (text.length > 0) {
+                text += "\n";
+            }
+            text += ferr.message;
+        }
+        navigator.clipboard.writeText(text);
+    }
+
+    function convertNewlinesToBreaks(text) {
+        return text.split("\n").map((part, index) => (
+            <React.Fragment key={index}>
+                {part}
+                <br />
+            </React.Fragment>
+        ));
+    }
+
+    return (
+        <div className="flash-error-container">
+            {flashErrors.map((err, idx) => (
+                <div
+                    key={idx}
+                    className={clsx("flash-error", { hovered: hoveredId === err.id })}
+                    onClick={() => copyError(err.id)}
+                    onMouseEnter={() => setHoveredId(err.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    title="Click to Copy Error Message"
+                >
+                    <div className="flash-error-scroll">
+                        {err.title != null ? <div className="flash-error-title">{err.title}</div> : null}
+                        {err.message != null ? (
+                            <div className="flash-error-message">{convertNewlinesToBreaks(err.message)}</div>
+                        ) : null}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const AppInner = () => {
     const prefersReducedMotion = jotai.useAtomValue(atoms.prefersReducedMotionAtom);
     const client = jotai.useAtomValue(atoms.client);
@@ -281,6 +353,7 @@ const AppInner = () => {
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
+            <FlashError />
         </div>
     );
 };

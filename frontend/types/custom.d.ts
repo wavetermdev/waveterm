@@ -23,6 +23,7 @@ declare global {
         typeAheadModalAtom: jotai.PrimitiveAtom<TypeAheadModalType>;
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
+        flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -272,6 +273,14 @@ declare global {
     type MarkdownResolveOpts = {
         connName: string;
         baseDir: string;
+    };
+
+    type FlashErrorType = {
+        id: string;
+        icon: string;
+        title: string;
+        message: string;
+        expiration: number;
     };
 }
 

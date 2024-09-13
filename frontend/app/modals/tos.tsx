@@ -112,7 +112,9 @@ const TosModal = () => {
                 </div>
                 <footer className="unselectable">
                     <div className="button-wrapper">
-                        <Button onClick={acceptTos}>Get Started</Button>
+                        <Button className="font-weight-600" onClick={acceptTos}>
+                            Get Started
+                        </Button>
                     </div>
                     <div className="content-section-text">
                         By continuing, I accept the&nbsp;
