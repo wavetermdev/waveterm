@@ -29,8 +29,8 @@
         white-space: nowrap;
         user-select: none;
         font-size: 14px;
-
-        color: var(--main-text-color);
+        color: var(--button-text-color);
+        font-weight: normal;
 
         i {
             fill: var(--main-text-color);
@@ -38,7 +38,6 @@
 
         &.primary,
         &.secondary {
-            color: var(--main-text-color);
             background: var(--accent-color);
 
             i {
@@ -52,7 +51,6 @@
 
         &.primary.warning {
             background: #e6ba1e;
-            color: #000000;
         }
 
         &.primary.ghost {
@@ -194,6 +192,10 @@
     }
 
     .font-weight-500 {
+        font-weight: 500;
+    }
+
+    .font-weight-600 {
         font-weight: 500;
     }
 }
