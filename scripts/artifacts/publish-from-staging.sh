@@ -17,5 +17,7 @@ OUTPUT=$(aws s3 cp s3://$ORIGIN s3://$DESTINATION --recursive --profile $AWS_PRO
 for line in $OUTPUT; do
     PREFIX=${line%%${DESTINATION}*}
     SUFFIX=${line:${#PREFIX}}
-    echo "https://$SUFFIX"
+    if [[ -n "$SUFFIX" ]]; then
+        echo "https://$SUFFIX"
+    fi
 done
