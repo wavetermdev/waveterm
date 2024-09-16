@@ -2,7 +2,7 @@
     "include": ["frontend/**/*", "emain/**/*"],
     "compilerOptions": {
         "target": "es6",
-        "module": "commonjs",
+        "module": "es2020",
         "jsx": "preserve",
         "esModuleInterop": true,
         "skipLibCheck": true,
