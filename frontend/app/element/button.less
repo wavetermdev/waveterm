@@ -7,9 +7,7 @@
     outline: 1px solid transparent;
 
     background: var(--accent-color);
-    border: none;
     cursor: pointer;
-    outline: inherit;
     display: flex;
     padding-top: 8px;
     padding-bottom: 8px;
@@ -23,15 +21,16 @@
     white-space: nowrap;
     user-select: none;
     font-size: 14px;
-    color: var(--button-text-color);
+    color: var(--secondary-text-color);
     font-weight: normal;
 
     i {
         fill: var(--main-text-color);
     }
 
-    &.primary,
-    &.secondary {
+    &.primary:not(.ghost),
+    &.secondary:not(.ghost) {
+        color: var(--button-primary-text-color);
         background: var(--accent-color);
         &:hover {
             color: var(--main-text-color);
@@ -52,7 +51,6 @@
 
     &.primary.ghost {
         background: none;
-        border: 1px solid var(--accent-color);
 
         i {
             fill: var(--accent-color);
@@ -72,11 +70,8 @@
 
     &.secondary.ghost {
         background: none;
-        border: 1px solid var(--secondary-text-color);
-        color: var(--secondary-text-color);
 
         &:hover {
-            border: 1px solid var(--main-text-color);
             color: 1px solid var(--main-text-color);
         }
     }
@@ -87,7 +82,11 @@
 
     &.outlined {
         background: none;
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--secondary-text-color);
+
+        &:hover {
+            border: 1px solid var(--main-text-color);
+        }
     }
 
     &.disabled {
