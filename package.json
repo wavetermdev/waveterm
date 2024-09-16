@@ -92,7 +92,7 @@
     "base64-js": "^1.5.1",
     "clsx": "^2.1.1",
     "color": "^4.2.3",
-    "css-tree": "^2.3.1",
+    "css-tree": "^3.0.0",
     "dayjs": "^1.11.13",
     "debug": "^4.3.7",
     "electron-updater": "6.3.4",
