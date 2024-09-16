@@ -3,9 +3,10 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, fetchWaveFile, getUserName, globalStore, WOS } from "@/store/global";
 import { BlockService } from "@/store/services";
-import { WshServer } from "@/store/wshserver";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
@@ -182,7 +183,7 @@ export class WaveAiModel implements ViewModel {
                     opts: opts,
                     prompt: [...history, newPrompt],
                 };
-                const aiGen = WshServer.StreamWaveAiCommand(beMsg, { timeout: 60000 });
+                const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: 60000 });
                 let fullMsg = "";
                 for await (const msg of aiGen) {
                     fullMsg += msg.text ?? "";

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CopyButton } from "@/app/element/copybutton";
-import { WshServer } from "@/app/store/wshserver";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { isBlank, makeConnRoute, useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
@@ -141,7 +142,9 @@ const MarkdownImg = ({
         }
         const resolveFn = async () => {
             const route = makeConnRoute(resolveOpts.connName);
-            const fileInfo = await WshServer.RemoteFileJoinCommand([resolveOpts.baseDir, props.src], { route: route });
+            const fileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [resolveOpts.baseDir, props.src], {
+                route: route,
+            });
             const usp = new URLSearchParams();
             usp.set("path", fileInfo.path);
             if (!isBlank(resolveOpts.connName)) {

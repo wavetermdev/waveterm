@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { waveEventSubscribe } from "@/app/store/wps";
-import { WshServer } from "@/app/store/wshserver";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { VDomView } from "@/app/view/term/vdom";
 import { WOS, atoms, getConnStatusAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
@@ -169,7 +170,10 @@ class TermViewModel {
     }
 
     setTerminalTheme(themeName: string) {
-        WshServer.SetMetaCommand({ oref: WOS.makeORef("block", this.blockId), meta: { "term:theme": themeName } });
+        RpcApi.SetMetaCommand(WindowRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "term:theme": themeName },
+        });
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
@@ -199,7 +203,7 @@ class TermViewModel {
                     rows: this.termRef.current?.terminal?.rows,
                     cols: this.termRef.current?.terminal?.cols,
                 };
-                const prtn = WshServer.ControllerResyncCommand({
+                const prtn = RpcApi.ControllerResyncCommand(WindowRpcClient, {
                     tabid: globalStore.get(atoms.activeTabId),
                     blockid: this.blockId,
                     forcerestart: true,
@@ -264,7 +268,10 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
                 event.preventDefault();
                 event.stopPropagation();
-                WshServer.SetMetaCommand({ oref: WOS.makeORef("block", blockId), meta: { "term:mode": null } });
+                RpcApi.SetMetaCommand(WindowRpcClient, {
+                    oref: WOS.makeORef("block", blockId),
+                    meta: { "term:mode": null },
+                });
                 return false;
             }
             if (
@@ -302,7 +309,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
                 const tabId = globalStore.get(atoms.activeTabId);
-                const prtn = WshServer.ControllerResyncCommand({ tabid: tabId, blockid: blockId });
+                const prtn = RpcApi.ControllerResyncCommand(WindowRpcClient, { tabid: tabId, blockid: blockId });
                 prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
                 return false;
             }
@@ -346,7 +353,10 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
             // reset term:mode
-            WshServer.SetMetaCommand({ oref: WOS.makeORef("block", blockId), meta: { "term:mode": null } });
+            RpcApi.SetMetaCommand(WindowRpcClient, {
+                oref: WOS.makeORef("block", blockId),
+                meta: { "term:mode": null },
+            });
             return false;
         }
         const asciiVal = keyboardEventToASCII(event);
@@ -354,7 +364,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             return false;
         }
         const b64data = util.stringToBase64(asciiVal);
-        WshServer.ControllerInputCommand({ blockid: blockId, inputdata64: b64data });
+        RpcApi.ControllerInputCommand(WindowRpcClient, { blockid: blockId, inputdata64: b64data });
         return true;
     };
 

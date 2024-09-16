@@ -158,6 +158,12 @@ func (router *WshRouter) handleAnnounceMessage(msg RpcMessage, input msgAndRoute
 	router.AnnouncedRoutes[msg.Source] = input.fromRouteId
 }
 
+func (router *WshRouter) handleUnannounceMessage(msg RpcMessage) {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	delete(router.AnnouncedRoutes, msg.Source)
+}
+
 func (router *WshRouter) getAnnouncedRoute(routeId string) string {
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
@@ -197,8 +203,12 @@ func (router *WshRouter) runServer() {
 			continue
 		}
 		routeId := msg.Route
-		if msg.Command == wshrpc.Command_Announce {
+		if msg.Command == wshrpc.Command_RouteAnnounce {
 			router.handleAnnounceMessage(msg, input)
+			continue
+		}
+		if msg.Command == wshrpc.Command_RouteUnannounce {
+			router.handleUnannounceMessage(msg)
 			continue
 		}
 		if msg.Command != "" {
@@ -267,7 +277,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
 	go func() {
 		// announce
 		if router.GetUpstreamClient() != nil {
-			announceMsg := RpcMessage{Command: wshrpc.Command_Announce, Source: routeId}
+			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
 			announceBytes, _ := json.Marshal(announceMsg)
 			router.GetUpstreamClient().SendRpcMessage(announceBytes)
 		}
@@ -303,6 +313,12 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
 	delete(router.RouteMap, routeId)
+	// clear out announced routes
+	for routeId, localRouteId := range router.AnnouncedRoutes {
+		if localRouteId == routeId {
+			delete(router.AnnouncedRoutes, routeId)
+		}
+	}
 	go func() {
 		wps.Broker.UnsubscribeAll(routeId)
 	}()

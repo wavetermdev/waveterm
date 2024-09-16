@@ -4,7 +4,6 @@
 import { useHeight } from "@/app/hook/useHeight";
 import { useWidth } from "@/app/hook/useWidth";
 import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
-import { WshServer } from "@/store/wshserver";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
 import dayjs from "dayjs";
@@ -13,6 +12,8 @@ import * as jotai from "jotai";
 import * as React from "react";
 
 import { waveEventSubscribe } from "@/app/store/wps";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import "./cpuplot.less";
 
 const DefaultNumPoints = 120;
@@ -112,7 +113,10 @@ class CpuPlotViewModel {
         this.incrementCount = jotai.atom(null, async (get, set) => {
             const meta = get(this.blockAtom).meta;
             const count = meta.count ?? 0;
-            await WshServer.SetMetaCommand({ oref: WOS.makeORef("block", this.blockId), meta: { count: count + 1 } });
+            await RpcApi.SetMetaCommand(WindowRpcClient, {
+                oref: WOS.makeORef("block", this.blockId),
+                meta: { count: count + 1 },
+            });
         });
         this.connection = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -137,7 +141,7 @@ class CpuPlotViewModel {
         try {
             const numPoints = globalStore.get(this.numPoints);
             const connName = globalStore.get(this.connection);
-            const initialData = await WshServer.EventReadHistoryCommand({
+            const initialData = await RpcApi.EventReadHistoryCommand(WindowRpcClient, {
                 event: "sysinfo",
                 scope: connName,
                 maxitems: numPoints,

@@ -283,6 +283,17 @@ declare global {
         message: string;
         expiration: number;
     };
+
+    interface AbstractWshClient {
+        recvRpcMessage(msg: RpcMessage): void;
+    }
+
+    type ClientRpcEntry = {
+        reqId: string;
+        startTs: number;
+        command: string;
+        msgFn: (msg: RpcMessage) => void;
+    };
 }
 
 export {};

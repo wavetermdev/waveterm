@@ -4,12 +4,13 @@
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { Toggle } from "@/app/element/toggle";
-import { WshServer } from "@/app/store/wshserver";
 import * as services from "@/store/services";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { FlexiModal } from "./modal";
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import "./tos.less";
 
 const TosModal = () => {
@@ -43,7 +44,7 @@ const TosModal = () => {
     };
 
     const setTelemetry = (value: boolean) => {
-        WshServer.SetConfigCommand({ "telemetry:enabled": value })
+        RpcApi.SetConfigCommand(WindowRpcClient, { "telemetry:enabled": value })
             .then(() => {
                 setTelemetryEnabled(value);
             })

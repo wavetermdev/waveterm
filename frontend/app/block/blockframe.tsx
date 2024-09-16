@@ -27,7 +27,8 @@ import {
     WOS,
 } from "@/app/store/global";
 import * as services from "@/app/store/services";
-import { WshServer } from "@/app/store/wshserver";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
@@ -307,7 +308,7 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = WshServer.ConnConnectCommand(connName, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(WindowRpcClient, connName, { timeout: 60000 });
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -426,7 +427,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         const connName = blockData?.meta?.connection;
         if (!util.isBlank(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
-            WshServer.ConnEnsureCommand(connName, { timeout: 60000 }).catch((e) => {
+            RpcApi.ConnEnsureCommand(WindowRpcClient, connName, { timeout: 60000 }).catch((e) => {
                 console.log("error ensuring connection", nodeModel.blockId, connName, e);
             });
         }
@@ -525,7 +526,7 @@ const ChangeConnectionBlockModal = React.memo(
                 setConnList([]);
                 return;
             }
-            const prtn = WshServer.ConnListCommand({ timeout: 2000 });
+            const prtn = RpcApi.ConnListCommand(WindowRpcClient, { timeout: 2000 });
             prtn.then((newConnList) => {
                 setConnList(newConnList ?? []);
             }).catch((e) => console.log("unable to load conn list from backend. using blank list: ", e));
@@ -546,12 +547,12 @@ const ChangeConnectionBlockModal = React.memo(
                 } else {
                     newCwd = "~";
                 }
-                await WshServer.SetMetaCommand({
+                await RpcApi.SetMetaCommand(WindowRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newCwd },
                 });
                 try {
-                    await WshServer.ConnEnsureCommand(connName, { timeout: 60000 });
+                    await RpcApi.ConnEnsureCommand(WindowRpcClient, connName, { timeout: 60000 });
                 } catch (e) {
                     console.log("error connecting", blockId, connName, e);
                 }
@@ -597,7 +598,7 @@ const ChangeConnectionBlockModal = React.memo(
             label: `Reconnect to ${connStatus.connection}`,
             value: "",
             onSelect: async (_: string) => {
-                const prtn = WshServer.ConnConnectCommand(connStatus.connection, { timeout: 60000 });
+                const prtn = RpcApi.ConnConnectCommand(WindowRpcClient, connStatus.connection, { timeout: 60000 });
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };
