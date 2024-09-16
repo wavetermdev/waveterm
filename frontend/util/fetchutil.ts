@@ -5,10 +5,12 @@
 
 let net: Electron.Net;
 
-try {
-    import("electron").then(({ net: electronNet }) => (net = electronNet));
-} catch (e) {
-    // do nothing
+if (typeof window === "undefined") {
+    try {
+        import("electron").then(({ net: electronNet }) => (net = electronNet));
+    } catch (e) {
+        // do nothing
+    }
 }
 
 export function fetch(input: string | GlobalRequest | URL, init?: RequestInit): Promise<Response> {

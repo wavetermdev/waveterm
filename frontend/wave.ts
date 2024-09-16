@@ -8,9 +8,8 @@ import {
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { FileService, ObjectService } from "@/app/store/services";
-import { initWps } from "@/app/store/wps";
-import { initWshrpc } from "@/app/store/wshrpc";
-import { WshServer } from "@/app/store/wshserver";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { initWshrpc, WindowRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
 import { getLayoutModelForActiveTab } from "@/layout/index";
 import {
@@ -47,7 +46,7 @@ loadFonts();
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
 (window as any).globalAtoms = atoms;
-(window as any).WshServer = WshServer;
+(window as any).RpcApi = RpcApi;
 (window as any).isFullScreen = false;
 (window as any).countersPrint = countersPrint;
 (window as any).countersClear = countersClear;
@@ -61,8 +60,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Init WPS event handlers
     initWshrpc(windowId);
+    (window as any).WindowRpcClient = WindowRpcClient;
     await loadConnStatus();
-    initWps();
     initGlobalWaveEventSubs();
     subscribeToConnEvents();
 

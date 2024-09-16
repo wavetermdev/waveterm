@@ -26,8 +26,9 @@ const (
 )
 
 const (
-	Command_Authenticate      = "authenticate" // special
-	Command_Announce          = "announce"     // special (for routing)
+	Command_Authenticate      = "authenticate"    // special
+	Command_RouteAnnounce     = "routeannounce"   // special (for routing)
+	Command_RouteUnannounce   = "routeunannounce" // special (for routing)
 	Command_Message           = "message"
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"
@@ -73,7 +74,8 @@ type RespOrErrorUnion[T any] struct {
 
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
-	AnnounceCommand(ctx context.Context, data string) error // (special) announces a new route to the main router
+	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
+	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
 
 	MessageCommand(ctx context.Context, data CommandMessageData) error
 	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (waveobj.MetaMapType, error)

@@ -13,12 +13,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
-// command "announce", wshserver.AnnounceCommand
-func AnnounceCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "announce", data, opts)
-	return err
-}
-
 // command "authenticate", wshserver.AuthenticateCommand
 func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.CommandAuthenticateRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.CommandAuthenticateRtnData](w, "authenticate", data, opts)
@@ -201,6 +195,18 @@ func RemoteWriteFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteWriteFil
 func ResolveIdsCommand(w *wshutil.WshRpc, data wshrpc.CommandResolveIdsData, opts *wshrpc.RpcOpts) (wshrpc.CommandResolveIdsRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.CommandResolveIdsRtnData](w, "resolveids", data, opts)
 	return resp, err
+}
+
+// command "routeannounce", wshserver.RouteAnnounceCommand
+func RouteAnnounceCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "routeannounce", nil, opts)
+	return err
+}
+
+// command "routeunannounce", wshserver.RouteUnannounceCommand
+func RouteUnannounceCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "routeunannounce", nil, opts)
+	return err
 }
 
 // command "setconfig", wshserver.SetConfigCommand

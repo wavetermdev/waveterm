@@ -1,6 +1,6 @@
 import { isBlank } from "@/util/util";
 import { Subject } from "rxjs";
-import { sendRawRpcMessage, setRpcEventHandlerFn } from "./wshrpc";
+import { sendRawRpcMessage } from "./wshrpcutil";
 
 type WaveEventSubject = {
     handler: (event: WaveEvent) => void;
@@ -134,8 +134,4 @@ function handleWaveEvent(event: WaveEvent) {
     }
 }
 
-function initWps() {
-    setRpcEventHandlerFn(handleWaveEvent);
-}
-
-export { getFileSubject, initWps, waveEventSubscribe, waveEventUnsubscribe };
+export { getFileSubject, handleWaveEvent, waveEventSubscribe, waveEventUnsubscribe };
