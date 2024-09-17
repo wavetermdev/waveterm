@@ -1,0 +1,59 @@
+# Workflow to manage bumping the package version and pushing it to the target branch.
+
+name: Bump version
+on:
+    workflow_dispatch:
+        inputs:
+            bump:
+                description: SemVer Bump
+                required: true
+                default: beta
+                type: choice
+                options:
+                    - beta
+                    - patch
+                    - minor
+                    - major
+env:
+    NODE_VERSION: "22.5.1"
+jobs:
+    bump-version:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Get App Token
+              uses: actions/create-github-app-token@v1
+              id: app-token
+              with:
+                  app-id: ${{ vars.WAVE_BUILDER_APPID }}
+                  private-key: ${{ secrets.WAVE_BUILDER_KEY }}
+            - uses: actions/checkout@v4
+              with:
+                  token: ${{ steps.app-token.outputs.token }}
+
+            # General build dependencies
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{env.NODE_VERSION}}
+            - name: Install Yarn
+              run: |
+                  corepack enable
+                  yarn install
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: "Set Version: ${{ inputs.bump }}"
+              id: set-version
+              run: echo "WAVETERM_VERSION=$(task version:${{ inputs.bump }})" >> "$GITHUB_OUTPUT"
+              shell: bash
+
+            - name: "Push version bump: ${{ steps.set-version.outputs.WAVETERM_VERSION }}"
+              run: |
+                  git config user.name wave-builder
+                  git config user.email builds@commandline.dev
+                  git add package.json
+                  git commit -m "Bump version to ${{ steps.set-version.outputs.WAVETERM_VERSION }}"
+                  git tag -a ${{ steps.set-version.outputs.WAVETERM_VERSION }} -m "Bump version to ${{ steps.set-version.outputs.WAVETERM_VERSION }}"
+                  git push
