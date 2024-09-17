@@ -229,7 +229,7 @@ func main() {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
 		}
 	}()
-	window, err := wcore.EnsureInitialData()
+	window, firstRun, err := wcore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
@@ -237,10 +237,12 @@ func main() {
 	if window != nil {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancelFn()
-		err = wlayout.BootstrapNewWindowLayout(ctx, window)
-		if err != nil {
-			log.Panicf("error applying new window layout: %v\n", err)
-			return
+		if !firstRun {
+			err = wlayout.BootstrapNewWindowLayout(ctx, window)
+			if err != nil {
+				log.Panicf("error applying new window layout: %v\n", err)
+				return
+			}
 		}
 	}
 	createMainWshClient()

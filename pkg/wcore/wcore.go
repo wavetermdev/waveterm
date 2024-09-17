@@ -135,25 +135,28 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Windo
 	return wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 }
 
-func EnsureInitialData() (*waveobj.Window, error) {
+// returns (new-window, first-time, error)
+func EnsureInitialData() (*waveobj.Window, bool, error) {
 	// does not need to run in a transaction since it is called on startup
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
+	firstRun := false
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err == wstore.ErrNotFound {
 		client, err = CreateClient(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("error creating client: %w", err)
+			return nil, false, fmt.Errorf("error creating client: %w", err)
 		}
+		firstRun = true
 	}
 	if len(client.WindowIds) > 0 {
-		return nil, nil
+		return nil, false, nil
 	}
 	window, err := CreateWindow(ctx, &waveobj.WinSize{Height: 0, Width: 0})
 	if err != nil {
-		return nil, fmt.Errorf("error creating window: %w", err)
+		return nil, false, fmt.Errorf("error creating window: %w", err)
 	}
-	return window, nil
+	return window, firstRun, nil
 }
 
 func CreateClient(ctx context.Context) (*waveobj.Client, error) {
