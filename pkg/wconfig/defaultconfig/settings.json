@@ -7,6 +7,5 @@
     "autoupdate:intervalms": 3600000,
     "editor:minimapenabled": true,
     "window:tilegapsize": 3,
-    "telemetry:enabled": true,
-	"tips:show": true
+    "telemetry:enabled": true
 }

@@ -9,7 +9,6 @@ import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
 import { atoms, createBlock, getConnStatusAtom, globalStore, refocusNode } from "@/store/global";
-import { modalsModel } from "@/store/modalmodel";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -353,34 +352,7 @@ export class PreviewModel implements ViewModel {
             if (mimeType == "directory") {
                 const showHiddenFiles = get(this.showHiddenFiles);
                 const settings = get(atoms.settingsAtom);
-                let tipIcon: IconButtonDecl[];
-                if (settings["tips:show"]) {
-                    tipIcon = [
-                        {
-                            elemtype: "iconbutton",
-                            icon: "lightbulb",
-                            iconColor: "var(--warning-color)",
-                            className: "bulb",
-                            click: () => {
-                                const tips: UserInputRequest = {
-                                    requestid: "",
-                                    querytext: previewTipText,
-                                    responsetype: "confirm",
-                                    title: "Preview Tips",
-                                    markdown: true,
-                                    timeoutms: 0,
-                                    checkboxmsg: "",
-                                    publictext: true,
-                                };
-                                modalsModel.pushModal("TipsModal", tips);
-                            },
-                        },
-                    ];
-                } else {
-                    tipIcon = [];
-                }
                 return [
-                    ...tipIcon,
                     {
                         elemtype: "iconbutton",
                         icon: showHiddenFiles ? "eye" : "eye-slash",

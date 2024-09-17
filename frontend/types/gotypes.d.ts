@@ -422,8 +422,6 @@ declare global {
         "window:tilegapsize"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
-        "tips:*"?: boolean;
-        "tips:show"?: boolean;
     };
 
     // waveobj.StickerClickOptsType
