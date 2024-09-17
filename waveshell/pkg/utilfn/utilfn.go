@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"unicode/utf8"
@@ -672,4 +673,27 @@ func GetFirstLine(s string) string {
 		return s
 	}
 	return s[0:idx]
+}
+
+func TrimQuotes(s string) (string, bool) {
+	if len(s) > 2 && s[0] == '"' {
+		trimmed, err := strconv.Unquote(s)
+		if err != nil {
+			return s, false
+		}
+		return trimmed, true
+	}
+	return s, false
+}
+
+func TryTrimQuotes(s string) string {
+	trimmed, _ := TrimQuotes(s)
+	return trimmed
+}
+
+func ReplaceQuotes(s string, shouldReplace bool) string {
+	if shouldReplace {
+		return strconv.Quote(s)
+	}
+	return s
 }
