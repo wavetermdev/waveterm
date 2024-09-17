@@ -76,7 +76,7 @@ jobs:
                   git fetch
                   export TAG_SHA=$( git rev-parse origin/$BRANCH )
                   gh api --method POST /repos/:owner/:repo/git/refs \
-                      --field ref="refs/tags/$VERSION" \
+                      --field ref="refs/tags/v$VERSION" \
                       --field sha="$TAG_SHA"
               shell: bash
               env:
