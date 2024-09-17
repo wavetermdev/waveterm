@@ -1,10 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { wpsReconnectHandler } from "@/app/store/wps";
 import { WshClient } from "@/app/store/wshclient";
 import { makeWindowRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
-import { WSControl } from "./ws";
+import { addWSReconnectHandler, WSControl } from "./ws";
 
 let globalWS: WSControl;
 let DefaultRouter: WshRouter;
@@ -113,7 +114,7 @@ if (globalThis.window != null) {
     globalThis["consumeGenerator"] = consumeGenerator;
 }
 
-function initWshrpc(windowId: string) {
+function initWshrpc(windowId: string): WSControl {
     DefaultRouter = new WshRouter(new UpstreamWshRpcProxy());
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
@@ -123,6 +124,11 @@ function initWshrpc(windowId: string) {
     globalWS.connectNow("connectWshrpc");
     WindowRpcClient = new WshClient(makeWindowRouteId(windowId));
     DefaultRouter.registerRoute(WindowRpcClient.routeId, WindowRpcClient);
+    addWSReconnectHandler(() => {
+        DefaultRouter.reannounceRoutes();
+    });
+    addWSReconnectHandler(wpsReconnectHandler);
+    return globalWS;
 }
 
 function sendWSCommand(cmd: WSCommandType) {

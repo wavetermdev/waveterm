@@ -34,6 +34,17 @@ class WshRouter {
         this.upstreamClient = upstreamClient;
     }
 
+    reannounceRoutes() {
+        for (const [routeId, client] of this.routeMap) {
+            const announceMsg: RpcMessage = {
+                command: "routeannounce",
+                data: routeId,
+                source: routeId,
+            };
+            this.upstreamClient.recvRpcMessage(announceMsg);
+        }
+    }
+
     // returns true if the message was sent
     _sendRoutedMessage(msg: RpcMessage, destRouteId: string): boolean {
         const client = this.routeMap.get(destRouteId);

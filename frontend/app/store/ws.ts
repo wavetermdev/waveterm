@@ -1,9 +1,24 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import debug from "debug";
 import { sprintf } from "sprintf-js";
 
+const dlog = debug("wave:ws");
+
 const MaxWebSocketSendSize = 1024 * 1024; // 1MB
+const reconnectHandlers: (() => void)[] = [];
+
+function addWSReconnectHandler(handler: () => void) {
+    reconnectHandlers.push(handler);
+}
+
+function removeWSReconnectHandler(handler: () => void) {
+    const index = this.reconnectHandlers.indexOf(handler);
+    if (index > -1) {
+        reconnectHandlers.splice(index, 1);
+    }
+}
 
 type WSEventCallback = (arg0: WSEventType) => void;
 
@@ -29,20 +44,12 @@ class WSControl {
         setInterval(this.sendPing.bind(this), 5000);
     }
 
-    log(str: string) {
-        const ts = Date.now();
-        this.wsLog.push("[" + ts + "] " + str);
-        if (this.wsLog.length > 50) {
-            this.wsLog.splice(0, this.wsLog.length - 50);
-        }
-    }
-
     connectNow(desc: string) {
         if (this.open) {
             return;
         }
         this.lastReconnectTime = Date.now();
-        this.log(sprintf("try reconnect (%s)", desc));
+        dlog("try reconnect:", desc);
         this.opening = true;
         this.wsConn = new WebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId);
         this.wsConn.onopen = this.onopen.bind(this);
@@ -61,7 +68,7 @@ class WSControl {
         }
         this.reconnectTimes++;
         if (this.reconnectTimes > 20) {
-            this.log("cannot connect, giving up");
+            dlog("cannot connect, giving up");
             return;
         }
         const timeoutArr = [0, 0, 2, 5, 10, 10, 30, 60];
@@ -73,7 +80,7 @@ class WSControl {
             timeout = 1;
         }
         if (timeout > 0) {
-            this.log(sprintf("sleeping %ds", timeout));
+            dlog(sprintf("sleeping %ds", timeout));
         }
         setTimeout(() => {
             this.connectNow(String(this.reconnectTimes));
@@ -83,9 +90,9 @@ class WSControl {
     onclose(event: any) {
         // console.log("close", event);
         if (event.wasClean) {
-            this.log("connection closed");
+            dlog("connection closed");
         } else {
-            this.log("connection error/disconnected");
+            dlog("connection error/disconnected");
         }
         if (this.open || this.opening) {
             this.open = false;
@@ -95,9 +102,12 @@ class WSControl {
     }
 
     onopen() {
-        this.log("connection open");
+        dlog("connection open");
         this.open = true;
         this.opening = false;
+        for (let handler of reconnectHandlers) {
+            handler();
+        }
         this.runMsgQueue();
         // reconnectTimes is reset in onmessage:hello
     }
@@ -174,4 +184,4 @@ class WSControl {
     }
 }
 
-export { WSControl };
+export { addWSReconnectHandler, removeWSReconnectHandler, WSControl };

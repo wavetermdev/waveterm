@@ -59,7 +59,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("DOMContentLoaded");
 
     // Init WPS event handlers
-    initWshrpc(windowId);
+    const globalWS = initWshrpc(windowId);
+    (window as any).globalWS = globalWS;
     (window as any).WindowRpcClient = WindowRpcClient;
     await loadConnStatus();
     initGlobalWaveEventSubs();
