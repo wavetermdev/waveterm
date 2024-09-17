@@ -11,7 +11,7 @@ import newwave from "@/assets/new-wave-screenshot.svg";
 import "./newwave.less";
 
 @mobxReact.observer
-class NewWaveModal extends React.Component<{}, {}> {
+class NewWaveModal extends React.Component<{ onClose: () => void }, {}> {
     @boundMethod
     handleDownloadOldWave(): void {
         //
@@ -22,6 +22,11 @@ class NewWaveModal extends React.Component<{}, {}> {
         //
     }
 
+    @boundMethod
+    handleClose(): void {
+        this.props.onClose();
+    }
+
     render() {
         return (
             <Modal className="tos-modal">
@@ -29,6 +34,7 @@ class NewWaveModal extends React.Component<{}, {}> {
                     <div className="wave-modal-body-inner">
                         <header className="tos-header unselectable">
                             <div className="modal-title">A New Wave is Coming!</div>
+                            <i className="fa-regular fa-xmark-large" onClick={this.handleClose}></i>
                         </header>
                         <div className="content tos-content unselectable">
                             <div className="item">
