@@ -8,6 +8,7 @@ import { createRef, CSSProperties } from "react";
 import { debounce } from "throttle-debounce";
 import { balanceNode, findNode, newLayoutNode, walkNodes } from "./layoutNode";
 import {
+    clearTree,
     computeMoveNode,
     deleteNode,
     focusNode,
@@ -25,6 +26,7 @@ import {
     LayoutNodeAdditionalProps,
     LayoutTreeAction,
     LayoutTreeActionType,
+    LayoutTreeClearTreeAction,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
     LayoutTreeFocusNodeAction,
@@ -354,6 +356,9 @@ export class LayoutModel {
             case LayoutTreeActionType.MagnifyNodeToggle:
                 magnifyNodeToggle(this.treeState, action as LayoutTreeMagnifyNodeToggleAction);
                 break;
+            case LayoutTreeActionType.ClearTree: {
+                clearTree(this.treeState);
+            }
             default:
                 console.error("Invalid reducer action", this.treeState, action);
         }
@@ -430,6 +435,11 @@ export class LayoutModel {
                             };
                             this.treeReducer(insertAction);
                             break;
+                        }
+                        case LayoutTreeActionType.ClearTree: {
+                            this.treeReducer({
+                                type: LayoutTreeActionType.ClearTree,
+                            } as LayoutTreeClearTreeAction);
                         }
                         default:
                             console.warn("unsupported layout action", action);

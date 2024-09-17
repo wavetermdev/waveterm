@@ -417,3 +417,11 @@ export function magnifyNodeToggle(layoutState: LayoutTreeState, action: LayoutTr
     }
     layoutState.generation++;
 }
+
+export function clearTree(layoutState: LayoutTreeState) {
+    layoutState.rootNode = undefined;
+    layoutState.leafOrder = undefined;
+    layoutState.focusedNodeId = undefined;
+    layoutState.magnifiedNodeId = undefined;
+    layoutState.generation++;
+}

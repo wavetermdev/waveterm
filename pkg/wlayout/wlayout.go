@@ -18,6 +18,7 @@ const (
 	LayoutActionDataType_Insert        = "insert"
 	LayoutActionDataType_InsertAtIndex = "insertatindex"
 	LayoutActionDataType_Remove        = "delete"
+	LayoutActionDataType_ClearTree     = "clear"
 )
 
 type PortableLayout []struct {
@@ -119,7 +120,8 @@ func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveo
 }
 
 func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout) error {
-	actions := make([]waveobj.LayoutActionData, len(layout))
+	actions := make([]waveobj.LayoutActionData, len(layout)+1)
+	actions[0] = waveobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
 	for i := 0; i < len(layout); i++ {
 		layoutAction := layout[i]
 
@@ -128,7 +130,7 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 			return fmt.Errorf("unable to create block to apply portable layout to tab %s: %w", tabId, err)
 		}
 
-		actions[i] = waveobj.LayoutActionData{
+		actions[i+1] = waveobj.LayoutActionData{
 			ActionType: LayoutActionDataType_InsertAtIndex,
 			BlockId:    blockData.OID,
 			IndexArr:   &layoutAction.IndexArr,
