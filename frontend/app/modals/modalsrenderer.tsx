@@ -10,6 +10,7 @@ import { TosModal } from "./tos";
 
 const ModalsRenderer = () => {
     const clientData = jotai.useAtomValue(atoms.client);
+    const [tosOpen, setTosOpen] = jotai.useAtom(modalsModel.tosOpen);
     const [modals] = jotai.useAtom(modalsModel.modalsAtom);
     const rtn: JSX.Element[] = [];
     for (const modal of modals) {
@@ -18,12 +19,18 @@ const ModalsRenderer = () => {
             rtn.push(<ModalComponent key={modal.displayName} {...modal.props} />);
         }
     }
-    if (!clientData.tosagreed) {
+    if (tosOpen) {
         rtn.push(<TosModal key={TosModal.displayName} />);
     }
     useEffect(() => {
+        if (!clientData.tosagreed) {
+            setTosOpen(true);
+        }
+    }, [clientData]);
+    useEffect(() => {
         globalStore.set(atoms.modalOpen, rtn.length > 0);
-    });
+    }, [rtn]);
+
     return <>{rtn}</>;
 };
 

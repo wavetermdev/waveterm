@@ -7,6 +7,7 @@ import {
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
 } from "@/app/store/keymodel";
+import { modalsModel } from "@/app/store/modalmodel";
 import { FileService, ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, WindowRpcClient } from "@/app/store/wshrpcutil";
@@ -52,6 +53,7 @@ loadFonts();
 (window as any).countersClear = countersClear;
 (window as any).getLayoutModelForActiveTab = getLayoutModelForActiveTab;
 (window as any).pushFlashError = pushFlashError;
+(window as any).modalsModel = modalsModel;
 
 document.title = `The Next Wave (${windowId.substring(0, 8)})`;
 

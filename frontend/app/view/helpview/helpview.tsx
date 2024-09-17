@@ -148,7 +148,7 @@ a codeedit block which you can use to quickly edit the file using Wave's embedde
 ### edit
 
 \`\`\`
-wsh edit [path]
+wsh editor [path]
 \`\`\`
 
 This will open up codeedit for the specified file.  This is useful for quickly editing files on a local or remote machine in our graphical editor.  This command will wait until the file is closed before exiting (unlike \`view\`) so you can set your \`$EDITOR\` to \`wsh edit\` for a seamless experience.  You can combine this with a \`-m\` flag to open the editor in magnified mode.
