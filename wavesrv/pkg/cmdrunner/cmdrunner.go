@@ -132,7 +132,7 @@ var SetVarScopes = []SetVarScope{
 	{ScopeName: "remote", VarNames: []string{}},
 }
 
-var userHostRe = regexp.MustCompile(`^(sudo@)?([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
+var userHostRe = regexp.MustCompile(`^(sudo@)?([a-zA-Z0-9][a-zA-Z0-9._@:\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
 var remoteAliasRe = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var rendererRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_.:-]*$")
@@ -769,7 +769,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	} else {
 		return nil, fmt.Errorf("error in Eval Meta Command: %w", rtnErr)
 	}
-	if !resolveBool(pk.Kwargs[KwArgNoHist], false) {
+	if !resolveBool(pk.Kwargs[KwArgNoHist], false) && pk.EphemeralOpts == nil {
 		// TODO should this be "pk" or "newPk" (2nd arg)
 		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {

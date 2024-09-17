@@ -7,7 +7,6 @@ export { InlineSettingsTextEdit } from "./inlinesettingstextedit";
 export { InputDecoration } from "./inputdecoration";
 export { LinkButton } from "./linkbutton";
 export { Markdown } from "./markdown";
-export { Markdown2 } from "./markdown2";
 export { Modal } from "./modal";
 export { PasswordField } from "./passwordfield";
 export { ResizableSidebar } from "./resizablesidebar";

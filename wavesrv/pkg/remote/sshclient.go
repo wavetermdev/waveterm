@@ -23,6 +23,7 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
@@ -110,10 +111,6 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 		}
 
 		unencryptedPrivateKey, err := ssh.ParseRawPrivateKey(privateKey)
-		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
-			// skip this key and try with the next
-			return createDummySigner()
-		}
 		if err == nil {
 			signer, err := ssh.NewSignerFromKey(unencryptedPrivateKey)
 			if err == nil {
@@ -124,7 +121,10 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 				}
 				return []ssh.Signer{signer}, err
 			}
-
+		}
+		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
+			// skip this key and try with the next
+			return createDummySigner()
 		}
 
 		signer, err := ssh.ParsePrivateKey(privateKey)
@@ -137,10 +137,6 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 		}
 
 		unencryptedPrivateKey, err = ssh.ParseRawPrivateKeyWithPassphrase(privateKey, []byte(passphrase))
-		if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
-			// skip this key and try with the next
-			return createDummySigner()
-		}
 		if err == nil {
 			signer, err := ssh.NewSignerFromKey(unencryptedPrivateKey)
 			if err == nil {
@@ -152,18 +148,10 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 				return []ssh.Signer{signer}, err
 			}
 		}
-
-		/*
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
-			if err == nil {
-				log.Printf("with passphrase %v\n", signer.PublicKey().Marshal())
-				return []ssh.Signer{signer}, err
-			}
-			if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
-				// skip this key and try with the next
-				return createDummySigner()
-			}
-		*/
+		if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
 
 		// batch mode deactivates user input
 		if sshKeywords.BatchMode {
@@ -201,16 +189,6 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 			})
 		}
 		return []ssh.Signer{signer}, err
-
-		/*
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
-			if err != nil {
-				// skip this key and try with the next
-				return createDummySigner()
-			}
-			log.Printf("with passphrase %v\n", signer.PublicKey().Marshal())
-			return []ssh.Signer{signer}, err
-		*/
 	}
 }
 
@@ -809,9 +787,9 @@ func findSshConfigKeywords(hostPattern string, sshAuthSock string) (*SshKeywords
 		return nil, err
 	}
 	if identityAgentRaw == "" {
-		sshKeywords.IdentityAgent = sshAuthSock
+		sshKeywords.IdentityAgent = base.ExpandHomeDir(utilfn.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
 	} else {
-		sshKeywords.IdentityAgent = identityAgentRaw
+		sshKeywords.IdentityAgent = base.ExpandHomeDir(utilfn.TryTrimQuotes(identityAgentRaw))
 	}
 
 	return sshKeywords, nil

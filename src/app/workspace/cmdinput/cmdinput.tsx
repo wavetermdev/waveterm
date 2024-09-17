@@ -16,7 +16,6 @@ import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "@/common/prompt/prompt";
 import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
-import { AIChat } from "./aichat";
 import * as util from "@/util/util";
 import * as appconst from "@/app/appconst";
 import { AutocompleteSuggestionView } from "./suggestionview";
@@ -29,6 +28,7 @@ dayjs.extend(localizedFormat);
 class CmdInput extends React.Component<{}, {}> {
     cmdInputRef: React.RefObject<any> = React.createRef();
     promptRef: React.RefObject<any> = React.createRef();
+    sbcTimeoutId: NodeJS.Timeout = null;
 
     constructor(props) {
         super(props);
@@ -55,6 +55,13 @@ class CmdInput extends React.Component<{}, {}> {
 
     componentDidUpdate(): void {
         this.updateCmdInputHeight();
+    }
+
+    componentWillUnmount() {
+        if (this.sbcTimeoutId) {
+            clearTimeout(this.sbcTimeoutId);
+            this.sbcTimeoutId = null;
+        }
     }
 
     @boundMethod
@@ -96,9 +103,15 @@ class CmdInput extends React.Component<{}, {}> {
 
     @mobx.action.bound
     clickAIChatAction(e: any): void {
-        const rightSidebarModel = GlobalModel.rightSidebarModel;
-        const width = rightSidebarModel.getWidth(true);
-        rightSidebarModel.saveState(width, false);
+        const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
+        GlobalModel.rightSidebarModel.setCollapsed(!isCollapsed);
+        if (isCollapsed) {
+            this.sbcTimeoutId = setTimeout(() => {
+                GlobalModel.inputModel.setChatSidebarFocus();
+            }, 100);
+        } else {
+            GlobalModel.inputModel.setChatSidebarFocus(false);
+        }
     }
 
     @boundMethod
@@ -186,10 +199,6 @@ class CmdInput extends React.Component<{}, {}> {
                     <When condition={openView === appconst.InputAuxView_History}>
                         <div className="cmd-input-grow-spacer"></div>
                         <HistoryInfo />
-                    </When>
-                    <When condition={openView === appconst.InputAuxView_AIChat}>
-                        <div className="cmd-input-grow-spacer"></div>
-                        <AIChat />
                     </When>
                     <When condition={openView === appconst.InputAuxView_Info}>
                         <InfoMsg key="infomsg" />

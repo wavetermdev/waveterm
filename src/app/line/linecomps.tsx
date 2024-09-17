@@ -178,7 +178,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
             <div className="line-actions">
                 <Choose>
                     <When condition={containerType == appconst.LineContainer_Main}>
-                        <div key="chat" title="Restart Command" className="line-icon" onClick={this.clickChat}>
+                        <div key="chat" title="Ask Wave AI" className="line-icon" onClick={this.clickChat}>
                             <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
                         </div>
                         <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
