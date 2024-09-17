@@ -289,9 +289,9 @@ export class PreviewModel implements ViewModel {
                     onClick: () => this.updateOpenFileModalAndError(true),
                 },
             ];
-            let saveClassName = "secondary";
+            let saveClassName = "grey";
             if (get(this.newFileContent) !== null) {
-                saveClassName = "primary";
+                saveClassName = "green";
             }
             if (isCeView) {
                 viewTextChildren.push({
@@ -307,7 +307,7 @@ export class PreviewModel implements ViewModel {
                         elemtype: "textbutton",
                         text: "Preview",
                         className:
-                            "secondary border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
+                            "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
                         onClick: () => this.setEditMode(false),
                     });
                 }
@@ -316,7 +316,7 @@ export class PreviewModel implements ViewModel {
                     elemtype: "textbutton",
                     text: "Edit",
                     className:
-                        "secondary border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
+                        "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
                     onClick: () => this.setEditMode(true),
                 });
             }

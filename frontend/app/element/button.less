@@ -5,8 +5,8 @@
     // override default button appearance
     border: 1px solid transparent;
     outline: 1px solid transparent;
+    border: none;
 
-    background: var(--accent-color);
     cursor: pointer;
     display: flex;
     padding-top: 8px;
@@ -21,75 +21,128 @@
     white-space: nowrap;
     user-select: none;
     font-size: 14px;
-    color: var(--secondary-text-color);
     font-weight: normal;
+    opacity: 0.8;
 
-    i {
-        fill: var(--main-text-color);
+    &:hover {
+        opacity: 1;
     }
 
-    &.primary:not(.ghost),
-    &.secondary:not(.ghost) {
-        color: var(--button-primary-text-color);
-        background: var(--accent-color);
-        &:hover {
-            color: var(--main-text-color);
+    &.solid {
+        &.green {
+            color: var(--button-green-text-color);
+            background-color: var(--button-green-bg);
+            border: 1px solid var(--button-green-border-color);
+            &:hover {
+                color: var(--button-green-text-color);
+            }
         }
 
-        i {
-            fill: var(--main-text-color);
+        &.grey {
+            background-color: var(--button-grey-bg);
+            border: 1px solid var(--button-grey-border-color);
+            color: var(--button-grey-text-color);
+            &:hover {
+                color: var(--button-grey-text-color);
+            }
         }
-    }
 
-    &.primary.danger {
-        background: var(--error-color);
-    }
-
-    &.primary.warning {
-        background: #e6ba1e;
-    }
-
-    &.primary.ghost {
-        background: none;
-
-        i {
-            fill: var(--accent-color);
+        &.red {
+            background-color: var(--button-red-bg);
+            border: 1px solid var(--button-red-border-color);
+            color: var(--button-red-text-color);
+            &:hover {
+                color: var(--button-red-text-color);
+            }
         }
-    }
 
-    &.primary.ghost.danger {
-        i {
-            fill: var(--app-error-color);
+        &.yellow {
+            color: var(--button-yellow-text-color);
+            background-color: var(--button-yellow-bg);
+            border: 1px solid var(--button-yellow-border-color);
+            &:hover {
+                color: var(--button-yellow-text-color);
+            }
         }
-    }
-
-    &.secondary,
-    &.link-button {
-        background: var(--highlight-bg-color);
-    }
-
-    &.secondary.ghost {
-        background: none;
-
-        &:hover {
-            color: 1px solid var(--main-text-color);
-        }
-    }
-
-    &.secondary.danger {
-        color: var(--error-color);
     }
 
     &.outlined {
-        background: none;
-        border: 1px solid var(--secondary-text-color);
+        background-color: transparent;
+        &.green {
+            color: var(--button-green-bg);
+            border: 1px solid var(--button-green-bg);
+            &:hover {
+                color: var(--button-green-bg);
+            }
+        }
 
-        &:hover {
-            border: 1px solid var(--main-text-color);
+        &.grey {
+            border: 1px solid var(--button-grey-border-color);
+            color: var(--button-grey-text-color);
+            &:hover {
+                color: var(--button-grey-text-color);
+            }
+        }
+
+        &.red {
+            border: 1px solid var(--button-red-bg);
+            color: var(--button-red-bg);
+            &:hover {
+                color: var(--button-red-bg);
+            }
+        }
+
+        &.yellow {
+            color: var(--button-yellow-bg);
+            border: 1px solid var(--button-yellow-bg);
+            &:hover {
+                color: var(--button-yellow-bg);
+            }
+        }
+    }
+
+    &.ghost {
+        background-color: transparent;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        padding-left: 8px;
+        padding-right: 8px;
+
+        &.green {
+            border: none;
+            color: var(--button-green-bg);
+            &:hover {
+                color: var(--button-green-bg);
+            }
+        }
+
+        &.grey {
+            border: none;
+            color: var(--button-grey-text-color);
+            &:hover {
+                color: var(--button-grey-text-color);
+            }
+        }
+
+        &.red {
+            border: none;
+            color: var(--button-red-bg);
+            &:hover {
+                color: var(--button-red-bg);
+            }
+        }
+
+        &.yellow {
+            border: none;
+            color: var(--button-yellow-bg);
+            &:hover {
+                color: var(--button-yellow-bg);
+            }
         }
     }
 
     &.disabled {
+        cursor: default;
         opacity: 0.5;
     }
 
@@ -99,9 +152,8 @@
         outline-offset: 2px;
     }
 
-    /* 
-	 *	customs styles here
-	 */
+    // customs styles here
+
     &.border-radius-2 {
         border-radius: 4px;
     }
