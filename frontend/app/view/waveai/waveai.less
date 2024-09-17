@@ -19,6 +19,7 @@
             // margin-bottom: 5px;
             flex-direction: column;
             height: 100%;
+            gap: 8px;
 
             // This is the filler that will push the chat messages to the bottom until the chat window is full
             .filler {
@@ -26,68 +27,118 @@
             }
         }
 
-        .chat-msg {
-            padding: 10px;
+        .chat-msg-container {
             display: flex;
-            align-items: flex-start;
-
-            .chat-msg-header {
+            gap: 8px;
+            .chat-msg {
+                margin: 10px 0;
                 display: flex;
-                margin-bottom: 2px;
+                align-items: flex-start;
+                border-radius: 8px;
 
-                i {
-                    margin-top: 2px;
-                    margin-right: 0.5em;
+                &.chat-msg-header {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+
+                    .icon-box {
+                        padding-top: 0;
+                        border-radius: 4px;
+                        background-color: rgb(from var(--highlight-bg-color) r g b / 0.05);
+                        display: flex;
+                        padding: 6px;
+                    }
+                }
+
+                &.chat-msg-assistant {
+                    color: var(--app-text-color);
+                    background-color: rgb(from var(--highlight-bg-color) r g b / 0.1);
+                    margin-right: auto;
+                    padding: 10px;
+
+                    .markdown {
+                        width: 100%;
+
+                        pre {
+                            white-space: pre-wrap;
+                            word-break: break-word;
+                            max-width: 100%;
+                            overflow-x: auto;
+                            margin-left: 0;
+                        }
+                    }
+                }
+                &.chat-msg-user {
+                    margin-left: auto;
+                    padding: 10px;
+                    background-color: rgb(from var(--accent-color) r g b / 0.15);
+                }
+
+                &.chat-msg-error {
+                    color: var(--cmdinput-text-error);
+                    font-family: var(--markdown-font);
+                    font-size: 14px;
+                }
+
+                &.typing-indicator {
+                    margin-top: 4px;
                 }
             }
-        }
-
-        .chat-msg-assistant {
-            color: var(--app-text-color);
-
-            .markdown {
-                width: 100%;
-
-                pre {
-                    white-space: pre-wrap;
-                    word-break: break-word;
-                    max-width: 100%;
-                    overflow-x: auto;
-                    margin-left: 0;
-                }
-            }
-        }
-
-        .chat-msg-error {
-            color: var(--cmdinput-text-error);
-            font-family: var(--markdown-font);
-            font-size: 14px;
-        }
-
-        .typing-indicator {
-            margin-top: 4px;
         }
     }
 
-    .waveai-input-wrapper {
-        padding: 16px 15px 7px;
-        flex: 0 0 auto;
-        flex-shrink: 0;
-        border-top: 1px solid var(--border-color);
+    .waveai-controls {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 4px;
+        padding: 8px 12px;
 
-        .waveai-input {
-            color: var(--main-text-color);
-            background-color: var(--cmdinput-textarea-bg);
-            resize: none;
-            width: 100%;
-            border: transparent;
-            outline: none;
-            overflow: auto;
-            overflow-wrap: anywhere;
-            font-family: var(--termfontfamily);
-            font-weight: normal;
-            line-height: var(--termlineheight);
-            height: 21px;
+        .waveai-input-wrapper {
+            padding: 8px 12px;
+            flex: 1 1 auto;
+            background-color: rgb(from var(--block-bg-color) r g b / 0.39);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            border-radius: 6px;
+            border: 1px solid rgb(from var(--highlight-bg-color) r g b / 0.42);
+
+            .waveai-input {
+                color: var(--main-text-color);
+                opacity: 0.4;
+                background-color: inherit;
+                resize: none;
+                width: 100%;
+                border: transparent;
+                outline: none;
+                overflow: auto;
+                overflow-wrap: anywhere;
+                font-family: var(--termfontfamily);
+                font-weight: normal;
+                line-height: var(--termlineheight);
+                height: 21px;
+            }
+        }
+
+        .waveai-submit-button {
+            border-radius: 100%;
+            width: 27px;
+            aspect-ratio: 1 /1;
+            color: var(--block-bg-color);
+            background-color: var(--main-text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            padding: 0;
+
+            &:hover,
+            &:focus {
+                background-color: var(--grey-text-color);
+            }
         }
     }
 }

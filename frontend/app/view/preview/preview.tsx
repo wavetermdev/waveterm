@@ -524,7 +524,7 @@ export class PreviewModel implements ViewModel {
             }
             return { specializedView: "markdown" };
         }
-        if (isTextFile(mimeType)) {
+        if (isTextFile(mimeType) || fileInfo.size == 0) {
             return { specializedView: "codeedit" };
         }
         return { errorStr: `Preview (${mimeType})` };

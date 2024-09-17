@@ -33,9 +33,9 @@ const TipsModal = (tipsContent: UserInputRequest) => {
 
     const queryText = useMemo(() => {
         if (tipsContent.markdown) {
-            return <Markdown text={tipsContent.querytext} className="userinput-markdown" />;
+            return <Markdown text={tipsContent.querytext} className="tips-markdown" />;
         }
-        return <span className="userinput-text">{tipsContent.querytext}</span>;
+        return <span className="tips-text">{tipsContent.querytext}</span>;
     }, [tipsContent.markdown, tipsContent.querytext]);
 
     const inputBox = useMemo(() => {
@@ -48,7 +48,7 @@ const TipsModal = (tipsContent: UserInputRequest) => {
                 onChange={(e) => setResponseText(e.target.value)}
                 value={responseText}
                 maxLength={400}
-                className="userinput-inputbox"
+                className="tips-inputbox"
                 autoFocus={true}
                 onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
             />
@@ -57,8 +57,8 @@ const TipsModal = (tipsContent: UserInputRequest) => {
 
     return (
         <Modal onOk={() => handleClose()} onCancel={() => handleClose()} onClose={() => handleClose()}>
-            <div className="userinput-header">{tipsContent.title}</div>
-            <div className="userinput-body">
+            <div className="tips-header">{tipsContent.title}</div>
+            <div className="tips-body">
                 {queryText}
                 {inputBox}
             </div>

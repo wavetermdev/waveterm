@@ -1,18 +1,20 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
+import { useDimensions } from "@/app/hook/useDimensions";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, fetchWaveFile, getUserName, globalStore, WOS } from "@/store/global";
+import { atoms, fetchWaveFile, globalStore, WOS } from "@/store/global";
 import { BlockService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { isBlank } from "@/util/util";
+import { isBlank, makeIconClass } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import tinycolor from "tinycolor2";
 import "./waveai.less";
 
@@ -29,7 +31,6 @@ const outline = "2px solid var(--accent-color)";
 
 interface ChatItemProps {
     chatItem: ChatMessageType;
-    itemCount: number;
 }
 
 function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
@@ -40,6 +41,8 @@ function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
         isAssistant: prompt.role == "assistant",
     };
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class WaveAiModel implements ViewModel {
     viewType: string;
@@ -53,10 +56,15 @@ export class WaveAiModel implements ViewModel {
     messagesAtom: PrimitiveAtom<Array<ChatMessageType>>;
     addMessageAtom: WritableAtom<unknown, [message: ChatMessageType], void>;
     updateLastMessageAtom: WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
+    removeLastMessageAtom: WritableAtom<unknown, [], void>;
     simulateAssistantResponseAtom: WritableAtom<unknown, [userMessage: ChatMessageType], Promise<void>>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
+    locked: PrimitiveAtom<boolean>;
+    cancel: boolean;
 
     constructor(blockId: string) {
+        this.locked = atom(false);
+        this.cancel = false;
         this.viewType = "waveai";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
@@ -79,7 +87,13 @@ export class WaveAiModel implements ViewModel {
                 set(this.messagesAtom, [...messages.slice(0, -1), updatedMessage]);
             }
         });
+        this.removeLastMessageAtom = atom(null, (get, set) => {
+            const messages = get(this.messagesAtom);
+            messages.pop();
+            set(this.messagesAtom, [...messages]);
+        });
         this.simulateAssistantResponseAtom = atom(null, async (get, set, userMessage: ChatMessageType) => {
+            // unused at the moment. can replace the temp() function in the future
             const typingMessage: ChatMessageType = {
                 id: crypto.randomUUID(),
                 user: "assistant",
@@ -89,22 +103,16 @@ export class WaveAiModel implements ViewModel {
 
             // Add a typing indicator
             set(this.addMessageAtom, typingMessage);
-
-            setTimeout(() => {
-                const parts = userMessage.text.split(" ");
-                let currentPart = 0;
-
-                const intervalId = setInterval(() => {
-                    if (currentPart < parts.length) {
-                        const part = parts[currentPart] + " ";
-                        set(this.updateLastMessageAtom, part, true);
-                        currentPart++;
-                    } else {
-                        clearInterval(intervalId);
-                        set(this.updateLastMessageAtom, "", false);
-                    }
-                }, 100);
-            }, 1500);
+            await sleep(1500);
+            const parts = userMessage.text.split(" ");
+            let currentPart = 0;
+            while (currentPart < parts.length) {
+                const part = parts[currentPart] + " ";
+                set(this.updateLastMessageAtom, part, true);
+                currentPart++;
+                await sleep(100);
+            }
+            set(this.updateLastMessageAtom, "", false);
         });
         this.viewText = atom((get) => {
             const settings = get(atoms.settingsAtom);
@@ -151,8 +159,10 @@ export class WaveAiModel implements ViewModel {
         const simulateResponse = useSetAtom(this.simulateAssistantResponseAtom);
         const clientId = useAtomValue(atoms.clientId);
         const blockId = this.blockId;
+        const setLocked = useSetAtom(this.locked);
 
         const sendMessage = (text: string, user: string = "user") => {
+            setLocked(true);
             const newMessage: ChatMessageType = {
                 id: crypto.randomUUID(),
                 user,
@@ -173,10 +183,16 @@ export class WaveAiModel implements ViewModel {
                 role: "user",
                 content: text,
             };
-            if (newPrompt.name == "*username") {
-                newPrompt.name = getUserName();
-            }
             const temp = async () => {
+                const typingMessage: ChatMessageType = {
+                    id: crypto.randomUUID(),
+                    user: "assistant",
+                    text: "",
+                    isAssistant: true,
+                };
+
+                // Add a typing indicator
+                globalStore.set(this.addMessageAtom, typingMessage);
                 const history = await this.fetchAiData();
                 const beMsg: OpenAiStreamRequest = {
                     clientid: clientId,
@@ -187,21 +203,25 @@ export class WaveAiModel implements ViewModel {
                 let fullMsg = "";
                 for await (const msg of aiGen) {
                     fullMsg += msg.text ?? "";
+                    globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
+                    if (this.cancel) {
+                        if (fullMsg == "") {
+                            globalStore.set(this.removeLastMessageAtom);
+                        }
+                        break;
+                    }
+                    await sleep(100);
                 }
-                const response: ChatMessageType = {
-                    id: newMessage.id,
-                    user: newMessage.user,
-                    text: fullMsg,
-                    isAssistant: true,
-                };
-
-                const responsePrompt: OpenAIPromptMessageType = {
-                    role: "assistant",
-                    content: fullMsg,
-                };
-                const writeToHistory = BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
-                const typeResponse = simulateResponse(response);
-                Promise.all([writeToHistory, typeResponse]);
+                globalStore.set(this.updateLastMessageAtom, "", false);
+                if (fullMsg != "") {
+                    const responsePrompt: OpenAIPromptMessageType = {
+                        role: "assistant",
+                        content: fullMsg,
+                    };
+                    await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
+                }
+                setLocked(false);
+                this.cancel = false;
             };
             temp();
         };
@@ -218,63 +238,64 @@ function makeWaveAiViewModel(blockId): WaveAiModel {
     return waveAiModel;
 }
 
-const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
+const ChatItem = ({ chatItem }: ChatItemProps) => {
     const { isAssistant, text, isError } = chatItem;
     const senderClassName = isAssistant ? "chat-msg-assistant" : "chat-msg-user";
     const msgClassName = `chat-msg ${senderClassName}`;
     const cssVar = "--panel-bg-color";
     const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
     const color = tinycolor(panelBgColor);
-    const newColor = color.isValid() ? tinycolor(panelBgColor).darken(6).toString() : "none";
-    const backgroundColor = itemCount % 2 === 0 ? "none" : newColor;
 
     const renderError = (err: string): React.JSX.Element => <div className="chat-msg-error">{err}</div>;
 
-    const renderContent = (): React.JSX.Element => {
+    const renderContent = useMemo(() => {
         if (isAssistant) {
             if (isError) {
                 return renderError(isError);
             }
             return text ? (
                 <>
-                    <div className="chat-msg-header">
-                        <i className="fa-sharp fa-solid fa-sparkles"></i>
+                    <div className="chat-msg chat-msg-header">
+                        <div className="icon-box">
+                            <i className="fa-sharp fa-solid fa-sparkles"></i>
+                        </div>
                     </div>
-                    <Markdown text={text} />
+                    <div
+                        className="chat-msg chat-msg-assistant"
+                        style={{ maxWidth: "calc(var(--aichat-msg-width) * 1px)" }}
+                    >
+                        <Markdown text={text} />
+                    </div>
                 </>
             ) : (
                 <>
                     <div className="chat-msg-header">
                         <i className="fa-sharp fa-solid fa-sparkles"></i>
                     </div>
-                    <TypingIndicator className="typing-indicator" />
+                    <TypingIndicator className="chat-msg typing-indicator" />
                 </>
             );
         }
         return (
             <>
-                <div className="chat-msg-header">
-                    <i className="fa-sharp fa-solid fa-user"></i>
+                <div className="chat-msg chat-msg-user" style={{ maxWidth: "calc(var(--aichat-msg-width) * 1px)" }}>
+                    <Markdown className="msg-text" text={text} />
                 </div>
-                <Markdown className="msg-text" text={text} />
             </>
         );
-    };
+    }, [text, isAssistant, isError]);
 
-    return (
-        <div className={msgClassName} style={{ backgroundColor }}>
-            {renderContent()}
-        </div>
-    );
+    return <div className={"chat-msg-container"}>{renderContent}</div>;
 };
 
 interface ChatWindowProps {
     chatWindowRef: React.RefObject<HTMLDivElement>;
     messages: ChatMessageType[];
+    msgWidths: Object;
 }
 
 const ChatWindow = memo(
-    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages }, ref) => {
+    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages, msgWidths }, ref) => {
         const [isUserScrolling, setIsUserScrolling] = useState(false);
 
         const osRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -334,10 +355,10 @@ const ChatWindow = memo(
                 options={{ scrollbars: { autoHide: "leave" } }}
                 events={{ initialized: handleScrollbarInitialized }}
             >
-                <div ref={chatWindowRef} className="chat-window">
+                <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
                     <div className="filler"></div>
                     {messages.map((chitem, idx) => (
-                        <ChatItem key={idx} chatItem={chitem} itemCount={idx + 1} />
+                        <ChatItem key={idx} chatItem={chitem} />
                     ))}
                 </div>
             </OverlayScrollbarsComponent>
@@ -394,7 +415,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
                 onChange={onChange}
                 onKeyDown={onKeyDown}
                 style={{ fontSize: termFontSize }}
-                placeholder="Send a Message..."
+                placeholder="Ask anything..."
                 value={value}
             ></textarea>
         );
@@ -407,41 +428,20 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const chatWindowRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<OverlayScrollbarsComponentRef>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
-    const submitTimeoutRef = useRef<NodeJS.Timeout>(null);
 
     const [value, setValue] = useState("");
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const termFontSize: number = 14;
+    const windowDims = useDimensions(chatWindowRef);
+    const msgWidths = {};
+    const locked = useAtomValue(model.locked);
+    msgWidths["--aichat-msg-width"] = windowDims.width * 0.85;
 
     // a weird workaround to initialize ansynchronously
     useEffect(() => {
         model.populateMessages();
     }, []);
-
-    useEffect(() => {
-        return () => {
-            if (submitTimeoutRef.current) {
-                clearTimeout(submitTimeoutRef.current);
-            }
-        };
-    }, []);
-
-    const submit = useCallback(
-        (messageStr: string) => {
-            if (!isSubmitting) {
-                setIsSubmitting(true);
-                sendMessage(messageStr);
-
-                clearTimeout(submitTimeoutRef.current);
-                submitTimeoutRef.current = setTimeout(() => {
-                    setIsSubmitting(false);
-                }, 500);
-            }
-        },
-        [isSubmitting, sendMessage, setValue]
-    );
 
     const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setValue(e.target.value);
@@ -479,10 +479,14 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     };
 
     const handleEnterKeyPressed = useCallback(() => {
-        const isCurrentlyUpdating = messages.some((message) => message.isUpdating);
-        if (isCurrentlyUpdating || value === "") return;
+        // using globalStore to avoid potential timing problems
+        // useAtom means the component must rerender once before
+        // the unlock is detected. this automatically checks on the
+        // callback firing instead
+        const locked = globalStore.get(model.locked);
+        if (locked || value === "") return;
 
-        submit(value);
+        sendMessage(value);
         setValue("");
         setSelectedBlockIdx(null);
     }, [messages, value]);
@@ -589,19 +593,40 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         }
     };
 
+    let buttonClass = "waveai-submit-button";
+    let buttonIcon = makeIconClass("arrow-up", false);
+    let buttonTitle = "run";
+    if (locked) {
+        buttonClass = "waveai-submit-button stop";
+        buttonIcon = makeIconClass("stop", false);
+        buttonTitle = "stop";
+    }
+    const handleButtonPress = useCallback(() => {
+        if (locked) {
+            model.cancel = true;
+        } else {
+            handleEnterKeyPressed();
+        }
+    }, [locked, handleEnterKeyPressed]);
+
     return (
         <div ref={waveaiRef} className="waveai" onClick={handleContainerClick}>
-            <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} />
-            <div className="waveai-input-wrapper">
-                <ChatInput
-                    ref={inputRef}
-                    value={value}
-                    model={model}
-                    onChange={handleTextAreaChange}
-                    onKeyDown={handleTextAreaKeyDown}
-                    onMouseDown={handleTextAreaMouseDown}
-                    termFontSize={termFontSize}
-                />
+            <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} msgWidths={msgWidths} />
+            <div className="waveai-controls">
+                <div className="waveai-input-wrapper">
+                    <ChatInput
+                        ref={inputRef}
+                        value={value}
+                        model={model}
+                        onChange={handleTextAreaChange}
+                        onKeyDown={handleTextAreaKeyDown}
+                        onMouseDown={handleTextAreaMouseDown}
+                        termFontSize={termFontSize}
+                    />
+                </div>
+                <Button className={buttonClass} onClick={handleButtonPress}>
+                    <i className={buttonIcon} title={buttonTitle} />
+                </Button>
             </div>
         </div>
     );
