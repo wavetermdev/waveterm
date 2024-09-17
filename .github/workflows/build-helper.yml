@@ -2,13 +2,19 @@
 # For more information on the macOS signing and notarization, see https://www.electron.build/code-signing and https://www.electron.build/configuration/mac
 # For more information on the Windows Code Signing, see https://docs.digicert.com/en/digicert-keylocker/ci-cd-integrations/plugins/github-custom-action-for-keypair-signing.html and https://docs.digicert.com/en/digicert-keylocker/signing-tools/sign-authenticode-with-electron-builder-using-ksp-integration.html
 
-name: "Build Helper"
-on: workflow_dispatch
+name: Build Helper
+run-name: Version ${{ github.ref_name }}
+on:
+    push:
+        tags:
+            - "[0-9]+.[0-9]+.[0-9]+*"
 env:
     GO_VERSION: "1.22.5"
     NODE_VERSION: "22.5.1"
 jobs:
     runbuild:
+        outputs:
+            version: ${{ steps.set-version.outputs.WAVETERM_VERSION }}
         strategy:
             matrix:
                 include:
@@ -53,7 +59,7 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
-            - name: Install yarn
+            - name: Install Yarn
               run: |
                   corepack enable
                   yarn install
@@ -62,9 +68,10 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - name: Set Version
+
+            - name: "Set Version"
               id: set-version
-              run: echo "WAVETERM_VERSION=$(node "./version.cjs")" >> "$GITHUB_OUTPUT"
+              run: echo "WAVETERM_VERSION=$(task version)" >> "$GITHUB_OUTPUT"
               shell: bash
 
             # Windows Code Signing Setup
@@ -90,7 +97,7 @@ jobs:
             - name: Setup Keylocker KSP (Windows only)
               if: matrix.platform == 'windows'
               run: |
-                  curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o Keylockertools-windows-x64.msi 
+                  curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o Keylockertools-windows-x64.msi
                   msiexec /i Keylockertools-windows-x64.msi /quiet /qn
                   C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user
                   smctl windows certsync

@@ -1,9 +1,18 @@
 # Building for release
 
+## Bump Version workflow
+
+All releases start by first bumping the package version and creating a new Git tag. We have a workflow set up to automate this.
+
+To run it, trigger a new run of the [Bump Version workflow](https://github.com/wavetermdev/thenextwave/actions/workflows/bump-version.yml). When triggering the run, you will be
+prompted to select a version bump type, either `none`, `patch`, `minor`, or `major`, and whether the version is prerelease or not. This determines how much the version number is incremented.
+See [`version.cjs`](../../version.cjs) for more details on how this works.
+
+Once the tag has been created, a new [Build Helper](#build-helper-workflow) run will be automatically queued to generate the artifacts.
+
 ## Build Helper workflow
 
-Our release builds are managed by the "Build Helper" GitHub Action, which is defined
-in [`build-helper.yml`](../../.github/workflows/build-helper.yml).
+Our release builds are managed by the [Build Helper workflow](https://github.com/wavetermdev/thenextwave/actions/workflows/build-helper.yml).
 
 Under the hood, this will call the `package` task in
 [`Taskfile.yml`](../../Taskfile.yml), which will build the Electron codebase using
@@ -33,6 +42,11 @@ as long as the app was distributed as a DMG, AppImage, RPM, or DEB file.
 With each release, `latest-mac.yml`, `latest-linux.yml`, and `latest-linux-arm64.yml` files will be produced that point to the
 newest release. These also include file sizes and checksums to aid in validating the packages. The app
 will check these files in our S3 bucket every hour to see if a new version is available.
+
+### Update channels
+
+We utilize update channels to roll out beta and stable releases. These are determined based on the package versioning [described above](#bump-version-workflow). Users can
+select their update channel using the `autoupdate:channel` setting in Wave. See [here](https://www.electron.build/tutorials/release-using-channels.html) for more information.
 
 ### Homebrew
 

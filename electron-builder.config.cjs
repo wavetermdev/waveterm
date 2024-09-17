@@ -12,6 +12,7 @@ const config = {
     productName: pkg.productName,
     executableName: pkg.name,
     artifactName: "${productName}-${platform}-${arch}-${version}.${ext}",
+    generateUpdatesFilesForAllChannels: true,
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,

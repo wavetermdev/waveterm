@@ -200,6 +200,19 @@ tasks:
             - frontend/app/store/services.ts
             - frontend/app/store/wshserver.ts
 
+    version:
+        desc: Get the current package version, or bump version if args are present.
+        summary: |
+            If no arguments are present, the current version will be returned.
+            If only a single argument is given, the following are valid inputs:
+                - `none`: No-op.
+                - `patch`: Bumps the patch version.
+                - `minor`: Bumps the minor version.
+                - `major`: Bumps the major version.
+                - '1', 'true': Bumps the prerelease version.
+            If two arguments are given, the first argument must be either `none`, `patch`, `minor`, or `major`. The second argument must be `1` or `true` to bump the prerelease version.
+        cmd: node version.cjs {{.CLI_ARGS}}
+
     yarn:
         desc: Runs `yarn`
         internal: true

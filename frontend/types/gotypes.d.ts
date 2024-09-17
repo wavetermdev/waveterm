@@ -410,6 +410,7 @@ declare global {
         "autoupdate:enabled"?: boolean;
         "autoupdate:intervalms"?: number;
         "autoupdate:installonquit"?: boolean;
+        "autoupdate:channel"?: string;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;

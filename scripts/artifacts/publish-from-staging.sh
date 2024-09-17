@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Takes a release from our staging bucket and publishes it to the public download bucket.
 # Usage: publish-from-staging.sh <version> <aws-profile>
 # Example: publish-from-staging.sh 0.1.0 storage
