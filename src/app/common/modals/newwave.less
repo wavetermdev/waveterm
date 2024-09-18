@@ -1,8 +1,12 @@
-.tos-modal {
+.newwave-modal {
     width: 640px;
+    border-radius: 8px;
+    border: 0.5px solid rgba(255, 255, 255, 0.12);
+    background: #232323;
+    box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
 
     .wave-modal-content .wave-modal-body {
-        padding: 32px 48px;
+        padding: 0;
         gap: 8px;
 
         .wave-modal-body-inner {
@@ -10,74 +14,61 @@
             display: flex;
             flex-direction: column;
 
-            header.tos-header {
+            header.newwave-header {
+                padding: 24px 32px 0;
+                position: relative;
                 flex-direction: column;
                 gap: var(--sizing-sm, 12px);
                 border-bottom: none;
-                padding: 0;
 
                 .modal-title {
-                    text-align: center;
+                    text-align: left;
                     font-size: 20px;
-                    font-weight: 300;
+                    font-weight: normal;
                 }
 
-                .modal-subtitle {
-                    color: var(--app-text-color);
-                    text-align: center;
-
-                    font-style: normal;
-                    font-weight: 300;
-                    line-height: 20px;
+                .close {
+                    position: absolute;
+                    right: 32px;
+                    top: 24px;
                 }
             }
 
-            .content.tos-content {
+            .content.newwave-content {
                 display: flex;
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 32px;
                 width: 100%;
                 margin-bottom: 0;
 
                 .item {
-                    display: flex;
                     width: 100%;
-                    align-items: center;
-                    gap: 16px;
+                    line-height: 19px;
+                    font-weight: 400;
 
-                    .item-inner {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 4px;
-                        flex: 1 0 0;
+                    &:not(:nth-child(2)) {
+                        padding: 0 32px;
+                    }
 
-                        .item-title {
-                            color: var(--app-text-primary-color);
-                            font-style: normal;
-                            line-height: 20px;
-                        }
+                    &:nth-child(3) {
+                        margin-top: -25px;
+                    }
 
-                        .item-text {
-                            color: var(--app-text-color);
-                            font-style: normal;
-                            line-height: 20px;
-                        }
+                    img {
+                        width: 100%;
+                        margin-top: 12px;
+                    }
 
-                        .item-field {
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                        }
+                    span {
+                        font-weight: 600;
                     }
                 }
             }
 
             footer {
-                .item-text {
-                    text-align: center;
-                }
+                padding: 0 32px 32px;
+                display: flex;
+                justify-content: flex-end;
 
                 .button-wrapper {
                     display: flex;
@@ -88,6 +79,10 @@
                     button {
                         font-size: 15px;
                         margin-top: 16px;
+
+                        &:last-child {
+                            margin-left: 10px;
+                        }
                     }
 
                     button.disabled-button {
