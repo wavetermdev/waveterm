@@ -3,7 +3,9 @@
 
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { makeFeBlockRouteId } from "@/app/store/wshrouter";
+import { DefaultRouter, WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomView } from "@/app/view/term/vdom";
 import { NodeModel } from "@/layout/index";
 import { WOS, atoms, getConnStatusAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
@@ -89,10 +91,13 @@ class TermViewModel {
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
+    termWshClient: TermWshClient;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "term";
         this.blockId = blockId;
+        this.termWshClient = new TermWshClient(blockId);
+        DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.termWshClient);
         this.nodeModel = nodeModel;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.termMode = jotai.atom((get) => {
@@ -130,6 +135,10 @@ class TermViewModel {
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
         });
+    }
+
+    dispose() {
+        DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
     }
 
     giveFocus(): boolean {

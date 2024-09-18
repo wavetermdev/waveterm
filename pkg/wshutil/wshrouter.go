@@ -60,6 +60,10 @@ func MakeProcRouteId(procId string) string {
 	return "proc:" + procId
 }
 
+func MakeFeBlockRouteId(blockId string) string {
+	return "feblock:" + blockId
+}
+
 var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {
