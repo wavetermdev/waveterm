@@ -1,0 +1,55 @@
+{
+    "defwidget@terminal": {
+        "display:order": 1,
+        "icon": "square-terminal",
+        "label": "terminal",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "shell"
+            }
+        }
+    },
+    "defwidget@files": {
+        "display:order": 2,
+        "icon": "folder",
+        "label": "files",
+        "blockdef": {
+            "meta": {
+                "view": "preview",
+                "file": "~"
+            }
+        }
+    },
+    "defwidget@web": {
+        "display:order": 3,
+        "icon": "globe",
+        "label": "web",
+        "blockdef": {
+            "meta": {
+                "view": "web",
+                "url": "https://waveterm.dev/"
+            }
+        }
+    },
+    "defwidget@ai": {
+        "display:order": 4,
+        "icon": "sparkles",
+        "label": "ai",
+        "blockdef": {
+            "meta": {
+                "view": "waveai"
+            }
+        }
+    },
+    "defwidget@cpuplot": {
+        "display:order": 5,
+        "icon": "chart-line",
+        "label": "cpu",
+        "blockdef": {
+            "meta": {
+                "view": "cpuplot"
+            }
+        }
+    }
+}

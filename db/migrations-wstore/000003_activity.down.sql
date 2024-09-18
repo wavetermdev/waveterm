@@ -1,0 +1,1 @@
+DROP TABLE db_activity;

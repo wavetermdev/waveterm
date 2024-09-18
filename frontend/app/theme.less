@@ -1,0 +1,149 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// Used for syntax highlighting in markdown
+@import url("../../node_modules/highlight.js/styles/github-dark-dimmed.min.css");
+
+:root {
+    --main-text-color: #f7f7f7;
+    --title-font-size: 18px;
+    --secondary-text-color: rgb(195, 200, 194);
+    --grey-text-color: #666;
+    --main-bg-color: rgb(34, 34, 34);
+    --border-color: rgba(255, 255, 255, 0.16);
+    --base-font: normal 14px / normal "Inter", sans-serif;
+    --fixed-font: normal 12px / normal "Hack", monospace;
+    --accent-color: rgb(88, 193, 66);
+    --panel-bg-color: rgba(31, 33, 31, 0.5);
+    --highlight-bg-color: rgba(255, 255, 255, 0.2);
+    --markdown-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji";
+    --error-color: rgb(229, 77, 46);
+    --warning-color: rgb(224, 185, 86);
+    --success-color: rgb(78, 154, 6);
+    --hover-bg-color: rgba(255, 255, 255, 0.1);
+    --block-bg-color: rgba(0, 0, 0, 0.5);
+    --block-bg-solid-color: rgb(0, 0, 0);
+    --block-border-radius: 8px;
+
+    --keybinding-color: #e0e0e0;
+    --keybinding-bg-color: #333;
+    --keybinding-border-color: #444;
+
+    /* scrollbar colors */
+    --scrollbar-background-color: transparent;
+    --scrollbar-thumb-color: rgba(255, 255, 255, 0.15);
+    --scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.5);
+    --scrollbar-thumb-active-color: rgba(255, 255, 255, 0.6);
+
+    --header-font: 700 11px / normal "Inter", sans-serif;
+    --header-icon-size: 14px;
+    --header-icon-width: 16px;
+    --header-height: 30px;
+
+    --tab-green: rgb(88, 193, 66);
+
+    /* z-index values */
+    --zindex-header-hover: 100;
+    --zindex-termstickers: 20;
+    --zindex-modal: 2;
+    --zindex-modal-wrapper: 500;
+    --zindex-modal-backdrop: 1;
+    --zindex-typeahead-modal: 100;
+    --zindex-typeahead-modal-backdrop: 90;
+    --zindex-elem-modal: 100;
+    --zindex-window-drag: 100;
+    --zindex-tab-name: 3;
+    --zindex-layout-display-container: 0;
+    --zindex-layout-last-magnified-node: 1;
+    --zindex-layout-resize-handle: 2;
+    --zindex-layout-placeholder-container: 3;
+    --zindex-layout-overlay-container: 4;
+    --zindex-layout-magnified-node: 5;
+    --zindex-block-mask-inner: 10;
+    --zindex-flash-error-container: 550;
+
+    // z-indexes in xterm.css
+    // xterm-helpers: 5
+    // xterm-helper-textarea: -5
+    // composition-view: 1
+    // xterm-message: 10
+    // xterm-decoration: 6
+    // xterm-decoration-top-layer: 7
+    // xterm-decoration-overview-ruler: 8
+    // xterm-decoration-top: 2
+
+    // modal colors
+    --modal-bg-color: #232323;
+    --modal-header-bottom-border-color: rgba(241, 246, 243, 0.15);
+    --modal-border-color: rgba(255, 255, 255, 0.12); /* toggle colors */
+    --toggle-bg-color: var(--border-color);
+
+    --toggle-thumb-color: var(--main-text-color);
+    --toggle-checked-bg-color: var(--accent-color);
+
+    // link color
+    --link-color: #58c142;
+
+    // form colors
+    --form-element-border-color: rgba(241, 246, 243, 0.15);
+    --form-element-bg-color: var(--main-bg-color);
+    --form-element-text-color: var(--main-text-color);
+    --form-element-primary-text-color: var(--main-text-color);
+    --form-element-primary-color: var(--accent-color);
+    --form-element-secondary-color: rgba(255, 255, 255, 0.2);
+    --form-element-error-color: var(--error-color);
+
+    --conn-icon-color: #53b4ea;
+    --conn-icon-color-1: #53b4ea;
+    --conn-icon-color-2: #aa67ff;
+    --conn-icon-color-3: #fda7fd;
+    --conn-icon-color-4: #ef476f;
+    --conn-icon-color-5: #497bf8;
+    --conn-icon-color-6: #ffa24e;
+    --conn-icon-color-7: #dbde52;
+    --conn-icon-color-8: #58c142;
+
+    --bulb-color: rgb(255, 221, 51);
+
+    // term colors (16 + 6) form the base terminal theme
+    // for consistency these colors should be used by plugins/applications
+    --term-black: #000000;
+    --term-red: #cc0000;
+    --term-green: #4e9a06;
+    --term-yellow: #c4a000;
+    --term-blue: #3465a4;
+    --term-magenta: #bc3fbc;
+    --term-cyan: #06989a;
+    --term-white: #d0d0d0;
+    --term-bright-black: #555753;
+    --term-bright-red: #ef2929;
+    --term-bright-green: #58c142;
+    --term-bright-yellow: #fce94f;
+    --term-bright-blue: #32afff;
+    --term-bright-magenta: #ad7fa8;
+    --term-bright-cyan: #34e2e2;
+    --term-bright-white: #e7e7e7;
+
+    --term-gray: #8b918a; // not an official terminal color
+    --term-cmdtext: #ffffff;
+    --term-foreground: #d3d7cf;
+    --term-background: #000000;
+    --term-selection-background: #ffffff60;
+    --term-cursor-accent: #000000;
+
+    // button colors
+    --button-focus-border-color: rgba(88, 193, 66, 0.5);
+    --button-green-text-color: var(--term-black);
+    --button-green-bg: var(--term-green);
+    --button-green-border-color: rgb(26, 52, 21);
+    --button-grey-text-color: var(--main-text-color);
+    --button-grey-bg: rgba(255, 255, 255, 0.04);
+    --button-grey-border-color: rgba(255, 255, 255, 0.1);
+    --button-red-text-color: var(--main-text-color);
+    --button-red-bg: var(--term-red);
+    --button-red-border-color: #ff1818;
+    --button-yellow-text-color: var(--term-black);
+    --button-yellow-bg: var(--term-yellow);
+    --button-yellow-border-color: #fbd93f;
+}

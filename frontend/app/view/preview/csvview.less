@@ -1,0 +1,96 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+@import "../../mixins.less";
+
+.csv-view {
+    opacity: 0; /* Start with an opacity of 0, meaning it's invisible */
+
+    .ellipsis();
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .select-none {
+        user-select: none;
+    }
+
+    table.probe {
+        position: absolute;
+        visibility: hidden;
+    }
+
+    table {
+        border-collapse: collapse;
+        overflow-x: auto;
+        border: 1px solid var(--scrollbar-thumb-hover-color);
+
+        thead {
+            position: relative;
+            display: block;
+            width: 100%;
+            overflow-y: scroll;
+
+            tr {
+                border-bottom: 1px solid var(--scrollbar-thumb-hover-color);
+
+                th {
+                    color: var(--app-text-color);
+                    border-right: 1px solid var(--scrollbar-thumb-hover-color);
+                    border-bottom: none;
+                    padding: 2px 10px;
+                    flex-basis: 100%;
+                    flex-grow: 2;
+                    display: block;
+                    text-align: left;
+                    position: relative;
+
+                    .inner {
+                        text-align: left;
+                        padding-right: 15px;
+                        position: relative;
+                        .ellipsis();
+
+                        .sort-icon {
+                            position: absolute;
+                            right: 0px;
+                            top: 2px;
+                            width: 9px;
+                        }
+                    }
+                }
+            }
+        }
+
+        tbody {
+            display: block;
+            position: relative;
+            overflow-y: scroll;
+            overscroll-behavior: contain;
+        }
+
+        tr {
+            width: 100%;
+            display: flex;
+
+            td {
+                border-right: 1px solid var(--scrollbar-thumb-hover-color);
+                border-left: 1px solid var(--scrollbar-thumb-hover-color);
+                padding: 3px 10px;
+                flex-basis: 100%;
+                flex-grow: 2;
+                display: block;
+                text-align: left;
+                .ellipsis();
+            }
+        }
+    }
+}
+
+.csv-view.show {
+    opacity: 1;
+}

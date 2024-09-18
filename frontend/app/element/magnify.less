@@ -1,0 +1,31 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.magnify-icon {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    svg {
+        #arrow1 {
+            transform: rotate(180deg);
+            transform-origin: calc(29.167% + 4px) calc(70.833% + 4px); // account for path offset in the svg itself
+        }
+        #arrow2 {
+            transform: rotate(-180deg);
+            transform-origin: calc(70.833% + 4px) calc(29.167% + 4px);
+        }
+        #arrow1,
+        #arrow2 {
+            transition: transform 300ms ease-in;
+            transition-delay: 100ms;
+        }
+    }
+    &.enabled {
+        svg {
+            #arrow1,
+            #arrow2 {
+                transform: rotate(0deg);
+            }
+        }
+    }
+}

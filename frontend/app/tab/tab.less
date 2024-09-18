@@ -1,0 +1,95 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.tab {
+    position: absolute;
+    width: 130px;
+    height: calc(100% - 1px);
+    padding: 6px 3px 0px;
+    box-sizing: border-box;
+    font-weight: bold;
+    color: var(--secondary-text-color);
+    opacity: 0;
+
+    .tab-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        white-space: nowrap;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 0.5px solid rgba(255, 255, 255, 0.08);
+    }
+
+    &.animate {
+        transition:
+            transform 0.3s ease,
+            background-color 0.3s ease-in-out;
+    }
+
+    &.active {
+        .tab-inner {
+            border: 0.5px solid rgba(255, 255, 255, 0.2);
+            background: radial-gradient(ellipse 92px 32px at bottom, rgba(118, 255, 53, 0.3) 0%, transparent 100%),
+                rgba(255, 255, 255, 0.2);
+        }
+
+        .name {
+            color: var(--main-text-color);
+        }
+    }
+
+    .name {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate3d(-50%, -50%, 0);
+        user-select: none;
+        z-index: var(--zindex-tab-name);
+        font-size: 11px;
+        font-weight: 500;
+        text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.25);
+
+        &.focused {
+            outline: none;
+            border: 1px solid rgba(255, 255, 255, 0.179);
+            padding: 2px 6px;
+            border-radius: 2px;
+        }
+    }
+
+    .close {
+        visibility: hidden;
+        position: absolute;
+        top: 50%;
+        right: 4px;
+        transform: translate3d(0, -50%, 0);
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: var(--zindex-tab-name);
+        padding: 1px 2px;
+    }
+
+    &:hover .close {
+        visibility: visible;
+    }
+}
+
+@keyframes expandWidthAndFadeIn {
+    from {
+        width: var(--initial-tab-width);
+        opacity: 0;
+    }
+    to {
+        width: var(--final-tab-width);
+        opacity: 1;
+    }
+}
+
+.tab.new-tab {
+    animation: expandWidthAndFadeIn 0.1s forwards;
+}

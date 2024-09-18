@@ -1,0 +1,72 @@
+{
+    "audio": {
+        "icon": "file-audio"
+    },
+    "application/pdf": {
+        "icon": "file-pdf"
+    },
+    "application/javascript": {
+        "icon": "js fa-brands"
+    },
+    "application/typescript": {
+        "icon": "js fa-brands"
+    },
+    "application/json": {
+        "icon": "file-lines"
+    },
+    "directory": {
+        "icon": "folder",
+        "color": "var(--term-bright-blue)"
+    },
+    "font": {
+        "icon": "book-font"
+    },
+    "image": {
+        "icon": "file-image"
+    },
+    "text": {
+        "icon": "file-lines"
+    },
+    "text/css": {
+        "icon": "css3-alt fa-brands"
+    },
+    "text/javascript": {
+        "icon": "js fa-brands"
+    },
+    "text/typescript": {
+        "icon": "js fa-brands"
+    },
+    "text/golang": {
+        "icon": "golang fa-brands"
+    },
+    "text/html": {
+        "icon": "html5 fa-brands"
+    },
+    "text/less": {
+        "icon": "less fa-brands"
+    },
+    "text/markdown": {
+        "icon": "markdown fa-brands"
+    },
+    "text/rust": {
+        "icon": "rust fa-brands"
+    },
+    "text/scss": {
+        "icon": "sass fa-brands"
+    },
+    "video": {
+        "icon": "file-video"
+    },
+    "text/csv": {
+        "icon": "file-csv"
+    },
+    "text/x-dart": {
+        "icon": "dart-lang fa-brands"
+    },
+    "text/x-go": {
+        "icon": "golang fa-brands"
+    },
+    "text/x-rust": {
+        "icon": "rust fa-brands"
+    }
+}

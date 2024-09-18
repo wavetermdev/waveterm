@@ -1,0 +1,62 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.check-toggle-wrapper {
+    user-select: none;
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+
+    .checkbox-toggle {
+        position: relative;
+        display: inline-block;
+        width: 32px;
+        height: 20px;
+
+        input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            content: "";
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--toggle-bg-color);
+            transition: 0.5s;
+            border-radius: 33px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 2px;
+            background-color: var(--toggle-thumb-color);
+            transition: 0.5s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--toggle-checked-bg-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(11px);
+        }
+    }
+
+    label,
+    .toggle-label {
+        cursor: pointer;
+        padding: 0 5px;
+    }
+}

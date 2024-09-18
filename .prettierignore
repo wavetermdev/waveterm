@@ -1,0 +1,8 @@
+build
+bin
+.git
+frontend/dist
+frontend/node_modules
+*.min.*
+frontend/app/store/services.ts
+frontend/types/gotypes.d.ts

@@ -1,0 +1,151 @@
+# Build Helper workflow - Builds, signs, and packages binaries for each supported platform, then uploads to a staging bucket in S3 for wider distribution.
+# For more information on the macOS signing and notarization, see https://www.electron.build/code-signing and https://www.electron.build/configuration/mac
+# For more information on the Windows Code Signing, see https://docs.digicert.com/en/digicert-keylocker/ci-cd-integrations/plugins/github-custom-action-for-keypair-signing.html and https://docs.digicert.com/en/digicert-keylocker/signing-tools/sign-authenticode-with-electron-builder-using-ksp-integration.html
+
+name: Build Helper
+run-name: Build ${{ github.ref_name }}
+on:
+    push:
+        tags:
+            - "v[0-9]+.[0-9]+.[0-9]+*"
+env:
+    GO_VERSION: "1.22.5"
+    NODE_VERSION: "22.5.1"
+jobs:
+    runbuild:
+        permissions:
+            contents: write
+        outputs:
+            version: ${{ steps.set-version.outputs.WAVETERM_VERSION }}
+        strategy:
+            matrix:
+                include:
+                    - platform: "darwin"
+                      runner: "macos-latest-xlarge"
+                    - platform: "linux"
+                      runner: "ubuntu-latest"
+                    - platform: "linux"
+                      runner: ubuntu-24.04-arm64-16core
+                    - platform: "windows"
+                      runner: "windows-latest"
+                    # - platform: "windows"
+                    #   runner: "windows-11-arm64-16core"
+        runs-on: ${{ matrix.runner }}
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install Linux Build Dependencies (Linux only)
+              if: matrix.platform == 'linux'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
+
+            # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
+            - name: Upgrade AWS CLI (Mac only)
+              if: matrix.platform == 'darwin'
+              run: brew update && brew install awscli
+
+            # The version of FPM that comes bundled with electron-builder doesn't include a Linux ARM target. Installing Gems onto the runner is super quick so we'll just do this for all targets.
+            - name: Install FPM (not Windows)
+              if: matrix.platform != 'windows'
+              run: sudo gem install fpm
+            - name: Install FPM (Windows only)
+              if: matrix.platform == 'windows'
+              run: gem install fpm
+
+            # General build dependencies
+            - uses: actions/setup-go@v5
+              with:
+                  go-version: ${{env.GO_VERSION}}
+                  cache-dependency-path: |
+                      go.sum
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{env.NODE_VERSION}}
+            - name: Install Yarn
+              run: |
+                  corepack enable
+                  yarn install
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: "Set Version"
+              id: set-version
+              run: echo "WAVETERM_VERSION=$(task version)" >> "$GITHUB_OUTPUT"
+              shell: bash
+
+            # Windows Code Signing Setup
+            - name: Set up certificate (Windows only)
+              if: matrix.platform == 'windows'
+              run: |
+                  echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
+              shell: bash
+            - name: Set signing variables (Windows only)
+              if: matrix.platform == 'windows'
+              id: variables
+              run: |
+                  echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
+                  echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV"
+                  echo "SM_CODE_SIGNING_CERT_SHA1_HASH=${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }}" >> "$GITHUB_ENV"
+                  echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV"
+                  echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_OUTPUT"
+                  echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+                  echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
+                  echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
+                  echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
+              shell: bash
+            - name: Setup Keylocker KSP (Windows only)
+              if: matrix.platform == 'windows'
+              run: |
+                  curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o Keylockertools-windows-x64.msi
+                  msiexec /i Keylockertools-windows-x64.msi /quiet /qn
+                  C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user
+                  smctl windows certsync
+              shell: cmd
+
+            # Build and upload packages
+            - name: Build (not Windows)
+              if: matrix.platform != 'windows'
+              run: task package
+              env:
+                  USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
+                  CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE_2}}
+                  CSC_KEY_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE_PWD_2 }}
+                  APPLE_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_APPLE_ID_2 }}
+                  APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD_2 }}
+                  APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID_2 }}
+            - name: Build (Windows only)
+              if: matrix.platform == 'windows'
+              run: task package
+              env:
+                  USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
+                  CSC_LINK: ${{ steps.variables.outputs.SM_CLIENT_CERT_FILE }}
+                  CSC_KEY_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+              shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
+            - name: Upload to S3 staging
+              run: task artifacts:upload
+              env:
+                  AWS_ACCESS_KEY_ID: "${{ secrets.ARTIFACTS_KEY_ID }}"
+                  AWS_SECRET_ACCESS_KEY: "${{ secrets.ARTIFACTS_KEY_SECRET }}"
+                  AWS_DEFAULT_REGION: us-west-2
+
+            - name: Create draft release
+              uses: softprops/action-gh-release@v2
+              with:
+                  prerelease: ${{ contains(github.ref_name, '-beta') }}
+                  name: Wave Terminal ${{ github.ref_name }} Release
+                  generate_release_notes: true
+                  draft: true
+                  files: |
+                      make/*.zip
+                      make/*.dmg
+                      make/*.exe
+                      make/*.msi
+                      make/*.rpm
+                      make/*.deb
+                      make/*.pacman
+                      make/*.snap
+                      make/*.flatpak
+                      make/*.AppImage

@@ -1,0 +1,274 @@
+# Copyright 2024, Command Line Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+vars:
+    APP_NAME: "TheNextWave"
+    BIN_DIR: "bin"
+    VERSION:
+        sh: node version.cjs
+    RM: '{{if eq OS "windows"}}cmd --% /c del /S{{else}}rm {{end}}'
+    RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse{{else}}rm -rf{{end}}'
+    DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
+    ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
+    RELEASES_BUCKET: dl.waveterm.dev/releases-w2
+
+tasks:
+    electron:dev:
+        desc: Run the Electron application via the Vite dev server (enables hot reloading).
+        cmds:
+            - yarn dev
+        deps:
+            - yarn
+            - build:backend
+        env:
+            WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
+            WCLOUD_WS_ENDPOINT: "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
+
+    electron:start:
+        desc: Run the Electron application directly.
+        cmds:
+            - yarn start
+        deps:
+            - yarn
+            - build:backend
+
+    package:
+        desc: Package the application for the current platform.
+        cmds:
+            - cmd: '{{.RMRF}} "make"'
+              ignore_error: true
+            - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
+        deps:
+            - yarn
+            - build:backend
+
+    build:backend:
+        desc: Build the wavesrv and wsh components.
+        cmds:
+            - task: build:server
+            - task: build:wsh
+
+    build:server:
+        desc: Build the wavesrv component.
+        deps:
+            - generate
+            - build:server:linux
+            - build:server:macos
+            - build:server:windows
+
+    build:server:macos:
+        desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
+        status:
+            - exit {{if eq OS "darwin"}}1{{else}}0{{end}}
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS: arm64,amd64
+
+    build:server:windows:
+        desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
+        status:
+            - exit {{if eq OS "windows"}}1{{else}}0{{end}}
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS:
+                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
+
+    build:server:linux:
+        desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
+        status:
+            - exit {{if eq OS "linux"}}1{{else}}0{{end}}
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS:
+                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
+                  GO_LDFLAGS: -linkmode 'external' -extldflags=-static
+
+    build:server:internal:
+        requires:
+            vars:
+                - ARCHS
+        cmds:
+            - cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netcgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
+              for:
+                  var: ARCHS
+                  split: ","
+                  as: GOARCH
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+        generates:
+            - dist/bin/wavesrv.*{{exeExt}}
+        deps:
+            - go:mod:tidy
+        internal: true
+
+    build:wsh:
+        desc: Build the wsh component for all possible targets.
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wsh*"
+              ignore_error: true
+            - task: build:wsh:internal
+              vars:
+                  GOOS: darwin
+                  GOARCH: arm64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: darwin
+                  GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: linux
+                  GOARCH: arm64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: linux
+                  GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: windows
+                  GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                  GOOS: windows
+                  GOARCH: arm64
+        deps:
+            - generate
+
+    dev:installwsh:
+        desc: quick shortcut to rebuild wsh and install for macos arm64
+        requires:
+            vars:
+                - VERSION
+        cmds:
+            - task: build:wsh:internal
+              vars:
+                  GOOS: darwin
+                  GOARCH: arm64
+            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/.waveterm-dev/bin/wsh
+
+    build:wsh:internal:
+        vars:
+            EXT:
+                sh: echo {{if eq .GOOS "windows"}}.exe{{end}}
+            NORMALIZEDARCH:
+                sh: echo {{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}
+        requires:
+            vars:
+                - GOOS
+                - GOARCH
+                - VERSION
+        sources:
+            - "cmd/wsh/**/*.go"
+            - "pkg/**/*.go"
+        generates:
+            - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}}
+        cmds:
+            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+        deps:
+            - go:mod:tidy
+        internal: true
+
+    generate:
+        desc: Generate Typescript bindings for the Go backend.
+        cmds:
+            - go run cmd/generatets/main-generatets.go
+            - go run cmd/generatego/main-generatego.go
+        sources:
+            - "cmd/generatego/*.go"
+            - "cmd/generatets/*.go"
+            - "pkg/service/**/*.go"
+            - "pkg/waveobj/*.go"
+            - "pkg/wconfig/**/*.go"
+            - "pkg/wstore/*.go"
+            - "pkg/wshrpc/**/*.go"
+            - "pkg/tsgen/**/*.go"
+            - "pkg/gogen/**/*.go"
+            - "pkg/wconfig/**/*.go"
+            - "pkg/eventbus/eventbus.go"
+        generates:
+            - frontend/types/gotypes.d.ts
+            - pkg/wshrpc/wshclient/wshclient.go
+            - frontend/app/store/services.ts
+            - frontend/app/store/wshserver.ts
+
+    version:
+        desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`.
+        summary: |
+            If no arguments are present, the current version will be returned.
+            If only a single argument is given, the following are valid inputs:
+                - `none`: No-op.
+                - `patch`: Bumps the patch version.
+                - `minor`: Bumps the minor version.
+                - `major`: Bumps the major version.
+                - '1', 'true': Bumps the prerelease version.
+            If two arguments are given, the first argument must be either `none`, `patch`, `minor`, or `major`. The second argument must be `1` or `true` to bump the prerelease version.
+        cmd: node version.cjs {{.CLI_ARGS}}
+
+    artifacts:upload:
+        desc: Uploads build artifacts to the staging bucket in S3. To add additional AWS CLI arguments, add them after `--`.
+        vars:
+            ORIGIN: "make/"
+            DESTINATION: "{{.ARTIFACTS_BUCKET}}/{{.VERSION}}"
+        cmd: aws s3 cp {{.ORIGIN}}/ s3://{{.DESTINATION}}/ --recursive --exclude "*/*" --exclude "builder-*.yml" {{.CLI_ARGS}}
+
+    artifacts:download:*:
+        desc: Downloads the specified artifacts version from the staging bucket. To add additional AWS CLI arguments, add them after `--`.
+        vars:
+            DL_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+            ORIGIN: "{{.ARTIFACTS_BUCKET}}/{{.DL_VERSION}}"
+            DESTINATION: "artifacts/{{.DL_VERSION}}"
+        cmds:
+            - '{{.RMRF}} "{{.DESTINATION}}"'
+            - aws s3 cp s3://{{.ORIGIN}}/ {{.DESTINATION}}/ --recursive {{.CLI_ARGS}}
+
+    artifacts:publish:*:
+        desc: Publishes the specified artifacts version from the staging bucket to the releases bucket. To add additional AWS CLI arguments, add them after `--`.
+        vars:
+            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+            ORIGIN: "{{.ARTIFACTS_BUCKET}}/{{.UP_VERSION}}"
+            DESTINATION: "{{.RELEASES_BUCKET}}"
+        cmd: |
+            OUTPUT=$(aws s3 cp s3://{{.ORIGIN}}/ s3://{{.DESTINATION}}/ --recursive {{.CLI_ARGS}})
+
+            for line in $OUTPUT; do
+                PREFIX=${line%%{{.DESTINATION}}*}
+                SUFFIX=${line:${#PREFIX}}
+                if [[ -n "$SUFFIX" ]]; then
+                    echo "https://$SUFFIX"
+                fi
+            done
+
+    yarn:
+        desc: Runs `yarn`
+        internal: true
+        generates:
+            - node_modules/**/*
+            - yarn.lock
+            - .yarn/*
+        sources:
+            - yarn.lock
+            - package.json
+            - .yarnrc.yml
+        cmds:
+            - yarn
+
+    go:mod:tidy:
+        desc: Runs `go mod tidy`
+        internal: true
+        generates:
+            - go.sum
+        sources:
+            - go.mod
+        cmds:
+            - go mod tidy
