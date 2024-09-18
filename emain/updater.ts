@@ -1,10 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { isDev } from "@/util/isdev";
-import * as electron from "electron";
+import { BrowserWindow, dialog, ipcMain, Notification } from "electron";
 import { autoUpdater } from "electron-updater";
-import * as services from "../frontend/app/store/services";
+import { FileService } from "../frontend/app/store/services";
+import { isDev } from "../frontend/util/isdev";
 import { fireAndForget } from "../frontend/util/util";
 
 export let updater: Updater;
@@ -63,7 +63,7 @@ export class Updater {
 
             // Display the update banner and create a system notification
             this.status = "ready";
-            const updateNotification = new electron.Notification({
+            const updateNotification = new Notification({
                 title: "Wave Terminal",
                 body: "A new version of Wave Terminal is ready to install.",
             });
@@ -83,7 +83,7 @@ export class Updater {
 
     private set status(value: UpdaterStatus) {
         this._status = value;
-        electron.BrowserWindow.getAllWindows().forEach((window) => {
+        BrowserWindow.getAllWindows().forEach((window) => {
             window.webContents.send("app-update-status", value);
         });
     }
@@ -133,7 +133,7 @@ export class Updater {
                     type: "info",
                     message: "There are currently no updates available.",
                 };
-                electron.dialog.showMessageBox(electron.BrowserWindow.getFocusedWindow(), dialogOpts);
+                dialog.showMessageBox(BrowserWindow.getFocusedWindow(), dialogOpts);
             }
 
             // Only update the last check time if this is an automatic check. This ensures the interval remains consistent.
@@ -153,10 +153,10 @@ export class Updater {
             detail: "A new version has been downloaded. Restart the application to apply the updates.",
         };
 
-        const allWindows = electron.BrowserWindow.getAllWindows();
+        const allWindows = BrowserWindow.getAllWindows();
         if (allWindows.length > 0) {
-            await electron.dialog
-                .showMessageBox(electron.BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
+            await dialog
+                .showMessageBox(BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
                 .then(({ response }) => {
                     if (response === 0) {
                         this.installUpdate();
@@ -176,8 +176,8 @@ export class Updater {
     }
 }
 
-electron.ipcMain.on("install-app-update", () => fireAndForget(() => updater?.promptToInstallUpdate()));
-electron.ipcMain.on("get-app-update-status", (event) => {
+ipcMain.on("install-app-update", () => fireAndForget(() => updater?.promptToInstallUpdate()));
+ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = updater?.status;
 });
 
@@ -201,7 +201,7 @@ export async function configureAutoUpdater() {
 
     try {
         console.log("Configuring updater");
-        const settings = (await services.FileService.GetFullConfig()).settings;
+        const settings = (await FileService.GetFullConfig()).settings;
         updater = new Updater(settings);
         await updater.start();
     } catch (e) {

@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import electron from "electron";
-import { getWebContentsByBlockId, webGetSelector } from "emain/emain-web";
+import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
+import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 
 type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string; readyPromise: Promise<void> };
 

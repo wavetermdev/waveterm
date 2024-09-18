@@ -1,10 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
 import { app, ipcMain } from "electron";
 import os from "os";
 import path from "path";
+import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
 import * as keyutil from "../frontend/util/keyutil";
 
 const isDev = !app.isPackaged;

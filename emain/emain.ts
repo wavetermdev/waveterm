@@ -1,9 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { initElectronWshrpc } from "@/app/store/wshrpcutil";
 import * as electron from "electron";
-import { ElectronWshClientType } from "emain/emain-wsh";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -16,11 +14,13 @@ import * as util from "util";
 import winston from "winston";
 import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
+import { initElectronWshrpc } from "../frontend/app/store/wshrpcutil";
 import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
 import { fetch } from "../frontend/util/fetchutil";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
+import { ElectronWshClientType } from "./emain-wsh";
 import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
