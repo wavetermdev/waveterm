@@ -265,6 +265,7 @@ const Block = React.memo((props: BlockProps) => {
     React.useEffect(() => {
         return () => {
             unregisterBlockComponentModel(props.nodeModel.blockId);
+            viewModel?.dispose?.();
         };
     }, []);
     if (loading || util.isBlank(props.nodeModel.blockId) || blockData == null) {
