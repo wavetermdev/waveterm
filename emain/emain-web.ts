@@ -3,11 +3,7 @@
 
 import { BrowserWindow, ipcMain, webContents, WebContents } from "electron";
 
-export async function getWebContentsByBlockId(
-    win: BrowserWindow,
-    tabId: string,
-    blockId: string
-): Promise<WebContents> {
+export function getWebContentsByBlockId(win: BrowserWindow, tabId: string, blockId: string): Promise<WebContents> {
     const prtn = new Promise<WebContents>((resolve, reject) => {
         const randId = Math.floor(Math.random() * 1000000000).toString();
         const respCh = `getWebContentsByBlockId-${randId}`;
@@ -46,18 +42,23 @@ export async function webGetSelector(wc: WebContents, selector: string, opts?: W
     if (!wc || !selector) {
         return null;
     }
-    try {
-        const escapedSelector = escapeSelector(selector);
-        const queryMethod = opts?.all ? "querySelectorAll" : "querySelector";
-        const prop = opts?.inner ? "innerHTML" : "outerHTML";
-        const execExpr = `
-            Array.from(document.${queryMethod}("${escapedSelector}") || []).map(el => el.${prop});
-        `;
-
-        const results = await wc.executeJavaScript(execExpr);
-        return results;
-    } catch (e) {
-        console.error("webGetSelector error", e);
-        return null;
+    const escapedSelector = escapeSelector(selector);
+    const queryMethod = opts?.all ? "querySelectorAll" : "querySelector";
+    const prop = opts?.inner ? "innerHTML" : "outerHTML";
+    const execExpr = `
+    (() => {
+        const toArr = x => (x instanceof NodeList) ? Array.from(x) : (x ? [x] : []);
+        try {
+            const result = document.${queryMethod}("${escapedSelector}");
+            const value = toArr(result).map(el => el.${prop});
+            return { value };
+        } catch (error) {
+            return { error: error.message };
+        }
+    })()`;
+    const results = await wc.executeJavaScript(execExpr);
+    if (results.error) {
+        throw new Error(results.error);
     }
+    return results.value;
 }

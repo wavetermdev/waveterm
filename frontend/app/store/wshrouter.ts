@@ -31,6 +31,9 @@ class WshRouter {
     constructor(upstreamClient: AbstractWshClient) {
         this.routeMap = new Map();
         this.rpcMap = new Map();
+        if (upstreamClient == null) {
+            throw new Error("upstream client cannot be null");
+        }
         this.upstreamClient = upstreamClient;
     }
 
@@ -46,34 +49,17 @@ class WshRouter {
     }
 
     // returns true if the message was sent
-    _sendRoutedMessage(msg: RpcMessage, destRouteId: string): boolean {
+    _sendRoutedMessage(msg: RpcMessage, destRouteId: string) {
         const client = this.routeMap.get(destRouteId);
         if (client) {
             client.recvRpcMessage(msg);
-            return true;
-        }
-        if (!this.upstreamClient) {
-            // there should always be an upstream client
-            return false;
-        }
-        this.upstreamClient?.recvRpcMessage(msg);
-        return true;
-    }
-
-    _handleNoRoute(msg: RpcMessage) {
-        dlog("no route for message", msg);
-        if (util.isBlank(msg.reqid)) {
-            // send a message instead
-            if (msg.command == "message") {
-                return;
-            }
-            const nrMsg = { command: "message", route: msg.source, data: { message: `no route for ${msg.route}` } };
-            this._sendRoutedMessage(nrMsg, SysRouteName);
             return;
         }
-        // send an error response
-        const nrMsg = { resid: msg.reqid, error: `no route for ${msg.route}` };
-        this._sendRoutedMessage(nrMsg, msg.source);
+        // there should always an upstream client
+        if (!this.upstreamClient) {
+            throw new Error(`no upstream client for message: ${msg}`);
+        }
+        this.upstreamClient?.recvRpcMessage(msg);
     }
 
     _registerRouteInfo(reqid: string, sourceRouteId: string, destRouteId: string) {
@@ -102,18 +88,17 @@ class WshRouter {
         }
         if (!util.isBlank(msg.command)) {
             // send + register routeinfo
-            const ok = this._sendRoutedMessage(msg, msg.route);
-            if (!ok) {
-                this._handleNoRoute(msg);
-                return;
+            if (!util.isBlank(msg.reqid)) {
+                this._registerRouteInfo(msg.reqid, msg.source, msg.route);
             }
-            this._registerRouteInfo(msg.reqid, msg.source, msg.route);
+            this._sendRoutedMessage(msg, msg.route);
             return;
         }
         if (!util.isBlank(msg.reqid)) {
             const routeInfo = this.rpcMap.get(msg.reqid);
             if (!routeInfo) {
                 // no route info, discard
+                dlog("no route info for reqid, discarding", msg);
                 return;
             }
             this._sendRoutedMessage(msg, routeInfo.destRouteId);
@@ -123,6 +108,7 @@ class WshRouter {
             const routeInfo = this.rpcMap.get(msg.resid);
             if (!routeInfo) {
                 // no route info, discard
+                dlog("no route info for resid, discarding", msg);
                 return;
             }
             this._sendRoutedMessage(msg, routeInfo.sourceRouteId);

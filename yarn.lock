@@ -2594,6 +2594,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/ws@npm:^8":
+  version: 8.5.12
+  resolution: "@types/ws@npm:8.5.12"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/3fd77c9e4e05c24ce42bfc7647f7506b08c40a40fe2aea236ef6d4e96fc7cb4006a81ed1b28ec9c457e177a74a72924f4768b7b4652680b42dfd52bc380e15f9
+  languageName: node
+  linkType: hard
+
 "@types/yauzl@npm:^2.9.1":
   version: 2.10.3
   resolution: "@types/yauzl@npm:2.10.3"
@@ -10210,6 +10219,7 @@ __metadata:
     "@types/throttle-debounce": "npm:^5"
     "@types/tinycolor2": "npm:^1"
     "@types/uuid": "npm:^10.0.0"
+    "@types/ws": "npm:^8"
     "@vitejs/plugin-react-swc": "npm:^3.7.0"
     "@vitest/coverage-istanbul": "npm:^2.1.1"
     "@xterm/addon-fit": "npm:^0.10.0"
@@ -10277,6 +10287,7 @@ __metadata:
     vite-tsconfig-paths: "npm:^5.0.1"
     vitest: "npm:^2.1.1"
     winston: "npm:^3.14.2"
+    ws: "npm:^8.18.0"
   languageName: unknown
   linkType: soft
 
@@ -11218,7 +11229,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.2.3":
+"ws@npm:^8.18.0, ws@npm:^8.2.3":
   version: 8.18.0
   resolution: "ws@npm:8.18.0"
   peerDependencies:

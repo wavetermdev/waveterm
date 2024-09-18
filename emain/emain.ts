@@ -1,7 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { initElectronWshrpc } from "@/app/store/wshrpcutil";
 import * as electron from "electron";
+import { ElectronWshClientType } from "emain/emain-wsh";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -33,6 +35,7 @@ import {
 } from "./platform";
 import { configureAutoUpdater, updater } from "./updater";
 
+let ElectronWshClient = new ElectronWshClientType();
 const electronApp = electron.app;
 let WaveVersion = "unknown"; // set by WAVESRV-ESTART
 let WaveBuildTime = 0; // set by WAVESRV-ESTART
@@ -857,6 +860,11 @@ async function appMain() {
     await relaunchBrowserWindows();
     await configureAutoUpdater();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
+    try {
+        initElectronWshrpc(ElectronWshClient, AuthKey);
+    } catch (e) {
+        console.log("error initializing wshrpc", e);
+    }
 
     globalIsStarting = false;
 

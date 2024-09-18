@@ -18,6 +18,7 @@ import (
 
 const DefaultRoute = "wavesrv"
 const SysRoute = "sys" // this route doesn't exist, just a placeholder for system messages
+const ElectronRoute = "electron"
 
 // this works like a network switch
 

@@ -40,6 +40,7 @@ const (
 	Command_FileAppend        = "fileappend"
 	Command_FileAppendIJson   = "fileappendijson"
 	Command_ResolveIds        = "resolveids"
+	Command_BlockInfo         = "blockinfo"
 	Command_CreateBlock       = "createblock"
 	Command_DeleteBlock       = "deleteblock"
 	Command_FileWrite         = "filewrite"
@@ -65,6 +66,8 @@ const (
 	Command_ConnConnect      = "connconnect"
 	Command_ConnDisconnect   = "conndisconnect"
 	Command_ConnList         = "connlist"
+
+	Command_WebSelector = "webselector"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -101,6 +104,7 @@ type WshRpcInterface interface {
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
+	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -120,6 +124,8 @@ type WshRpcInterface interface {
 	RemoteWriteFileCommand(ctx context.Context, data CommandRemoteWriteFileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
+
+	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 }
 
 // for frontend
@@ -347,4 +353,24 @@ type ConnStatus struct {
 	HasConnected  bool   `json:"hasconnected"` // true if it has *ever* connected successfully
 	ActiveConnNum int    `json:"activeconnnum"`
 	Error         string `json:"error,omitempty"`
+}
+
+type WebSelectorOpts struct {
+	All   bool `json:"all,omitempty"`
+	Inner bool `json:"inner,omitempty"`
+}
+
+type CommandWebSelectorData struct {
+	WindowId string           `json:"windowid"`
+	BlockId  string           `json:"blockid" wshcontext:"BlockId"`
+	TabId    string           `json:"tabid" wshcontext:"TabId"`
+	Selector string           `json:"selector"`
+	Opts     *WebSelectorOpts `json:"opts,omitempty"`
+}
+
+type BlockInfoData struct {
+	BlockId  string              `json:"blockid"`
+	TabId    string              `json:"tabid"`
+	WindowId string              `json:"windowid"`
+	Meta     waveobj.MetaMapType `json:"meta"`
 }

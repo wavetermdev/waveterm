@@ -92,16 +92,21 @@ class WshClient {
         // TODO implement a timeout (setTimeout + sendResponse)
         const helper = new RpcResponseHelper(this, msg);
         const handlerName = `handle_${msg.command}`;
-        let prtn: any = null;
-        if (handlerName in this) {
-            prtn = this[handlerName](helper, msg.data);
-            return;
-        } else {
-            prtn = this.handle_default(helper, msg);
-        }
         try {
+            let result: any = null;
+            let prtn: any = null;
+            if (handlerName in this) {
+                prtn = this[handlerName](helper, msg.data);
+            } else {
+                prtn = this.handle_default(helper, msg);
+            }
             if (prtn instanceof Promise) {
-                await prtn;
+                result = await prtn;
+            } else {
+                result = prtn;
+            }
+            if (!helper.done) {
+                helper.sendResponse({ data: result });
             }
         } catch (e) {
             if (!helper.done) {

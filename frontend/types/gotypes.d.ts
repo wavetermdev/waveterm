@@ -25,6 +25,14 @@ declare global {
         meta?: MetaType;
     };
 
+    // wshrpc.BlockInfoData
+    type BlockInfoData = {
+        blockid: string;
+        tabid: string;
+        windowid: string;
+        meta: MetaType;
+    };
+
     // webcmd.BlockInputWSCommand
     type BlockInputWSCommand = {
         wscommand: "blockinput";
@@ -145,6 +153,15 @@ declare global {
     type CommandSetMetaData = {
         oref: ORef;
         meta: MetaType;
+    };
+
+    // wshrpc.CommandWebSelectorData
+    type CommandWebSelectorData = {
+        windowid: string;
+        blockid: string;
+        tabid: string;
+        selector: string;
+        opts?: WebSelectorOpts;
     };
 
     // wconfig.ConfigError
@@ -639,6 +656,12 @@ declare global {
         error?: string;
         data?: any;
         updates?: WaveObjUpdate[];
+    };
+
+    // wshrpc.WebSelectorOpts
+    type WebSelectorOpts = {
+        all?: boolean;
+        inner?: boolean;
     };
 
     // wconfig.WidgetConfigType

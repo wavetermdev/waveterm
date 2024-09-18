@@ -114,11 +114,24 @@ if (globalThis.window != null) {
     globalThis["consumeGenerator"] = consumeGenerator;
 }
 
+function initElectronWshrpc(electronClient: WshClient, authKey: string) {
+    DefaultRouter = new WshRouter(new UpstreamWshRpcProxy());
+    const handleFn = (event: WSEventType) => {
+        DefaultRouter.recvRpcMessage(event.data);
+    };
+    globalWS = new WSControl(getWSServerEndpoint(), "electron", handleFn, authKey);
+    globalWS.connectNow("connectWshrpc");
+    DefaultRouter.registerRoute(electronClient.routeId, electronClient);
+    addWSReconnectHandler(() => {
+        DefaultRouter.reannounceRoutes();
+    });
+    addWSReconnectHandler(wpsReconnectHandler);
+}
+
 function initWshrpc(windowId: string): WSControl {
     DefaultRouter = new WshRouter(new UpstreamWshRpcProxy());
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
-        // handleIncomingRpcMessage(globalOpenRpcs, event);
     };
     globalWS = new WSControl(getWSServerEndpoint(), windowId, handleFn);
     globalWS.connectNow("connectWshrpc");
@@ -144,6 +157,7 @@ class UpstreamWshRpcProxy implements AbstractWshClient {
 
 export {
     DefaultRouter,
+    initElectronWshrpc,
     initWshrpc,
     sendRawRpcMessage,
     sendRpcCommand,

@@ -3,10 +3,22 @@
 
 import debug from "debug";
 import { sprintf } from "sprintf-js";
+import type { WebSocket as ElectronWebSocketType } from "ws";
+
+let ElectronWebSocket: typeof ElectronWebSocketType;
+const AuthKeyHeader = "X-AuthKey";
+
+if (typeof window === "undefined") {
+    try {
+        const WebSocket = require("ws") as typeof ElectronWebSocketType;
+        ElectronWebSocket = WebSocket;
+    } catch (e) {}
+}
 
 const dlog = debug("wave:ws");
 
-const MaxWebSocketSendSize = 1024 * 1024; // 1MB
+const WarnWebSocketSendSize = 1024 * 1024; // 1MB
+const MaxWebSocketSendSize = 5 * 1024 * 1024; // 5MB
 const reconnectHandlers: (() => void)[] = [];
 
 function addWSReconnectHandler(handler: () => void) {
@@ -23,7 +35,7 @@ function removeWSReconnectHandler(handler: () => void) {
 type WSEventCallback = (arg0: WSEventType) => void;
 
 class WSControl {
-    wsConn: any;
+    wsConn: WebSocket | ElectronWebSocketType;
     open: boolean;
     opening: boolean = false;
     reconnectTimes: number = 0;
@@ -35,12 +47,14 @@ class WSControl {
     wsLog: string[] = [];
     baseHostPort: string;
     lastReconnectTime: number = 0;
+    authKey: string = null; // used only by electron
 
-    constructor(baseHostPort: string, windowId: string, messageCallback: WSEventCallback) {
+    constructor(baseHostPort: string, windowId: string, messageCallback: WSEventCallback, authKey?: string) {
         this.baseHostPort = baseHostPort;
         this.messageCallback = messageCallback;
         this.windowId = windowId;
         this.open = false;
+        this.authKey = authKey;
         setInterval(this.sendPing.bind(this), 5000);
     }
 
@@ -51,7 +65,13 @@ class WSControl {
         this.lastReconnectTime = Date.now();
         dlog("try reconnect:", desc);
         this.opening = true;
-        this.wsConn = new WebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId);
+        if (ElectronWebSocket) {
+            this.wsConn = new ElectronWebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId, {
+                headers: { [AuthKeyHeader]: this.authKey },
+            });
+        } else {
+            this.wsConn = new WebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId);
+        }
         this.wsConn.onopen = this.onopen.bind(this);
         this.wsConn.onmessage = this.onmessage.bind(this);
         this.wsConn.onclose = this.onclose.bind(this);
@@ -171,6 +191,9 @@ class WSControl {
         if (byteSize > MaxWebSocketSendSize) {
             console.log("ws message too large", byteSize, data.wscommand, msg.substring(0, 100));
             return;
+        }
+        if (byteSize > WarnWebSocketSendSize) {
+            console.log("ws message large", byteSize, data.wscommand, msg.substring(0, 100));
         }
         this.wsConn.send(msg);
     }

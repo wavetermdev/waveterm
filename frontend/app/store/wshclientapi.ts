@@ -12,6 +12,11 @@ class RpcApiType {
         return client.wshRpcCall("authenticate", data, opts);
     }
 
+    // command "blockinfo" [call]
+    BlockInfoCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BlockInfoData> {
+        return client.wshRpcCall("blockinfo", data, opts);
+    }
+
     // command "connconnect" [call]
     ConnConnectCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connconnect", data, opts);
@@ -205,6 +210,11 @@ class RpcApiType {
     // command "test" [call]
     TestCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("test", data, opts);
+    }
+
+    // command "webselector" [call]
+    WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
+        return client.wshRpcCall("webselector", data, opts);
     }
 
 }

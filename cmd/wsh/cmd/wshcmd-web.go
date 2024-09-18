@@ -4,12 +4,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 var webCmd = &cobra.Command{
@@ -26,15 +28,16 @@ var webOpenCmd = &cobra.Command{
 }
 
 var webGetCmd = &cobra.Command{
-	Use:    "get [--inner] [--all] css-selector",
+	Use:    "get [--inner] [--all] [--json] blockid css-selector",
 	Short:  "get the html for a css selector",
-	Args:   cobra.ExactArgs(1),
+	Args:   cobra.ExactArgs(2),
 	Hidden: true,
 	RunE:   webGetRun,
 }
 
 var webGetInner bool
 var webGetAll bool
+var webGetJson bool
 var webOpenMagnified bool
 
 func init() {
@@ -42,11 +45,59 @@ func init() {
 	webCmd.AddCommand(webOpenCmd)
 	webGetCmd.Flags().BoolVarP(&webGetInner, "inner", "", false, "get inner html (instead of outer)")
 	webGetCmd.Flags().BoolVarP(&webGetAll, "all", "", false, "get all matches (querySelectorAll)")
+	webGetCmd.Flags().BoolVarP(&webGetJson, "json", "", false, "output as json")
 	webCmd.AddCommand(webGetCmd)
 	rootCmd.AddCommand(webCmd)
 }
 
 func webGetRun(cmd *cobra.Command, args []string) error {
+	oref := args[0]
+	if oref == "" {
+		return fmt.Errorf("blockid not specified")
+	}
+	err := validateEasyORef(oref)
+	if err != nil {
+		return err
+	}
+	fullORef, err := resolveSimpleId(oref)
+	if err != nil {
+		return fmt.Errorf("resolving blockid: %w", err)
+	}
+	blockInfo, err := wshclient.BlockInfoCommand(RpcClient, fullORef.OID, nil)
+	if err != nil {
+		return fmt.Errorf("getting block info: %w", err)
+	}
+	if blockInfo.Meta.GetString(waveobj.MetaKey_View, "") != "web" {
+		return fmt.Errorf("block %s is not a web block", fullORef.OID)
+	}
+	data := wshrpc.CommandWebSelectorData{
+		WindowId: blockInfo.WindowId,
+		BlockId:  fullORef.OID,
+		TabId:    blockInfo.TabId,
+		Selector: args[1],
+		Opts: &wshrpc.WebSelectorOpts{
+			Inner: webGetInner,
+			All:   webGetAll,
+		},
+	}
+	output, err := wshclient.WebSelectorCommand(RpcClient, data, &wshrpc.RpcOpts{
+		Route:   wshutil.ElectronRoute,
+		Timeout: 5000,
+	})
+	if err != nil {
+		return err
+	}
+	if webGetJson {
+		barr, err := json.MarshalIndent(output, "", "  ")
+		if err != nil {
+			return fmt.Errorf("json encoding: %w", err)
+		}
+		WriteStdout("%s\n", string(barr))
+	} else {
+		for _, item := range output {
+			WriteStdout("%s\n", item)
+		}
+	}
 	return nil
 }
 

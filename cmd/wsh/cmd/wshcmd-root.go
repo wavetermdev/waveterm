@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -177,7 +176,6 @@ func Execute() {
 	}()
 	err := rootCmd.Execute()
 	if err != nil {
-		log.Printf("[error] %v\n", err)
 		wshutil.DoShutdown("", 1, true)
 		return
 	}
