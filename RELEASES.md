@@ -3,9 +3,14 @@
 ## Step-by-step guide
 
 1. Go to the [Actions tab](https://github.com/wavetermdev/thenextwave/actions) and select "Bump Version" from the left sidebar.
-2. Click on "Run workflow". You will see two options:
-   - "SemVer Bump": This defaults to `none`. Adjust this if you want to increment the version number according to semantic versioning rules (`patch`, `minor`, `major`).
-   - "Is Prerelease": This defaults to `true`. If set to `true`, a `-beta.X` version will be appended to the end of the version. If one is already present and the base SemVer is not being incremented, the `-beta` version will be incremented (i.e. `0.1.13-beta.0` to `0.1.13-beta.1`).
+2. Click on "Run workflow".
+   - You will see two options:
+     - "SemVer Bump": This defaults to `none`. Adjust this if you want to increment the version number according to semantic versioning rules (`patch`, `minor`, `major`).
+     - "Is Prerelease": This defaults to `true`. If set to `true`, a `-beta.X` version will be appended to the end of the version. If one is already present and the base SemVer is not being incremented, the `-beta` version will be incremented (i.e. `0.1.13-beta.0` to `0.1.13-beta.1`). If set to `false`, the `-beta.X` suffix will be removed from the version number. If one was not already present, it will remain absent.
+   - Some examples:
+     - If you are creating a new prerelease following an official release, you would set "SemVer Bump" to to the expected version bump (`patch`, `minor`, or `major`) and "Is Prerelease" to `true`.
+     - If you are bumping an existing prerelease to a new prerelease under the same version, you would set "SemVer Bump" to `none` and "Is Prerelease" to `true`.
+     - If you are promoting a prerelease version to an official release, you would set "SemVer Bump" to `none` and "Is Prerelease" to `false`.
 3. After "Bump Version" a "Build Helper" run will kick off automatically for the new version. When this completes, it will generate a draft GitHub Release with all the built artifacts.
 4. Review the artifacts in the release and test them locally.
 5. When you are confident that the build is good, edit the GitHub Release to add a changelog and release summary and publish the release.

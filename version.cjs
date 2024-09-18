@@ -8,7 +8,14 @@
  *      - `minor`: Bumps the minor version.
  *      - `major`: Bumps the major version.
  *      - '1', 'true': Bumps the prerelease version.
- * If two arguments are given, the first argument must be either `none`, `patch`, `minor`, or `major`. The second argument must be `1` or `true` to bump the prerelease version.
+ * If two arguments are given, the following are valid inputs for the first argument:
+ *      - `none`: No-op.
+ *      - `patch`: Bumps the patch version.
+ *      - `minor`: Bumps the minor version.
+ *      - `major`: Bumps the major version.
+ * The following are valid inputs for the second argument:
+ *      - `0`, 'false': The release is not a prerelease, will remove any prerelease identifier from the version, if one was present.
+ *      - '1', 'true': The release is a prerelease (any value other than `0` or `false` will be interpreted as `true`).
  */
 
 const path = require("path");
@@ -23,11 +30,21 @@ if (typeof require !== "undefined" && require.main === module) {
         const fs = require("fs");
         const semver = require("semver");
 
-        const action = process.argv[2];
+        let action = process.argv[2];
+
+        // If prerelease argument is not explicitly set, mark it as undefined.
         const isPrerelease =
             process.argv.length > 3
-                ? process.argv[3] === "true" || process.argv[3] === "1"
-                : action === "true" || action === "1";
+                ? process.argv[3] !== "false" && process.argv[3] !== "0"
+                : action === "true" || action === "1"
+                  ? true
+                  : undefined;
+
+        // This will remove the prerelease version string (i.e. 0.1.13-beta.1 -> 0.1.13) if the arguments are `none 0` and the current version is a prerelease.
+        if (action === "none" && isPrerelease === false && semver.prerelease(VERSION)) {
+            action = "patch";
+        }
+
         let newVersion = packageJson.version;
         switch (action) {
             case "major":
