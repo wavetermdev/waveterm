@@ -205,7 +205,7 @@ const Tab = React.memo(
                         >
                             {tabData?.name}
                         </div>
-                        <Button className="grey ghost close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
+                        <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
                             <i className="fa fa-solid fa-xmark" />
                         </Button>
                     </div>

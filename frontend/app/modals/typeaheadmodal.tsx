@@ -66,7 +66,7 @@ const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(
 );
 
 interface TypeAheadModalProps {
-    anchorRef: React.RefObject<HTMLDivElement>;
+    anchorRef: React.RefObject<HTMLElement>;
     blockRef?: React.RefObject<HTMLDivElement>;
     suggestions?: SuggestionsType[];
     label?: string;

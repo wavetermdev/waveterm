@@ -117,7 +117,7 @@ const ModalPage1 = () => {
             </div>
             <footer className="unselectable">
                 <div className="button-wrapper">
-                    <Button className="font-weight-600 primary" onClick={acceptTos}>
+                    <Button className="font-weight-600" onClick={acceptTos}>
                         Continue
                     </Button>
                 </div>
@@ -146,7 +146,7 @@ const ModalPage2 = () => {
             </div>
             <footer className="unselectable">
                 <div className="button-wrapper">
-                    <Button className="font-weight-600 primary" onClick={handleGetStarted}>
+                    <Button className="font-weight-600" onClick={handleGetStarted}>
                         Get Started
                     </Button>
                 </div>

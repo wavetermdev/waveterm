@@ -10,7 +10,6 @@ import "./modal.less";
 
 interface ModalProps {
     children?: React.ReactNode;
-    description?: string;
     okLabel?: string;
     cancelLabel?: string;
     className?: string;
@@ -21,20 +20,7 @@ interface ModalProps {
 }
 
 const Modal = forwardRef<HTMLDivElement, ModalProps>(
-    (
-        {
-            children,
-            className,
-            description,
-            cancelLabel,
-            okLabel,
-            onCancel,
-            onOk,
-            onClose,
-            onClickBackdrop,
-        }: ModalProps,
-        ref
-    ) => {
+    ({ children, className, cancelLabel, okLabel, onCancel, onOk, onClose, onClickBackdrop }: ModalProps, ref) => {
         const renderBackdrop = (onClick) => <div className="modal-backdrop" onClick={onClick}></div>;
 
         const renderFooter = () => {

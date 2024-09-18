@@ -22,46 +22,45 @@
     user-select: none;
     font-size: 14px;
     font-weight: normal;
-    opacity: 0.8;
-
-    &:hover {
-        opacity: 1;
-    }
+    transition: all 0.3s ease;
 
     &.solid {
         &.green {
-            color: var(--button-green-text-color);
-            background-color: var(--button-green-bg);
-            border: 1px solid var(--button-green-border-color);
+            color: #000000;
+            background-color: var(--accent-color);
+            border: 1px solid #29f200;
             &:hover {
-                color: var(--button-green-text-color);
+                color: #000000;
+                background-color: #29f200;
             }
         }
 
         &.grey {
-            background-color: var(--button-grey-bg);
-            border: 1px solid var(--button-grey-border-color);
-            color: var(--button-grey-text-color);
+            background-color: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--main-text-color);
             &:hover {
-                color: var(--button-grey-text-color);
+                color: var(--main-text-color);
+                background-color: rgba(255, 255, 255, 0.09);
             }
         }
 
         &.red {
-            background-color: var(--button-red-bg);
-            border: 1px solid var(--button-red-border-color);
-            color: var(--button-red-text-color);
+            background-color: #cc0000;
+            border: 1px solid #fc3131;
+            color: var(--main-text-color);
             &:hover {
-                color: var(--button-red-text-color);
+                background-color: #f93939;
             }
         }
 
         &.yellow {
-            color: var(--button-yellow-text-color);
-            background-color: var(--button-yellow-bg);
-            border: 1px solid var(--button-yellow-border-color);
+            color: #000000;
+            background-color: #c4a000;
+            border: 1px solid #fce94f;
             &:hover {
-                color: var(--button-yellow-text-color);
+                color: #000000;
+                background-color: #fce94f;
             }
         }
     }
@@ -69,34 +68,38 @@
     &.outlined {
         background-color: transparent;
         &.green {
-            color: var(--button-green-bg);
-            border: 1px solid var(--button-green-bg);
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
             &:hover {
-                color: var(--button-green-bg);
+                color: #29f200;
+                border: 1px solid #29f200;
             }
         }
 
         &.grey {
-            border: 1px solid var(--button-grey-border-color);
-            color: var(--button-grey-text-color);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.6);
             &:hover {
-                color: var(--button-grey-text-color);
+                color: var(--main-text-color);
+                border: 1px solid var(--main-text-color);
             }
         }
 
         &.red {
-            border: 1px solid var(--button-red-bg);
-            color: var(--button-red-bg);
+            border: 1px solid #cc0000;
+            color: #cc0000;
             &:hover {
-                color: var(--button-red-bg);
+                color: #ff3c3c;
+                border: 1px solid #ff3c3c;
             }
         }
 
         &.yellow {
-            color: var(--button-yellow-bg);
-            border: 1px solid var(--button-yellow-bg);
+            color: #c4a000;
+            border: 1px solid #c4a000;
             &:hover {
-                color: var(--button-yellow-bg);
+                color: #fce94f;
+                border: 1px solid #fce94f;
             }
         }
     }
@@ -110,33 +113,33 @@
 
         &.green {
             border: none;
-            color: var(--button-green-bg);
+            color: var(--accent-color);
             &:hover {
-                color: var(--button-green-bg);
+                color: #29f200;
             }
         }
 
         &.grey {
             border: none;
-            color: var(--button-grey-text-color);
+            color: rgba(255, 255, 255, 0.6);
             &:hover {
-                color: var(--button-grey-text-color);
+                color: var(--main-text-color);
             }
         }
 
         &.red {
             border: none;
-            color: var(--button-red-bg);
+            color: #cc0000;
             &:hover {
-                color: var(--button-red-bg);
+                color: #fc3131;
             }
         }
 
         &.yellow {
             border: none;
-            color: var(--button-yellow-bg);
+            color: #c4a000;
             &:hover {
-                color: var(--button-yellow-bg);
+                color: #fce94f;
             }
         }
     }
@@ -148,12 +151,11 @@
 
     &:focus,
     &.focus {
-        outline: 1px solid var(--button-focus-border-color);
+        outline: 1px solid var(--success-color);
         outline-offset: 2px;
     }
 
     // customs styles here
-
     &.border-radius-2 {
         border-radius: 4px;
     }
@@ -176,6 +178,16 @@
 
     &.border-radius-10 {
         border-radius: 10px;
+    }
+
+    &.vertical-padding-0 {
+        padding-top: 0px;
+        padding-bottom: 0px;
+    }
+
+    &.vertical-padding-1 {
+        padding-top: 1px;
+        padding-bottom: 1px;
     }
 
     &.vertical-padding-2 {
@@ -221,6 +233,16 @@
     &.vertical-padding-10 {
         padding-top: 10px;
         padding-bottom: 10px;
+    }
+
+    &.horizontal-padding-0 {
+        padding-left: 0px;
+        padding-right: 0px;
+    }
+
+    &.horizontal-padding-1 {
+        padding-left: 1px;
+        padding-right: 1px;
     }
 
     &.horizontal-padding-2 {
