@@ -50,10 +50,12 @@ export class Updater {
 
         autoUpdater.on("update-available", () => {
             console.log("update-available; downloading...");
+            this.status = "downloading";
         });
 
         autoUpdater.on("update-not-available", () => {
             console.log("update-not-available");
+            this.status = "up-to-date";
         });
 
         autoUpdater.on("update-downloaded", (event) => {

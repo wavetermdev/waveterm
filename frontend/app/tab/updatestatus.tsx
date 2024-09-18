@@ -7,7 +7,7 @@ import "./updatestatus.less";
 const UpdateStatusBannerComponent = ({ buttonRef }: { buttonRef: React.RefObject<HTMLButtonElement> }) => {
     const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
     function onClick() {
-        if (appUpdateStatus === "ready") getApi().installAppUpdate();
+        getApi().installAppUpdate();
     }
 
     let buttonText: string;
