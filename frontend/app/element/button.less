@@ -5,11 +5,9 @@
     // override default button appearance
     border: 1px solid transparent;
     outline: 1px solid transparent;
-
-    background: var(--accent-color);
     border: none;
+
     cursor: pointer;
-    outline: inherit;
     display: flex;
     padding-top: 8px;
     padding-bottom: 8px;
@@ -23,86 +21,141 @@
     white-space: nowrap;
     user-select: none;
     font-size: 14px;
-    color: var(--button-text-color);
     font-weight: normal;
+    transition: all 0.3s ease;
 
-    i {
-        fill: var(--main-text-color);
-    }
+    &.solid {
+        &.green {
+            color: #000000;
+            background-color: var(--accent-color);
+            border: 1px solid #29f200;
+            &:hover {
+                color: #000000;
+                background-color: #29f200;
+            }
+        }
 
-    &.primary,
-    &.secondary {
-        background: var(--accent-color);
-        &:hover {
+        &.grey {
+            background-color: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--main-text-color);
+            &:hover {
+                color: var(--main-text-color);
+                background-color: rgba(255, 255, 255, 0.09);
+            }
         }
 
-        i {
-            fill: var(--main-text-color);
+        &.red {
+            background-color: #cc0000;
+            border: 1px solid #fc3131;
+            color: var(--main-text-color);
+            &:hover {
+                background-color: #f93939;
+            }
         }
-    }
 
-    &.primary.danger {
-        background: var(--error-color);
-    }
-
-    &.primary.warning {
-        background: #e6ba1e;
-    }
-
-    &.primary.ghost {
-        background: none;
-        border: 1px solid var(--accent-color);
-
-        i {
-            fill: var(--accent-color);
+        &.yellow {
+            color: #000000;
+            background-color: #c4a000;
+            border: 1px solid #fce94f;
+            &:hover {
+                color: #000000;
+                background-color: #fce94f;
+            }
         }
-    }
-
-    &.primary.ghost.danger {
-        i {
-            fill: var(--app-error-color);
-        }
-    }
-
-    &.secondary,
-    &.link-button {
-        background: var(--highlight-bg-color);
-    }
-
-    &.secondary.ghost {
-        background: none;
-        border: 1px solid var(--secondary-text-color);
-        color: var(--secondary-text-color);
-
-        &:hover {
-            border: 1px solid var(--main-text-color);
-            color: 1px solid var(--main-text-color);
-        }
-    }
-
-    &.secondary.danger {
-        color: var(--error-color);
     }
 
     &.outlined {
-        background: none;
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        background-color: transparent;
+        &.green {
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            &:hover {
+                color: #29f200;
+                border: 1px solid #29f200;
+            }
+        }
+
+        &.grey {
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.6);
+            &:hover {
+                color: var(--main-text-color);
+                border: 1px solid var(--main-text-color);
+            }
+        }
+
+        &.red {
+            border: 1px solid #cc0000;
+            color: #cc0000;
+            &:hover {
+                color: #ff3c3c;
+                border: 1px solid #ff3c3c;
+            }
+        }
+
+        &.yellow {
+            color: #c4a000;
+            border: 1px solid #c4a000;
+            &:hover {
+                color: #fce94f;
+                border: 1px solid #fce94f;
+            }
+        }
+    }
+
+    &.ghost {
+        background-color: transparent;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        padding-left: 8px;
+        padding-right: 8px;
+
+        &.green {
+            border: none;
+            color: var(--accent-color);
+            &:hover {
+                color: #29f200;
+            }
+        }
+
+        &.grey {
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            &:hover {
+                color: var(--main-text-color);
+            }
+        }
+
+        &.red {
+            border: none;
+            color: #cc0000;
+            &:hover {
+                color: #fc3131;
+            }
+        }
+
+        &.yellow {
+            border: none;
+            color: #c4a000;
+            &:hover {
+                color: #fce94f;
+            }
+        }
     }
 
     &.disabled {
+        cursor: default;
         opacity: 0.5;
     }
 
     &:focus,
     &.focus {
-        outline: 1px solid var(--button-focus-border-color);
+        outline: 1px solid var(--success-color);
         outline-offset: 2px;
     }
 
-    /* 
-	 *	customs styles here
-	 */
+    // customs styles here
     &.border-radius-2 {
         border-radius: 4px;
     }
@@ -125,6 +178,16 @@
 
     &.border-radius-10 {
         border-radius: 10px;
+    }
+
+    &.vertical-padding-0 {
+        padding-top: 0px;
+        padding-bottom: 0px;
+    }
+
+    &.vertical-padding-1 {
+        padding-top: 1px;
+        padding-bottom: 1px;
     }
 
     &.vertical-padding-2 {
@@ -170,6 +233,16 @@
     &.vertical-padding-10 {
         padding-top: 10px;
         padding-bottom: 10px;
+    }
+
+    &.horizontal-padding-0 {
+        padding-left: 0px;
+        padding-right: 0px;
+    }
+
+    &.horizontal-padding-1 {
+        padding-left: 1px;
+        padding-right: 1px;
     }
 
     &.horizontal-padding-2 {

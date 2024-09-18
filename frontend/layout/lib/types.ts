@@ -69,6 +69,7 @@ export enum LayoutTreeActionType {
     DeleteNode = "delete",
     FocusNode = "focus",
     MagnifyNodeToggle = "magnify",
+    ClearTree = "clear",
 }
 
 /**
@@ -234,6 +235,13 @@ export interface LayoutTreeMagnifyNodeToggleAction extends LayoutTreeAction {
      * The id of the node to maximize;
      */
     nodeId: string;
+}
+
+/**
+ * Action for clearing all nodes from the layout tree.
+ */
+export interface LayoutTreeClearTreeAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.ClearTree;
 }
 
 /**

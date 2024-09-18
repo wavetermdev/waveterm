@@ -526,3 +526,24 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
 	return conncontroller.GetConnectionsList()
 }
+
+func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
+	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting block: %w", err)
+	}
+	tabId, err := wstore.DBFindTabForBlockId(ctx, blockId)
+	if err != nil {
+		return nil, fmt.Errorf("error finding tab for block: %w", err)
+	}
+	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
+	if err != nil {
+		return nil, fmt.Errorf("error finding window for tab: %w", err)
+	}
+	return &wshrpc.BlockInfoData{
+		BlockId:  blockId,
+		TabId:    tabId,
+		WindowId: windowId,
+		Meta:     blockData.Meta,
+	}, nil
+}

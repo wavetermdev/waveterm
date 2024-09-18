@@ -485,8 +485,8 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     if (appUpdateStatus === "ready") {
         updateAvailableLabel = (
             <Button
-                forwardedRef={updateStatusButtonRef}
-                className="update-available-button primary"
+                ref={updateStatusButtonRef}
+                className="update-available-button"
                 title="Click to Install Update"
                 onClick={onUpdateAvailableClick}
             >

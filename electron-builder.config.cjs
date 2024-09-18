@@ -12,6 +12,7 @@ const config = {
     productName: pkg.productName,
     executableName: pkg.name,
     artifactName: "${productName}-${platform}-${arch}-${version}.${ext}",
+    generateUpdatesFilesForAllChannels: true,
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,
@@ -48,11 +49,6 @@ const config = {
         icon: "build/icons.icns",
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
-        notarize: process.env.APPLE_TEAM_ID
-            ? {
-                  teamId: process.env.APPLE_TEAM_ID,
-              }
-            : false,
         mergeASARs: true,
         singleArchFiles: "dist/bin/wavesrv.*",
     },

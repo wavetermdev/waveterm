@@ -24,8 +24,8 @@ interface LinkButtonProps {
 
 const LinkButton = ({ leftIcon, rightIcon, children, className, ...rest }: LinkButtonProps) => {
     return (
-        <a {...rest} className="button link-button">
-            <span className={clsx("button-inner", className)}>
+        <a {...rest} className={clsx("link-button", className)}>
+            <span className="button-inner">
                 {leftIcon && <span className="icon-left">{leftIcon}</span>}
                 {children}
                 {rightIcon && <span className="icon-right">{rightIcon}</span>}

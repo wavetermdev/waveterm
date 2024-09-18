@@ -41,7 +41,7 @@ function getWaveHomeDir() {
 }
 
 function getElectronAppBasePath(): string {
-    return path.dirname(__dirname);
+    return path.dirname(import.meta.dirname);
 }
 
 function getGoAppBasePath(): string {

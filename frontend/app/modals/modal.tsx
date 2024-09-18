@@ -10,7 +10,6 @@ import "./modal.less";
 
 interface ModalProps {
     children?: React.ReactNode;
-    description?: string;
     okLabel?: string;
     cancelLabel?: string;
     className?: string;
@@ -21,20 +20,7 @@ interface ModalProps {
 }
 
 const Modal = forwardRef<HTMLDivElement, ModalProps>(
-    (
-        {
-            children,
-            className,
-            description,
-            cancelLabel,
-            okLabel,
-            onCancel,
-            onOk,
-            onClose,
-            onClickBackdrop,
-        }: ModalProps,
-        ref
-    ) => {
+    ({ children, className, cancelLabel, okLabel, onCancel, onOk, onClose, onClickBackdrop }: ModalProps, ref) => {
         const renderBackdrop = (onClick) => <div className="modal-backdrop" onClick={onClick}></div>;
 
         const renderFooter = () => {
@@ -45,7 +31,7 @@ const Modal = forwardRef<HTMLDivElement, ModalProps>(
             <div className="modal-wrapper">
                 {renderBackdrop(onClickBackdrop)}
                 <div ref={ref} className={clsx(`modal`, className)}>
-                    <Button className="secondary ghost modal-close-btn" onClick={onClose} title="Close (ESC)">
+                    <Button className="grey ghost modal-close-btn" onClick={onClose} title="Close (ESC)">
                         <i className="fa-sharp fa-solid fa-xmark"></i>
                     </Button>
                     <div className="content-wrapper">
@@ -81,15 +67,11 @@ const ModalFooter = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }:
     return (
         <footer className="modal-footer">
             {onCancel && (
-                <Button className="secondary ghost" onClick={onCancel}>
+                <Button className="grey ghost" onClick={onCancel}>
                     {cancelLabel}
                 </Button>
             )}
-            {onOk && (
-                <Button className="primary" onClick={onOk}>
-                    {okLabel}
-                </Button>
-            )}
+            {onOk && <Button onClick={onOk}>{okLabel}</Button>}
         </footer>
     );
 };

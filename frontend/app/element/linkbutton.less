@@ -1,12 +1,21 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.button {
-    &.link-button {
-        text-decoration: none;
+&.link-button {
+    text-decoration: none;
 
-        .button-inner {
-            padding: 8px 12px;
+    .button-inner {
+        display: flex;
+        border-radius: 6px;
+        padding: 8px 12px;
+        background-color: var(--button-grey-bg);
+        border: 1px solid var(--button-grey-border-color);
+        color: var(--button-grey-text-color);
+        i {
+            margin-right: 4px;
+        }
+        &:hover {
+            color: var(--button-grey-text-color);
         }
     }
 }

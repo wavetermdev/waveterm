@@ -64,6 +64,7 @@ type SettingsType struct {
 	AutoUpdateEnabled       bool    `json:"autoupdate:enabled,omitempty"`
 	AutoUpdateIntervalMs    float64 `json:"autoupdate:intervalms,omitempty"`
 	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
+	AutoUpdateChannel       string  `json:"autoupdate:channel,omitempty"`
 
 	WidgetClear    bool `json:"widget:*,omitempty"`
 	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
@@ -78,9 +79,6 @@ type SettingsType struct {
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
-
-	TipsClear bool `json:"tips:*,omitempty"`
-	TipsShow  bool `json:"tips:show,omitempty"`
 }
 
 type ConfigError struct {

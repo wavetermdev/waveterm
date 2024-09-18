@@ -35,7 +35,7 @@
         }
 
         .name {
-            color: white;
+            color: var(--main-text-color);
         }
     }
 
@@ -70,13 +70,8 @@
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        opacity: 0.5;
         z-index: var(--zindex-tab-name);
         padding: 1px 2px;
-
-        &:hover {
-            opacity: 1;
-        }
     }
 
     &:hover .close {

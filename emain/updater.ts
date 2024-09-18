@@ -29,6 +29,12 @@ export class Updater {
 
         autoUpdater.autoInstallOnAppQuit = settings["autoupdate:installonquit"];
 
+        // Only update the release channel if it's specified, otherwise use the one configured in the artifact.
+        const channel = settings["autoupdate:channel"];
+        if (channel) {
+            autoUpdater.channel = channel;
+        }
+
         autoUpdater.removeAllListeners();
 
         autoUpdater.on("error", (err) => {

@@ -9,7 +9,6 @@ import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
 import { atoms, createBlock, getConnStatusAtom, globalStore, refocusNode } from "@/store/global";
-import { modalsModel } from "@/store/modalmodel";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -289,9 +288,9 @@ export class PreviewModel implements ViewModel {
                     onClick: () => this.updateOpenFileModalAndError(true),
                 },
             ];
-            let saveClassName = "secondary";
+            let saveClassName = "grey";
             if (get(this.newFileContent) !== null) {
-                saveClassName = "primary";
+                saveClassName = "green";
             }
             if (isCeView) {
                 viewTextChildren.push({
@@ -307,7 +306,7 @@ export class PreviewModel implements ViewModel {
                         elemtype: "textbutton",
                         text: "Preview",
                         className:
-                            "secondary border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
+                            "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
                         onClick: () => this.setEditMode(false),
                     });
                 }
@@ -316,7 +315,7 @@ export class PreviewModel implements ViewModel {
                     elemtype: "textbutton",
                     text: "Edit",
                     className:
-                        "secondary border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
+                        "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
                     onClick: () => this.setEditMode(true),
                 });
             }
@@ -353,34 +352,7 @@ export class PreviewModel implements ViewModel {
             if (mimeType == "directory") {
                 const showHiddenFiles = get(this.showHiddenFiles);
                 const settings = get(atoms.settingsAtom);
-                let tipIcon: IconButtonDecl[];
-                if (settings["tips:show"]) {
-                    tipIcon = [
-                        {
-                            elemtype: "iconbutton",
-                            icon: "lightbulb",
-                            iconColor: "var(--warning-color)",
-                            className: "bulb",
-                            click: () => {
-                                const tips: UserInputRequest = {
-                                    requestid: "",
-                                    querytext: previewTipText,
-                                    responsetype: "confirm",
-                                    title: "Preview Tips",
-                                    markdown: true,
-                                    timeoutms: 0,
-                                    checkboxmsg: "",
-                                    publictext: true,
-                                };
-                                modalsModel.pushModal("TipsModal", tips);
-                            },
-                        },
-                    ];
-                } else {
-                    tipIcon = [];
-                }
                 return [
-                    ...tipIcon,
                     {
                         elemtype: "iconbutton",
                         icon: showHiddenFiles ? "eye" : "eye-slash",
@@ -524,7 +496,7 @@ export class PreviewModel implements ViewModel {
             }
             return { specializedView: "markdown" };
         }
-        if (isTextFile(mimeType)) {
+        if (isTextFile(mimeType) || fileInfo.size == 0) {
             return { specializedView: "codeedit" };
         }
         return { errorStr: `Preview (${mimeType})` };

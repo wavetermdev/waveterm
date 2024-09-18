@@ -24,6 +24,12 @@ type WaveEventUnsubscribe = {
 const fileSubjects = new Map<string, SubjectWithRef<WSFileEventData>>();
 const waveEventSubjects = new Map<string, WaveEventSubjectContainer[]>();
 
+function wpsReconnectHandler() {
+    for (const eventType of waveEventSubjects.keys()) {
+        updateWaveEventSub(eventType);
+    }
+}
+
 function makeWaveReSubCommand(eventType: string): RpcMessage {
     let subjects = waveEventSubjects.get(eventType);
     if (subjects == null) {
@@ -134,4 +140,4 @@ function handleWaveEvent(event: WaveEvent) {
     }
 }
 
-export { getFileSubject, handleWaveEvent, waveEventSubscribe, waveEventUnsubscribe };
+export { getFileSubject, handleWaveEvent, waveEventSubscribe, waveEventUnsubscribe, wpsReconnectHandler };

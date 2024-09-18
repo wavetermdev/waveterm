@@ -32,6 +32,7 @@ const (
 	ConfigKey_AutoUpdateEnabled              = "autoupdate:enabled"
 	ConfigKey_AutoUpdateIntervalMs           = "autoupdate:intervalms"
 	ConfigKey_AutoUpdateInstallOnQuit        = "autoupdate:installonquit"
+	ConfigKey_AutoUpdateChannel              = "autoupdate:channel"
 
 	ConfigKey_WidgetClear                    = "widget:*"
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"
@@ -46,8 +47,5 @@ const (
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
-
-	ConfigKey_TipsClear                      = "tips:*"
-	ConfigKey_TipsShow                       = "tips:show"
 )
 

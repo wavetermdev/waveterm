@@ -319,7 +319,7 @@ const ConnStatusOverlay = React.memo(
             showReconnect = false;
         }
         let reconDisplay = null;
-        let reconClassName = "outlined";
+        let reconClassName = "outlined grey";
         if (width && width < 350) {
             reconDisplay = <i className="fa-sharp fa-solid fa-rotate-right"></i>;
             reconClassName = clsx(reconClassName, "font-size-12 vertical-padding-5 horizontal-padding-6");
@@ -348,9 +348,6 @@ const ConnStatusOverlay = React.memo(
                             <Button className={reconClassName} onClick={handleTryReconnect}>
                                 {reconDisplay}
                             </Button>
-                            {/* <Button className="secondary ghost vertical-padding-5 horizontal-padding-6">
-                                <i className="fa-sharp fa-regular fa-xmark-large"></i>
-                            </Button> */}
                         </div>
                     ) : null}
                 </div>
