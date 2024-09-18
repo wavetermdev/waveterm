@@ -17,7 +17,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/mattn/go-sqlite3 v1.14.16
-	github.com/sashabaranov/go-openai v1.9.0
+	github.com/sashabaranov/go-openai v1.30.0
 	github.com/sawka/txwrap v0.1.2
 	github.com/wavetermdev/waveterm/waveshell v0.0.0
 	golang.org/x/crypto v0.24.0
