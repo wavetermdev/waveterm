@@ -88,7 +88,7 @@ const config = {
     },
     publish: {
         provider: "generic",
-        url: "https://dl.waveterm.dev/releases",
+        url: "https://dl.waveterm.dev/releases-legacy",
     },
 };
 

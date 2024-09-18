@@ -4,18 +4,18 @@
         "name": "Command Line Inc",
         "email": "info@commandline.dev"
     },
-    "productName": "Wave",
+    "productName": "WaveLegacy",
     "description": "An Open-Source, AI-Native, Terminal Built for Seamless Workflows",
-    "version": "0.7.6",
+    "version": "0.7.7",
     "main": "dist/emain.js",
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
         "url": "https://github.com/wavetermdev/waveterm"
     },
-    "homepage": "https://waveterm.dev",
+    "homepage": "https://legacy.waveterm.dev",
     "build": {
-        "appId": "dev.commandline.waveterm"
+        "appId": "dev.commandline.wavelegacy"
     },
     "dependencies": {
         "@lexical/react": "^0.17.0",

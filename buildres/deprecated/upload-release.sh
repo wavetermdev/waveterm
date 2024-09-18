@@ -7,7 +7,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BUILDS_DIR=$SCRIPT_DIR/builds
 TEMP2_DIR=$SCRIPT_DIR/temp2
 
-AUTOUPDATE_RELEASE_PATH="dl.waveterm.dev/releases"
+AUTOUPDATE_RELEASE_PATH="dl.waveterm.dev/releases-legacy"
 
 # Copy the builds to the temp2 directory
 echo "Copying builds to temp2"

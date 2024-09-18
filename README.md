@@ -7,6 +7,10 @@
   <br/>
 </p>
 
+# Wave Legacy
+
+This branch is for the legacy v0.7.7 version of Wave.  For the new Wave v8+ code, please use the main branch.
+
 # Wave Terminal
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)

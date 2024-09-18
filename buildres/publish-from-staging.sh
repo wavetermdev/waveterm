@@ -10,7 +10,7 @@ if [ -z "$VERSION" ]; then
 fi
 
 ORIGIN="waveterm-github-artifacts/staging/$VERSION/"
-DESTINATION="dl.waveterm.dev/releases/"
+DESTINATION="dl.waveterm.dev/releases-legacy/"
 
 OUTPUT=$(aws s3 cp s3://$ORIGIN s3://$DESTINATION --recursive --profile $AWS_PROFILE)
 
