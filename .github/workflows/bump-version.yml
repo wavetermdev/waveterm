@@ -3,7 +3,7 @@
 # For more information, see this doc: https://github.com/Nautilus-Cyberneering/pygithub/blob/main/docs/how_to_sign_automatic_commits_in_github_actions.md
 
 name: Bump Version
-run-name: "branch: ${{ github.ref_name }}; version: ${{ inputs.bump }}; prerelease: ${{ inputs.is-prerelease }}"
+run-name: "branch: ${{ github.ref_name }}; semver-bump: ${{ inputs.bump }}; prerelease: ${{ inputs.is-prerelease }}"
 on:
     workflow_dispatch:
         inputs:

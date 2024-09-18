@@ -14,6 +14,7 @@ bin/
 *~
 out/
 make/
+artifacts/
 
 # Yarn Modern
 .pnp.*

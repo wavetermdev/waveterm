@@ -3,7 +3,7 @@
 # For more information on the Windows Code Signing, see https://docs.digicert.com/en/digicert-keylocker/ci-cd-integrations/plugins/github-custom-action-for-keypair-signing.html and https://docs.digicert.com/en/digicert-keylocker/signing-tools/sign-authenticode-with-electron-builder-using-ksp-integration.html
 
 name: Build Helper
-run-name: Version ${{ github.ref_name }}
+run-name: Build ${{ github.ref_name }}
 on:
     push:
         tags:
@@ -13,6 +13,8 @@ env:
     NODE_VERSION: "22.5.1"
 jobs:
     runbuild:
+        permissions:
+            contents: write
         outputs:
             version: ${{ steps.set-version.outputs.WAVETERM_VERSION }}
         strategy:
@@ -123,8 +125,27 @@ jobs:
                   CSC_KEY_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
               shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
             - name: Upload to S3 staging
-              run: aws s3 cp make/ s3://waveterm-github-artifacts/staging-w2/${{ steps.set-version.outputs.WAVETERM_VERSION }}/ --recursive --exclude "*/*" --exclude "builder-*.yml"
+              run: task artifacts:upload
               env:
-                  AWS_ACCESS_KEY_ID: "${{ secrets.S3_KEY_ID }}"
-                  AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_KEY_SECRET }}"
+                  AWS_ACCESS_KEY_ID: "${{ secrets.ARTIFACTS_KEY_ID }}"
+                  AWS_SECRET_ACCESS_KEY: "${{ secrets.ARTIFACTS_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2
+
+            - name: Create draft release
+              uses: softprops/action-gh-release@v2
+              with:
+                  prerelease: ${{ contains(github.ref_name, '-beta') }}
+                  name: Wave Terminal ${{ github.ref_name }} Release
+                  generate_release_notes: true
+                  draft: true
+                  files: |
+                      make/*.zip
+                      make/*.dmg
+                      make/*.exe
+                      make/*.msi
+                      make/*.rpm
+                      make/*.deb
+                      make/*.pacman
+                      make/*.snap
+                      make/*.flatpak
+                      make/*.AppImage
