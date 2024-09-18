@@ -190,7 +190,7 @@ func RunCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, promp
 				pk := packet.MakeOpenAIPacket()
 				pk.Index = choice.Index
 				pk.Text = choice.Delta.Content
-				pk.FinishReason = choice.FinishReason
+				pk.FinishReason = string(choice.FinishReason)
 				rtn <- pk
 			}
 		}
@@ -209,7 +209,7 @@ func marshalResponse(resp openaiapi.ChatCompletionResponse) []*packet.OpenAIPack
 		choicePk := packet.MakeOpenAIPacket()
 		choicePk.Index = choice.Index
 		choicePk.Text = choice.Message.Content
-		choicePk.FinishReason = choice.FinishReason
+		choicePk.FinishReason = string(choice.FinishReason)
 		rtn = append(rtn, choicePk)
 	}
 	return rtn

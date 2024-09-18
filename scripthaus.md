@@ -76,7 +76,7 @@ function buildWaveShell {
 }
 function buildWaveSrv {
     # adds -extldflags=-static, *only* on linux (macos does not support fully static binaries) to avoid a glibc dependency
-    (cd wavesrv; CGO_ENABLED=1 GOARCH=$1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-linkmode 'external' -extldflags=-static $GO_LDFLAGS -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv.$1 ./cmd)
+    (cd wavesrv; CGO_ENABLED=1 GOARCH=$1 go build -tags "osusergo,netcgo,sqlite_omit_load_extension" -ldflags "-linkmode 'external' -extldflags=-static $GO_LDFLAGS -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv.$1 ./cmd)
 }
 buildWaveShell darwin amd64
 buildWaveShell darwin arm64
@@ -90,7 +90,7 @@ yarn run electron-builder -c electron-builder.config.js -l -p never
 # @scripthaus command build-wavesrv
 WAVESRV_VERSION=$(node -e 'console.log(require("./version.js"))')
 cd wavesrv
-CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv ./cmd
+CGO_ENABLED=1 go build -tags "osusergo,netcgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv ./cmd
 ```
 
 ```bash
