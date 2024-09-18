@@ -9,9 +9,9 @@ import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
-import { Button } from "../element/button";
 import { Tab } from "./tab";
 import "./tabbar.less";
+import { UpdateStatusBanner } from "./updatestatus";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
@@ -73,8 +73,6 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const { activetabid } = windowData;
 
     const isFullScreen = useAtomValue(atoms.isFullScreen);
-
-    const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -477,24 +475,6 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
             </div>
         ) : undefined;
 
-    function onUpdateAvailableClick() {
-        getApi().installAppUpdate();
-    }
-
-    let updateAvailableLabel: React.ReactNode = null;
-    if (appUpdateStatus === "ready") {
-        updateAvailableLabel = (
-            <Button
-                ref={updateStatusButtonRef}
-                className="update-available-button"
-                title="Click to Install Update"
-                onClick={onUpdateAvailableClick}
-            >
-                Update Available
-            </Button>
-        );
-    }
-
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
@@ -527,7 +507,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>
             <WindowDrag ref={draggerRightRef} className="right" />
-            {updateAvailableLabel}
+            <UpdateStatusBanner buttonRef={updateStatusButtonRef} />
         </div>
     );
 });

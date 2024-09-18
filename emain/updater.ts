@@ -29,7 +29,7 @@ export class Updater {
 
         autoUpdater.autoInstallOnAppQuit = settings["autoupdate:installonquit"];
 
-        // Only update the release channel if it's specified, otherwise use the one configured in the artifact.
+        // Only update the release channel if it's specified, otherwise use the one configured in the updater.
         const channel = settings["autoupdate:channel"];
         if (channel) {
             autoUpdater.channel = channel;
@@ -179,6 +179,9 @@ export class Updater {
 ipcMain.on("install-app-update", () => fireAndForget(() => updater?.promptToInstallUpdate()));
 ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = updater?.status;
+});
+ipcMain.on("get-updater-channel", (event) => {
+    event.returnValue = isDev() ? "dev" : (autoUpdater.channel ?? "latest");
 });
 
 let autoUpdateLock = false;

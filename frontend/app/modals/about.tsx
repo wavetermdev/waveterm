@@ -16,6 +16,7 @@ interface AboutModalProps {}
 const AboutModal = ({}: AboutModalProps) => {
     const currentDate = new Date();
     const [details] = useState(() => getApi().getAboutModalDetails());
+    const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
 
     return (
         <Modal className="about-modal" onClose={() => modalsModel.popModal()}>
@@ -32,6 +33,8 @@ const AboutModal = ({}: AboutModalProps) => {
                 <div className="section text-standard">
                     Client Version {details.version} ({isDev() ? "dev-" : ""}
                     {details.buildTime})
+                    <br />
+                    Update Channel: {updaterChannel}
                 </div>
                 <div className="section">
                     <LinkButton
