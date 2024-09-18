@@ -88,7 +88,7 @@ class AboutModal extends React.Component<{}, {}> {
                         </LinkButton>
                         <LinkButton
                             className="secondary solid"
-                            href={util.makeExternLink("https://www.waveterm.dev/")}
+                            href={util.makeExternLink("https://legacy.waveterm.dev/")}
                             target="_blank"
                             leftIcon={<i className="fa-sharp fa-light fa-globe"></i>}
                         >
