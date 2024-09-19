@@ -67,6 +67,7 @@ declare global {
         onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void;
         onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void;
         getUpdaterStatus: () => UpdaterStatus;
+        getUpdaterChannel: () => string;
         installAppUpdate: () => void;
         onMenuItemAbout: (callback: () => void) => void;
         updateWindowControlsOverlay: (rect: Dimensions) => void;

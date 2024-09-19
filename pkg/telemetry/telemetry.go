@@ -78,6 +78,16 @@ func IsTelemetryEnabled() bool {
 	return settings.Settings.TelemetryEnabled
 }
 
+func IsAutoUpdateEnabled() bool {
+	settings := wconfig.GetWatcher().GetFullConfig()
+	return settings.Settings.AutoUpdateEnabled
+}
+
+func AutoUpdateChannel() string {
+	settings := wconfig.GetWatcher().GetFullConfig()
+	return settings.Settings.AutoUpdateChannel
+}
+
 func IsAllowedRenderer(renderer string) bool {
 	return allowedRenderers[renderer]
 }

@@ -5,7 +5,7 @@ import { wpsReconnectHandler } from "@/app/store/wps";
 import { WshClient } from "@/app/store/wshclient";
 import { makeWindowRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
-import { addWSReconnectHandler, WSControl } from "./ws";
+import { addWSReconnectHandler, ElectronOverrideOpts, WSControl } from "./ws";
 
 let globalWS: WSControl;
 let DefaultRouter: WshRouter;
@@ -114,12 +114,12 @@ if (globalThis.window != null) {
     globalThis["consumeGenerator"] = consumeGenerator;
 }
 
-function initElectronWshrpc(electronClient: WshClient, authKey: string) {
+function initElectronWshrpc(electronClient: WshClient, eoOpts: ElectronOverrideOpts) {
     DefaultRouter = new WshRouter(new UpstreamWshRpcProxy());
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
     };
-    globalWS = new WSControl(getWSServerEndpoint(), "electron", handleFn, authKey);
+    globalWS = new WSControl(getWSServerEndpoint(), "electron", handleFn, eoOpts);
     globalWS.connectNow("connectWshrpc");
     DefaultRouter.registerRoute(electronClient.routeId, electronClient);
     addWSReconnectHandler(() => {

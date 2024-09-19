@@ -29,3 +29,9 @@ export class ElectronWshClientType extends WshClient {
         return rtn;
     }
 }
+
+export let ElectronWshClient: ElectronWshClientType;
+
+export function initElectronWshClient() {
+    ElectronWshClient = new ElectronWshClientType();
+}

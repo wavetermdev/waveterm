@@ -1,13 +1,36 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
 import { BrowserWindow, dialog, ipcMain, Notification } from "electron";
 import { autoUpdater } from "electron-updater";
+import { readFileSync } from "fs";
+import path from "path";
+import YAML from "yaml";
 import { FileService } from "../frontend/app/store/services";
 import { isDev } from "../frontend/util/isdev";
 import { fireAndForget } from "../frontend/util/util";
+import { ElectronWshClient } from "./emain-wsh";
 
 export let updater: Updater;
+
+function getUpdateChannel(settings: SettingsType): string {
+    const updaterConfigPath = path.join(process.resourcesPath!, "app-update.yml");
+    const updaterConfig = YAML.parse(readFileSync(updaterConfigPath, { encoding: "utf8" }).toString());
+    console.log("Updater config from binary:", updaterConfig);
+    const updaterChannel: string = updaterConfig.channel ?? "latest";
+    const settingsChannel = settings["autoupdate:channel"];
+    let retVal = settingsChannel;
+
+    // If the user setting doesn't exist yet, set it to the value of the updater config.
+    if (!settingsChannel) {
+        console.log("Update channel setting does not exist, setting to value from updater config.");
+        RpcApi.SetConfigCommand(ElectronWshClient, { "autoupdate:channel": updaterChannel });
+        retVal = updaterChannel;
+    }
+    console.log("Update channel:", retVal);
+    return retVal;
+}
 
 export class Updater {
     autoCheckInterval: NodeJS.Timeout | null;
@@ -20,7 +43,9 @@ export class Updater {
 
     constructor(settings: SettingsType) {
         this.intervalms = settings["autoupdate:intervalms"];
+        console.log("Update check interval in milliseconds:", this.intervalms);
         this.autoCheckEnabled = settings["autoupdate:enabled"];
+        console.log("Update check enabled:", this.autoCheckEnabled);
 
         this._status = "up-to-date";
         this.lastUpdateCheck = new Date(0);
@@ -28,12 +53,10 @@ export class Updater {
         this.availableUpdateReleaseName = null;
 
         autoUpdater.autoInstallOnAppQuit = settings["autoupdate:installonquit"];
+        console.log("Install update on quit:", settings["autoupdate:installonquit"]);
 
-        // Only update the release channel if it's specified, otherwise use the one configured in the artifact.
-        const channel = settings["autoupdate:channel"];
-        if (channel) {
-            autoUpdater.channel = channel;
-        }
+        // Only update the release channel if it's specified, otherwise use the one configured in the updater.
+        autoUpdater.channel = getUpdateChannel(settings);
 
         autoUpdater.removeAllListeners();
 
@@ -50,10 +73,12 @@ export class Updater {
 
         autoUpdater.on("update-available", () => {
             console.log("update-available; downloading...");
+            this.status = "downloading";
         });
 
         autoUpdater.on("update-not-available", () => {
             console.log("update-not-available");
+            this.status = "up-to-date";
         });
 
         autoUpdater.on("update-downloaded", (event) => {
@@ -179,6 +204,9 @@ export class Updater {
 ipcMain.on("install-app-update", () => fireAndForget(() => updater?.promptToInstallUpdate()));
 ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = updater?.status;
+});
+ipcMain.on("get-updater-channel", (event) => {
+    event.returnValue = isDev() ? "dev" : (autoUpdater.channel ?? "latest");
 });
 
 let autoUpdateLock = false;

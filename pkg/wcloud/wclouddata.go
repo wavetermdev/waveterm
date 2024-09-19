@@ -13,9 +13,11 @@ type NoTelemetryInputType struct {
 }
 
 type TelemetryInputType struct {
-	UserId       string                    `json:"userid"`
-	ClientId     string                    `json:"clientid"`
-	CurDay       string                    `json:"curday"`
-	DefaultShell string                    `json:"defaultshell"`
-	Activity     []*telemetry.ActivityType `json:"activity"`
+	UserId            string                    `json:"userid"`
+	ClientId          string                    `json:"clientid"`
+	AppType           string                    `json:"apptype,omitempty"`
+	AutoUpdateEnabled bool                      `json:"autoupdateenabled,omitempty"`
+	AutoUpdateChannel string                    `json:"autoupdatechannel,omitempty"`
+	CurDay            string                    `json:"curday"`
+	Activity          []*telemetry.ActivityType `json:"activity"`
 }
