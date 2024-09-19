@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/wave-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/wave-light.png">
-    <img alt="Wave Terminal Logo" src="./assets/wave-light.png" height="80" style="max-width: 100%;">
+    <img alt="Wave Terminal Logo" src="./assets/wave-light.png" width="240">
   </picture>
   <br/>
 </p>
