@@ -34,7 +34,7 @@ Our release builds are managed by the [Build Helper workflow](https://github.com
 
 Under the hood, this will call the `package` task in [`Taskfile.yml`](../../Taskfile.yml), which will build the `wavesrv` and `wsh` binaries, then the frontend and Electron codebases using Vite, then it will call `electron-builder` to generate the distributable app packages. The configuration for `electron-builder` is defined in [`electron-builder.config.cjs`](../../electron-builder.config.cjs).
 
-This will also sign and notarize the macOS app package.
+This will also sign and notarize the macOS app packages and sign the Windows packages.
 
 Once a build is complete, it will be placed in `s3://waveterm-github-artifacts/staging-w2/<version>`. It can be downloaded for testing using the `artifacts:download:*` task. When you are ready to publish the artifacts to the public release feed, use the `artifacts:publish:*` task to directly copy the artifacts from the staging bucket to the releases bucket.
 
