@@ -35,9 +35,7 @@ const Button = memo(
                 <button
                     ref={btnRef}
                     tabIndex={disabled ? -1 : 0}
-                    className={clsx("button", finalClassName, {
-                        disabled,
-                    })}
+                    className={clsx("button", finalClassName)}
                     disabled={disabled}
                     {...props}
                 >

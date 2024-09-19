@@ -1,5 +1,5 @@
-/* Copyright 2024, Command Line Inc. */
-/* SPDX-License-Identifier: Apache-2.0 */
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 .button {
     // override default button appearance
@@ -26,41 +26,41 @@
 
     &.solid {
         &.green {
-            color: #000000;
+            color: var(--button-text-color);
             background-color: var(--accent-color);
-            border: 1px solid #29f200;
+            border: 1px solid var(--button-green-border-color);
             &:hover {
-                color: #000000;
-                background-color: #29f200;
+                color: var(--button-text-color);
+                background-color: var(--button-green-border-color);
             }
         }
 
         &.grey {
-            background-color: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: var(--button-grey-bg);
+            border: 1px solid var(--button-grey-bg);
             color: var(--main-text-color);
             &:hover {
                 color: var(--main-text-color);
-                background-color: rgba(255, 255, 255, 0.09);
+                background-color: var(--button-grey-hover-bg);
             }
         }
 
         &.red {
-            background-color: #cc0000;
-            border: 1px solid #fc3131;
+            background-color: var(--button-red-bg);
+            border: 1px solid var(--button-red-border-color);
             color: var(--main-text-color);
             &:hover {
-                background-color: #f93939;
+                background-color: var(--button-red-hover-bg);
             }
         }
 
         &.yellow {
-            color: #000000;
-            background-color: #c4a000;
-            border: 1px solid #fce94f;
+            color: var(--button-text-color);
+            background-color: var(--button-yellow-bg);
+            border: 1px solid var(--button-yellow-hover-bg);
             &:hover {
-                color: #000000;
-                background-color: #fce94f;
+                color: var(--button-text-color);
+                background-color: var(--button-yellow-hover-bg);
             }
         }
     }
@@ -71,14 +71,14 @@
             color: var(--accent-color);
             border: 1px solid var(--accent-color);
             &:hover {
-                color: #29f200;
-                border: 1px solid #29f200;
+                color: var(--button-green-border-color);
+                border: 1px solid var(--button-green-border-color);
             }
         }
 
         &.grey {
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            color: rgba(255, 255, 255, 0.6);
+            border: 1px solid var(--button-grey-outlined-color);
+            color: var(--button-grey-outlined-color);
             &:hover {
                 color: var(--main-text-color);
                 border: 1px solid var(--main-text-color);
@@ -86,20 +86,20 @@
         }
 
         &.red {
-            border: 1px solid #cc0000;
-            color: #cc0000;
+            border: 1px solid var(--button-red-bg);
+            color: var(--button-red-bg);
             &:hover {
-                color: #ff3c3c;
-                border: 1px solid #ff3c3c;
+                color: var(--button-red-outlined-color);
+                border: 1px solid var(--button-red-outlined-color);
             }
         }
 
         &.yellow {
-            color: #c4a000;
-            border: 1px solid #c4a000;
+            color: var(--button-yellow-bg);
+            border: 1px solid var(--button-yellow-bg);
             &:hover {
-                color: #fce94f;
-                border: 1px solid #fce94f;
+                color: var(--button-yellow-hover-bg);
+                border: 1px solid var(--button-yellow-hover-bg);
             }
         }
     }
@@ -115,13 +115,13 @@
             border: none;
             color: var(--accent-color);
             &:hover {
-                color: #29f200;
+                color: var(--button-green-border-color);
             }
         }
 
         &.grey {
             border: none;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--button-grey-outlined-color);
             &:hover {
                 color: var(--main-text-color);
             }
@@ -129,24 +129,25 @@
 
         &.red {
             border: none;
-            color: #cc0000;
+            color: var(--button-red-bg);
             &:hover {
-                color: #fc3131;
+                color: var(--button-red-border-color);
             }
         }
 
         &.yellow {
             border: none;
-            color: #c4a000;
+            color: var(--button-yellow-bg);
             &:hover {
-                color: #fce94f;
+                color: var(--button-yellow-hover-bg);
             }
         }
     }
 
-    &.disabled {
+    &:disabled {
         cursor: default;
         opacity: 0.5;
+        pointer-events: none;
     }
 
     &:focus,

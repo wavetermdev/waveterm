@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .about-modal {
-    width: 445px;
     padding-bottom: 34px;
 
-    .modal-content {
+    .content-wrapper .modal-content {
         margin-bottom: 0;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
+        padding: 0px 0px;
         gap: 24px;
 
         .section-wrapper {
@@ -43,14 +43,18 @@
             }
         }
 
-        .section:nth-child(3) {
+        .section.links {
             display: flex;
             align-items: flex-start;
-            gap: 7px;
+            gap: 10px;
 
-            .wave-button-link {
+            .button {
                 display: flex;
                 align-items: center;
+
+                .icon-left {
+                    margin-right: 5px;
+                }
 
                 i {
                     font-size: 16px;
