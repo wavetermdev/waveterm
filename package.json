@@ -1,16 +1,16 @@
 {
-    "name": "thenextwave",
+    "name": "waveterm",
     "author": {
         "name": "Command Line Inc",
         "email": "info@commandline.dev"
     },
-    "productName": "TheNextWave",
-    "description": "Level Up Your Terminal With Graphical Widgets",
+    "productName": "Wave",
+    "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
     "version": "0.1.14-beta.3",
     "homepage": "https://waveterm.dev",
     "build": {
-        "appId": "dev.commandline.thenextwave"
+        "appId": "dev.commandline.waveterm"
     },
     "private": true,
     "main": "./dist/main/index.js",

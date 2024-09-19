@@ -2,7 +2,7 @@
 
 ## Step-by-step guide
 
-1. Go to the [Actions tab](https://github.com/wavetermdev/thenextwave/actions) and select "Bump Version" from the left sidebar.
+1. Go to the [Actions tab](https://github.com/wavetermdev/waveterm/actions) and select "Bump Version" from the left sidebar.
 2. Click on "Run workflow".
    - You will see two options:
      - "SemVer Bump": This defaults to `none`. Adjust this if you want to increment the version number according to semantic versioning rules (`patch`, `minor`, `major`).
@@ -22,7 +22,7 @@
 
 All releases start by first bumping the package version and creating a new Git tag. We have a workflow set up to automate this.
 
-To run it, trigger a new run of the [Bump Version workflow](https://github.com/wavetermdev/thenextwave/actions/workflows/bump-version.yml). When triggering the run, you will be prompted to select a version bump type, either `none`, `patch`, `minor`, or `major`, and whether the version is prerelease or not. This determines how much the version number is incremented.
+To run it, trigger a new run of the [Bump Version workflow](https://github.com/wavetermdev/waveterm/actions/workflows/bump-version.yml). When triggering the run, you will be prompted to select a version bump type, either `none`, `patch`, `minor`, or `major`, and whether the version is prerelease or not. This determines how much the version number is incremented.
 
 See [`version.cjs`](../../version.cjs) for more details on how this works.
 
@@ -30,7 +30,7 @@ Once the tag has been created, a new [Build Helper](#build-helper-workflow) run 
 
 ### Build Helper workflow
 
-Our release builds are managed by the [Build Helper workflow](https://github.com/wavetermdev/thenextwave/actions/workflows/build-helper.yml).
+Our release builds are managed by the [Build Helper workflow](https://github.com/wavetermdev/waveterm/actions/workflows/build-helper.yml).
 
 Under the hood, this will call the `package` task in [`Taskfile.yml`](../../Taskfile.yml), which will build the `wavesrv` and `wsh` binaries, then the frontend and Electron codebases using Vite, then it will call `electron-builder` to generate the distributable app packages. The configuration for `electron-builder` is defined in [`electron-builder.config.cjs`](../../electron-builder.config.cjs).
 

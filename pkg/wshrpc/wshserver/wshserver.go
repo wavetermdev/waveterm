@@ -28,7 +28,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -51,32 +50,6 @@ func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 	}()
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	log.Printf("TEST src:%s | %s\n", rpcSource, data)
-	if rpcSource == "" {
-		return nil
-	}
-	go func() {
-		mainClient := GetMainRpcClient()
-		wshclient.MessageCommand(mainClient, wshrpc.CommandMessageData{Message: "test message"}, &wshrpc.RpcOpts{NoResponse: true, Route: rpcSource})
-		resp, err := wshclient.RemoteFileInfoCommand(mainClient, "~/work/wails/thenextwave/README.md", &wshrpc.RpcOpts{Route: rpcSource})
-		if err != nil {
-			log.Printf("error getting remote file info: %v", err)
-			return
-		}
-		log.Printf("remote file info: %#v\n", resp)
-		rch := wshclient.RemoteStreamFileCommand(mainClient, wshrpc.CommandRemoteStreamFileData{Path: "~/work/wails/thenextwave/README.md"}, &wshrpc.RpcOpts{Route: rpcSource})
-		for msg := range rch {
-			if msg.Error != nil {
-				log.Printf("error in stream: %v", msg.Error)
-				break
-			}
-			if msg.Response.FileInfo != nil {
-				log.Printf("stream resp (fileinfo): %v\n", msg.Response.FileInfo)
-			}
-			if msg.Response.Data64 != "" {
-				log.Printf("stream resp (data): %v\n", len(msg.Response.Data64))
-			}
-		}
-	}()
 	return nil
 }
 
