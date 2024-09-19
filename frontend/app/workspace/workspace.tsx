@@ -68,7 +68,7 @@ const Widgets = React.memo(() => {
             {showHelp ? (
                 <>
                     <div className="widget-spacer" />
-                    <Widget key="help" widget={tipsWidget} />
+                    <Widget key="tips" widget={tipsWidget} />
                     <Widget key="help" widget={helpWidget} />
                 </>
             ) : null}
