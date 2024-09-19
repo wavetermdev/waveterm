@@ -30,6 +30,9 @@ export function blockViewToIcon(view: string): string {
     if (view == "help") {
         return "circle-question";
     }
+    if (view == "tips") {
+        return "lightbulb";
+    }
     return "square";
 }
 

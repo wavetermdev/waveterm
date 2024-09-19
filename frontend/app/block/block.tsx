@@ -23,6 +23,7 @@ import { WaveAi, WaveAiModel, makeWaveAiViewModel } from "@/view/waveai/waveai";
 import { WebView, WebViewModel, makeWebViewModel } from "@/view/webview/webview";
 import * as jotai from "jotai";
 import * as React from "react";
+import { QuickTipsView, QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
 import "./block.less";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
@@ -93,6 +94,9 @@ function getViewElem(
     }
     if (blockView == "help") {
         return <HelpView key={blockId} model={viewModel as HelpViewModel} />;
+    }
+    if (blockView == "tips") {
+        return <QuickTipsView key={blockId} model={viewModel as QuickTipsViewModel} />;
     }
     return <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
 }
