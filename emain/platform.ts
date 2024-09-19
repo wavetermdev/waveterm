@@ -16,7 +16,7 @@ if (isDevVite) {
     process.env[WaveDevViteVarName] = "1";
 }
 
-app.setName(isDev ? "TheNextWave (Dev)" : "TheNextWave");
+app.setName(isDev ? "Wave (Dev)" : "Wave");
 const unamePlatform = process.platform;
 const unameArch: string = process.arch;
 keyutil.setKeyUtilPlatform(unamePlatform);

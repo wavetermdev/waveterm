@@ -4,7 +4,7 @@
 version: "3"
 
 vars:
-    APP_NAME: "TheNextWave"
+    APP_NAME: "Wave"
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
