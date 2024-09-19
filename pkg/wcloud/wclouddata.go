@@ -15,6 +15,7 @@ type NoTelemetryInputType struct {
 type TelemetryInputType struct {
 	UserId       string                    `json:"userid"`
 	ClientId     string                    `json:"clientid"`
+	AppType      string                    `json:"apptype"`
 	CurDay       string                    `json:"curday"`
 	DefaultShell string                    `json:"defaultshell"`
 	Activity     []*telemetry.ActivityType `json:"activity"`
