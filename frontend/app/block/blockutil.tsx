@@ -55,6 +55,9 @@ export function blockViewToName(view: string): string {
     if (view == "help") {
         return "Help";
     }
+    if (view == "tips") {
+        return "Tips";
+    }
     return view;
 }
 

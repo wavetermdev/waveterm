@@ -12,7 +12,7 @@ class QuickTipsViewModel implements ViewModel {
     endIconButtons: Atom<IconButtonDecl[]>;
 
     constructor() {
-        this.viewType = "help";
+        this.viewType = "tips";
         this.showTocAtom = atom(false);
     }
 
