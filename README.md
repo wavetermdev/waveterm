@@ -25,7 +25,7 @@ Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev
 
 Also available as a homebrew cask for MacOS:
 
-```
+```bash
 brew install --cask wave
 ```
 
