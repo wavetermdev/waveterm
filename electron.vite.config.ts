@@ -26,6 +26,10 @@ export default defineConfig({
                 "@": "frontend",
             },
         },
+        define: {
+            "process.env.WS_NO_BUFFER_UTIL": "true",
+            "process.env.WS_NO_UTF_8_VALIDATE": "true",
+        },
     },
     preload: {
         root: ".",

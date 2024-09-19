@@ -3,13 +3,12 @@ import type { WebSocket as NodeWebSocketType } from "ws";
 let NodeWebSocket: typeof NodeWebSocketType = null;
 
 if (typeof window === "undefined") {
-    try {
-        // Necessary to avoid issues with Rollup: https://github.com/websockets/ws/issues/2057
-        process.env.WS_NO_BUFFER_UTIL = "1";
-        import("ws").then((ws) => (NodeWebSocket = ws.default));
-    } catch (error) {
-        console.log("Error importing 'ws':", error);
-    }
+    // Necessary to avoid issues with Rollup: https://github.com/websockets/ws/issues/2057
+    import("ws")
+        .then((ws) => (NodeWebSocket = ws.default))
+        .catch((e) => {
+            console.log("Error importing 'ws':", e);
+        });
 }
 
 type ComboWebSocket = NodeWebSocketType | WebSocket;
