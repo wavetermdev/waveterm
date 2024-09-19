@@ -342,10 +342,16 @@ const ChatWindow = memo(
 
         const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
             const { viewport } = instance.elements();
+            viewport.removeAttribute("tabindex");
             viewport.scrollTo({
                 behavior: "auto",
                 top: chatWindowRef.current?.scrollHeight || 0,
             });
+        };
+
+        const handleScrollbarUpdated = (instance: OverlayScrollbars) => {
+            const { viewport } = instance.elements();
+            viewport.removeAttribute("tabindex");
         };
 
         return (
@@ -353,7 +359,7 @@ const ChatWindow = memo(
                 ref={osRef}
                 className="scrollable"
                 options={{ scrollbars: { autoHide: "leave" } }}
-                events={{ initialized: handleScrollbarInitialized }}
+                events={{ initialized: handleScrollbarInitialized, updated: handleScrollbarUpdated }}
             >
                 <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
                     <div className="filler"></div>
@@ -491,22 +497,6 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         setSelectedBlockIdx(null);
     }, [messages, value]);
 
-    const handleContainerClick = (event: React.MouseEvent<HTMLDivElement>) => {
-        inputRef.current?.focus();
-
-        const target = event.target as HTMLElement;
-        if (
-            target.closest(".copy-button") ||
-            target.closest(".fa-square-terminal") ||
-            target.closest(".waveai-input")
-        ) {
-            return;
-        }
-
-        const pre = target.closest("pre");
-        updatePreTagOutline(pre);
-    };
-
     const updateScrollTop = () => {
         const pres = chatWindowRef.current?.querySelectorAll("pre");
         if (!pres || selectedBlockIdx === null) return;
@@ -610,7 +600,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     }, [locked, handleEnterKeyPressed]);
 
     return (
-        <div ref={waveaiRef} className="waveai" onClick={handleContainerClick}>
+        <div ref={waveaiRef} className="waveai">
             <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} msgWidths={msgWidths} />
             <div className="waveai-controls">
                 <div className="waveai-input-wrapper">
