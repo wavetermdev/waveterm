@@ -128,7 +128,6 @@
         "throttle-debounce": "^5.0.2",
         "tinycolor2": "^1.6.0",
         "use-device-pixel-ratio": "^1.1.2",
-        "utf-8-validate": "^6.0.4",
         "winston": "^3.14.2",
         "ws": "^8.18.0",
         "yaml": "^2.5.1"
