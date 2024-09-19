@@ -93,7 +93,6 @@
         "@xterm/addon-webgl": "^0.18.0",
         "@xterm/xterm": "^5.5.0",
         "base64-js": "^1.5.1",
-        "bufferutil": "^4.0.8",
         "clsx": "^2.1.1",
         "color": "^4.2.3",
         "css-tree": "^3.0.0",
