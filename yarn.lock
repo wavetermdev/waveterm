@@ -3467,6 +3467,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bufferutil@npm:^4.0.8":
+  version: 4.0.8
+  resolution: "bufferutil@npm:4.0.8"
+  dependencies:
+    node-gyp: "npm:latest"
+    node-gyp-build: "npm:^4.3.0"
+  checksum: 10c0/36cdc5b53a38d9f61f89fdbe62029a2ebcd020599862253fefebe31566155726df9ff961f41b8c97b02b4c12b391ef97faf94e2383392654cf8f0ed68f76e47c
+  languageName: node
+  linkType: hard
+
 "builder-util-runtime@npm:9.2.5":
   version: 9.2.5
   resolution: "builder-util-runtime@npm:9.2.5"
@@ -8276,6 +8286,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"node-gyp-build@npm:^4.3.0":
+  version: 4.8.2
+  resolution: "node-gyp-build@npm:4.8.2"
+  bin:
+    node-gyp-build: bin.js
+    node-gyp-build-optional: optional.js
+    node-gyp-build-test: build-test.js
+  checksum: 10c0/d816b43974d31d6257b6e87d843f2626c72389a285208394bc57a7766b210454d2642860a5e5b5c333d8ecabaeabad3b31b94f58cf8ca1aabdef0c320d02baaa
+  languageName: node
+  linkType: hard
+
 "node-gyp@npm:^9.0.0":
   version: 9.4.1
   resolution: "node-gyp@npm:9.4.1"
@@ -10228,6 +10249,7 @@ __metadata:
     "@xterm/addon-webgl": "npm:^0.18.0"
     "@xterm/xterm": "npm:^5.5.0"
     base64-js: "npm:^1.5.1"
+    bufferutil: "npm:^4.0.8"
     clsx: "npm:^2.1.1"
     color: "npm:^4.2.3"
     css-tree: "npm:^3.0.0"
@@ -10280,6 +10302,7 @@ __metadata:
     typescript: "npm:^5.6.2"
     typescript-eslint: "npm:^8.5.0"
     use-device-pixel-ratio: "npm:^1.1.2"
+    utf-8-validate: "npm:^6.0.4"
     vite: "npm:^5.4.6"
     vite-plugin-image-optimizer: "npm:^1.1.8"
     vite-plugin-static-copy: "npm:^1.0.6"
@@ -10807,6 +10830,16 @@ __metadata:
   peerDependencies:
     react: ">=16.8.0"
   checksum: 10c0/125d3f75b82de0dd754ad2c930a4441e2845cfbacfa6d818857b6991da60dc4b41d33a791ff5b84725a10616d84c7beb6a75ef489c63b3f24fa910779a284099
+  languageName: node
+  linkType: hard
+
+"utf-8-validate@npm:^6.0.4":
+  version: 6.0.4
+  resolution: "utf-8-validate@npm:6.0.4"
+  dependencies:
+    node-gyp: "npm:latest"
+    node-gyp-build: "npm:^4.3.0"
+  checksum: 10c0/f7042d94aec6ca02461b64e725bdc7262266610dbb787331e5bbd49374ef6f75fe9900600df3fc63d97906c23614a965c8989b4bf95d70bf35dc617da99215e7
   languageName: node
   linkType: hard
 

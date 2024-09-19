@@ -93,6 +93,7 @@
         "@xterm/addon-webgl": "^0.18.0",
         "@xterm/xterm": "^5.5.0",
         "base64-js": "^1.5.1",
+        "bufferutil": "^4.0.8",
         "clsx": "^2.1.1",
         "color": "^4.2.3",
         "css-tree": "^3.0.0",
@@ -128,6 +129,7 @@
         "throttle-debounce": "^5.0.2",
         "tinycolor2": "^1.6.0",
         "use-device-pixel-ratio": "^1.1.2",
+        "utf-8-validate": "^6.0.4",
         "winston": "^3.14.2",
         "ws": "^8.18.0"
     },

@@ -12,6 +12,7 @@ import { sprintf } from "sprintf-js";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
+import { WebSocket as NodeWebSocket } from "ws";
 import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc } from "../frontend/app/store/wshrpcutil";
@@ -861,7 +862,7 @@ async function appMain() {
     await configureAutoUpdater();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     try {
-        initElectronWshrpc(ElectronWshClient, AuthKey);
+        initElectronWshrpc(ElectronWshClient, { authKey: AuthKey, wsImpl: NodeWebSocket });
     } catch (e) {
         console.log("error initializing wshrpc", e);
     }
