@@ -302,7 +302,7 @@ export class LayoutModel {
      * Perform an action against the layout tree state.
      * @param action The action to perform.
      */
-    treeReducer(action: LayoutTreeAction) {
+    treeReducer(action: LayoutTreeAction, setState = true) {
         switch (action.type) {
             case LayoutTreeActionType.ComputeMove:
                 this.setter(
@@ -369,7 +369,7 @@ export class LayoutModel {
                 this.magnifiedNodeId = this.treeState.magnifiedNodeId;
             }
             this.updateTree();
-            this.setTreeStateAtom(true);
+            if (setState) this.setTreeStateAtom(true);
         }
     }
 
@@ -403,7 +403,7 @@ export class LayoutModel {
                                 magnified: action.magnified,
                                 focused: action.focused,
                             };
-                            this.treeReducer(insertNodeAction);
+                            this.treeReducer(insertNodeAction, false);
                             break;
                         }
                         case LayoutTreeActionType.DeleteNode: {
@@ -434,13 +434,16 @@ export class LayoutModel {
                                 magnified: action.magnified,
                                 focused: action.focused,
                             };
-                            this.treeReducer(insertAction);
+                            this.treeReducer(insertAction, false);
                             break;
                         }
                         case LayoutTreeActionType.ClearTree: {
-                            this.treeReducer({
-                                type: LayoutTreeActionType.ClearTree,
-                            } as LayoutTreeClearTreeAction);
+                            this.treeReducer(
+                                {
+                                    type: LayoutTreeActionType.ClearTree,
+                                } as LayoutTreeClearTreeAction,
+                                false
+                            );
                             break;
                         }
                         default:
@@ -448,6 +451,7 @@ export class LayoutModel {
                             break;
                     }
                 }
+                this.setTreeStateAtom(true);
             } else {
                 this.updateTree();
                 this.setTreeStateAtom(force);
