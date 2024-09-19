@@ -71,7 +71,7 @@ jobs:
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD }}
                   APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID }}
             - name: Upload to S3 staging
-              run: aws s3 cp make/ s3://waveterm-github-artifacts/staging/${{ steps.set-version.outputs.WAVETERM_VERSION }}/ --recursive --exclude "*/*" --exclude "builder-*.yml"
+              run: aws s3 cp make/ s3://waveterm-github-artifacts/staging-legacy/${{ steps.set-version.outputs.WAVETERM_VERSION }}/ --recursive --exclude "*/*" --exclude "builder-*.yml"
               env:
                   AWS_ACCESS_KEY_ID: "${{ secrets.S3_USERID }}"
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRETKEY }}"

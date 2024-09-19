@@ -13,7 +13,7 @@ is [`electron-builder.config.js`](../electron-builder.config.js).
 
 This will also sign and notarize the macOS app package.
 
-Once a build is complete, it will be placed in `s3://waveterm-github-artifacts/staging/<version>`.
+Once a build is complete, it will be placed in `s3://waveterm-github-artifacts/staging-legacy/<version>`.
 It can be downloaded for testing using the [`download-staged-artifact.sh`](./download-staged-artifact.sh)
 script. When you are ready to publish the artifacts to the public release feed, use the
 [`publish-from-staging.sh`](./publish-from-staging.sh) script to directly copy the artifacts from
