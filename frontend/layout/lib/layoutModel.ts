@@ -441,6 +441,7 @@ export class LayoutModel {
                             this.treeReducer({
                                 type: LayoutTreeActionType.ClearTree,
                             } as LayoutTreeClearTreeAction);
+                            break;
                         }
                         default:
                             console.warn("unsupported layout action", action);
