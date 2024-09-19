@@ -15,12 +15,12 @@ import "./newwave.less";
 class NewWaveModal extends React.Component<{ onClose: () => void }, {}> {
     @boundMethod
     handleDownloadOldWave(): void {
-        getApi().openExternalLink("https://www.waveterm.dev/download");
+        getApi().openExternalLink("https://legacy.waveterm.dev/download");
     }
 
     @boundMethod
     handleDownloadNewWave(): void {
-        getApi().openExternalLink("https://dl.waveterm.dev/releases-w2/TheNextWave-darwin-universal-0.1.12.dmg");
+        getApi().openExternalLink("https://www.waveterm.dev/download");
     }
 
     @boundMethod
@@ -39,24 +39,33 @@ class NewWaveModal extends React.Component<{ onClose: () => void }, {}> {
                         </header>
                         <div className="content newwave-content unselectable">
                             <div className="item">
-                                We are excited to share that New Wave is now available and it comes with significant
-                                productivity boots thanks to new dashboard-like interface. Improve your workflows by
-                                having: terminals, graphical widgets, web browser, file preview/edit on a single view!
+                                We are excited to share that after 3-months of work, and almost 1000 new commits, Wave
+                                v0.8 is now available. It features a new layout engine for screen splitting, improved
+                                remote file browsing and previewing, improved performance, and a new design. We've also
+                                removed some of the more controversial features that took over the shell experience and
+                                overrode things like completions, history, and prompts.
                             </div>
                             <div className="item">
-                                <img src={newwave} width="100%" />
+                                The new build is a fresh start, and a clean break from the current version. As such,
+                                your history, settings, and configuration will <i>not</i> be carried over. If you'd like
+                                to continue to run the legacy version, you will need to download it separately.
+                            </div>
+                            <div className="item image-item">
+                                <img src={newwave} height="400px" />
                             </div>
                             <div className="item">
-                                <span>You can download New Wave now</span> or wait for an auto-update next week. This
-                                legacy version will still be available via separate download page.
+                                You can download Wave v0.8 now or wait for an auto-update next week. The legacy version
+                                will be available via separate download page.
                             </div>
                         </div>
                         <footer className="unselectable">
                             <div className="button-wrapper">
-                                <Button onClick={this.handleDownloadOldWave}>Legacy Download</Button>
+                                <Button className="secondary" onClick={this.handleDownloadOldWave}>
+                                    Legacy Download
+                                </Button>
                             </div>
                             <div className="button-wrapper">
-                                <Button onClick={this.handleDownloadNewWave}>Download New Wave</Button>
+                                <Button onClick={this.handleDownloadNewWave}>Upgrade to Wave v0.8</Button>
                             </div>
                         </footer>
                     </div>
