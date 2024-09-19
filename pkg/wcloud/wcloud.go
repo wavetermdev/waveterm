@@ -130,7 +130,15 @@ func SendTelemetry(ctx context.Context, clientId string) error {
 	}
 	log.Printf("[wcloud] sending telemetry data\n")
 	dayStr := daystr.GetCurDayStr()
-	input := TelemetryInputType{ClientId: clientId, UserId: clientId, CurDay: dayStr, Activity: activity, AppType: "w2"}
+	input := TelemetryInputType{
+		ClientId:          clientId,
+		UserId:            clientId,
+		AppType:           "w2",
+		AutoUpdateEnabled: telemetry.IsAutoUpdateEnabled(),
+		AutoUpdateChannel: telemetry.AutoUpdateChannel(),
+		CurDay:            dayStr,
+		Activity:          activity,
+	}
 	req, err := makeAnonPostReq(ctx, TelemetryUrl, input)
 	if err != nil {
 		return err
