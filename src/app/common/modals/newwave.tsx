@@ -15,7 +15,7 @@ import "./newwave.less";
 class NewWaveModal extends React.Component<{ onClose: () => void }, {}> {
     @boundMethod
     handleDownloadOldWave(): void {
-        getApi().openExternalLink("https://legacy.waveterm.dev/download");
+        getApi().openExternalLink("https://www.waveterm.dev/download-legacy");
     }
 
     @boundMethod
