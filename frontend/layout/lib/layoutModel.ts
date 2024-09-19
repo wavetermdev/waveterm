@@ -377,7 +377,7 @@ export class LayoutModel {
      * Callback that is invoked when the upstream tree state has been updated. This ensures the model is updated if the atom is not fully loaded when the model is first instantiated.
      * @param force Whether to force the local tree state to update, regardless of whether the state is already up to date.
      */
-    async onTreeStateAtomUpdated(force = false) {
+    onTreeStateAtomUpdated = debounce(50, async (force = false) => {
         const treeState = this.getter(this.treeStateAtom);
         // Only update the local tree state if it is different from the one in the upstream atom. This function is called even when the update was initiated by the LayoutModel, so we need to filter out false positives or we'll enter an infinite loop.
         if (
@@ -453,7 +453,7 @@ export class LayoutModel {
                 this.setTreeStateAtom(force);
             }
         }
-    }
+    });
 
     /**
      * Set the upstream tree state atom to the value of the local tree state.
