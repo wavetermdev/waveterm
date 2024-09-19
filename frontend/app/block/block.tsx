@@ -14,7 +14,7 @@ import {
     unregisterBlockComponentModel,
 } from "@/store/global";
 import * as WOS from "@/store/wos";
-import { getElemAsStr } from "@/util/focusutil";
+import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import * as util from "@/util/util";
 import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
@@ -159,12 +159,11 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
             return;
         }
         setBlockClicked(false);
-        const focusWithin = blockRef.current?.contains(document.activeElement);
+        const focusWithin = focusedBlockId() == nodeModel.blockId;
         if (!focusWithin) {
             setFocusTarget();
         }
         if (!isFocused) {
-            console.log("blockClicked focus", nodeModel.blockId);
             nodeModel.focusNode();
         }
     }, [blockClicked, isFocused]);
