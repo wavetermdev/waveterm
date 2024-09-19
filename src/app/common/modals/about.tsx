@@ -68,7 +68,7 @@ class AboutModal extends React.Component<{}, {}> {
                             <img src={logo} alt="logo" />
                         </div>
                         <div className="text-wrapper">
-                            <div>Wave Terminal</div>
+                            <div>Wave Terminal (Legacy)</div>
                             <div className="text-standard">
                                 Open-Source AI-Native Terminal
                                 <br />
@@ -88,7 +88,7 @@ class AboutModal extends React.Component<{}, {}> {
                         </LinkButton>
                         <LinkButton
                             className="secondary solid"
-                            href={util.makeExternLink("https://legacy.waveterm.dev/")}
+                            href={util.makeExternLink("https://www.waveterm.dev/")}
                             target="_blank"
                             leftIcon={<i className="fa-sharp fa-light fa-globe"></i>}
                         >

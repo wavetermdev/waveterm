@@ -13,7 +13,7 @@
         "type": "git",
         "url": "https://github.com/wavetermdev/waveterm"
     },
-    "homepage": "https://legacy.waveterm.dev",
+    "homepage": "https://www.waveterm.dev",
     "build": {
         "appId": "dev.commandline.wavelegacy"
     },
