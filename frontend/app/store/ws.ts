@@ -66,9 +66,14 @@ class WSControl {
         this.lastReconnectTime = Date.now();
         dlog("try reconnect:", desc);
         this.opening = true;
-        this.wsConn = newWebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId, {
-            [AuthKeyHeader]: this.eoOpts.authKey,
-        });
+        this.wsConn = newWebSocket(
+            this.baseHostPort + "/ws?windowid=" + this.windowId,
+            this.eoOpts
+                ? {
+                      [AuthKeyHeader]: this.eoOpts.authKey,
+                  }
+                : null
+        );
         this.wsConn.onopen = this.onopen.bind(this);
         this.wsConn.onmessage = this.onmessage.bind(this);
         this.wsConn.onclose = this.onclose.bind(this);
@@ -204,4 +209,4 @@ class WSControl {
     }
 }
 
-export { WSControl, addWSReconnectHandler, removeWSReconnectHandler };
+export { WSControl, addWSReconnectHandler, removeWSReconnectHandler, type ElectronOverrideOpts };

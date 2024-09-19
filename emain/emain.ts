@@ -12,7 +12,6 @@ import { sprintf } from "sprintf-js";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
-import { WebSocket as NodeWebSocket } from "ws";
 import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc } from "../frontend/app/store/wshrpcutil";
@@ -21,7 +20,7 @@ import { fetch } from "../frontend/util/fetchutil";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
-import { ElectronWshClientType } from "./emain-wsh";
+import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
@@ -36,7 +35,6 @@ import {
 } from "./platform";
 import { configureAutoUpdater, updater } from "./updater";
 
-let ElectronWshClient = new ElectronWshClientType();
 const electronApp = electron.app;
 let WaveVersion = "unknown"; // set by WAVESRV-ESTART
 let WaveBuildTime = 0; // set by WAVESRV-ESTART
@@ -859,13 +857,14 @@ async function appMain() {
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     await relaunchBrowserWindows();
-    await configureAutoUpdater();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     try {
-        initElectronWshrpc(ElectronWshClient, { authKey: AuthKey, wsImpl: NodeWebSocket });
+        initElectronWshClient();
+        initElectronWshrpc(ElectronWshClient, { authKey: AuthKey });
     } catch (e) {
         console.log("error initializing wshrpc", e);
     }
+    await configureAutoUpdater();
 
     globalIsStarting = false;
 
