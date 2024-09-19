@@ -36,7 +36,7 @@ const AboutModal = ({}: AboutModalProps) => {
                     <br />
                     Update Channel: {updaterChannel}
                 </div>
-                <div className="section">
+                <div className="section links">
                     <LinkButton
                         className="secondary solid"
                         href="https://github.com/wavetermdev/waveterm"
