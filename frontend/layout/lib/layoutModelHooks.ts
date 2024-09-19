@@ -25,7 +25,7 @@ export function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
     }
     const layoutTreeStateAtom = withLayoutTreeStateAtomFromTab(tabAtom);
     const layoutModel = new LayoutModel(layoutTreeStateAtom, globalStore.get, globalStore.set);
-    globalStore.sub(layoutTreeStateAtom, () => fireAndForget(() => layoutModel.onTreeStateAtomUpdated()));
+    globalStore.sub(layoutTreeStateAtom, () => fireAndForget(async () => layoutModel.onTreeStateAtomUpdated()));
     layoutModelMap.set(tabId, layoutModel);
     return layoutModel;
 }
@@ -56,7 +56,7 @@ export function useTileLayout(tabAtom: Atom<Tab>, tileContent: TileLayoutContent
     useResizeObserver(layoutModel?.displayContainerRef, layoutModel?.onContainerResize);
 
     // Once the TileLayout is mounted, re-run the state update to get all the nodes to flow in the layout.
-    useLayoutEffect(() => fireAndForget(() => layoutModel.onTreeStateAtomUpdated(true)), []);
+    useEffect(() => fireAndForget(async () => layoutModel.onTreeStateAtomUpdated(true)), []);
 
     useEffect(() => layoutModel.registerTileLayout(tileContent), [tileContent]);
     return layoutModel;
