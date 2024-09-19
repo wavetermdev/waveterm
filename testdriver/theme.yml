@@ -1,4 +1,4 @@
-version: 3.8.0
+version: 4.0.0
   steps:
     - prompt: "Focus electron"
       commands:
