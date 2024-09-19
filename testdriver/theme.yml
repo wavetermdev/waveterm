@@ -1,37 +1,37 @@
 version: 3.8.0
-    steps:
-      - prompt: "Focus electron"
-        commands:
-        - command: focus-application
-          name: Electron
-        - command: hover-text
-          description: Get started CTA
-          text: Get Started
-          action: click
-        - command: hover-text
-          description: Settings button
-          text: Settings
-          action: click
-        - command: hover-text
-          description: font size 13
-          text: 13px
-          action: click
-        - command: hover-text
-          description: font size 12
-          text: 12px
-          action: click
-        - command: hover-text
-          description: theme selector
-          text: Dark
-          action: click
-        - command: hover-text
-          description: theme color white
-          text: Light
-          action: click
-        - command: hover-text
-          description: workspace
-          text: workspace-1
-          action: click
-        - command: assert
-          expect: the terminal is white
+  steps:
+    - prompt: "Focus electron"
+      commands:
+      - command: focus-application
+        name: Electron
+      - command: hover-text
+        description: Get started CTA
+        text: Get Started
+        action: click
+      - command: hover-text
+        description: Settings button
+        text: Settings
+        action: click
+      - command: hover-text
+        description: font size 13
+        text: 13px
+        action: click
+      - command: hover-text
+        description: font size 12
+        text: 12px
+        action: click
+      - command: hover-text
+        description: theme selector
+        text: Dark
+        action: click
+      - command: hover-text
+        description: theme color white
+        text: Light
+        action: click
+      - command: hover-text
+        description: workspace
+        text: workspace-1
+        action: click
+      - command: assert
+        expect: the terminal is white
 
