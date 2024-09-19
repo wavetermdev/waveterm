@@ -42,7 +42,7 @@ jobs:
             echo "Starting Electron"
             scripthaus run electron 1>/dev/null 2>&1 &
             echo "Electron Done"
-            yarn add global testdriverai
+            npm install testdriverai -g
             exit       
           prompt: |
-            1. /run /testdriver/theme.yml
+            1. /run testdriver/theme.yml
