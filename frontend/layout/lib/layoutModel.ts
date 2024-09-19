@@ -358,6 +358,7 @@ export class LayoutModel {
                 break;
             case LayoutTreeActionType.ClearTree: {
                 clearTree(this.treeState);
+                break;
             }
             default:
                 console.error("Invalid reducer action", this.treeState, action);
