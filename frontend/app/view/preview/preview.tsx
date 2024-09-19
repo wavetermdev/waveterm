@@ -125,7 +125,7 @@ export class PreviewModel implements ViewModel {
     fullFile: jotai.Atom<Promise<FullFile>>;
     fileMimeType: jotai.Atom<Promise<string>>;
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
-    fileContent: jotai.Atom<Promise<string>>;
+    fileContent: jotai.WritableAtom<Promise<string>, [string], void>;
     newFileContent: jotai.PrimitiveAtom<string | null>;
 
     openFileModal: jotai.PrimitiveAtom<boolean>;
@@ -382,10 +382,19 @@ export class PreviewModel implements ViewModel {
             return file;
         });
 
-        const fileContentAtom = jotai.atom<Promise<string>>(async (get) => {
-            const fullFile = await get(fullFileAtom);
-            return util.base64ToString(fullFile?.data64);
-        });
+        const fileContentAtom = jotai.atom(
+            async (get) => {
+                const newContent = get(this.newFileContent);
+                if (newContent) {
+                    return newContent;
+                }
+                const fullFile = await get(fullFileAtom);
+                return util.base64ToString(fullFile?.data64);
+            },
+            (get, set, update: string) => {
+                set(fileContentAtom, update);
+            }
+        );
 
         this.fullFile = fullFileAtom;
         this.fileContent = fileContentAtom;
@@ -542,6 +551,7 @@ export class PreviewModel implements ViewModel {
         const conn = globalStore.get(this.connection) ?? "";
         try {
             services.FileService.SaveFile(conn, filePath, util.stringToBase64(newFileContent));
+            globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
         } catch (error) {
