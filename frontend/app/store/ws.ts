@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { type WebSocket, newWebSocket } from "@/util/wsutil";
 import debug from "debug";
 import { sprintf } from "sprintf-js";
-import type { WebSocket as NodeWebSocketType } from "ws";
 
 const AuthKeyHeader = "X-AuthKey";
 
@@ -27,12 +27,11 @@ function removeWSReconnectHandler(handler: () => void) {
 type WSEventCallback = (arg0: WSEventType) => void;
 
 type ElectronOverrideOpts = {
-    wsImpl: typeof NodeWebSocketType;
     authKey: string;
 };
 
 class WSControl {
-    wsConn: WebSocket | NodeWebSocketType;
+    wsConn: WebSocket;
     open: boolean;
     opening: boolean = false;
     reconnectTimes: number = 0;
@@ -67,13 +66,9 @@ class WSControl {
         this.lastReconnectTime = Date.now();
         dlog("try reconnect:", desc);
         this.opening = true;
-        if (this.eoOpts) {
-            this.wsConn = new this.eoOpts.wsImpl(this.baseHostPort + "/ws?windowid=" + this.windowId, {
-                headers: { [AuthKeyHeader]: this.eoOpts.authKey },
-            });
-        } else {
-            this.wsConn = new WebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId);
-        }
+        this.wsConn = newWebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId, {
+            [AuthKeyHeader]: this.eoOpts.authKey,
+        });
         this.wsConn.onopen = this.onopen.bind(this);
         this.wsConn.onmessage = this.onmessage.bind(this);
         this.wsConn.onclose = this.onclose.bind(this);
@@ -209,5 +204,4 @@ class WSControl {
     }
 }
 
-export { addWSReconnectHandler, removeWSReconnectHandler, WSControl };
-export type { ElectronOverrideOpts };
+export { WSControl, addWSReconnectHandler, removeWSReconnectHandler };
