@@ -45,6 +45,15 @@ const Widgets = React.memo(() => {
             },
         },
     };
+    const tipsWidget: WidgetConfigType = {
+        icon: "lightbulb",
+        label: "tips",
+        blockdef: {
+            meta: {
+                view: "tips",
+            },
+        },
+    };
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
     const showDivider = keyLen(fullConfig?.defaultwidgets) > 0 && keyLen(fullConfig?.widgets) > 0;
     const defaultWidgets = sortByDisplayOrder(fullConfig?.defaultwidgets);
@@ -59,6 +68,7 @@ const Widgets = React.memo(() => {
             {showHelp ? (
                 <>
                     <div className="widget-spacer" />
+                    <Widget key="help" widget={tipsWidget} />
                     <Widget key="help" widget={helpWidget} />
                 </>
             ) : null}
