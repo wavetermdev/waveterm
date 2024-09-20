@@ -1,8 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi, openLink } from "@/app/store/global";
+import { getApi, openLink, useSettingsKeyAtom } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { NodeModel } from "@/layout/index";
 import { WOS, globalStore } from "@/store/global";
 import * as services from "@/store/services";
@@ -30,6 +32,7 @@ export class WebViewModel implements ViewModel {
     webviewRef: React.RefObject<WebviewTag>;
     urlInputRef: React.RefObject<HTMLInputElement>;
     nodeModel: NodeModel;
+    endIconButtons?: jotai.Atom<IconButtonDecl[]>;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.nodeModel = nodeModel;
@@ -48,7 +51,8 @@ export class WebViewModel implements ViewModel {
         this.webviewRef = React.createRef<WebviewTag>();
 
         this.viewText = jotai.atom((get) => {
-            let url = get(this.blockAtom)?.meta?.url || "";
+            const defaultUrlAtom = useSettingsKeyAtom("web:defaulturl");
+            let url = get(this.blockAtom)?.meta?.url || get(defaultUrlAtom);
             const currUrl = get(this.url);
             if (currUrl !== undefined) {
                 url = currUrl;
@@ -90,6 +94,22 @@ export class WebViewModel implements ViewModel {
                     ],
                 },
             ] as HeaderElem[];
+        });
+
+        this.endIconButtons = jotai.atom((get) => {
+            return [
+                {
+                    elemtype: "iconbutton",
+                    icon: "arrow-up-right-from-square",
+                    title: "Open in External Browser",
+                    click: () => {
+                        const url = this.getUrl();
+                        if (url != null && url != "") {
+                            return getApi().openExternal(this.getUrl());
+                        }
+                    },
+                },
+            ];
         });
     }
 
@@ -199,7 +219,11 @@ export class WebViewModel implements ViewModel {
         globalStore.set(this.url, url);
     }
 
-    ensureUrlScheme(url: string) {
+    ensureUrlScheme(url: string, searchTemplate: string) {
+        if (url == null) {
+            url = "";
+        }
+
         if (/^(http|https):/.test(url)) {
             // If the URL starts with http: or https:, return it as is
             return url;
@@ -223,7 +247,10 @@ export class WebViewModel implements ViewModel {
         }
 
         // Otherwise, treat it as a search query
-        return `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+        if (searchTemplate == null) {
+            return `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+        }
+        return searchTemplate.replace("{query}", encodeURIComponent(url));
     }
 
     normalizeUrl(url: string) {
@@ -247,7 +274,9 @@ export class WebViewModel implements ViewModel {
      * @param newUrl The new URL to load in the webview.
      */
     loadUrl(newUrl: string, reason: string) {
-        const nextUrl = this.ensureUrlScheme(newUrl);
+        const defaultSearchAtom = useSettingsKeyAtom("web:defaultsearch");
+        const searchTemplate = globalStore.get(defaultSearchAtom);
+        const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
         console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef?.current.getURL());
         if (newUrl != nextUrl) {
             globalStore.set(this.url, nextUrl);
@@ -317,8 +346,20 @@ export class WebViewModel implements ViewModel {
         return false;
     }
 
-    getSettingsMenuItems() {
+    getSettingsMenuItems(): ContextMenuItem[] {
         return [
+            {
+                label: "Set Homepage",
+                click: async () => {
+                    const url = this.getUrl();
+                    if (url != null && url != "") {
+                        RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                    }
+                },
+            },
+            {
+                type: "separator",
+            },
             {
                 label: this.webviewRef.current?.isDevToolsOpened() ? "Close DevTools" : "Open DevTools",
                 click: async () => {
@@ -347,7 +388,9 @@ interface WebViewProps {
 
 const WebView = memo(({ model }: WebViewProps) => {
     const blockData = jotai.useAtomValue(model.blockAtom);
-    const metaUrl = blockData?.meta?.url;
+    const defaultUrlAtom = useSettingsKeyAtom("web:defaulturl");
+    const defaultUrl = jotai.useAtomValue(defaultUrlAtom);
+    const metaUrl = blockData?.meta?.url || defaultUrl;
     const metaUrlRef = React.useRef(metaUrl);
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.

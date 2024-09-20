@@ -421,6 +421,8 @@ declare global {
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
         "web:openlinksinternally"?: boolean;
+        "web:defaulturl"?: string;
+        "web:defaultsearch"?: string;
         "blockheader:*"?: boolean;
         "blockheader:showblockids"?: boolean;
         "autoupdate:*"?: boolean;

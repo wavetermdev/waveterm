@@ -54,8 +54,10 @@ type SettingsType struct {
 	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
 
-	WebClear               bool `json:"web:*,omitempty"`
-	WebOpenLinksInternally bool `json:"web:openlinksinternally,omitempty"`
+	WebClear               bool   `json:"web:*,omitempty"`
+	WebOpenLinksInternally bool   `json:"web:openlinksinternally,omitempty"`
+	WebDefaultUrl          string `json:"web:defaulturl,omitempty"`
+	WebDefaultSearch       string `json:"web:defaultsearch,omitempty"`
 
 	BlockHeaderClear        bool `json:"blockheader:*,omitempty"`
 	BlockHeaderShowBlockIds bool `json:"blockheader:showblockids,omitempty"`
