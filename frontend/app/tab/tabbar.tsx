@@ -11,7 +11,7 @@ import React, { createRef, useCallback, useEffect, useRef, useState } from "reac
 import { debounce } from "throttle-debounce";
 import { Tab } from "./tab";
 import "./tabbar.less";
-import { UpdateStatusBanner } from "./updatestatus";
+import { UpdateStatusBanner } from "./updatebanner";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
