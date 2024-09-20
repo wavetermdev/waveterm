@@ -125,6 +125,7 @@ export class PreviewModel implements ViewModel {
     fullFile: jotai.Atom<Promise<FullFile>>;
     fileMimeType: jotai.Atom<Promise<string>>;
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
+    fileContentSaved: jotai.PrimitiveAtom<string>;
     fileContent: jotai.WritableAtom<Promise<string>, [string], void>;
     newFileContent: jotai.PrimitiveAtom<string | null>;
 
@@ -382,17 +383,22 @@ export class PreviewModel implements ViewModel {
             return file;
         });
 
+        this.fileContentSaved = jotai.atom("");
         const fileContentAtom = jotai.atom(
             async (get) => {
                 const newContent = get(this.newFileContent);
                 if (newContent) {
                     return newContent;
                 }
+                const savedContent = get(this.fileContentSaved);
+                if (savedContent) {
+                    return savedContent;
+                }
                 const fullFile = await get(fullFileAtom);
                 return util.base64ToString(fullFile?.data64);
             },
             (get, set, update: string) => {
-                set(fileContentAtom, update);
+                set(this.fileContentSaved, update);
             }
         );
 
