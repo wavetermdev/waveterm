@@ -24,6 +24,8 @@ const (
 
 	ConfigKey_WebClear                       = "web:*"
 	ConfigKey_WebOpenLinksInternally         = "web:openlinksinternally"
+	ConfigKey_WebDefaultUrl                  = "web:defaulturl"
+	ConfigKey_WebDefaultSearch               = "web:defaultsearch"
 
 	ConfigKey_BlockHeaderClear               = "blockheader:*"
 	ConfigKey_BlockHeaderShowBlockIds        = "blockheader:showblockids"
