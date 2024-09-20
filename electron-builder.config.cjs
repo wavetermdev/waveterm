@@ -88,7 +88,7 @@ const config = {
         if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {
             const packageBinDir = path.resolve(
                 context.appOutDir,
-                `${pkg.name}.app/Contents/Resources/app.asar.unpacked/dist/bin`
+                `${pkg.productName}.app/Contents/Resources/app.asar.unpacked/dist/bin`
             );
 
             // Reapply file permissions to the wavesrv binaries in the final app package
