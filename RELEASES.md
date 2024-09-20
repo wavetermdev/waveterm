@@ -1,5 +1,12 @@
 # Building for release
 
+## Temporary instructions while waiting on GitHub support
+
+1. On the `wave8` branch, run `task version -- <none, patch, minor, major> <0, 1>` based on the options mentioned in step 2 of the [Step-by-step guide](#step-by-step-guide).
+2. Commit and push the changes to the `wave8` branch.
+3. Manually create a tag named `v<version>` attached to `origin/wave8`. Push the tag to GitHub.
+4. This should kick off the build as normal and create a draft release when done. Continue from step 4 of the [Step-by-step guide](#step-by-step-guide).
+
 ## Step-by-step guide
 
 1. Go to the [Actions tab](https://github.com/wavetermdev/waveterm/actions) and select "Bump Version" from the left sidebar.
