@@ -42,7 +42,7 @@ const UpdateStatusBannerComponent = ({ buttonRef }: { buttonRef: React.RefObject
                 setTimeout(() => {
                     setUpdateStatusMessage(null);
                     setDismissBannerTimeout(null);
-                })
+                }, 10000)
             );
         } else {
             setDismissBannerTimeout(null);
