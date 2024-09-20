@@ -253,22 +253,6 @@ export class WebViewModel implements ViewModel {
         return searchTemplate.replace("{query}", encodeURIComponent(url));
     }
 
-    normalizeUrl(url: string) {
-        if (!url) {
-            return url;
-        }
-
-        try {
-            const parsedUrl = new URL(url);
-            if (parsedUrl.hostname.startsWith("www.")) {
-                parsedUrl.hostname = parsedUrl.hostname.slice(4);
-            }
-            return parsedUrl.href;
-        } catch (e) {
-            return url.replace(/\/+$/, "") + "/";
-        }
-    }
-
     /**
      * Load a new URL in the webview.
      * @param newUrl The new URL to load in the webview.
@@ -390,7 +374,10 @@ const WebView = memo(({ model }: WebViewProps) => {
     const blockData = jotai.useAtomValue(model.blockAtom);
     const defaultUrlAtom = useSettingsKeyAtom("web:defaulturl");
     const defaultUrl = jotai.useAtomValue(defaultUrlAtom);
-    const metaUrl = blockData?.meta?.url || defaultUrl;
+    const defaultSearchAtom = useSettingsKeyAtom("web:defaultsearch");
+    const defaultSearch = jotai.useAtomValue(defaultSearchAtom);
+    let metaUrl = blockData?.meta?.url || defaultUrl;
+    metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     const metaUrlRef = React.useRef(metaUrl);
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
