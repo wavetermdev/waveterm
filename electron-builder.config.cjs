@@ -10,7 +10,7 @@ const path = require("path");
 const config = {
     appId: pkg.build.appId,
     productName: pkg.productName,
-    executableName: pkg.name,
+    executableName: pkg.productName,
     artifactName: "${productName}-${platform}-${arch}-${version}.${ext}",
     generateUpdatesFilesForAllChannels: true,
     npmRebuild: false,
