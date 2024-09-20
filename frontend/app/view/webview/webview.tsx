@@ -3,6 +3,8 @@
 
 import { getApi, openLink, useSettingsKeyAtom } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { NodeModel } from "@/layout/index";
 import { WOS, globalStore } from "@/store/global";
 import * as services from "@/store/services";
@@ -30,6 +32,7 @@ export class WebViewModel implements ViewModel {
     webviewRef: React.RefObject<WebviewTag>;
     urlInputRef: React.RefObject<HTMLInputElement>;
     nodeModel: NodeModel;
+    endIconButtons?: jotai.Atom<IconButtonDecl[]>;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.nodeModel = nodeModel;
@@ -91,6 +94,22 @@ export class WebViewModel implements ViewModel {
                     ],
                 },
             ] as HeaderElem[];
+        });
+
+        this.endIconButtons = jotai.atom((get) => {
+            return [
+                {
+                    elemtype: "iconbutton",
+                    icon: "arrow-up-right-from-square",
+                    title: "Open in External Browser",
+                    click: () => {
+                        const url = this.getUrl();
+                        if (url != null && url != "") {
+                            return getApi().openExternal(this.getUrl());
+                        }
+                    },
+                },
+            ];
         });
     }
 
@@ -327,8 +346,20 @@ export class WebViewModel implements ViewModel {
         return false;
     }
 
-    getSettingsMenuItems() {
+    getSettingsMenuItems(): ContextMenuItem[] {
         return [
+            {
+                label: "Set Homepage",
+                click: async () => {
+                    const url = this.getUrl();
+                    if (url != null && url != "") {
+                        RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                    }
+                },
+            },
+            {
+                type: "separator",
+            },
             {
                 label: this.webviewRef.current?.isDevToolsOpened() ? "Close DevTools" : "Open DevTools",
                 click: async () => {
