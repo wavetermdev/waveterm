@@ -125,7 +125,7 @@ export class PreviewModel implements ViewModel {
     fullFile: jotai.Atom<Promise<FullFile>>;
     fileMimeType: jotai.Atom<Promise<string>>;
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
-    fileContentSaved: jotai.PrimitiveAtom<string>;
+    fileContentSaved: jotai.PrimitiveAtom<string | null>;
     fileContent: jotai.WritableAtom<Promise<string>, [string], void>;
     newFileContent: jotai.PrimitiveAtom<string | null>;
 
@@ -144,6 +144,8 @@ export class PreviewModel implements ViewModel {
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
     setPreviewFileName(fileName: string) {
+        globalStore.set(this.fileContentSaved, null);
+        globalStore.set(this.newFileContent, null);
         services.ObjectService.UpdateObjectMeta(`block:${this.blockId}`, { file: fileName });
     }
 
@@ -383,15 +385,16 @@ export class PreviewModel implements ViewModel {
             return file;
         });
 
-        this.fileContentSaved = jotai.atom("");
+        this.fileContentSaved = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         const fileContentAtom = jotai.atom(
             async (get) => {
+                const _ = get(this.metaFilePath);
                 const newContent = get(this.newFileContent);
-                if (newContent) {
+                if (newContent != null) {
                     return newContent;
                 }
                 const savedContent = get(this.fileContentSaved);
-                if (savedContent) {
+                if (savedContent != null) {
                     return savedContent;
                 }
                 const fullFile = await get(fullFileAtom);
