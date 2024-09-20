@@ -97,54 +97,6 @@ function isStreamingType(mimeType: string): boolean {
         mimeType.startsWith("image/")
     );
 }
-const previewTipText = `
-### Preview
-Preview is the generic type of block used for viewing files. This can take many different forms based on the type of file being viewed.
-You can use \`wsh view [path]\` from any Wave terminal window to open a preview block with the contents of the specified path (e.g. \`wsh view .\` or \`wsh view ~/myimage.jpg\`).
-
-#### Directory
-When looking at a directory, preview will show a file viewer much like MacOS' *Finder* application or Windows' *File Explorer* application. This variant is slightly more geared toward software development with the focus on seeing what is shown by the \`ls -alh\` command.
-
-##### View a New File
-The simplest way to view a new file is to double click its row in the file viewer. Alternatively, while the block is focused, you can use the &uarr; and &darr; arrow keys to select a row and press enter to preview the associated file.
-
-##### View the Parent Directory
-In the directory view, this is as simple as opening the \`..\` file as if it were a regular file. This can be done with the method above.  You can also use the keyboard shortcut \`Cmd + ArrowUp\`.
-
-##### Navigate Back and Forward
-When looking at a file, you can navigate back by clicking the back button in the block header or the keyboard shortcut \`Cmd + ArrowLeft\`.  You can always navigate back and forward using \`Cmd + ArrowLeft\` and \`Cmd + ArrowRight\`.
-
-##### Filter the List of Files
-While the block is focused, you can filter by filename by typing a substring of the filename you're working for. To clear the filter, you can click the &#x2715; on the filter dropdown or press esc.
-
-##### Sort by a File Column
-To sort a file by a specific column, click on the header for that column. If you click the header again, it will reverse the sort order.
-
-##### Hide and Show Hidden Files
-At the right of the block header, there is an &#128065;&#65039; button. Clicking this button hides and shows hidden files.
-
-##### Refresh the Directory
-At the right of the block header, there is a refresh button. Clicking this button refreshes the directory contents.
-
-##### Navigate to Common Directories
-At the left of the block header, there is a file icon. Clicking and holding on this icon opens a menu where you can select a common folder to navigate to. The available options are *Home*, *Desktop*, *Downloads*, and *Root*.
-
-##### Open a New Terminal in the Current Directory
-If you right click the header of the block (alternatively, click the gear icon), one of the menu items listed is **Open Terminal in New Block**. This will create a new terminal block at your current directory.
-
-##### Open a New Terminal in a Child Directory
-If you want to open a terminal for a child directory instead, you can right click on that file's row to get the **Open Terminal in New Block** option. Clicking this will open a terminal at that directory. Note that this option is only available for children that are directories.
-
-##### Open a New Preview for a Child
-To open a new Preview Block for a Child, you can right click on that file's row and select the **Open Preview in New Block** option.
-
-#### Markdown
-Opening a markdown file will bring up a view of the rendered markdown. These files cannot be edited in the preview at this time.
-
-#### Images/Media
-Opening a picture will bring up the image of that picture. Opening a video will bring up a player that lets you watch the video.
-`;
-
 export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
@@ -173,7 +125,8 @@ export class PreviewModel implements ViewModel {
     fullFile: jotai.Atom<Promise<FullFile>>;
     fileMimeType: jotai.Atom<Promise<string>>;
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
-    fileContent: jotai.Atom<Promise<string>>;
+    fileContentSaved: jotai.PrimitiveAtom<string | null>;
+    fileContent: jotai.WritableAtom<Promise<string>, [string], void>;
     newFileContent: jotai.PrimitiveAtom<string | null>;
 
     openFileModal: jotai.PrimitiveAtom<boolean>;
@@ -191,6 +144,8 @@ export class PreviewModel implements ViewModel {
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
     setPreviewFileName(fileName: string) {
+        globalStore.set(this.fileContentSaved, null);
+        globalStore.set(this.newFileContent, null);
         services.ObjectService.UpdateObjectMeta(`block:${this.blockId}`, { file: fileName });
     }
 
@@ -430,10 +385,25 @@ export class PreviewModel implements ViewModel {
             return file;
         });
 
-        const fileContentAtom = jotai.atom<Promise<string>>(async (get) => {
-            const fullFile = await get(fullFileAtom);
-            return util.base64ToString(fullFile?.data64);
-        });
+        this.fileContentSaved = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        const fileContentAtom = jotai.atom(
+            async (get) => {
+                const _ = get(this.metaFilePath);
+                const newContent = get(this.newFileContent);
+                if (newContent != null) {
+                    return newContent;
+                }
+                const savedContent = get(this.fileContentSaved);
+                if (savedContent != null) {
+                    return savedContent;
+                }
+                const fullFile = await get(fullFileAtom);
+                return util.base64ToString(fullFile?.data64);
+            },
+            (get, set, update: string) => {
+                set(this.fileContentSaved, update);
+            }
+        );
 
         this.fullFile = fullFileAtom;
         this.fileContent = fileContentAtom;
@@ -590,6 +560,7 @@ export class PreviewModel implements ViewModel {
         const conn = globalStore.get(this.connection) ?? "";
         try {
             services.FileService.SaveFile(conn, filePath, util.stringToBase64(newFileContent));
+            globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
         } catch (error) {
