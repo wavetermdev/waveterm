@@ -43,6 +43,7 @@ jobs:
             scripthaus run electron 1>/dev/null 2>&1 &
             echo "Electron Done"
             npm install testdriverai -g
+            npm install dashcam -g
             exit       
           prompt: |
             1. /run testdriver/theme.yml
