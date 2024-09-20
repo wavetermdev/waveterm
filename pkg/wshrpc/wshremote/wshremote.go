@@ -104,7 +104,7 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 		if err != nil {
 			continue
 		}
-		innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt)
+		innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt, false)
 		fileInfoArr = append(fileInfoArr, innerFileInfo)
 		if len(fileInfoArr) >= DirChunkSize {
 			dataCallback(fileInfoArr, nil)
@@ -200,8 +200,8 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 	return ch
 }
 
-func statToFileInfo(fullPath string, finfo fs.FileInfo) *wshrpc.FileInfo {
-	mimeType := utilfn.DetectMimeType(fullPath, finfo)
+func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
+	mimeType := utilfn.DetectMimeType(fullPath, finfo, extended)
 	rtn := &wshrpc.FileInfo{
 		Path:     wavebase.ReplaceHomeDir(fullPath),
 		Dir:      computeDirPart(fullPath, finfo.IsDir()),
@@ -272,7 +272,7 @@ func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInf
 	if err != nil {
 		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
-	rtn := statToFileInfo(cleanedPath, finfo)
+	rtn := statToFileInfo(cleanedPath, finfo, extended)
 	if extended {
 		rtn.ReadOnly = checkIsReadOnly(cleanedPath, finfo, true)
 	}
