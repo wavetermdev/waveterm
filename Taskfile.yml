@@ -17,8 +17,7 @@ vars:
 tasks:
     electron:dev:
         desc: Run the Electron application via the Vite dev server (enables hot reloading).
-        cmds:
-            - yarn dev
+        cmd: yarn dev
         deps:
             - yarn
             - build:backend
@@ -28,11 +27,14 @@ tasks:
 
     electron:start:
         desc: Run the Electron application directly.
-        cmds:
-            - yarn start
+        cmd: yarn start
         deps:
             - yarn
             - build:backend
+
+    storybook:
+        desc: Start the Storybook server.
+        cmd: yarn storybook
 
     package:
         desc: Package the application for the current platform.
@@ -98,12 +100,12 @@ tasks:
         requires:
             vars:
                 - ARCHS
-        cmds:
-            - cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netcgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
-              for:
-                  var: ARCHS
-                  split: ","
-                  as: GOARCH
+        cmd:
+            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netcgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
+            for:
+                var: ARCHS
+                split: ","
+                as: GOARCH
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
@@ -173,8 +175,7 @@ tasks:
             - "pkg/**/*.go"
         generates:
             - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}}
-        cmds:
-            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+        cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         deps:
             - go:mod:tidy
         internal: true
@@ -251,8 +252,7 @@ tasks:
             - yarn.lock
             - package.json
             - .yarnrc.yml
-        cmds:
-            - yarn
+        cmd: yarn
 
     go:mod:tidy:
         desc: Runs `go mod tidy`
@@ -261,5 +261,4 @@ tasks:
             - go.sum
         sources:
             - go.mod
-        cmds:
-            - go mod tidy
+        cmd: go mod tidy
