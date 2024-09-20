@@ -375,7 +375,7 @@ function createWindow(clientData: ClientDataType | null): Electron.BrowserWindow
         win.webContents.send("zoom-changed");
     });
     win.webContents.setWindowOpenHandler(({ url, frameName }) => {
-        if (url.startsWith("https://docs.waveterm.dev/")) {
+        if (url.startsWith("https://docs.waveterm.dev/") || url.startsWith("https://legacydocs.waveterm.dev")) {
             console.log("openExternal docs", url);
             electron.shell.openExternal(url);
         } else if (url.startsWith("https://discord.gg/")) {

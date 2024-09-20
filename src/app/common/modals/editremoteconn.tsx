@@ -269,7 +269,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                             Most options for connections imported from an ssh config file cannot be edited. For these
                             changes, you must edit the config file and import it again. The shell preference can be
                             edited, but will return to the default if you import again. It will stay changed if you
-                            follow <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
+                            follow <a href="https://legacydocs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
                         </span>
                     }
                     icon={<i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />}
