@@ -144,6 +144,17 @@ const QuickTips = () => {
                         </div>
                     </div>
                 </div>
+
+                <div className="tip-section-header">Need More Help?</div>
+                <div className="tip">
+                    <div>
+                        <div>
+                            <a target="_blank" href="https://discord.gg/XfvZ334gwU" rel="noopener">
+                                Join Our Discord
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
