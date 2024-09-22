@@ -1,0 +1,46 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.dropdown {
+    position: absolute;
+    z-index: 1000; // TODO: put this in theme.less
+    display: flex;
+    width: 104px;
+    padding: 2px;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 1px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: #212121;
+    box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.3);
+
+    .dropdown-item {
+        padding: 4px 6px;
+        cursor: pointer;
+        color: #fff;
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+        letter-spacing: -0.12px;
+        width: 100%;
+
+        &:hover {
+            background-color: var(--accent-color);
+        }
+
+        .arrow {
+            float: right;
+        }
+    }
+
+    .sub-dropdown {
+        position: absolute;
+        top: 0;
+        left: 100%;
+        min-width: 100%;
+        white-space: nowrap;
+    }
+}
