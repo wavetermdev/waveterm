@@ -64,27 +64,27 @@ export const Test: Story = {
     },
     args: {
         items: [
-            { label: "Option 1", onClick: () => console.log("Clicked Option 1") },
+            { label: "Option 1", onClick: () => null },
             {
                 label: "Option 2",
                 onClick: () => console.log("Clicked Option 2"),
                 subItems: [
-                    { label: "Option 2 -> 1", onClick: () => console.log("Clicked Sub-option 1") },
-                    { label: "Option 2 -> 2", onClick: () => console.log("Clicked Sub-option 2") },
+                    { label: "Option 2 -> 1", onClick: () => null },
+                    { label: "Option 2 -> 2", onClick: () => null },
                 ],
             },
             {
                 label: "Option 3",
                 onClick: () => console.log("Clicked Option 3"),
                 subItems: [
-                    { label: "Option 3 -> 1", onClick: () => console.log("Clicked Sub-option 1") },
-                    { label: "Option 3 -> 2", onClick: () => console.log("Clicked Sub-option 2") },
+                    { label: "Option 3 -> 1", onClick: () => null },
+                    { label: "Option 3 -> 2", onClick: () => null },
                     {
                         label: "Option 3 -> 3",
                         onClick: () => console.log("Clicked Option 3"),
                         subItems: [
-                            { label: "Option 3 -> 3 -> 1", onClick: () => console.log("Clicked Sub-option 1") },
-                            { label: "Option 3 -> 3 -> 2", onClick: () => console.log("Clicked Sub-option 2") },
+                            { label: "Option 3 -> 3 -> 1", onClick: () => null },
+                            { label: "Option 3 -> 3 -> 2", onClick: () => null },
                         ],
                     },
                 ],

@@ -6,6 +6,64 @@ import ReactDOM from "react-dom";
 
 import "./dropdown.less";
 
+const SubMenu = ({
+    subItems,
+    parentKey,
+    parentRef,
+    subMenuPosition,
+    visibleSubMenus,
+    handleMouseEnterItem,
+    subMenuRefs,
+}: {
+    subItems: DropdownItem[];
+    parentKey: string;
+    parentRef: React.RefObject<HTMLDivElement>;
+    subMenuPosition: any;
+    visibleSubMenus: any;
+    handleMouseEnterItem: any;
+    subMenuRefs: any;
+}) => {
+    return (
+        <div
+            className="dropdown sub-dropdown"
+            ref={subMenuRefs.current[parentKey]}
+            style={{
+                top: subMenuPosition[parentKey]?.top || 0,
+                left: subMenuPosition[parentKey]?.left || 0,
+                position: "absolute",
+                zIndex: 1000, // Ensure the submenu is above other elements
+            }}
+        >
+            {subItems.map((item, idx) => {
+                const newKey = `${parentKey}-${idx}`; // Full hierarchical key
+                console.log("newKey===============", newKey, visibleSubMenus[newKey]);
+                console.log("visibleSubMenus************", visibleSubMenus);
+                return (
+                    <div
+                        key={newKey}
+                        className="dropdown-item"
+                        onMouseOver={(event) => handleMouseEnterItem(event, parentKey, idx, item)}
+                    >
+                        {item.label}
+                        {item.subItems && <span className="arrow">▶</span>}
+                        {visibleSubMenus[newKey]?.visible && item.subItems && (
+                            <SubMenu
+                                subItems={item.subItems}
+                                parentKey={newKey}
+                                parentRef={subMenuRefs.current[parentKey]}
+                                subMenuPosition={subMenuPosition}
+                                visibleSubMenus={visibleSubMenus}
+                                handleMouseEnterItem={handleMouseEnterItem}
+                                subMenuRefs={subMenuRefs}
+                            />
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 type DropdownItem = {
     label: string;
     onClick?: () => void;
@@ -20,22 +78,27 @@ interface DropdownProps {
 }
 
 const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownProps) => {
-    const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: number]: any }>({}); // Track visibility of each submenu (nested object)
-    const [subMenuPosition, setSubMenuPosition] = useState<{ [key: number]: { top: number; left: number } }>({});
+    const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({}); // Track visibility of each submenu
+    const [subMenuPosition, setSubMenuPosition] = useState<{
+        [key: string]: { top: number; left: number; label: string };
+    }>({});
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const subMenuRefs = useRef<Array<React.RefObject<HTMLDivElement>>>([]); // Array of refs for each submenu
+    const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({}); // Store refs using flat structure
 
     const effectiveBoundaryRef: React.RefObject<HTMLElement> = boundaryRef ?? { current: document.documentElement };
     const width = useWidth(effectiveBoundaryRef);
     const height = useHeight(effectiveBoundaryRef);
 
-    // Add ref for each submenu item dynamically
-    if (subMenuRefs.current.length !== items.length) {
-        subMenuRefs.current = Array(items.length)
-            .fill(null)
-            .map((_, i) => subMenuRefs.current[i] || React.createRef<HTMLDivElement>());
-    }
+    // console.log("visibleSubMenus.............", visibleSubMenus);
+
+    // Add ref for each submenu dynamically
+    items.forEach((_, idx) => {
+        const key = `${idx}`;
+        if (!subMenuRefs.current[key]) {
+            subMenuRefs.current[key] = React.createRef<HTMLDivElement>();
+        }
+    });
 
     useLayoutEffect(() => {
         if (anchorRef.current && dropdownRef.current) {
@@ -64,15 +127,20 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
         }
     }, [width, height]);
 
+    // Position submenus based on available space
     const handleSubMenuPosition = (
-        parentIndex: number,
-        index: number,
+        key: string,
         itemRect: DOMRect,
-        parentRef: React.RefObject<HTMLDivElement> | React.RefObject<HTMLElement>
+        parentRef: React.RefObject<HTMLDivElement>,
+        label: string
     ) => {
-        const subMenuRef = subMenuRefs.current[index].current;
-        const parentMenuRef = parentRef.current;
-        if (subMenuRef && parentMenuRef) {
+        // Delay the position calculation to allow the subMenuRef to be populated
+        setTimeout(() => {
+            const subMenuRef = subMenuRefs.current[key]?.current;
+            if (!subMenuRef) {
+                return; // Avoid proceeding if the ref is still null
+            }
+
             const boundaryRect = effectiveBoundaryRef.current?.getBoundingClientRect() || {
                 top: 0,
                 left: 0,
@@ -80,170 +148,108 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
                 right: window.innerWidth,
             };
 
-            // Position to the right of the hovered item
-            let left = itemRect.width - 5;
+            const submenuWidth = subMenuRef.offsetWidth;
+            const submenuHeight = subMenuRef.offsetHeight;
 
-            // Adjust to the left if overflowing right boundary
-            if (left + subMenuRef.offsetWidth > boundaryRect.right) {
-                left = itemRect.left - subMenuRef.offsetWidth; // Align left if overflow
+            let left = itemRect.width; // Default position to the right of the hovered item
+            let top = submenuHeight - itemRect.height;
+
+            // Adjust to the left if overflowing the right boundary
+            if (left + submenuWidth > window.innerWidth) {
+                left = itemRect.left - submenuWidth;
             }
 
-            // Calculate top based on parent's position
-            const parentRect = parentMenuRef.getBoundingClientRect();
-            const top = itemRect.top - parentRect.top;
+            // Adjust if the submenu overflows the bottom boundary
+            if (top + submenuHeight > window.innerHeight) {
+                top = window.innerHeight - submenuHeight - 10;
+            }
 
+            // Set the submenu position
             setSubMenuPosition((prev) => ({
                 ...prev,
-                [parentIndex]: {
-                    ...prev[parentIndex],
-                    [index]: { top, left },
-                },
+                [key]: { top, left, label },
             }));
-        }
+        }, 0); // Delay by 50 milliseconds to ensure the submenu has rendered
     };
 
-    // Recursive function to update visibility for multi-level submenus
-    const updateVisibility = (currentState: any, parentIndex: number | null, index: number, item: DropdownItem) => {
-        // Recursively clone the current state
-        const updatedState = { ...currentState };
+    // Handle submenu visibility updates
+    const updateVisibility = (currentState: any, key: string, item: DropdownItem) => {
+        const updatedState = Object.keys(currentState).reduce((acc, k) => {
+            acc[k] = { ...currentState[k], visible: false };
+            return acc;
+        }, {} as any);
 
-        // Handle the case where we need to update a nested level (parentIndex is not null)
-        if (parentIndex !== null) {
-            // Ensure that the parentIndex exists in the state
-            if (!updatedState[parentIndex]) {
-                updatedState[parentIndex] = {};
-            }
-
-            // Reset visibility for all nested submenus at this level
-            for (let key in updatedState[parentIndex]) {
-                if (updatedState[parentIndex][key]?.visible !== undefined) {
-                    updatedState[parentIndex][key].visible = false;
-                }
-            }
-
-            // Update the submenu at the correct level
-            updatedState[parentIndex] = updateVisibility(
-                updatedState[parentIndex], // Pass the state for the current level
-                null, // Stop recursion when we reach the correct level
-                index,
-                item
-            );
-        } else {
-            // We're at the correct level (root or no parent), so set all siblings' visibility to false
-            for (let key in updatedState) {
-                if (updatedState[key]?.visible !== undefined) {
-                    updatedState[key].visible = false;
-                }
-            }
-            // Set the current index submenu to visible
-            updatedState[index] = { visible: true, label: item.label };
-        }
+        updatedState[key] = { visible: true, label: item.label };
 
         return updatedState;
     };
 
     const handleMouseEnterItem = (
         event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-        parentIndex: number | null,
+        parentKey: string | null,
         index: number,
-        item: DropdownItem,
-        parentRef: React.RefObject<HTMLDivElement> | React.RefObject<HTMLElement>,
-        reason?: string
+        item: DropdownItem
     ) => {
         event.stopPropagation();
+
+        const key = parentKey ? `${parentKey}-${index}` : `${index}`; // Full hierarchical key
+
         setVisibleSubMenus((prev) => {
-            return updateVisibility(prev, parentIndex, index, item);
+            // Preserve the current hierarchy visibility and only update the current item
+            const updatedState = { ...prev };
+
+            // Ensure the current submenu is visible
+            updatedState[key] = { visible: true, label: item.label };
+
+            return updatedState;
         });
 
-        if (subMenuRefs.current[index].current) {
-            const itemRect = subMenuRefs.current[index].current!.parentElement?.getBoundingClientRect();
-            if (itemRect) {
-                handleSubMenuPosition(parentIndex ?? index, index, itemRect, parentRef);
-            }
-        }
+        const itemRect = event.currentTarget.getBoundingClientRect();
+        handleSubMenuPosition(key, itemRect, dropdownRef, item.label);
     };
 
-    const handleMouseLeaveItem = (parentIndex: number | null, index: number) => {
+    // Hide submenu on mouse leave
+    const handleMouseLeaveItem = (key: string) => {
         setTimeout(() => {
             setVisibleSubMenus((prev) => ({
                 ...prev,
-                [parentIndex ?? index]: {
-                    ...prev[parentIndex ?? index],
-                    [index]: { visible: false, label: prev[parentIndex ?? index][index].label }, // Maintain label
-                },
-            })); // Hide the specific submenu
+                [key]: { ...prev[key], visible: false },
+            }));
         }, 200);
     };
 
-    // Recursive renderSubMenu to handle multiple nested submenus
-    const renderSubMenu = (
-        subItems: DropdownItem[],
-        parentIndex: number | null,
-        index: number,
-        parentRef: React.RefObject<HTMLDivElement>
-    ) => {
-        return (
-            <div
-                className="dropdown sub-dropdown"
-                ref={subMenuRefs.current[index]} // Use unique ref for each submenu
-                style={{
-                    top: subMenuPosition[parentIndex ?? index]?.[index]?.top || 0,
-                    left: subMenuPosition[parentIndex ?? index]?.[index]?.left || 0,
-                }}
-            >
-                {subItems.map((item, idx) => (
-                    <div
-                        key={`${index}-${idx}`}
-                        className="dropdown-item"
-                        onMouseOver={(event) =>
-                            handleMouseEnterItem(
-                                event,
-                                index,
-                                idx,
-                                item,
-                                subMenuRefs.current[index],
-                                "submenu item hovered"
-                            )
-                        }
-                        onClick={item.onClick}
-                    >
-                        {item.label}
-                        {item.subItems && <span className="arrow">▶</span>}
-                        {visibleSubMenus[index]?.[idx]?.visible &&
-                            item.subItems &&
-                            renderSubMenu(item.subItems, index, idx, subMenuRefs.current[index])}
-                    </div>
-                ))}
-            </div>
-        );
-    };
-
-    if (!anchorRef?.current) {
-        return null;
-    }
-
+    // Render the main dropdown and submenus
     return ReactDOM.createPortal(
         <div
             className={clsx("dropdown", className)}
             ref={dropdownRef}
             style={{ top: position.top, left: position.left }}
         >
-            {items.map((item, index) => (
-                <div
-                    key={index}
-                    className="dropdown-item"
-                    onMouseOver={(event) =>
-                        handleMouseEnterItem(event, null, index, item, dropdownRef, "root menu item hovered")
-                    }
-                    onClick={item.onClick}
-                >
-                    {item.label}
-                    {item.subItems && <span className="arrow">▶</span>}
-                    {visibleSubMenus[index]?.visible &&
-                        item.subItems &&
-                        renderSubMenu(item.subItems, null, index, dropdownRef)}
-                </div>
-            ))}
+            {items.map((item, index) => {
+                const key = `${index}`;
+                return (
+                    <div
+                        key={key}
+                        className="dropdown-item"
+                        onMouseOver={(event) => handleMouseEnterItem(event, null, index, item)}
+                    >
+                        {item.label}
+                        {item.subItems && <span className="arrow">▶</span>}
+                        {visibleSubMenus[key]?.visible && item.subItems && (
+                            <SubMenu
+                                subItems={item.subItems}
+                                parentKey={key}
+                                parentRef={dropdownRef}
+                                subMenuPosition={subMenuPosition}
+                                visibleSubMenus={visibleSubMenus}
+                                handleMouseEnterItem={handleMouseEnterItem}
+                                // handleMouseLeaveItem={handleMouseLeaveItem}
+                                subMenuRefs={subMenuRefs}
+                            />
+                        )}
+                    </div>
+                );
+            })}
         </div>,
         document.body
     );
