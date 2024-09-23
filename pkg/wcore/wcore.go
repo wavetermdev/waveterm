@@ -7,6 +7,7 @@ package wcore
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -150,6 +151,7 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		}
 		firstRun = true
 	}
+	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) > 0 {
 		return nil, false, nil
 	}
