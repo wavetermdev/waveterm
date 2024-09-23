@@ -114,8 +114,6 @@ const Dropdown = memo(
             }
         });
 
-        console.log("hoveredItems", hoveredItems);
-
         useLayoutEffect(() => {
             if (anchorRef.current && dropdownRef.current) {
                 const anchorRect = anchorRef.current.getBoundingClientRect();
