@@ -188,11 +188,36 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
     ) => {
         event.stopPropagation();
 
+        // Build the full key for the current item
         const key = parentKey ? `${parentKey}-${index}` : `${index}`;
 
         setVisibleSubMenus((prev) => {
+            // Create a copy of the previous state
             const updatedState = { ...prev };
+
+            // Ensure the current submenu and its ancestors are visible
             updatedState[key] = { visible: true, label: item.label };
+
+            // Extract ancestors of the key (e.g., "2-2-1" -> "2-2" -> "2")
+            const ancestors = key.split("-").reduce((acc, part, idx) => {
+                if (idx === 0) return [part];
+                return [...acc, `${acc[idx - 1]}-${part}`];
+            }, [] as string[]);
+
+            // Mark ancestors visible
+            ancestors.forEach((ancestorKey) => {
+                if (updatedState[ancestorKey]) {
+                    updatedState[ancestorKey].visible = true;
+                }
+            });
+
+            // Hide any submenu that is not part of the current hierarchy
+            for (const pkey in updatedState) {
+                if (!ancestors.includes(pkey) && pkey !== key) {
+                    updatedState[pkey].visible = false;
+                }
+            }
+
             return updatedState;
         });
 
