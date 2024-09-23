@@ -3,13 +3,11 @@ import { useWidth } from "@/app/hook/useWidth";
 import clsx from "clsx";
 import React, { memo, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-
 import "./dropdown.less";
 
 const SubMenu = ({
     subItems,
     parentKey,
-    parentRef,
     subMenuPosition,
     visibleSubMenus,
     handleMouseEnterItem,
@@ -17,13 +15,20 @@ const SubMenu = ({
 }: {
     subItems: DropdownItem[];
     parentKey: string;
-    parentRef: React.RefObject<HTMLDivElement>;
     subMenuPosition: any;
     visibleSubMenus: any;
     handleMouseEnterItem: any;
     subMenuRefs: any;
 }) => {
-    return (
+    // Ensure a ref exists for each submenu
+    subItems.forEach((_, idx) => {
+        const newKey = `${parentKey}-${idx}`;
+        if (!subMenuRefs.current[newKey]) {
+            subMenuRefs.current[newKey] = React.createRef<HTMLDivElement>();
+        }
+    });
+
+    const subMenu = (
         <div
             className="dropdown sub-dropdown"
             ref={subMenuRefs.current[parentKey]}
@@ -31,18 +36,17 @@ const SubMenu = ({
                 top: subMenuPosition[parentKey]?.top || 0,
                 left: subMenuPosition[parentKey]?.left || 0,
                 position: "absolute",
-                zIndex: 1000, // Ensure the submenu is above other elements
+                zIndex: 1000,
+                opacity: visibleSubMenus[parentKey]?.visible ? 1 : 0,
             }}
         >
             {subItems.map((item, idx) => {
                 const newKey = `${parentKey}-${idx}`; // Full hierarchical key
-                console.log("newKey===============", newKey, visibleSubMenus[newKey]);
-                console.log("visibleSubMenus************", visibleSubMenus);
                 return (
                     <div
                         key={newKey}
                         className="dropdown-item"
-                        onMouseOver={(event) => handleMouseEnterItem(event, parentKey, idx, item)}
+                        onMouseEnter={(event) => handleMouseEnterItem(event, parentKey, idx, item)}
                     >
                         {item.label}
                         {item.subItems && <span className="arrow">▶</span>}
@@ -50,7 +54,6 @@ const SubMenu = ({
                             <SubMenu
                                 subItems={item.subItems}
                                 parentKey={newKey}
-                                parentRef={subMenuRefs.current[parentKey]}
                                 subMenuPosition={subMenuPosition}
                                 visibleSubMenus={visibleSubMenus}
                                 handleMouseEnterItem={handleMouseEnterItem}
@@ -62,6 +65,7 @@ const SubMenu = ({
             })}
         </div>
     );
+    return ReactDOM.createPortal(subMenu, document.body);
 };
 
 type DropdownItem = {
@@ -78,21 +82,19 @@ interface DropdownProps {
 }
 
 const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownProps) => {
-    const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({}); // Track visibility of each submenu
+    const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({});
     const [subMenuPosition, setSubMenuPosition] = useState<{
         [key: string]: { top: number; left: number; label: string };
     }>({});
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({}); // Store refs using flat structure
+    const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
 
     const effectiveBoundaryRef: React.RefObject<HTMLElement> = boundaryRef ?? { current: document.documentElement };
     const width = useWidth(effectiveBoundaryRef);
     const height = useHeight(effectiveBoundaryRef);
 
-    // console.log("visibleSubMenus.............", visibleSubMenus);
-
-    // Add ref for each submenu dynamically
+    // Add refs for top-level menus
     items.forEach((_, idx) => {
         const key = `${idx}`;
         if (!subMenuRefs.current[key]) {
@@ -134,12 +136,9 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
         parentRef: React.RefObject<HTMLDivElement>,
         label: string
     ) => {
-        // Delay the position calculation to allow the subMenuRef to be populated
         setTimeout(() => {
             const subMenuRef = subMenuRefs.current[key]?.current;
-            if (!subMenuRef) {
-                return; // Avoid proceeding if the ref is still null
-            }
+            if (!subMenuRef) return;
 
             const boundaryRect = effectiveBoundaryRef.current?.getBoundingClientRect() || {
                 top: 0,
@@ -151,8 +150,8 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
             const submenuWidth = subMenuRef.offsetWidth;
             const submenuHeight = subMenuRef.offsetHeight;
 
-            let left = itemRect.width; // Default position to the right of the hovered item
-            let top = submenuHeight - itemRect.height;
+            let left = itemRect.right;
+            let top = itemRect.top;
 
             // Adjust to the left if overflowing the right boundary
             if (left + submenuWidth > window.innerWidth) {
@@ -164,15 +163,13 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
                 top = window.innerHeight - submenuHeight - 10;
             }
 
-            // Set the submenu position
             setSubMenuPosition((prev) => ({
                 ...prev,
                 [key]: { top, left, label },
             }));
-        }, 0); // Delay by 50 milliseconds to ensure the submenu has rendered
+        }, 0);
     };
 
-    // Handle submenu visibility updates
     const updateVisibility = (currentState: any, key: string, item: DropdownItem) => {
         const updatedState = Object.keys(currentState).reduce((acc, k) => {
             acc[k] = { ...currentState[k], visible: false };
@@ -180,7 +177,6 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
         }, {} as any);
 
         updatedState[key] = { visible: true, label: item.label };
-
         return updatedState;
     };
 
@@ -192,15 +188,11 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
     ) => {
         event.stopPropagation();
 
-        const key = parentKey ? `${parentKey}-${index}` : `${index}`; // Full hierarchical key
+        const key = parentKey ? `${parentKey}-${index}` : `${index}`;
 
         setVisibleSubMenus((prev) => {
-            // Preserve the current hierarchy visibility and only update the current item
             const updatedState = { ...prev };
-
-            // Ensure the current submenu is visible
             updatedState[key] = { visible: true, label: item.label };
-
             return updatedState;
         });
 
@@ -208,17 +200,6 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
         handleSubMenuPosition(key, itemRect, dropdownRef, item.label);
     };
 
-    // Hide submenu on mouse leave
-    const handleMouseLeaveItem = (key: string) => {
-        setTimeout(() => {
-            setVisibleSubMenus((prev) => ({
-                ...prev,
-                [key]: { ...prev[key], visible: false },
-            }));
-        }, 200);
-    };
-
-    // Render the main dropdown and submenus
     return ReactDOM.createPortal(
         <div
             className={clsx("dropdown", className)}
@@ -231,7 +212,7 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
                     <div
                         key={key}
                         className="dropdown-item"
-                        onMouseOver={(event) => handleMouseEnterItem(event, null, index, item)}
+                        onMouseEnter={(event) => handleMouseEnterItem(event, null, index, item)}
                     >
                         {item.label}
                         {item.subItems && <span className="arrow">▶</span>}
@@ -239,11 +220,9 @@ const Dropdown = memo(({ items, anchorRef, boundaryRef, className }: DropdownPro
                             <SubMenu
                                 subItems={item.subItems}
                                 parentKey={key}
-                                parentRef={dropdownRef}
                                 subMenuPosition={subMenuPosition}
                                 visibleSubMenus={visibleSubMenus}
                                 handleMouseEnterItem={handleMouseEnterItem}
-                                // handleMouseLeaveItem={handleMouseLeaveItem}
                                 subMenuRefs={subMenuRefs}
                             />
                         )}
