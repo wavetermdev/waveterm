@@ -42,8 +42,8 @@ import (
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
-const InitialTelemetryWait = 30 * time.Second
-const TelemetryTick = 10 * time.Minute
+const InitialTelemetryWait = 10 * time.Second
+const TelemetryTick = 2 * time.Minute
 const TelemetryInterval = 4 * time.Hour
 
 const ReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID"
