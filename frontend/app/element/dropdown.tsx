@@ -11,6 +11,7 @@ const SubMenu = memo(
         parentKey,
         subMenuPosition,
         visibleSubMenus,
+        hoveredItems,
         handleMouseEnterItem,
         subMenuRefs,
     }: {
@@ -18,9 +19,11 @@ const SubMenu = memo(
         parentKey: string;
         subMenuPosition: any;
         visibleSubMenus: any;
+        hoveredItems: string[];
         handleMouseEnterItem: any;
         subMenuRefs: any;
     }) => {
+        // Ensure a ref exists for each submenu
         subItems.forEach((_, idx) => {
             const newKey = `${parentKey}-${idx}`;
             if (!subMenuRefs.current[newKey]) {
@@ -41,11 +44,13 @@ const SubMenu = memo(
                 }}
             >
                 {subItems.map((item, idx) => {
-                    const newKey = `${parentKey}-${idx}`;
+                    const newKey = `${parentKey}-${idx}`; // Full hierarchical key
+                    const isActive = hoveredItems.includes(newKey); // Check if this item is hovered or in the hierarchy
+
                     return (
                         <div
                             key={newKey}
-                            className="dropdown-item"
+                            className={clsx("dropdown-item", { active: isActive })} // Add "active" class if the item or ancestor is hovered
                             onMouseEnter={(event) => handleMouseEnterItem(event, parentKey, idx, item)}
                         >
                             {item.label}
@@ -56,6 +61,7 @@ const SubMenu = memo(
                                     parentKey={newKey}
                                     subMenuPosition={subMenuPosition}
                                     visibleSubMenus={visibleSubMenus}
+                                    hoveredItems={hoveredItems} // Pass hoveredItems to submenus
                                     handleMouseEnterItem={handleMouseEnterItem}
                                     subMenuRefs={subMenuRefs}
                                 />
@@ -88,6 +94,7 @@ const Dropdown = memo(
         className?: string;
     }) => {
         const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({});
+        const [hoveredItems, setHoveredItems] = useState<string[]>([]); // Track hovered items and ancestors
         const [subMenuPosition, setSubMenuPosition] = useState<{
             [key: string]: { top: number; left: number; label: string };
         }>({});
@@ -106,6 +113,8 @@ const Dropdown = memo(
                 subMenuRefs.current[key] = React.createRef<HTMLDivElement>();
             }
         });
+
+        console.log("hoveredItems", hoveredItems);
 
         useLayoutEffect(() => {
             if (anchorRef.current && dropdownRef.current) {
@@ -215,6 +224,14 @@ const Dropdown = memo(
                 return updatedState;
             });
 
+            // Update the hovered items state (including ancestors)
+            const newHoveredItems = key.split("-").reduce((acc, part, idx) => {
+                if (idx === 0) return [part];
+                return [...acc, `${acc[idx - 1]}-${part}`];
+            }, [] as string[]);
+
+            setHoveredItems(newHoveredItems);
+
             const itemRect = event.currentTarget.getBoundingClientRect();
             handleSubMenuPosition(key, itemRect, dropdownRef, item.label);
         };
@@ -227,10 +244,12 @@ const Dropdown = memo(
             >
                 {items.map((item, index) => {
                     const key = `${index}`;
+                    const isActive = hoveredItems.includes(key); // Check if the current item is hovered or in the hierarchy
+
                     return (
                         <div
                             key={key}
-                            className="dropdown-item"
+                            className={clsx("dropdown-item", { active: isActive })} // Highlight hovered items and ancestors
                             onMouseEnter={(event) => handleMouseEnterItem(event, null, index, item)}
                         >
                             {item.label}
@@ -241,6 +260,7 @@ const Dropdown = memo(
                                     parentKey={key}
                                     subMenuPosition={subMenuPosition}
                                     visibleSubMenus={visibleSubMenus}
+                                    hoveredItems={hoveredItems} // Pass hoveredItems to submenus
                                     handleMouseEnterItem={handleMouseEnterItem}
                                     subMenuRefs={subMenuRefs}
                                 />
