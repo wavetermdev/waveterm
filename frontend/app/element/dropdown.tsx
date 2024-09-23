@@ -21,7 +21,6 @@ const SubMenu = memo(
         handleMouseEnterItem: any;
         subMenuRefs: any;
     }) => {
-        // Ensure a ref exists for each submenu
         subItems.forEach((_, idx) => {
             const newKey = `${parentKey}-${idx}`;
             if (!subMenuRefs.current[newKey]) {
@@ -42,7 +41,7 @@ const SubMenu = memo(
                 }}
             >
                 {subItems.map((item, idx) => {
-                    const newKey = `${parentKey}-${idx}`; // Full hierarchical key
+                    const newKey = `${parentKey}-${idx}`;
                     return (
                         <div
                             key={newKey}
@@ -111,31 +110,34 @@ const Dropdown = memo(
         useLayoutEffect(() => {
             if (anchorRef.current && dropdownRef.current) {
                 const anchorRect = anchorRef.current.getBoundingClientRect();
-                let boundaryRect = effectiveBoundaryRef.current?.getBoundingClientRect() || {
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+
+                let top = anchorRect.bottom + scrollTop; // Adjust top for scroll position
+                let left = anchorRect.left + scrollLeft; // Adjust left for scroll position
+
+                const boundaryRect = effectiveBoundaryRef.current?.getBoundingClientRect() || {
                     top: 0,
                     left: 0,
                     bottom: window.innerHeight,
                     right: window.innerWidth,
                 };
 
-                let top = anchorRect.bottom;
-                let left = anchorRect.left;
-
                 // Adjust if overflowing the right boundary
-                if (left + dropdownRef.current.offsetWidth > boundaryRect.right) {
-                    left = boundaryRect.right - dropdownRef.current.offsetWidth;
+                if (left + dropdownRef.current.offsetWidth > boundaryRect.right + scrollLeft) {
+                    left = boundaryRect.right + scrollLeft - dropdownRef.current.offsetWidth;
                 }
 
                 // Adjust if overflowing the bottom boundary
-                if (top + dropdownRef.current.offsetHeight > boundaryRect.bottom) {
-                    top = boundaryRect.bottom - dropdownRef.current.offsetHeight;
+                if (top + dropdownRef.current.offsetHeight > boundaryRect.bottom + scrollTop) {
+                    top = boundaryRect.bottom + scrollTop - dropdownRef.current.offsetHeight;
                 }
 
                 setPosition({ top, left });
             }
         }, [width, height]);
 
-        // Position submenus based on available space
+        // Position submenus based on available space and scroll position
         const handleSubMenuPosition = (
             key: string,
             itemRect: DOMRect,
@@ -145,6 +147,9 @@ const Dropdown = memo(
             setTimeout(() => {
                 const subMenuRef = subMenuRefs.current[key]?.current;
                 if (!subMenuRef) return;
+
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
 
                 const boundaryRect = effectiveBoundaryRef.current?.getBoundingClientRect() || {
                     top: 0,
@@ -156,17 +161,17 @@ const Dropdown = memo(
                 const submenuWidth = subMenuRef.offsetWidth;
                 const submenuHeight = subMenuRef.offsetHeight;
 
-                let left = itemRect.right;
-                let top = itemRect.top;
+                let left = itemRect.right + scrollLeft - 2; // Adjust for horizontal scroll
+                let top = itemRect.top + scrollTop; // Adjust for vertical scroll
 
                 // Adjust to the left if overflowing the right boundary
-                if (left + submenuWidth > window.innerWidth) {
-                    left = itemRect.left - submenuWidth;
+                if (left + submenuWidth > window.innerWidth + scrollLeft) {
+                    left = itemRect.left + scrollLeft - submenuWidth;
                 }
 
                 // Adjust if the submenu overflows the bottom boundary
-                if (top + submenuHeight > window.innerHeight) {
-                    top = window.innerHeight - submenuHeight - 10;
+                if (top + submenuHeight > window.innerHeight + scrollTop) {
+                    top = window.innerHeight + scrollTop - submenuHeight - 10;
                 }
 
                 setSubMenuPosition((prev) => ({
@@ -184,30 +189,23 @@ const Dropdown = memo(
         ) => {
             event.stopPropagation();
 
-            // Build the full key for the current item
             const key = parentKey ? `${parentKey}-${index}` : `${index}`;
 
             setVisibleSubMenus((prev) => {
-                // Create a copy of the previous state
                 const updatedState = { ...prev };
-
-                // Ensure the current submenu and its ancestors are visible
                 updatedState[key] = { visible: true, label: item.label };
 
-                // Extract ancestors of the key (e.g., "2-2-1" -> "2-2" -> "2")
                 const ancestors = key.split("-").reduce((acc, part, idx) => {
                     if (idx === 0) return [part];
                     return [...acc, `${acc[idx - 1]}-${part}`];
                 }, [] as string[]);
 
-                // Mark ancestors visible
                 ancestors.forEach((ancestorKey) => {
                     if (updatedState[ancestorKey]) {
                         updatedState[ancestorKey].visible = true;
                     }
                 });
 
-                // Hide any submenu that is not part of the current hierarchy
                 for (const pkey in updatedState) {
                     if (!ancestors.includes(pkey) && pkey !== key) {
                         updatedState[pkey].visible = false;

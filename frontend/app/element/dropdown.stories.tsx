@@ -46,17 +46,19 @@ export const Test: Story = {
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
-                <div
-                    ref={anchorRef}
-                    style={{
-                        backgroundColor: "lightblue",
-                        padding: "10px",
-                        display: "inline-block",
-                        cursor: "pointer",
-                    }}
-                    onClick={handleAnchorClick}
-                >
-                    Anchor Element
+                <div style={{ height: "400px" }}>
+                    <div
+                        ref={anchorRef}
+                        style={{
+                            backgroundColor: "lightblue",
+                            padding: "10px",
+                            display: "inline-block",
+                            cursor: "pointer",
+                        }}
+                        onClick={handleAnchorClick}
+                    >
+                        Anchor Element
+                    </div>
                 </div>
                 {isDropdownVisible && <Dropdown {...args} anchorRef={anchorRef} boundaryRef={boundaryRef} />}
             </div>
