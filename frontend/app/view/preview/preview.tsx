@@ -507,8 +507,6 @@ export class PreviewModel implements ViewModel {
             console.log(newPath);
             if (newPath == "") {
                 newPath = "/";
-            } else if (newPath != "/" && newPath.indexOf("/") == -1) {
-                return;
             }
         }
         const updateMeta = historyutil.goHistory("file", metaPath, newPath, blockMeta);
