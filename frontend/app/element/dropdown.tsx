@@ -5,6 +5,12 @@ import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react
 import ReactDOM from "react-dom";
 import "./dropdown.less";
 
+type DropdownItem = {
+    label: string;
+    subItems?: DropdownItem[];
+    onClick?: (e) => void;
+};
+
 const SubMenu = memo(
     ({
         subItems,
@@ -15,6 +21,8 @@ const SubMenu = memo(
         subMenuRefs,
         handleMouseEnterItem,
         handleOnClick,
+        renderMenu,
+        renderMenuItem,
     }: {
         subItems: DropdownItem[];
         parentKey: string;
@@ -31,8 +39,9 @@ const SubMenu = memo(
             item: DropdownItem
         ) => void;
         handleOnClick: (e: React.MouseEvent<HTMLDivElement>, item: DropdownItem) => void;
+        renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
+        renderMenuItem?: (item: DropdownItem, props: any) => JSX.Element;
     }) => {
-        // Ensure a ref exists for each submenu
         subItems.forEach((_, idx) => {
             const newKey = `${parentKey}-${idx}`;
             if (!subMenuRefs.current[newKey]) {
@@ -40,7 +49,6 @@ const SubMenu = memo(
             }
         });
 
-        // Check if the position for the submenu is calculated
         const position = subMenuPosition[parentKey];
         const isPositioned = position && position.top !== undefined && position.left !== undefined;
 
@@ -53,22 +61,32 @@ const SubMenu = memo(
                     left: position?.left || 0,
                     position: "absolute",
                     zIndex: 1000,
-                    visibility: visibleSubMenus[parentKey]?.visible && isPositioned ? "visible" : "hidden", // Only show if visible and positioned
+                    visibility: visibleSubMenus[parentKey]?.visible && isPositioned ? "visible" : "hidden",
                 }}
             >
                 {subItems.map((item, idx) => {
-                    const newKey = `${parentKey}-${idx}`; // Full hierarchical key
-                    const isActive = hoveredItems.includes(newKey); // Check if this item is hovered or in the hierarchy
+                    const newKey = `${parentKey}-${idx}`;
+                    const isActive = hoveredItems.includes(newKey);
 
-                    return (
-                        <div
-                            key={newKey}
-                            className={clsx("dropdown-item", { active: isActive })}
-                            onMouseEnter={(event) => handleMouseEnterItem(event, parentKey, idx, item)}
-                            onClick={(e) => handleOnClick(e, item)}
-                        >
+                    const menuItemProps = {
+                        className: clsx("dropdown-item", { active: isActive }),
+                        onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                            handleMouseEnterItem(event, parentKey, idx, item),
+                        onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
+                    };
+
+                    const renderedItem = renderMenuItem ? (
+                        renderMenuItem(item, menuItemProps) // Remove portal here
+                    ) : (
+                        <div key={newKey} {...menuItemProps}>
                             {item.label}
                             {item.subItems && <span className="arrow">▶</span>}
+                        </div>
+                    );
+
+                    return (
+                        <React.Fragment key={newKey}>
+                            {renderedItem}
                             {visibleSubMenus[newKey]?.visible && item.subItems && (
                                 <SubMenu
                                     subItems={item.subItems}
@@ -79,22 +97,19 @@ const SubMenu = memo(
                                     handleMouseEnterItem={handleMouseEnterItem}
                                     handleOnClick={handleOnClick}
                                     subMenuRefs={subMenuRefs}
+                                    renderMenu={renderMenu}
+                                    renderMenuItem={renderMenuItem}
                                 />
                             )}
-                        </div>
+                        </React.Fragment>
                     );
                 })}
             </div>
         );
-        return ReactDOM.createPortal(subMenu, document.body);
+
+        return ReactDOM.createPortal(renderMenu ? renderMenu(subMenu, { parentKey }) : subMenu, document.body);
     }
 );
-
-type DropdownItem = {
-    label: string;
-    subItems?: DropdownItem[];
-    onClick?: (e) => void;
-};
 
 const Dropdown = memo(
     ({
@@ -103,15 +118,19 @@ const Dropdown = memo(
         boundaryRef,
         className,
         setVisibility,
+        renderMenu,
+        renderMenuItem,
     }: {
         items: DropdownItem[];
         anchorRef: React.RefObject<HTMLElement>;
         boundaryRef?: React.RefObject<HTMLElement>;
         className?: string;
         setVisibility: (_: boolean) => void;
+        renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
+        renderMenuItem?: (item: DropdownItem, props: any) => JSX.Element;
     }) => {
         const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({});
-        const [hoveredItems, setHoveredItems] = useState<string[]>([]); // Track hovered items and ancestors
+        const [hoveredItems, setHoveredItems] = useState<string[]>([]);
         const [subMenuPosition, setSubMenuPosition] = useState<{
             [key: string]: { top: number; left: number; label: string };
         }>({});
@@ -123,7 +142,6 @@ const Dropdown = memo(
         const width = useWidth(effectiveBoundaryRef);
         const height = useHeight(effectiveBoundaryRef);
 
-        // Add refs for top-level menus
         items.forEach((_, idx) => {
             const key = `${idx}`;
             if (!subMenuRefs.current[key]) {
@@ -137,8 +155,8 @@ const Dropdown = memo(
                 const scrollTop = window.scrollY || document.documentElement.scrollTop;
                 const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
 
-                let top = anchorRect.bottom + scrollTop; // Adjust top for scroll position
-                let left = anchorRect.left + scrollLeft; // Adjust left for scroll position
+                let top = anchorRect.bottom + scrollTop;
+                let left = anchorRect.left + scrollLeft;
 
                 const boundaryRect = effectiveBoundaryRef.current?.getBoundingClientRect() || {
                     top: 0,
@@ -147,12 +165,10 @@ const Dropdown = memo(
                     right: window.innerWidth,
                 };
 
-                // Adjust if overflowing the right boundary
                 if (left + dropdownRef.current.offsetWidth > boundaryRect.right + scrollLeft) {
                     left = boundaryRect.right + scrollLeft - dropdownRef.current.offsetWidth;
                 }
 
-                // Adjust if overflowing the bottom boundary
                 if (top + dropdownRef.current.offsetHeight > boundaryRect.bottom + scrollTop) {
                     top = boundaryRect.bottom + scrollTop - dropdownRef.current.offsetHeight;
                 }
@@ -166,21 +182,17 @@ const Dropdown = memo(
                 const isClickInsideDropdown = dropdownRef.current && dropdownRef.current.contains(event.target as Node);
                 const isClickInsideAnchor = anchorRef.current && anchorRef.current.contains(event.target as Node);
 
-                // Check if the click is inside any of the submenus
                 const isClickInsideSubMenus = Object.keys(subMenuRefs.current).some(
                     (key) =>
                         subMenuRefs.current[key]?.current &&
                         subMenuRefs.current[key]?.current.contains(event.target as Node)
                 );
 
-                // If the click is outside the dropdown, anchor, and all submenus, hide the dropdown
                 if (!isClickInsideDropdown && !isClickInsideAnchor && !isClickInsideSubMenus) {
                     setVisibility(false);
                 }
             };
-
             document.addEventListener("mousedown", handleClickOutside);
-
             return () => {
                 document.removeEventListener("mousedown", handleClickOutside);
             };
@@ -264,7 +276,6 @@ const Dropdown = memo(
                 return updatedState;
             });
 
-            // Update the hovered items state (including ancestors)
             const newHoveredItems = key.split("-").reduce((acc, part, idx) => {
                 if (idx === 0) return [part];
                 return [...acc, `${acc[idx - 1]}-${part}`];
@@ -281,7 +292,7 @@ const Dropdown = memo(
             item.onClick && item.onClick(e);
         };
 
-        return ReactDOM.createPortal(
+        const dropdownMenu = (
             <div
                 className={clsx("dropdown", className)}
                 ref={dropdownRef}
@@ -289,17 +300,27 @@ const Dropdown = memo(
             >
                 {items.map((item, index) => {
                     const key = `${index}`;
-                    const isActive = hoveredItems.includes(key); // Check if the current item is hovered or in the hierarchy
+                    const isActive = hoveredItems.includes(key);
 
-                    return (
-                        <div
-                            key={key}
-                            className={clsx("dropdown-item", { active: isActive })} // Highlight hovered items and ancestors
-                            onMouseEnter={(event) => handleMouseEnterItem(event, null, index, item)}
-                            onClick={(e) => handleOnClick(e, item)}
-                        >
+                    const menuItemProps = {
+                        className: clsx("dropdown-item", { active: isActive }),
+                        onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                            handleMouseEnterItem(event, null, index, item),
+                        onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
+                    };
+
+                    const renderedItem = renderMenuItem ? (
+                        renderMenuItem(item, menuItemProps) // No portal here
+                    ) : (
+                        <div key={key} {...menuItemProps}>
                             {item.label}
                             {item.subItems && <span className="arrow">▶</span>}
+                        </div>
+                    );
+
+                    return (
+                        <React.Fragment key={key}>
+                            {renderedItem}
                             {visibleSubMenus[key]?.visible && item.subItems && (
                                 <SubMenu
                                     subItems={item.subItems}
@@ -310,12 +331,18 @@ const Dropdown = memo(
                                     handleMouseEnterItem={handleMouseEnterItem}
                                     handleOnClick={handleOnClick}
                                     subMenuRefs={subMenuRefs}
+                                    renderMenu={renderMenu}
+                                    renderMenuItem={renderMenuItem}
                                 />
                             )}
-                        </div>
+                        </React.Fragment>
                     );
                 })}
-            </div>,
+            </div>
+        );
+
+        return ReactDOM.createPortal(
+            renderMenu ? renderMenu(dropdownMenu, { parentKey: null }) : dropdownMenu,
             document.body
         );
     }
