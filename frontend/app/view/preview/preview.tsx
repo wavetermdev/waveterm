@@ -287,7 +287,8 @@ export class PreviewModel implements ViewModel {
                 return null;
             }
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
-            if (mimeType == "directory" && get(this.metaFilePath) == "/") {
+            const metaPath = get(this.metaFilePath);
+            if (mimeType == "directory" && metaPath == "/") {
                 return null;
             }
             return {
