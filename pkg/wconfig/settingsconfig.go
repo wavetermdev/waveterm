@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -100,8 +99,6 @@ type FullConfigType struct {
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
-
-var settingsAbsPath = filepath.Join(configDirAbsPath, SettingsFile)
 
 func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
 	var cerrs []ConfigError
@@ -308,9 +305,7 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 			delete(m, configKey)
 		} else {
 			rtype := reflect.TypeOf(val)
-			log.Printf("val: %v, config value type: %s, reflection type: %s\n", val, ctype, rtype)
 			if rtype == reflect.TypeOf(dummyNumber) {
-				log.Println("json.Number")
 				numval := val.(json.Number)
 				ival, err := numval.Int64()
 				if err == nil {
