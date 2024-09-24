@@ -493,16 +493,14 @@ export class PreviewModel implements ViewModel {
     }
 
     async goParentDirectory() {
-        const metaPath = globalStore.get(this.metaFilePath);
         const fileInfo = await globalStore.get(this.statFile);
-        const searchPath = metaPath + "/..";
         if (fileInfo == null) {
             this.updateOpenFileModalAndError(false);
             return true;
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, searchPath], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, ".."], {
                 route: makeConnRoute(conn),
             });
             console.log(newFileInfo.path);
@@ -511,7 +509,7 @@ export class PreviewModel implements ViewModel {
             refocusNode(this.blockId);
         } catch (e) {
             globalStore.set(this.openFileError, e.message);
-            console.error("Error opening file", fileInfo.dir, searchPath, e);
+            console.error("Error opening file", [fileInfo.dir, ".."], e);
         }
     }
 
