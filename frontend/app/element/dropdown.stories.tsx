@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "@storybook/test";
 import { useRef, useState } from "react";
 import { Dropdown } from "./dropdown";
 
@@ -10,6 +11,7 @@ const meta = {
         anchorRef: undefined,
         boundaryRef: undefined,
         className: "",
+        setVisibility: fn(),
     },
     argTypes: {
         items: {
@@ -17,6 +19,9 @@ const meta = {
         },
         anchorRef: {
             description: "Element to attach the dropdown",
+        },
+        setVisibility: {
+            description: "Visibility event handler",
         },
         boundaryRef: {
             description: "Component that defines the boundaries of the dropdown",
@@ -82,7 +87,14 @@ export const Test: Story = {
                         Anchor Element
                     </div>
                 </div>
-                {isDropdownVisible && <Dropdown {...modifiedArgs} anchorRef={anchorRef} boundaryRef={boundaryRef} />}
+                {isDropdownVisible && (
+                    <Dropdown
+                        {...modifiedArgs}
+                        setVisibility={(visible) => setIsDropdownVisible(visible)}
+                        anchorRef={anchorRef}
+                        boundaryRef={boundaryRef}
+                    />
+                )}
             </div>
         );
     },

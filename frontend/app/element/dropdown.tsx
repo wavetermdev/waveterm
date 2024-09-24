@@ -1,7 +1,7 @@
 import { useHeight } from "@/app/hook/useHeight";
 import { useWidth } from "@/app/hook/useWidth";
 import clsx from "clsx";
-import React, { memo, useLayoutEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import "./dropdown.less";
 
@@ -92,8 +92,8 @@ const SubMenu = memo(
 
 type DropdownItem = {
     label: string;
-    onClick?: (e) => void;
     subItems?: DropdownItem[];
+    onClick?: (e) => void;
 };
 
 const Dropdown = memo(
@@ -102,11 +102,13 @@ const Dropdown = memo(
         anchorRef,
         boundaryRef,
         className,
+        setVisibility,
     }: {
         items: DropdownItem[];
         anchorRef: React.RefObject<HTMLElement>;
         boundaryRef?: React.RefObject<HTMLElement>;
         className?: string;
+        setVisibility: (_: boolean) => void;
     }) => {
         const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({});
         const [hoveredItems, setHoveredItems] = useState<string[]>([]); // Track hovered items and ancestors
@@ -158,6 +160,31 @@ const Dropdown = memo(
                 setPosition({ top, left });
             }
         }, [width, height]);
+
+        useEffect(() => {
+            const handleClickOutside = (event: MouseEvent) => {
+                const isClickInsideDropdown = dropdownRef.current && dropdownRef.current.contains(event.target as Node);
+                const isClickInsideAnchor = anchorRef.current && anchorRef.current.contains(event.target as Node);
+
+                // Check if the click is inside any of the submenus
+                const isClickInsideSubMenus = Object.keys(subMenuRefs.current).some(
+                    (key) =>
+                        subMenuRefs.current[key]?.current &&
+                        subMenuRefs.current[key]?.current.contains(event.target as Node)
+                );
+
+                // If the click is outside the dropdown, anchor, and all submenus, hide the dropdown
+                if (!isClickInsideDropdown && !isClickInsideAnchor && !isClickInsideSubMenus) {
+                    setVisibility(false);
+                }
+            };
+
+            document.addEventListener("mousedown", handleClickOutside);
+
+            return () => {
+                document.removeEventListener("mousedown", handleClickOutside);
+            };
+        }, [dropdownRef, anchorRef, subMenuRefs]);
 
         // Position submenus based on available space and scroll position
         const handleSubMenuPosition = (
