@@ -305,15 +305,13 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 			delete(m, configKey)
 		} else {
 			rtype := reflect.TypeOf(val)
+
+			// Parse out JSON numbers. If the config is an integer or pointer to an integer, we will attempt to parse the number as an integer, before falling back to float, then string.
+			// If the number is a float, we will only attempt to parse it as a float, before falling back to string.
 			if rtype == reflect.TypeOf(dummyNumber) {
 				numval := val.(json.Number)
-				if reflect.Int64 == ctype.Kind() {
-					ival, err := numval.Int64()
-					if err == nil {
-						val = ival
-					} else {
-						val = numval.String()
-					}
+				if ival, err := numval.Int64(); err == nil && (reflect.Int64 == ctype.Kind() || reflect.Int64 == ctype.Elem().Kind()) {
+					val = ival
 				} else {
 					fval, err := numval.Float64()
 					if err == nil {
