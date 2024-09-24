@@ -94,7 +94,6 @@ tasks:
               vars:
                   ARCHS:
                       sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
-                  GO_LDFLAGS: -linkmode 'external' -extldflags=-static
 
     build:server:internal:
         requires:
