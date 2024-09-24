@@ -47,11 +47,16 @@ func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
 			}
 			meta[fields[0]] = val
 		} else {
-			fval, err := strconv.ParseFloat(setVal, 64)
+			ival, err := strconv.ParseInt(setVal, 0, 64)
 			if err == nil {
-				meta[fields[0]] = fval
+				meta[fields[0]] = ival
 			} else {
-				meta[fields[0]] = setVal
+				fval, err := strconv.ParseFloat(setVal, 64)
+				if err == nil {
+					meta[fields[0]] = fval
+				} else {
+					meta[fields[0]] = setVal
+				}
 			}
 		}
 	}

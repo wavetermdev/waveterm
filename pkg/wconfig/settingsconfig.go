@@ -26,7 +26,9 @@ type MetaSettingsType struct {
 
 func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
 	var metaMap waveobj.MetaMapType
-	if err := json.Unmarshal(data, &metaMap); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&metaMap); err != nil {
 		return err
 	}
 	*m = MetaSettingsType{MetaMapType: metaMap}
@@ -77,7 +79,7 @@ type SettingsType struct {
 	WindowOpacity       *float64 `json:"window:opacity,omitempty"`
 	WindowBgColor       string   `json:"window:bgcolor,omitempty"`
 	WindowReducedMotion bool     `json:"window:reducedmotion,omitempty"`
-	WindowTileGapSize   *int8    `json:"window:tilegapsize,omitempty"`
+	WindowTileGapSize   *int64   `json:"window:tilegapsize,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
@@ -97,8 +99,6 @@ type FullConfigType struct {
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
-
-var settingsAbsPath = filepath.Join(configDirAbsPath, SettingsFile)
 
 func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
 	var cerrs []ConfigError
@@ -242,7 +242,7 @@ func reindentJson(barr []byte, indentStr string) []byte {
 	if barr[0] != '{' && barr[0] != '[' {
 		return barr
 	}
-	if bytes.Index(barr, []byte("\n")) == -1 {
+	if bytes.Contains(barr, []byte("\n")) {
 		return barr
 	}
 	outputLines := bytes.Split(barr, []byte("\n"))
@@ -286,6 +286,32 @@ func jsonMarshalConfigInOrder(m waveobj.MetaMapType) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+var dummyNumber json.Number
+
+func convertJsonNumber(num json.Number, ctype reflect.Type) (interface{}, error) {
+	// ctype might be int64, float64, string, *int64, *float64, *string
+	// switch on ctype first
+	if ctype.Kind() == reflect.Pointer {
+		ctype = ctype.Elem()
+	}
+	if reflect.Int64 == ctype.Kind() {
+		if ival, err := num.Int64(); err == nil {
+			return ival, nil
+		}
+		return nil, fmt.Errorf("invalid number for int64: %s", num)
+	}
+	if reflect.Float64 == ctype.Kind() {
+		if fval, err := num.Float64(); err == nil {
+			return fval, nil
+		}
+		return nil, fmt.Errorf("invalid number for float64: %s", num)
+	}
+	if reflect.String == ctype.Kind() {
+		return num.String(), nil
+	}
+	return nil, fmt.Errorf("cannot convert number to %s", ctype)
+}
+
 func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
 	if len(cerrs) > 0 {
@@ -302,8 +328,21 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		if val == nil {
 			delete(m, configKey)
 		} else {
-			if reflect.TypeOf(val) != ctype {
-				return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+			rtype := reflect.TypeOf(val)
+			if rtype == reflect.TypeOf(dummyNumber) {
+				convertedVal, err := convertJsonNumber(val.(json.Number), ctype)
+				if err != nil {
+					return fmt.Errorf("cannot convert %s: %v", configKey, err)
+				}
+				val = convertedVal
+				rtype = reflect.TypeOf(val)
+			}
+			if rtype != ctype {
+				if ctype == reflect.PointerTo(rtype) {
+					m[configKey] = &val
+				} else {
+					return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+				}
 			}
 			m[configKey] = val
 		}
