@@ -288,6 +288,30 @@ func jsonMarshalConfigInOrder(m waveobj.MetaMapType) ([]byte, error) {
 
 var dummyNumber json.Number
 
+func convertJsonNumber(num json.Number, ctype reflect.Type) (interface{}, error) {
+	// ctype might be int64, float64, string, *int64, *float64, *string
+	// switch on ctype first
+	if ctype.Kind() == reflect.Pointer {
+		ctype = ctype.Elem()
+	}
+	if reflect.Int64 == ctype.Kind() {
+		if ival, err := num.Int64(); err == nil {
+			return ival, nil
+		}
+		return nil, fmt.Errorf("invalid number for int64: %s", num)
+	}
+	if reflect.Float64 == ctype.Kind() {
+		if fval, err := num.Float64(); err == nil {
+			return fval, nil
+		}
+		return nil, fmt.Errorf("invalid number for float64: %s", num)
+	}
+	if reflect.String == ctype.Kind() {
+		return num.String(), nil
+	}
+	return nil, fmt.Errorf("cannot convert number to %s", ctype)
+}
+
 func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
 	if len(cerrs) > 0 {
@@ -305,21 +329,12 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 			delete(m, configKey)
 		} else {
 			rtype := reflect.TypeOf(val)
-
-			// Parse out JSON numbers. If the config is an integer or pointer to an integer, we will attempt to parse the number as an integer, before falling back to float, then string.
-			// If the number is a float, we will only attempt to parse it as a float, before falling back to string.
 			if rtype == reflect.TypeOf(dummyNumber) {
-				numval := val.(json.Number)
-				if ival, err := numval.Int64(); err == nil && (reflect.Int64 == ctype.Kind() || reflect.Int64 == ctype.Elem().Kind()) {
-					val = ival
-				} else {
-					fval, err := numval.Float64()
-					if err == nil {
-						val = fval
-					} else {
-						val = numval.String()
-					}
+				convertedVal, err := convertJsonNumber(val.(json.Number), ctype)
+				if err != nil {
+					return fmt.Errorf("cannot convert %s: %v", configKey, err)
 				}
+				val = convertedVal
 				rtype = reflect.TypeOf(val)
 			}
 			if rtype != ctype {
