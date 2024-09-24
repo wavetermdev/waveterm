@@ -492,30 +492,26 @@ export class PreviewModel implements ViewModel {
     }
 
     async goParentDirectory() {
-        const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const metaPath = globalStore.get(this.metaFilePath);
         const fileInfo = await globalStore.get(this.statFile);
+        const searchPath = metaPath + "/..";
         if (fileInfo == null) {
-            return;
+            this.updateOpenFileModalAndError(false);
+            return true;
         }
-        let newPath: string = null;
-        if (!fileInfo.isdir) {
-            newPath = fileInfo.dir;
-        } else {
-            const lastSlash = fileInfo.dir.lastIndexOf("/");
-            newPath = fileInfo.dir.slice(0, lastSlash);
-            console.log(newPath);
-            if (newPath == "") {
-                newPath = "/";
-            }
+        const conn = globalStore.get(this.connection);
+        try {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, searchPath], {
+                route: makeConnRoute(conn),
+            });
+            console.log(newFileInfo.path);
+            this.updateOpenFileModalAndError(false);
+            this.goHistory(newFileInfo.path);
+            refocusNode(this.blockId);
+        } catch (e) {
+            globalStore.set(this.openFileError, e.message);
+            console.error("Error opening file", fileInfo.dir, searchPath, e);
         }
-        const updateMeta = historyutil.goHistory("file", metaPath, newPath, blockMeta);
-        if (updateMeta == null) {
-            return;
-        }
-        updateMeta.edit = false;
-        const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
     goHistoryBack() {
