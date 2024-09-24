@@ -12620,9 +12620,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"waveterm@workspace:.":
+"wavelegacy@workspace:.":
   version: 0.0.0-use.local
-  resolution: "waveterm@workspace:."
+  resolution: "wavelegacy@workspace:."
   dependencies:
     "@babel/cli": "npm:^7.24.8"
     "@babel/core": "npm:^7.25.2"
