@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,7 +27,9 @@ type MetaSettingsType struct {
 
 func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
 	var metaMap waveobj.MetaMapType
-	if err := json.Unmarshal(data, &metaMap); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&metaMap); err != nil {
 		return err
 	}
 	*m = MetaSettingsType{MetaMapType: metaMap}
@@ -77,7 +80,7 @@ type SettingsType struct {
 	WindowOpacity       *float64 `json:"window:opacity,omitempty"`
 	WindowBgColor       string   `json:"window:bgcolor,omitempty"`
 	WindowReducedMotion bool     `json:"window:reducedmotion,omitempty"`
-	WindowTileGapSize   *int8    `json:"window:tilegapsize,omitempty"`
+	WindowTileGapSize   *int64   `json:"window:tilegapsize,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
@@ -242,7 +245,7 @@ func reindentJson(barr []byte, indentStr string) []byte {
 	if barr[0] != '{' && barr[0] != '[' {
 		return barr
 	}
-	if bytes.Index(barr, []byte("\n")) == -1 {
+	if bytes.Contains(barr, []byte("\n")) {
 		return barr
 	}
 	outputLines := bytes.Split(barr, []byte("\n"))
@@ -286,6 +289,8 @@ func jsonMarshalConfigInOrder(m waveobj.MetaMapType) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+var dummyNumber json.Number
+
 func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
 	if len(cerrs) > 0 {
@@ -302,8 +307,32 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		if val == nil {
 			delete(m, configKey)
 		} else {
-			if reflect.TypeOf(val) != ctype {
-				return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+			rtype := reflect.TypeOf(val)
+			log.Printf("val: %v, config value type: %s, reflection type: %s\n", val, ctype, rtype)
+			if rtype == reflect.TypeOf(dummyNumber) {
+				log.Println("json.Number")
+				numval := val.(json.Number)
+				ival, err := numval.Int64()
+				if err == nil {
+					val = ival
+					rtype = reflect.TypeOf(ival)
+				} else {
+					fval, err := numval.Float64()
+					if err == nil {
+						val = fval
+						rtype = reflect.TypeOf(fval)
+					} else {
+						val = numval.String()
+						rtype = reflect.TypeOf(numval)
+					}
+				}
+			}
+			if rtype != ctype {
+				if ctype == reflect.PointerTo(rtype) {
+					m[configKey] = &val
+				} else {
+					return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+				}
 			}
 			m[configKey] = val
 		}
