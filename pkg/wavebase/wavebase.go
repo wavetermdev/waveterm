@@ -59,7 +59,7 @@ func ExpandHomeDir(pathStr string) string {
 	if pathStr == "~" {
 		return homeDir
 	}
-	return filepath.Join(homeDir, pathStr[2:])
+	return filepath.Clean(filepath.Join(homeDir, pathStr[2:]))
 }
 
 func ReplaceHomeDir(pathStr string) string {
