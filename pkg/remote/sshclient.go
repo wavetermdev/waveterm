@@ -75,7 +75,11 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 	// checking the file early prevents us from needing to send a
 	// dummy signer if there's a problem with the signer
 	for _, identityFile := range sshKeywords.IdentityFile {
-		privateKey, err := os.ReadFile(wavebase.ExpandHomeDir(identityFile))
+		filePath, err := wavebase.ExpandHomeDir(identityFile)
+		if err != nil {
+			continue
+		}
+		privateKey, err := os.ReadFile(filePath)
 		if err != nil {
 			// skip this key and try with the next
 			continue
@@ -352,7 +356,11 @@ func createHostKeyCallback(opts *SSHOpts) (ssh.HostKeyCallback, HostKeyAlgorithm
 
 	var knownHostsFiles []string
 	for _, filename := range unexpandedKnownHostsFiles {
-		knownHostsFiles = append(knownHostsFiles, wavebase.ExpandHomeDir(filename))
+		filePath, err := wavebase.ExpandHomeDir(filename)
+		if err != nil {
+			continue
+		}
+		knownHostsFiles = append(knownHostsFiles, filePath)
 	}
 
 	// there are no good known hosts files
@@ -715,12 +723,20 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 		authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
 		sshAuthSock, err := authSockCommand.Output()
 		if err == nil {
-			sshKeywords.IdentityAgent = wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
+			agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
+			if err != nil {
+				return nil, err
+			}
+			sshKeywords.IdentityAgent = agentPath
 		} else {
 			log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
 		}
 	} else {
-		sshKeywords.IdentityAgent = wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(identityAgentRaw))
+		agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(identityAgentRaw))
+		if err != nil {
+			return nil, err
+		}
+		sshKeywords.IdentityAgent = agentPath
 	}
 
 	return sshKeywords, nil

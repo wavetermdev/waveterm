@@ -224,7 +224,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		cmdOpts.Login = true
 		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
 		if cmdOpts.Cwd != "" {
-			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			cwdPath, err := wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			if err != nil {
+				return err
+			}
+			cmdOpts.Cwd = cwdPath
 		}
 	} else if bc.ControllerType == BlockController_Cmd {
 		cmdStr = blockMeta.GetString(waveobj.MetaKey_Cmd, "")
@@ -233,7 +237,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		}
 		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
 		if cmdOpts.Cwd != "" {
-			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			cwdPath, err := wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			if err != nil {
+				return err
+			}
+			cmdOpts.Cwd = cwdPath
 		}
 		cmdOpts.Interactive = blockMeta.GetBool(waveobj.MetaKey_CmdInteractive, false)
 		cmdOpts.Login = blockMeta.GetBool(waveobj.MetaKey_CmdLogin, false)
