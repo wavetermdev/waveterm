@@ -55,7 +55,7 @@ const AboutModal = ({}: AboutModalProps) => {
                     </LinkButton>
                     <LinkButton
                         className="secondary solid"
-                        href="https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md"
+                        href="https://github.com/wavetermdev/waveterm/blob/main/ACKNOWLEDGEMENTS.md"
                         target="_blank"
                         rel={"noopener"}
                         leftIcon={<i className="fa-sharp fa-light fa-heart"></i>}
