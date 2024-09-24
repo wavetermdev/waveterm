@@ -31,16 +31,20 @@ const SubMenu = memo(
             }
         });
 
+        // Check if the position for the submenu is calculated
+        const position = subMenuPosition[parentKey];
+        const isPositioned = position && position.top !== undefined && position.left !== undefined;
+
         const subMenu = (
             <div
                 className="dropdown sub-dropdown"
                 ref={subMenuRefs.current[parentKey]}
                 style={{
-                    top: subMenuPosition[parentKey]?.top || 0,
-                    left: subMenuPosition[parentKey]?.left || 0,
+                    top: position?.top || 0,
+                    left: position?.left || 0,
                     position: "absolute",
                     zIndex: 1000,
-                    opacity: visibleSubMenus[parentKey]?.visible ? 1 : 0,
+                    visibility: visibleSubMenus[parentKey]?.visible && isPositioned ? "visible" : "hidden", // Only show if visible and positioned
                 }}
             >
                 {subItems.map((item, idx) => {

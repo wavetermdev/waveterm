@@ -99,6 +99,23 @@ export const Test: Story = {
                     },
                 ],
             },
+            {
+                label: "Option 4",
+                onClick: () => console.log("Clicked Option 3"),
+                subItems: [
+                    { label: "Option 4 -> 1", onClick: () => null },
+                    { label: "Option 4 -> 2", onClick: () => null },
+                    { label: "Option 4 -> 4", onClick: () => null },
+                    { label: "Option 4 -> 4", onClick: () => null },
+                    { label: "Option 4 -> 5", onClick: () => null },
+                    { label: "Option 4 -> 6", onClick: () => null },
+                    { label: "Option 4 -> 7", onClick: () => null },
+                    { label: "Option 4 -> 8", onClick: () => null },
+                    { label: "Option 4 -> 9", onClick: () => null },
+                    { label: "Option 4 -> 10", onClick: () => null },
+                    { label: "Option 4 -> 11", onClick: () => null },
+                ],
+            },
         ],
     },
 };
