@@ -287,7 +287,7 @@ export class PreviewModel implements ViewModel {
                 return null;
             }
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
-            if (mimeType == "directory") {
+            if (mimeType == "directory" && get(this.metaFilePath) == "/") {
                 return null;
             }
             return {
@@ -504,7 +504,10 @@ export class PreviewModel implements ViewModel {
         } else {
             const lastSlash = fileInfo.dir.lastIndexOf("/");
             newPath = fileInfo.dir.slice(0, lastSlash);
-            if (newPath.indexOf("/") == -1) {
+            console.log(newPath);
+            if (newPath == "") {
+                newPath = "/";
+            } else if (newPath != "/" && newPath.indexOf("/") == -1) {
                 return;
             }
         }
