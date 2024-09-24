@@ -307,20 +307,22 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 			rtype := reflect.TypeOf(val)
 			if rtype == reflect.TypeOf(dummyNumber) {
 				numval := val.(json.Number)
-				ival, err := numval.Int64()
-				if err == nil {
-					val = ival
-					rtype = reflect.TypeOf(ival)
+				if reflect.Int64 == ctype.Kind() {
+					ival, err := numval.Int64()
+					if err == nil {
+						val = ival
+					} else {
+						val = numval.String()
+					}
 				} else {
 					fval, err := numval.Float64()
 					if err == nil {
 						val = fval
-						rtype = reflect.TypeOf(fval)
 					} else {
 						val = numval.String()
-						rtype = reflect.TypeOf(numval)
 					}
 				}
+				rtype = reflect.TypeOf(val)
 			}
 			if rtype != ctype {
 				if ctype == reflect.PointerTo(rtype) {
