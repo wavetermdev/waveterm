@@ -6,7 +6,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
@@ -50,7 +49,6 @@ func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
 		} else {
 			ival, err := strconv.ParseInt(setVal, 0, 64)
 			if err == nil {
-				log.Println("int")
 				meta[fields[0]] = ival
 			} else {
 				fval, err := strconv.ParseFloat(setVal, 64)
