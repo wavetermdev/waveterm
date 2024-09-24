@@ -7,6 +7,9 @@ import { Atom, atom, PrimitiveAtom } from "jotai";
 import "./helpview.less";
 
 const helpText = `
+For more up-to-date documentation, please visit [our docs site](http://betadocs.waveterm.dev)
+
+
 ## Blocks
 Every individual Component is contained in its own block. These can be added, removed, moved and resized. Each block has its own header which can be right clicked to reveal more operations you can do with that block.
 
