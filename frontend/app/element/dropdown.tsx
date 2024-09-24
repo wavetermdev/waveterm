@@ -12,16 +12,25 @@ const SubMenu = memo(
         subMenuPosition,
         visibleSubMenus,
         hoveredItems,
-        handleMouseEnterItem,
         subMenuRefs,
+        handleMouseEnterItem,
+        handleOnClick,
     }: {
         subItems: DropdownItem[];
         parentKey: string;
-        subMenuPosition: any;
-        visibleSubMenus: any;
+        subMenuPosition: {
+            [key: string]: { top: number; left: number; label: string };
+        };
+        visibleSubMenus: { [key: string]: any };
         hoveredItems: string[];
-        handleMouseEnterItem: any;
-        subMenuRefs: any;
+        subMenuRefs: React.MutableRefObject<{ [key: string]: React.RefObject<HTMLDivElement> }>;
+        handleMouseEnterItem: (
+            event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+            parentKey: string | null,
+            index: number,
+            item: DropdownItem
+        ) => void;
+        handleOnClick: (e: React.MouseEvent<HTMLDivElement>, item: DropdownItem) => void;
     }) => {
         // Ensure a ref exists for each submenu
         subItems.forEach((_, idx) => {
@@ -54,8 +63,9 @@ const SubMenu = memo(
                     return (
                         <div
                             key={newKey}
-                            className={clsx("dropdown-item", { active: isActive })} // Add "active" class if the item or ancestor is hovered
+                            className={clsx("dropdown-item", { active: isActive })}
                             onMouseEnter={(event) => handleMouseEnterItem(event, parentKey, idx, item)}
+                            onClick={(e) => handleOnClick(e, item)}
                         >
                             {item.label}
                             {item.subItems && <span className="arrow">▶</span>}
@@ -65,8 +75,9 @@ const SubMenu = memo(
                                     parentKey={newKey}
                                     subMenuPosition={subMenuPosition}
                                     visibleSubMenus={visibleSubMenus}
-                                    hoveredItems={hoveredItems} // Pass hoveredItems to submenus
+                                    hoveredItems={hoveredItems}
                                     handleMouseEnterItem={handleMouseEnterItem}
+                                    handleOnClick={handleOnClick}
                                     subMenuRefs={subMenuRefs}
                                 />
                             )}
@@ -81,7 +92,7 @@ const SubMenu = memo(
 
 type DropdownItem = {
     label: string;
-    onClick?: () => void;
+    onClick?: (e) => void;
     subItems?: DropdownItem[];
 };
 
@@ -238,6 +249,11 @@ const Dropdown = memo(
             handleSubMenuPosition(key, itemRect, dropdownRef, item.label);
         };
 
+        const handleOnClick = (e: React.MouseEvent<HTMLDivElement>, item: DropdownItem) => {
+            e.stopPropagation();
+            item.onClick && item.onClick(e);
+        };
+
         return ReactDOM.createPortal(
             <div
                 className={clsx("dropdown", className)}
@@ -253,6 +269,7 @@ const Dropdown = memo(
                             key={key}
                             className={clsx("dropdown-item", { active: isActive })} // Highlight hovered items and ancestors
                             onMouseEnter={(event) => handleMouseEnterItem(event, null, index, item)}
+                            onClick={(e) => handleOnClick(e, item)}
                         >
                             {item.label}
                             {item.subItems && <span className="arrow">▶</span>}
@@ -262,8 +279,9 @@ const Dropdown = memo(
                                     parentKey={key}
                                     subMenuPosition={subMenuPosition}
                                     visibleSubMenus={visibleSubMenus}
-                                    hoveredItems={hoveredItems} // Pass hoveredItems to submenus
+                                    hoveredItems={hoveredItems}
                                     handleMouseEnterItem={handleMouseEnterItem}
+                                    handleOnClick={handleOnClick}
                                     subMenuRefs={subMenuRefs}
                                 />
                             )}

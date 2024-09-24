@@ -40,6 +40,28 @@ export const Test: Story = {
             setIsDropdownVisible((prev) => !prev);
         };
 
+        const mapItemsWithClick = (items: any[]) => {
+            return items.map((item) => ({
+                ...item,
+                onClick: () => {
+                    // Call the original onClick if it exists
+                    if (item.onClick) {
+                        item.onClick();
+                    }
+                    // Close the dropdown after an item is clicked
+                    setIsDropdownVisible(false);
+                },
+                // Recursively update subItems' onClick handlers
+                subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+            }));
+        };
+
+        // Modify args to include updated items with the new onClick behavior
+        const modifiedArgs = {
+            ...args,
+            items: mapItemsWithClick(args.items),
+        };
+
         return (
             <div
                 ref={boundaryRef}
@@ -60,39 +82,50 @@ export const Test: Story = {
                         Anchor Element
                     </div>
                 </div>
-                {isDropdownVisible && <Dropdown {...args} anchorRef={anchorRef} boundaryRef={boundaryRef} />}
+                {isDropdownVisible && <Dropdown {...modifiedArgs} anchorRef={anchorRef} boundaryRef={boundaryRef} />}
             </div>
         );
     },
     args: {
         items: [
-            { label: "Option 1", onClick: () => null },
+            { label: "Option 1", onClick: (e) => console.log("Clicked Option 1") },
             {
                 label: "Option 2",
-                onClick: () => console.log("Clicked Option 2"),
+                onClick: (e) => console.log("Clicked Option 2"),
                 subItems: [
-                    { label: "Option 2 -> 1", onClick: () => null },
-                    { label: "Option 2 -> 2", onClick: () => null },
+                    { label: "Option 2 -> 1", onClick: (e) => console.log("Clicked Option 2 -> 1") },
+                    { label: "Option 2 -> 2", onClick: (e) => console.log("Clicked Option 2 -> 2") },
                 ],
             },
             {
                 label: "Option 3",
-                onClick: () => console.log("Clicked Option 3"),
+                onClick: (e) => console.log("Clicked Option 3"),
                 subItems: [
-                    { label: "Option 3 -> 1", onClick: () => null },
-                    { label: "Option 3 -> 2", onClick: () => null },
+                    { label: "Option 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 1") },
+                    { label: "Option 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 2") },
                     {
                         label: "Option 3 -> 3",
-                        onClick: () => console.log("Clicked Option 3"),
+                        onClick: (e) => console.log("Clicked Option 3 -> 3"),
                         subItems: [
-                            { label: "Option 3 -> 3 -> 1", onClick: () => null },
-                            { label: "Option 3 -> 3 -> 2", onClick: () => null },
+                            { label: "Option 3 -> 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 1") },
+                            { label: "Option 3 -> 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 2") },
+                            { label: "Option 3 -> 3 -> 3", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 3") },
                             {
-                                label: "Option 3 -> 3",
-                                onClick: () => console.log("Clicked Option 3"),
+                                label: "Option 3 -> 3 -> 4",
+                                onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4"),
                                 subItems: [
-                                    { label: "Option 3 -> 3 -> 1", onClick: () => null },
-                                    { label: "Option 3 -> 3 -> 2", onClick: () => null },
+                                    {
+                                        label: "Option 3 -> 3 -> 4 -> 1",
+                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 1"),
+                                    },
+                                    {
+                                        label: "Option 3 -> 3 -> 4 -> 2",
+                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 2"),
+                                    },
+                                    {
+                                        label: "Option 3 -> 3 -> 4 -> 3",
+                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 3"),
+                                    },
                                 ],
                             },
                         ],
@@ -101,19 +134,15 @@ export const Test: Story = {
             },
             {
                 label: "Option 4",
-                onClick: () => console.log("Clicked Option 3"),
+                onClick: (e) => console.log("Clicked Option 4"),
                 subItems: [
-                    { label: "Option 4 -> 1", onClick: () => null },
-                    { label: "Option 4 -> 2", onClick: () => null },
-                    { label: "Option 4 -> 4", onClick: () => null },
-                    { label: "Option 4 -> 4", onClick: () => null },
-                    { label: "Option 4 -> 5", onClick: () => null },
-                    { label: "Option 4 -> 6", onClick: () => null },
-                    { label: "Option 4 -> 7", onClick: () => null },
-                    { label: "Option 4 -> 8", onClick: () => null },
-                    { label: "Option 4 -> 9", onClick: () => null },
-                    { label: "Option 4 -> 10", onClick: () => null },
-                    { label: "Option 4 -> 11", onClick: () => null },
+                    { label: "Option 4 -> 1", onClick: (e) => console.log("Clicked Option 4 -> 1") },
+                    { label: "Option 4 -> 2", onClick: (e) => console.log("Clicked Option 4 -> 2") },
+                    { label: "Option 4 -> 3", onClick: (e) => console.log("Clicked Option 4 -> 3") },
+                    { label: "Option 4 -> 4", onClick: (e) => console.log("Clicked Option 4 -> 4") },
+                    { label: "Option 4 -> 5", onClick: (e) => console.log("Clicked Option 4 -> 5") },
+                    { label: "Option 4 -> 6", onClick: (e) => console.log("Clicked Option 4 -> 6") },
+                    { label: "Option 4 -> 7", onClick: (e) => console.log("Clicked Option 4 -> 7") },
                 ],
             },
         ],
