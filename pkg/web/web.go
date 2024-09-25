@@ -223,11 +223,17 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 		log.Printf("streaming file w/no404: %q\n", path)
 		// use the custom response writer
 		rw := &notFoundBlockingResponseWriter{w: w, headers: http.Header{}}
+
 		// Serve the file using http.ServeFile
-		http.ServeFile(rw, r, filepath.Clean(path))
-		// if the file was not found, serve the transparent GIF
-		log.Printf("got streamfile status: %d\n", rw.status)
-		if rw.status == http.StatusNotFound {
+		path, err := wavebase.ExpandHomeDir(path)
+		if err == nil {
+			http.ServeFile(rw, r, filepath.Clean(path))
+			// if the file was not found, serve the transparent GIF
+			log.Printf("got streamfile status: %d\n", rw.status)
+			if rw.status == http.StatusNotFound {
+				serveTransparentGIF(w)
+			}
+		} else {
 			serveTransparentGIF(w)
 		}
 	} else {
