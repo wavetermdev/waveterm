@@ -39,10 +39,10 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
 
-            # We use musl-gcc instead of glibc for cgo compilation as it is more-easily statically linked
-            - name: Setup musl-gcc (Linux only)
+            # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
+            - name: Setup Zig (Linux only)
               if: matrix.platform == 'linux'
-              uses: ./.github/actions/setup-musl-gcc
+              run: sudo snap install zig --classic --beta
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
