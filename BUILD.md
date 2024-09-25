@@ -14,6 +14,8 @@ macOS does not have any platform-specific dependencies.
 
 #### Linux
 
+You will need a 64-bit Linux distro with glibc-2.28 or later (Debian 10, RHEL 8, Ubuntu 20.04, etc.).
+
 You must have `zip` installed. We also require the [Zig](https://ziglang.org/) compiler for statically linking CGO.
 
 Debian/Ubuntu:
@@ -23,7 +25,7 @@ sudo apt install zip snapd
 sudo snap install zig --classic --beta
 ```
 
-Fedora:
+Fedora/RHEL:
 
 ```sh
 sudo dnf install zip zig
