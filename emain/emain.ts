@@ -21,6 +21,7 @@ import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
+import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
@@ -840,6 +841,13 @@ process.on("uncaughtException", (error) => {
 });
 
 async function appMain() {
+    // Set disableHardwareAcceleration as early as possible, if required.
+    const launchSettings = getLaunchSettings();
+    if (launchSettings?.["window:disablehardwareacceleration"]) {
+        console.log("disabling hardware acceleration, per launch settings");
+        electronApp.disableHardwareAcceleration();
+    }
+
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {
@@ -852,7 +860,6 @@ async function appMain() {
         fs.mkdirSync(waveHomeDir);
     }
     makeAppMenu();
-
     try {
         await runWaveSrv();
     } catch (e) {
@@ -860,14 +867,6 @@ async function appMain() {
     }
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
-
-    const fullConfig = await services.FileService.GetFullConfig();
-    const settings = fullConfig.settings;
-    if (settings?.["window:disablehardwareacceleration"]) {
-        console.log("disabling hardware acceleration");
-        electronApp.disableHardwareAcceleration();
-    }
-
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     await relaunchBrowserWindows();
