@@ -73,14 +73,15 @@ type SettingsType struct {
 	WidgetClear    bool `json:"widget:*,omitempty"`
 	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
 
-	WindowClear          bool     `json:"window:*,omitempty"`
-	WindowTransparent    bool     `json:"window:transparent,omitempty"`
-	WindowBlur           bool     `json:"window:blur,omitempty"`
-	WindowOpacity        *float64 `json:"window:opacity,omitempty"`
-	WindowBgColor        string   `json:"window:bgcolor,omitempty"`
-	WindowReducedMotion  bool     `json:"window:reducedmotion,omitempty"`
-	WindowTileGapSize    *int64   `json:"window:tilegapsize,omitempty"`
-	WindowNativeTitleBar bool     `json:"window:nativetitlebar,omitempty"`
+	WindowClear                       bool     `json:"window:*,omitempty"`
+	WindowTransparent                 bool     `json:"window:transparent,omitempty"`
+	WindowBlur                        bool     `json:"window:blur,omitempty"`
+	WindowOpacity                     *float64 `json:"window:opacity,omitempty"`
+	WindowBgColor                     string   `json:"window:bgcolor,omitempty"`
+	WindowReducedMotion               bool     `json:"window:reducedmotion,omitempty"`
+	WindowTileGapSize                 *int64   `json:"window:tilegapsize,omitempty"`
+	WindowNativeTitleBar              bool     `json:"window:nativetitlebar,omitempty"`
+	WindowDisableHardwareAcceleration bool     `json:"window:disablehardwareacceleration,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`

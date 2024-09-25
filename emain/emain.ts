@@ -852,6 +852,11 @@ async function appMain() {
         fs.mkdirSync(waveHomeDir);
     }
     makeAppMenu();
+    const fullConfig = await services.FileService.GetFullConfig();
+    const settings = fullConfig.settings;
+    if (settings?.["window:disablehardwareacceleration"]) {
+        electronApp.disableHardwareAcceleration();
+    }
     try {
         await runWaveSrv();
     } catch (e) {
