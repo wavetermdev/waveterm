@@ -21,7 +21,7 @@ jobs:
             matrix:
                 include:
                     - platform: "darwin"
-                      runner: "macos-latest-xlarge"
+                      runner: "macos-latest"
                     - platform: "linux"
                       runner: "ubuntu-latest"
                     - platform: "linux"
