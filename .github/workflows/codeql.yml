@@ -59,7 +59,6 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
-
             - name: Install yarn
               run: |
                   corepack enable
@@ -72,7 +71,7 @@ jobs:
                   go-version: stable
                   cache-dependency-path: |
                       go.sum
-
+            # We use musl-gcc instead of glibc for cgo compilation as it is more-easily statically linked
             - name: Setup musl-gcc (Go only)
               if: matrix.language == 'go'
               run: |
