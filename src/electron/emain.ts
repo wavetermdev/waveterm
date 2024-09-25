@@ -55,7 +55,7 @@ const loggerConfig = {
     level: "info",
     format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-        winston.format.printf((info) => `${info.timestamp} ${info.message}`)
+        winston.format.printf((info) => `${info.timestamp} ${info.message}`),
     ),
     transports: loggerTransports,
 };
@@ -75,8 +75,8 @@ console.log(
         getElectronAppBasePath(),
         getGoAppBasePath(),
         unamePlatform,
-        unameArch
-    )
+        unameArch,
+    ),
 );
 if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
@@ -361,11 +361,11 @@ function createWindow(clientData: ClientDataType | null): Electron.BrowserWindow
     win.webContents.on("will-frame-navigate", shFrameNavHandler);
     win.on(
         "resize",
-        debounce(400, (e) => mainResizeHandler(e, win))
+        debounce(400, (e) => mainResizeHandler(e, win)),
     );
     win.on(
         "move",
-        debounce(400, (e) => mainResizeHandler(e, win))
+        debounce(400, (e) => mainResizeHandler(e, win)),
     );
     win.on("focus", () => {
         wasInFg = true;
@@ -375,7 +375,7 @@ function createWindow(clientData: ClientDataType | null): Electron.BrowserWindow
         win.webContents.send("zoom-changed");
     });
     win.webContents.setWindowOpenHandler(({ url, frameName }) => {
-        if (url.startsWith("https://docs.waveterm.dev/")) {
+        if (url.startsWith("https://legacydocs.waveterm.dev/")) {
             console.log("openExternal docs", url);
             electron.shell.openExternal(url);
         } else if (url.startsWith("https://discord.gg/")) {
