@@ -1,0 +1,13 @@
+name: "Setup musl-gcc"
+description: "Compile and install musl-gcc from source"
+
+runs:
+    using: "composite"
+    steps:
+        - run: |
+              git clone https://git.musl-libc.org/git/musl
+              cd musl
+              ./configure
+              make
+              sudo make install
+          shell: bash
