@@ -439,6 +439,7 @@ declare global {
         "window:bgcolor"?: string;
         "window:reducedmotion"?: boolean;
         "window:tilegapsize"?: number;
+        "window:nativetitlebar"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
     };
