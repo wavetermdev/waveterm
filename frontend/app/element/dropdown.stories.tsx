@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "./button";
 import { Dropdown } from "./dropdown";
 
 const meta = {
@@ -41,7 +42,7 @@ type Story = StoryObj<typeof meta>;
 
 export const DefaultRender: Story = {
     render: (args) => {
-        const anchorRef = useRef<HTMLDivElement>(null);
+        const anchorRef = useRef<HTMLButtonElement>(null);
         const scopeRef = useRef<HTMLDivElement>(null);
         const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
@@ -74,18 +75,13 @@ export const DefaultRender: Story = {
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
                 <div style={{ height: "400px" }}>
-                    <div
+                    <Button
                         ref={anchorRef}
-                        style={{
-                            backgroundColor: "lightblue",
-                            padding: "10px",
-                            display: "inline-block",
-                            cursor: "pointer",
-                        }}
+                        className="grey border-radius-3 vertical-padding-4 horizontal-padding-6"
                         onClick={handleAnchorClick}
                     >
                         Anchor Element
-                    </div>
+                    </Button>
                 </div>
                 {isDropdownVisible && (
                     <Dropdown
@@ -163,7 +159,7 @@ export const DefaultRender: Story = {
 
 export const CustomRender: Story = {
     render: (args) => {
-        const anchorRef = useRef<HTMLDivElement>(null);
+        const anchorRef = useRef<HTMLButtonElement>(null);
         const scopeRef = useRef<HTMLDivElement>(null);
         const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
@@ -205,18 +201,13 @@ export const CustomRender: Story = {
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
                 <div style={{ height: "400px" }}>
-                    <div
+                    <Button
                         ref={anchorRef}
-                        style={{
-                            backgroundColor: "lightblue",
-                            padding: "10px",
-                            display: "inline-block",
-                            cursor: "pointer",
-                        }}
+                        className="grey border-radius-3 vertical-padding-4 horizontal-padding-6"
                         onClick={handleAnchorClick}
                     >
                         Anchor Element
-                    </div>
+                    </Button>
                 </div>
                 {isDropdownVisible && (
                     <Dropdown

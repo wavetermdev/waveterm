@@ -123,7 +123,7 @@ const Dropdown = memo(
         renderMenuItem,
     }: {
         items: DropdownItem[];
-        anchorRef: React.RefObject<HTMLElement>;
+        anchorRef: React.RefObject<any>;
         scopeRef?: React.RefObject<HTMLElement>;
         initialPosition?: { top: number; left: number };
         className?: string;
