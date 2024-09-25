@@ -39,7 +39,7 @@ Coding style and formatting is automated for each pull request. We use [Prettier
 
 To build and run wave term locally see instructions below:
 
-- [README](./BUILD.md)
+- [Building Wave Terminal](./BUILD.md)
 
 ### Create a Pull Request
 
