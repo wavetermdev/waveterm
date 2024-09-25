@@ -51,15 +51,25 @@ func GetHomeDir() string {
 	return homeVar
 }
 
-func ExpandHomeDir(pathStr string) string {
+func ExpandHomeDir(pathStr string) (string, error) {
 	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
-		return pathStr
+		return pathStr, nil
 	}
 	homeDir := GetHomeDir()
 	if pathStr == "~" {
-		return homeDir
+		return homeDir, nil
 	}
-	return filepath.Clean(filepath.Join(homeDir, pathStr[2:]))
+	expandedPath := filepath.Join(homeDir, pathStr[2:])
+	absPath, err := filepath.Abs(filepath.Join(homeDir, expandedPath))
+	if err != nil || !strings.HasPrefix(absPath, homeDir) {
+		return "", fmt.Errorf("Potential path traversal detected for path %s", pathStr)
+	}
+	return expandedPath, nil
+}
+
+func ExpandHomeDirSafe(pathStr string) string {
+	path, _ := ExpandHomeDir(pathStr)
+	return path
 }
 
 func ReplaceHomeDir(pathStr string) string {
@@ -80,12 +90,12 @@ func GetDomainSocketName() string {
 func GetWaveHomeDir() string {
 	homeVar := os.Getenv(WaveHomeVarName)
 	if homeVar != "" {
-		return ExpandHomeDir(homeVar)
+		return ExpandHomeDirSafe(homeVar)
 	}
 	if IsDevMode() {
-		return ExpandHomeDir(DevWaveHome)
+		return ExpandHomeDirSafe(DevWaveHome)
 	}
-	return ExpandHomeDir(DefaultWaveHome)
+	return ExpandHomeDirSafe(DefaultWaveHome)
 }
 
 func EnsureWaveHomeDir() error {

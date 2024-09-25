@@ -163,8 +163,10 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	if err != nil {
 		return err
 	}
-	path := data.Path
-	path = wavebase.ExpandHomeDir(path)
+	path, err := wavebase.ExpandHomeDir(data.Path)
+	if err != nil {
+		return err
+	}
 	finfo, err := impl.fileInfoInternal(path, true)
 	if err != nil {
 		return fmt.Errorf("cannot stat file %q: %w", path, err)
@@ -246,7 +248,7 @@ func checkIsReadOnly(path string, fileInfo fs.FileInfo, exists bool) bool {
 }
 
 func computeDirPart(path string, isDir bool) string {
-	path = filepath.Clean(wavebase.ExpandHomeDir(path))
+	path = filepath.Clean(wavebase.ExpandHomeDirSafe(path))
 	path = filepath.ToSlash(path)
 	if path == "/" {
 		return "/"
@@ -259,7 +261,7 @@ func computeDirPart(path string, isDir bool) string {
 }
 
 func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInfo, error) {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
+	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
 	finfo, err := os.Stat(cleanedPath)
 	if os.IsNotExist(err) {
 		return &wshrpc.FileInfo{
@@ -281,11 +283,11 @@ func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInf
 
 func resolvePaths(paths []string) string {
 	if len(paths) == 0 {
-		return wavebase.ExpandHomeDir("~")
+		return wavebase.ExpandHomeDirSafe("~")
 	}
-	var rtnPath = wavebase.ExpandHomeDir(paths[0])
+	rtnPath := wavebase.ExpandHomeDirSafe(paths[0])
 	for _, path := range paths[1:] {
-		path = wavebase.ExpandHomeDir(path)
+		path = wavebase.ExpandHomeDirSafe(path)
 		if filepath.IsAbs(path) {
 			rtnPath = path
 			continue
@@ -305,7 +307,10 @@ func (impl *ServerImpl) RemoteFileInfoCommand(ctx context.Context, path string) 
 }
 
 func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.CommandRemoteWriteFileData) error {
-	path := wavebase.ExpandHomeDir(data.Path)
+	path, err := wavebase.ExpandHomeDir(data.Path)
+	if err != nil {
+		return err
+	}
 	createMode := data.CreateMode
 	if createMode == 0 {
 		createMode = 0644
@@ -324,8 +329,12 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.Comma
 }
 
 func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, path string) error {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
-	err := os.Remove(cleanedPath)
+	expandedPath, err := wavebase.ExpandHomeDir(path)
+	if err != nil {
+		return fmt.Errorf("cannot delete file %q: %w", path, err)
+	}
+	cleanedPath := filepath.Clean(expandedPath)
+	err = os.Remove(cleanedPath)
 	if err != nil {
 		return fmt.Errorf("cannot delete file %q: %w", path, err)
 	}

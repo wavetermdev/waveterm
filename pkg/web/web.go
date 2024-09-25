@@ -231,7 +231,10 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, fileName stri
 			serveTransparentGIF(w)
 		}
 	} else {
-		fileName = wavebase.ExpandHomeDir(fileName)
+		fileName, err := wavebase.ExpandHomeDir(fileName)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 		http.ServeFile(w, r, fileName)
 	}
 }
