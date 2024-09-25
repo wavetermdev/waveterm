@@ -33,7 +33,7 @@ brew install --cask wave
 
 - Homepage &mdash; https://www.waveterm.dev
 - Download Page &mdash; https://www.waveterm.dev/download
-- Documentation &mdash; https://docs.waveterm.dev/
+- Documentation &mdash; https://betadocs.waveterm.dev/
 - Blog &mdash; https://blog.waveterm.dev/
 - Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
@@ -52,4 +52,4 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 ## License
 
-Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./acknowledgements/README.md).
+Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).
