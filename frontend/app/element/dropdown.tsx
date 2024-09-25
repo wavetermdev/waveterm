@@ -79,8 +79,8 @@ const SubMenu = memo(
                         renderMenuItem(item, menuItemProps) // Remove portal here
                     ) : (
                         <div key={newKey} {...menuItemProps}>
-                            {item.label}
-                            {item.subItems && <span className="arrow">▶</span>}
+                            <span className="label">{item.label}</span>
+                            {item.subItems && <i className="fa-sharp fa-solid fa-chevron-right"></i>}
                         </div>
                     );
 
@@ -317,8 +317,8 @@ const Dropdown = memo(
                         renderMenuItem(item, menuItemProps)
                     ) : (
                         <div key={key} {...menuItemProps}>
-                            {item.label}
-                            {item.subItems && <span className="arrow">▶</span>}
+                            <span className="label">{item.label}</span>
+                            {item.subItems && <i className="fa-sharp fa-solid fa-chevron-right"></i>}
                         </div>
                     );
 

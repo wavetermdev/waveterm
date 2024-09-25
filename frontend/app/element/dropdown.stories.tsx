@@ -105,38 +105,38 @@ export const DefaultRender: Story = {
                 label: "Option 2",
                 onClick: (e) => console.log("Clicked Option 2"),
                 subItems: [
-                    { label: "Option 2 -> 1", onClick: (e) => console.log("Clicked Option 2 -> 1") },
-                    { label: "Option 2 -> 2", onClick: (e) => console.log("Clicked Option 2 -> 2") },
+                    { label: "Option 2 of 1", onClick: (e) => console.log("Clicked Option 2 of 1") },
+                    { label: "Option 2 of 2", onClick: (e) => console.log("Clicked Option 2 of 2") },
                 ],
             },
             {
                 label: "Option 3",
                 onClick: (e) => console.log("Clicked Option 3"),
                 subItems: [
-                    { label: "Option 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 1") },
-                    { label: "Option 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 2") },
+                    { label: "Option 3 of 1", onClick: (e) => console.log("Clicked Option 3 of 1") },
+                    { label: "Option 3 of 2", onClick: (e) => console.log("Clicked Option 3 of 2") },
                     {
-                        label: "Option 3 -> 3",
-                        onClick: (e) => console.log("Clicked Option 3 -> 3"),
+                        label: "Option 3 of 3",
+                        onClick: (e) => console.log("Clicked Option 3 of 3"),
                         subItems: [
-                            { label: "Option 3 -> 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 1") },
-                            { label: "Option 3 -> 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 2") },
-                            { label: "Option 3 -> 3 -> 3", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 3") },
+                            { label: "Option 3 of 3 of 1", onClick: (e) => console.log("Clicked Option 3 of 3 of 1") },
+                            { label: "Option 3 of 3 of 2", onClick: (e) => console.log("Clicked Option 3 of 3 of 2") },
+                            { label: "Option 3 of 3 of 3", onClick: (e) => console.log("Clicked Option 3 of 3 of 3") },
                             {
-                                label: "Option 3 -> 3 -> 4",
-                                onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4"),
+                                label: "Option 3 of 3 of 4",
+                                onClick: (e) => console.log("Clicked Option 3 of 3 of 4"),
                                 subItems: [
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 1",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 1"),
+                                        label: "Option 3 of 3 of 4 of 1",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 1"),
                                     },
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 2",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 2"),
+                                        label: "Option 3 of 3 of 4 of 2",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 2"),
                                     },
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 3",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 3"),
+                                        label: "Option 3 of 3 of 4 of 3",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 3"),
                                     },
                                 ],
                             },
@@ -148,13 +148,13 @@ export const DefaultRender: Story = {
                 label: "Option 4",
                 onClick: (e) => console.log("Clicked Option 4"),
                 subItems: [
-                    { label: "Option 4 -> 1", onClick: (e) => console.log("Clicked Option 4 -> 1") },
-                    { label: "Option 4 -> 2", onClick: (e) => console.log("Clicked Option 4 -> 2") },
-                    { label: "Option 4 -> 3", onClick: (e) => console.log("Clicked Option 4 -> 3") },
-                    { label: "Option 4 -> 4", onClick: (e) => console.log("Clicked Option 4 -> 4") },
-                    { label: "Option 4 -> 5", onClick: (e) => console.log("Clicked Option 4 -> 5") },
-                    { label: "Option 4 -> 6", onClick: (e) => console.log("Clicked Option 4 -> 6") },
-                    { label: "Option 4 -> 7", onClick: (e) => console.log("Clicked Option 4 -> 7") },
+                    { label: "Option 4 of 1", onClick: (e) => console.log("Clicked Option 4 of 1") },
+                    { label: "Option 4 of 2", onClick: (e) => console.log("Clicked Option 4 of 2") },
+                    { label: "Option 4 of 3", onClick: (e) => console.log("Clicked Option 4 of 3") },
+                    { label: "Option 4 of 4", onClick: (e) => console.log("Clicked Option 4 of 4") },
+                    { label: "Option 4 of 5", onClick: (e) => console.log("Clicked Option 4 of 5") },
+                    { label: "Option 4 of 6", onClick: (e) => console.log("Clicked Option 4 of 6") },
+                    { label: "Option 4 of 7", onClick: (e) => console.log("Clicked Option 4 of 7") },
                 ],
             },
         ],
@@ -238,38 +238,38 @@ export const CustomRender: Story = {
                 label: "Option 2",
                 onClick: (e) => console.log("Clicked Option 2"),
                 subItems: [
-                    { label: "Option 2 -> 1", onClick: (e) => console.log("Clicked Option 2 -> 1") },
-                    { label: "Option 2 -> 2", onClick: (e) => console.log("Clicked Option 2 -> 2") },
+                    { label: "Option 2 of 1", onClick: (e) => console.log("Clicked Option 2 of 1") },
+                    { label: "Option 2 of 2", onClick: (e) => console.log("Clicked Option 2 of 2") },
                 ],
             },
             {
                 label: "Option 3",
                 onClick: (e) => console.log("Clicked Option 3"),
                 subItems: [
-                    { label: "Option 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 1") },
-                    { label: "Option 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 2") },
+                    { label: "Option 3 of 1", onClick: (e) => console.log("Clicked Option 3 of 1") },
+                    { label: "Option 3 of 2", onClick: (e) => console.log("Clicked Option 3 of 2") },
                     {
-                        label: "Option 3 -> 3",
-                        onClick: (e) => console.log("Clicked Option 3 -> 3"),
+                        label: "Option 3 of 3",
+                        onClick: (e) => console.log("Clicked Option 3 of 3"),
                         subItems: [
-                            { label: "Option 3 -> 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 1") },
-                            { label: "Option 3 -> 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 2") },
-                            { label: "Option 3 -> 3 -> 3", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 3") },
+                            { label: "Option 3 of 3 of 1", onClick: (e) => console.log("Clicked Option 3 of 3 of 1") },
+                            { label: "Option 3 of 3 of 2", onClick: (e) => console.log("Clicked Option 3 of 3 of 2") },
+                            { label: "Option 3 of 3 of 3", onClick: (e) => console.log("Clicked Option 3 of 3 of 3") },
                             {
-                                label: "Option 3 -> 3 -> 4",
-                                onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4"),
+                                label: "Option 3 of 3 of 4",
+                                onClick: (e) => console.log("Clicked Option 3 of 3 of 4"),
                                 subItems: [
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 1",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 1"),
+                                        label: "Option 3 of 3 of 4 of 1",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 1"),
                                     },
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 2",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 2"),
+                                        label: "Option 3 of 3 of 4 of 2",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 2"),
                                     },
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 3",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 3"),
+                                        label: "Option 3 of 3 of 4 of 3",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 3"),
                                     },
                                 ],
                             },
@@ -281,13 +281,13 @@ export const CustomRender: Story = {
                 label: "Option 4",
                 onClick: (e) => console.log("Clicked Option 4"),
                 subItems: [
-                    { label: "Option 4 -> 1", onClick: (e) => console.log("Clicked Option 4 -> 1") },
-                    { label: "Option 4 -> 2", onClick: (e) => console.log("Clicked Option 4 -> 2") },
-                    { label: "Option 4 -> 3", onClick: (e) => console.log("Clicked Option 4 -> 3") },
-                    { label: "Option 4 -> 4", onClick: (e) => console.log("Clicked Option 4 -> 4") },
-                    { label: "Option 4 -> 5", onClick: (e) => console.log("Clicked Option 4 -> 5") },
-                    { label: "Option 4 -> 6", onClick: (e) => console.log("Clicked Option 4 -> 6") },
-                    { label: "Option 4 -> 7", onClick: (e) => console.log("Clicked Option 4 -> 7") },
+                    { label: "Option 4 of 1", onClick: (e) => console.log("Clicked Option 4 of 1") },
+                    { label: "Option 4 of 2", onClick: (e) => console.log("Clicked Option 4 of 2") },
+                    { label: "Option 4 of 3", onClick: (e) => console.log("Clicked Option 4 of 3") },
+                    { label: "Option 4 of 4", onClick: (e) => console.log("Clicked Option 4 of 4") },
+                    { label: "Option 4 of 5", onClick: (e) => console.log("Clicked Option 4 of 5") },
+                    { label: "Option 4 of 6", onClick: (e) => console.log("Clicked Option 4 of 6") },
+                    { label: "Option 4 of 7", onClick: (e) => console.log("Clicked Option 4 of 7") },
                 ],
             },
         ],
@@ -332,15 +332,6 @@ export const NoAnchorElement: Story = {
             }));
         };
 
-        const renderMenuItem = (item: any, props: any) => (
-            <div {...props}>
-                <strong>{item.label}</strong>
-                {item.subItems && <span style={{ marginLeft: "10px", color: "#888" }}>▶</span>}
-            </div>
-        );
-
-        const renderMenu = (subMenu: JSX.Element) => <div>{subMenu}</div>;
-
         const modifiedArgs = {
             ...args,
             items: mapItemsWithClick(args.items),
@@ -358,8 +349,6 @@ export const NoAnchorElement: Story = {
                         setVisibility={(visible) => setIsDropdownVisible(visible)}
                         initialPosition={dropdownPosition}
                         scopeRef={scopeRef}
-                        renderMenu={renderMenu}
-                        renderMenuItem={renderMenuItem}
                     />
                 )}
             </div>
@@ -372,38 +361,38 @@ export const NoAnchorElement: Story = {
                 label: "Option 2",
                 onClick: (e) => console.log("Clicked Option 2"),
                 subItems: [
-                    { label: "Option 2 -> 1", onClick: (e) => console.log("Clicked Option 2 -> 1") },
-                    { label: "Option 2 -> 2", onClick: (e) => console.log("Clicked Option 2 -> 2") },
+                    { label: "Option 2 of 1", onClick: (e) => console.log("Clicked Option 2 of 1") },
+                    { label: "Option 2 of 2", onClick: (e) => console.log("Clicked Option 2 of 2") },
                 ],
             },
             {
                 label: "Option 3",
                 onClick: (e) => console.log("Clicked Option 3"),
                 subItems: [
-                    { label: "Option 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 1") },
-                    { label: "Option 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 2") },
+                    { label: "Option 3 of 1", onClick: (e) => console.log("Clicked Option 3 of 1") },
+                    { label: "Option 3 of 2", onClick: (e) => console.log("Clicked Option 3 of 2") },
                     {
-                        label: "Option 3 -> 3",
-                        onClick: (e) => console.log("Clicked Option 3 -> 3"),
+                        label: "Option 3 of 3",
+                        onClick: (e) => console.log("Clicked Option 3 of 3"),
                         subItems: [
-                            { label: "Option 3 -> 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 1") },
-                            { label: "Option 3 -> 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 2") },
-                            { label: "Option 3 -> 3 -> 3", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 3") },
+                            { label: "Option 3 of 3 of 1", onClick: (e) => console.log("Clicked Option 3 of 3 of 1") },
+                            { label: "Option 3 of 3 of 2", onClick: (e) => console.log("Clicked Option 3 of 3 of 2") },
+                            { label: "Option 3 of 3 of 3", onClick: (e) => console.log("Clicked Option 3 of 3 of 3") },
                             {
-                                label: "Option 3 -> 3 -> 4",
-                                onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4"),
+                                label: "Option 3 of 3 of 4",
+                                onClick: (e) => console.log("Clicked Option 3 of 3 of 4"),
                                 subItems: [
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 1",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 1"),
+                                        label: "Option 3 of 3 of 4 of 1",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 1"),
                                     },
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 2",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 2"),
+                                        label: "Option 3 of 3 of 4 of 2",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 2"),
                                     },
                                     {
-                                        label: "Option 3 -> 3 -> 4 -> 3",
-                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 3"),
+                                        label: "Option 3 of 3 of 4 of 3",
+                                        onClick: (e) => console.log("Clicked Option 3 of 3 of 4 of 3"),
                                     },
                                 ],
                             },
@@ -415,13 +404,13 @@ export const NoAnchorElement: Story = {
                 label: "Option 4",
                 onClick: (e) => console.log("Clicked Option 4"),
                 subItems: [
-                    { label: "Option 4 -> 1", onClick: (e) => console.log("Clicked Option 4 -> 1") },
-                    { label: "Option 4 -> 2", onClick: (e) => console.log("Clicked Option 4 -> 2") },
-                    { label: "Option 4 -> 3", onClick: (e) => console.log("Clicked Option 4 -> 3") },
-                    { label: "Option 4 -> 4", onClick: (e) => console.log("Clicked Option 4 -> 4") },
-                    { label: "Option 4 -> 5", onClick: (e) => console.log("Clicked Option 4 -> 5") },
-                    { label: "Option 4 -> 6", onClick: (e) => console.log("Clicked Option 4 -> 6") },
-                    { label: "Option 4 -> 7", onClick: (e) => console.log("Clicked Option 4 -> 7") },
+                    { label: "Option 4 of 1", onClick: (e) => console.log("Clicked Option 4 of 1") },
+                    { label: "Option 4 of 2", onClick: (e) => console.log("Clicked Option 4 of 2") },
+                    { label: "Option 4 of 3", onClick: (e) => console.log("Clicked Option 4 of 3") },
+                    { label: "Option 4 of 4", onClick: (e) => console.log("Clicked Option 4 of 4") },
+                    { label: "Option 4 of 5", onClick: (e) => console.log("Clicked Option 4 of 5") },
+                    { label: "Option 4 of 6", onClick: (e) => console.log("Clicked Option 4 of 6") },
+                    { label: "Option 4 of 7", onClick: (e) => console.log("Clicked Option 4 of 7") },
                 ],
             },
         ],
