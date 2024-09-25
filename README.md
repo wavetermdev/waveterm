@@ -41,8 +41,9 @@ Wave Terminal and WSH run on the following platforms:
 
 - Homepage &mdash; https://www.waveterm.dev
 - Download Page &mdash; https://www.waveterm.dev/download
-- Documentation &mdash; https://betadocs.waveterm.dev/
-- Blog &mdash; https://blog.waveterm.dev/
+- Documentation &mdash; https://docs.waveterm.dev
+- Legacy Documentation &mdash; https://legacydocs.waveterm.dev
+- Blog &mdash; https://blog.waveterm.dev
 - Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
 ## Building from Source

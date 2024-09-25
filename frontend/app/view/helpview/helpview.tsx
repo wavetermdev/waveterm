@@ -7,7 +7,7 @@ import { Atom, atom, PrimitiveAtom } from "jotai";
 import "./helpview.less";
 
 const helpText = `
-For more up-to-date documentation, please visit [our docs site](http://betadocs.waveterm.dev)
+For more up-to-date documentation, please visit [our docs site](http://docs.waveterm.dev)
 
 
 ## Blocks
