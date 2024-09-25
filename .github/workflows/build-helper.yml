@@ -37,17 +37,12 @@ jobs:
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
-                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools build-essential
+                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
 
             # We use musl-gcc instead of glibc for cgo compilation as it is more-easily statically linked
             - name: Setup musl-gcc (Linux only)
               if: matrix.platform == 'linux'
-              run: |
-                  git clone https://git.musl-libc.org/git/musl
-                  cd musl
-                  ./configure
-                  make
-                  sudo make install
+              uses: ./.github/actions/setup-musl-gcc
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)

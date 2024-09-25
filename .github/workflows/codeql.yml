@@ -74,12 +74,7 @@ jobs:
             # We use musl-gcc instead of glibc for cgo compilation as it is more-easily statically linked
             - name: Setup musl-gcc (Go only)
               if: matrix.language == 'go'
-              run: |
-                  git clone https://git.musl-libc.org/git/musl
-                  cd musl
-                  ./configure
-                  make
-                  sudo make install
+              uses: ./.github/actions/setup-musl-gcc
 
             # Initializes the CodeQL tools for scanning.
             - name: Initialize CodeQL
