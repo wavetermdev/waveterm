@@ -42,7 +42,7 @@ jobs:
             - name: Setup musl-gcc (Linux only)
               if: matrix.platform == 'linux'
               run: |
-                  git checkout https://git.musl-libc.org/git/musl
+                  git clone https://git.musl-libc.org/git/musl
                   cd musl
                   ./configure
                   make

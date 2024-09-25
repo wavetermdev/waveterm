@@ -56,20 +56,31 @@ jobs:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Setup Go
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{env.NODE_VERSION}}
+
+            - name: Install yarn
+              run: |
+                  corepack enable
+                  yarn install
+
+            - name: Setup Go (Go only)
+              if: matrix.language == 'go'
               uses: actions/setup-go@v5
               with:
                   go-version: stable
                   cache-dependency-path: |
                       go.sum
 
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{env.NODE_VERSION}}
-            - name: Install yarn
+            - name: Setup musl-gcc (Go only)
+              if: matrix.language == 'go'
               run: |
-                  corepack enable
-                  yarn install
+                  git clone https://git.musl-libc.org/git/musl
+                  cd musl
+                  ./configure
+                  make
+                  make install
 
             # Initializes the CodeQL tools for scanning.
             - name: Initialize CodeQL
@@ -91,15 +102,6 @@ jobs:
             - name: Autobuild (not Go)
               if: matrix.language != 'go'
               uses: github/codeql-action/autobuild@v3
-
-            - name: Setup musl-gcc (Go only)
-              if: matrix.language == 'go'
-              run: |
-                  git checkout https://git.musl-libc.org/git/musl
-                  cd musl
-                  ./configure
-                  make
-                  make install
 
             - name: Build (Go only)
               if: matrix.language == 'go'
