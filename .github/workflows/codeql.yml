@@ -74,7 +74,7 @@ jobs:
             # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
             - name: Setup Zig (Go only)
               if: matrix.language == 'go'
-              run: snap install zig --classic --beta
+              run: sudo snap install zig --classic --beta
 
             # Initializes the CodeQL tools for scanning.
             - name: Initialize CodeQL

@@ -42,7 +42,7 @@ jobs:
             # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
             - name: Setup Zig (Linux only)
               if: matrix.platform == 'linux'
-              run: snap install zig --classic --beta
+              run: sudo snap install zig --classic --beta
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
