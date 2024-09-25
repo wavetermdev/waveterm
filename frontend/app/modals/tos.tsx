@@ -159,7 +159,7 @@ const ModalPageLegacy = () => {
         setPageNum(1);
     };
     const handleDownloadLegacy = () => {
-        getApi().openExternal("https://waveterm.dev/download-legacy");
+        getApi().openExternal("https://waveterm.dev/download-legacy?ref=v7upgrade");
     };
     return (
         <>
@@ -193,7 +193,7 @@ const ModalPageLegacy = () => {
             <footer className="unselectable">
                 <div className="button-wrapper">
                     <Button className="outlined grey" onClick={handleDownloadLegacy}>
-                        Download Legacy
+                        Download WaveLegacy
                     </Button>
 
                     <Button className="font-weight-600" onClick={handleContinue}>
