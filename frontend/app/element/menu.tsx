@@ -227,7 +227,7 @@ const Menu = memo(
                 const submenuHeight = subMenuRef.offsetHeight;
 
                 let left = itemRect.right + scrollLeft - 2; // Adjust for horizontal scroll
-                let top = itemRect.top + scrollTop; // Adjust for vertical scroll
+                let top = itemRect.top - 2 + scrollTop; // Adjust for vertical scroll
 
                 // Adjust to the left if overflowing the right boundary
                 if (left + submenuWidth > window.innerWidth + scrollLeft) {
