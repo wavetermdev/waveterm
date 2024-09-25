@@ -14,7 +14,7 @@ macOS does not have any platform-specific dependencies.
 
 #### Linux
 
-You must have Zip installed. We also require the Zig compiler for statically linking CGO.
+You must have `zip` installed. We also require the [Zig](https://ziglang.org/) compiler for statically linking CGO.
 
 Debian/Ubuntu:
 
