@@ -3,11 +3,11 @@ import { useWidth } from "@/app/hook/useWidth";
 import clsx from "clsx";
 import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import "./dropdown.less";
+import "./menu.less";
 
-type DropdownItem = {
+type MenuItem = {
     label: string;
-    subItems?: DropdownItem[];
+    subItems?: MenuItem[];
     onClick?: (e) => void;
 };
 
@@ -24,7 +24,7 @@ const SubMenu = memo(
         renderMenu,
         renderMenuItem,
     }: {
-        subItems: DropdownItem[];
+        subItems: MenuItem[];
         parentKey: string;
         subMenuPosition: {
             [key: string]: { top: number; left: number; label: string };
@@ -36,11 +36,11 @@ const SubMenu = memo(
             event: React.MouseEvent<HTMLDivElement, MouseEvent>,
             parentKey: string | null,
             index: number,
-            item: DropdownItem
+            item: MenuItem
         ) => void;
-        handleOnClick: (e: React.MouseEvent<HTMLDivElement>, item: DropdownItem) => void;
+        handleOnClick: (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => void;
         renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
-        renderMenuItem?: (item: DropdownItem, props: any) => JSX.Element;
+        renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
     }) => {
         subItems.forEach((_, idx) => {
             const newKey = `${parentKey}-${idx}`;
@@ -54,7 +54,7 @@ const SubMenu = memo(
 
         const subMenu = (
             <div
-                className="dropdown sub-dropdown"
+                className="menu sub-menu"
                 ref={subMenuRefs.current[parentKey]}
                 style={{
                     top: position?.top || 0,
@@ -69,7 +69,7 @@ const SubMenu = memo(
                     const isActive = hoveredItems.includes(newKey);
 
                     const menuItemProps = {
-                        className: clsx("dropdown-item", { active: isActive }),
+                        className: clsx("menu-item", { active: isActive }),
                         onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
                             handleMouseEnterItem(event, parentKey, idx, item),
                         onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
@@ -111,7 +111,7 @@ const SubMenu = memo(
     }
 );
 
-const Dropdown = memo(
+const Menu = memo(
     ({
         items,
         anchorRef,
@@ -122,14 +122,14 @@ const Dropdown = memo(
         renderMenu,
         renderMenuItem,
     }: {
-        items: DropdownItem[];
+        items: MenuItem[];
         anchorRef: React.RefObject<any>;
         scopeRef?: React.RefObject<HTMLElement>;
         initialPosition?: { top: number; left: number };
         className?: string;
         setVisibility: (_: boolean) => void;
         renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
-        renderMenuItem?: (item: DropdownItem, props: any) => JSX.Element;
+        renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
     }) => {
         const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({});
         const [hoveredItems, setHoveredItems] = useState<string[]>([]);
@@ -137,7 +137,7 @@ const Dropdown = memo(
             [key: string]: { top: number; left: number; label: string };
         }>({});
         const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-        const dropdownRef = useRef<HTMLDivElement>(null);
+        const menuRef = useRef<HTMLDivElement>(null);
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
 
         const width = useWidth(scopeRef);
@@ -153,7 +153,7 @@ const Dropdown = memo(
         useLayoutEffect(() => {
             if (initialPosition) {
                 setPosition(initialPosition);
-            } else if (anchorRef.current && dropdownRef.current) {
+            } else if (anchorRef.current && menuRef.current) {
                 // Calculate position based on anchorRef if it exists
                 const anchorRect = anchorRef.current.getBoundingClientRect();
                 const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -169,12 +169,12 @@ const Dropdown = memo(
                     right: window.innerWidth,
                 };
 
-                if (left + dropdownRef.current.offsetWidth > boundaryRect.right + scrollLeft) {
-                    left = boundaryRect.right + scrollLeft - dropdownRef.current.offsetWidth;
+                if (left + menuRef.current.offsetWidth > boundaryRect.right + scrollLeft) {
+                    left = boundaryRect.right + scrollLeft - menuRef.current.offsetWidth;
                 }
 
-                if (top + dropdownRef.current.offsetHeight > boundaryRect.bottom + scrollTop) {
-                    top = boundaryRect.bottom + scrollTop - dropdownRef.current.offsetHeight;
+                if (top + menuRef.current.offsetHeight > boundaryRect.bottom + scrollTop) {
+                    top = boundaryRect.bottom + scrollTop - menuRef.current.offsetHeight;
                 }
 
                 setPosition({ top, left });
@@ -185,7 +185,7 @@ const Dropdown = memo(
 
         useEffect(() => {
             const handleClickOutside = (event: MouseEvent) => {
-                const isClickInsideDropdown = dropdownRef.current && dropdownRef.current.contains(event.target as Node);
+                const isClickInsideDropdown = menuRef.current && menuRef.current.contains(event.target as Node);
 
                 const isClickInsideAnchor = anchorRef?.current
                     ? anchorRef.current.contains(event.target as Node)
@@ -250,7 +250,7 @@ const Dropdown = memo(
             event: React.MouseEvent<HTMLDivElement, MouseEvent>,
             parentKey: string | null,
             index: number,
-            item: DropdownItem
+            item: MenuItem
         ) => {
             event.stopPropagation();
 
@@ -288,26 +288,22 @@ const Dropdown = memo(
             setHoveredItems(newHoveredItems);
 
             const itemRect = event.currentTarget.getBoundingClientRect();
-            handleSubMenuPosition(key, itemRect, dropdownRef, item.label);
+            handleSubMenuPosition(key, itemRect, menuRef, item.label);
         };
 
-        const handleOnClick = (e: React.MouseEvent<HTMLDivElement>, item: DropdownItem) => {
+        const handleOnClick = (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => {
             e.stopPropagation();
             item.onClick && item.onClick(e);
         };
 
-        const dropdownMenu = (
-            <div
-                className={clsx("dropdown", className)}
-                ref={dropdownRef}
-                style={{ top: position.top, left: position.left }}
-            >
+        const menuMenu = (
+            <div className={clsx("menu", className)} ref={menuRef} style={{ top: position.top, left: position.left }}>
                 {items.map((item, index) => {
                     const key = `${index}`;
                     const isActive = hoveredItems.includes(key);
 
                     const menuItemProps = {
-                        className: clsx("dropdown-item", { active: isActive }),
+                        className: clsx("menu-item", { active: isActive }),
                         onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
                             handleMouseEnterItem(event, null, index, item),
                         onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
@@ -345,11 +341,8 @@ const Dropdown = memo(
             </div>
         );
 
-        return ReactDOM.createPortal(
-            renderMenu ? renderMenu(dropdownMenu, { parentKey: null }) : dropdownMenu,
-            document.body
-        );
+        return ReactDOM.createPortal(renderMenu ? renderMenu(menuMenu, { parentKey: null }) : menuMenu, document.body);
     }
 );
 
-export { Dropdown };
+export { Menu };

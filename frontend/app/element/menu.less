@@ -1,8 +1,8 @@
-.dropdown {
+.menu {
     position: absolute;
     z-index: 1000; // TODO: put this in theme.less
     display: flex;
-    width: 125px; /* Ensure the dropdown has a fixed width */
+    width: 125px; /* Ensure the menu has a fixed width */
     padding: 2px;
     flex-direction: column;
     justify-content: flex-end;
@@ -13,7 +13,7 @@
     background: #212121;
     box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.3);
 
-    .dropdown-item {
+    .menu-item {
         padding: 4px 6px;
         cursor: pointer;
         color: #fff;
@@ -24,16 +24,9 @@
         letter-spacing: -0.12px;
         width: 100%;
         border-radius: 2px;
-
         display: flex;
         align-items: center;
         justify-content: space-between;
-
-        &:hover,
-        &.active {
-            background-color: var(--accent-color);
-            color: var(--button-text-color);
-        }
 
         /* Make sure the label and the icon don't overlap */
         .label {
@@ -47,6 +40,16 @@
         i {
             color: var(--main-text-color);
             flex-shrink: 0; /* Prevent icon from shrinking */
+        }
+
+        &:hover,
+        &.active {
+            background-color: var(--accent-color);
+            color: var(--button-text-color);
+
+            i {
+                color: var(--button-text-color);
+            }
         }
     }
 }

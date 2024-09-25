@@ -2,11 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./button";
-import { Dropdown } from "./dropdown";
+import { Menu } from "./menu";
 
 const meta = {
-    title: "Elements/Dropdown",
-    component: Dropdown,
+    title: "Elements/Menu",
+    component: Menu,
     args: {
         items: [],
         anchorRef: undefined,
@@ -17,25 +17,25 @@ const meta = {
     },
     argTypes: {
         items: {
-            description: "Items of dropdown",
+            description: "Items of menu",
         },
         anchorRef: {
-            description: "Element to attach the dropdown",
+            description: "Element to attach the menu",
         },
         initialPosition: {
-            description: "Initial position of the dropdown",
+            description: "Initial position of the menu",
         },
         setVisibility: {
             description: "Visibility event handler",
         },
         scopeRef: {
-            description: "Component that defines the boundaries of the dropdown",
+            description: "Component that defines the boundaries of the menu",
         },
         className: {
             description: "Custom className",
         },
     },
-} satisfies Meta<typeof Dropdown>;
+} satisfies Meta<typeof Menu>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -44,10 +44,10 @@ export const DefaultRender: Story = {
     render: (args) => {
         const anchorRef = useRef<HTMLButtonElement>(null);
         const scopeRef = useRef<HTMLDivElement>(null);
-        const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+        const [isMenuVisible, setIsMenuVisible] = useState(false);
 
         const handleAnchorClick = () => {
-            setIsDropdownVisible((prev) => !prev);
+            setIsMenuVisible((prev) => !prev);
         };
 
         const mapItemsWithClick = (items: any[]) => {
@@ -57,7 +57,7 @@ export const DefaultRender: Story = {
                     if (item.onClick) {
                         item.onClick();
                     }
-                    setIsDropdownVisible(false);
+                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
@@ -83,10 +83,10 @@ export const DefaultRender: Story = {
                         Anchor Element
                     </Button>
                 </div>
-                {isDropdownVisible && (
-                    <Dropdown
+                {isMenuVisible && (
+                    <Menu
                         {...modifiedArgs}
-                        setVisibility={(visible) => setIsDropdownVisible(visible)}
+                        setVisibility={(visible) => setIsMenuVisible(visible)}
                         anchorRef={anchorRef}
                         scopeRef={scopeRef}
                     />
@@ -161,10 +161,10 @@ export const CustomRender: Story = {
     render: (args) => {
         const anchorRef = useRef<HTMLButtonElement>(null);
         const scopeRef = useRef<HTMLDivElement>(null);
-        const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+        const [isMenuVisible, setIsMenuVisible] = useState(false);
 
         const handleAnchorClick = () => {
-            setIsDropdownVisible((prev) => !prev);
+            setIsMenuVisible((prev) => !prev);
         };
 
         const mapItemsWithClick = (items: any[]) => {
@@ -174,7 +174,7 @@ export const CustomRender: Story = {
                     if (item.onClick) {
                         item.onClick();
                     }
-                    setIsDropdownVisible(false);
+                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
@@ -209,10 +209,10 @@ export const CustomRender: Story = {
                         Anchor Element
                     </Button>
                 </div>
-                {isDropdownVisible && (
-                    <Dropdown
+                {isMenuVisible && (
+                    <Menu
                         {...modifiedArgs}
-                        setVisibility={(visible) => setIsDropdownVisible(visible)}
+                        setVisibility={(visible) => setIsMenuVisible(visible)}
                         anchorRef={anchorRef}
                         scopeRef={scopeRef}
                         renderMenu={renderMenu}
@@ -288,13 +288,13 @@ export const CustomRender: Story = {
 export const NoAnchorElement: Story = {
     render: (args) => {
         const scopeRef = useRef<HTMLDivElement>(null);
-        const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-        const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+        const [isMenuVisible, setIsMenuVisible] = useState(false);
+        const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
         const handleBlockRightClick = (e: MouseEvent) => {
             e.preventDefault(); // Prevent the default context menu
-            setDropdownPosition({ top: e.clientY, left: e.clientX });
-            setIsDropdownVisible(true);
+            setMenuPosition({ top: e.clientY, left: e.clientX });
+            setIsMenuVisible(true);
         };
 
         useEffect(() => {
@@ -317,7 +317,7 @@ export const NoAnchorElement: Story = {
                     if (item.onClick) {
                         item.onClick();
                     }
-                    setIsDropdownVisible(false);
+                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
@@ -334,11 +334,11 @@ export const NoAnchorElement: Story = {
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
-                {isDropdownVisible && (
-                    <Dropdown
+                {isMenuVisible && (
+                    <Menu
                         {...modifiedArgs}
-                        setVisibility={(visible) => setIsDropdownVisible(visible)}
-                        initialPosition={dropdownPosition}
+                        setVisibility={(visible) => setIsMenuVisible(visible)}
+                        initialPosition={menuPosition}
                         scopeRef={scopeRef}
                     />
                 )}
