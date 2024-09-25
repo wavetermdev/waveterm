@@ -95,7 +95,7 @@ tasks:
                   ARCHS:
                       sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
                   GO_LDFLAGS: -linkmode 'external' -extldflags=-static
-                  GO_ENV_VARS: CC=musl-gcc
+                  GO_ENV_VARS: CC=/usr/local/musl/bin/musl-gcc
 
     build:server:internal:
         requires:

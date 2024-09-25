@@ -25,13 +25,23 @@ sudo apt install build-essential zip
 Fedora:
 
 ```sh
-sudo dnf install make automake gcc gcc-c++ kernel-devel
+sudo dnf install make automake gcc gcc-c++ kernel-devel zip
 ```
 
 Arch:
 
 ```sh
-sudo pacman -S base-devel
+sudo pacman -S base-devel zip
+```
+
+We also require `musl-gcc` for statically linking CGO. Run the following from wherever you keep your source code:
+
+```sh
+git clone https://git.musl-libc.org/git/musl
+cd musl
+./configure
+make
+sudo make install
 ```
 
 #### Windows
