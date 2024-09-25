@@ -58,6 +58,7 @@ jobs:
               shell: bash
 
             - name: "Push version bump: ${{ steps.bump-version.outputs.WAVETERM_VERSION }}"
+              if: github.ref_protected
               run: |
                   # Create a new commit for the package version bump in package.json
                   export VERSION=${{ steps.bump-version.outputs.WAVETERM_VERSION }}

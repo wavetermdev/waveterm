@@ -7,10 +7,12 @@ package wcore
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -149,6 +151,7 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		}
 		firstRun = true
 	}
+	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) > 0 {
 		return nil, false, nil
 	}
@@ -172,9 +175,26 @@ func CreateClient(ctx context.Context) (*waveobj.Client, error) {
 }
 
 func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
+	if blockDef == nil {
+		return nil, fmt.Errorf("blockDef is nil")
+	}
+	if blockDef.Meta == nil || blockDef.Meta.GetString(waveobj.MetaKey_View, "") == "" {
+		return nil, fmt.Errorf("no view provided for new block")
+	}
 	blockData, err := wstore.CreateBlock(ctx, tabId, blockDef, rtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
+	go func() {
+		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
+		if blockView == "" {
+			return
+		}
+		tctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancelFn()
+		telemetry.UpdateActivity(tctx, telemetry.ActivityUpdate{
+			Renderers: map[string]int{blockView: 1},
+		})
+	}()
 	return blockData, nil
 }

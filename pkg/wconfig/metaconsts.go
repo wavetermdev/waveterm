@@ -24,6 +24,8 @@ const (
 
 	ConfigKey_WebClear                       = "web:*"
 	ConfigKey_WebOpenLinksInternally         = "web:openlinksinternally"
+	ConfigKey_WebDefaultUrl                  = "web:defaulturl"
+	ConfigKey_WebDefaultSearch               = "web:defaultsearch"
 
 	ConfigKey_BlockHeaderClear               = "blockheader:*"
 	ConfigKey_BlockHeaderShowBlockIds        = "blockheader:showblockids"
@@ -44,6 +46,7 @@ const (
 	ConfigKey_WindowBgColor                  = "window:bgcolor"
 	ConfigKey_WindowReducedMotion            = "window:reducedmotion"
 	ConfigKey_WindowTileGapSize              = "window:tilegapsize"
+	ConfigKey_WindowNativeTitleBar           = "window:nativetitlebar"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"

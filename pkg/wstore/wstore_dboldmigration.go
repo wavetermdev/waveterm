@@ -17,7 +17,7 @@ import (
 const OldDBName = "~/.waveterm/waveterm.db"
 
 func GetOldDBName() string {
-	return wavebase.ExpandHomeDir(OldDBName)
+	return wavebase.ExpandHomeDirSafe(OldDBName)
 }
 
 func MakeOldDB(ctx context.Context) (*sqlx.DB, error) {

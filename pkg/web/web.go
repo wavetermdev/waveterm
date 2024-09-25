@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"time"
@@ -223,14 +224,17 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, fileName stri
 		// use the custom response writer
 		rw := &notFoundBlockingResponseWriter{w: w, headers: http.Header{}}
 		// Serve the file using http.ServeFile
-		http.ServeFile(rw, r, fileName)
+		http.ServeFile(rw, r, filepath.Clean(fileName))
 		// if the file was not found, serve the transparent GIF
 		log.Printf("got streamfile status: %d\n", rw.status)
 		if rw.status == http.StatusNotFound {
 			serveTransparentGIF(w)
 		}
 	} else {
-		fileName = wavebase.ExpandHomeDir(fileName)
+		fileName, err := wavebase.ExpandHomeDir(fileName)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 		http.ServeFile(w, r, fileName)
 	}
 }

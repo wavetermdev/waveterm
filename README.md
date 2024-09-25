@@ -19,41 +19,39 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 
 ## Installation
 
-Wave Terminal works on MacOS, Linux, and Windows.
+Wave Terminal works on macOS, Linux, and Windows.
 
 Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
 
-Also available as a homebrew cask for MacOS:
+Also available as a Homebrew Cask for macOS:
 
 ```bash
 brew install --cask wave
 ```
 
+### Minimum requirements
+
+Wave Terminal and WSH run on the following platforms:
+
+- macOS 10.15 or later (arm64, x64)
+- Windows 10 1809 or later (x64)
+- Linux based on glibc-2.28 or later (Debian 10, RHEL 8, Ubuntu 20.04, etc.) (arm64, x64)
+
 ## Links
 
 - Homepage &mdash; https://www.waveterm.dev
 - Download Page &mdash; https://www.waveterm.dev/download
-- Documentation &mdash; https://docs.waveterm.dev/
+- Documentation &mdash; https://betadocs.waveterm.dev/
 - Blog &mdash; https://blog.waveterm.dev/
 - Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
 ## Building from Source
 
-We use `task` to build Wave.
-
-```bash
-brew install go-task
-```
-
-Once task is installed you can run this command to build and launch the development version of Wave. Note that the development database and settings are kept in a separate folder from the production version (~/.waveterm-dev) to prevent cross-corruption.
-
-```bash
-task electron:dev
-```
+See [Building Wave Terminal](BUILD.md).
 
 ## Contributing
 
-Wave uses Github Issues for issue tracking.
+Wave uses GitHub Issues for issue tracking.
 
 Find more information in our [Contributions Guide](CONTRIBUTING.md), which includes:
 
@@ -62,4 +60,4 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 ## License
 
-Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./acknowledgements/README.md).
+Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).

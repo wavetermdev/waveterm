@@ -55,10 +55,15 @@ func GetStarterLayout() PortableLayout {
 		}},
 		{IndexArr: []int{2}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "help",
+				waveobj.MetaKey_View: "tips",
 			},
 		}},
 		{IndexArr: []int{2, 1}, BlockDef: &waveobj.BlockDef{
+			Meta: waveobj.MetaMapType{
+				waveobj.MetaKey_View: "help",
+			},
+		}},
+		{IndexArr: []int{2, 2}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
 				waveobj.MetaKey_View: "waveai",
 			},

@@ -55,7 +55,7 @@ loadFonts();
 (window as any).pushFlashError = pushFlashError;
 (window as any).modalsModel = modalsModel;
 
-document.title = `The Next Wave (${windowId.substring(0, 8)})`;
+document.title = `Wave (${windowId.substring(0, 8)})`;
 
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("DOMContentLoaded");

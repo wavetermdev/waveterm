@@ -149,8 +149,11 @@ class CpuPlotViewModel {
             if (initialData == null) {
                 return;
             }
+            const newData = this.getDefaultData();
             const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
-            globalStore.set(this.addDataAtom, initialDataItems);
+            // splice the initial data into the default data (replacing the newest points)
+            newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
+            globalStore.set(this.addDataAtom, newData);
         } catch (e) {
             console.log("Error loading initial data for cpuplot", e);
         } finally {
@@ -158,7 +161,7 @@ class CpuPlotViewModel {
         }
     }
 
-    getDefaultData(): Array<DataItem> {
+    getDefaultData(): DataItem[] {
         // set it back one to avoid backwards line being possible
         const numPoints = globalStore.get(this.numPoints);
         const currentTime = Date.now() - 1000;
@@ -197,6 +200,8 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
             lastConnName.current = connName;
             model.loadInitialData();
         }
+    }, [connStatus.status, connName]);
+    React.useEffect(() => {
         const unsubFn = waveEventSubscribe({
             eventType: "sysinfo",
             scope: connName,
@@ -209,11 +214,11 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
                 addPlotData([dataItem]);
             },
         });
+        console.log("subscribe to sysinfo", connName);
         return () => {
             unsubFn();
         };
     }, [connName]);
-    React.useEffect(() => {}, [connName]);
     if (connStatus?.status != "connected") {
         return null;
     }

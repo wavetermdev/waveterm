@@ -421,6 +421,8 @@ declare global {
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
         "web:openlinksinternally"?: boolean;
+        "web:defaulturl"?: string;
+        "web:defaultsearch"?: string;
         "blockheader:*"?: boolean;
         "blockheader:showblockids"?: boolean;
         "autoupdate:*"?: boolean;
@@ -437,6 +439,7 @@ declare global {
         "window:bgcolor"?: string;
         "window:reducedmotion"?: boolean;
         "window:tilegapsize"?: number;
+        "window:nativetitlebar"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
     };

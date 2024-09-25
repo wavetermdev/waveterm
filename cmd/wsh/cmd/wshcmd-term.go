@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 
@@ -33,7 +34,12 @@ func termRun(cmd *cobra.Command, args []string) {
 	var cwd string
 	if len(args) > 0 {
 		cwd = args[0]
-		cwd = wavebase.ExpandHomeDir(cwd)
+		cwdExpanded, err := wavebase.ExpandHomeDir(cwd)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		cwd = cwdExpanded
 	} else {
 		var err error
 		cwd, err = os.Getwd()

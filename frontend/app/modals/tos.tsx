@@ -12,8 +12,6 @@ import { FlexiModal } from "./modal";
 import { QuickTips } from "@/app/element/quicktips";
 import { atoms } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import "./tos.less";
 
@@ -34,7 +32,7 @@ const ModalPage1 = () => {
     };
 
     const setTelemetry = (value: boolean) => {
-        RpcApi.SetConfigCommand(WindowRpcClient, { "telemetry:enabled": value })
+        services.ClientService.TelemetryUpdate(value)
             .then(() => {
                 setTelemetryEnabled(value);
             })
