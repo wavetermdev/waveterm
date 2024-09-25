@@ -12,7 +12,7 @@ export function getLaunchSettings(): SettingsType {
     try {
         const settingsContents = fs.readFileSync(settingsPath, "utf8");
         return JSON.parse(settingsContents);
-    } catch (e) {
-        console.error("Unable to load settings.json to get initial launch settings", e);
+    } catch (_) {
+        // fail silently
     }
 }
