@@ -440,6 +440,7 @@ declare global {
         "window:reducedmotion"?: boolean;
         "window:tilegapsize"?: number;
         "window:nativetitlebar"?: boolean;
+        "window:disablehardwareacceleration"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
     };

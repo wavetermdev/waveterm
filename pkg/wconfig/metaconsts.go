@@ -47,6 +47,7 @@ const (
 	ConfigKey_WindowReducedMotion            = "window:reducedmotion"
 	ConfigKey_WindowTileGapSize              = "window:tilegapsize"
 	ConfigKey_WindowNativeTitleBar           = "window:nativetitlebar"
+	ConfigKey_WindowDisableHardwareAcceleration = "window:disablehardwareacceleration"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
