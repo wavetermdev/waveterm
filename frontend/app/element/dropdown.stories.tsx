@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dropdown } from "./dropdown";
 
 const meta = {
@@ -10,6 +10,7 @@ const meta = {
         items: [],
         anchorRef: undefined,
         blockRef: undefined,
+        initialPosition: undefined,
         className: "",
         setVisibility: fn(),
     },
@@ -19,6 +20,9 @@ const meta = {
         },
         anchorRef: {
             description: "Element to attach the dropdown",
+        },
+        initialPosition: {
+            description: "Initial position of the dropdown",
         },
         setVisibility: {
             description: "Visibility event handler",
@@ -229,6 +233,149 @@ export const CustomRender: Story = {
                         {...modifiedArgs}
                         setVisibility={(visible) => setIsDropdownVisible(visible)}
                         anchorRef={anchorRef}
+                        blockRef={blockRef}
+                        renderMenu={renderMenu}
+                        renderMenuItem={renderMenuItem}
+                    />
+                )}
+            </div>
+        );
+    },
+    args: {
+        items: [
+            { label: "Option 1", onClick: (e) => console.log("Clicked Option 1") },
+            {
+                label: "Option 2",
+                onClick: (e) => console.log("Clicked Option 2"),
+                subItems: [
+                    { label: "Option 2 -> 1", onClick: (e) => console.log("Clicked Option 2 -> 1") },
+                    { label: "Option 2 -> 2", onClick: (e) => console.log("Clicked Option 2 -> 2") },
+                ],
+            },
+            {
+                label: "Option 3",
+                onClick: (e) => console.log("Clicked Option 3"),
+                subItems: [
+                    { label: "Option 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 1") },
+                    { label: "Option 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 2") },
+                    {
+                        label: "Option 3 -> 3",
+                        onClick: (e) => console.log("Clicked Option 3 -> 3"),
+                        subItems: [
+                            { label: "Option 3 -> 3 -> 1", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 1") },
+                            { label: "Option 3 -> 3 -> 2", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 2") },
+                            { label: "Option 3 -> 3 -> 3", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 3") },
+                            {
+                                label: "Option 3 -> 3 -> 4",
+                                onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4"),
+                                subItems: [
+                                    {
+                                        label: "Option 3 -> 3 -> 4 -> 1",
+                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 1"),
+                                    },
+                                    {
+                                        label: "Option 3 -> 3 -> 4 -> 2",
+                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 2"),
+                                    },
+                                    {
+                                        label: "Option 3 -> 3 -> 4 -> 3",
+                                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 3"),
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                label: "Option 4",
+                onClick: (e) => console.log("Clicked Option 4"),
+                subItems: [
+                    { label: "Option 4 -> 1", onClick: (e) => console.log("Clicked Option 4 -> 1") },
+                    { label: "Option 4 -> 2", onClick: (e) => console.log("Clicked Option 4 -> 2") },
+                    { label: "Option 4 -> 3", onClick: (e) => console.log("Clicked Option 4 -> 3") },
+                    { label: "Option 4 -> 4", onClick: (e) => console.log("Clicked Option 4 -> 4") },
+                    { label: "Option 4 -> 5", onClick: (e) => console.log("Clicked Option 4 -> 5") },
+                    { label: "Option 4 -> 6", onClick: (e) => console.log("Clicked Option 4 -> 6") },
+                    { label: "Option 4 -> 7", onClick: (e) => console.log("Clicked Option 4 -> 7") },
+                ],
+            },
+        ],
+    },
+};
+
+export const NoAnchorElement: Story = {
+    render: (args) => {
+        const blockRef = useRef<HTMLDivElement>(null);
+        const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+        const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+
+        // Handle right-click on blockRef
+        const handleBlockRightClick = (e: MouseEvent) => {
+            e.preventDefault(); // Prevent the default context menu
+            setDropdownPosition({ top: e.clientY, left: e.clientX }); // Set mouse coordinates as initial position
+            setIsDropdownVisible(true); // Show the dropdown
+        };
+
+        // Attach the right-click event listener to blockRef
+        useEffect(() => {
+            const blockElement = blockRef.current;
+            if (blockElement) {
+                blockElement.addEventListener("contextmenu", handleBlockRightClick);
+            }
+
+            // Cleanup event listener on component unmount
+            return () => {
+                if (blockElement) {
+                    blockElement.removeEventListener("contextmenu", handleBlockRightClick);
+                }
+            };
+        }, []);
+
+        const mapItemsWithClick = (items: any[]) => {
+            return items.map((item) => ({
+                ...item,
+                onClick: () => {
+                    // Call the original onClick if it exists
+                    if (item.onClick) {
+                        item.onClick();
+                    }
+                    // Close the dropdown after an item is clicked
+                    setIsDropdownVisible(false);
+                },
+                // Recursively update subItems' onClick handlers
+                subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+            }));
+        };
+
+        // Custom render function for menu items
+        const renderMenuItem = (item: any, props: any) => (
+            <div {...props}>
+                <strong>{item.label}</strong>
+                {item.subItems && <span style={{ marginLeft: "10px", color: "#888" }}>▶</span>}
+            </div>
+        );
+
+        // Custom render function for the entire menu
+        const renderMenu = (subMenu: JSX.Element) => <div>{subMenu}</div>;
+
+        // Modify args to include updated items with the new onClick behavior
+        const modifiedArgs = {
+            ...args,
+            items: mapItemsWithClick(args.items),
+        };
+
+        return (
+            <div
+                ref={blockRef}
+                className="boundary"
+                style={{ padding: "20px", height: "300px", border: "2px solid black" }}
+            >
+                {isDropdownVisible && (
+                    <Dropdown
+                        {...modifiedArgs}
+                        setVisibility={(visible) => setIsDropdownVisible(visible)}
+                        initialPosition={dropdownPosition} // Use the mouse coordinates for dropdown positioning
                         blockRef={blockRef}
                         renderMenu={renderMenu}
                         renderMenuItem={renderMenuItem}

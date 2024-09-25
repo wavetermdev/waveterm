@@ -116,6 +116,7 @@ const Dropdown = memo(
         items,
         anchorRef,
         blockRef,
+        initialPosition,
         className,
         setVisibility,
         renderMenu,
@@ -124,6 +125,7 @@ const Dropdown = memo(
         items: DropdownItem[];
         anchorRef: React.RefObject<HTMLElement>;
         blockRef?: React.RefObject<HTMLElement>;
+        initialPosition?: { top: number; left: number };
         className?: string;
         setVisibility: (_: boolean) => void;
         renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
@@ -134,7 +136,7 @@ const Dropdown = memo(
         const [subMenuPosition, setSubMenuPosition] = useState<{
             [key: string]: { top: number; left: number; label: string };
         }>({});
-        const [position, setPosition] = useState({ top: 0, left: 0 });
+        const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
         const dropdownRef = useRef<HTMLDivElement>(null);
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
 
@@ -149,7 +151,10 @@ const Dropdown = memo(
         });
 
         useLayoutEffect(() => {
-            if (anchorRef.current && dropdownRef.current) {
+            if (initialPosition) {
+                setPosition(initialPosition);
+            } else if (anchorRef.current && dropdownRef.current) {
+                // Calculate position based on anchorRef if it exists
                 const anchorRect = anchorRef.current.getBoundingClientRect();
                 const scrollTop = window.scrollY || document.documentElement.scrollTop;
                 const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
@@ -173,13 +178,18 @@ const Dropdown = memo(
                 }
 
                 setPosition({ top, left });
+            } else {
+                console.warn("Neither initialPosition nor anchorRef provided. Defaulting to { top: 0, left: 0 }.");
             }
-        }, [width, height]);
+        }, [width, height, initialPosition]);
 
         useEffect(() => {
             const handleClickOutside = (event: MouseEvent) => {
                 const isClickInsideDropdown = dropdownRef.current && dropdownRef.current.contains(event.target as Node);
-                const isClickInsideAnchor = anchorRef.current && anchorRef.current.contains(event.target as Node);
+
+                const isClickInsideAnchor = anchorRef?.current
+                    ? anchorRef.current.contains(event.target as Node)
+                    : false;
 
                 const isClickInsideSubMenus = Object.keys(subMenuRefs.current).some(
                     (key) =>
@@ -191,11 +201,13 @@ const Dropdown = memo(
                     setVisibility(false);
                 }
             };
-            blockRef.current.addEventListener("mousedown", handleClickOutside);
+
+            blockRef?.current?.addEventListener("mousedown", handleClickOutside);
+
             return () => {
-                blockRef.current.removeEventListener("mousedown", handleClickOutside);
+                blockRef?.current?.removeEventListener("mousedown", handleClickOutside);
             };
-        }, []);
+        }, [blockRef, anchorRef, subMenuRefs, dropdownRef]);
 
         // Position submenus based on available space and scroll position
         const handleSubMenuPosition = (
@@ -302,7 +314,7 @@ const Dropdown = memo(
                     };
 
                     const renderedItem = renderMenuItem ? (
-                        renderMenuItem(item, menuItemProps) // No portal here
+                        renderMenuItem(item, menuItemProps)
                     ) : (
                         <div key={key} {...menuItemProps}>
                             {item.label}
