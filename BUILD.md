@@ -14,34 +14,25 @@ macOS does not have any platform-specific dependencies.
 
 #### Linux
 
-Make sure you have a recent install of GCC and Zip.
+You must have Zip installed. We also require the Zig compiler for statically linking CGO.
 
-Debian:
+Debian/Ubuntu:
 
 ```sh
-sudo apt install build-essential zip
+sudo apt install zip snapd
+sudo snap install zig --classic --beta
 ```
 
 Fedora:
 
 ```sh
-sudo dnf install make automake gcc gcc-c++ kernel-devel zip
+sudo dnf install zip zig
 ```
 
 Arch:
 
 ```sh
-sudo pacman -S base-devel zip
-```
-
-We also require `musl-gcc` for statically linking CGO. Run the following from wherever you keep your source code:
-
-```sh
-git clone https://git.musl-libc.org/git/musl
-cd musl
-./configure
-make
-sudo make install
+sudo pacman -S zip zig
 ```
 
 #### Windows
