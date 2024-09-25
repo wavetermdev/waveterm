@@ -31,11 +31,11 @@ brew install --cask wave
 
 ### Minimum requirements
 
-Wave Terminal and WSH run on the following 64-bit platforms:
+Wave Terminal and WSH run on the following platforms:
 
 - macOS 10.15 or later (arm64, x64)
 - Windows 10 1809 or later (x64)
-- Linux based on glibc-2.28 or later (arm64, x64)
+- Linux based on glibc-2.28 or later (Debian 10, RHEL 8, Ubuntu 20.04, etc.) (arm64, x64)
 
 ## Links
 
