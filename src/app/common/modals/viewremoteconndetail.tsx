@@ -216,7 +216,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                             <span>
                                 Connections imported from an ssh config file can be deleted, but will come back upon
                                 importing again. They will stay removed if you follow{" "}
-                                <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
+                                <a href="https://legacydocs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
                             </span>
                         }
                         icon={<i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />}
@@ -373,7 +373,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                             className={clsx(
                                 "terminal-wrapper",
                                 { focus: isTermFocused },
-                                remote != null ? "status-" + remote.status : null
+                                remote != null ? "status-" + remote.status : null,
                             )}
                         >
                             <If condition={!isTermFocused}>
@@ -393,7 +393,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                                     height: textmeasure.termHeightFromRows(
                                         appconst.RemotePtyRows,
                                         termFontSize,
-                                        appconst.RemotePtyTotalRows
+                                        appconst.RemotePtyTotalRows,
                                     ),
                                     width: termWidth,
                                 }}

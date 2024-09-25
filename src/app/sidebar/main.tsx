@@ -333,7 +333,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     key="documentation"
                                     frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
                                     contents="Documentation"
-                                    onClick={() => openLink("https://docs.waveterm.dev")}
+                                    onClick={() => openLink("https://legacydocs.waveterm.dev")}
                                     endIcons={[
                                         <CenteredIcon key="offsite" className="link-offsite hoverEffect">
                                             <i className="fa-sharp fa-solid fa-arrow-up-right-from-square"></i>
