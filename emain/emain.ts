@@ -104,7 +104,7 @@ if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
 
-initGlobal({ windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
+initGlobal({ tabId: null, windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
 function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
     const windowId = event.sender.id;
@@ -307,7 +307,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function getOrCreateWebViewforTab(tabId: string, clientId: string): WaveTabView {
+function getOrCreateWebViewforTab(tabId: string, clientId: string, activate: boolean): WaveTabView {
     let tabView = getWaveTabView(tabId);
     if (tabView) {
         return tabView;
@@ -322,6 +322,9 @@ function getOrCreateWebViewforTab(tabId: string, clientId: string): WaveTabView 
     const usp = new URLSearchParams();
     usp.set("clientid", clientId);
     usp.set("tabId", tabId);
+    if (activate) {
+        usp.set("activate", "1");
+    }
     if (isDevVite) {
         tabView.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html?${usp.toString()}`);
     } else {
@@ -419,6 +422,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     usp.set("clientid", clientId);
     usp.set("tabId", waveWindow.activetabid);
     usp.set("windowid", waveWindow.oid);
+    usp.set("activate", "1");
     const indexHtml = "index.html";
     if (isDevVite) {
         console.log("running as dev server");

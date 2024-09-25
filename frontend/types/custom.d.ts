@@ -6,16 +6,15 @@ import type * as rxjs from "rxjs";
 
 declare global {
     type GlobalAtomsType = {
-        windowId: jotai.Atom<string>; // readonly
         clientId: jotai.Atom<string>; // readonly
         client: jotai.Atom<Client>; // driven from WOS
-        uiContext: jotai.Atom<UIContext>; // driven from windowId, activetabid, etc.
+        uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
         waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         tabAtom: jotai.Atom<Tab>; // driven from WOS
-        activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
+        activeTabId: jotai.Atom<string>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         prefersReducedMotionAtom: jotai.Atom<boolean>;

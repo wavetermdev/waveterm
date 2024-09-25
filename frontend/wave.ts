@@ -33,13 +33,15 @@ import { createRoot } from "react-dom/client";
 
 const platform = getApi().getPlatform();
 const urlParams = new URLSearchParams(window.location.search);
+const tabId = urlParams.get("tabid");
 const windowId = urlParams.get("windowid");
 const clientId = urlParams.get("clientid");
+const shouldActivate = urlParams.get("activate");
 
 console.log("Wave Starting");
-console.log("clientid", clientId, "windowid", windowId);
+console.log("tabid", tabId, "clientid", clientId, "windowid", windowId);
 
-initGlobal({ clientId, windowId, platform, environment: "renderer" });
+initGlobal({ tabId, clientId, windowId, platform, environment: "renderer" });
 
 setKeyUtilPlatform(platform);
 
@@ -72,7 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", clientId));
     const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
     await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
-    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", waveWindow.activetabid));
+    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", tabId));
     await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
 
     registerGlobalKeys();
@@ -82,10 +84,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fullConfig = await FileService.GetFullConfig();
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
-    const prtn = ObjectService.SetActiveTab(waveWindow.activetabid); // no need to wait
-    prtn.catch((e) => {
-        console.log("error on initial SetActiveTab", e);
-    });
+    if (shouldActivate) {
+        const prtn = ObjectService.SetActiveTab(tabId); // no need to wait
+        prtn.catch((e) => {
+            console.log("error on initial SetActiveTab", e);
+        });
+    }
     const reactElem = createElement(App, null, null);
     const elem = document.getElementById("main");
     const root = createRoot(elem);

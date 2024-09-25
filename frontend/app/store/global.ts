@@ -26,6 +26,7 @@ const Counters = new Map<string, number>();
 const ConnStatusMap = new Map<string, PrimitiveAtom<ConnStatus>>();
 
 type GlobalInitOptions = {
+    tabId: string;
     platform: NodeJS.Platform;
     windowId: string;
     clientId: string;
@@ -48,8 +49,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const uiContextAtom = atom((get) => {
         const windowData = get(windowDataAtom);
         const uiContext: UIContext = {
-            windowid: get(atoms.windowId),
-            activetabid: windowData?.activetabid,
+            windowid: null,
+            activetabid: initOpts.tabId,
         };
         return uiContext;
     }) as Atom<UIContext>;
@@ -99,18 +100,10 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
     const tabAtom: Atom<Tab> = atom((get) => {
-        const windowData = get(windowDataAtom);
-        if (windowData == null) {
-            return null;
-        }
-        return WOS.getObjectValue(WOS.makeORef("tab", windowData.activetabid), get);
+        return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
     });
     const activeTabIdAtom: Atom<string> = atom((get) => {
-        const windowData = get(windowDataAtom);
-        if (windowData == null) {
-            return null;
-        }
-        return windowData.activetabid;
+        return initOpts.tabId;
     });
     const controlShiftDelayAtom = atom(false);
     const updaterStatusAtom = atom<UpdaterStatus>("up-to-date") as PrimitiveAtom<UpdaterStatus>;
@@ -151,7 +144,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
-        windowId: windowIdAtom,
         clientId: clientIdAtom,
         uiContext: uiContextAtom,
         client: clientAtom,

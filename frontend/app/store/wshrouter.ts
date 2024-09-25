@@ -23,6 +23,10 @@ function makeFeBlockRouteId(feBlockId: string): string {
     return `feblock:${feBlockId}`;
 }
 
+function makeTabRouteId(tabId: string): string {
+    return `tab:${tabId}`;
+}
+
 class WshRouter {
     routeMap: Map<string, AbstractWshClient>; // routeid -> client
     upstreamClient: AbstractWshClient;

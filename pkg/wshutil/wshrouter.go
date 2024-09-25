@@ -60,6 +60,10 @@ func MakeProcRouteId(procId string) string {
 	return "proc:" + procId
 }
 
+func MakeTabRouteId(tabId string) string {
+	return "tab:" + tabId
+}
+
 var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {
