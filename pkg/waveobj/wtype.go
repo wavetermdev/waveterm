@@ -112,12 +112,12 @@ func (update *WaveObjUpdate) UnmarshalJSON(data []byte) error {
 }
 
 type Client struct {
-	OID             string      `json:"oid"`
-	Version         int         `json:"version"`
-	WindowIds       []string    `json:"windowids"`
-	Meta            MetaMapType `json:"meta"`
-	TosAgreed       int64       `json:"tosagreed,omitempty"`
-	HistoryMigrated bool        `json:"historymigrated,omitempty"`
+	OID           string      `json:"oid"`
+	Version       int         `json:"version"`
+	WindowIds     []string    `json:"windowids"`
+	Meta          MetaMapType `json:"meta"`
+	TosAgreed     int64       `json:"tosagreed,omitempty"`
+	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
 }
 
 func (*Client) GetOType() string {
