@@ -44,7 +44,7 @@ declare global {
     type Client = WaveObj & {
         windowids: string[];
         tosagreed?: number;
-        historymigrated?: boolean;
+        hasoldhistory?: boolean;
     };
 
     // wshrpc.CommandAppendIJsonData
