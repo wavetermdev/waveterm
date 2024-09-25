@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
+import { WaveTabView, getWaveTabView, setWaveTabView } from "emain/emain-wccache";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -306,6 +307,32 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
+function getOrCreateWebViewforTab(tabId: string, clientId: string): WaveTabView {
+    let tabView = getWaveTabView(tabId);
+    if (tabView) {
+        return tabView;
+    }
+    tabView = new electron.WebContentsView({
+        webPreferences: {
+            preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
+            webviewTag: true,
+        },
+    }) as WaveTabView;
+    tabView.waveTabId = tabId;
+    const usp = new URLSearchParams();
+    usp.set("clientid", clientId);
+    usp.set("tabId", tabId);
+    if (isDevVite) {
+        tabView.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html?${usp.toString()}`);
+    } else {
+        tabView.webContents.loadFile(path.join(getElectronAppBasePath(), "frontend", "index.html"), {
+            search: usp.toString(),
+        });
+    }
+    setWaveTabView(tabId, tabView);
+    return tabView;
+}
+
 // note, this does not *show* the window.
 // to show, await win.readyPromise and then win.show()
 function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
@@ -390,6 +417,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     const usp = new URLSearchParams();
     usp.set("clientid", clientId);
+    usp.set("tabId", waveWindow.activetabid);
     usp.set("windowid", waveWindow.oid);
     const indexHtml = "index.html";
     if (isDevVite) {
