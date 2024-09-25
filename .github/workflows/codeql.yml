@@ -92,10 +92,18 @@ jobs:
               if: matrix.language != 'go'
               uses: github/codeql-action/autobuild@v3
 
+            - name: Setup musl-gcc (Go only)
+              if: matrix.language == 'go'
+              run: |
+                  git checkout https://git.musl-libc.org/git/musl
+                  cd musl
+                  ./configure
+                  make
+                  make install
+
             - name: Build (Go only)
               if: matrix.language == 'go'
               run: |
-                  sudo apt update && sudo apt install -y musl
                   task build:server
                   task build:wsh
 
