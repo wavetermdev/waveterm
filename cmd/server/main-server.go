@@ -219,10 +219,6 @@ func main() {
 		log.Printf("error initializing wstore: %v\n", err)
 		return
 	}
-	migrateErr := wstore.TryMigrateOldHistory()
-	if migrateErr != nil {
-		log.Printf("error migrating old history: %v\n", migrateErr)
-	}
 	go func() {
 		err := shellutil.InitCustomShellStartupFiles()
 		if err != nil {
@@ -233,6 +229,12 @@ func main() {
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
+	}
+	if firstRun {
+		migrateErr := wstore.TryMigrateOldHistory()
+		if migrateErr != nil {
+			log.Printf("error migrating old history: %v\n", migrateErr)
+		}
 	}
 	if window != nil {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)

@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { FlexiModal } from "./modal";
 
 import { QuickTips } from "@/app/element/quicktips";
-import { atoms } from "@/app/store/global";
+import { atoms, getApi } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import "./tos.less";
@@ -153,6 +153,58 @@ const ModalPage2 = () => {
     );
 };
 
+const ModalPageLegacy = () => {
+    const setPageNum = useSetAtom(pageNumAtom);
+    const handleContinue = () => {
+        setPageNum(1);
+    };
+    const handleDownloadLegacy = () => {
+        getApi().openExternal("https://waveterm.dev/download-legacy?ref=v7upgrade");
+    };
+    return (
+        <>
+            <header className="modal-header tos-header unselectable">
+                <div className="logo">
+                    <Logo />
+                </div>
+                <div className="modal-title">Welcome to Wave v0.8</div>
+            </header>
+            <div className="modal-content tos-content unselectable">
+                <div className="item">
+                    We’re excited to announce the release of Wave Terminal v0.8. This update introduces a brand-new
+                    layout engine, featuring drag-and-drop screen splitting with flexible block sizing and positioning.
+                    We've also integrated powerful tools like file previews, an editor, web integration, and AI, all
+                    designed to keep you focused and minimize context switching. And for the first time, Wave Terminal
+                    runs <b>natively on Windows</b>!
+                </div>
+                <div>
+                    Wave v0.8 is less opinionated, giving you the freedom to use your standard terminal prompt and
+                    command completions, while supporting all shells (not just bash/zsh). We've also improved
+                    compatibility with ohmyzsh packages, removing some of the friction users experienced. It’s faster,
+                    more performant, and provides a stronger foundation for you to build your own blocks and widgets in
+                    the future.
+                </div>
+                <div className="item">
+                    The new build is a fresh start, and a clean break from the current version. As such, your history,
+                    settings, and configuration will <i>not</i> be carried over. If you'd like to continue to run the
+                    legacy version, you will need to download it separately.
+                </div>
+            </div>
+            <footer className="unselectable">
+                <div className="button-wrapper">
+                    <Button className="outlined grey" onClick={handleDownloadLegacy}>
+                        Download WaveLegacy
+                    </Button>
+
+                    <Button className="font-weight-600" onClick={handleContinue}>
+                        Continue
+                    </Button>
+                </div>
+            </footer>
+        </>
+    );
+};
+
 const TosModal = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [pageNum, setPageNum] = useAtom(pageNumAtom);
@@ -173,7 +225,9 @@ const TosModal = () => {
 
     useEffect(() => {
         // on unmount, always reset pagenum
-        if (clientData.tosagreed) {
+        if (!clientData.tosagreed && clientData.hasoldhistory) {
+            setPageNum(0);
+        } else if (clientData.tosagreed) {
             setPageNum(2);
         }
         return () => {
@@ -189,11 +243,25 @@ const TosModal = () => {
             window.removeEventListener("resize", updateModalHeight);
         };
     }, []);
-
+    let pageComp: React.JSX.Element = null;
+    switch (pageNum) {
+        case 0:
+            pageComp = <ModalPageLegacy />;
+            break;
+        case 1:
+            pageComp = <ModalPage1 />;
+            break;
+        case 2:
+            pageComp = <ModalPage2 />;
+            break;
+    }
+    if (pageComp == null) {
+        return null;
+    }
     return (
         <FlexiModal className="tos-modal" ref={modalRef}>
             <OverlayScrollbarsComponent className="modal-inner" options={{ scrollbars: { autoHide: "leave" } }}>
-                {pageNum === 1 ? <ModalPage1 /> : <ModalPage2 />}
+                {pageComp}
             </OverlayScrollbarsComponent>
         </FlexiModal>
     );
