@@ -19,11 +19,11 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 
 ## Installation
 
-Wave Terminal works on MacOS, Linux, and Windows.
+Wave Terminal works on macOS, Linux, and Windows.
 
 Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
 
-Also available as a homebrew cask for MacOS:
+Also available as a Homebrew Cask for macOS:
 
 ```bash
 brew install --cask wave
@@ -43,7 +43,7 @@ See [Building Wave Terminal](BUILD.md).
 
 ## Contributing
 
-Wave uses Github Issues for issue tracking.
+Wave uses GitHub Issues for issue tracking.
 
 Find more information in our [Contributions Guide](CONTRIBUTING.md), which includes:
 
