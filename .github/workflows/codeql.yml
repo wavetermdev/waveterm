@@ -95,6 +95,7 @@ jobs:
             - name: Build (Go only)
               if: matrix.language == 'go'
               run: |
+                  sudo apt update && sudo apt install -y musl
                   task build:server
                   task build:wsh
 
