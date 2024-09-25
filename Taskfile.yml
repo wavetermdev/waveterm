@@ -96,7 +96,7 @@ tasks:
                       sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
                   GO_LDFLAGS: -linkmode 'external' -extldflags=-static
                   GO_ENV_VARS:
-                      sh: echo "CC=\"zig cc -target {{if eq "arm" ARCH}}aarch64-linux-gnu{{else}}x86_64-linux-gnu.2.23{{end}}\""
+                      sh: echo "CC=\"zig cc{{if neq "arm" ARCH}}-target x86_64-linux-gnu.2.23{{end}}\""
 
     build:server:internal:
         requires:
