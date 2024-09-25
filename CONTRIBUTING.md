@@ -37,7 +37,7 @@ Coding style and formatting is automated for each pull request. We use [Prettier
 
 ### Development Environment
 
-To build and run wave term locally see instructions below:
+To build and run Wave locally, see instructions below:
 
 - [Building Wave Terminal](./BUILD.md)
 
