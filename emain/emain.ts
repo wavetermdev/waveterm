@@ -852,11 +852,7 @@ async function appMain() {
         fs.mkdirSync(waveHomeDir);
     }
     makeAppMenu();
-    const fullConfig = await services.FileService.GetFullConfig();
-    const settings = fullConfig.settings;
-    if (settings?.["window:disablehardwareacceleration"]) {
-        electronApp.disableHardwareAcceleration();
-    }
+
     try {
         await runWaveSrv();
     } catch (e) {
@@ -864,6 +860,14 @@ async function appMain() {
     }
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
+
+    const fullConfig = await services.FileService.GetFullConfig();
+    const settings = fullConfig.settings;
+    if (settings?.["window:disablehardwareacceleration"]) {
+        console.log("disabling hardware acceleration");
+        electronApp.disableHardwareAcceleration();
+    }
+
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     await relaunchBrowserWindows();
