@@ -7,6 +7,8 @@ import path from "path";
 import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
 import * as keyutil from "../frontend/util/keyutil";
 
+const WaveHomeVarName = "WAVETERM_HOME";
+
 const isDev = !app.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
 if (isDev) {
@@ -37,6 +39,10 @@ ipcMain.on("get-host-name", (event) => {
 
 // must match golang
 function getWaveHomeDir() {
+    const override = process.env[WaveHomeVarName];
+    if (override) {
+        return override;
+    }
     return path.join(os.homedir(), isDev ? ".waveterm-dev" : ".waveterm");
 }
 
