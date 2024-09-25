@@ -67,6 +67,9 @@ const config = {
             category: "Development;Utility;",
         },
     },
+    deb: {
+        afterInstall: "build/deb-postinstall.tpl",
+    },
     win: {
         icon: "build/icons.icns",
         publisherName: "Command Line Inc",
