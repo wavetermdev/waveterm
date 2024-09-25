@@ -29,6 +29,14 @@ Also available as a Homebrew Cask for macOS:
 brew install --cask wave
 ```
 
+### Minimum requirements
+
+Wave Terminal and WSH run on the following 64-bit operating systems:
+
+- macOS 10.15 or later
+- Windows 10 1804 or later
+- Linux based on glibc-2.28 or later
+
 ## Links
 
 - Homepage &mdash; https://www.waveterm.dev
