@@ -1,0 +1,124 @@
+# Building Wave Terminal
+
+These instructions are for setting up dependencies and building Wave Terminal from source on macOS, Linux, and Windows.
+
+## Prerequisites
+
+### OS-specific dependencies
+
+#### macOS
+
+You will need macOS 10.15 or later to build and run Wave.
+
+macOS does not have any platform-specific dependencies.
+
+#### Linux
+
+Make sure you have a recent install of GCC and Zip.
+
+Debian:
+
+```sh
+sudo apt install build-essential zip
+```
+
+Fedora:
+
+```sh
+sudo dnf install make automake gcc gcc-c++ kernel-devel
+```
+
+Arch:
+
+```sh
+sudo pacman -S base-devel
+```
+
+#### Windows
+
+You will need a 64-bit, somewhat-recent version of Windows to build and run Wave (Windows 10 1809 or later).
+
+You will need the GNU build toolchain installed in order for Go to work on Windows. In most cases, this requires installing MinGW-w64.
+
+The easiest way to install this is using MSYS2: https://www.msys2.org/
+
+If you prefer an alternative method, you can find other methods here: https://www.mingw-w64.org/downloads/
+
+### Task
+
+Download and install Task (to run the build commands): https://taskfile.dev/installation/
+
+Task is a modern equivalent to GNU Make. We use it to coordinate our build steps. You can find our full Task configuration in [Taskfile.yml](Taskfile.yml).
+
+### Go
+
+Download and install Go via your package manager or directly from the website: https://go.dev/doc/install
+
+### NodeJS
+
+Make sure you have a recent version of NodeJS installed (>= 20).
+
+See NodeJS's website for platform-specific instructions: https://nodejs.org/en/download
+
+### Yarn Modern
+
+Once you have NodeJS installed, you'll need to enable Corepack so that Yarn Modern can work:
+
+```sh
+corepack enable
+```
+
+If your NodeJS distribution does not ship with Corepack, you can install it manually using NPM:
+
+```sh
+npm install -g corepack
+corepack enable
+```
+
+Corepack's official documentation says to uninstall Yarn and PnPM first, but this is probably overkill. If you have any issues, try removing them from your system before continuing.
+
+For more information on Corepack, check out [this link](https://yarnpkg.com/corepack).
+
+## Clone the Repo
+
+```sh
+git clone git@github.com:wavetermdev/waveterm.git
+```
+
+or
+
+```sh
+git clone https://github.com/wavetermdev/waveterm.git
+```
+
+## Build and Run
+
+All the methods below will install Node and Go dependencies when they run the first time. All these should be run from within the Git repository.
+
+### Development server
+
+Run the following command to build the app and run it via Vite's development server (this enables Hot Module Reloading):
+
+```sh
+task electron:dev
+```
+
+### Standalone
+
+Run the following command to build the app and run it standalone, without the development server. This will not reload on change:
+
+```sh
+task electron:start
+```
+
+### Packaged
+
+Run the following command to generate a production build and package it. This lets you install the app locally. All artifacts will be placed in `make/`.
+
+```sh
+task package
+```
+
+## Debugging the Client
+
+You can use the regular Chrome DevTools to debug the frontend application. You can open the DevTools using the keyboard shortcut `Cmd+Option+I` on macOS or `Ctrl+Option+I` on Linux and Windows.
