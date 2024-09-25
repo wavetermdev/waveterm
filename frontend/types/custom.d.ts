@@ -295,6 +295,14 @@ declare global {
         command: string;
         msgFn: (msg: RpcMessage) => void;
     };
+
+    type TimeSeriesMeta = {
+        name?: string;
+        color?: string;
+        label?: string;
+        maxy?: string | number;
+        miny?: string | number;
+    };
 }
 
 export {};

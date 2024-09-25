@@ -11,6 +11,7 @@ import * as htl from "htl";
 import * as jotai from "jotai";
 import * as React from "react";
 
+import { ContextMenuModel } from "@/app/store/contextmenu";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
@@ -23,15 +24,33 @@ type DataItem = {
     [k: string]: number;
 };
 
-const SysInfoMetricNames = {
-    cpu: "CPU %",
-    "mem:total": "Memory Total",
-    "mem:used": "Memory Used",
-    "mem:free": "Memory Free",
-    "mem:available": "Memory Available",
+function defaultCpuMeta(name: string): TimeSeriesMeta {
+    return {
+        name: name,
+        label: "%",
+        miny: 0,
+        maxy: 100,
+    };
+}
+
+function defaultMemMeta(name: string, maxY: string): TimeSeriesMeta {
+    return {
+        name: name,
+        label: "GB",
+        miny: 0,
+        maxy: maxY,
+    };
+}
+
+const DefaultPlotMeta = {
+    cpu: defaultCpuMeta("CPU %"),
+    "mem:total": defaultMemMeta("Memory Total", "mem:total"),
+    "mem:used": defaultMemMeta("Memory Used", "mem:total"),
+    "mem:free": defaultMemMeta("Memory Free", "mem:total"),
+    "mem:available": defaultMemMeta("Memory Available", "mem:total"),
 };
 for (let i = 0; i < 32; i++) {
-    SysInfoMetricNames[`cpu:${i}`] = `CPU[${i}] %`;
+    DefaultPlotMeta[`cpu:${i}`] = defaultCpuMeta(`CPU[${i}] %`);
 }
 
 function convertWaveEventToDataItem(event: WaveEvent): DataItem {
@@ -64,6 +83,8 @@ class CpuPlotViewModel {
     connection: jotai.Atom<string>;
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
+    plotMetaAtom: jotai.PrimitiveAtom<Map<string, TimeSeriesMeta>>;
+    endIconButtons: jotai.Atom<IconButtonDecl[]>;
 
     constructor(blockId: string) {
         this.viewType = "cpuplot";
@@ -85,6 +106,16 @@ class CpuPlotViewModel {
             } catch (e) {
                 console.log("Error adding data to cpuplot", e);
             }
+        });
+        this.plotMetaAtom = jotai.atom(new Map(Object.entries(DefaultPlotMeta)));
+        this.endIconButtons = jotai.atom((get) => {
+            return [
+                {
+                    elemtype: "iconbutton",
+                    icon: "wrench",
+                    click: (e) => this.handleContextMenu(e),
+                },
+            ];
         });
         this.manageConnection = jotai.atom(true);
         this.loadingAtom = jotai.atom(true);
@@ -108,7 +139,16 @@ class CpuPlotViewModel {
             return "chart-line"; // should not be hardcoded
         });
         this.viewName = jotai.atom((get) => {
-            return "CPU %"; // should not be hardcoded
+            const metrics = get(this.metrics);
+            const meta = get(this.plotMetaAtom);
+            if (metrics.length == 0) {
+                return "unknown";
+            }
+            const metaSelected = meta.get(metrics[0]);
+            if (!metaSelected) {
+                return "unknown";
+            }
+            return metaSelected.name;
         });
         this.incrementCount = jotai.atom(null, async (get, set) => {
             const meta = get(this.blockAtom).meta;
@@ -161,6 +201,31 @@ class CpuPlotViewModel {
         }
     }
 
+    handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+        e.preventDefault();
+        e.stopPropagation();
+        const plotData = globalStore.get(this.dataAtom);
+        if (plotData.length == 0) {
+            return;
+        }
+        const menu = Object.keys(plotData[plotData.length - 1])
+            .filter((dataType) => dataType !== "ts")
+            .map((dataType) => {
+                const menuItem: ContextMenuItem = {
+                    label: dataType,
+                    click: async () => {
+                        await RpcApi.SetMetaCommand(WindowRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "graph:metrics": [dataType] },
+                        });
+                    },
+                };
+                return menuItem;
+            });
+
+        ContextMenuModel.showContextMenu(menu, e);
+    }
+
     getDefaultData(): DataItem[] {
         // set it back one to avoid backwards line being possible
         const numPoints = globalStore.get(this.numPoints);
@@ -184,6 +249,16 @@ type CpuPlotViewProps = {
     blockId: string;
     model: CpuPlotViewModel;
 };
+
+function resolveDomainBound(value: number | string, dataItem: DataItem): number | undefined {
+    if (typeof value == "number") {
+        return value;
+    } else if (typeof value == "string") {
+        return dataItem?.[value];
+    } else {
+        return undefined;
+    }
+}
 
 function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
     const connName = jotai.useAtomValue(model.connection);
@@ -234,52 +309,69 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     const parentHeight = useHeight(containerRef);
     const parentWidth = useWidth(containerRef);
     const yvals = jotai.useAtomValue(model.metrics);
+    const plotMeta = jotai.useAtomValue(model.plotMetaAtom);
 
     React.useEffect(() => {
+        if (yvals.length == 0) {
+            // don't bother creating plots if none are selected
+            return;
+        }
+        const singleItem = yvals.length == 1;
+
         const marks: Plot.Markish[] = [];
-        marks.push(
-            () => htl.svg`<defs>
-      <linearGradient id="gradient" gradientTransform="rotate(90)">
-        <stop offset="0%" stop-color="#58C142" stop-opacity="0.7" />
-        <stop offset="100%" stop-color="#58C142" stop-opacity="0" />
+        yvals.forEach((yval, idx) => {
+            // use rotating colors for
+            // color not configured
+            // plotting multiple items
+            let color = plotMeta.get(yval)?.color;
+            if (!color || !singleItem) {
+                color = plotColors[idx];
+            }
+            marks.push(
+                () => htl.svg`<defs>
+      <linearGradient id="gradient-${model.blockId}-${yval}" gradientTransform="rotate(90)">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.7" />
+        <stop offset="100%" stop-color="${color}" stop-opacity="0" />
       </linearGradient>
 	      </defs>`
-        );
-        if (yvals.length == 0) {
-            // nothing
-        } else if (yvals.length == 1) {
+            );
+
             marks.push(
                 Plot.lineY(plotData, {
-                    stroke: plotColors[0],
-                    strokeWidth: 2,
+                    stroke: color,
+                    strokeWidth: singleItem ? 2 : 1,
                     x: "ts",
-                    y: yvals[0],
+                    y: yval,
                 })
             );
-            marks.push(
-                Plot.areaY(plotData, {
-                    fill: "url(#gradient)",
-                    x: "ts",
-                    y: yvals[0],
-                })
-            );
-        } else {
-            let idx = 0;
-            for (const yval of yvals) {
+
+            // only add the gradient for single items
+            if (singleItem) {
                 marks.push(
-                    Plot.lineY(plotData, {
-                        stroke: plotColors[idx % plotColors.length],
-                        strokeWidth: 1,
+                    Plot.areaY(plotData, {
+                        fill: `url(#gradient-${model.blockId}-${yvals[0]})`,
                         x: "ts",
                         y: yval,
                     })
                 );
-                idx++;
             }
+        });
+        // use the largest configured yval.maxYs. if none is found, use 100
+        const maxYs = yvals.map((yval) => resolveDomainBound(plotMeta.get(yval)?.maxy, plotData[plotData.length - 1]));
+        let maxY = Math.max(...maxYs.filter(Number.isFinite));
+        if (!Number.isFinite(maxY)) {
+            maxY = 100;
         }
+        // use the smalles configured yval.minYs. if none is found, use 0
+        const minYs = yvals.map((yval) => resolveDomainBound(plotMeta.get(yval)?.miny, plotData[plotData.length - 1]));
+        let minY = Math.min(...minYs.filter(Number.isFinite));
+        if (!Number.isFinite(maxY)) {
+            minY = 0;
+        }
+        const labelY = plotMeta.get(yvals[0])?.label ?? "?";
         const plot = Plot.plot({
             x: { grid: true, label: "time", tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}` },
-            y: { label: "%", domain: [0, 100] },
+            y: { label: labelY, domain: [minY, maxY] },
             width: parentWidth,
             height: parentHeight,
             marks: marks,
@@ -294,7 +386,7 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
                 plot.remove();
             }
         };
-    }, [plotData, parentHeight, parentWidth]);
+    }, [plotData, parentHeight, parentWidth, yvals, plotMeta, model.blockId]);
 
     return <div className="plot-view" ref={containerRef} />;
 });
