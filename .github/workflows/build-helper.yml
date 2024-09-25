@@ -42,7 +42,7 @@ jobs:
             # We use musl-gcc instead of glibc for cgo compilation as it is more-easily statically linked
             - name: Setup musl-gcc (Linux only)
               if: matrix.platform == 'linux'
-              uses: ./.github/actions/setup-musl-gcc/action.yml
+              uses: ./.github/actions/setup-musl-gcc
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
