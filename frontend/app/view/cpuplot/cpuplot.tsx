@@ -205,18 +205,23 @@ class CpuPlotViewModel {
         e.preventDefault();
         e.stopPropagation();
         const plotData = globalStore.get(this.dataAtom);
+        const metrics = globalStore.get(this.metrics);
         if (plotData.length == 0) {
             return;
         }
         const menu = Object.keys(plotData[plotData.length - 1])
             .filter((dataType) => dataType !== "ts")
             .map((dataType) => {
+                const inMetrics = metrics.includes(dataType);
+                const newMetrics = inMetrics ? metrics.filter((dt) => dt !== dataType) : [...metrics, dataType];
                 const menuItem: ContextMenuItem = {
                     label: dataType,
+                    type: "checkbox",
+                    checked: inMetrics,
                     click: async () => {
                         await RpcApi.SetMetaCommand(WindowRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
-                            meta: { "graph:metrics": [dataType] },
+                            meta: { "graph:metrics": newMetrics },
                         });
                     },
                 };
