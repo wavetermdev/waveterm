@@ -46,7 +46,7 @@ jobs:
                   cd musl
                   ./configure
                   make
-                  make install
+                  sudo make install
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)

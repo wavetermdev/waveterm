@@ -80,7 +80,7 @@ jobs:
                   cd musl
                   ./configure
                   make
-                  make install
+                  sudo make install
 
             # Initializes the CodeQL tools for scanning.
             - name: Initialize CodeQL
