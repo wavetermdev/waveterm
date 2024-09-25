@@ -115,7 +115,7 @@ const Dropdown = memo(
     ({
         items,
         anchorRef,
-        boundaryRef,
+        blockRef,
         className,
         setVisibility,
         renderMenu,
@@ -123,7 +123,7 @@ const Dropdown = memo(
     }: {
         items: DropdownItem[];
         anchorRef: React.RefObject<HTMLElement>;
-        boundaryRef?: React.RefObject<HTMLElement>;
+        blockRef?: React.RefObject<HTMLElement>;
         className?: string;
         setVisibility: (_: boolean) => void;
         renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
@@ -138,9 +138,8 @@ const Dropdown = memo(
         const dropdownRef = useRef<HTMLDivElement>(null);
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
 
-        const effectiveBoundaryRef: React.RefObject<HTMLElement> = boundaryRef ?? { current: document.documentElement };
-        const width = useWidth(effectiveBoundaryRef);
-        const height = useHeight(effectiveBoundaryRef);
+        const width = useWidth(blockRef);
+        const height = useHeight(blockRef);
 
         items.forEach((_, idx) => {
             const key = `${idx}`;
@@ -158,7 +157,7 @@ const Dropdown = memo(
                 let top = anchorRect.bottom + scrollTop;
                 let left = anchorRect.left + scrollLeft;
 
-                const boundaryRect = effectiveBoundaryRef.current?.getBoundingClientRect() || {
+                const boundaryRect = {
                     top: 0,
                     left: 0,
                     bottom: window.innerHeight,
@@ -192,11 +191,11 @@ const Dropdown = memo(
                     setVisibility(false);
                 }
             };
-            document.addEventListener("mousedown", handleClickOutside);
+            blockRef.current.addEventListener("mousedown", handleClickOutside);
             return () => {
-                document.removeEventListener("mousedown", handleClickOutside);
+                blockRef.current.removeEventListener("mousedown", handleClickOutside);
             };
-        }, [dropdownRef, anchorRef, subMenuRefs]);
+        }, []);
 
         // Position submenus based on available space and scroll position
         const handleSubMenuPosition = (
@@ -211,13 +210,6 @@ const Dropdown = memo(
 
                 const scrollTop = window.scrollY || document.documentElement.scrollTop;
                 const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
-
-                const boundaryRect = effectiveBoundaryRef.current?.getBoundingClientRect() || {
-                    top: 0,
-                    left: 0,
-                    bottom: window.innerHeight,
-                    right: window.innerWidth,
-                };
 
                 const submenuWidth = subMenuRef.offsetWidth;
                 const submenuHeight = subMenuRef.offsetHeight;

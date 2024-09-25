@@ -9,7 +9,7 @@ const meta = {
     args: {
         items: [],
         anchorRef: undefined,
-        boundaryRef: undefined,
+        blockRef: undefined,
         className: "",
         setVisibility: fn(),
     },
@@ -23,7 +23,7 @@ const meta = {
         setVisibility: {
             description: "Visibility event handler",
         },
-        boundaryRef: {
+        blockRef: {
             description: "Component that defines the boundaries of the dropdown",
         },
         className: {
@@ -38,7 +38,7 @@ type Story = StoryObj<typeof meta>;
 export const DefaultRender: Story = {
     render: (args) => {
         const anchorRef = useRef<HTMLDivElement>(null);
-        const boundaryRef = useRef<HTMLDivElement>(null);
+        const blockRef = useRef<HTMLDivElement>(null);
         const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
         const handleAnchorClick = () => {
@@ -69,7 +69,7 @@ export const DefaultRender: Story = {
 
         return (
             <div
-                ref={boundaryRef}
+                ref={blockRef}
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
@@ -92,7 +92,7 @@ export const DefaultRender: Story = {
                         {...modifiedArgs}
                         setVisibility={(visible) => setIsDropdownVisible(visible)}
                         anchorRef={anchorRef}
-                        boundaryRef={boundaryRef}
+                        blockRef={blockRef}
                     />
                 )}
             </div>
@@ -164,7 +164,7 @@ export const DefaultRender: Story = {
 export const CustomRender: Story = {
     render: (args) => {
         const anchorRef = useRef<HTMLDivElement>(null);
-        const boundaryRef = useRef<HTMLDivElement>(null);
+        const blockRef = useRef<HTMLDivElement>(null);
         const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
         const handleAnchorClick = () => {
@@ -206,7 +206,7 @@ export const CustomRender: Story = {
 
         return (
             <div
-                ref={boundaryRef}
+                ref={blockRef}
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
@@ -229,7 +229,7 @@ export const CustomRender: Story = {
                         {...modifiedArgs}
                         setVisibility={(visible) => setIsDropdownVisible(visible)}
                         anchorRef={anchorRef}
-                        boundaryRef={boundaryRef}
+                        blockRef={blockRef}
                         renderMenu={renderMenu}
                         renderMenuItem={renderMenuItem}
                     />
