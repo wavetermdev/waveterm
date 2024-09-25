@@ -94,7 +94,8 @@ tasks:
               vars:
                   ARCHS:
                       sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
-                  GO_LDFLAGS: -linkmode 'external' -extldflags=-static
+                  GO_LDFLAGS:
+                      sh: echo -linkmode 'external' -extldflags=-static -target {{if eq "arm" ARCH}}aarch64{{else}}x86_64{{end}}-linux-gnu.2.23
                   GO_ENV_VARS: CC="zig cc"
 
     build:server:internal:
