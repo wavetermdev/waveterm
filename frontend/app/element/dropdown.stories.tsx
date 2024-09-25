@@ -9,7 +9,7 @@ const meta = {
     args: {
         items: [],
         anchorRef: undefined,
-        blockRef: undefined,
+        scopeRef: undefined,
         initialPosition: undefined,
         className: "",
         setVisibility: fn(),
@@ -27,7 +27,7 @@ const meta = {
         setVisibility: {
             description: "Visibility event handler",
         },
-        blockRef: {
+        scopeRef: {
             description: "Component that defines the boundaries of the dropdown",
         },
         className: {
@@ -42,7 +42,7 @@ type Story = StoryObj<typeof meta>;
 export const DefaultRender: Story = {
     render: (args) => {
         const anchorRef = useRef<HTMLDivElement>(null);
-        const blockRef = useRef<HTMLDivElement>(null);
+        const scopeRef = useRef<HTMLDivElement>(null);
         const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
         const handleAnchorClick = () => {
@@ -53,19 +53,15 @@ export const DefaultRender: Story = {
             return items.map((item) => ({
                 ...item,
                 onClick: () => {
-                    // Call the original onClick if it exists
                     if (item.onClick) {
                         item.onClick();
                     }
-                    // Close the dropdown after an item is clicked
                     setIsDropdownVisible(false);
                 },
-                // Recursively update subItems' onClick handlers
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
         };
 
-        // Modify args to include updated items with the new onClick behavior
         const modifiedArgs = {
             ...args,
             items: mapItemsWithClick(args.items),
@@ -73,7 +69,7 @@ export const DefaultRender: Story = {
 
         return (
             <div
-                ref={blockRef}
+                ref={scopeRef}
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
@@ -96,7 +92,7 @@ export const DefaultRender: Story = {
                         {...modifiedArgs}
                         setVisibility={(visible) => setIsDropdownVisible(visible)}
                         anchorRef={anchorRef}
-                        blockRef={blockRef}
+                        scopeRef={scopeRef}
                     />
                 )}
             </div>
@@ -168,7 +164,7 @@ export const DefaultRender: Story = {
 export const CustomRender: Story = {
     render: (args) => {
         const anchorRef = useRef<HTMLDivElement>(null);
-        const blockRef = useRef<HTMLDivElement>(null);
+        const scopeRef = useRef<HTMLDivElement>(null);
         const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
         const handleAnchorClick = () => {
@@ -179,19 +175,15 @@ export const CustomRender: Story = {
             return items.map((item) => ({
                 ...item,
                 onClick: () => {
-                    // Call the original onClick if it exists
                     if (item.onClick) {
                         item.onClick();
                     }
-                    // Close the dropdown after an item is clicked
                     setIsDropdownVisible(false);
                 },
-                // Recursively update subItems' onClick handlers
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
         };
 
-        // Custom render function for menu items
         const renderMenuItem = (item: any, props: any) => (
             <div {...props}>
                 <strong>{item.label}</strong>
@@ -199,10 +191,8 @@ export const CustomRender: Story = {
             </div>
         );
 
-        // Custom render function for the entire menu
         const renderMenu = (subMenu: JSX.Element) => <div>{subMenu}</div>;
 
-        // Modify args to include updated items with the new onClick behavior
         const modifiedArgs = {
             ...args,
             items: mapItemsWithClick(args.items),
@@ -210,7 +200,7 @@ export const CustomRender: Story = {
 
         return (
             <div
-                ref={blockRef}
+                ref={scopeRef}
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
@@ -233,7 +223,7 @@ export const CustomRender: Story = {
                         {...modifiedArgs}
                         setVisibility={(visible) => setIsDropdownVisible(visible)}
                         anchorRef={anchorRef}
-                        blockRef={blockRef}
+                        scopeRef={scopeRef}
                         renderMenu={renderMenu}
                         renderMenuItem={renderMenuItem}
                     />
@@ -306,25 +296,22 @@ export const CustomRender: Story = {
 
 export const NoAnchorElement: Story = {
     render: (args) => {
-        const blockRef = useRef<HTMLDivElement>(null);
+        const scopeRef = useRef<HTMLDivElement>(null);
         const [isDropdownVisible, setIsDropdownVisible] = useState(false);
         const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-        // Handle right-click on blockRef
         const handleBlockRightClick = (e: MouseEvent) => {
             e.preventDefault(); // Prevent the default context menu
-            setDropdownPosition({ top: e.clientY, left: e.clientX }); // Set mouse coordinates as initial position
-            setIsDropdownVisible(true); // Show the dropdown
+            setDropdownPosition({ top: e.clientY, left: e.clientX });
+            setIsDropdownVisible(true);
         };
 
-        // Attach the right-click event listener to blockRef
         useEffect(() => {
-            const blockElement = blockRef.current;
+            const blockElement = scopeRef.current;
             if (blockElement) {
                 blockElement.addEventListener("contextmenu", handleBlockRightClick);
             }
 
-            // Cleanup event listener on component unmount
             return () => {
                 if (blockElement) {
                     blockElement.removeEventListener("contextmenu", handleBlockRightClick);
@@ -336,19 +323,15 @@ export const NoAnchorElement: Story = {
             return items.map((item) => ({
                 ...item,
                 onClick: () => {
-                    // Call the original onClick if it exists
                     if (item.onClick) {
                         item.onClick();
                     }
-                    // Close the dropdown after an item is clicked
                     setIsDropdownVisible(false);
                 },
-                // Recursively update subItems' onClick handlers
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
         };
 
-        // Custom render function for menu items
         const renderMenuItem = (item: any, props: any) => (
             <div {...props}>
                 <strong>{item.label}</strong>
@@ -356,10 +339,8 @@ export const NoAnchorElement: Story = {
             </div>
         );
 
-        // Custom render function for the entire menu
         const renderMenu = (subMenu: JSX.Element) => <div>{subMenu}</div>;
 
-        // Modify args to include updated items with the new onClick behavior
         const modifiedArgs = {
             ...args,
             items: mapItemsWithClick(args.items),
@@ -367,7 +348,7 @@ export const NoAnchorElement: Story = {
 
         return (
             <div
-                ref={blockRef}
+                ref={scopeRef}
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
             >
@@ -375,8 +356,8 @@ export const NoAnchorElement: Story = {
                     <Dropdown
                         {...modifiedArgs}
                         setVisibility={(visible) => setIsDropdownVisible(visible)}
-                        initialPosition={dropdownPosition} // Use the mouse coordinates for dropdown positioning
-                        blockRef={blockRef}
+                        initialPosition={dropdownPosition}
+                        scopeRef={scopeRef}
                         renderMenu={renderMenu}
                         renderMenuItem={renderMenuItem}
                     />

@@ -115,7 +115,7 @@ const Dropdown = memo(
     ({
         items,
         anchorRef,
-        blockRef,
+        scopeRef,
         initialPosition,
         className,
         setVisibility,
@@ -124,7 +124,7 @@ const Dropdown = memo(
     }: {
         items: DropdownItem[];
         anchorRef: React.RefObject<HTMLElement>;
-        blockRef?: React.RefObject<HTMLElement>;
+        scopeRef?: React.RefObject<HTMLElement>;
         initialPosition?: { top: number; left: number };
         className?: string;
         setVisibility: (_: boolean) => void;
@@ -140,8 +140,8 @@ const Dropdown = memo(
         const dropdownRef = useRef<HTMLDivElement>(null);
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
 
-        const width = useWidth(blockRef);
-        const height = useHeight(blockRef);
+        const width = useWidth(scopeRef);
+        const height = useHeight(scopeRef);
 
         items.forEach((_, idx) => {
             const key = `${idx}`;
@@ -202,12 +202,12 @@ const Dropdown = memo(
                 }
             };
 
-            blockRef?.current?.addEventListener("mousedown", handleClickOutside);
+            scopeRef?.current?.addEventListener("mousedown", handleClickOutside);
 
             return () => {
-                blockRef?.current?.removeEventListener("mousedown", handleClickOutside);
+                scopeRef?.current?.removeEventListener("mousedown", handleClickOutside);
             };
-        }, [blockRef, anchorRef, subMenuRefs, dropdownRef]);
+        }, []);
 
         // Position submenus based on available space and scroll position
         const handleSubMenuPosition = (
