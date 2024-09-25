@@ -39,17 +39,7 @@ brew install --cask wave
 
 ## Building from Source
 
-We use `task` to build Wave.
-
-```bash
-brew install go-task
-```
-
-Once task is installed you can run this command to build and launch the development version of Wave. Note that the development database and settings are kept in a separate folder from the production version (~/.waveterm-dev) to prevent cross-corruption.
-
-```bash
-task electron:dev
-```
+See [Building Wave Terminal](BUILD.md).
 
 ## Contributing
 
