@@ -25,6 +25,7 @@ class ContextMenuModelType {
                 type: item.type,
                 label: item.label,
                 id: crypto.randomUUID(),
+                checked: item.checked,
             };
             if (item.click) {
                 this.handlers.set(electronItem.id, item.click);
