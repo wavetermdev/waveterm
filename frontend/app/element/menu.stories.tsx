@@ -8,7 +8,6 @@ const items = [
     { label: "Fruit", onClick: (e) => console.log("Clicked Option 1") },
     {
         label: "Vegetables",
-        onClick: (e) => console.log("Clicked Option 2"),
         subItems: [
             { label: "Carrot", onClick: (e) => console.log("Clicked Option 2 -> 1") },
             { label: "Potato", onClick: (e) => console.log("Clicked Option 2 -> 2") },
@@ -16,20 +15,17 @@ const items = [
     },
     {
         label: "Beverages",
-        onClick: (e) => console.log("Clicked Option 3"),
         subItems: [
             { label: "Juice", onClick: (e) => console.log("Clicked Option 3 -> 1") },
             { label: "Tea", onClick: (e) => console.log("Clicked Option 3 -> 2") },
             {
                 label: "Coffee",
-                onClick: (e) => console.log("Clicked Option 3 -> 3"),
                 subItems: [
                     { label: "Espresso", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 1") },
                     { label: "Latte", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 2") },
                     { label: "Cappuccino", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 3") },
                     {
                         label: "Mocha",
-                        onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4"),
                         subItems: [
                             { label: "Dark Chocolate", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 1") },
                             {
@@ -45,7 +41,6 @@ const items = [
     },
     {
         label: "Desserts",
-        onClick: (e) => console.log("Clicked Option 4"),
         subItems: [
             { label: "Cake", onClick: (e) => console.log("Clicked Option 4 -> 1") },
             { label: "Ice Cream", onClick: (e) => console.log("Clicked Option 4 -> 2") },
@@ -110,8 +105,8 @@ export const DefaultRendererLeftPositioned: Story = {
                 onClick: () => {
                     if (item.onClick) {
                         item.onClick();
+                        setIsMenuVisible(false);
                     }
-                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
