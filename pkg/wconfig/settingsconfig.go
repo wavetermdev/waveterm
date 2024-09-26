@@ -48,10 +48,11 @@ type SettingsType struct {
 	AiMaxTokens float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs float64 `json:"ai:timeoutms,omitempty"`
 
-	TermClear        bool    `json:"term:*,omitempty"`
-	TermFontSize     float64 `json:"term:fontsize,omitempty"`
-	TermFontFamily   string  `json:"term:fontfamily,omitempty"`
-	TermDisableWebGl bool    `json:"term:disablewebgl,omitempty"`
+	TermClear          bool    `json:"term:*,omitempty"`
+	TermFontSize       float64 `json:"term:fontsize,omitempty"`
+	TermFontFamily     string  `json:"term:fontfamily,omitempty"`
+	TermDisableWebGl   bool    `json:"term:disablewebgl,omitempty"`
+	TermLocalShellPath string  `json:"term:localshellpath,omitempty"`
 
 	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`

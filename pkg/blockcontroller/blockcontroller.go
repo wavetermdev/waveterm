@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -286,12 +287,20 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			return err
 		}
 	} else {
+		// local terminal
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+		}
+		settings := wconfig.GetWatcher().GetFullConfig().Settings
+		if settings.TermLocalShellPath != "" {
+			cmdOpts.ShellPath = settings.TermLocalShellPath
+		}
+		if blockMeta.GetString(waveobj.MetaKey_TermLocalShellPath, "") != "" {
+			cmdOpts.ShellPath = blockMeta.GetString(waveobj.MetaKey_TermLocalShellPath, "")
 		}
 		shellProc, err = shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
 		if err != nil {
