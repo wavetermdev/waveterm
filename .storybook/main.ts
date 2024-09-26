@@ -21,11 +21,6 @@ const config: StorybookConfig = {
 
     docs: {},
 
-    managerHead: (head) => `
-        ${head}
-        <meta name="robots" content="noindex" />
-        `,
-
     typescript: {
         reactDocgen: "react-docgen-typescript",
     },
