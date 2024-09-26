@@ -1,0 +1,60 @@
+name: TestDriver.ai Regression Testing - Waveterm
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: 0 21 * * *
+  workflow_dispatch: null
+
+permissions:
+  contents: read # To allow the action to read repository contents
+  pull-requests: write # To allow the action to create/update pull request comments
+
+jobs:
+  test:
+    name: "TestDriver"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: testdriverai/action@main
+        id: testdriver
+        with:
+          key: ${{secrets.DASHCAM_API}}
+          prerun: |
+            # Navigate to the directory
+            Set-Location "$HOME/actions-runner/_work/testdriver/testdriver/"
+            # Install Go using Homebrew
+            brew install go
+            # Tap scripthaus-dev/scripthaus and install necessary packages
+            brew tap scripthaus-dev/scripthaus
+            brew install corepack
+            brew install scripthaus
+            # Enable Corepack
+            corepack enable
+            # Install dependencies using Yarn
+            yarn install
+            # Run the build-backend task with scripthaus
+            scripthaus run build-backend
+            Write-Host "Yarn"
+            # Run yarn
+            yarn
+            Write-Host "Rebuild"
+            # Rebuild Electron
+            scripthaus run electron-rebuild
+            Write-Host "Webpack"
+            # Run the Webpack build task
+            scripthaus run webpack-build
+            Write-Host "Starting Electron"
+            # Start Electron and redirect output to /dev/null
+            Start-Process -NoNewWindow -FilePath "scripthaus" -ArgumentList "run electron" -RedirectStandardOutput $null -RedirectStandardError $null
+            Write-Host "Electron Done"
+            # Install testdriverai and dashcam globally using npm
+            npm install testdriverai -g
+            npm install dashcam -g
+            # Exit the script
+            exit
+          prompt: |
+            1. /run testdriver/theme.yml
