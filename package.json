@@ -103,7 +103,7 @@
         "htl": "^0.3.1",
         "html-to-image": "^1.11.11",
         "immer": "^10.1.1",
-        "jotai": "^2.10.0",
+        "jotai": "2.9.3",
         "monaco-editor": "^0.52.0",
         "overlayscrollbars": "^2.10.0",
         "overlayscrollbars-react": "^0.5.6",
