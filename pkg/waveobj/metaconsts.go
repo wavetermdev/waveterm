@@ -59,6 +59,7 @@ const (
 	MetaKey_TermFontFamily                   = "term:fontfamily"
 	MetaKey_TermMode                         = "term:mode"
 	MetaKey_TermTheme                        = "term:theme"
+	MetaKey_TermLocalShellPath               = "term:localshellpath"
 
 	MetaKey_Count                            = "count"
 )
