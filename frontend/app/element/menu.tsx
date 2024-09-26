@@ -151,8 +151,44 @@ const Menu = memo(
         });
 
         useLayoutEffect(() => {
+            const shadowOffset = 10; // Adjust for box shadow space
+
             if (initialPosition) {
-                setPosition(initialPosition);
+                // Adjust position if initialPosition is provided
+                let { top, left } = initialPosition;
+
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+
+                const menuWidth = menuRef.current?.offsetWidth || 0;
+                const menuHeight = menuRef.current?.offsetHeight || 0;
+
+                const boundaryTop = 0;
+                const boundaryLeft = 0;
+                const boundaryRight = window.innerWidth + scrollLeft;
+                const boundaryBottom = window.innerHeight + scrollTop;
+
+                // Adjust if the menu overflows the right boundary
+                if (left + menuWidth > boundaryRight) {
+                    left = boundaryRight - menuWidth - shadowOffset; // Shift left more for shadow
+                }
+
+                // Adjust if the menu overflows the bottom boundary: move the menu upwards so its bottom edge aligns with the initial position
+                if (top + menuHeight > boundaryBottom) {
+                    top = initialPosition.top - menuHeight - shadowOffset; // Shift up for shadow
+                }
+
+                // Adjust if the menu overflows the left boundary
+                if (left < boundaryLeft) {
+                    left = boundaryLeft + shadowOffset; // Add shadow offset from the left edge
+                }
+
+                // Adjust if the menu overflows the top boundary
+                if (top < boundaryTop) {
+                    top = boundaryTop + shadowOffset; // Add shadow offset from the top edge
+                }
+
+                setPosition({ top, left });
             } else if (anchorRef.current && menuRef.current) {
                 // Calculate position based on anchorRef if it exists
                 const anchorRect = anchorRef.current.getBoundingClientRect();
@@ -162,19 +198,32 @@ const Menu = memo(
                 let top = anchorRect.bottom + scrollTop;
                 let left = anchorRect.left + scrollLeft;
 
-                const boundaryRect = {
-                    top: 0,
-                    left: 0,
-                    bottom: window.innerHeight,
-                    right: window.innerWidth,
-                };
+                const menuWidth = menuRef.current.offsetWidth;
+                const menuHeight = menuRef.current.offsetHeight;
 
-                if (left + menuRef.current.offsetWidth > boundaryRect.right + scrollLeft) {
-                    left = boundaryRect.right + scrollLeft - menuRef.current.offsetWidth;
+                const boundaryTop = 0;
+                const boundaryLeft = 0;
+                const boundaryRight = window.innerWidth + scrollLeft;
+                const boundaryBottom = window.innerHeight + scrollTop;
+
+                // Adjust if the menu overflows the right boundary
+                if (left + menuWidth > boundaryRight) {
+                    left = boundaryRight - menuWidth;
                 }
 
-                if (top + menuRef.current.offsetHeight > boundaryRect.bottom + scrollTop) {
-                    top = boundaryRect.bottom + scrollTop - menuRef.current.offsetHeight;
+                // Adjust if the menu overflows the bottom boundary: move the menu upwards so its bottom edge aligns with the anchor top
+                if (top + menuHeight > boundaryBottom) {
+                    top = anchorRect.top + scrollTop - menuHeight;
+                }
+
+                // Adjust if the menu overflows the left boundary
+                if (left < boundaryLeft) {
+                    left = boundaryLeft;
+                }
+
+                // Adjust if the menu overflows the top boundary
+                if (top < boundaryTop) {
+                    top = boundaryTop;
                 }
 
                 setPosition({ top, left });
