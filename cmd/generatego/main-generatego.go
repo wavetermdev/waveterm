@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/gogen"
-	"github.com/wavetermdev/waveterm/pkg/tsgen"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -43,7 +42,7 @@ func GenerateWshClient() {
 		}
 	}
 	buf.WriteString("\n")
-	err := tsgen.WriteFileIfChanged(WshClientFileName, []byte(buf.String()), true)
+	err := os.WriteFile(WshClientFileName, []byte(buf.String()), 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +54,7 @@ func GenerateWaveObjMetaConsts() {
 	gogen.GenerateBoilerplate(&buf, "waveobj", []string{})
 	gogen.GenerateMetaMapConsts(&buf, "MetaKey_", reflect.TypeOf(waveobj.MetaTSType{}))
 	buf.WriteString("\n")
-	err := tsgen.WriteFileIfChanged(WaveObjMetaConstsFileName, []byte(buf.String()), true)
+	err := os.WriteFile(WaveObjMetaConstsFileName, []byte(buf.String()), 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -67,7 +66,7 @@ func GenerateSettingsMetaConsts() {
 	gogen.GenerateBoilerplate(&buf, "wconfig", []string{})
 	gogen.GenerateMetaMapConsts(&buf, "ConfigKey_", reflect.TypeOf(wconfig.SettingsType{}))
 	buf.WriteString("\n")
-	err := tsgen.WriteFileIfChanged(SettingsMetaConstsFileName, []byte(buf.String()), true)
+	err := os.WriteFile(SettingsMetaConstsFileName, []byte(buf.String()), 0644)
 	if err != nil {
 		panic(err)
 	}
