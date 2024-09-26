@@ -81,16 +81,18 @@ declare global {
         id: string; // unique id, used for communication
         label: string;
         role?: string; // electron role (optional)
-        type?: "separator" | "normal" | "submenu";
+        type?: "separator" | "normal" | "submenu" | "checkbox";
         submenu?: ElectronContextMenuItem[];
+        checked?: boolean;
     };
 
     type ContextMenuItem = {
         label?: string;
-        type?: "separator" | "normal" | "submenu";
+        type?: "separator" | "normal" | "submenu" | "checkbox";
         role?: string; // electron role (optional)
         click?: () => void; // not required if role is set
         submenu?: ContextMenuItem[];
+        checked?: boolean;
     };
 
     type KeyPressDecl = {
@@ -294,6 +296,14 @@ declare global {
         startTs: number;
         command: string;
         msgFn: (msg: RpcMessage) => void;
+    };
+
+    type TimeSeriesMeta = {
+        name?: string;
+        color?: string;
+        label?: string;
+        maxy?: string | number;
+        miny?: string | number;
     };
 }
 

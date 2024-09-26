@@ -16,6 +16,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
+const BYTES_PER_GB = 1073741824
+
 func getCpuData(values map[string]float64) {
 	percentArr, err := cpu.Percent(0, false)
 	if err != nil {
@@ -38,10 +40,10 @@ func getMemData(values map[string]float64) {
 	if err != nil {
 		return
 	}
-	values["mem:total"] = float64(memData.Total)
-	values["mem:available"] = float64(memData.Available)
-	values["mem:used"] = float64(memData.Used)
-	values["mem:free"] = float64(memData.Free)
+	values["mem:total"] = float64(memData.Total) / BYTES_PER_GB
+	values["mem:available"] = float64(memData.Available) / BYTES_PER_GB
+	values["mem:used"] = float64(memData.Used) / BYTES_PER_GB
+	values["mem:free"] = float64(memData.Free) / BYTES_PER_GB
 }
 
 func generateSingleServerData(client *wshutil.WshRpc, connName string) {

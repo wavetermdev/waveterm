@@ -750,6 +750,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
             click: (_, window) => {
                 (window as electron.BrowserWindow)?.webContents?.send("contextmenu-click", menuDef.id);
             },
+            checked: menuDef.checked,
         };
         if (menuDef.submenu != null) {
             menuItemTemplate.submenu = convertMenuDefArrToMenu(menuDef.submenu);
