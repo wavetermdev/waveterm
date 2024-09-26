@@ -77,11 +77,12 @@ export const DefaultRendererLeftPositioned: Story = {
                 <div style={{ position: "absolute", top: 0, left: 0 }}>
                     <Button
                         ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-4 horizontal-padding-6"
+                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
                         style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
                         onClick={handleAnchorClick}
                     >
                         Anchor Element
+                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                     </Button>
                 </div>
                 {isMenuVisible && (
@@ -195,11 +196,12 @@ export const DefaultRendererRightPositioned: Story = {
                 <div style={{ position: "absolute", top: 0, right: 0 }}>
                     <Button
                         ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-4 horizontal-padding-6"
+                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
                         style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
                         onClick={handleAnchorClick}
                     >
                         Anchor Element
+                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                     </Button>
                 </div>
                 {isMenuVisible && (
@@ -313,11 +315,12 @@ export const DefaultRendererBottomRightPositioned: Story = {
                 <div style={{ position: "absolute", bottom: 0, left: 0 }}>
                     <Button
                         ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-4 horizontal-padding-6"
+                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
                         style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
                         onClick={handleAnchorClick}
                     >
                         Anchor Element
+                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                     </Button>
                 </div>
                 {isMenuVisible && (
@@ -431,11 +434,12 @@ export const DefaultRendererBottomLeftPositioned: Story = {
                 <div style={{ position: "absolute", bottom: 0, right: 0 }}>
                     <Button
                         ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-4 horizontal-padding-6"
+                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
                         style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
                         onClick={handleAnchorClick}
                     >
                         Anchor Element
+                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                     </Button>
                 </div>
                 {isMenuVisible && (
@@ -558,11 +562,12 @@ export const CustomRenderer: Story = {
                 <div style={{ height: "400px" }}>
                     <Button
                         ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-4 horizontal-padding-6"
+                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
                         style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
                         onClick={handleAnchorClick}
                     >
                         Anchor Element
+                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                     </Button>
                 </div>
                 {isMenuVisible && (
@@ -641,7 +646,7 @@ export const CustomRenderer: Story = {
     },
 };
 
-export const NoAnchorElement: Story = {
+export const ContextMenu: Story = {
     render: (args) => {
         const scopeRef = useRef<HTMLDivElement>(null);
         const [isMenuVisible, setIsMenuVisible] = useState(false);
