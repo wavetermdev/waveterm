@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
@@ -63,6 +64,25 @@ var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 var updatesRtnRType = reflect.TypeOf(waveobj.UpdatesRtnType{})
 var orefRType = reflect.TypeOf((*waveobj.ORef)(nil)).Elem()
 var wshRpcInterfaceRType = reflect.TypeOf((*wshrpc.WshRpcInterface)(nil)).Elem()
+
+func checkIfFileUpdated(filename string, newContents []byte) bool {
+	oldContents, err := os.ReadFile(filename)
+	if err != nil {
+		return true
+	}
+	return !bytes.Equal(oldContents, newContents)
+}
+
+func WriteFileIfChanged(filename string, newContents []byte, verbose bool) error {
+	shouldWrite := checkIfFileUpdated(filename, newContents)
+	if !shouldWrite {
+		if verbose {
+			fmt.Printf("file %s has not changed (not writing)\n", filename)
+		}
+		return nil
+	}
+	return os.WriteFile(filename, []byte(newContents), 0644)
+}
 
 func generateTSMethodTypes(method reflect.Method, tsTypesMap map[reflect.Type]string, skipFirstArg bool) error {
 	for idx := 0; idx < method.Type.NumIn(); idx++ {
