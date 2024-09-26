@@ -23,27 +23,50 @@ jobs:
         id: testdriver
         with:
           key: ${{secrets.DASHCAM_API}}
-          os: mac
           prerun: |
-            cd ~/actions-runner/_work/testdriver/testdriver/
+            # Navigate to the directory
+            Set-Location "$HOME/actions-runner/_work/testdriver/testdriver/"
+
+            # Install Go using Homebrew
             brew install go
+
+            # Tap scripthaus-dev/scripthaus and install necessary packages
             brew tap scripthaus-dev/scripthaus
             brew install corepack
             brew install scripthaus
+
+            # Enable Corepack
             corepack enable
+
+            # Install dependencies using Yarn
             yarn install
+
+            # Run the build-backend task with scripthaus
             scripthaus run build-backend
-            echo "Yarn"
+            Write-Host "Yarn"
+
+            # Run yarn
             yarn
-            echo "Rebuild"
+
+            Write-Host "Rebuild"
+            # Rebuild Electron
             scripthaus run electron-rebuild
-            echo "Webpack"
+
+            Write-Host "Webpack"
+            # Run the Webpack build task
             scripthaus run webpack-build
-            echo "Starting Electron"
-            scripthaus run electron 1>/dev/null 2>&1 &
-            echo "Electron Done"
+
+            Write-Host "Starting Electron"
+            # Start Electron and redirect output to /dev/null
+            Start-Process -NoNewWindow -FilePath "scripthaus" -ArgumentList "run electron" -RedirectStandardOutput $null -RedirectStandardError $null
+
+            Write-Host "Electron Done"
+
+            # Install testdriverai and dashcam globally using npm
             npm install testdriverai -g
             npm install dashcam -g
-            exit       
+
+            # Exit the script
+            exit
           prompt: |
             1. /run testdriver/theme.yml
