@@ -436,8 +436,8 @@ export const ContextMenu: Story = {
                 onClick: () => {
                     if (item.onClick) {
                         item.onClick();
+                        setIsMenuVisible(false);
                     }
-                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));

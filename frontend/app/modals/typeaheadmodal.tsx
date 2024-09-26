@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { Input } from "@/app/element/input";
 import { InputDecoration } from "@/app/element/inputdecoration";
 import { useDimensions } from "@/app/hook/useDimensions";

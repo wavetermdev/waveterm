@@ -1,8 +1,12 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { useHeight } from "@/app/hook/useHeight";
 import { useWidth } from "@/app/hook/useWidth";
 import clsx from "clsx";
 import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
+
 import "./menu.less";
 
 type MenuItem = {
@@ -344,6 +348,43 @@ const Menu = memo(
             e.stopPropagation();
             item.onClick && item.onClick(e);
         };
+
+        // const handleKeyDown = useCallback(
+        //     (waveEvent: WaveKeyboardEvent): boolean => {
+        //         if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
+        //             setFocusedIndex((prev) => (prev + 1) % items.length); // Move down
+        //             return true;
+        //         }
+        //         if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
+        //             setFocusedIndex((prev) => (prev - 1 + items.length) % items.length); // Move up
+        //             return true;
+        //         }
+        //         if (keyutil.checkKeyPressed(waveEvent, "ArrowRight")) {
+        //             if (items[focusedIndex].subItems) {
+        //                 setSubmenuOpen(focusedIndex); // Open the submenu
+        //             }
+        //             return true;
+        //         }
+        //         if (keyutil.checkKeyPressed(waveEvent, "ArrowLeft")) {
+        //             if (submenuOpen !== null) {
+        //                 setSubmenuOpen(null); // Close the submenu
+        //             }
+        //             return true;
+        //         }
+        //         if (keyutil.checkKeyPressed(waveEvent, "Enter") || keyutil.checkKeyPressed(waveEvent, " ")) {
+        //             if (items[focusedIndex].onClick) {
+        //                 items[focusedIndex].onClick(); // Trigger click
+        //             }
+        //             return true;
+        //         }
+        //         if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+        //             setVisibility(false); // Close the menu
+        //             return true;
+        //         }
+        //         return false;
+        //     },
+        //     [focusedIndex, submenuOpen, items, setVisibility]
+        // );
 
         const menuMenu = (
             <div className={clsx("menu", className)} ref={menuRef} style={{ top: position.top, left: position.left }}>
