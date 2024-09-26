@@ -309,6 +309,71 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
     return <CpuPlotViewInner key={connStatus?.connection ?? "local"} blockId={blockId} model={model} />;
 }
 
+type SingleLinePlotProps = {
+    plotData: Array<DataItem>;
+    yval: string;
+    yvalMeta: TimeSeriesMeta;
+    blockId: string;
+    defaultColor: string;
+};
+
+const SingleLinePlot = React.memo(({ plotData, yval, yvalMeta, blockId, defaultColor }: SingleLinePlotProps) => {
+    const containerRef = React.useRef<HTMLInputElement>();
+    const parentHeight = useHeight(containerRef);
+    const parentWidth = useWidth(containerRef);
+    const marks: Plot.Markish[] = [];
+    let color = yvalMeta?.color;
+    if (!color) {
+        color = defaultColor;
+    }
+    marks.push(
+        () => htl.svg`<defs>
+      <linearGradient id="gradient-${blockId}-${yval}" gradientTransform="rotate(90)">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.7" />
+        <stop offset="100%" stop-color="${color}" stop-opacity="0" />
+      </linearGradient>
+	      </defs>`
+    );
+
+    marks.push(
+        Plot.lineY(plotData, {
+            stroke: color,
+            strokeWidth: 2,
+            x: "ts",
+            y: yval,
+        })
+    );
+
+    // only add the gradient for single items
+    marks.push(
+        Plot.areaY(plotData, {
+            fill: `url(#gradient-${blockId}-${yval})`,
+            x: "ts",
+            y: yval,
+        })
+    );
+    let maxY = yvalMeta?.maxy ?? 100;
+    let minY = yvalMeta?.miny ?? 0;
+    const labelY = yvalMeta?.label ?? "?";
+    const plot = Plot.plot({
+        x: { grid: true, label: "time", tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}` },
+        y: { label: labelY, domain: [minY, maxY] },
+        width: parentWidth,
+        height: parentHeight,
+        marks: marks,
+    });
+
+    React.useEffect(() => {
+        containerRef.current.append(plot);
+
+        return () => {
+            plot.remove();
+        };
+    }, [plot, parentHeight, parentWidth]);
+
+    return <div className="plot-view" ref={containerRef} />;
+});
+
 const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     const containerRef = React.useRef<HTMLInputElement>();
     const plotData = jotai.useAtomValue(model.dataAtom);
