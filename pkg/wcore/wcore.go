@@ -149,6 +149,7 @@ func checkAndFixWindow(ctx context.Context, windowId string) {
 		return
 	}
 	if len(workspace.TabIds) == 0 {
+		log.Printf("fixing workspace with no tabs %q (in checkAndFixWindow)\n", workspace.OID)
 		_, err = CreateTab(ctx, windowId, "T1", true)
 		if err != nil {
 			log.Printf("error creating tab (in checkAndFixWindow): %v\n", err)
