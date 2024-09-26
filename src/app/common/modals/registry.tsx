@@ -13,6 +13,7 @@ import {
     ScreenSettingsModal,
     LineSettingsModal,
     UserInputModal,
+    NewWaveModal,
 } from "@/modals";
 import * as constants from "@/app/appconst";
 
@@ -27,6 +28,7 @@ const modalsRegistry: { [key: string]: React.ComponentType } = {
     [constants.LINE_SETTINGS]: LineSettingsModal,
     [constants.TAB_SWITCHER]: TabSwitcherModal,
     [constants.USER_INPUT]: UserInputModal,
+    [constants.NEW_WAVE]: NewWaveModal,
 };
 
 export { modalsRegistry };

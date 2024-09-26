@@ -167,7 +167,14 @@ func SendTelemetry(ctx context.Context, force bool) error {
 	log.Printf("[pcloud] sending telemetry data\n")
 	dayStr := telemetry.GetCurDayStr()
 	defaultShellType := shellapi.DetectLocalShellType()
-	input := TelemetryInputType{UserId: clientData.UserId, ClientId: clientData.ClientId, CurDay: dayStr, DefaultShell: defaultShellType, Activity: activity}
+	input := TelemetryInputType{
+		UserId:       clientData.UserId,
+		ClientId:     clientData.ClientId,
+		AppType:      "wave",
+		CurDay:       dayStr,
+		DefaultShell: defaultShellType,
+		Activity:     activity,
+	}
 	req, err := makeAnonPostReq(ctx, TelemetryUrl, input)
 	if err != nil {
 		return err
