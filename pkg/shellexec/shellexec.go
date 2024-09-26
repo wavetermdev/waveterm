@@ -170,9 +170,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`"%s"/.waveterm/%s/.bashrc`, homeDir, shellutil.BashIntegrationDir))
 		} else if isFishShell(shellPath) {
-			binDir := fmt.Sprintf(`"%s"/.waveterm/%s`, homeDir, shellutil.WaveHomeBinDir)
-			carg := utilfn.ShellQuote(fmt.Sprintf("set -x PATH %s $PATH", utilfn.ShellQuote(binDir, false, 300)), true, 350)
-			log.Printf("fish shell C arg: %s\n", carg)
+			carg := fmt.Sprintf(`"set -x PATH \"%s\"/.waveterm/%s $PATH"`, homeDir, shellutil.WaveHomeBinDir)
 			shellOpts = append(shellOpts, "-C", carg)
 		} else if remote.IsPowershell(shellPath) {
 			// powershell is weird about quoted path executables and requires an ampersand first
