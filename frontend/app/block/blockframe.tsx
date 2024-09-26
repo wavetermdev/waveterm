@@ -508,6 +508,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusAtom = getConnStatusAtom(connection);
         const connStatus = jotai.useAtomValue(connStatusAtom);
         const [connList, setConnList] = React.useState<Array<string>>([]);
+        const [wslList, setWslList] = React.useState<Array<string>>([]);
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
@@ -527,6 +528,19 @@ const ChangeConnectionBlockModal = React.memo(
             prtn.then((newConnList) => {
                 setConnList(newConnList ?? []);
             }).catch((e) => console.log("unable to load conn list from backend. using blank list: ", e));
+            const p2rtn = RpcApi.WslListCommand(WindowRpcClient, { timeout: 2000 });
+            p2rtn
+                .then((newWslList) => {
+                    console.log(newWslList);
+                    setWslList(newWslList ?? []);
+                })
+                .catch((e) => {
+                    console.log("temp error caught message");
+                    // removing this log and failing silentyly since it will happen
+                    // if a system isn't using the wsl. and would happen every time the
+                    // typeahead was opened. good candidate for verbose log level.
+                    //console.log("unable to load wsl list from backend. using blank list: ", e)
+                });
         }, [changeConnModalOpen, setConnList]);
 
         const changeConnection = React.useCallback(

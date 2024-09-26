@@ -113,6 +113,7 @@ type WshRpcInterface interface {
 	ConnConnectCommand(ctx context.Context, connName string) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
+	WslListCommand(ctx context.Context) ([]string, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error

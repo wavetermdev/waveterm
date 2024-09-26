@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ubuntu/gowsl"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote"
@@ -498,6 +499,18 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
 	return conncontroller.GetConnectionsList()
+}
+
+func (ws *WshServer) WslListCommand(ctx context.Context) ([]string, error) {
+	distros, err := gowsl.RegisteredDistros(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var distroNames []string
+	for _, distro := range distros {
+		distroNames = append(distroNames, distro.Name())
+	}
+	return distroNames, nil
 }
 
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {

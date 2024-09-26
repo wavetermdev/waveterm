@@ -260,4 +260,10 @@ func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, o
 	return resp, err
 }
 
+// command "wsllist", wshserver.WslListCommand
+func WslListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
+	resp, err := sendRpcRequestCallHelper[[]string](w, "wsllist", nil, opts)
+	return resp, err
+}
+
 
