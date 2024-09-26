@@ -33,6 +33,6 @@ const config: StorybookConfig = {
         return mergeConfig(config, electronViteConfig.renderer as UserConfig);
     },
 
-    staticDirs: ["../assets"],
+    staticDirs: [{ from: "../assets", to: "/assets" }],
 };
 export default config;
