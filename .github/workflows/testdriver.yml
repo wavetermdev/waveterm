@@ -26,34 +26,58 @@ jobs:
           prerun: |
             # Navigate to the directory
             Set-Location "$HOME/actions-runner/_work/testdriver/testdriver/"
-            # Install Go using Homebrew
-            brew install go
-            # Tap scripthaus-dev/scripthaus and install necessary packages
-            brew tap scripthaus-dev/scripthaus
-            brew install corepack
-            brew install scripthaus
+
+            # Install Chocolatey if not already installed
+            if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+                Set-ExecutionPolicy Bypass -Scope Process -Force; 
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; 
+                iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+            }
+
+            # Install Go using Chocolatey
+            choco install golang -y
+
+            # Install Corepack, scripthaus, and other dependencies via Chocolatey
+            choco install corepack -y
+
+            # (If there is a need to install scripthaus directly using a different method, ensure you follow their Windows installation method)
+
             # Enable Corepack
             corepack enable
+
+            # Install Yarn if not installed
+            if (-not (Get-Command yarn -ErrorAction SilentlyContinue)) {
+                npm install -g yarn
+            }
+
             # Install dependencies using Yarn
             yarn install
+
             # Run the build-backend task with scripthaus
             scripthaus run build-backend
+
             Write-Host "Yarn"
             # Run yarn
             yarn
+
             Write-Host "Rebuild"
             # Rebuild Electron
             scripthaus run electron-rebuild
+
             Write-Host "Webpack"
             # Run the Webpack build task
             scripthaus run webpack-build
+
             Write-Host "Starting Electron"
             # Start Electron and redirect output to /dev/null
             Start-Process -NoNewWindow -FilePath "scripthaus" -ArgumentList "run electron" -RedirectStandardOutput $null -RedirectStandardError $null
+
             Write-Host "Electron Done"
+
             # Install testdriverai and dashcam globally using npm
-            npm install testdriverai -g
-            npm install dashcam -g
+            npm install -g testdriverai
+            npm install -g dashcam
+
             # Exit the script
             exit
           prompt: |
