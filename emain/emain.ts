@@ -21,6 +21,7 @@ import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
+import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
@@ -749,6 +750,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
             click: (_, window) => {
                 (window as electron.BrowserWindow)?.webContents?.send("contextmenu-click", menuDef.id);
             },
+            checked: menuDef.checked,
         };
         if (menuDef.submenu != null) {
             menuItemTemplate.submenu = convertMenuDefArrToMenu(menuDef.submenu);
@@ -840,6 +842,13 @@ process.on("uncaughtException", (error) => {
 });
 
 async function appMain() {
+    // Set disableHardwareAcceleration as early as possible, if required.
+    const launchSettings = getLaunchSettings();
+    if (launchSettings?.["window:disablehardwareacceleration"]) {
+        console.log("disabling hardware acceleration, per launch settings");
+        electronApp.disableHardwareAcceleration();
+    }
+
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {
