@@ -123,6 +123,7 @@
         "remark-flexible-toc": "^1.1.1",
         "remark-gfm": "^4.0.0",
         "rxjs": "^7.8.1",
+        "sharp": "^0.33.5",
         "shell-quote": "^1.8.1",
         "sprintf-js": "^1.1.3",
         "throttle-debounce": "^5.0.2",
