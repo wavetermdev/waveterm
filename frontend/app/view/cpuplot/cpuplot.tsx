@@ -112,6 +112,7 @@ class CpuPlotViewModel {
             return [
                 {
                     elemtype: "iconbutton",
+                    label: "Plot Type",
                     icon: "wrench",
                     click: (e) => this.handleContextMenu(e),
                 },
