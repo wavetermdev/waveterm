@@ -254,8 +254,10 @@ func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) erro
 		selectedTemplateRaw = installTemplateRawDefault
 	}
 
+	// I need to use toSlash here to force unix keybindings
+	// this means we can't guarantee it will work on a remote windows machine
 	var installWords = map[string]string{
-		"installDir":  filepath.Dir(destPath),
+		"installDir":  filepath.ToSlash(filepath.Dir(destPath)),
 		"tempPath":    destPath + ".temp",
 		"installPath": destPath,
 	}
