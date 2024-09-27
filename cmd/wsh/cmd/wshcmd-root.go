@@ -112,7 +112,7 @@ func setTermHtmlMode() {
 var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
 
 func validateEasyORef(oref string) error {
-	if oref == "this" {
+	if oref == "this" || oref == "tab" {
 		return nil
 	}
 	if num, err := strconv.Atoi(oref); err == nil && num >= 1 {
