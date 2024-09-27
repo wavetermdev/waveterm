@@ -322,7 +322,7 @@ function getOrCreateWebViewforTab(tabId: string, clientId: string, activate: boo
     tabView.waveTabId = tabId;
     const usp = new URLSearchParams();
     usp.set("clientid", clientId);
-    usp.set("tabId", tabId);
+    usp.set("tabid", tabId);
     if (activate) {
         usp.set("activate", "1");
     }
@@ -422,7 +422,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     const usp = new URLSearchParams();
     usp.set("clientid", clientId);
-    usp.set("tabId", waveWindow.activetabid);
+    usp.set("tabid", waveWindow.activetabid);
     usp.set("windowid", waveWindow.oid);
     usp.set("activate", "1");
     const indexHtml = "index.html";

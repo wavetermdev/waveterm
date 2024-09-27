@@ -15,10 +15,6 @@ type RouteInfo = {
     destRouteId: string;
 };
 
-function makeWindowRouteId(windowId: string): string {
-    return `window:${windowId}`;
-}
-
 function makeFeBlockRouteId(feBlockId: string): string {
     return `feblock:${feBlockId}`;
 }
@@ -153,4 +149,4 @@ class WshRouter {
     }
 }
 
-export { makeFeBlockRouteId, makeWindowRouteId, WshRouter };
+export { makeFeBlockRouteId, makeTabRouteId, WshRouter };

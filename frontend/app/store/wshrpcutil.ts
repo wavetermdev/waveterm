@@ -3,13 +3,14 @@
 
 import { wpsReconnectHandler } from "@/app/store/wps";
 import { WshClient } from "@/app/store/wshclient";
-import { makeWindowRouteId, WshRouter } from "@/app/store/wshrouter";
+import { makeTabRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
 import { addWSReconnectHandler, ElectronOverrideOpts, WSControl } from "./ws";
 
 let globalWS: WSControl;
 let DefaultRouter: WshRouter;
 let WindowRpcClient: WshClient;
+let TabRpcClient: WshClient;
 
 async function* rpcResponseGenerator(
     openRpcs: Map<string, ClientRpcEntry>,
@@ -135,7 +136,8 @@ function initWshrpc(windowId: string): WSControl {
     };
     globalWS = new WSControl(getWSServerEndpoint(), windowId, handleFn);
     globalWS.connectNow("connectWshrpc");
-    WindowRpcClient = new WshClient(makeWindowRouteId(windowId));
+    TabRpcClient = new WshClient(makeTabRouteId(windowId));
+    WindowRpcClient = TabRpcClient;
     DefaultRouter.registerRoute(WindowRpcClient.routeId, WindowRpcClient);
     addWSReconnectHandler(() => {
         DefaultRouter.reannounceRoutes();
@@ -163,5 +165,6 @@ export {
     sendRpcCommand,
     sendRpcResponse,
     sendWSCommand,
+    TabRpcClient,
     WindowRpcClient,
 };
