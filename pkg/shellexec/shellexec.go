@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -33,6 +34,7 @@ type CommandOptsType struct {
 	Login       bool              `json:"login,omitempty"`
 	Cwd         string            `json:"cwd,omitempty"`
 	Env         map[string]string `json:"env,omitempty"`
+	ShellPath   string            `json:"shellPath,omitempty"`
 }
 
 type ShellProc struct {
@@ -140,15 +142,19 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 
 func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	client := conn.GetClient()
-	shellPath, err := remote.DetectShell(client)
-	if err != nil {
-		return nil, err
+	shellPath := cmdOpts.ShellPath
+	if shellPath == "" {
+		remoteShellPath, err := remote.DetectShell(client)
+		if err != nil {
+			return nil, err
+		}
+		shellPath = remoteShellPath
 	}
 	var shellOpts []string
 	var cmdCombined string
 	log.Printf("detected shell: %s", shellPath)
 
-	err = remote.InstallClientRcFiles(client)
+	err := remote.InstallClientRcFiles(client)
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err
@@ -163,6 +169,9 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 			// add --rcfile
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`"%s"/.waveterm/%s/.bashrc`, homeDir, shellutil.BashIntegrationDir))
+		} else if isFishShell(shellPath) {
+			carg := fmt.Sprintf(`"set -x PATH \"%s\"/.waveterm/%s $PATH"`, homeDir, shellutil.WaveHomeBinDir)
+			shellOpts = append(shellOpts, "-C", carg)
 		} else if remote.IsPowershell(shellPath) {
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
@@ -264,17 +273,29 @@ func isBashShell(shellPath string) bool {
 	return strings.Contains(shellBase, "bash")
 }
 
+func isFishShell(shellPath string) bool {
+	// get the base path, and then check contains
+	shellBase := filepath.Base(shellPath)
+	return strings.Contains(shellBase, "fish")
+}
+
 func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType) (*ShellProc, error) {
 	shellutil.InitCustomShellStartupFiles()
 	var ecmd *exec.Cmd
 	var shellOpts []string
-
-	shellPath := shellutil.DetectLocalShellPath()
+	shellPath := cmdOpts.ShellPath
+	if shellPath == "" {
+		shellPath = shellutil.DetectLocalShellPath()
+	}
 	if cmdStr == "" {
 		if isBashShell(shellPath) {
 			// add --rcfile
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", shellutil.GetBashRcFileOverride())
+		} else if isFishShell(shellPath) {
+			wshBinDir := filepath.Join(wavebase.GetWaveHomeDir(), shellutil.WaveHomeBinDir)
+			quotedWshBinDir := utilfn.ShellQuote(wshBinDir, false, 300)
+			shellOpts = append(shellOpts, "-C", fmt.Sprintf("set -x PATH %s $PATH", quotedWshBinDir))
 		} else if remote.IsPowershell(shellPath) {
 			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", shellutil.GetWavePowershellEnv())
 		} else {
@@ -322,7 +343,6 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 	}
 	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
 	if err != nil {
-		cmdPty.Close()
 		return nil, err
 	}
 	return &ShellProc{Cmd: CmdWrap{ecmd, cmdPty}, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil

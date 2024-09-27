@@ -44,7 +44,7 @@ declare global {
     type Client = WaveObj & {
         windowids: string[];
         tosagreed?: number;
-        historymigrated?: boolean;
+        hasoldhistory?: boolean;
     };
 
     // wshrpc.CommandAppendIJsonData
@@ -301,6 +301,7 @@ declare global {
         "term:fontfamily"?: string;
         "term:mode"?: string;
         "term:theme"?: string;
+        "term:localshellpath"?: string;
         count?: number;
     };
 
@@ -417,6 +418,7 @@ declare global {
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
         "term:disablewebgl"?: boolean;
+        "term:localshellpath"?: string;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
@@ -439,6 +441,8 @@ declare global {
         "window:bgcolor"?: string;
         "window:reducedmotion"?: boolean;
         "window:tilegapsize"?: number;
+        "window:nativetitlebar"?: boolean;
+        "window:disablehardwareacceleration"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
     };

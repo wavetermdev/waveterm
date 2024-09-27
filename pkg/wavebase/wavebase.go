@@ -53,16 +53,16 @@ func GetHomeDir() string {
 
 func ExpandHomeDir(pathStr string) (string, error) {
 	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
-		return pathStr, nil
+		return filepath.Clean(pathStr), nil
 	}
 	homeDir := GetHomeDir()
 	if pathStr == "~" {
 		return homeDir, nil
 	}
-	expandedPath := filepath.Join(homeDir, pathStr[2:])
+	expandedPath := filepath.Clean(filepath.Join(homeDir, pathStr[2:]))
 	absPath, err := filepath.Abs(filepath.Join(homeDir, expandedPath))
 	if err != nil || !strings.HasPrefix(absPath, homeDir) {
-		return "", fmt.Errorf("Potential path traversal detected for path %s", pathStr)
+		return "", fmt.Errorf("potential path traversal detected for path %s", pathStr)
 	}
 	return expandedPath, nil
 }

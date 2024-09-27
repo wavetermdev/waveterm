@@ -172,6 +172,9 @@ function processBackgroundUrls(cssText: string): string {
                 hasJSUrl = true;
                 return;
             }
+            if (originalUrl.startsWith("data:")) {
+                return;
+            }
             const newUrl = encodeFileURL(originalUrl);
             node.value = newUrl;
         },

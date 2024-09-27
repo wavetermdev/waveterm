@@ -18,6 +18,7 @@ const (
 	ConfigKey_TermFontSize                   = "term:fontsize"
 	ConfigKey_TermFontFamily                 = "term:fontfamily"
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
+	ConfigKey_TermLocalShellPath             = "term:localshellpath"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
@@ -46,6 +47,8 @@ const (
 	ConfigKey_WindowBgColor                  = "window:bgcolor"
 	ConfigKey_WindowReducedMotion            = "window:reducedmotion"
 	ConfigKey_WindowTileGapSize              = "window:tilegapsize"
+	ConfigKey_WindowNativeTitleBar           = "window:nativetitlebar"
+	ConfigKey_WindowDisableHardwareAcceleration = "window:disablehardwareacceleration"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"

@@ -6,37 +6,36 @@ These instructions are for setting up dependencies and building Wave Terminal fr
 
 ### OS-specific dependencies
 
-#### macOS
+See [Minimum requirements](README.md#minimum-requirements) to learn whether your OS is supported.
 
-You will need macOS 10.15 or later to build and run Wave.
+#### macOS
 
 macOS does not have any platform-specific dependencies.
 
 #### Linux
 
-Make sure you have a recent install of GCC and Zip.
+You must have `zip` installed. We also require the [Zig](https://ziglang.org/) compiler for statically linking CGO.
 
-Debian:
+Debian/Ubuntu:
 
 ```sh
-sudo apt install build-essential zip
+sudo apt install zip snapd
+sudo snap install zig --classic --beta
 ```
 
-Fedora:
+Fedora/RHEL:
 
 ```sh
-sudo dnf install make automake gcc gcc-c++ kernel-devel
+sudo dnf install zip zig
 ```
 
 Arch:
 
 ```sh
-sudo pacman -S base-devel
+sudo pacman -S zip zig
 ```
 
 #### Windows
-
-You will need a 64-bit, somewhat-recent version of Windows to build and run Wave (Windows 10 1809 or later).
 
 You will need the GNU build toolchain installed in order for Go to work on Windows. In most cases, this requires installing MinGW-w64.
 

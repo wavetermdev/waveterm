@@ -22,6 +22,7 @@ import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
+import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
@@ -366,8 +367,10 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         height: winHeight,
     };
     winBounds = ensureBoundsAreVisible(winBounds);
+    const settings = fullConfig?.settings;
     const winOpts: Electron.BrowserWindowConstructorOptions = {
-        titleBarStyle: unamePlatform === "darwin" ? "hiddenInset" : "hidden",
+        titleBarStyle:
+            unamePlatform === "darwin" ? "hiddenInset" : settings["window:nativetitlebar"] ? "default" : "hidden",
         titleBarOverlay:
             unamePlatform !== "darwin"
                 ? {
@@ -392,7 +395,6 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         show: false,
         autoHideMenuBar: true,
     };
-    const settings = fullConfig?.settings;
     const isTransparent = settings?.["window:transparent"] ?? false;
     const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
     if (isTransparent) {
@@ -684,6 +686,10 @@ if (unamePlatform !== "darwin") {
     const fac = new FastAverageColor();
 
     electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
+        // Bail out if the user requests the native titlebar
+        const fullConfig = await services.FileService.GetFullConfig();
+        if (fullConfig.settings["window:nativetitlebar"]) return;
+
         const zoomFactor = event.sender.getZoomFactor();
         const electronRect: Electron.Rectangle = {
             x: rect.left * zoomFactor,
@@ -776,6 +782,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
             click: (_, window) => {
                 (window as electron.BrowserWindow)?.webContents?.send("contextmenu-click", menuDef.id);
             },
+            checked: menuDef.checked,
         };
         if (menuDef.submenu != null) {
             menuItemTemplate.submenu = convertMenuDefArrToMenu(menuDef.submenu);
@@ -867,6 +874,13 @@ process.on("uncaughtException", (error) => {
 });
 
 async function appMain() {
+    // Set disableHardwareAcceleration as early as possible, if required.
+    const launchSettings = getLaunchSettings();
+    if (launchSettings?.["window:disablehardwareacceleration"]) {
+        console.log("disabling hardware acceleration, per launch settings");
+        electronApp.disableHardwareAcceleration();
+    }
+
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {

@@ -83,19 +83,6 @@ func ReplaceOldHistory(ctx context.Context, hist []*OldHistoryType) error {
 func TryMigrateOldHistory() error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
-	client, err := DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return err
-	}
-	if client.HistoryMigrated {
-		return nil
-	}
-	log.Printf("trying to migrate old wave history\n")
-	client.HistoryMigrated = true
-	err = DBUpdate(ctx, client)
-	if err != nil {
-		return err
-	}
 	hist, err := GetAllOldHistory()
 	if err != nil {
 		return err
@@ -108,5 +95,14 @@ func TryMigrateOldHistory() error {
 		return err
 	}
 	log.Printf("migrated %d old wave history records\n", len(hist))
+	client, err := DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return err
+	}
+	client.HasOldHistory = true
+	err = DBUpdate(ctx, client)
+	if err != nil {
+		return err
+	}
 	return nil
 }

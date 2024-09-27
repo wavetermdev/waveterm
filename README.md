@@ -29,12 +29,21 @@ Also available as a Homebrew Cask for macOS:
 brew install --cask wave
 ```
 
+### Minimum requirements
+
+Wave Terminal and WSH run on the following platforms:
+
+- macOS 10.15 or later (arm64, x64)
+- Windows 10 1809 or later (x64)
+- Linux based on glibc-2.28 or later (Debian 10, RHEL 8, Ubuntu 20.04, etc.) (arm64, x64)
+
 ## Links
 
 - Homepage &mdash; https://www.waveterm.dev
 - Download Page &mdash; https://www.waveterm.dev/download
-- Documentation &mdash; https://betadocs.waveterm.dev/
-- Blog &mdash; https://blog.waveterm.dev/
+- Documentation &mdash; https://docs.waveterm.dev
+- Legacy Documentation &mdash; https://legacydocs.waveterm.dev
+- Blog &mdash; https://blog.waveterm.dev
 - Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
 ## Building from Source
@@ -49,6 +58,7 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 - [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
 - [Contribution guidelines](CONTRIBUTING.md#before-you-start)
+- [Storybook](https://storybook.waveterm.dev)
 
 ## License
 

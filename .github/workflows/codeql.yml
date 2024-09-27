@@ -20,7 +20,8 @@ on:
         - cron: "36 5 * * 5"
 
 env:
-    NODE_VERSION: "21.5.0"
+    NODE_VERSION: "20"
+    GO_VERSION: "1.22.5"
 
 jobs:
     analyze:
@@ -56,13 +57,6 @@ jobs:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Setup Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version: stable
-                  cache-dependency-path: |
-                      go.sum
-
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
@@ -70,6 +64,18 @@ jobs:
               run: |
                   corepack enable
                   yarn install
+
+            - name: Setup Go (Go only)
+              if: matrix.language == 'go'
+              uses: actions/setup-go@v5
+              with:
+                  go-version: ${{env.GO_VERSION}}
+                  cache-dependency-path: |
+                      go.sum
+            # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
+            - name: Setup Zig (Go only)
+              if: matrix.language == 'go'
+              run: sudo snap install zig --classic --beta
 
             # Initializes the CodeQL tools for scanning.
             - name: Initialize CodeQL

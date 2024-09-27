@@ -28,7 +28,7 @@ func init() {
 func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
 	meta := make(map[string]interface{})
 	for _, metaSet := range metaSets {
-		fields := strings.Split(metaSet, "=")
+		fields := strings.SplitN(metaSet, "=", 2)
 		if len(fields) != 2 {
 			return nil, fmt.Errorf("invalid meta set: %q", metaSet)
 		}

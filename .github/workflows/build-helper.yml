@@ -9,8 +9,8 @@ on:
         tags:
             - "v[0-9]+.[0-9]+.[0-9]+*"
 env:
-    GO_VERSION: "1.22.5"
-    NODE_VERSION: "22.5.1"
+    GO_VERSION: "1.22"
+    NODE_VERSION: "20"
 jobs:
     runbuild:
         permissions:
@@ -21,7 +21,7 @@ jobs:
             matrix:
                 include:
                     - platform: "darwin"
-                      runner: "macos-latest-xlarge"
+                      runner: "macos-latest"
                     - platform: "linux"
                       runner: "ubuntu-latest"
                     - platform: "linux"
@@ -38,6 +38,11 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
+
+            # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
+            - name: Setup Zig (Linux only)
+              if: matrix.platform == 'linux'
+              run: sudo snap install zig --classic --beta
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
