@@ -189,20 +189,8 @@ tasks:
         sources:
             - "cmd/generatego/*.go"
             - "cmd/generatets/*.go"
-            - "pkg/service/**/*.go"
-            - "pkg/waveobj/*.go"
-            - "pkg/wconfig/**/*.go"
-            - "pkg/wstore/*.go"
-            - "pkg/wshrpc/**/*.go"
-            - "pkg/tsgen/**/*.go"
-            - "pkg/gogen/**/*.go"
-            - "pkg/wconfig/**/*.go"
-            - "pkg/eventbus/eventbus.go"
-        generates:
-            - frontend/types/gotypes.d.ts
-            - pkg/wshrpc/wshclient/wshclient.go
-            - frontend/app/store/services.ts
-            - frontend/app/store/wshserver.ts
+            - "pkg/**/*.go"
+        # don't add generates key (otherwise will always execute)
 
     version:
         desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`. See `version.cjs` for usage definitions for the arguments.
