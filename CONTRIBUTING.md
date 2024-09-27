@@ -26,7 +26,7 @@ Contributions to this project must be accompanied by a Contributor License Agree
 
 The project uses American English.
 
-Coding style and formatting is automated for each pull request. We use [Prettier](https://prettier.io/).
+We have a set of recommended Visual Studio Code extensions to enforce our style and quality standards. Please ensure you use these, especially [Prettier](https://prettier.io) and [EditorConfig](https://editorconfig.org), when contributing to our code.
 
 ## How to contribute
 
