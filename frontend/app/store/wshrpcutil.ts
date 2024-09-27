@@ -9,7 +9,6 @@ import { addWSReconnectHandler, ElectronOverrideOpts, WSControl } from "./ws";
 
 let globalWS: WSControl;
 let DefaultRouter: WshRouter;
-let WindowRpcClient: WshClient;
 let TabRpcClient: WshClient;
 
 async function* rpcResponseGenerator(
@@ -137,8 +136,7 @@ function initWshrpc(windowId: string): WSControl {
     globalWS = new WSControl(getWSServerEndpoint(), windowId, handleFn);
     globalWS.connectNow("connectWshrpc");
     TabRpcClient = new WshClient(makeTabRouteId(windowId));
-    WindowRpcClient = TabRpcClient;
-    DefaultRouter.registerRoute(WindowRpcClient.routeId, WindowRpcClient);
+    DefaultRouter.registerRoute(TabRpcClient.routeId, TabRpcClient);
     addWSReconnectHandler(() => {
         DefaultRouter.reannounceRoutes();
     });
@@ -166,5 +164,4 @@ export {
     sendRpcResponse,
     sendWSCommand,
     TabRpcClient,
-    WindowRpcClient,
 };

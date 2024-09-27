@@ -10,7 +10,7 @@ import {
 import { modalsModel } from "@/app/store/modalmodel";
 import { FileService, ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { initWshrpc, WindowRpcClient } from "@/app/store/wshrpcutil";
+import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
 import { getLayoutModelForActiveTab } from "@/layout/index";
 import {
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Init WPS event handlers
     const globalWS = initWshrpc(windowId);
     (window as any).globalWS = globalWS;
-    (window as any).WindowRpcClient = WindowRpcClient;
+    (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
     initGlobalWaveEventSubs();
     subscribeToConnEvents();

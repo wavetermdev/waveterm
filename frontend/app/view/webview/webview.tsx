@@ -4,7 +4,7 @@
 import { getApi, openLink, useSettingsKeyAtom } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { NodeModel } from "@/layout/index";
 import { WOS, globalStore } from "@/store/global";
 import * as services from "@/store/services";
@@ -337,7 +337,7 @@ export class WebViewModel implements ViewModel {
                 click: async () => {
                     const url = this.getUrl();
                     if (url != null && url != "") {
-                        RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                        RpcApi.SetConfigCommand(TabRpcClient, { "web:defaulturl": url });
                     }
                 },
             },

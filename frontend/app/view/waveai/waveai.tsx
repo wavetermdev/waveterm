@@ -6,7 +6,7 @@ import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
 import { useDimensions } from "@/app/hook/useDimensions";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, fetchWaveFile, globalStore, WOS } from "@/store/global";
 import { BlockService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -199,7 +199,7 @@ export class WaveAiModel implements ViewModel {
                     opts: opts,
                     prompt: [...history, newPrompt],
                 };
-                const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: 60000 });
+                const aiGen = RpcApi.StreamWaveAiCommand(TabRpcClient, beMsg, { timeout: 60000 });
                 let fullMsg = "";
                 for await (const msg of aiGen) {
                     fullMsg += msg.text ?? "";

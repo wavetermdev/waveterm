@@ -5,7 +5,6 @@ import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
 import { atoms, createBlock, getConnStatusAtom, globalStore, refocusNode } from "@/store/global";
@@ -500,7 +499,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, ".."], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, ".."], {
                 route: makeConnRoute(conn),
             });
             console.log(newFileInfo.path);
@@ -578,7 +577,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, filePath], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, filePath], {
                 route: makeConnRoute(conn),
             });
             this.updateOpenFileModalAndError(false);
