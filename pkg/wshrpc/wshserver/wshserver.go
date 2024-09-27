@@ -458,10 +458,22 @@ func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus
 }
 
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "00wsl:") {
+		distroName := strings.TrimPrefix(connName, "00wsl:")
+		return wsl.EnsureConnection(ctx, distroName)
+	}
 	return conncontroller.EnsureConnection(ctx, connName)
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "00wsl:") {
+		distroName := strings.TrimPrefix(connName, "00wsl:")
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("distro not found: %s", connName)
+		}
+		return conn.Close()
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
@@ -474,6 +486,10 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "00wsl:") {
+		distroName := strings.TrimPrefix(connName, "00wsl:")
+		return wsl.EnsureConnection(ctx, distroName)
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
@@ -486,6 +502,14 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) er
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "00wsl:") {
+		distroName := strings.TrimPrefix(connName, "00wsl:")
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("connection not found: %s", connName)
+		}
+		return conn.CheckAndInstallWsh(ctx, connName, &wsl.WshInstallOpts{Force: true, NoUserPrompt: true})
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)

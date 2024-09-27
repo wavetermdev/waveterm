@@ -52,6 +52,17 @@ type WslConn struct {
 	ActiveConnNum      int
 }
 
+func GetAllConnStatus() []wshrpc.ConnStatus {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+
+	var connStatuses []wshrpc.ConnStatus
+	for _, conn := range clientControllerMap {
+		connStatuses = append(connStatuses, conn.DeriveConnStatus())
+	}
+	return connStatuses
+}
+
 func (conn *WslConn) DeriveConnStatus() wshrpc.ConnStatus {
 	conn.Lock.Lock()
 	defer conn.Lock.Unlock()
@@ -473,4 +484,37 @@ func GetWslConn(ctx context.Context, name string, shouldConnect bool) *WslConn {
 		conn.Connect(ctx)
 	}
 	return conn
+}
+
+// Convenience function for ensuring a connection is established
+func EnsureConnection(ctx context.Context, connName string) error {
+	if connName == "" {
+		return nil
+	}
+	conn := GetWslConn(ctx, connName, false)
+	if conn == nil {
+		return fmt.Errorf("connection not found: %s", connName)
+	}
+	connStatus := conn.DeriveConnStatus()
+	switch connStatus.Status {
+	case Status_Connected:
+		return nil
+	case Status_Connecting:
+		return conn.WaitForConnect(ctx)
+	case Status_Init, Status_Disconnected:
+		return conn.Connect(ctx)
+	case Status_Error:
+		return fmt.Errorf("connection error: %s", connStatus.Error)
+	default:
+		return fmt.Errorf("unknown connection status %q", connStatus.Status)
+	}
+}
+
+func DisconnectClient(connName string) error {
+	conn := getConnInternal(connName)
+	if conn == nil {
+		return fmt.Errorf("client %q not found", connName)
+	}
+	err := conn.Close()
+	return err
 }

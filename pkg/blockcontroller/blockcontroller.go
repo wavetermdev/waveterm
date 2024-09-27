@@ -199,6 +199,7 @@ func (bc *BlockController) resetTerminalState() {
 }
 
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
+	log.Print("temp: this is the start of the DoRunShellCommand")
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
@@ -264,8 +265,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
+	log.Printf("templog: remote has name %s", remoteName)
 	if strings.HasPrefix(remoteName, "00wsh:") {
 		wslName := strings.TrimPrefix(remoteName, "00wsh:")
+		log.Printf("templog: detected wsl with name: %s", wslName)
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
 
@@ -512,6 +515,15 @@ func CheckConnStatus(blockId string) error {
 	}
 	connName := bdata.Meta.GetString(waveobj.MetaKey_Connection, "")
 	if connName == "" {
+		return nil
+	}
+	if strings.HasPrefix(connName, "00wsl:") {
+		distroName := strings.TrimPrefix(connName, "00wsl:")
+		conn := wsl.GetWslConn(context.Background(), distroName, false)
+		connStatus := conn.DeriveConnStatus()
+		if connStatus.Status != conncontroller.Status_Connected {
+			return fmt.Errorf("not connected: %s", connStatus.Status)
+		}
 		return nil
 	}
 	opts, err := remote.ParseOpts(connName)
