@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -128,4 +129,39 @@ func (sw SessionWrap) StderrPipe() (io.ReadCloser, error) {
 
 func (sw SessionWrap) SetSize(h int, w int) error {
 	return sw.Session.WindowChange(h, w)
+}
+
+type WslCmdWrap struct {
+	*wsl.WslCmd
+	Tty pty.Tty
+	pty.Pty
+}
+
+func (wcw WslCmdWrap) Kill() {
+	wcw.Tty.Close()
+	wcw.Close()
+}
+
+func (wcw WslCmdWrap) KillGraceful(timeout time.Duration) {
+	if wcw.Process == nil {
+		return
+	}
+	if wcw.ProcessState != nil && wcw.ProcessState.Exited() {
+		return
+	}
+	wcw.Process.Signal(os.Interrupt)
+	go func() {
+		time.Sleep(timeout)
+		if wcw.ProcessState == nil || !wcw.ProcessState.Exited() {
+			wcw.Process.Kill() // force kill if it is already not exited
+		}
+	}()
+}
+
+func (wcw WslCmdWrap) SetSize(w int, h int) error {
+	err := pty.Setsize(wcw.Pty, &pty.Winsize{Rows: uint16(w), Cols: uint16(h)})
+	if err != nil {
+		return err
+	}
+	return nil
 }

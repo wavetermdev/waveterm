@@ -589,6 +589,15 @@ const ChangeConnectionBlockModal = React.memo(
                 filteredList.push(conn);
             }
         }
+        const filteredWslList: Array<string> = [];
+        for (const conn of wslList) {
+            if (conn === connSelected) {
+                createNew = false;
+            }
+            if (conn.includes(connSelected)) {
+                filteredWslList.push(conn);
+            }
+        }
         // priority handles special suggestions when necessary
         // for instance, when reconnecting
         const newConnectionSuggestion: SuggestionConnectionItem = {
@@ -636,6 +645,15 @@ const ChangeConnectionBlockModal = React.memo(
                 iconColor: "var(--grey-text-color)",
                 value: "",
                 label: localName,
+            });
+        }
+        for (const wslConn of filteredWslList) {
+            localSuggestion.items.push({
+                status: "connected",
+                icon: "laptop",
+                iconColor: "var(--grey-text-color)",
+                value: "00wsl:" + wslConn,
+                label: wslConn,
             });
         }
         const remoteItems = filteredList.map((connName) => {

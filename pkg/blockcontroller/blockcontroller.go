@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -262,7 +264,30 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	if remoteName != "" {
+	if strings.HasPrefix(remoteName, "00wsh:") {
+		wslName := strings.TrimPrefix(remoteName, "00wsh:")
+		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFunc()
+
+		wslConn := wsl.GetWslConn(credentialCtx, wslName, false)
+		connStatus := wslConn.DeriveConnStatus()
+		if connStatus.Status != conncontroller.Status_Connected {
+			return fmt.Errorf("not connected, cannot start shellproc")
+		}
+
+		// create jwt
+		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.Name}, wslConn.GetDomainSocketName())
+			if err != nil {
+				return fmt.Errorf("error making jwt token: %w", err)
+			}
+			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+		}
+		shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
+		if err != nil {
+			return err
+		}
+	} else if remoteName != "" {
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
 
