@@ -173,8 +173,10 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 		selectedTemplateRaw = installTemplateRawDefault
 	}
 
+	// I need to use toSlash here to force unix keybindings
+	// this means we can't guarantee it will work on a remote windows machine
 	var installWords = map[string]string{
-		"installDir":  filepath.Dir(destPath),
+		"installDir":  filepath.ToSlash(filepath.Dir(destPath)),
 		"tempPath":    destPath + ".temp",
 		"installPath": destPath,
 	}
@@ -202,10 +204,15 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 	go func() {
 		io.Copy(installStdin, input)
 		// don't need this?
-		//cmd.Close() // this allows the command to complete for reasons i don't fully understand
+		cmd.Process.Kill()
 	}()
 
-	return cmd.Wait()
+	cmd.Wait()
+	// this is bad error handling, but i have to do this
+	// because of the Process.Kill()
+	// this should be replaced with another way to get
+	// passed the Wait
+	return nil
 }
 
 func InstallClientRcFiles(ctx context.Context, client *Distro) error {
