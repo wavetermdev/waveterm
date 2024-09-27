@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ubuntu/gowsl"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote"
@@ -30,6 +29,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -502,7 +502,7 @@ func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
 }
 
 func (ws *WshServer) WslListCommand(ctx context.Context) ([]string, error) {
-	distros, err := gowsl.RegisteredDistros(ctx)
+	distros, err := wsl.RegisteredDistros(ctx)
 	if err != nil {
 		return nil, err
 	}
