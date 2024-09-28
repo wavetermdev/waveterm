@@ -164,7 +164,7 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 	//log.Printf("remote domain socket %s %q\n", conn.GetName(), conn.GetDomainSocketName())
 	// this is going to be difficult to replicate
 	// attempt. do i need to request the socket be open???
-	sockName := filepath.Join(`\\wsl$\`, conn.Name, `tmp`, fmt.Sprintf("waveterm-%.sock", randStr))
+	sockName := filepath.Join(`\\wsl$\`, conn.Name, `tmp`, fmt.Sprintf("waveterm-%s.sock", randStr))
 	listener, err := net.Listen("unix", sockName)
 	if err != nil {
 		return fmt.Errorf("unable to request connection domain socket: %v", err)
