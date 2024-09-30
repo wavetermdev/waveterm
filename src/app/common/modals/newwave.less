@@ -1,0 +1,95 @@
+.newwave-modal {
+    width: 640px;
+    border-radius: 8px;
+    border: 0.5px solid rgba(255, 255, 255, 0.12);
+    background: #232323;
+    box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
+
+    .wave-modal-content .wave-modal-body {
+        padding: 0;
+        gap: 8px;
+
+        .wave-modal-body-inner {
+            gap: 24px;
+            display: flex;
+            flex-direction: column;
+
+            header.newwave-header {
+                padding: 24px 32px 0;
+                position: relative;
+                flex-direction: column;
+                gap: 12px;
+                border-bottom: none;
+
+                .modal-title {
+                    text-align: left;
+                    font-size: 20px;
+                    font-weight: normal;
+                }
+
+                .close {
+                    position: absolute;
+                    right: 32px;
+                    top: 24px;
+                }
+            }
+
+            .content.newwave-content {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+                margin-bottom: 0;
+                gap: 10px;
+
+                .item {
+                    width: 100%;
+                    line-height: 19px;
+                    font-weight: 400;
+                    padding-left: 32px;
+                    padding-right: 32px;
+
+                    &.image-item {
+                        padding: 0 0;
+                        height: 360px;
+                    }
+
+                    img {
+                        width: 100%;
+                        margin-bottom: -45px;
+                    }
+
+                    span {
+                        font-weight: 600;
+                    }
+                }
+            }
+
+            footer {
+                padding: 0 32px 24px;
+                display: flex;
+                justify-content: flex-end;
+
+                .button-wrapper {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: center;
+
+                    button {
+                        font-size: 15px;
+                        margin-top: 16px;
+
+                        &:last-child {
+                            margin-left: 10px;
+                        }
+                    }
+
+                    button.disabled-button {
+                        cursor: default;
+                    }
+                }
+            }
+        }
+    }
+}

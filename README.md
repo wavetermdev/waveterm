@@ -40,9 +40,9 @@ brew install --cask wave
 
 -   Homepage &mdash; https://www.waveterm.dev
 -   Download Page &mdash; https://www.waveterm.dev/download
--   Documentation &mdash; https://docs.waveterm.dev/
+-   Documentation &mdash; https://legacydocs.waveterm.dev/
 -   Blog &mdash; https://blog.waveterm.dev/
--   Quick Start Guide &mdash; https://docs.waveterm.dev/quickstart/
+-   Quick Start Guide &mdash; https://legacydocs.waveterm.dev/quickstart/
 -   Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
 ## Building from Source

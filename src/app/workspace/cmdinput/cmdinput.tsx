@@ -225,7 +225,7 @@ class CmdInput extends React.Component<{}, {}> {
                 <If condition={feState["invalidshellstate"]}>
                     <div className="remote-status-warning">
                         The shell state for this tab is invalid (
-                        <a target="_blank" href="https://docs.waveterm.dev/reference/faq">
+                        <a target="_blank" href="https://legacydocs.waveterm.dev/reference/faq">
                             see FAQ
                         </a>
                         ). Must reset to continue.
@@ -287,7 +287,7 @@ class CmdInput extends React.Component<{}, {}> {
                         key="input"
                         className={clsx(
                             "cmd-input-field field has-addons",
-                            inputMode != null ? "inputmode-" + inputMode : null
+                            inputMode != null ? "inputmode-" + inputMode : null,
                         )}
                     >
                         <If condition={inputMode != null}>

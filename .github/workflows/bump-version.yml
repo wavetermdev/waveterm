@@ -1,0 +1,83 @@
+# Workflow to manage bumping the package version and pushing it to the target branch with a new tag.
+# This workflow uses a GitHub App to bypass branch protection and uses the GitHub API directly to ensure commits and tags are signed.
+# For more information, see this doc: https://github.com/Nautilus-Cyberneering/pygithub/blob/main/docs/how_to_sign_automatic_commits_in_github_actions.md
+
+name: Bump Version
+run-name: "branch: ${{ github.ref_name }}; semver-bump: ${{ inputs.bump }}; prerelease: ${{ inputs.is-prerelease }}"
+on:
+    workflow_dispatch:
+        inputs:
+            bump:
+                description: SemVer Bump
+                required: true
+                type: choice
+                default: none
+                options:
+                    - none
+                    - patch
+                    - minor
+                    - major
+            is-prerelease:
+                description: Is Prerelease
+                required: true
+                type: boolean
+                default: true
+env:
+    NODE_VERSION: "22.5.1"
+jobs:
+    bump-version:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Get App Token
+              uses: actions/create-github-app-token@v1
+              id: app-token
+              with:
+                  app-id: ${{ vars.WAVE_BUILDER_APPID }}
+                  private-key: ${{ secrets.WAVE_BUILDER_KEY }}
+            - uses: actions/checkout@v4
+              with:
+                  token: ${{ steps.app-token.outputs.token }}
+
+            # General build dependencies
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{env.NODE_VERSION}}
+            - name: Install Yarn
+              run: |
+                  corepack enable
+                  yarn install
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: "Bump Version: ${{ inputs.bump }}"
+              id: bump-version
+              run: echo "WAVETERM_VERSION=$( task version -- ${{ inputs.bump }} ${{inputs.is-prerelease}} )" >> "$GITHUB_OUTPUT"
+              shell: bash
+
+            - name: "Push version bump: ${{ steps.bump-version.outputs.WAVETERM_VERSION }}"
+              run: |
+                  # Create a new commit for the package version bump in package.json
+                  export VERSION=${{ steps.bump-version.outputs.WAVETERM_VERSION }}
+                  export MESSAGE="chore: bump package version to $VERSION"
+                  export FILE=package.json
+                  export BRANCH=${{github.ref_name}}
+                  export SHA=$( git rev-parse $BRANCH:$FILE )
+                  export CONTENT=$( base64 -i $FILE )
+                  gh api --method PUT /repos/:owner/:repo/contents/$FILE \
+                      --field branch="$BRANCH" \
+                      --field message="$MESSAGE" \
+                      --field content="$CONTENT" \
+                      --field sha="$SHA"
+
+                  # Fetch the new commit and create a tag referencing it
+                  git fetch
+                  export TAG_SHA=$( git rev-parse origin/$BRANCH )
+                  gh api --method POST /repos/:owner/:repo/git/refs \
+                      --field ref="refs/tags/v$VERSION" \
+                      --field sha="$TAG_SHA"
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ steps.app-token.outputs.token }}

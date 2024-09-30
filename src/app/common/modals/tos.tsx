@@ -98,7 +98,9 @@ class TosModal extends React.Component<{}, {}> {
                                         We collect minimal anonymous
                                         <a
                                             target="_blank"
-                                            href={util.makeExternLink("https://docs.waveterm.dev/reference/telemetry")}
+                                            href={util.makeExternLink(
+                                                "https://legacydocs.waveterm.dev/reference/telemetry",
+                                            )}
                                             rel={"noopener"}
                                         >
                                             &nbsp;telemetry data&nbsp;
