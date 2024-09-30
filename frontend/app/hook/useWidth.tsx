@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import useResizeObserver from "@react-hook/resize-observer";
+import * as React from "react";
 import { useCallback, useState } from "react";
 import { debounce } from "throttle-debounce";
 
@@ -11,7 +12,7 @@ import { debounce } from "throttle-debounce";
  * @param delay The debounce delay to use for updating the width.
  * @returns The current width of the element, or null if the element is not yet mounted.
  */
-const useWidth = (ref: React.RefObject<HTMLElement>, delay = 0) => {
+export const useWidth = (ref: React.RefObject<HTMLElement>, delay = 0) => {
     const [width, setWidth] = useState<number | null>(null);
 
     const updateWidth = useCallback((entry: ResizeObserverEntry) => {
@@ -24,5 +25,3 @@ const useWidth = (ref: React.RefObject<HTMLElement>, delay = 0) => {
 
     return width;
 };
-
-export { useWidth };
