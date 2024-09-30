@@ -98,8 +98,18 @@ jobs:
         with:
           key: ${{ secrets.DASHCAM_API }}
           prerun: |
+            $headers = @{
+                Authorization = "token $env:GITHUB_TOKEN"
+            }
+            
             mkdir -p download
-            curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -L --output ./download/waveterm.exe "${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/windows-exe"
+            
+
+            Invoke-WebRequest -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID/artifacts/windows-exe" `
+                -Headers $headers `
+                -OutFile "./download/waveterm.exe" `
+                -MaximumRedirection 5
+
             chmod +x ./download/waveterm.exe
             powershell -Command ./download/waveterm.exe
           prompt: |
