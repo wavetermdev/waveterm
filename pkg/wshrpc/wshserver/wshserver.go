@@ -75,8 +75,10 @@ func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrEr
 
 func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 	if request.Opts.BaseURL == "" && request.Opts.APIToken == "" {
+		log.Print("sending ai chat message to waveterm default endpoint with openai\n")
 		return waveai.RunCloudCompletionStream(ctx, request)
 	}
+	log.Printf("sending ai chat message to user-configured endpoint %s\n", request.Opts.BaseURL)
 	return waveai.RunLocalCompletionStream(ctx, request)
 }
 
