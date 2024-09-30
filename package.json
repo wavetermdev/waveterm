@@ -7,7 +7,7 @@
     "productName": "Wave",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.8.6",
+    "version": "0.8.7-beta.1",
     "homepage": "https://waveterm.dev",
     "build": {
         "appId": "dev.commandline.waveterm"
@@ -41,10 +41,10 @@
         "@types/css-tree": "^2",
         "@types/debug": "^4",
         "@types/electron": "^1.6.10",
-        "@types/node": "^22.7.3",
+        "@types/node": "^22.7.4",
         "@types/papaparse": "^5",
         "@types/pngjs": "^6.0.5",
-        "@types/react": "^18.3.9",
+        "@types/react": "^18.3.10",
         "@types/react-dom": "^18.3.0",
         "@types/semver": "^7",
         "@types/shell-quote": "^1",

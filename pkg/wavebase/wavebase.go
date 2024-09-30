@@ -52,7 +52,7 @@ func GetHomeDir() string {
 }
 
 func ExpandHomeDir(pathStr string) (string, error) {
-	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
+	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") && (!strings.HasPrefix(pathStr, `~\`) || runtime.GOOS != "windows") {
 		return filepath.Clean(pathStr), nil
 	}
 	homeDir := GetHomeDir()

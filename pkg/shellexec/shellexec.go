@@ -179,8 +179,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
-			}
-			if cmdOpts.Interactive {
+			} else if cmdOpts.Interactive {
 				shellOpts = append(shellOpts, "-i")
 			}
 			// zdotdir setting moved to after session is created
@@ -189,12 +188,6 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		log.Printf("combined command is: %s", cmdCombined)
 	} else {
 		shellPath = cmdStr
-		if cmdOpts.Login {
-			shellOpts = append(shellOpts, "-l")
-		}
-		if cmdOpts.Interactive {
-			shellOpts = append(shellOpts, "-i")
-		}
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 		log.Printf("combined command is: %s", cmdCombined)
@@ -301,8 +294,7 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
-			}
-			if cmdOpts.Interactive {
+			} else if cmdOpts.Interactive {
 				shellOpts = append(shellOpts, "-i")
 			}
 		}
@@ -312,12 +304,6 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 			shellutil.UpdateCmdEnv(ecmd, map[string]string{"ZDOTDIR": shellutil.GetZshZDotDir()})
 		}
 	} else {
-		if cmdOpts.Login {
-			shellOpts = append(shellOpts, "-l")
-		}
-		if cmdOpts.Interactive {
-			shellOpts = append(shellOpts, "-i")
-		}
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		ecmd = exec.Command(shellPath, shellOpts...)
 		ecmd.Env = os.Environ()
