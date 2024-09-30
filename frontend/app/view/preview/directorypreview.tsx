@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useHeight } from "@/app/hook/useHeight";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, createBlock, getApi } from "@/app/store/global";
 import type { PreviewModel } from "@/app/view/preview/preview";
@@ -27,6 +26,7 @@ import { quote as shellQuote } from "shell-quote";
 
 import { OverlayScrollbars } from "overlayscrollbars";
 
+import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import "./directorypreview.less";
 
 interface DirectoryTableProps {
@@ -352,8 +352,8 @@ function TableBody({
     const warningBoxRef = useRef<HTMLDivElement>(null);
     const osInstanceRef = useRef<OverlayScrollbars>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
-
-    const parentHeight = useHeight(parentRef);
+    const domRect = useDimensionsWithExistingRef(parentRef, 30);
+    const parentHeight = domRect?.height ?? 0;
     const conn = jotai.useAtomValue(model.connection);
 
     useEffect(() => {
@@ -363,7 +363,6 @@ function TableBody({
             const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
             const maxHeightLessHeader = parentHeight - warningBoxHeight;
             const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
-
             setBodyHeight(tbodyHeight);
         }
     }, [data, parentHeight]);
