@@ -53,7 +53,6 @@ jobs:
             echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
         shell: bash
       - name: Set signing variables (Windows only)
-        if: matrix.platform == 'windows'
         id: variables
         run: |
             echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
