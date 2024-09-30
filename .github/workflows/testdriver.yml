@@ -99,7 +99,7 @@ jobs:
           key: ${{ secrets.DASHCAM_API }}
           prerun: |
             mkdir -p download
-            curl  -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -L --output ./download/waveterm.exe "${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/windows-exe"
+            curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -L --output ./download/waveterm.exe "${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/windows-exe"
             chmod +x ./download/waveterm.exe
             powershell -Command ./download/waveterm.exe
           prompt: |
