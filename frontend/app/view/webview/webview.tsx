@@ -14,7 +14,6 @@ import clsx from "clsx";
 import { WebviewTag } from "electron";
 import * as jotai from "jotai";
 import React, { memo, useEffect, useState } from "react";
-import { debounce } from "throttle-debounce";
 import "./webview.less";
 
 export class WebViewModel implements ViewModel {
@@ -386,6 +385,30 @@ const WebView = memo(({ model }: WebViewProps) => {
     const [webContentsId, setWebContentsId] = useState(null);
     const [domReady, setDomReady] = useState(false);
 
+    function setBgColor() {
+        const webview = model.webviewRef.current;
+        if (!webview) {
+            return;
+        }
+        setTimeout(() => {
+            webview
+                .executeJavaScript(
+                    `!!document.querySelector('meta[name="color-scheme"]') && document.querySelector('meta[name="color-scheme"]').content?.includes('dark') || false`
+                )
+                .then((hasDarkMode) => {
+                    if (hasDarkMode) {
+                        webview.style.backgroundColor = "black"; // Dark mode background
+                    } else {
+                        webview.style.backgroundColor = "white"; // Light mode background
+                    }
+                })
+                .catch((e) => {
+                    webview.style.backgroundColor = "black"; // Dark mode background
+                    console.log("Error getting color scheme, defaulting to dark", e);
+                });
+        }, 100);
+    }
+
     useEffect(() => {
         if (model.webviewRef.current && domReady) {
             const wcId = model.webviewRef.current.getWebContentsId?.();
@@ -424,9 +447,7 @@ const WebView = memo(({ model }: WebViewProps) => {
             const stopLoadingHandler = () => {
                 model.setRefreshIcon("rotate-right");
                 model.setIsLoading(false);
-                debounce(1000, () => {
-                    webview.style.backgroundColor = "white";
-                })();
+                setBgColor();
             };
             const failLoadHandler = (e: any) => {
                 if (e.errorCode === -3) {
@@ -444,6 +465,7 @@ const WebView = memo(({ model }: WebViewProps) => {
             };
             const handleDomReady = () => {
                 setDomReady(true);
+                setBgColor();
             };
 
             webview.addEventListener("did-navigate-in-page", navigateListener);
