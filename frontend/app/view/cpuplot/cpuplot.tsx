@@ -230,9 +230,9 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
 const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     const containerRef = React.useRef<HTMLInputElement>();
     const plotData = jotai.useAtomValue(model.dataAtom);
-    const domRect = useDimensionsWithExistingRef(containerRef);
-    const parentHeight = domRect?.height;
-    const parentWidth = domRect?.width;
+    const domRect = useDimensionsWithExistingRef(containerRef, 30);
+    const parentHeight = domRect?.height ?? 0;
+    const parentWidth = domRect?.width ?? 0;
     const yvals = jotai.useAtomValue(model.metrics);
 
     React.useEffect(() => {

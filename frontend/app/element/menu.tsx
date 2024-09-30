@@ -142,9 +142,9 @@ const Menu = memo(
         const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
         const menuRef = useRef<HTMLDivElement>(null);
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
-        const domRect = useDimensionsWithExistingRef(scopeRef);
-        const width = domRect?.width;
-        const height = domRect?.height;
+        const domRect = useDimensionsWithExistingRef(scopeRef, 30);
+        const width = domRect?.width ?? 0;
+        const height = domRect?.height ?? 0;
 
         items.forEach((_, idx) => {
             const key = `${idx}`;

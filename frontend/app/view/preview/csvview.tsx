@@ -54,8 +54,8 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
     const [tableLoaded, setTableLoaded] = useState(false);
 
     const { listeners } = useTableNav();
-    const domRect = useDimensionsWithExistingRef(parentRef);
-    const parentHeight = domRect?.height;
+    const domRect = useDimensionsWithExistingRef(parentRef, 30);
+    const parentHeight = domRect?.height ?? 0;
 
     const cacheKey = `${filename}`;
     csvCacheRef.current.set(cacheKey, content);

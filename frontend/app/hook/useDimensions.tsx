@@ -1,12 +1,12 @@
 import * as React from "react";
 import { useCallback, useState } from "react";
+import { debounce } from "throttle-debounce";
 
 // returns a callback ref, a ref object (that is set from the callback), and the width
-export function useDimensionsWithCallbackRef<T extends HTMLElement>(): [
-    (node: T) => void,
-    React.RefObject<T>,
-    DOMRectReadOnly,
-] {
+// pass debounceMs of null to not debounce
+export function useDimensionsWithCallbackRef<T extends HTMLElement>(
+    debounceMs: number = null
+): [(node: T) => void, React.RefObject<T>, DOMRectReadOnly] {
     const [domRect, setDomRect] = useState<DOMRectReadOnly>(null);
     const [htmlElem, setHtmlElem] = useState<T>(null);
     const rszObjRef = React.useRef<ResizeObserver>(null);
@@ -16,11 +16,19 @@ export function useDimensionsWithCallbackRef<T extends HTMLElement>(): [
         setHtmlElem(node);
         ref.current = node;
     }, []);
+    const setDomRectDebounced = React.useCallback(debounceMs == null ? setDomRect : debounce(debounceMs, setDomRect), [
+        debounceMs,
+        setDomRect,
+    ]);
     React.useEffect(() => {
         if (!rszObjRef.current) {
             rszObjRef.current = new ResizeObserver((entries) => {
                 for (const entry of entries) {
-                    setDomRect(entry.contentRect);
+                    if (domRect == null) {
+                        setDomRect(entry.contentRect);
+                    } else {
+                        setDomRectDebounced(entry.contentRect);
+                    }
                 }
             });
         }
@@ -44,15 +52,27 @@ export function useDimensionsWithCallbackRef<T extends HTMLElement>(): [
 }
 
 // will not react to ref changes
-export function useDimensionsWithExistingRef<T extends HTMLElement>(ref: React.RefObject<T>): DOMRectReadOnly {
+// pass debounceMs of null to not debounce
+export function useDimensionsWithExistingRef<T extends HTMLElement>(
+    ref: React.RefObject<T>,
+    debounceMs: number = null
+): DOMRectReadOnly {
     const [domRect, setDomRect] = useState<DOMRectReadOnly>(null);
     const rszObjRef = React.useRef<ResizeObserver>(null);
     const oldHtmlElem = React.useRef<T>(null);
+    const setDomRectDebounced = React.useCallback(debounceMs == null ? setDomRect : debounce(debounceMs, setDomRect), [
+        debounceMs,
+        setDomRect,
+    ]);
     React.useEffect(() => {
         if (!rszObjRef.current) {
             rszObjRef.current = new ResizeObserver((entries) => {
                 for (const entry of entries) {
-                    setDomRect(entry.contentRect);
+                    if (domRect == null) {
+                        setDomRect(entry.contentRect);
+                    } else {
+                        setDomRectDebounced(entry.contentRect);
+                    }
                 }
             });
         }
@@ -72,5 +92,8 @@ export function useDimensionsWithExistingRef<T extends HTMLElement>(ref: React.R
             rszObjRef.current?.disconnect();
         };
     }, []);
-    return domRect;
+    if (ref.current != null) {
+        return ref.current.getBoundingClientRect();
+    }
+    return null;
 }

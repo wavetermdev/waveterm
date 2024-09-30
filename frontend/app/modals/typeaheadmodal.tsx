@@ -99,9 +99,9 @@ const TypeAheadModal = ({
     autoFocus,
     selectIndex,
 }: TypeAheadModalProps) => {
-    const domRect = useDimensionsWithExistingRef(blockRef);
-    const width = domRect?.width;
-    const height = domRect?.height;
+    const domRect = useDimensionsWithExistingRef(blockRef, 30);
+    const width = domRect?.width ?? 0;
+    const height = domRect?.height ?? 0;
     const modalRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLDivElement>(null);
     const realInputRef = useRef<HTMLInputElement>(null);

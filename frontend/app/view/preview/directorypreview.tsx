@@ -352,9 +352,8 @@ function TableBody({
     const warningBoxRef = useRef<HTMLDivElement>(null);
     const osInstanceRef = useRef<OverlayScrollbars>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
-
-    const domRect = useDimensionsWithExistingRef(parentRef);
-    const parentHeight = domRect?.height;
+    const domRect = useDimensionsWithExistingRef(parentRef, 30);
+    const parentHeight = domRect?.height ?? 0;
     const conn = jotai.useAtomValue(model.connection);
 
     useEffect(() => {
@@ -364,7 +363,6 @@ function TableBody({
             const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
             const maxHeightLessHeader = parentHeight - warningBoxHeight;
             const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
-
             setBodyHeight(tbodyHeight);
         }
     }, [data, parentHeight]);
