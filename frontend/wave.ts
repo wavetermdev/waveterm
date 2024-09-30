@@ -57,13 +57,13 @@ loadFonts();
 (window as any).pushFlashError = pushFlashError;
 (window as any).modalsModel = modalsModel;
 
-document.title = `Wave (${windowId.substring(0, 8)})`;
+document.title = `Wave Terminal`;
 
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("DOMContentLoaded");
 
     // Init WPS event handlers
-    const globalWS = initWshrpc(windowId);
+    const globalWS = initWshrpc(tabId);
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
     const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", tabId));
     await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
+    document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
 
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();

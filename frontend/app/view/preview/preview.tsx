@@ -5,6 +5,7 @@ import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
 import { atoms, createBlock, getConnStatusAtom, globalStore, refocusNode } from "@/store/global";

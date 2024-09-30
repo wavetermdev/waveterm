@@ -40,12 +40,13 @@ import { configureAutoUpdater, updater } from "./updater";
 const electronApp = electron.app;
 let WaveVersion = "unknown"; // set by WAVESRV-ESTART
 let WaveBuildTime = 0; // set by WAVESRV-ESTART
+const devToolsWindow: electron.BrowserWindow = null;
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 electron.nativeTheme.themeSource = "dark";
 
-type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string; readyPromise: Promise<void> };
+type WaveBrowserWindow = Electron.BaseWindow & { waveWindowId: string; readyPromise: Promise<void> };
 
 let waveSrvReadyResolve = (value: boolean) => {};
 const waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
@@ -114,6 +115,10 @@ function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow
 
 function setCtrlShift(wc: Electron.WebContents, state: boolean) {
     wc.send("control-shift-state-update", state);
+}
+
+function delay(ms): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function handleCtrlShiftState(sender: Electron.WebContents, waveEvent: WaveKeyboardEvent) {
@@ -308,8 +313,8 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function getOrCreateWebViewforTab(tabId: string, clientId: string, activate: boolean): WaveTabView {
-    let tabView = getWaveTabView(tabId);
+function getOrCreateWebViewforTab(clientId: string, windowId: string, tabId: string, activate: boolean): WaveTabView {
+    let tabView = getWaveTabView(windowId, tabId);
     if (tabView) {
         return tabView;
     }
@@ -322,6 +327,7 @@ function getOrCreateWebViewforTab(tabId: string, clientId: string, activate: boo
     tabView.waveTabId = tabId;
     const usp = new URLSearchParams();
     usp.set("clientid", clientId);
+    usp.set("windowid", windowId);
     usp.set("tabid", tabId);
     if (activate) {
         usp.set("activate", "1");
@@ -333,7 +339,43 @@ function getOrCreateWebViewforTab(tabId: string, clientId: string, activate: boo
             search: usp.toString(),
         });
     }
-    setWaveTabView(tabId, tabView);
+    setWaveTabView(windowId, tabId, tabView);
+    let readyResolve: (value: void) => void;
+    tabView.readyPromise = new Promise((resolve, _) => {
+        readyResolve = resolve;
+    });
+    tabView.webContents.on("did-finish-load", () => {
+        readyResolve();
+    });
+    tabView.webContents.on("will-navigate", shNavHandler);
+    tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
+    tabView.webContents.on("did-attach-webview", (event, wc) => {
+        wc.setWindowOpenHandler((details) => {
+            tabView.webContents.send("webview-new-window", wc.id, details);
+            return { action: "deny" };
+        });
+    });
+    tabView.webContents.on("before-input-event", (e, input) => {
+        const waveEvent = keyutil.adaptFromElectronKeyEvent(input);
+        // console.log("WIN bie", waveEvent.type, waveEvent.code);
+        handleCtrlShiftState(tabView.webContents, waveEvent);
+        const win = electron.BrowserWindow.fromWebContents(tabView.webContents);
+        if (win.isFocused()) {
+            wasActive = true;
+        }
+    });
+    tabView.webContents.on("zoom-changed", (e) => {
+        tabView.webContents.send("zoom-changed");
+    });
+    tabView.webContents.setWindowOpenHandler(({ url, frameName }) => {
+        if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {
+            console.log("openExternal fallback", url);
+            electron.shell.openExternal(url);
+        }
+        console.log("window-open denied", url);
+        return { action: "deny" };
+    });
+    configureAuthKeyRequestInjection(tabView.webContents.session);
     return tabView;
 }
 
@@ -368,7 +410,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     };
     winBounds = ensureBoundsAreVisible(winBounds);
     const settings = fullConfig?.settings;
-    const winOpts: Electron.BrowserWindowConstructorOptions = {
+    const winOpts: Electron.BaseWindowConstructorOptions = {
         titleBarStyle:
             unamePlatform === "darwin" ? "hiddenInset" : settings["window:nativetitlebar"] ? "default" : "hidden",
         titleBarOverlay:
@@ -388,10 +430,6 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
             unamePlatform == "linux"
                 ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
                 : undefined,
-        webPreferences: {
-            preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
-            webviewTag: true,
-        },
         show: false,
         autoHideMenuBar: true,
     };
@@ -413,45 +451,12 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     } else {
         winOpts.backgroundColor = "#222222";
     }
-    const bwin = new electron.BrowserWindow(winOpts);
-    (bwin as any).waveWindowId = waveWindow.oid;
-    let readyResolve: (value: void) => void;
-    (bwin as any).readyPromise = new Promise((resolve, _) => {
-        readyResolve = resolve;
-    });
+    const bwin = new electron.BaseWindow(winOpts);
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
-    const usp = new URLSearchParams();
-    usp.set("clientid", clientId);
-    usp.set("tabid", waveWindow.activetabid);
-    usp.set("windowid", waveWindow.oid);
-    usp.set("activate", "1");
-    const indexHtml = "index.html";
-    if (isDevVite) {
-        console.log("running as dev server");
-        win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html?${usp.toString()}`);
-    } else {
-        console.log("running as file");
-        win.loadFile(path.join(getElectronAppBasePath(), "frontend", indexHtml), { search: usp.toString() });
-    }
-    win.once("ready-to-show", () => {
-        readyResolve();
-    });
-    win.webContents.on("will-navigate", shNavHandler);
-    win.webContents.on("will-frame-navigate", shFrameNavHandler);
-    win.webContents.on("did-attach-webview", (event, wc) => {
-        wc.setWindowOpenHandler((details) => {
-            win.webContents.send("webview-new-window", wc.id, details);
-            return { action: "deny" };
-        });
-    });
-    win.webContents.on("before-input-event", (e, input) => {
-        const waveEvent = keyutil.adaptFromElectronKeyEvent(input);
-        // console.log("WIN bie", waveEvent.type, waveEvent.code);
-        handleCtrlShiftState(win.webContents, waveEvent);
-        if (win.isFocused()) {
-            wasActive = true;
-        }
-    });
+    win.waveWindowId = waveWindow.oid;
+    const tabView = getOrCreateWebViewforTab(clientId, waveWindow.oid, waveWindow.activetabid, true);
+    win.setContentView(tabView);
+    win.readyPromise = tabView.readyPromise;
     win.on(
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
@@ -470,13 +475,22 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         services.ClientService.FocusWindow(waveWindow.oid);
     });
     win.on("blur", () => {
-        handleCtrlShiftFocus(win.webContents, false);
+        const tabView: WaveTabView = win.getContentView() as any;
+        if (tabView) {
+            handleCtrlShiftFocus(tabView.webContents, false);
+        }
     });
     win.on("enter-full-screen", async () => {
-        win.webContents.send("fullscreen-change", true);
+        const tabView: WaveTabView = win.getContentView() as any;
+        if (tabView) {
+            tabView.webContents.send("fullscreen-change", true);
+        }
     });
     win.on("leave-full-screen", async () => {
-        win.webContents.send("fullscreen-change", false);
+        const tabView: WaveTabView = win.getContentView() as any;
+        if (tabView) {
+            tabView.webContents.send("fullscreen-change", false);
+        }
     });
     win.on("close", (e) => {
         if (globalIsQuitting || updater?.status == "installing") {
@@ -506,18 +520,6 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         }
         services.WindowService.CloseWindow(waveWindow.oid);
     });
-    win.webContents.on("zoom-changed", (e) => {
-        win.webContents.send("zoom-changed");
-    });
-    win.webContents.setWindowOpenHandler(({ url, frameName }) => {
-        if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {
-            console.log("openExternal fallback", url);
-            electron.shell.openExternal(url);
-        }
-        console.log("window-open denied", url);
-        return { action: "deny" };
-    });
-    configureAuthKeyRequestInjection(win.webContents.session);
     return win;
 }
 
@@ -618,10 +620,29 @@ electron.ipcMain.on("download", (event, payload) => {
     window.webContents.downloadURL(streamingUrl);
 });
 
+electron.ipcMain.on("set-active-tab", async (event, tabId) => {
+    console.log("set active tab", tabId, event);
+    const clientData = await services.ClientService.GetClientData();
+    const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
+    const windowId = window.waveWindowId;
+    const tabView = getOrCreateWebViewforTab(clientData.oid, windowId, tabId, true);
+    await tabView.readyPromise;
+    window.setContentView(tabView);
+});
+
 electron.ipcMain.on("get-cursor-point", (event) => {
-    const window = electron.BrowserWindow.fromWebContents(event.sender);
+    const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
+    if (window == null) {
+        event.returnValue = null;
+        return;
+    }
     const screenPoint = electron.screen.getCursorScreenPoint();
-    const windowRect = window.getContentBounds();
+    const tabView: WaveTabView = window.getContentView() as any;
+    if (tabView == null) {
+        event.returnValue = null;
+        return;
+    }
+    const windowRect = tabView.getBounds();
     const retVal: Electron.Point = {
         x: screenPoint.x - windowRect.x,
         y: screenPoint.y - windowRect.y,

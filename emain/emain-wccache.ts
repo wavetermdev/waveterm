@@ -7,20 +7,23 @@ export type WaveTabView = Electron.WebContentsView & {
     waveWindowId: string; // set when showing in an active window
     waveTabId: string; // always set, WaveTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
+    readyPromise: Promise<void>;
 };
 
 const wcvCache = new Map<string, WaveTabView>();
 
-export function getWaveTabView(waveTabId: string): WaveTabView | undefined {
-    const rtn = wcvCache.get(waveTabId);
+export function getWaveTabView(waveWindowId: string, waveTabId: string): WaveTabView | undefined {
+    const cacheKey = waveWindowId + "|" + waveTabId;
+    const rtn = wcvCache.get(cacheKey);
     if (rtn) {
         rtn.lastUsedTs = Date.now();
     }
     return rtn;
 }
 
-export function setWaveTabView(waveTabId: string, wcv: WaveTabView): void {
-    wcvCache.set(waveTabId, wcv);
+export function setWaveTabView(waveWindowId: string, waveTabId: string, wcv: WaveTabView): void {
+    const cacheKey = waveWindowId + "|" + waveTabId;
+    wcvCache.set(cacheKey, wcv);
     checkAndEvictCache();
 }
 
@@ -40,6 +43,8 @@ function checkAndEvictCache(): void {
             // don't evict WaveTabViews that are currently showing in a window
             continue;
         }
+        const tabView = sorted[i];
+        tabView.webContents.close();
         wcvCache.delete(sorted[i].waveTabId);
     }
 }

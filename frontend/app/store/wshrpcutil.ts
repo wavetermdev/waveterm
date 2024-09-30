@@ -128,14 +128,14 @@ function initElectronWshrpc(electronClient: WshClient, eoOpts: ElectronOverrideO
     addWSReconnectHandler(wpsReconnectHandler);
 }
 
-function initWshrpc(windowId: string): WSControl {
+function initWshrpc(tabId: string): WSControl {
     DefaultRouter = new WshRouter(new UpstreamWshRpcProxy());
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
     };
-    globalWS = new WSControl(getWSServerEndpoint(), windowId, handleFn);
+    globalWS = new WSControl(getWSServerEndpoint(), tabId, handleFn);
     globalWS.connectNow("connectWshrpc");
-    TabRpcClient = new WshClient(makeTabRouteId(windowId));
+    TabRpcClient = new WshClient(makeTabRouteId(tabId));
     DefaultRouter.registerRoute(TabRpcClient.routeId, TabRpcClient);
     addWSReconnectHandler(() => {
         DefaultRouter.reannounceRoutes();

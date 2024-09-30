@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld("api", {
     registerGlobalWebviewKeys: (keys) => ipcRenderer.send("register-global-webview-keys", keys),
     onControlShiftStateUpdate: (callback) =>
         ipcRenderer.on("control-shift-state-update", (_event, state) => callback(state)),
+    setActiveTab: (tabId) => ipcRenderer.send("set-active-tab", tabId),
 });
 
 // Custom event for "new-window"

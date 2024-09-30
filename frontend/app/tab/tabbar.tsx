@@ -413,7 +413,8 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
-            services.ObjectService.SetActiveTab(tabId);
+            getApi().setActiveTab(tabId);
+            // services.ObjectService.SetActiveTab(tabId);
         }
     };
 
