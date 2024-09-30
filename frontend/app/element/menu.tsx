@@ -1,12 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useHeight } from "@/app/hook/useHeight";
-import { useWidth } from "@/app/hook/useWidth";
 import clsx from "clsx";
 import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
+import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import "./menu.less";
 
 type MenuItem = {
@@ -143,9 +142,9 @@ const Menu = memo(
         const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
         const menuRef = useRef<HTMLDivElement>(null);
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
-
-        const width = useWidth(scopeRef);
-        const height = useHeight(scopeRef);
+        const domRect = useDimensionsWithExistingRef(scopeRef, 30);
+        const width = domRect?.width ?? 0;
+        const height = domRect?.height ?? 0;
 
         items.forEach((_, idx) => {
             const key = `${idx}`;
