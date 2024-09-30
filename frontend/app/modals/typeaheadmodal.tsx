@@ -3,7 +3,7 @@
 
 import { Input } from "@/app/element/input";
 import { InputDecoration } from "@/app/element/inputdecoration";
-import { useDimensions } from "@/app/hook/useDimensions";
+import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import React, { forwardRef, useLayoutEffect, useRef } from "react";
@@ -99,7 +99,9 @@ const TypeAheadModal = ({
     autoFocus,
     selectIndex,
 }: TypeAheadModalProps) => {
-    const { width, height } = useDimensions(blockRef);
+    const domRect = useDimensionsWithExistingRef(blockRef);
+    const width = domRect?.width;
+    const height = domRect?.height;
     const modalRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLDivElement>(null);
     const realInputRef = useRef<HTMLInputElement>(null);

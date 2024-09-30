@@ -1,10 +1,12 @@
-import useResizeObserver from "@react-hook/resize-observer";
 import * as React from "react";
-import { useCallback, useRef, useState } from "react";
-import { debounce } from "throttle-debounce";
+import { useCallback, useState } from "react";
 
 // returns a callback ref, a ref object (that is set from the callback), and the width
-export function useDimensionsNew<T extends HTMLElement>(): [(node: T) => void, React.RefObject<T>, DOMRectReadOnly] {
+export function useDimensionsWithCallbackRef<T extends HTMLElement>(): [
+    (node: T) => void,
+    React.RefObject<T>,
+    DOMRectReadOnly,
+] {
     const [domRect, setDomRect] = useState<DOMRectReadOnly>(null);
     const [htmlElem, setHtmlElem] = useState<T>(null);
     const rszObjRef = React.useRef<ResizeObserver>(null);
@@ -28,74 +30,47 @@ export function useDimensionsNew<T extends HTMLElement>(): [(node: T) => void, R
         }
         return () => {
             if (oldHtmlElem.current) {
-                rszObjRef.current.unobserve(oldHtmlElem.current);
+                rszObjRef.current?.unobserve(oldHtmlElem.current);
                 oldHtmlElem.current = null;
             }
         };
     }, [htmlElem]);
+    React.useEffect(() => {
+        return () => {
+            rszObjRef.current?.disconnect();
+        };
+    }, []);
     return [refCallback, ref, domRect];
 }
 
-/**
- * Get the current dimensions for the specified element, and whether it is currently changing size. Update when the element resizes.
- * @param ref The reference to the element to observe.
- * @param delay The debounce delay to use for updating the dimensions.
- * @returns The dimensions of the element, and direction in which the dimensions are changing.
- */
-const useDimensions = (ref: React.RefObject<HTMLElement>, delay = 0) => {
-    const [dimensions, setDimensions] = useState<{
-        height: number | null;
-        width: number | null;
-        widthDirection?: string;
-        heightDirection?: string;
-    }>({
-        height: null,
-        width: null,
-    });
-
-    const previousDimensions = useRef<{ height: number | null; width: number | null }>({
-        height: null,
-        width: null,
-    });
-
-    const updateDimensions = useCallback((entry: ResizeObserverEntry) => {
-        const parentHeight = entry.contentRect.height;
-        const parentWidth = entry.contentRect.width;
-
-        let widthDirection = "";
-        let heightDirection = "";
-
-        if (previousDimensions.current.width !== null && previousDimensions.current.height !== null) {
-            if (parentWidth > previousDimensions.current.width) {
-                widthDirection = "expanding";
-            } else if (parentWidth < previousDimensions.current.width) {
-                widthDirection = "shrinking";
-            } else {
-                widthDirection = "unchanged";
-            }
-
-            if (parentHeight > previousDimensions.current.height) {
-                heightDirection = "expanding";
-            } else if (parentHeight < previousDimensions.current.height) {
-                heightDirection = "shrinking";
-            } else {
-                heightDirection = "unchanged";
-            }
+// will not react to ref changes
+export function useDimensionsWithExistingRef<T extends HTMLElement>(ref: React.RefObject<T>): DOMRectReadOnly {
+    const [domRect, setDomRect] = useState<DOMRectReadOnly>(null);
+    const rszObjRef = React.useRef<ResizeObserver>(null);
+    const oldHtmlElem = React.useRef<T>(null);
+    React.useEffect(() => {
+        if (!rszObjRef.current) {
+            rszObjRef.current = new ResizeObserver((entries) => {
+                for (const entry of entries) {
+                    setDomRect(entry.contentRect);
+                }
+            });
         }
-
-        previousDimensions.current = { height: parentHeight, width: parentWidth };
-
-        setDimensions({ height: parentHeight, width: parentWidth, widthDirection, heightDirection });
+        if (ref.current) {
+            rszObjRef.current.observe(ref.current);
+            oldHtmlElem.current = ref.current;
+        }
+        return () => {
+            if (oldHtmlElem.current) {
+                rszObjRef.current?.unobserve(oldHtmlElem.current);
+                oldHtmlElem.current = null;
+            }
+        };
+    }, [ref.current]);
+    React.useEffect(() => {
+        return () => {
+            rszObjRef.current?.disconnect();
+        };
     }, []);
-
-    const fUpdateDimensions = useCallback(delay > 0 ? debounce(delay, updateDimensions) : updateDimensions, [
-        updateDimensions,
-        delay,
-    ]);
-
-    useResizeObserver(ref, fUpdateDimensions);
-
-    return dimensions;
-};
-
-export { useDimensions };
+    return domRect;
+}

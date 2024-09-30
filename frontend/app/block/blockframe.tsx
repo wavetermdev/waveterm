@@ -11,7 +11,7 @@ import {
     Input,
 } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
-import { useDimensionsNew } from "@/app/hook/useDimensions";
+import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import {
@@ -294,7 +294,7 @@ const ConnStatusOverlay = React.memo(
         const connName = blockData.meta?.connection;
         const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
         const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
-        const [overlayRefCallback, _, domRect] = useDimensionsNew();
+        const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef();
         const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
         const blockNum = jotai.useAtomValue(nodeModel.blockNum);
