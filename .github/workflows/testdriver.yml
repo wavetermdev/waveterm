@@ -46,29 +46,41 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-
+ 
       # Windows Code Signing Setup
       - name: Set up certificate (Windows only)
         run: |
-          echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
+            echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
         shell: bash
       - name: Set signing variables (Windows only)
+        if: matrix.platform == 'windows'
         id: variables
         run: |
-          echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
-          echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV"
-          echo "SM_CODE_SIGNING_CERT_SHA1_HASH=${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }}" >> "$GITHUB_ENV"
-          echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV"
-          echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
+            echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV"
+            echo "SM_CODE_SIGNING_CERT_SHA1_HASH=${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }}" >> "$GITHUB_ENV"
+            echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV"
+            echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_OUTPUT"
+            echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
+            echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
+            echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
         shell: bash
+      - name: Setup Keylocker KSP (Windows only)
+        run: |
+            curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o Keylockertools-windows-x64.msi
+            msiexec /i Keylockertools-windows-x64.msi /quiet /qn
+            C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user
+            smctl windows certsync
+        shell: cmd
 
-      - name: Build the Windows package
+      - name: Build (Windows only)
         run: task package
         env:
-          USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
-          CSC_LINK: ${{ steps.variables.outputs.SM_CLIENT_CERT_FILE }}
-          CSC_KEY_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
-        shell: powershell
+            USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
+            CSC_LINK: ${{ steps.variables.outputs.SM_CLIENT_CERT_FILE }}
+            CSC_KEY_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+        shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
 
       # Upload .exe as an artifact
       - name: Upload .exe artifact
