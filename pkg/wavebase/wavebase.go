@@ -57,7 +57,6 @@ func ExpandHomeDir(pathStr string) (string, error) {
 	}
 	if runtime.GOOS == "windows" && pathStr != "~" && !strings.HasPrefix(pathStr, `~\`) {
 		return filepath.Clean(pathStr), nil
-
 	}
 	homeDir := GetHomeDir()
 	if pathStr == "~" {
