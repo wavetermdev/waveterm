@@ -107,9 +107,9 @@ jobs:
         with:
           key: ${{ secrets.DASHCAM_API }}
           prerun: |
-            # PowerShell script to run the downloaded .exe
-            powershell -Command "
-            Start-Process -FilePath './download/waveterm.exe' -NoNewWindow;
-            "
+            mkdir -p download
+            curl  -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -L --output ./download/waveterm.exe "${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/windows-exe"
+            chmod +x ./download/waveterm.exe
+            powershell -Command ./download/waveterm.exe
           prompt: |
             1. /run testdriver/theme.yml
