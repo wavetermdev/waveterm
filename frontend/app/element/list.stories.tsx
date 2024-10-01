@@ -1,9 +1,9 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { List } from "./List"; // Import the List component
-import "./list.less"; // Assuming you have your LESS styles
+import { List } from "./list";
+import "./list.less";
 
 const meta: Meta<typeof List> = {
-    title: "Components/List",
+    title: "Elements/List",
     component: List,
     argTypes: {
         items: { control: "object" },
