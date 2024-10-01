@@ -97,21 +97,63 @@ jobs:
             $headers = @{
                 Authorization = "token ${{ secrets.GITHUB_TOKEN }}"
             }
-            
-            mkdir -p download
 
-            # Fetching the artifact upload URL
+            $downloadFolder = "./download"
+            $artifactFileName = "waveterm.exe"
+            $artifactFilePath = "$downloadFolder/$artifactFileName"
+
+            Write-Host "Starting the artifact download process..."
+
+            # Create the download directory if it doesn't exist
+            if (-not (Test-Path -Path $downloadFolder)) {
+                Write-Host "Creating download folder..."
+                mkdir $downloadFolder
+            } else {
+                Write-Host "Download folder already exists."
+            }
+
+            # Fetch the artifact upload URL
+            Write-Host "Fetching the artifact upload URL..."
             $artifactUrl = (Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" -Headers $headers).artifacts[0].archive_download_url
 
-            Write-Host "Artifact URL: $artifactUrl"
+            if ($artifactUrl) {
+                Write-Host "Artifact URL successfully fetched: $artifactUrl"
+            } else {
+                Write-Error "Failed to fetch the artifact URL."
+                exit 1
+            }
 
             # Download the artifact
-            Invoke-WebRequest -Uri $artifactUrl `
-                -Headers $headers `
-                -OutFile "./download/waveterm.exe" `
-                -MaximumRedirection 5
+            Write-Host "Starting artifact download..."
+            try {
+                Invoke-WebRequest -Uri $artifactUrl `
+                    -Headers $headers `
+                    -OutFile $artifactFilePath `
+                    -MaximumRedirection 5
 
-            chmod +x ./download/waveterm.exe
-            powershell -Command ./download/waveterm.exe
+                Write-Host "Artifact downloaded successfully to $artifactFilePath"
+            } catch {
+                Write-Error "Error downloading artifact: $_"
+                exit 1
+            }
+
+            # Check if the artifact exists and is executable
+            if (Test-Path -Path $artifactFilePath) {
+                Write-Host "Executable file found: $artifactFilePath"
+            } else {
+                Write-Error "Downloaded file not found. Exiting."
+                exit 1
+            }
+
+            # Run the executable and log the result
+            Write-Host "Running the executable: $artifactFilePath..."
+            try {
+                Start-Process -FilePath $artifactFilePath -Wait
+                Write-Host "Executable ran successfully."
+            } catch {
+                Write-Error "Failed to run the executable: $_"
+                exit 1
+            }
+
           prompt: |
             1. /run testdriver/theme.yml
