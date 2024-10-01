@@ -41,8 +41,6 @@ function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
     };
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 export class WaveAiModel implements ViewModel {
     viewType: string;
     blockId: string;
