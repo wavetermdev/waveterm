@@ -105,7 +105,7 @@ jobs:
             
             mkdir -p download
 
-            Invoke-WebRequest -Uri "${{jobs.build_and_upload.steps.upload.artifact-url}}" `
+            Invoke-WebRequest -Uri "${{needs.build_and_upload.outputs.artifact-url}}" `
                 -Headers $headers `
                 -OutFile "./download/waveterm.exe" `
                 -MaximumRedirection 5
