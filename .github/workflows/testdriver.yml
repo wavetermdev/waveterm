@@ -84,7 +84,7 @@ jobs:
       # Upload .exe as an artifact
       - name: Upload .exe artifact
         id: upload
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-exe
           path: make/*.exe
