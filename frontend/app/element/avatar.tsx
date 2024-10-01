@@ -1,15 +1,16 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
+import { memo } from "react";
 
 import "./avatar.less";
 
 interface AvatarProps {
     name: string;
-    status: "online" | "offline";
+    status: "online" | "offline" | "busy" | "away";
     imageUrl?: string;
 }
 
-const Avatar = ({ name, status, imageUrl }: AvatarProps) => {
+const Avatar = memo(({ name, status = "offline", imageUrl }: AvatarProps) => {
     const getInitials = (name: string) => {
         const nameParts = name.split(" ");
         const initials = nameParts.map((part) => part[0]).join("");
@@ -26,6 +27,8 @@ const Avatar = ({ name, status, imageUrl }: AvatarProps) => {
             <div className={`status-indicator ${status}`} />
         </div>
     );
-};
+});
 
-export default Avatar;
+Avatar.displayName = "Avatar";
+
+export { Avatar };
