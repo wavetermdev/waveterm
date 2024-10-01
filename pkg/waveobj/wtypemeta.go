@@ -54,12 +54,13 @@ type MetaTSType struct {
 	BgOpacity   float64 `json:"bg:opacity,omitempty"`
 	BgBlendMode string  `json:"bg:blendmode,omitempty"`
 
-	TermClear          bool   `json:"term:*,omitempty"`
-	TermFontSize       int    `json:"term:fontsize,omitempty"`
-	TermFontFamily     string `json:"term:fontfamily,omitempty"`
-	TermMode           string `json:"term:mode,omitempty"`
-	TermTheme          string `json:"term:theme,omitempty"`
-	TermLocalShellPath string `json:"term:localshellpath,omitempty"` // matches settings
+	TermClear          bool     `json:"term:*,omitempty"`
+	TermFontSize       int      `json:"term:fontsize,omitempty"`
+	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
+	TermMode           string   `json:"term:mode,omitempty"`
+	TermTheme          string   `json:"term:theme,omitempty"`
+	TermLocalShellPath string   `json:"term:localshellpath,omitempty"` // matches settings
+	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"` // matches settings
 
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }

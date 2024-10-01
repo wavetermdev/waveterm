@@ -35,6 +35,7 @@ type CommandOptsType struct {
 	Cwd         string            `json:"cwd,omitempty"`
 	Env         map[string]string `json:"env,omitempty"`
 	ShellPath   string            `json:"shellPath,omitempty"`
+	ShellOpts   []string          `json:"shellOpts,omitempty"`
 }
 
 type ShellProc struct {
@@ -159,6 +160,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		log.Printf("error installing rc files: %v", err)
 		return nil, err
 	}
+	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 
 	homeDir := remote.GetHomeDir(client)
 
@@ -280,6 +282,7 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 	if shellPath == "" {
 		shellPath = shellutil.DetectLocalShellPath()
 	}
+	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	if cmdStr == "" {
 		if isBashShell(shellPath) {
 			// add --rcfile
