@@ -101,9 +101,6 @@ jobs:
             mkdir -p download
 
             Write-Host "1 ${{needs.build_and_upload.upload.outputs.artifact-url}}"
-            Write-Host "2 ${{needs.upload.outputs.artifact-url}}"
-            Write-Host "3 ${{upload.outputs.artifact-url}}"
-            Write-Host "4 ${{build_and_upload.upload.outputs.artifact-url}}"
 
             Invoke-WebRequest -Uri "${{needs.build_and_upload.upload.outputs.artifact-url}}" `
                 -Headers $headers `
