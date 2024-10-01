@@ -147,6 +147,7 @@ export const DefaultRendererLeftPositioned: Story = {
     },
     args: {
         items: items,
+        isVisible: false,
     },
 };
 
@@ -208,6 +209,7 @@ export const DefaultRendererRightPositioned: Story = {
     },
     args: {
         items: items,
+        isVisible: false,
     },
 };
 
@@ -269,6 +271,7 @@ export const DefaultRendererBottomRightPositioned: Story = {
     },
     args: {
         items: items,
+        isVisible: false,
     },
 };
 
@@ -330,6 +333,7 @@ export const DefaultRendererBottomLeftPositioned: Story = {
     },
     args: {
         items: items,
+        isVisible: false,
     },
 };
 
@@ -402,6 +406,7 @@ export const CustomRenderer: Story = {
     },
     args: {
         items: items,
+        isVisible: false,
     },
 };
 
@@ -467,5 +472,6 @@ export const ContextMenu: Story = {
     },
     args: {
         items: items,
+        isVisible: false,
     },
 };
