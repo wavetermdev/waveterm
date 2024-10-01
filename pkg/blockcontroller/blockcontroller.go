@@ -302,6 +302,12 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		if blockMeta.GetString(waveobj.MetaKey_TermLocalShellPath, "") != "" {
 			cmdOpts.ShellPath = blockMeta.GetString(waveobj.MetaKey_TermLocalShellPath, "")
 		}
+		if len(settings.TermLocalShellOpts) > 0 {
+			cmdOpts.ShellOpts = append([]string{}, settings.TermLocalShellOpts...)
+		}
+		if len(blockMeta.GetStringList(waveobj.MetaKey_TermLocalShellOpts)) > 0 {
+			cmdOpts.ShellOpts = append([]string{}, blockMeta.GetStringList(waveobj.MetaKey_TermLocalShellOpts)...)
+		}
 		shellProc, err = shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
 		if err != nil {
 			return err

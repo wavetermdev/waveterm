@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -265,6 +266,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             if (waveEvent.type != "keydown") {
                 return true;
             }
+            // deal with terminal specific keybindings
             if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -274,37 +276,20 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 });
                 return false;
             }
-            if (
-                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowLeft") ||
-                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowRight") ||
-                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowUp") ||
-                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowDown")
-            ) {
-                return false;
-            }
-            for (let i = 1; i <= 9; i++) {
-                if (
-                    keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Digit${i}}`) ||
-                    keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Numpad${i}}`)
-                ) {
-                    return false;
-                }
-            }
             if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
                 const p = navigator.clipboard.readText();
                 p.then((text) => {
                     termRef.current?.terminal.paste(text);
-                    // termRef.current?.handleTermData(text);
                 });
                 event.preventDefault();
                 event.stopPropagation();
-                return true;
+                return false;
             } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
                 const sel = termRef.current?.terminal.getSelection();
                 navigator.clipboard.writeText(sel);
                 event.preventDefault();
                 event.stopPropagation();
-                return true;
+                return false;
             }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
@@ -312,6 +297,12 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, { tabid: tabId, blockid: blockId });
                 prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
                 return false;
+            }
+            const globalKeys = getAllGlobalKeyBindings();
+            for (const key of globalKeys) {
+                if (keyutil.checkKeyPressed(waveEvent, key)) {
+                    return false;
+                }
             }
             return true;
         }

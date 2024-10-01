@@ -47,16 +47,36 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
     let keys = keyDescription.replace(/[()]/g, "").split(":");
     for (let key of keys) {
         if (key == "Cmd") {
+            if (PLATFORM == PlatformMacOS) {
+                rtn.mods.Meta = true;
+            } else {
+                rtn.mods.Alt = true;
+            }
             rtn.mods.Cmd = true;
         } else if (key == "Shift") {
             rtn.mods.Shift = true;
         } else if (key == "Ctrl") {
             rtn.mods.Ctrl = true;
         } else if (key == "Option") {
+            if (PLATFORM == PlatformMacOS) {
+                rtn.mods.Alt = true;
+            } else {
+                rtn.mods.Meta = true;
+            }
             rtn.mods.Option = true;
         } else if (key == "Alt") {
+            if (PLATFORM == PlatformMacOS) {
+                rtn.mods.Option = true;
+            } else {
+                rtn.mods.Cmd = true;
+            }
             rtn.mods.Alt = true;
         } else if (key == "Meta") {
+            if (PLATFORM == PlatformMacOS) {
+                rtn.mods.Cmd = true;
+            } else {
+                rtn.mods.Option = true;
+            }
             rtn.mods.Meta = true;
         } else {
             let { key: parsedKey, type: keyType } = parseKey(key);
@@ -138,10 +158,10 @@ function isInputEvent(event: WaveKeyboardEvent): boolean {
 
 function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
-    if (!keyPress.mods.Alt && notMod(keyPress.mods.Option, event.option)) {
+    if (notMod(keyPress.mods.Option, event.option)) {
         return false;
     }
-    if (!keyPress.mods.Meta && notMod(keyPress.mods.Cmd, event.cmd)) {
+    if (notMod(keyPress.mods.Cmd, event.cmd)) {
         return false;
     }
     if (notMod(keyPress.mods.Shift, event.shift)) {
@@ -150,10 +170,10 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     if (notMod(keyPress.mods.Ctrl, event.control)) {
         return false;
     }
-    if (keyPress.mods.Alt && !event.alt) {
+    if (notMod(keyPress.mods.Alt, event.alt)) {
         return false;
     }
-    if (keyPress.mods.Meta && !event.meta) {
+    if (notMod(keyPress.mods.Meta, event.meta)) {
         return false;
     }
     let eventKey = "";
