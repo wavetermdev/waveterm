@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import clsx from "clsx";
-import React, { useState } from "react";
+import React, { memo, useState } from "react";
 import "./list.less";
 
 interface ListItem {
@@ -18,7 +18,7 @@ interface ListProps {
     renderItem?: (item: ListItem, isOpen: boolean, handleClick: () => void) => React.ReactNode;
 }
 
-const List = ({ items, className, renderItem }: ListProps) => {
+const List = memo(({ items, className, renderItem }: ListProps) => {
     const [open, setOpen] = useState<{ [key: string]: boolean }>({});
 
     const handleClick = (item: ListItem) => {
@@ -57,6 +57,6 @@ const List = ({ items, className, renderItem }: ListProps) => {
     };
 
     return <ul className="list">{items.map((item, index) => renderListItem(item, index))}</ul>;
-};
+});
 
 export { List };
