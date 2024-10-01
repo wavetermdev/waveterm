@@ -102,14 +102,12 @@ export class WaveAiModel implements ViewModel {
 
             // Add a typing indicator
             set(this.addMessageAtom, typingMessage);
-            await sleep(1500);
             const parts = userMessage.text.split(" ");
             let currentPart = 0;
             while (currentPart < parts.length) {
                 const part = parts[currentPart] + " ";
                 set(this.updateLastMessageAtom, part, true);
                 currentPart++;
-                await sleep(100);
             }
             set(this.updateLastMessageAtom, "", false);
         });
@@ -209,7 +207,6 @@ export class WaveAiModel implements ViewModel {
                         }
                         break;
                     }
-                    await sleep(100);
                 }
                 globalStore.set(this.updateLastMessageAtom, "", false);
                 if (fullMsg != "") {
