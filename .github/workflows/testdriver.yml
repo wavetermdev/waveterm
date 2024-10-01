@@ -89,10 +89,6 @@ jobs:
           name: windows-exe
           path: make/*.exe
 
-  testdriver:
-    name: TestDriver Regression Test
-    runs-on: ubuntu-latest
-    needs: build_and_upload
     steps:
       - uses: testdriverai/action@main
         id: testdriver
@@ -105,9 +101,12 @@ jobs:
             
             mkdir -p download
 
-            Write-Host "${{needs.build_and_upload.outputs.artifact-url}}"
+            Write-Host "1 ${{needs.build_and_upload.upload.outputs.artifact-url}}"
+            Write-Host "2 ${{needs.upload.outputs.artifact-url}}"
+            Write-Host "3 ${{upload.outputs.artifact-url}}"
+            Write-Host "4 ${{build_and_upload.upload.outputs.artifact-url}}"
 
-            Invoke-WebRequest -Uri "${{needs.build_and_upload.outputs.artifact-url}}" `
+            Invoke-WebRequest -Uri "${{needs.build_and_upload.upload.outputs.artifact-url}}" `
                 -Headers $headers `
                 -OutFile "./download/waveterm.exe" `
                 -MaximumRedirection 5
