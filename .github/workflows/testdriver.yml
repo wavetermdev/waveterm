@@ -89,7 +89,6 @@ jobs:
           name: windows-exe
           path: make/*.exe
 
-    steps:
       - uses: testdriverai/action@main
         id: testdriver
         with:
