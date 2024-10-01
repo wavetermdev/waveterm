@@ -100,9 +100,13 @@ jobs:
             
             mkdir -p download
 
-            Write-Host "1 ${{needs.build_and_upload.upload.outputs.artifact-url}}"
+            # Fetching the artifact upload URL
+            $artifactUrl = (Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" -Headers $headers).artifacts[0].archive_download_url
 
-            Invoke-WebRequest -Uri "${{needs.build_and_upload.upload.outputs.artifact-url}}" `
+            Write-Host "Artifact URL: $artifactUrl"
+
+            # Download the artifact
+            Invoke-WebRequest -Uri $artifactUrl `
                 -Headers $headers `
                 -OutFile "./download/waveterm.exe" `
                 -MaximumRedirection 5
