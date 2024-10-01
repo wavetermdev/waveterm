@@ -9,22 +9,28 @@
 .list-item {
     padding: 10px;
     cursor: pointer;
+    user-select: none;
+    padding: 0;
 }
 
 .list-item-button {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 100%;
 }
 
-.list-item-button.clickable {
-    &:hover {
-        background-color: #f0f0f0;
-    }
+.list-item-content {
+    display: flex;
+    align-items: center;
 }
 
 .list-item-icon {
-    margin-right: 10px;
+    margin-right: 10px; /* Space between icon and text */
+}
+
+.list-item-text {
+    text-decoration: none;
 }
 
 .nested-list {
@@ -38,4 +44,19 @@
 
 .nested-list.closed {
     display: none;
+}
+
+.list-item-button {
+    padding: 10px;
+    color: var(--main-text-color);
+
+    &:hover {
+        background-color: var(--accent-color);
+        color: var(--button-text-color);
+        border-radius: 4px;
+    }
+}
+
+.list-item-button.clickable:hover {
+    background-color: #f0f0f0;
 }

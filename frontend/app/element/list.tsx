@@ -1,30 +1,30 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import clsx from "clsx";
 import React, { useState } from "react";
-
-import "./list.less"; // Assuming you have your LESS styles
+import "./list.less";
 
 interface ListItem {
     text: string;
     icon: React.ReactNode;
-    link?: string;
     children?: ListItem[];
+    onClick?: () => void;
 }
 
 interface ListProps {
     items: ListItem[];
+    className?: string;
     renderItem?: (item: ListItem, isOpen: boolean, handleClick: () => void) => React.ReactNode;
-    onClick?: (item: ListItem) => void;
 }
 
-const List = ({ items, renderItem, onClick }: ListProps) => {
+const List = ({ items, className, renderItem }: ListProps) => {
     const [open, setOpen] = useState<{ [key: string]: boolean }>({});
 
     const handleClick = (item: ListItem) => {
         setOpen((prevState) => ({ ...prevState, [item.text]: !prevState[item.text] }));
-        if (onClick) {
-            onClick(item); // Notify the consumer that the item was clicked
+        if (item.onClick) {
+            item.onClick();
         }
     };
 
@@ -33,15 +33,15 @@ const List = ({ items, renderItem, onClick }: ListProps) => {
         const hasChildren = item.children && item.children.length > 0;
 
         return (
-            <li key={index} className="list-item">
+            <li key={index} className={clsx("list-item", className)}>
                 {renderItem ? (
                     renderItem(item, isOpen, () => handleClick(item))
                 ) : (
                     <div className="list-item-button" onClick={() => handleClick(item)}>
-                        <span className="list-item-icon">{item.icon}</span>
-                        <span className="list-item-text">
-                            {item.link ? <a href={item.link}>{item.text}</a> : item.text}
-                        </span>
+                        <div className="list-item-content">
+                            <div className="list-item-icon">{item.icon}</div>
+                            <div className="list-item-text">{item.text}</div>
+                        </div>
                         {hasChildren && (
                             <i className={`fa-sharp fa-solid ${isOpen ? "fa-angle-up" : "fa-angle-down"}`}></i>
                         )}
