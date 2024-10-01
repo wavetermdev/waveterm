@@ -8,5 +8,4 @@ module.exports = {
     jsdocSeparateReturnsFromParam: true,
     jsdocSeparateTagGroups: true,
     jsdocPreferCodeFences: true,
-    endOfLine: "lf",
 };
