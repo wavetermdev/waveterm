@@ -314,9 +314,9 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 return false;
             }
             if (PLATFORM == "win32" || PLATFORM == "linux") {
-                const reservedAltKeys = ["Alt:t", "Alt:n", "Alt:w", "Alt:m", "Alt:g", "Alt:[", "Alt:]", "Alt:Shift:r"];
-                for (let i = 0; i < reservedAltKeys.length; i++) {
-                    if (keyutil.checkKeyPressed(waveEvent, reservedAltKeys[i])) {
+                const reservedCmdKeys = ["Cmd:t", "Cmd:n", "Cmd:w", "Cmd:m", "Cmd:g", "Cmd:[", "Cmd:]", "Cmd:Shift:r"];
+                for (let i = 0; i < reservedCmdKeys.length; i++) {
+                    if (keyutil.checkKeyPressed(waveEvent, reservedCmdKeys[i])) {
                         return false;
                     }
                 }
