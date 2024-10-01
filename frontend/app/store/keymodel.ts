@@ -282,6 +282,11 @@ function registerGlobalKeys() {
     getApi().registerGlobalWebviewKeys(allKeys);
 }
 
+function getAllGlobalKeyBindings(): string[] {
+    const allKeys = Array.from(globalKeyMap.keys());
+    return allKeys;
+}
+
 // these keyboard events happen *anywhere*, even if you have focus in an input or somewhere else.
 function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
     for (const key of globalKeyMap.keys()) {
@@ -297,6 +302,7 @@ function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
 
 export {
     appHandleKeyDown,
+    getAllGlobalKeyBindings,
     getSimpleControlShiftAtom,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
