@@ -5,7 +5,7 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getConnStatusAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import { PLATFORM, WOS, atoms, getConnStatusAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -312,6 +312,14 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 const prtn = RpcApi.ControllerResyncCommand(WindowRpcClient, { tabid: tabId, blockid: blockId });
                 prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
                 return false;
+            }
+            if (PLATFORM == "win32" || PLATFORM == "linux") {
+                const reservedAltKeys = ["Alt:t", "Alt:n", "Alt:w", "Alt:m", "Alt:g", "Alt:[", "Alt:]", "Alt:Shift:r"];
+                for (let i = 0; i < reservedAltKeys.length; i++) {
+                    if (keyutil.checkKeyPressed(waveEvent, reservedAltKeys[i])) {
+                        return false;
+                    }
+                }
             }
             return true;
         }
