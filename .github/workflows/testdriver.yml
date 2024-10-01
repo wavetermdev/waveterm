@@ -105,6 +105,8 @@ jobs:
             
             mkdir -p download
 
+            Write-Host "${{needs.build_and_upload.outputs.artifact-url}}"
+
             Invoke-WebRequest -Uri "${{needs.build_and_upload.outputs.artifact-url}}" `
                 -Headers $headers `
                 -OutFile "./download/waveterm.exe" `
