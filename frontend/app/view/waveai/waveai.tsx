@@ -56,7 +56,6 @@ export class WaveAiModel implements ViewModel {
     addMessageAtom: WritableAtom<unknown, [message: ChatMessageType], void>;
     updateLastMessageAtom: WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
     removeLastMessageAtom: WritableAtom<unknown, [], void>;
-    simulateAssistantResponseAtom: WritableAtom<unknown, [userMessage: ChatMessageType], Promise<void>>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
     locked: PrimitiveAtom<boolean>;
     cancel: boolean;
@@ -90,28 +89,6 @@ export class WaveAiModel implements ViewModel {
             const messages = get(this.messagesAtom);
             messages.pop();
             set(this.messagesAtom, [...messages]);
-        });
-        this.simulateAssistantResponseAtom = atom(null, async (get, set, userMessage: ChatMessageType) => {
-            // unused at the moment. can replace the temp() function in the future
-            const typingMessage: ChatMessageType = {
-                id: crypto.randomUUID(),
-                user: "assistant",
-                text: "",
-                isAssistant: true,
-            };
-
-            // Add a typing indicator
-            set(this.addMessageAtom, typingMessage);
-            await sleep(1500);
-            const parts = userMessage.text.split(" ");
-            let currentPart = 0;
-            while (currentPart < parts.length) {
-                const part = parts[currentPart] + " ";
-                set(this.updateLastMessageAtom, part, true);
-                currentPart++;
-                await sleep(100);
-            }
-            set(this.updateLastMessageAtom, "", false);
         });
         this.viewText = atom((get) => {
             const settings = get(atoms.settingsAtom);
@@ -155,7 +132,6 @@ export class WaveAiModel implements ViewModel {
     useWaveAi() {
         const messages = useAtomValue(this.messagesAtom);
         const addMessage = useSetAtom(this.addMessageAtom);
-        const simulateResponse = useSetAtom(this.simulateAssistantResponseAtom);
         const clientId = useAtomValue(atoms.clientId);
         const blockId = this.blockId;
         const setLocked = useSetAtom(this.locked);
