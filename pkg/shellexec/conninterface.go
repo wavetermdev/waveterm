@@ -163,6 +163,9 @@ func (wcw WslCmdWrap) KillGraceful(timeout time.Duration) {
 }
 
 func (wcw WslCmdWrap) SetSize(w int, h int) error {
+	return nil
+	// this causes problems
+	// needs to be addressed later
 	err := pty.Setsize(wcw.Pty, &pty.Winsize{Rows: uint16(w), Cols: uint16(h)})
 	if err != nil {
 		return err
