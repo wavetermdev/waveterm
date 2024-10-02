@@ -496,14 +496,7 @@ func (conn *WslConn) connectInternal(ctx context.Context) error {
 func (conn *WslConn) waitForDisconnect() {
 	defer conn.FireConnChangeEvent()
 	defer conn.HasWaiter.Store(false)
-	var err error
-	conn.WithLock(func() {
-		// not sure if this is necessary
-		// keeping it for feature parity with remotes
-		if conn.ConnController != nil {
-			err = conn.ConnController.Wait()
-		}
-	})
+	err := conn.ConnController.Wait()
 	conn.WithLock(func() {
 		// disconnects happen for a variety of reasons (like network, etc. and are typically transient)
 		// so we just set the status to "disconnected" here (not error)
