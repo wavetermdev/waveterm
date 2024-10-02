@@ -68,7 +68,7 @@ func (conn *WslConn) DeriveConnStatus() wshrpc.ConnStatus {
 	return wshrpc.ConnStatus{
 		Status:        conn.Status,
 		Connected:     conn.Status == Status_Connected,
-		Connection:    conn.Name,
+		Connection:    "00wsl:" + conn.Name,
 		HasConnected:  (conn.LastConnectTime > 0),
 		ActiveConnNum: conn.ActiveConnNum,
 		Error:         conn.Error,
@@ -80,7 +80,7 @@ func (conn *WslConn) FireConnChangeEvent() {
 	event := wps.WaveEvent{
 		Event: wps.Event_ConnChange,
 		Scopes: []string{
-			fmt.Sprintf("connection:%s", conn.GetName()),
+			fmt.Sprintf("connection:%s", "00wsl:"+conn.GetName()),
 		},
 		Data: status,
 	}

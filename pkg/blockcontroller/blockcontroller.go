@@ -266,8 +266,8 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	}
 	var shellProc *shellexec.ShellProc
 	log.Printf("templog: remote has name %s", remoteName)
-	if strings.HasPrefix(remoteName, "00wsh:") {
-		wslName := strings.TrimPrefix(remoteName, "00wsh:")
+	if strings.HasPrefix(remoteName, "00wsl:") {
+		wslName := strings.TrimPrefix(remoteName, "00wsl:")
 		log.Printf("templog: detected wsl with name: %s", wslName)
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
