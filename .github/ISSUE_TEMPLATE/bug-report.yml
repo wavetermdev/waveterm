@@ -3,18 +3,22 @@ description: Create a bug report to help us improve.
 title: "[Bug]: "
 labels: ["bug", "triage"]
 body:
+    - type: markdown
+      attributes:
+          value: |
+              ## Bug description
     - type: textarea
       attributes:
           label: Current Behavior
           description: A concise description of what you're experiencing.
       validations:
-          required: false
+          required: true
     - type: textarea
       attributes:
           label: Expected Behavior
           description: A concise description of what you expected to happen.
       validations:
-          required: false
+          required: true
     - type: textarea
       attributes:
           label: Steps To Reproduce
@@ -24,24 +28,42 @@ body:
               2. With this config...
               3. Run '...'
               4. See error...
-          render: markdown
       validations:
           required: false
-    - type: textarea
+
+    - type: markdown
       attributes:
-          label: Environment
-          description: |
-              examples:
-                - **OS**: Ubuntu 20.04
-                - **Architecture**: arm64
-                - **Wave Version**: v0.8.8
           value: |
-              - **OS**:
-              - **Architecture**:
-              - **Wave Version**:
-          render: markdown
+              ## Environment
+    - type: input
+      attributes:
+          label: Wave Version
+          description: The version of Wave you are running
+          placeholder: v0.8.8
+      validations:
+          required: true
+    - type: input
+      attributes:
+          label: OS
+          description: The name and version of the operating system of the computer where you are running Wave
+          placeholder: macOS 15.0
       validations:
           required: false
+    - type: dropdown
+      attributes:
+          label: Architecture
+          description: The architecture of the computer where you are running Wave
+          options:
+              - arm64
+              - x64
+          default: 0
+      validations:
+          required: false
+
+    - type: markdown
+      attributes:
+          value: |
+              ## Extra
     - type: textarea
       attributes:
           label: Anything else?
