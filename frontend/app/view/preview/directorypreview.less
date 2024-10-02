@@ -6,15 +6,12 @@
 .dir-table-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
     .dir-table {
-        height: 100%;
         min-width: 600px;
         --col-size-size: 0.2rem;
         border-radius: 3px;
         display: flex;
         flex-direction: column;
-        font: var(--base-font);
         .dir-table-head {
             .dir-table-head-row {
                 display: flex;
@@ -30,14 +27,12 @@
                     position: relative;
                     display: flex;
                     white-space: nowrap;
-                    overflow: hidden;
 
                     .dir-table-head-cell-content {
                         padding: 2px 4px;
                         display: flex;
                         gap: 0.3rem;
                         flex: 1 1 auto;
-                        overflow-x: hidden;
                         letter-spacing: -0.12px;
 
                         .dir-table-head-direction {
@@ -67,11 +62,19 @@
             }
         }
 
+        .table-body-container {
+            height: 100%;
+        }
+
+        .table-body-os {
+            height: 100%;
+            width: 100%;
+        }
+
         .dir-table-body {
-            flex: 1 1 auto;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            height: 100%;
             .dir-table-body-search-display {
                 display: flex;
                 border-radius: 3px;
@@ -128,7 +131,6 @@
                     }
 
                     .dir-table-body-cell {
-                        overflow: hidden;
                         white-space: nowrap;
                         padding: 0.25rem;
                         cursor: default;

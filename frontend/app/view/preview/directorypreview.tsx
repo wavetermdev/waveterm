@@ -20,13 +20,12 @@ import {
 import clsx from "clsx";
 import dayjs from "dayjs";
 import * as jotai from "jotai";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import { OverlayScrollbarsComponent, useOverlayScrollbars } from "overlayscrollbars-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
 
-import { OverlayScrollbars } from "overlayscrollbars";
-
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
+import { Elements } from "overlayscrollbars";
 import "./directorypreview.less";
 
 interface DirectoryTableProps {
@@ -261,8 +260,22 @@ function DirectoryTable({
         return colSizes;
     }, [table.getState().columnSizingInfo]);
 
+    const innerRef = useRef<HTMLDivElement>();
+    const [initializeOSInner, osInner] = useOverlayScrollbars({
+        options: { scrollbars: { autoHide: "leave" }, overflow: { x: "visible", y: "scroll" } },
+    });
+
+    useEffect(() => {
+        initializeOSInner(innerRef.current);
+    }, [initializeOSInner, innerRef.current]);
+    const elementsCallback = useMemo(() => osInner()?.elements, [osInner]);
+
     return (
-        <div className="dir-table" style={{ ...columnSizeVars }}>
+        <OverlayScrollbarsComponent
+            options={{ scrollbars: { autoHide: "leave" }, overflow: { x: "scroll", y: "visible" } }}
+            className="dir-table"
+            style={{ ...columnSizeVars }}
+        >
             <div className="dir-table-head">
                 {table.getHeaderGroups().map((headerGroup) => (
                     <div className="dir-table-head-row" key={headerGroup.id}>
@@ -295,6 +308,7 @@ function DirectoryTable({
             </div>
             {table.getState().columnSizingInfo.isResizingColumn ? (
                 <MemoizedTableBody
+                    bodyRef={innerRef}
                     model={model}
                     data={data}
                     table={table}
@@ -304,9 +318,11 @@ function DirectoryTable({
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
                     setRefreshVersion={setRefreshVersion}
+                    osElements={elementsCallback}
                 />
             ) : (
                 <TableBody
+                    bodyRef={innerRef}
                     model={model}
                     data={data}
                     table={table}
@@ -316,13 +332,15 @@ function DirectoryTable({
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
                     setRefreshVersion={setRefreshVersion}
+                    osElements={elementsCallback}
                 />
             )}
-        </div>
+        </OverlayScrollbarsComponent>
     );
 }
 
 interface TableBodyProps {
+    bodyRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
     data: Array<FileInfo>;
     table: Table<FileInfo>;
@@ -332,9 +350,11 @@ interface TableBodyProps {
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
     setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
+    osElements: () => Elements;
 }
 
 function TableBody({
+    bodyRef,
     model,
     data,
     table,
@@ -342,22 +362,20 @@ function TableBody({
     focusIndex,
     setFocusIndex,
     setSearch,
-    setSelectedPath,
     setRefreshVersion,
+    osElements,
 }: TableBodyProps) {
     const [bodyHeight, setBodyHeight] = useState(0);
 
     const dummyLineRef = useRef<HTMLDivElement>(null);
-    const parentRef = useRef<HTMLDivElement>(null);
     const warningBoxRef = useRef<HTMLDivElement>(null);
-    const osInstanceRef = useRef<OverlayScrollbars>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
-    const domRect = useDimensionsWithExistingRef(parentRef, 30);
+    const domRect = useDimensionsWithExistingRef(bodyRef, 30);
     const parentHeight = domRect?.height ?? 0;
     const conn = jotai.useAtomValue(model.connection);
 
     useEffect(() => {
-        if (dummyLineRef.current && data && parentRef.current) {
+        if (dummyLineRef.current && data && bodyRef.current) {
             const rowHeight = dummyLineRef.current.offsetHeight;
             const fullTBodyHeight = rowHeight * data.length;
             const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
@@ -368,12 +386,12 @@ function TableBody({
     }, [data, parentHeight]);
 
     useEffect(() => {
-        if (focusIndex !== null && rowRefs.current[focusIndex] && parentRef.current) {
-            const viewport = osInstanceRef.current.elements().viewport;
+        if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osElements) {
+            const viewport = osElements().viewport;
             const viewportHeight = viewport.offsetHeight;
             const rowElement = rowRefs.current[focusIndex];
             const rowRect = rowElement.getBoundingClientRect();
-            const parentRect = parentRef.current.getBoundingClientRect();
+            const parentRect = bodyRef.current.getBoundingClientRect();
             const viewportScrollTop = viewport.scrollTop;
 
             const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewportScrollTop;
@@ -492,12 +510,8 @@ function TableBody({
         [setSearch, handleFileContextMenu, setFocusIndex, focusIndex]
     );
 
-    const handleScrollbarInitialized = (instance) => {
-        osInstanceRef.current = instance;
-    };
-
     return (
-        <div className="dir-table-body" ref={parentRef}>
+        <div className="dir-table-body" ref={bodyRef}>
             {search !== "" && (
                 <div className="dir-table-body-search-display" ref={warningBoxRef}>
                     <span>Searching for "{search}"</span>
@@ -507,18 +521,13 @@ function TableBody({
                     </div>
                 </div>
             )}
-            <OverlayScrollbarsComponent
-                options={{ scrollbars: { autoHide: "leave" } }}
-                events={{ initialized: handleScrollbarInitialized }}
-            >
-                <div className="dir-table-body-scroll-box" style={{ height: bodyHeight }}>
-                    <div className="dummy dir-table-body-row" ref={dummyLineRef}>
-                        <div className="dir-table-body-cell">dummy-data</div>
-                    </div>
-                    {table.getTopRows().map(displayRow)}
-                    {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
+            <div className="dir-table-body-scroll-box" style={{ height: bodyHeight }}>
+                <div className="dummy dir-table-body-row" ref={dummyLineRef}>
+                    <div className="dir-table-body-cell">dummy-data</div>
                 </div>
-            </OverlayScrollbarsComponent>
+                {table.getTopRows().map(displayRow)}
+                {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
+            </div>
         </div>
     );
 }
