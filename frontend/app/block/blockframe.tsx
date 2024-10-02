@@ -11,7 +11,7 @@ import {
     Input,
 } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
-import { useWidth } from "@/app/hook/useWidth";
+import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import {
@@ -294,8 +294,8 @@ const ConnStatusOverlay = React.memo(
         const connName = blockData.meta?.connection;
         const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
         const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
-        const overlayRef = React.useRef<HTMLDivElement>(null);
-        const width = useWidth(overlayRef);
+        const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
+        const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
         const blockNum = jotai.useAtomValue(nodeModel.blockNum);
 
@@ -334,7 +334,7 @@ const ConnStatusOverlay = React.memo(
         }
 
         return (
-            <div className="connstatus-overlay" ref={overlayRef}>
+            <div className="connstatus-overlay" ref={overlayRefCallback}>
                 <div className="connstatus-content">
                     <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError })}>
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}

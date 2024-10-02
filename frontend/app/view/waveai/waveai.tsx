@@ -4,7 +4,6 @@
 import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { useDimensions } from "@/app/hook/useDimensions";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, fetchWaveFile, globalStore, WOS } from "@/store/global";
@@ -41,8 +40,6 @@ function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
         isAssistant: prompt.role == "assistant",
     };
 }
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class WaveAiModel implements ViewModel {
     viewType: string;
@@ -103,14 +100,12 @@ export class WaveAiModel implements ViewModel {
 
             // Add a typing indicator
             set(this.addMessageAtom, typingMessage);
-            await sleep(1500);
             const parts = userMessage.text.split(" ");
             let currentPart = 0;
             while (currentPart < parts.length) {
                 const part = parts[currentPart] + " ";
                 set(this.updateLastMessageAtom, part, true);
                 currentPart++;
-                await sleep(100);
             }
             set(this.updateLastMessageAtom, "", false);
         });
@@ -210,7 +205,6 @@ export class WaveAiModel implements ViewModel {
                         }
                         break;
                     }
-                    await sleep(100);
                 }
                 globalStore.set(this.updateLastMessageAtom, "", false);
                 if (fullMsg != "") {
@@ -260,10 +254,7 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                         </div>
                     </div>
-                    <div
-                        className="chat-msg chat-msg-assistant"
-                        style={{ maxWidth: "calc(var(--aichat-msg-width) * 1px)" }}
-                    >
+                    <div className="chat-msg chat-msg-assistant">
                         <Markdown text={text} />
                     </div>
                 </>
@@ -278,7 +269,7 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
         }
         return (
             <>
-                <div className="chat-msg chat-msg-user" style={{ maxWidth: "calc(var(--aichat-msg-width) * 1px)" }}>
+                <div className="chat-msg chat-msg-user">
                     <Markdown className="msg-text" text={text} />
                 </div>
             </>
@@ -439,10 +430,8 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
 
     const termFontSize: number = 14;
-    const windowDims = useDimensions(chatWindowRef);
     const msgWidths = {};
     const locked = useAtomValue(model.locked);
-    msgWidths["--aichat-msg-width"] = windowDims.width * 0.85;
 
     // a weird workaround to initialize ansynchronously
     useEffect(() => {

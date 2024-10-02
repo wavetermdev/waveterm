@@ -36,14 +36,5 @@
     },
     "[go]": {
         "editor.defaultFormatter": "golang.go"
-    },
-    "[plaintext]": {
-        "editor.formatOnSave": false,
-        "editor.formatOnPaste": false,
-        "files.insertFinalNewline": false,
-        "files.trimFinalNewlines": true
-    },
-    "files.associations": {
-        "CNAME": "plaintext"
     }
 }

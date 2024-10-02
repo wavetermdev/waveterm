@@ -81,8 +81,11 @@ function jsonDeepEqual(v1: any, v2: any): boolean {
     return false;
 }
 
-function makeIconClass(icon: string, fw: boolean, opts?: { spin: boolean }): string {
-    if (icon == null) {
+function makeIconClass(icon: string, fw: boolean, opts?: { spin?: boolean; defaultIcon?: string }): string {
+    if (isBlank(icon)) {
+        if (opts?.defaultIcon != null) {
+            return makeIconClass(opts.defaultIcon, fw, { spin: opts?.spin });
+        }
         return null;
     }
     if (icon.match(/^(solid@)?[a-z0-9-]+$/)) {
@@ -94,6 +97,14 @@ function makeIconClass(icon: string, fw: boolean, opts?: { spin: boolean }): str
         // strip off the "regular@" prefix if it exists
         icon = icon.replace(/^regular@/, "");
         return clsx(`fa fa-sharp fa-regular fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
+    }
+    if (icon.match(/^brands@[a-z0-9-]+$/)) {
+        // strip off the "brands@" prefix if it exists
+        icon = icon.replace(/^brands@/, "");
+        return clsx(`fa fa-brands fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
+    }
+    if (opts?.defaultIcon != null) {
+        return makeIconClass(opts.defaultIcon, fw, { spin: opts?.spin });
     }
     return null;
 }

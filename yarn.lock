@@ -1683,12 +1683,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@storybook/components@npm:^8.3.3":
+"@storybook/components@npm:^8.0.0, @storybook/components@npm:^8.3.3":
   version: 8.3.3
   resolution: "@storybook/components@npm:8.3.3"
   peerDependencies:
     storybook: ^8.3.3
   checksum: 10c0/e975457767b8a14a8536337fd805fe478417934f5e719eb593568359ae32156c5873290a617429c1d344c761c513a2619eee5b1d992931beb0d042ee7cde1337
+  languageName: node
+  linkType: hard
+
+"@storybook/core-events@npm:^8.0.0":
+  version: 8.3.3
+  resolution: "@storybook/core-events@npm:8.3.3"
+  peerDependencies:
+    storybook: ^8.3.3
+  checksum: 10c0/9ea51ec1b4c94d28e6bcb3b31dc21d98a4aa9685a0158ef42160f1934d6208db41b1461945b05fbe5dbb09fa629342c3576f4729f591b84471f70829bcbaf461
   languageName: node
   linkType: hard
 
@@ -1750,6 +1759,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@storybook/icons@npm:^1.2.5":
+  version: 1.2.12
+  resolution: "@storybook/icons@npm:1.2.12"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+    react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+  checksum: 10c0/97f6a7b7841fb5a0d1c8a30c36173469e7b0814a674c8103c7c0fd8803f0f7c2a778545af864012d40883195a533534dbc98541deac2bafe31e6a3fe37fdfc66
+  languageName: node
+  linkType: hard
+
 "@storybook/instrumenter@npm:8.3.3":
   version: 8.3.3
   resolution: "@storybook/instrumenter@npm:8.3.3"
@@ -1763,7 +1782,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@storybook/manager-api@npm:^8.3.3":
+"@storybook/manager-api@npm:^8.0.0, @storybook/manager-api@npm:^8.3.3":
   version: 8.3.3
   resolution: "@storybook/manager-api@npm:8.3.3"
   peerDependencies:
@@ -1872,7 +1891,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@storybook/theming@npm:^8.3.3":
+"@storybook/theming@npm:^8.0.0, @storybook/theming@npm:^8.3.3":
   version: 8.3.3
   resolution: "@storybook/theming@npm:8.3.3"
   peerDependencies:
@@ -2592,12 +2611,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22.7.3":
-  version: 22.7.3
-  resolution: "@types/node@npm:22.7.3"
+"@types/node@npm:^22.7.4":
+  version: 22.7.4
+  resolution: "@types/node@npm:22.7.4"
   dependencies:
     undici-types: "npm:~6.19.2"
-  checksum: 10c0/0e579813528b0370454337a952f43b792cd12731e10fdca0fdb627158e980c1219bba99e9048c134b6a19325d817016059afe016ccd372326c838a1b85a51574
+  checksum: 10c0/c22bf54515c78ff3170142c1e718b90e2a0003419dc2d55f79c9c9362edd590a6ab1450deb09ff6e1b32d1b4698da407930b16285e8be3a009ea6cd2695cac01
   languageName: node
   linkType: hard
 
@@ -2679,13 +2698,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^18.3.9":
-  version: 18.3.9
-  resolution: "@types/react@npm:18.3.9"
+"@types/react@npm:^18.3.10":
+  version: 18.3.10
+  resolution: "@types/react@npm:18.3.10"
   dependencies:
     "@types/prop-types": "npm:*"
     csstype: "npm:^3.0.2"
-  checksum: 10c0/a92b8e061d0c833e096254782c56a802316593f4a907fb834b557cabe848a0829b9eb6056404ea239eb4d5ec5ac7b7724309761516c0a7a277916fa04dd4f805
+  checksum: 10c0/f5be1de1b0331c1fdb33d577f4cf7f1b949d4bded5347b2351a537f03c51dade5be115e21b161dcf1b37061954d320f6a0bdf8d7b70e24eda51071fdd614383d
   languageName: node
   linkType: hard
 
@@ -10292,6 +10311,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"storybook-dark-mode@npm:^4.0.2":
+  version: 4.0.2
+  resolution: "storybook-dark-mode@npm:4.0.2"
+  dependencies:
+    "@storybook/components": "npm:^8.0.0"
+    "@storybook/core-events": "npm:^8.0.0"
+    "@storybook/global": "npm:^5.0.0"
+    "@storybook/icons": "npm:^1.2.5"
+    "@storybook/manager-api": "npm:^8.0.0"
+    "@storybook/theming": "npm:^8.0.0"
+    fast-deep-equal: "npm:^3.1.3"
+    memoizerific: "npm:^1.11.3"
+  checksum: 10c0/d4fc652ff080f6cc9f0effab0c989b66ead3372b267c2c328eef608f27c9822bf47aaa177405e42768b2de22f8a3e9a0280af50430efd0cf78bd6ed1f12c8b29
+  languageName: node
+  linkType: hard
+
 "storybook@npm:^8.3.3":
   version: 8.3.3
   resolution: "storybook@npm:8.3.3"
@@ -11351,6 +11386,7 @@ __metadata:
     "@storybook/react": "npm:^8.3.3"
     "@storybook/react-vite": "npm:^8.3.3"
     "@storybook/test": "npm:^8.3.3"
+    "@storybook/theming": "npm:^8.3.3"
     "@table-nav/core": "npm:^0.0.7"
     "@table-nav/react": "npm:^0.0.7"
     "@tanstack/react-table": "npm:^8.20.5"
@@ -11358,10 +11394,10 @@ __metadata:
     "@types/css-tree": "npm:^2"
     "@types/debug": "npm:^4"
     "@types/electron": "npm:^1.6.10"
-    "@types/node": "npm:^22.7.3"
+    "@types/node": "npm:^22.7.4"
     "@types/papaparse": "npm:^5"
     "@types/pngjs": "npm:^6.0.5"
-    "@types/react": "npm:^18.3.9"
+    "@types/react": "npm:^18.3.10"
     "@types/react-dom": "npm:^18.3.0"
     "@types/semver": "npm:^7"
     "@types/shell-quote": "npm:^1"
@@ -11423,6 +11459,7 @@ __metadata:
     shell-quote: "npm:^1.8.1"
     sprintf-js: "npm:^1.1.3"
     storybook: "npm:^8.3.3"
+    storybook-dark-mode: "npm:^4.0.2"
     throttle-debounce: "npm:^5.0.2"
     tinycolor2: "npm:^1.6.0"
     ts-node: "npm:^10.9.2"

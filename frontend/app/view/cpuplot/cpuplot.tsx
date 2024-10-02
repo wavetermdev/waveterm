@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useHeight } from "@/app/hook/useHeight";
-import { useWidth } from "@/app/hook/useWidth";
 import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
@@ -11,6 +9,7 @@ import * as htl from "htl";
 import * as jotai from "jotai";
 import * as React from "react";
 
+import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
@@ -231,8 +230,9 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
 const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     const containerRef = React.useRef<HTMLInputElement>();
     const plotData = jotai.useAtomValue(model.dataAtom);
-    const parentHeight = useHeight(containerRef);
-    const parentWidth = useWidth(containerRef);
+    const domRect = useDimensionsWithExistingRef(containerRef, 30);
+    const parentHeight = domRect?.height ?? 0;
+    const parentWidth = domRect?.width ?? 0;
     const yvals = jotai.useAtomValue(model.metrics);
 
     React.useEffect(() => {

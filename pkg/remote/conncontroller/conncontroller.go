@@ -416,6 +416,7 @@ func (conn *SSHConn) WithLock(fn func()) {
 func (conn *SSHConn) connectInternal(ctx context.Context) error {
 	client, err := remote.ConnectToClient(ctx, conn.Opts) //todo specify or remove opts
 	if err != nil {
+		log.Printf("error: failed to connect to client %s: %v\n", conn.GetName(), err)
 		return err
 	}
 	fmtAddr := knownhosts.Normalize(fmt.Sprintf("%s@%s", client.User(), client.RemoteAddr().String()))
@@ -425,14 +426,17 @@ func (conn *SSHConn) connectInternal(ctx context.Context) error {
 	})
 	err = conn.OpenDomainSocketListener()
 	if err != nil {
+		log.Printf("error: unable to open domain socket listener for %s: %v\n", conn.GetName(), err)
 		return err
 	}
 	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, nil)
 	if installErr != nil {
+		log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
 	}
 	csErr := conn.StartConnServer()
 	if csErr != nil {
+		log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
 		return fmt.Errorf("conncontroller %s start wsh connserver error: %v", conn.GetName(), csErr)
 	}
 	conn.HasWaiter.Store(true)

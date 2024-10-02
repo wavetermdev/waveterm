@@ -302,6 +302,7 @@ declare global {
         "term:mode"?: string;
         "term:theme"?: string;
         "term:localshellpath"?: string;
+        "term:localshellopts"?: string[];
         count?: number;
     };
 
@@ -419,6 +420,7 @@ declare global {
         "term:fontfamily"?: string;
         "term:disablewebgl"?: boolean;
         "term:localshellpath"?: string;
+        "term:localshellopts"?: string[];
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
