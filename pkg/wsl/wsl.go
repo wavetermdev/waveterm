@@ -49,6 +49,7 @@ type WslConn struct {
 	HasWaiter          *atomic.Bool
 	LastConnectTime    int64
 	ActiveConnNum      int
+	Context            context.Context
 }
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
@@ -227,7 +228,6 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 }
 
 func (conn *WslConn) StartConnServer() error {
-	ctx := context.Context(context.Background())
 	var allowed bool
 	conn.WithLock(func() {
 		if conn.Status != Status_Connecting {
@@ -240,7 +240,7 @@ func (conn *WslConn) StartConnServer() error {
 		return fmt.Errorf("cannot start conn server for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	client := conn.GetClient()
-	wshPath := GetWshPath(ctx, client)
+	wshPath := GetWshPath(conn.Context, client)
 	rpcCtx := wshrpc.RpcContext{
 		ClientType: wshrpc.ClientType_ConnServer,
 		Conn:       conn.GetName(),
@@ -259,7 +259,7 @@ func (conn *WslConn) StartConnServer() error {
 		sshSession.Stdout = pipeWrite
 		sshSession.Stderr = pipeWrite
 	*/
-	shellPath, err := DetectShell(ctx, client)
+	shellPath, err := DetectShell(conn.Context, client)
 	if err != nil {
 		return err
 	}
@@ -278,7 +278,7 @@ func (conn *WslConn) StartConnServer() error {
 		cmd.Stdout = pipeWrite
 		cmd.Stderr = pipeWrite
 	*/
-	cmd := client.WslCommand(ctx, cmdStr)
+	cmd := client.WslCommand(conn.Context, cmdStr)
 	pipeRead, pipeWrite := io.Pipe()
 	cmd.SetStdout(pipeWrite)
 	cmd.SetStderr(pipeWrite)
@@ -516,7 +516,7 @@ func getConnInternal(name string) *WslConn {
 	defer globalLock.Unlock()
 	rtn := clientControllerMap[name]
 	if rtn == nil {
-		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: name, HasWaiter: &atomic.Bool{}}
+		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: name, HasWaiter: &atomic.Bool{}, Context: context.Context(context.Background())}
 		clientControllerMap[name] = rtn
 	}
 	return rtn

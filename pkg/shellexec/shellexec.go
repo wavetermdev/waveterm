@@ -146,7 +146,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	client := conn.GetClient()
 	shellPath := cmdOpts.ShellPath
 	if shellPath == "" {
-		remoteShellPath, err := wsl.DetectShell(ctx, client)
+		remoteShellPath, err := wsl.DetectShell(conn.Context, client)
 		if err != nil {
 			return nil, err
 		}
@@ -156,13 +156,13 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	var cmdCombined string
 	log.Printf("detected shell: %s", shellPath)
 
-	err := wsl.InstallClientRcFiles(ctx, client)
+	err := wsl.InstallClientRcFiles(conn.Context, client)
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err
 	}
 
-	homeDir := wsl.GetHomeDir(ctx, client)
+	homeDir := wsl.GetHomeDir(conn.Context, client)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -216,7 +216,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	} else {
 		cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
 	}
-	ecmd := client.WslCommand(ctx, cmdCombined)
+	ecmd := client.WslCommand(conn.Context, cmdCombined)
 
 	remoteStdinRead, remoteStdinWriteOurs, err := os.Pipe()
 	if err != nil {
@@ -249,7 +249,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		pipePty.Close()
 		return nil, err
 	}
-	return &ShellProc{Cmd: wslCmdWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	return &ShellProc{Cmd: wslCmdWrap, ConnName: "00wsl:" + conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
