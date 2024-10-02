@@ -6,16 +6,29 @@
 .dir-table-container {
     display: flex;
     flex-direction: column;
+    height: 100%;
+    --min-row-width: 35rem;
     .dir-table {
-        min-width: 600px;
+        height: 100%;
+        width: 100%;
         --col-size-size: 0.2rem;
-        border-radius: 3px;
         display: flex;
         flex-direction: column;
+
+        &:not([data-scroll-height="0"]) .dir-table-head {
+            background: rgba(10, 10, 10, 0.5);
+            backdrop-filter: blur(4px);
+        }
         .dir-table-head {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            width: fit-content;
+            border-bottom: 1px solid var(--border-color);
+
             .dir-table-head-row {
                 display: flex;
-                border-bottom: 1px solid var(--border-color);
+                min-width: var(--min-row-width);
                 padding: 4px 6px;
                 font-size: 0.75rem;
 
@@ -27,12 +40,14 @@
                     position: relative;
                     display: flex;
                     white-space: nowrap;
+                    overflow: hidden;
 
                     .dir-table-head-cell-content {
                         padding: 2px 4px;
                         display: flex;
                         gap: 0.3rem;
                         flex: 1 1 auto;
+                        overflow-x: hidden;
                         letter-spacing: -0.12px;
 
                         .dir-table-head-direction {
@@ -62,19 +77,20 @@
             }
         }
 
-        .table-body-container {
-            height: 100%;
-        }
-
-        .table-body-os {
-            height: 100%;
-            width: 100%;
-        }
-
         .dir-table-body {
+            // @property --viewport-height {
+            //     syntax: "<pixel>";
+            //     initial-value: 0px;
+            //     inherits: false;
+            // }
             display: flex;
             flex-direction: column;
-            height: 100%;
+            z-index: 9;
+            // height: 100px;
+            // clip-path: inset(var(--viewport-height) 0 0 0);
+            // overflow-x: visible;
+            // overflow-y: scroll;
+            // overflow: hidden;
             .dir-table-body-search-display {
                 display: flex;
                 border-radius: 3px;
@@ -97,6 +113,7 @@
                     align-items: center;
                     border-radius: 5px;
                     padding: 0 6px;
+                    min-width: var(--min-row-width);
 
                     &.focused {
                         background-color: rgb(from var(--accent-color) r g b / 0.5);
@@ -131,6 +148,7 @@
                     }
 
                     .dir-table-body-cell {
+                        overflow: hidden;
                         white-space: nowrap;
                         padding: 0.25rem;
                         cursor: default;

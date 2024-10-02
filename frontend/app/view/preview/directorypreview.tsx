@@ -20,12 +20,11 @@ import {
 import clsx from "clsx";
 import dayjs from "dayjs";
 import * as jotai from "jotai";
-import { OverlayScrollbarsComponent, useOverlayScrollbars } from "overlayscrollbars-react";
+import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
 
-import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
-import { Elements } from "overlayscrollbars";
+import { debounce } from "throttle-debounce";
 import "./directorypreview.less";
 
 interface DirectoryTableProps {
@@ -260,21 +259,24 @@ function DirectoryTable({
         return colSizes;
     }, [table.getState().columnSizingInfo]);
 
-    const innerRef = useRef<HTMLDivElement>();
-    const [initializeOSInner, osInner] = useOverlayScrollbars({
-        options: { scrollbars: { autoHide: "leave" }, overflow: { x: "hidden", y: "scroll" } },
-    });
+    const osRef = useRef<OverlayScrollbarsComponentRef>();
+    const bodyRef = useRef<HTMLDivElement>();
+    const [scrollHeight, setScrollHeight] = useState(0);
 
-    useEffect(() => {
-        initializeOSInner(innerRef.current);
-    }, [initializeOSInner, innerRef.current]);
-    const elementsCallback = useMemo(() => osInner()?.elements, [osInner]);
-
+    const onScroll = useCallback(
+        debounce(2, () => {
+            setScrollHeight(osRef.current.osInstance().elements().viewport.scrollTop);
+        }),
+        []
+    );
     return (
         <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: "leave" }, overflow: { x: "scroll", y: "hidden" } }}
+            options={{ scrollbars: { autoHide: "leave" } }}
+            events={{ scroll: onScroll }}
             className="dir-table"
             style={{ ...columnSizeVars }}
+            ref={osRef}
+            data-scroll-height={scrollHeight}
         >
             <div className="dir-table-head">
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -308,7 +310,7 @@ function DirectoryTable({
             </div>
             {table.getState().columnSizingInfo.isResizingColumn ? (
                 <MemoizedTableBody
-                    bodyRef={innerRef}
+                    bodyRef={bodyRef}
                     model={model}
                     data={data}
                     table={table}
@@ -318,11 +320,11 @@ function DirectoryTable({
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
                     setRefreshVersion={setRefreshVersion}
-                    osElements={elementsCallback}
+                    osRef={osRef.current}
                 />
             ) : (
                 <TableBody
-                    bodyRef={innerRef}
+                    bodyRef={bodyRef}
                     model={model}
                     data={data}
                     table={table}
@@ -332,7 +334,7 @@ function DirectoryTable({
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
                     setRefreshVersion={setRefreshVersion}
-                    osElements={elementsCallback}
+                    osRef={osRef.current}
                 />
             )}
         </OverlayScrollbarsComponent>
@@ -350,44 +352,28 @@ interface TableBodyProps {
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
     setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
-    osElements: () => Elements;
+    osRef: OverlayScrollbarsComponentRef;
 }
 
 function TableBody({
     bodyRef,
     model,
-    data,
     table,
     search,
     focusIndex,
     setFocusIndex,
     setSearch,
     setRefreshVersion,
-    osElements,
+    osRef,
 }: TableBodyProps) {
-    // const [bodyHeight, setBodyHeight] = useState(0);
-
-    const dummyLineRef = useRef<HTMLDivElement>(null);
-    const warningBoxRef = useRef<HTMLDivElement>(null);
+    const dummyLineRef = useRef<HTMLDivElement>();
+    const warningBoxRef = useRef<HTMLDivElement>();
     const rowRefs = useRef<HTMLDivElement[]>([]);
-    const domRect = useDimensionsWithExistingRef(bodyRef, 30);
     const conn = jotai.useAtomValue(model.connection);
 
-    // useEffect(() => {
-    //     const parentHeight = domRect?.height ?? 0;
-    //     if (dummyLineRef.current && data && bodyRef.current) {
-    //         const rowHeight = dummyLineRef.current.offsetHeight;
-    //         const fullTBodyHeight = rowHeight * data.length;
-    //         const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
-    //         const maxHeightLessHeader = parentHeight - warningBoxHeight;
-    //         const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
-    //         setBodyHeight(tbodyHeight);
-    //     }
-    // }, [data, domRect]);
-
     useEffect(() => {
-        if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osElements) {
-            const viewport = osElements().viewport;
+        if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osRef) {
+            const viewport = osRef.osInstance().elements().viewport;
             const viewportHeight = viewport.offsetHeight;
             const rowElement = rowRefs.current[focusIndex];
             const rowRect = rowElement.getBoundingClientRect();
