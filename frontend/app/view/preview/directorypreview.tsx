@@ -3,10 +3,10 @@
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, createBlock, getApi } from "@/app/store/global";
+import { FileService } from "@/app/store/services";
 import type { PreviewModel } from "@/app/view/preview/preview";
-import * as services from "@/store/services";
-import * as keyutil from "@/util/keyutil";
-import * as util from "@/util/util";
+import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
+import { base64ToString, isBlank } from "@/util/util";
 import {
     Column,
     Row,
@@ -19,11 +19,10 @@ import {
 } from "@tanstack/react-table";
 import clsx from "clsx";
 import dayjs from "dayjs";
-import * as jotai from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
-
 import { debounce } from "throttle-debounce";
 import "./directorypreview.less";
 
@@ -93,7 +92,7 @@ function getLastModifiedTime(unixMillis: number, column: Column<FileInfo, number
 const iconRegex = /^[a-z0-9- ]+$/;
 
 function isIconValid(icon: string): boolean {
-    if (util.isBlank(icon)) {
+    if (isBlank(icon)) {
         return false;
     }
     return icon.match(iconRegex) != null;
@@ -132,11 +131,11 @@ function DirectoryTable({
     setSelectedPath,
     setRefreshVersion,
 }: DirectoryTableProps) {
-    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
             while (mimeType.length > 0) {
-                let icon = fullConfig.mimetypes?.[mimeType]?.icon ?? null;
+                const icon = fullConfig.mimetypes?.[mimeType]?.icon ?? null;
                 if (isIconValid(icon)) {
                     return `fa fa-solid fa-${icon} fa-fw`;
                 }
@@ -147,10 +146,7 @@ function DirectoryTable({
         [fullConfig.mimetypes]
     );
     const getIconColor = useCallback(
-        (mimeType: string): string => {
-            let iconColor = fullConfig.mimetypes?.[mimeType]?.color ?? "inherit";
-            return iconColor;
-        },
+        (mimeType: string): string => fullConfig.mimetypes?.[mimeType]?.color ?? "inherit",
         [fullConfig.mimetypes]
     );
     const columns = useMemo(
@@ -369,7 +365,7 @@ function TableBody({
     const dummyLineRef = useRef<HTMLDivElement>();
     const warningBoxRef = useRef<HTMLDivElement>();
     const rowRefs = useRef<HTMLDivElement[]>([]);
-    const conn = jotai.useAtomValue(model.connection);
+    const conn = useAtomValue(model.connection);
 
     useEffect(() => {
         if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osRef) {
@@ -459,7 +455,7 @@ function TableBody({
             menu.push({
                 label: "Delete File",
                 click: async () => {
-                    await services.FileService.DeleteFile(conn, path).catch((e) => console.log(e));
+                    await FileService.DeleteFile(conn, path).catch((e) => console.log(e));
                     setRefreshVersion((current) => current + 1);
                 },
             });
@@ -532,11 +528,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
     const [filteredData, setFilteredData] = useState<FileInfo[]>([]);
-    const fileName = jotai.useAtomValue(model.metaFilePath);
-    const showHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
+    const fileName = useAtomValue(model.metaFilePath);
+    const showHiddenFiles = useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = useState("");
-    const [refreshVersion, setRefreshVersion] = jotai.useAtom(model.refreshVersion);
-    const conn = jotai.useAtomValue(model.connection);
+    const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
+    const conn = useAtomValue(model.connection);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -549,8 +545,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await services.FileService.ReadFile(conn, fileName);
-            const serializedContent = util.base64ToString(file?.data64);
+            const file = await FileService.ReadFile(conn, fileName);
+            const serializedContent = base64ToString(file?.data64);
             const content: FileInfo[] = JSON.parse(serializedContent);
             setUnfilteredData(content);
         };
@@ -569,19 +565,19 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         model.directoryKeyDownHandler = (waveEvent: WaveKeyboardEvent): boolean => {
-            if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+            if (checkKeyPressed(waveEvent, "Escape")) {
                 setSearchText("");
                 return;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
+            if (checkKeyPressed(waveEvent, "ArrowUp")) {
                 setFocusIndex((idx) => Math.max(idx - 1, 0));
                 return true;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
+            if (checkKeyPressed(waveEvent, "ArrowDown")) {
                 setFocusIndex((idx) => Math.min(idx + 1, filteredData.length - 1));
                 return true;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+            if (checkKeyPressed(waveEvent, "Enter")) {
                 if (filteredData.length == 0) {
                     return;
                 }
@@ -589,14 +585,14 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 setSearchText("");
                 return true;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "Backspace")) {
+            if (checkKeyPressed(waveEvent, "Backspace")) {
                 if (searchText.length == 0) {
                     return true;
                 }
                 setSearchText((current) => current.slice(0, -1));
                 return true;
             }
-            if (keyutil.isCharacterKeyEvent(waveEvent)) {
+            if (isCharacterKeyEvent(waveEvent)) {
                 setSearchText((current) => current + waveEvent.key);
                 return true;
             }
