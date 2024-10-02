@@ -221,10 +221,22 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan err
 	return rtn, writeErrCh, nil
 }
 
-func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc, error) {
-	conn, err := net.Dial("unix", sockName)
+func tryTcpSocket(sockName string) (net.Conn, error) {
+	addr, err := net.ResolveTCPAddr("tcp", sockName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Unix domain socket: %w", err)
+		return nil, err
+	}
+	return net.DialTCP("tcp", nil, addr)
+}
+
+func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc, error) {
+	conn, tcpErr := tryTcpSocket(sockName)
+	var unixErr error
+	if tcpErr != nil {
+		conn, unixErr = net.Dial("unix", sockName)
+	}
+	if tcpErr != nil && unixErr != nil {
+		return nil, fmt.Errorf("failed to connect to tcp or unix domain socket: tcp err:%w: unix socket err: %w", tcpErr, unixErr)
 	}
 	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl)
 	go func() {
