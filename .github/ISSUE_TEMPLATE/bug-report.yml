@@ -33,11 +33,11 @@ body:
               examples:
                 - **OS**: Ubuntu 20.04
                 - **Architecture**: arm64
-                - **Version**: v0.8.8
+                - **Wave Version**: v0.8.8
           value: |
               - OS:
               - Architecture:
-              - Version:
+              - Wave Version:
           render: markdown
       validations:
           required: false
