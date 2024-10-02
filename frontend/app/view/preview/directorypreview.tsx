@@ -262,7 +262,7 @@ function DirectoryTable({
 
     const innerRef = useRef<HTMLDivElement>();
     const [initializeOSInner, osInner] = useOverlayScrollbars({
-        options: { scrollbars: { autoHide: "leave" }, overflow: { x: "visible", y: "scroll" } },
+        options: { scrollbars: { autoHide: "leave" }, overflow: { x: "hidden", y: "scroll" } },
     });
 
     useEffect(() => {
@@ -272,7 +272,7 @@ function DirectoryTable({
 
     return (
         <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: "leave" }, overflow: { x: "scroll", y: "visible" } }}
+            options={{ scrollbars: { autoHide: "leave" }, overflow: { x: "scroll", y: "hidden" } }}
             className="dir-table"
             style={{ ...columnSizeVars }}
         >
@@ -365,25 +365,25 @@ function TableBody({
     setRefreshVersion,
     osElements,
 }: TableBodyProps) {
-    const [bodyHeight, setBodyHeight] = useState(0);
+    // const [bodyHeight, setBodyHeight] = useState(0);
 
     const dummyLineRef = useRef<HTMLDivElement>(null);
     const warningBoxRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const domRect = useDimensionsWithExistingRef(bodyRef, 30);
-    const parentHeight = domRect?.height ?? 0;
     const conn = jotai.useAtomValue(model.connection);
 
-    useEffect(() => {
-        if (dummyLineRef.current && data && bodyRef.current) {
-            const rowHeight = dummyLineRef.current.offsetHeight;
-            const fullTBodyHeight = rowHeight * data.length;
-            const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
-            const maxHeightLessHeader = parentHeight - warningBoxHeight;
-            const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
-            setBodyHeight(tbodyHeight);
-        }
-    }, [data, parentHeight]);
+    // useEffect(() => {
+    //     const parentHeight = domRect?.height ?? 0;
+    //     if (dummyLineRef.current && data && bodyRef.current) {
+    //         const rowHeight = dummyLineRef.current.offsetHeight;
+    //         const fullTBodyHeight = rowHeight * data.length;
+    //         const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
+    //         const maxHeightLessHeader = parentHeight - warningBoxHeight;
+    //         const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
+    //         setBodyHeight(tbodyHeight);
+    //     }
+    // }, [data, domRect]);
 
     useEffect(() => {
         if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osElements) {
@@ -405,7 +405,7 @@ function TableBody({
                 viewport.scrollTo({ top: rowBottomRelativeToViewport - viewportHeight });
             }
         }
-    }, [focusIndex, parentHeight]);
+    }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
         (e: any, path: string, mimetype: string) => {
@@ -521,7 +521,7 @@ function TableBody({
                     </div>
                 </div>
             )}
-            <div className="dir-table-body-scroll-box" style={{ height: bodyHeight }}>
+            <div className="dir-table-body-scroll-box">
                 <div className="dummy dir-table-body-row" ref={dummyLineRef}>
                     <div className="dir-table-body-cell">dummy-data</div>
                 </div>
