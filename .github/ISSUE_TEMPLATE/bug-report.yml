@@ -29,12 +29,12 @@ body:
               3. Run '...'
               4. See error...
       validations:
-          required: false
+          required: true
 
     - type: markdown
       attributes:
           value: |
-              ## Environment
+              ## Environment details
     - type: input
       attributes:
           label: Wave Version
@@ -56,14 +56,13 @@ body:
           options:
               - arm64
               - x64
-          default: 0
       validations:
           required: false
 
     - type: markdown
       attributes:
           value: |
-              ## Extra
+              ## Extra details
     - type: textarea
       attributes:
           label: Anything else?
