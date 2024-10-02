@@ -159,7 +159,7 @@ func EnsureOpenTcpSocket(serverAddr string) (net.Listener, error) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	if wslListener != nil {
-		return nil, fmt.Errorf("route already exists - no need to recreate")
+		return wslListener, nil
 	}
 
 	tcpListener, err := net.Listen("tcp", serverAddr)
