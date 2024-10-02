@@ -32,12 +32,12 @@ body:
           description: |
               examples:
                 - **OS**: Ubuntu 20.04
-                - **Node**: 13.14.0
-                - **npm**: 7.6.3
+                - **Architecture**: arm64
+                - **Version**: v0.8.8
           value: |
               - OS:
-              - Node:
-              - npm:
+              - Architecture:
+              - Version:
           render: markdown
       validations:
           required: false
