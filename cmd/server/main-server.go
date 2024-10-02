@@ -65,6 +65,7 @@ func doShutdown(reason string) {
 			watcher.Close()
 		}
 		time.Sleep(500 * time.Millisecond)
+		log.Printf("shutdown complete\n")
 		os.Exit(0)
 	})
 }
