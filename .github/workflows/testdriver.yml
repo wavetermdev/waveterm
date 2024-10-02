@@ -123,32 +123,46 @@ jobs:
                 exit 1
             }
 
-            # Download the artifact
+            # Download the artifact (zipped file)
             Write-Host "Starting artifact download..."
+            $artifactZipPath = "$env:TEMP\artifact.zip"
             try {
                 Invoke-WebRequest -Uri $artifactUrl `
                     -Headers $headers `
-                    -OutFile $artifactFilePath `
+                    -OutFile $artifactZipPath `
                     -MaximumRedirection 5
 
-                Write-Host "Artifact downloaded successfully to $artifactFilePath"
+                Write-Host "Artifact downloaded successfully to $artifactZipPath"
             } catch {
                 Write-Error "Error downloading artifact: $_"
                 exit 1
             }
 
-            # Check if the artifact exists and is executable
-            if (Test-Path -Path $artifactFilePath) {
-                Write-Host "Executable file found: $artifactFilePath"
+            # Unzip the artifact
+            $artifactUnzipPath = "$env:TEMP\artifact"
+            Write-Host "Unzipping the artifact to $artifactUnzipPath..."
+            try {
+                Expand-Archive -Path $artifactZipPath -DestinationPath $artifactUnzipPath -Force
+                Write-Host "Artifact unzipped successfully to $artifactUnzipPath"
+            } catch {
+                Write-Error "Failed to unzip the artifact: $_"
+                exit 1
+            }
+
+            # Find the executable within the unzipped files (modify if specific path is known)
+            $artifactFilePath = Get-ChildItem -Path $artifactUnzipPath -Filter *.exe -Recurse | Select-Object -First 1
+
+            if ($artifactFilePath) {
+                Write-Host "Executable file found: $($artifactFilePath.FullName)"
             } else {
-                Write-Error "Downloaded file not found. Exiting."
+                Write-Error "Executable file not found. Exiting."
                 exit 1
             }
 
             # Run the executable and log the result
-            Write-Host "Running the executable: $artifactFilePath..."
+            Write-Host "Running the executable: $($artifactFilePath.FullName)..."
             try {
-                Start-Process -FilePath $artifactFilePath -Wait
+                Start-Process -FilePath $artifactFilePath.FullName -Wait
                 Write-Host "Executable ran successfully."
             } catch {
                 Write-Error "Failed to run the executable: $_"
