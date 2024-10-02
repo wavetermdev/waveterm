@@ -216,7 +216,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	} else {
 		cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
 	}
-	ecmd := client.Command(ctx, cmdCombined)
+	ecmd := client.WslCommand(ctx, cmdCombined)
 
 	remoteStdinRead, remoteStdinWriteOurs, err := os.Pipe()
 	if err != nil {
@@ -239,9 +239,9 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	if termSize.Rows <= 0 || termSize.Cols <= 0 {
 		return nil, fmt.Errorf("invalid term size: %v", termSize)
 	}
-	ecmd.Stdin = remoteStdinRead
-	ecmd.Stdout = remoteStdoutWrite
-	ecmd.Stderr = remoteStdoutWrite
+	ecmd.SetStdin(remoteStdinRead)
+	ecmd.SetStdout(remoteStdoutWrite)
+	ecmd.SetStderr(remoteStdoutWrite)
 
 	wslCmdWrap := WslCmdWrap{ecmd, pipePty, pipePty}
 	err = wslCmdWrap.Start()

@@ -8,6 +8,8 @@ package wsl
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 )
 
@@ -21,13 +23,36 @@ func (d *Distro) Name() string {
 	return ""
 }
 
-func (d *Distro) Command(ctx context.Context, cmd string) *WslCmd {
+func (d *Distro) WslCommand(ctx context.Context, cmd string) *WslCmd {
 	return nil
 }
 
 // just use the regular cmd since it's
 // similar enough to not cause issues
-type WslCmd = exec.Cmd
+// type WslCmd = exec.Cmd
+type WslCmd struct {
+	exec.Cmd
+}
+
+func (wc *WslCmd) GetProcess() *os.Process {
+	return nil
+}
+
+func (wc *WslCmd) GetProcessState() *os.ProcessState {
+	return nil
+}
+
+func (c *WslCmd) SetStdin(stdin io.Reader) {
+	c.Stdin = stdin
+}
+
+func (c *WslCmd) SetStdout(stdout io.Writer) {
+	c.Stdout = stdout
+}
+
+func (c *WslCmd) SetStderr(stderr io.Writer) {
+	c.Stdout = stderr
+}
 
 func GetDistroCmd(ctx context.Context, wslDistroName string, cmd string) (*WslCmd, error) {
 	return nil, fmt.Errorf("GetDistroCmd not implemented on this system")

@@ -18,7 +18,7 @@ import (
 func DetectShell(ctx context.Context, client *Distro) (string, error) {
 	wshPath := GetWshPath(ctx, client)
 
-	cmd := client.Command(ctx, wshPath+" shell")
+	cmd := client.WslCommand(ctx, wshPath+" shell")
 	log.Printf("shell detecting using command: %s shell", wshPath)
 	out, err := cmd.Output()
 	if err != nil {
@@ -33,7 +33,7 @@ func DetectShell(ctx context.Context, client *Distro) (string, error) {
 func GetWshVersion(ctx context.Context, client *Distro) (string, error) {
 	wshPath := GetWshPath(ctx, client)
 
-	cmd := client.Command(ctx, wshPath+" version")
+	cmd := client.WslCommand(ctx, wshPath+" version")
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -45,20 +45,20 @@ func GetWshVersion(ctx context.Context, client *Distro) (string, error) {
 func GetWshPath(ctx context.Context, client *Distro) string {
 	defaultPath := "~/.waveterm/bin/wsh"
 
-	cmd := client.Command(ctx, "which wsh")
+	cmd := client.WslCommand(ctx, "which wsh")
 	out, whichErr := cmd.Output()
 	if whichErr == nil {
 		return strings.TrimSpace(string(out))
 	}
 
-	cmd = client.Command(ctx, "where.exe wsh")
+	cmd = client.WslCommand(ctx, "where.exe wsh")
 	out, whereErr := cmd.Output()
 	if whereErr == nil {
 		return strings.TrimSpace(string(out))
 	}
 
 	// check cmd on windows since it requires an absolute path with backslashes
-	cmd = client.Command(ctx, "(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none")
+	cmd = client.WslCommand(ctx, "(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none")
 	out, cmdErr := cmd.Output() //todo
 	if cmdErr == nil && strings.TrimSpace(string(out)) != "none" {
 		return strings.TrimSpace(string(out))
@@ -69,13 +69,13 @@ func GetWshPath(ctx context.Context, client *Distro) string {
 }
 
 func hasBashInstalled(ctx context.Context, client *Distro) (bool, error) {
-	cmd := client.Command(ctx, "which bash")
+	cmd := client.WslCommand(ctx, "which bash")
 	out, whichErr := cmd.Output()
 	if whichErr == nil && len(out) != 0 {
 		return true, nil
 	}
 
-	cmd = client.Command(ctx, "where.exe bash")
+	cmd = client.WslCommand(ctx, "where.exe bash")
 	out, whereErr := cmd.Output()
 	if whereErr == nil && len(out) != 0 {
 		return true, nil
@@ -90,7 +90,7 @@ func hasBashInstalled(ctx context.Context, client *Distro) (bool, error) {
 }
 
 func GetClientOs(ctx context.Context, client *Distro) (string, error) {
-	cmd := client.Command(ctx, "uname -s")
+	cmd := client.WslCommand(ctx, "uname -s")
 	out, unixErr := cmd.Output()
 	if unixErr == nil {
 		formatted := strings.ToLower(string(out))
@@ -98,7 +98,7 @@ func GetClientOs(ctx context.Context, client *Distro) (string, error) {
 		return formatted, nil
 	}
 
-	cmd = client.Command(ctx, "echo %OS%")
+	cmd = client.WslCommand(ctx, "echo %OS%")
 	out, cmdErr := cmd.Output()
 	if cmdErr == nil && strings.TrimSpace(string(out)) != "%OS%" {
 		formatted := strings.ToLower(string(out))
@@ -106,7 +106,7 @@ func GetClientOs(ctx context.Context, client *Distro) (string, error) {
 		return strings.Split(formatted, "_")[0], nil
 	}
 
-	cmd = client.Command(ctx, "echo $env:OS")
+	cmd = client.WslCommand(ctx, "echo $env:OS")
 	out, psErr := cmd.Output()
 	if psErr == nil && strings.TrimSpace(string(out)) != "$env:OS" {
 		formatted := strings.ToLower(string(out))
@@ -117,7 +117,7 @@ func GetClientOs(ctx context.Context, client *Distro) (string, error) {
 }
 
 func GetClientArch(ctx context.Context, client *Distro) (string, error) {
-	cmd := client.Command(ctx, "uname -m")
+	cmd := client.WslCommand(ctx, "uname -m")
 	out, unixErr := cmd.Output()
 	if unixErr == nil {
 		formatted := strings.ToLower(string(out))
@@ -128,14 +128,14 @@ func GetClientArch(ctx context.Context, client *Distro) (string, error) {
 		return formatted, nil
 	}
 
-	cmd = client.Command(ctx, "echo %PROCESSOR_ARCHITECTURE%")
+	cmd = client.WslCommand(ctx, "echo %PROCESSOR_ARCHITECTURE%")
 	out, cmdErr := cmd.Output()
 	if cmdErr == nil && strings.TrimSpace(string(out)) != "%PROCESSOR_ARCHITECTURE%" {
 		formatted := strings.ToLower(string(out))
 		return strings.TrimSpace(formatted), nil
 	}
 
-	cmd = client.Command(ctx, "echo $env:PROCESSOR_ARCHITECTURE")
+	cmd = client.WslCommand(ctx, "echo $env:PROCESSOR_ARCHITECTURE")
 	out, psErr := cmd.Output()
 	if psErr == nil && strings.TrimSpace(string(out)) != "$env:PROCESSOR_ARCHITECTURE" {
 		formatted := strings.ToLower(string(out))
@@ -185,7 +185,7 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 	installTemplate := template.Must(template.New("").Parse(selectedTemplateRaw))
 	installTemplate.Execute(installCmd, installWords)
 
-	cmd := client.Command(ctx, installCmd.String())
+	cmd := client.WslCommand(ctx, installCmd.String())
 	installStdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
@@ -204,7 +204,8 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 	go func() {
 		io.Copy(installStdin, input)
 		// don't need this?
-		cmd.Process.Kill()
+		process := cmd.GetProcess()
+		process.Kill()
 	}()
 
 	cmd.Wait()
@@ -219,20 +220,20 @@ func InstallClientRcFiles(ctx context.Context, client *Distro) error {
 	path := GetWshPath(ctx, client)
 	log.Printf("path to wsh searched is: %s", path)
 
-	cmd := client.Command(ctx, path+" rcfiles")
+	cmd := client.WslCommand(ctx, path+" rcfiles")
 	_, err := cmd.Output()
 	return err
 }
 
 func GetHomeDir(ctx context.Context, client *Distro) string {
 	// note: also works for powershell
-	cmd := client.Command(ctx, `echo "$HOME"`)
+	cmd := client.WslCommand(ctx, `echo "$HOME"`)
 	out, err := cmd.Output()
 	if err == nil {
 		return strings.TrimSpace(string(out))
 	}
 
-	cmd = client.Command(ctx, `echo %userprofile%`)
+	cmd = client.WslCommand(ctx, `echo %userprofile%`)
 	out, err = cmd.Output()
 	if err == nil {
 		return strings.TrimSpace(string(out))

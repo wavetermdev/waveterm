@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -37,6 +35,7 @@ const DefaultConnectionTimeout = 60 * time.Second
 var globalLock = &sync.Mutex{}
 var clientControllerMap = make(map[string]*WslConn)
 var activeConnCounter = &atomic.Int32{}
+var wslListener *net.TCPListener
 
 type WslConn struct {
 	Lock               *sync.Mutex
@@ -144,6 +143,34 @@ func (conn *WslConn) GetName() string {
 	return conn.Name
 }
 
+func EnsureOpenTcpSocket(serverAddr string) (net.Listener, error) {
+	/*
+		routeId := "conn:" + sockName
+		existingRpc := wshutil.DefaultRouter.GetRpc(routeId)
+		if existingRpc != nil {
+			return fmt.Errorf("route already exists - no need to recreate")
+		}
+		wslConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: "wsl"}, &wshremote.ServerImpl{})
+		//go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
+		wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId("wsl"), wslConnWsh)
+		return nil
+	*/
+	globalLock.Lock()
+	defer globalLock.Unlock()
+	if wslListener != nil {
+		return nil, fmt.Errorf("route already exists - no need to recreate")
+	}
+
+	tcpListener, err := net.Listen("tcp", serverAddr)
+	if err != nil {
+		log.Printf("error creating tcp listener at: %s: %v\n", serverAddr, err)
+		return nil, fmt.Errorf("error creating listener at %s: %w", serverAddr, err)
+	}
+	wslListener = tcpListener.(*net.TCPListener)
+	go wshutil.RunWshRpcOverListener(tcpListener)
+	return tcpListener, nil
+}
+
 func (conn *WslConn) OpenDomainSocketListener() error {
 	var allowed bool
 	conn.WithLock(func() {
@@ -156,30 +183,46 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 	if !allowed {
 		return fmt.Errorf("cannot open domain socket for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
-	randStr, err := utilfn.RandomHexString(16) // 64-bits of randomness
+	//randStr, err := utilfn.RandomHexString(16) // 64-bits of randomness
+	/*
+		if err != nil {
+			return fmt.Errorf("error generating random string: %w", err)
+		}
+	*/
+	//sockName := "/mnt/c/Users/oneirocosm/.waveterm/wave.sock"
+	// todo request listener registration on socket if it doesn't already exist
+	sockName := "127.0.0.1:"
+	listener, err := EnsureOpenTcpSocket(sockName)
 	if err != nil {
-		return fmt.Errorf("error generating random string: %w", err)
+		return err
 	}
-	//sockName := fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
+	//sockName := "http://localhost:234123/wsh"
+	conn.WithLock(func() {
+		conn.SockName = listener.Addr().String()
+	})
 	//log.Printf("remote domain socket %s %q\n", conn.GetName(), conn.GetDomainSocketName())
 	// this is going to be difficult to replicate
 	// attempt. do i need to request the socket be open???
-	sockName := filepath.Join(`\\wsl$\`, conn.Name, `tmp`, fmt.Sprintf("waveterm-%s.sock", randStr))
-	listener, err := net.Listen("unix", sockName)
-	if err != nil {
-		return fmt.Errorf("unable to request connection domain socket: %v", err)
-	}
-	conn.WithLock(func() {
-		conn.SockName = sockName
-		conn.DomainSockListener = listener
-	})
-	go func() {
-		defer conn.WithLock(func() {
-			conn.DomainSockListener = nil
-			conn.SockName = ""
+	//sockName := filepath.Join(`\\wsl$\`, conn.Name, `tmp`, fmt.Sprintf("waveterm-%s.sock", randStr))
+	//sockName := "~/.waveterm/temp.sock"
+	//listenName := fmt.Sprintf(`\Users\oneirocosm\waveterm-%s.sock`, randStr)
+	//listener, err := net.Listen("unix", listenName)
+	/*
+		if err != nil {
+			return fmt.Errorf("unable to request connection domain socket: %v", err)
+		}
+		conn.WithLock(func() {
+			conn.SockName = sockName
+			conn.DomainSockListener = listener
 		})
-		wshutil.RunWshRpcOverListener(listener)
-	}()
+		go func() {
+			defer conn.WithLock(func() {
+				conn.DomainSockListener = nil
+				conn.SockName = ""
+			})
+			wshutil.RunWshRpcOverListener(listener)
+		}()
+	*/
 	return nil
 }
 
@@ -227,10 +270,18 @@ func (conn *WslConn) StartConnServer() error {
 		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	}
 	log.Printf("starting conn controller: %s\n", cmdStr)
-	cmd := client.Command(ctx, cmdStr)
+	// keeping this dead code around so i remember to
+	// revert it if my pr is accepted
+	/*
+		cmd := client.Command(ctx, cmdStr)
+		pipeRead, pipeWrite := io.Pipe()
+		cmd.Stdout = pipeWrite
+		cmd.Stderr = pipeWrite
+	*/
+	cmd := client.WslCommand(ctx, cmdStr)
 	pipeRead, pipeWrite := io.Pipe()
-	cmd.Stdout = pipeWrite
-	cmd.Stderr = pipeWrite
+	cmd.SetStdout(pipeWrite)
+	cmd.SetStderr(pipeWrite)
 	err = cmd.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start conn controller: %w", err)

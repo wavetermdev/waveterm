@@ -143,17 +143,21 @@ func (wcw WslCmdWrap) Kill() {
 }
 
 func (wcw WslCmdWrap) KillGraceful(timeout time.Duration) {
-	if wcw.Process == nil {
+	process := wcw.WslCmd.GetProcess()
+	if process == nil {
 		return
 	}
-	if wcw.ProcessState != nil && wcw.ProcessState.Exited() {
+	processState := wcw.WslCmd.GetProcessState()
+	if processState != nil && processState.Exited() {
 		return
 	}
-	wcw.Process.Signal(os.Interrupt)
+	process.Signal(os.Interrupt)
 	go func() {
 		time.Sleep(timeout)
-		if wcw.ProcessState == nil || !wcw.ProcessState.Exited() {
-			wcw.Process.Kill() // force kill if it is already not exited
+		process := wcw.WslCmd.GetProcess()
+		processState := wcw.WslCmd.GetProcessState()
+		if processState == nil || !processState.Exited() {
+			process.Kill() // force kill if it is already not exited
 		}
 	}()
 }
