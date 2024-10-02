@@ -59,4 +59,6 @@ const List = memo(({ items, className, renderItem }: ListProps) => {
     return <ul className="list">{items.map((item, index) => renderListItem(item, index))}</ul>;
 });
 
+List.displayName = "List";
+
 export { List };
