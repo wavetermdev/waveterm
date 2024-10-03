@@ -6,7 +6,7 @@ import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react
 import ReactDOM from "react-dom";
 
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
-import "./menu.less";
+import "./contextmenu.less";
 
 type MenuItem = {
     label: string;
@@ -14,11 +14,11 @@ type MenuItem = {
     onClick?: (e) => void;
 };
 
-const SubMenu = memo(
+const SubContextMenu = memo(
     ({
         subItems,
         parentKey,
-        subMenuPosition,
+        subContextMenuPosition,
         visibleSubMenus,
         hoveredItems,
         subMenuRefs,
@@ -29,7 +29,7 @@ const SubMenu = memo(
     }: {
         subItems: MenuItem[];
         parentKey: string;
-        subMenuPosition: {
+        subContextMenuPosition: {
             [key: string]: { top: number; left: number; label: string };
         };
         visibleSubMenus: { [key: string]: any };
@@ -52,12 +52,12 @@ const SubMenu = memo(
             }
         });
 
-        const position = subMenuPosition[parentKey];
+        const position = subContextMenuPosition[parentKey];
         const isPositioned = position && position.top !== undefined && position.left !== undefined;
 
         const subMenu = (
             <div
-                className="menu sub-menu"
+                className="context-menu context-sub-menu"
                 ref={subMenuRefs.current[parentKey]}
                 style={{
                     top: position?.top || 0,
@@ -72,14 +72,14 @@ const SubMenu = memo(
                     const isActive = hoveredItems.includes(newKey);
 
                     const menuItemProps = {
-                        className: clsx("menu-item", { active: isActive }),
+                        className: clsx("context-menu-item", { active: isActive }),
                         onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
                             handleMouseEnterItem(event, parentKey, idx, item),
                         onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
                     };
 
                     const renderedItem = renderMenuItem ? (
-                        renderMenuItem(item, menuItemProps) // Remove portal here
+                        renderMenuItem(item, menuItemProps)
                     ) : (
                         <div key={newKey} {...menuItemProps}>
                             <span className="label">{item.label}</span>
@@ -91,10 +91,10 @@ const SubMenu = memo(
                         <React.Fragment key={newKey}>
                             {renderedItem}
                             {visibleSubMenus[newKey]?.visible && item.subItems && (
-                                <SubMenu
+                                <SubContextMenu
                                     subItems={item.subItems}
                                     parentKey={newKey}
-                                    subMenuPosition={subMenuPosition}
+                                    subContextMenuPosition={subContextMenuPosition}
                                     visibleSubMenus={visibleSubMenus}
                                     hoveredItems={hoveredItems}
                                     handleMouseEnterItem={handleMouseEnterItem}
@@ -114,7 +114,7 @@ const SubMenu = memo(
     }
 );
 
-const Menu = memo(
+const ContextMenu = memo(
     ({
         items,
         anchorRef,
@@ -140,16 +140,16 @@ const Menu = memo(
             [key: string]: { top: number; left: number; label: string };
         }>({});
         const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-        const menuRef = useRef<HTMLDivElement>(null);
-        const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
+        const contextMenuRef = useRef<HTMLDivElement>(null);
+        const subContextMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
         const domRect = useDimensionsWithExistingRef(scopeRef, 30);
         const width = domRect?.width ?? 0;
         const height = domRect?.height ?? 0;
 
         items.forEach((_, idx) => {
             const key = `${idx}`;
-            if (!subMenuRefs.current[key]) {
-                subMenuRefs.current[key] = React.createRef<HTMLDivElement>();
+            if (!subContextMenuRefs.current[key]) {
+                subContextMenuRefs.current[key] = React.createRef<HTMLDivElement>();
             }
         });
 
@@ -163,8 +163,8 @@ const Menu = memo(
                 const scrollTop = window.scrollY || document.documentElement.scrollTop;
                 const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
 
-                const menuWidth = menuRef.current?.offsetWidth || 0;
-                const menuHeight = menuRef.current?.offsetHeight || 0;
+                const menuWidth = contextMenuRef.current?.offsetWidth || 0;
+                const menuHeight = contextMenuRef.current?.offsetHeight || 0;
 
                 const boundaryTop = 0;
                 const boundaryLeft = 0;
@@ -192,7 +192,7 @@ const Menu = memo(
                 }
 
                 setPosition({ top, left });
-            } else if (anchorRef.current && menuRef.current) {
+            } else if (anchorRef.current && contextMenuRef.current) {
                 // Calculate position based on anchorRef if it exists
                 const anchorRect = anchorRef.current.getBoundingClientRect();
                 const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -201,8 +201,8 @@ const Menu = memo(
                 let top = anchorRect.bottom + scrollTop;
                 let left = anchorRect.left + scrollLeft;
 
-                const menuWidth = menuRef.current.offsetWidth;
-                const menuHeight = menuRef.current.offsetHeight;
+                const menuWidth = contextMenuRef.current.offsetWidth;
+                const menuHeight = contextMenuRef.current.offsetHeight;
 
                 const boundaryTop = 0;
                 const boundaryLeft = 0;
@@ -237,16 +237,17 @@ const Menu = memo(
 
         useEffect(() => {
             const handleClickOutside = (event: MouseEvent) => {
-                const isClickInsideDropdown = menuRef.current && menuRef.current.contains(event.target as Node);
+                const isClickInsideDropdown =
+                    contextMenuRef.current && contextMenuRef.current.contains(event.target as Node);
 
                 const isClickInsideAnchor = anchorRef?.current
                     ? anchorRef.current.contains(event.target as Node)
                     : false;
 
-                const isClickInsideSubMenus = Object.keys(subMenuRefs.current).some(
+                const isClickInsideSubMenus = Object.keys(subContextMenuRefs.current).some(
                     (key) =>
-                        subMenuRefs.current[key]?.current &&
-                        subMenuRefs.current[key]?.current.contains(event.target as Node)
+                        subContextMenuRefs.current[key]?.current &&
+                        subContextMenuRefs.current[key]?.current.contains(event.target as Node)
                 );
 
                 if (!isClickInsideDropdown && !isClickInsideAnchor && !isClickInsideSubMenus) {
@@ -262,21 +263,21 @@ const Menu = memo(
         }, []);
 
         // Position submenus based on available space and scroll position
-        const handleSubMenuPosition = (
+        const handleSubContextMenuPosition = (
             key: string,
             itemRect: DOMRect,
             parentRef: React.RefObject<HTMLDivElement>,
             label: string
         ) => {
             setTimeout(() => {
-                const subMenuRef = subMenuRefs.current[key]?.current;
-                if (!subMenuRef) return;
+                const subContextMenuRef = subContextMenuRefs.current[key]?.current;
+                if (!subContextMenuRef) return;
 
                 const scrollTop = window.scrollY || document.documentElement.scrollTop;
                 const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
 
-                const submenuWidth = subMenuRef.offsetWidth;
-                const submenuHeight = subMenuRef.offsetHeight;
+                const submenuWidth = subContextMenuRef.offsetWidth;
+                const submenuHeight = subContextMenuRef.offsetHeight;
 
                 let left = itemRect.right + scrollLeft - 2; // Adjust for horizontal scroll
                 let top = itemRect.top - 2 + scrollTop; // Adjust for vertical scroll
@@ -340,7 +341,7 @@ const Menu = memo(
             setHoveredItems(newHoveredItems);
 
             const itemRect = event.currentTarget.getBoundingClientRect();
-            handleSubMenuPosition(key, itemRect, menuRef, item.label);
+            handleSubContextMenuPosition(key, itemRect, contextMenuRef, item.label);
         };
 
         const handleOnClick = (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => {
@@ -386,13 +387,17 @@ const Menu = memo(
         // );
 
         const menuMenu = (
-            <div className={clsx("menu", className)} ref={menuRef} style={{ top: position.top, left: position.left }}>
+            <div
+                className={clsx("context-menu", className)}
+                ref={contextMenuRef}
+                style={{ top: position.top, left: position.left }}
+            >
                 {items.map((item, index) => {
                     const key = `${index}`;
                     const isActive = hoveredItems.includes(key);
 
                     const menuItemProps = {
-                        className: clsx("menu-item", { active: isActive }),
+                        className: clsx("context-menu-item", { active: isActive }),
                         onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
                             handleMouseEnterItem(event, null, index, item),
                         onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
@@ -411,15 +416,15 @@ const Menu = memo(
                         <React.Fragment key={key}>
                             {renderedItem}
                             {visibleSubMenus[key]?.visible && item.subItems && (
-                                <SubMenu
+                                <SubContextMenu
                                     subItems={item.subItems}
                                     parentKey={key}
-                                    subMenuPosition={subMenuPosition}
+                                    subContextMenuPosition={subMenuPosition}
                                     visibleSubMenus={visibleSubMenus}
                                     hoveredItems={hoveredItems}
                                     handleMouseEnterItem={handleMouseEnterItem}
                                     handleOnClick={handleOnClick}
-                                    subMenuRefs={subMenuRefs}
+                                    subMenuRefs={subContextMenuRefs}
                                     renderMenu={renderMenu}
                                     renderMenuItem={renderMenuItem}
                                 />
@@ -434,4 +439,4 @@ const Menu = memo(
     }
 );
 
-export { Menu };
+export { ContextMenu };

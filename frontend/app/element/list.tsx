@@ -7,7 +7,7 @@ import "./list.less";
 
 interface ListItem {
     text: string;
-    icon: React.ReactNode;
+    icon?: React.ReactNode;
     children?: ListItem[];
     onClick?: () => void;
 }
