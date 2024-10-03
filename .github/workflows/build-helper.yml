@@ -115,7 +115,7 @@ jobs:
               uses: dawidd6/action-download-artifact@v6
               with:
                   github_token: ${{secrets.GITHUB_TOKEN}}
-                  workflow: build-static.yml
+                  workflow: build-embedded.yml
                   repo: wavetermdev/waveterm-docs
                   name: static-site
                   path: ${{env.STATIC_DOCSITE_PATH}}
