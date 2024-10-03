@@ -32,20 +32,8 @@ import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
 const platform = getApi().getPlatform();
-const urlParams = new URLSearchParams(window.location.search);
-const tabId = urlParams.get("tabid");
-const windowId = urlParams.get("windowid");
-const clientId = urlParams.get("clientid");
-const shouldActivate = urlParams.get("activate");
+document.title = `Wave Terminal`;
 
-console.log("Wave Starting");
-console.log("tabid", tabId, "clientid", clientId, "windowid", windowId);
-
-initGlobal({ tabId, clientId, windowId, platform, environment: "renderer" });
-
-setKeyUtilPlatform(platform);
-
-loadFonts();
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
 (window as any).globalAtoms = atoms;
@@ -57,13 +45,51 @@ loadFonts();
 (window as any).pushFlashError = pushFlashError;
 (window as any).modalsModel = modalsModel;
 
-document.title = `Wave Terminal`;
+async function initBare() {
+    getApi().sendLog("Init Bare");
+    getApi().onWaveInit(initWaveWrap);
+    setKeyUtilPlatform(platform);
+    loadFonts();
+    document.fonts.ready.then(() => {
+        console.log("Init Bare Done");
+        getApi().setWindowInitStatus("ready");
+    });
+}
 
-document.addEventListener("DOMContentLoaded", async () => {
-    console.log("DOMContentLoaded");
+document.addEventListener("DOMContentLoaded", initBare);
+
+async function initWaveWrap(initOpts: WaveInitOpts) {
+    try {
+        await initWave(initOpts);
+    } catch (e) {
+        getApi().sendLog("Error in initWave " + e.message);
+        console.error("Error in initWave", e);
+    }
+}
+
+async function initWave(initOpts: WaveInitOpts) {
+    getApi().sendLog("Init Wave " + JSON.stringify(initOpts));
+    console.log(
+        "Wave Init",
+        "tabid",
+        initOpts.tabId,
+        "clientid",
+        initOpts.clientId,
+        "windowid",
+        initOpts.windowId,
+        "platform",
+        platform
+    );
+    initGlobal({
+        tabId: initOpts.tabId,
+        clientId: initOpts.clientId,
+        windowId: initOpts.windowId,
+        platform,
+        environment: "renderer",
+    });
 
     // Init WPS event handlers
-    const globalWS = initWshrpc(tabId);
+    const globalWS = initWshrpc(initOpts.tabId);
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
@@ -71,10 +97,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
-    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", clientId));
-    const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
+    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
+    const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId));
     await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
-    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", tabId));
+    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId));
     await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
     document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
 
@@ -85,8 +111,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fullConfig = await FileService.GetFullConfig();
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
-    if (shouldActivate) {
-        const prtn = ObjectService.SetActiveTab(tabId); // no need to wait
+    if (initOpts.activate) {
+        const prtn = ObjectService.SetActiveTab(initOpts.tabId); // no need to wait
         prtn.catch((e) => {
             console.log("error on initial SetActiveTab", e);
         });
@@ -94,8 +120,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const reactElem = createElement(App, null, null);
     const elem = document.getElementById("main");
     const root = createRoot(elem);
-    document.fonts.ready.then(() => {
-        console.log("Wave First Render");
-        root.render(reactElem);
-    });
-});
+    console.log("Wave First Render");
+    root.render(reactElem);
+    getApi().setWindowInitStatus("wave-ready");
+}

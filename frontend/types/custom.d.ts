@@ -48,6 +48,13 @@ declare global {
         blockId: string;
     };
 
+    type WaveInitOpts = {
+        tabId: string;
+        clientId: string;
+        windowId: string;
+        activate: boolean;
+    };
+
     type ElectronApi = {
         getAuthKey(): string;
         getIsDev(): boolean;
@@ -75,6 +82,9 @@ declare global {
         registerGlobalWebviewKeys: (keys: string[]) => void;
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
         setActiveTab: (tabId: string) => void;
+        setWindowInitStatus: (status: "ready" | "wave-ready") => void;
+        onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
+        sendLog: (log: string) => void;
     };
 
     type ElectronContextMenuItem = {

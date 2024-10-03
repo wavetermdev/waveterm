@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import { WaveTabView, getWaveTabView, setWaveTabView } from "emain/emain-wccache";
+import { WaveTabView, ensureHotSpareTab, getSpareTab, getWaveTabView, setWaveTabView } from "emain/emain-wccache";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -31,7 +31,6 @@ import {
     getWaveSrvCwd,
     getWaveSrvPath,
     isDev,
-    isDevVite,
     unameArch,
     unamePlatform,
 } from "./platform";
@@ -46,7 +45,10 @@ const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 electron.nativeTheme.themeSource = "dark";
 
-type WaveBrowserWindow = Electron.BaseWindow & { waveWindowId: string; readyPromise: Promise<void> };
+type WaveBrowserWindow = Electron.BaseWindow & {
+    waveWindowId: string;
+    waveReadyPromise: Promise<void>;
+};
 
 let waveSrvReadyResolve = (value: boolean) => {};
 const waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
@@ -240,7 +242,7 @@ async function handleWSEvent(evtMsg: WSEventType) {
         const clientData = await services.ClientService.GetClientData();
         const fullConfig = await services.FileService.GetFullConfig();
         const newWin = createBrowserWindow(clientData.oid, windowData, fullConfig);
-        await newWin.readyPromise;
+        await newWin.waveReadyPromise;
         newWin.show();
     } else if (evtMsg.eventtype == "electron:closewindow") {
         if (evtMsg.data === undefined) return;
@@ -318,35 +320,18 @@ function getOrCreateWebViewforTab(clientId: string, windowId: string, tabId: str
     if (tabView) {
         return tabView;
     }
-    tabView = new electron.WebContentsView({
-        webPreferences: {
-            preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
-            webviewTag: true,
-        },
-    }) as WaveTabView;
-    tabView.waveTabId = tabId;
-    const usp = new URLSearchParams();
-    usp.set("clientid", clientId);
-    usp.set("windowid", windowId);
-    usp.set("tabid", tabId);
-    if (activate) {
-        usp.set("activate", "1");
-    }
-    if (isDevVite) {
-        tabView.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html?${usp.toString()}`);
-    } else {
-        tabView.webContents.loadFile(path.join(getElectronAppBasePath(), "frontend", "index.html"), {
-            search: usp.toString(),
-        });
-    }
+    tabView = getSpareTab();
+    tabView.initPromise.then(() => {
+        tabView.waveTabId = tabId;
+        const initOpts = {
+            tabId: tabId,
+            clientId: clientId,
+            windowId: windowId,
+            activate: activate,
+        };
+        tabView.webContents.send("wave-init", initOpts);
+    });
     setWaveTabView(windowId, tabId, tabView);
-    let readyResolve: (value: void) => void;
-    tabView.readyPromise = new Promise((resolve, _) => {
-        readyResolve = resolve;
-    });
-    tabView.webContents.on("did-finish-load", () => {
-        readyResolve();
-    });
     tabView.webContents.on("will-navigate", shNavHandler);
     tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
     tabView.webContents.on("did-attach-webview", (event, wc) => {
@@ -456,7 +441,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     win.waveWindowId = waveWindow.oid;
     const tabView = getOrCreateWebViewforTab(clientId, waveWindow.oid, waveWindow.activetabid, true);
     win.setContentView(tabView);
-    win.readyPromise = tabView.readyPromise;
+    win.waveReadyPromise = tabView.waveReadyPromise;
     win.on(
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
@@ -626,7 +611,7 @@ electron.ipcMain.on("set-active-tab", async (event, tabId) => {
     const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
     const windowId = window.waveWindowId;
     const tabView = getOrCreateWebViewforTab(clientData.oid, windowId, tabId, true);
-    await tabView.readyPromise;
+    await tabView.waveReadyPromise;
     window.setContentView(tabView);
 });
 
@@ -740,7 +725,7 @@ async function createNewWaveWindow(): Promise<void> {
         const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
             const win = createBrowserWindow(clientData.oid, existingWindowData, fullConfig);
-            await win.readyPromise;
+            await win.waveReadyPromise;
             win.show();
             recreatedWindow = true;
         }
@@ -750,9 +735,40 @@ async function createNewWaveWindow(): Promise<void> {
     }
     const newWindow = await services.ClientService.MakeWindow();
     const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig);
-    await newBrowserWindow.readyPromise;
+    await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
 }
+
+function getTabViewFromEvent(event: Electron.IpcMainEvent): WaveTabView {
+    const window = electron.BrowserWindow.fromWebContents(event.sender);
+    if (window == null) {
+        return null;
+    }
+    const tabView: WaveTabView = window.getContentView() as any;
+    if (tabView.waveReadyPromise == null || tabView.initPromise == null) {
+        return null;
+    }
+    return tabView;
+}
+
+electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-ready") => {
+    const tabView = getTabViewFromEvent(event);
+    console.log("set-window-init-status", status, tabView);
+    if (tabView == null || tabView.initResolve == null) {
+        return;
+    }
+    if (status === "ready") {
+        console.log("initResolve");
+        tabView.initResolve();
+    } else if (status === "wave-ready") {
+        console.log("waveReadyResolve");
+        tabView.waveReadyResolve();
+    }
+});
+
+electron.ipcMain.on("fe-log", (event, logStr: string) => {
+    console.log("fe-log", logStr);
+});
 
 electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
 
@@ -882,7 +898,7 @@ async function relaunchBrowserWindows(): Promise<void> {
         wins.push(win);
     }
     for (const win of wins) {
-        await win.readyPromise;
+        await win.waveReadyPromise;
         console.log("show", win.waveWindowId);
         win.show();
     }
@@ -922,6 +938,7 @@ async function appMain() {
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
+    ensureHotSpareTab();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     await relaunchBrowserWindows();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe

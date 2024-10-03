@@ -37,6 +37,9 @@ contextBridge.exposeInMainWorld("api", {
     onControlShiftStateUpdate: (callback) =>
         ipcRenderer.on("control-shift-state-update", (_event, state) => callback(state)),
     setActiveTab: (tabId) => ipcRenderer.send("set-active-tab", tabId),
+    setWindowInitStatus: (status) => ipcRenderer.send("set-window-init-status", status),
+    onWaveInit: (callback) => ipcRenderer.on("wave-init", (_event, initOpts) => callback(initOpts)),
+    sendLog: (log) => ipcRenderer.send("fe-log", log),
 });
 
 // Custom event for "new-window"
