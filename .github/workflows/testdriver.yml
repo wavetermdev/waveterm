@@ -170,15 +170,11 @@ jobs:
             }
 
             # Optional: If the app executable is different from the installer, find and launch it
-            $appExecutable = Get-ChildItem -Path $downloadFolder -Filter "waveterm.exe" -Recurse | Select-Object -First 1
+            $wavePath = Join-Path $env:USERPROFILE "AppData\Local\Programs\waveterm\Wave.exe"
 
-            if ($appExecutable) {
-                Write-Host "Launching the application: $($appExecutable.FullName)"
-                Start-Process -FilePath $appExecutable.FullName
-                Write-Host "Application launched."
-            } else {
-                Write-Warning "App executable not found. Skipping app launch."
-            }
+            Write-Host "Launching the application: $($wavePath)"
+            Start-Process -FilePath $wavePath
+            Write-Host "Application launched."
 
 
           prompt: |
