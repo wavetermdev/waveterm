@@ -456,7 +456,6 @@ func RunWebServer(listener net.Listener) {
 	if wavebase.IsDevMode() {
 		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)
 	}
-	log.Println("serve")
 	server := &http.Server{
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
