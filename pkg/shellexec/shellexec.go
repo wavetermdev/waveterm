@@ -154,7 +154,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		shellPath = remoteShellPath
 	}
 	var shellOpts []string
-	var cmdCombined string
+	//var cmdCombined string
 	log.Printf("detected shell: %s", shellPath)
 
 	err := wsl.InstallClientRcFiles(conn.Context, client)
@@ -164,6 +164,12 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	}
 
 	homeDir := wsl.GetHomeDir(conn.Context, client)
+	shellOpts = append(shellOpts, "~", "-d", client.Name())
+
+	if isZshShell(shellPath) {
+		shellOpts = append(shellOpts, fmt.Sprintf(`ZDOTDIR="%s/.waveterm/%s"`, homeDir, shellutil.ZshIntegrationDir))
+	}
+	var subShellOpts []string
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -171,68 +177,112 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 			log.Printf("recognized as bash shell")
 			// add --rcfile
 			// cant set -l or -i with --rcfile
-			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`"%s"/.waveterm/%s/.bashrc`, homeDir, shellutil.BashIntegrationDir))
+			subShellOpts = append(subShellOpts, "--rcfile", fmt.Sprintf(`"%s/.waveterm/%s/.bashrc"`, homeDir, shellutil.BashIntegrationDir))
 		} else if isFishShell(shellPath) {
 			carg := fmt.Sprintf(`"set -x PATH \"%s\"/.waveterm/%s $PATH"`, homeDir, shellutil.WaveHomeBinDir)
-			shellOpts = append(shellOpts, "-C", carg)
+			subShellOpts = append(subShellOpts, "-C", carg)
 		} else if wsl.IsPowershell(shellPath) {
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
-			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", homeDir+fmt.Sprintf("/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
+			subShellOpts = append(subShellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", homeDir+fmt.Sprintf("/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
 		} else {
 			if cmdOpts.Login {
-				shellOpts = append(shellOpts, "-l")
+				subShellOpts = append(subShellOpts, "-l")
 			}
 			if cmdOpts.Interactive {
-				shellOpts = append(shellOpts, "-i")
+				subShellOpts = append(subShellOpts, "-i")
 			}
 			// can't set environment vars this way
 			// will try to do later if possible
 		}
-		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
-		log.Printf("combined command is: %s", cmdCombined)
+		//cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
+		//log.Printf("combined command is: %s", cmdCombined)
 	} else {
 		shellPath = cmdStr
 		if cmdOpts.Login {
-			shellOpts = append(shellOpts, "-l")
+			subShellOpts = append(subShellOpts, "-l")
 		}
 		if cmdOpts.Interactive {
-			shellOpts = append(shellOpts, "-i")
+			subShellOpts = append(subShellOpts, "-i")
 		}
-		shellOpts = append(shellOpts, "-c", cmdStr)
-		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
-		log.Printf("combined command is: %s", cmdCombined)
-	}
-	if isZshShell(shellPath) {
-		cmdCombined = fmt.Sprintf(`ZDOTDIR="%s/.waveterm/%s" %s`, homeDir, shellutil.ZshIntegrationDir, cmdCombined)
+		subShellOpts = append(subShellOpts, "-c", cmdStr)
+		//cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
+		//log.Printf("combined command is: %s", cmdCombined)
 	}
 
+	//cmdCombined := fmt.Sprintf("--command %s %s", shellPath, strings.Join(subShellOpts, " "))
+	//shellOpts = append(shellOpts, shellPath)
+	log.Printf("full cmd is: %s %s", "wsl.exe", strings.Join(shellOpts, " "))
+
+	ecmd := exec.Command("wsl.exe", shellOpts...)
 	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
 	if !ok {
 		return nil, fmt.Errorf("no jwt token provided to connection")
 	}
-
+	shellutil.UpdateCmdEnv(ecmd, map[string]string{wshutil.WaveJwtTokenVarName: jwtToken})
 	if remote.IsPowershell(shellPath) {
-		cmdCombined = fmt.Sprintf(`$env:%s="%s"; %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
+		//shellOpts = append(shellOpts, fmt.Sprintf(`$env:%s="%s";`, wshutil.WaveJwtTokenVarName, jwtToken))
 	} else {
-		cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
+		//shellOpts = append(shellOpts, fmt.Sprintf(`%s="%s"`, wshutil.WaveJwtTokenVarName, jwtToken))
 	}
-	ecmd := client.WslCommand(conn.Context, cmdCombined)
+	//  wsl ~ -d Ubuntu-24.04 FOO="BAR" /bin/bash
 
-	remoteStdinRead, remoteStdinWriteOurs, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
+	/*
+		ecmd := client.WslCommand(conn.Context, cmdCombined)
 
-	remoteStdoutReadOurs, remoteStdoutWrite, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
+		remoteStdinRead, remoteStdinWriteOurs, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
 
-	pipePty := &PipePty{
-		remoteStdinWrite: remoteStdinWriteOurs,
-		remoteStdoutRead: remoteStdoutReadOurs,
-	}
+		remoteStdoutReadOurs, remoteStdoutWrite, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
+
+		pipePty := &PipePty{
+			remoteStdinWrite: remoteStdinWriteOurs,
+			remoteStdoutRead: remoteStdoutReadOurs,
+		}
+		if termSize.Rows == 0 || termSize.Cols == 0 {
+			termSize.Rows = shellutil.DefaultTermRows
+			termSize.Cols = shellutil.DefaultTermCols
+		}
+		if termSize.Rows <= 0 || termSize.Cols <= 0 {
+			return nil, fmt.Errorf("invalid term size: %v", termSize)
+		}
+		ecmd.SetStdin(remoteStdinRead)
+		ecmd.SetStdout(remoteStdoutWrite)
+		ecmd.SetStderr(remoteStdoutWrite)
+
+		wslCmdWrap := CmdWrap{ecmd, pipePty, pipePty}
+		err = wslCmdWrap.Start()
+		if err != nil {
+			pipePty.Close()
+			return nil, err
+		}
+		return &ShellProc{Cmd: wslCmdWrap, ConnName: "00wsl:" + conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	*/
+	////////////
+
+	/*
+		if cmdOpts.Cwd != "" {
+			ecmd.Dir = cmdOpts.Cwd
+		}
+	*/
+	/*
+		if cwdErr := checkCwd(ecmd.Dir); cwdErr != nil {
+			ecmd.Dir = wavebase.GetHomeDir()
+		}
+	*/
+	//envToAdd := shellutil.WaveshellLocalEnvVars(shellutil.DefaultTermType)
+	/*
+		if os.Getenv("LANG") == "" {
+			//envToAdd["LANG"] = wavebase.DetermineLang()
+		}
+	*/
+	//shellutil.UpdateCmdEnv(ecmd, envToAdd)
+	//shellutil.UpdateCmdEnv(ecmd, cmdOpts.Env)
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
 		termSize.Cols = shellutil.DefaultTermCols
@@ -240,17 +290,11 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	if termSize.Rows <= 0 || termSize.Cols <= 0 {
 		return nil, fmt.Errorf("invalid term size: %v", termSize)
 	}
-	ecmd.SetStdin(remoteStdinRead)
-	ecmd.SetStdout(remoteStdoutWrite)
-	ecmd.SetStderr(remoteStdoutWrite)
-
-	wslCmdWrap := WslCmdWrap{ecmd, pipePty, pipePty}
-	err = wslCmdWrap.Start()
+	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
 	if err != nil {
-		pipePty.Close()
 		return nil, err
 	}
-	return &ShellProc{Cmd: wslCmdWrap, ConnName: "00wsl:" + conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	return &ShellProc{Cmd: CmdWrap{ecmd, cmdPty}, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
