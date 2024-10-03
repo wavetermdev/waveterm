@@ -27,7 +27,8 @@ func DetectShell(ctx context.Context, client *Distro) (string, error) {
 	}
 	log.Printf("detecting shell: %s", out)
 
-	return fmt.Sprintf(`"%s"`, strings.TrimSpace(string(out))), nil
+	// quoting breaks this particular case
+	return strings.TrimSpace(string(out)), nil
 }
 
 func GetWshVersion(ctx context.Context, client *Distro) (string, error) {

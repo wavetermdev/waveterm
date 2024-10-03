@@ -177,7 +177,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 			log.Printf("recognized as bash shell")
 			// add --rcfile
 			// cant set -l or -i with --rcfile
-			subShellOpts = append(subShellOpts, "--rcfile", fmt.Sprintf(`"%s/.waveterm/%s/.bashrc"`, homeDir, shellutil.BashIntegrationDir))
+			subShellOpts = append(subShellOpts, "--rcfile", fmt.Sprintf(`%s/.waveterm/%s/.bashrc`, homeDir, shellutil.BashIntegrationDir))
 		} else if isFishShell(shellPath) {
 			carg := fmt.Sprintf(`"set -x PATH \"%s\"/.waveterm/%s $PATH"`, homeDir, shellutil.WaveHomeBinDir)
 			subShellOpts = append(subShellOpts, "-C", carg)
@@ -210,21 +210,22 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		//log.Printf("combined command is: %s", cmdCombined)
 	}
 
-	//cmdCombined := fmt.Sprintf("--command %s %s", shellPath, strings.Join(subShellOpts, " "))
-	//shellOpts = append(shellOpts, shellPath)
-	log.Printf("full cmd is: %s %s", "wsl.exe", strings.Join(shellOpts, " "))
-
-	ecmd := exec.Command("wsl.exe", shellOpts...)
 	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
 	if !ok {
 		return nil, fmt.Errorf("no jwt token provided to connection")
 	}
-	shellutil.UpdateCmdEnv(ecmd, map[string]string{wshutil.WaveJwtTokenVarName: jwtToken})
+	//shellutil.UpdateCmdEnv(ecmd, map[string]string{wshutil.WaveJwtTokenVarName: jwtToken})
 	if remote.IsPowershell(shellPath) {
-		//shellOpts = append(shellOpts, fmt.Sprintf(`$env:%s="%s";`, wshutil.WaveJwtTokenVarName, jwtToken))
+		shellOpts = append(shellOpts, "--", fmt.Sprintf(`$env:%s=%s;`, wshutil.WaveJwtTokenVarName, jwtToken))
 	} else {
-		//shellOpts = append(shellOpts, fmt.Sprintf(`%s="%s"`, wshutil.WaveJwtTokenVarName, jwtToken))
+		shellOpts = append(shellOpts, "--", fmt.Sprintf(`%s=%s`, wshutil.WaveJwtTokenVarName, jwtToken))
 	}
+	//cmdCombined := fmt.Sprintf("%s %s", shellPath, strings.Join(subShellOpts, " "))
+	shellOpts = append(shellOpts, shellPath)
+	shellOpts = append(shellOpts, subShellOpts...)
+	log.Printf("full cmd is: %s %s", "wsl.exe", strings.Join(shellOpts, " "))
+
+	ecmd := exec.Command("wsl.exe", shellOpts...)
 	//  wsl ~ -d Ubuntu-24.04 FOO="BAR" /bin/bash
 
 	/*
