@@ -10,19 +10,18 @@ ipcMain.on("get-docsite-url", (event) => {
 });
 
 export async function initDocsite() {
-    const docsiteLocalUrl = getWebServerEndpoint() + "/docsite/";
-    console.log("docsiteLocalUrl", docsiteLocalUrl);
+    const docsiteEmbeddedUrl = getWebServerEndpoint() + "/docsite/";
     try {
-        const response = await fetch(docsiteLocalUrl);
+        const response = await fetch(docsiteEmbeddedUrl);
         if (response.ok) {
-            console.log("Local docsite is running, using local site for help view");
-            docsiteUrl = docsiteLocalUrl;
+            console.log("Embedded docsite is running, using embedded version for help view");
+            docsiteUrl = docsiteEmbeddedUrl;
         } else {
-            console.log("Local docsite is not running, using hosted site for help view", response);
+            console.log("Embedded docsite is not running, using web version for help view", response);
             docsiteUrl = docsiteWebUrl;
         }
     } catch (error) {
-        console.log("Failed to fetch docsite url, using web site for help view", error);
+        console.log("Failed to fetch docsite url, using web version for help view", error);
         docsiteUrl = docsiteWebUrl;
     }
 }
