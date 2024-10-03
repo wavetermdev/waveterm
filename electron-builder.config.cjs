@@ -66,6 +66,7 @@ const config = {
             Keywords: "developer;terminal;emulator;",
             category: "Development;Utility;",
         },
+        executableArgs: ["--enable-features", "UseOzonePlatform", "--ozone-platform-hint", "auto"],
     },
     deb: {
         afterInstall: "build/deb-postinstall.tpl",
