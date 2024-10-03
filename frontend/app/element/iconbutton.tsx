@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { useLongClick } from "@/app/hook/useLongClick";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";

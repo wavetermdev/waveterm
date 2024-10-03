@@ -21,23 +21,27 @@ interface ListProps {
 const List = memo(({ items, className, renderItem }: ListProps) => {
     const [open, setOpen] = useState<{ [key: string]: boolean }>({});
 
-    const handleClick = (item: ListItem) => {
-        setOpen((prevState) => ({ ...prevState, [item.text]: !prevState[item.text] }));
+    // Helper function to generate a unique key for each item based on its path in the hierarchy
+    const getItemKey = (item: ListItem, path: string) => `${path}-${item.text}`;
+
+    const handleClick = (item: ListItem, itemKey: string) => {
+        setOpen((prevState) => ({ ...prevState, [itemKey]: !prevState[itemKey] }));
         if (item.onClick) {
             item.onClick();
         }
     };
 
-    const renderListItem = (item: ListItem, index: number) => {
-        const isOpen = open[item.text] === true;
+    const renderListItem = (item: ListItem, index: number, path: string) => {
+        const itemKey = getItemKey(item, path); // Generate unique key based on the path
+        const isOpen = open[itemKey] === true;
         const hasChildren = item.children && item.children.length > 0;
 
         return (
-            <li key={index} className={clsx("list-item", className)}>
+            <li key={itemKey} className={clsx("list-item", className)}>
                 {renderItem ? (
-                    renderItem(item, isOpen, () => handleClick(item))
+                    renderItem(item, isOpen, () => handleClick(item, itemKey))
                 ) : (
-                    <div className="list-item-button" onClick={() => handleClick(item)}>
+                    <div className="list-item-button" onClick={() => handleClick(item, itemKey)}>
                         <div className="list-item-content">
                             <div className="list-item-icon">{item.icon}</div>
                             <div className="list-item-text">{item.text}</div>
@@ -49,14 +53,16 @@ const List = memo(({ items, className, renderItem }: ListProps) => {
                 )}
                 {hasChildren && (
                     <ul className={`nested-list ${isOpen ? "open" : "closed"}`}>
-                        {item.children.map((child, childIndex) => renderListItem(child, childIndex))}
+                        {item.children.map((child, childIndex) =>
+                            renderListItem(child, childIndex, `${path}-${index}`)
+                        )}
                     </ul>
                 )}
             </li>
         );
     };
 
-    return <ul className="list">{items.map((item, index) => renderListItem(item, index))}</ul>;
+    return <ul className="list">{items.map((item, index) => renderListItem(item, index, "root"))}</ul>;
 });
 
 List.displayName = "List";

@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Meta, StoryObj } from "@storybook/react";
+import { Avatar } from "./avatar";
 import { List } from "./list";
+
 import "./list.less";
 
 const meta: Meta<typeof List> = {
@@ -59,6 +61,57 @@ const nestedItems = [
                 text: "Important",
                 icon: <i className="fa-sharp fa-solid fa-star"></i>,
                 onClick: () => console.log("Important clicked"),
+            },
+            {
+                text: "Inbox",
+                icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
+                onClick: () => console.log("Inbox clicked"),
+                children: [
+                    {
+                        text: "Starred",
+                        icon: <i className="fa-sharp fa-solid fa-star"></i>,
+                        onClick: () => console.log("Starred clicked"),
+                    },
+                    {
+                        text: "Important",
+                        icon: <i className="fa-sharp fa-solid fa-star"></i>,
+                        onClick: () => console.log("Important clicked"),
+                    },
+                    {
+                        text: "Inbox",
+                        icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
+                        onClick: () => console.log("Inbox clicked"),
+                        children: [
+                            {
+                                text: "Starred",
+                                icon: <i className="fa-sharp fa-solid fa-star"></i>,
+                                onClick: () => console.log("Starred clicked"),
+                            },
+                            {
+                                text: "Important",
+                                icon: <i className="fa-sharp fa-solid fa-star"></i>,
+                                onClick: () => console.log("Important clicked"),
+                            },
+                            {
+                                text: "Inbox",
+                                icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
+                                onClick: () => console.log("Inbox clicked"),
+                                children: [
+                                    {
+                                        text: "Starred",
+                                        icon: <i className="fa-sharp fa-solid fa-star"></i>,
+                                        onClick: () => console.log("Starred clicked"),
+                                    },
+                                    {
+                                        text: "Important",
+                                        icon: <i className="fa-sharp fa-solid fa-star"></i>,
+                                        onClick: () => console.log("Important clicked"),
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
             },
         ],
     },
@@ -134,6 +187,35 @@ export const WithClickHandlers: Story = {
 export const NestedWithClickHandlers: Story = {
     args: {
         items: nestedItems,
+    },
+    render: (args) => (
+        <Container>
+            <List {...args} />
+        </Container>
+    ),
+};
+
+const avatarItems = [
+    {
+        text: "John Doe",
+        icon: <Avatar name="John Doe" status="online" />,
+        onClick: () => console.log("John Doe clicked"),
+    },
+    {
+        text: "Jane Smith",
+        icon: <Avatar name="Jane Smith" status="busy" />,
+        onClick: () => console.log("Jane Smith clicked"),
+    },
+    {
+        text: "Robert Brown",
+        icon: <Avatar name="Robert Brown" status="away" />,
+        onClick: () => console.log("Robert Brown clicked"),
+    },
+];
+
+export const WithAvatars: Story = {
+    args: {
+        items: avatarItems,
     },
     render: (args) => (
         <Container>
