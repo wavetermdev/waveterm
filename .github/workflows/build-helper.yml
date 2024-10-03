@@ -11,7 +11,7 @@ on:
 env:
     GO_VERSION: "1.22"
     NODE_VERSION: "20"
-    STATIC_DOCSITE_PATH: waveterm-docs
+    STATIC_DOCSITE_PATH: docsite
 jobs:
     runbuild:
         permissions:
