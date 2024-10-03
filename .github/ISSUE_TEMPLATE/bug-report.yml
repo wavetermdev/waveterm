@@ -35,6 +35,8 @@ body:
       attributes:
           value: |
               ## Environment details
+
+              We require that you provide us the version of Wave you're running so we can track issues across versions. To find the Wave version, go to the app menu (this always visible on macOS, for Windows and Linux, click the `...` button) and navigate to `Wave -> About Wave Terminal`. This will bring up the About modal. Copy the client version and paste it below.
     - type: input
       attributes:
           label: Wave Version
