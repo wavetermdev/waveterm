@@ -2,15 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { memo } from "react";
 
+import clsx from "clsx";
 import "./avatar.less";
 
 interface AvatarProps {
     name: string;
     status: "online" | "offline" | "busy" | "away";
+    className?: string;
     imageUrl?: string;
 }
 
-const Avatar = memo(({ name, status = "offline", imageUrl }: AvatarProps) => {
+const Avatar = memo(({ name, status = "offline", className, imageUrl }: AvatarProps) => {
     const getInitials = (name: string) => {
         const nameParts = name.split(" ");
         const initials = nameParts.map((part) => part[0]).join("");
@@ -18,7 +20,7 @@ const Avatar = memo(({ name, status = "offline", imageUrl }: AvatarProps) => {
     };
 
     return (
-        <div className={`avatar ${status}`}>
+        <div className={clsx("avatar", status, className)} title="status">
             {imageUrl ? (
                 <img src={imageUrl} alt={`${name}'s avatar`} className="avatar-image" />
             ) : (

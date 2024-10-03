@@ -198,17 +198,17 @@ export const NestedWithClickHandlers: Story = {
 const avatarItems = [
     {
         text: "John Doe",
-        icon: <Avatar name="John Doe" status="online" />,
+        icon: <Avatar name="John Doe" status="online" className="size-md" />,
         onClick: () => console.log("John Doe clicked"),
     },
     {
         text: "Jane Smith",
-        icon: <Avatar name="Jane Smith" status="busy" />,
+        icon: <Avatar name="Jane Smith" status="busy" className="size-md" />,
         onClick: () => console.log("Jane Smith clicked"),
     },
     {
         text: "Robert Brown",
-        icon: <Avatar name="Robert Brown" status="away" />,
+        icon: <Avatar name="Robert Brown" status="away" className="size-md" />,
         onClick: () => console.log("Robert Brown clicked"),
     },
 ];

@@ -1,3 +1,8 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+@import "@/app/mixins.less";
+
 .avatar {
     position: relative;
     width: 50px;
@@ -10,7 +15,6 @@
     color: var(--main-text-color);
     font-size: 18px;
     text-transform: uppercase;
-    margin-right: 10px;
 
     .avatar-image {
         width: 100%;
@@ -48,4 +52,6 @@
             background-color: var(--warning-color);
         }
     }
+
+    .avatar-dims-mixin();
 }
