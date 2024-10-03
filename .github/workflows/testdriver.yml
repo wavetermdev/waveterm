@@ -149,25 +149,37 @@ jobs:
                 exit 1
             }
 
-            # Find the executable within the unzipped files (modify if specific path is known)
-            $artifactFilePath = Get-ChildItem -Path $artifactUnzipPath -Filter *.exe -Recurse | Select-Object -First 1
+            # Find the installer or app executable
+            $artifactInstallerPath = Get-ChildItem -Path $artifactUnzipPath -Filter *.exe -Recurse | Select-Object -First 1
 
-            if ($artifactFilePath) {
-                Write-Host "Executable file found: $($artifactFilePath.FullName)"
+            if ($artifactInstallerPath) {
+                Write-Host "Executable file found: $($artifactInstallerPath.FullName)"
             } else {
                 Write-Error "Executable file not found. Exiting."
                 exit 1
             }
 
-            # Run the executable and log the result
-            Write-Host "Running the executable: $($artifactFilePath.FullName)..."
+            # Run the installer and log the result
+            Write-Host "Running the installer: $($artifactInstallerPath.FullName)..."
             try {
-                Start-Process -FilePath $artifactFilePath.FullName -Wait
-                Write-Host "Executable ran successfully."
+                Start-Process -FilePath $artifactInstallerPath.FullName -Wait
+                Write-Host "Installer ran successfully."
             } catch {
-                Write-Error "Failed to run the executable: $_"
+                Write-Error "Failed to run the installer: $_"
                 exit 1
             }
+
+            # Optional: If the app executable is different from the installer, find and launch it
+            $appExecutable = Get-ChildItem -Path $downloadFolder -Filter "waveterm.exe" -Recurse | Select-Object -First 1
+
+            if ($appExecutable) {
+                Write-Host "Launching the application: $($appExecutable.FullName)"
+                Start-Process -FilePath $appExecutable.FullName
+                Write-Host "Application launched."
+            } else {
+                Write-Warning "App executable not found. Skipping app launch."
+            }
+
 
           prompt: |
             1. /run testdriver/theme.yml
