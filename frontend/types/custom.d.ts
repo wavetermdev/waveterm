@@ -58,6 +58,7 @@ declare global {
         getUserName: () => string;
         getHostName: () => string;
         getAboutModalDetails: () => AboutModalDetails;
+        getDocsiteUrl: () => string;
         showContextMenu: (menu?: ElectronContextMenuItem[]) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
         onNavigate: (callback: (url: string) => void) => void;
