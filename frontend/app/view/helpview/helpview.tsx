@@ -22,7 +22,7 @@ function HelpView({}: { model: HelpViewModel }) {
     console.log(url);
     return (
         <div className="help-view">
-            <webview className="docsite-iframe" src={url} />
+            <webview className="docsite-webview" src={url} />
         </div>
     );
 }
