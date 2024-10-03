@@ -15,15 +15,25 @@
         display: flex;
         flex-direction: column;
 
-        &:not([data-scroll-height="0"]) .dir-table-head {
-            background: rgba(10, 10, 10, 0.5);
+        &:not([data-scroll-height="0"]) .dir-table-head::after {
+            background: rgb(from var(--block-bg-color) r g b / 0.2);
+        }
+
+        .dir-table-head::after {
+            content: "";
+            z-index: -1;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
             backdrop-filter: blur(4px);
         }
         .dir-table-head {
             position: sticky;
             top: 0;
             z-index: 10;
-            width: fit-content;
+            width: 100%;
             border-bottom: 1px solid var(--border-color);
 
             .dir-table-head-row {
