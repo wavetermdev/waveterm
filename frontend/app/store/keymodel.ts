@@ -263,15 +263,13 @@ function registerGlobalKeys() {
         switchBlockInDirection(tabId, NavigateDirection.Right);
         return true;
     });
-    const handleCmdG = () => {
+    globalKeyMap.set("Cmd:g", () => {
         const bcm = getBlockComponentModel(getFocusedBlockInActiveTab());
         if (bcm.openSwitchConnection != null) {
             bcm.openSwitchConnection();
             return true;
         }
-    };
-    globalKeyMap.set("Cmd:g", handleCmdG);
-    globalKeyMap.set("Ctrl:g", handleCmdG);
+    });
     for (let idx = 1; idx <= 9; idx++) {
         globalKeyMap.set(`Cmd:${idx}`, () => {
             switchTabAbs(idx);
