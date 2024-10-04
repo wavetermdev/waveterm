@@ -582,6 +582,41 @@ electron.ipcMain.on("open-external", (event, url) => {
     }
 });
 
+function getUrlInSession(session: Electron.Session, url: string): Readable {
+    const request = electron.net.request({
+        url,
+        method: "GET",
+        session,
+    });
+    const readable = new Readable({
+        read() {}, // No-op, we'll push data manually
+    });
+    request.on("response", (response) => {
+        response.on("data", (chunk) => {
+            readable.push(chunk);
+        });
+
+        response.on("end", () => {
+            readable.push(null);
+        });
+    });
+    request.on("error", (err) => {
+        console.error("Request error:", err);
+        readable.destroy(err);
+    });
+    request.end();
+    return readable;
+}
+
+electron.ipcMain.on("save-image", (event: electron.IpcMainEvent, payload: { src: string }) => {
+    console.log("save-image", payload.src);
+    const wc = event.sender;
+    if (wc == null) {
+        return;
+    }
+    getUrlInSession(wc.session, payload.src);
+});
+
 electron.ipcMain.on("download", (event, payload) => {
     const window = electron.BrowserWindow.fromWebContents(event.sender);
     const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
