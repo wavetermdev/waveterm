@@ -11,6 +11,7 @@ on:
 env:
     GO_VERSION: "1.22"
     NODE_VERSION: "20"
+    STATIC_DOCSITE_PATH: docsite
 jobs:
     runbuild:
         permissions:
@@ -110,6 +111,15 @@ jobs:
                   smctl windows certsync
               shell: cmd
 
+            - name: Download waveterm-docs static site
+              uses: dawidd6/action-download-artifact@v6
+              with:
+                  github_token: ${{secrets.GITHUB_TOKEN}}
+                  workflow: build-embedded.yml
+                  repo: wavetermdev/waveterm-docs
+                  name: static-site
+                  path: ${{env.STATIC_DOCSITE_PATH}}
+
             # Build and upload packages
             - name: Build (not Windows)
               if: matrix.platform != 'windows'
@@ -121,6 +131,7 @@ jobs:
                   APPLE_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_APPLE_ID_2 }}
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD_2 }}
                   APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID_2 }}
+                  STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
             - name: Build (Windows only)
               if: matrix.platform == 'windows'
               run: task package
@@ -128,6 +139,7 @@ jobs:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
                   CSC_LINK: ${{ steps.variables.outputs.SM_CLIENT_CERT_FILE }}
                   CSC_KEY_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+                  STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
               shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
             - name: Upload to S3 staging
               run: task artifacts:upload

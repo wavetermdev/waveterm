@@ -35,12 +35,23 @@ const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
 
+const WaveAppPathVarName = "WAVETERM_APP_PATH"
+const AppPathBinDir = "bin"
+
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
 
 func IsDevMode() bool {
 	pdev := os.Getenv(WaveDevVarName)
 	return pdev != ""
+}
+
+func GetWaveAppPath() string {
+	return os.Getenv(WaveAppPathVarName)
+}
+
+func GetWaveAppBinPath() string {
+	return filepath.Join(GetWaveAppPath(), AppPathBinDir)
 }
 
 func GetHomeDir() string {
