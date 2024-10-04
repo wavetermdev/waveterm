@@ -11,10 +11,18 @@ document.addEventListener("contextmenu", (event) => {
     const targetElement = event.target as HTMLElement;
     // Check if the right-click is on an image
     if (targetElement.tagName === "IMG") {
-        const imgElem = targetElement as HTMLImageElement;
-        const imageUrl = imgElem.src;
-        ipcRenderer.send("save-image", { src: imageUrl });
+        setTimeout(() => {
+            if (event.defaultPrevented) {
+                return;
+            }
+            event.preventDefault();
+            const imgElem = targetElement as HTMLImageElement;
+            const imageUrl = imgElem.src;
+            ipcRenderer.send("webview-image-contextmenu", { src: imageUrl });
+        }, 50);
+        return;
     }
+    // do nothing
 });
 
 console.log("loaded wave preload-webview.ts");
