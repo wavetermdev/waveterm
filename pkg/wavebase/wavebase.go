@@ -17,8 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/alexflint/go-filemutex"
 )
 
 // set by main-server.go
@@ -40,6 +38,10 @@ const AppPathBinDir = "bin"
 
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
+
+type FDLock interface {
+	Close() error
+}
 
 func IsDevMode() bool {
 	pdev := os.Getenv(WaveDevVarName)
@@ -198,19 +200,6 @@ func DetermineLocale() string {
 		return "C"
 	}
 	return strings.Replace(truncated, "_", "-", -1)
-}
-
-func AcquireWaveLock() (*filemutex.FileMutex, error) {
-	homeDir := GetWaveHomeDir()
-	lockFileName := filepath.Join(homeDir, WaveLockFile)
-	log.Printf("[base] acquiring lock on %s\n", lockFileName)
-	m, err := filemutex.New(lockFileName)
-	if err != nil {
-		return nil, err
-	}
-
-	err = m.TryLock()
-	return m, err
 }
 
 func ClientArch() string {
