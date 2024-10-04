@@ -2,14 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Avatar } from "@/app/element/avatar";
 
-export type Channel = {
-    text: string;
-    icon: JSX.Element;
-    onClick: () => void;
-    children?: Channel[];
-};
-
-export const channels: Channel[] = [
+export const channels: ListItem[] = [
     {
         text: "Channel 1",
         icon: <i className="fa-sharp fa-solid fa-wave"></i>,
@@ -246,13 +239,11 @@ export const channels: Channel[] = [
     },
 ];
 
-export type User = {
-    name: string;
+export type UserListItem = ListItem & {
     status: "online" | "busy" | "away" | "offline";
-    onClick: () => void;
 };
 
-export const users = [
+export const users: UserListItem[] = [
     {
         text: "John Doe",
         status: "online",
@@ -279,12 +270,11 @@ export const users = [
     },
 ];
 
-export type Message = {
-    text: string;
+export type MessageListItem = ListItem & {
     timestamp: string;
 };
 
-export const messages: Message[] = [
+export const messages: MessageListItem[] = [
     { text: "Message 1 content", timestamp: "2024-09-24 17:02:12" },
     { text: "Message 2 content", timestamp: "2024-07-11 04:17:12" },
     { text: "Message 3 content", timestamp: "2024-07-30 15:32:12" },

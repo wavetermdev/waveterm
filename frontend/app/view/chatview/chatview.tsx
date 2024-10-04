@@ -1,16 +1,16 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 import { Avatar } from "@/app/element/avatar"
-import { List } from "@/app/element/list"
+import { List } from "@/app/element/menu"
 import { ChatItem } from "./chatitem"
-import type { Channel, Message, User } from "./data"
+import type { MessageListItem, UserListItem } from "./data"
 
 import "./Layout.css";
 
 interface ChatViewProps {
-    channels: Channel[];
-    users: User[];
-    messages: Message[];
+    channels: ListItem[];
+    users: UserListItem[];
+    messages: MessageListItem[];
 }
 
 const ChatView = ({ channels, users, messages }: ChatViewProps) => {
@@ -33,7 +33,7 @@ const ChatView = ({ channels, users, messages }: ChatViewProps) => {
             ))}
             <List items={channels}></List>
             <div className="chat-section">
-                <List items={messages} renderItem={<ChatItem />}></List>
+                <List items={messages} renderItem={(props) => <ChatItem {...props} />}></List>
             </div>
         </div>
     );

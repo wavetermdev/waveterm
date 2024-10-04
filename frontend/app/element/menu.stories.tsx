@@ -3,13 +3,13 @@
 
 import { Meta, StoryObj } from "@storybook/react";
 import { Avatar } from "./avatar";
-import { List } from "./list";
+import { Menu } from "./menu";
 
-import "./list.less";
+import "./menu.less";
 
-const meta: Meta<typeof List> = {
-    title: "Elements/List",
-    component: List,
+const meta: Meta<typeof Menu> = {
+    title: "Elements/Menu",
+    component: Menu,
     argTypes: {
         items: { control: "object" },
         renderItem: { control: false },
@@ -145,7 +145,7 @@ export const Default: Story = {
     },
     render: (args) => (
         <Container>
-            <List {...args} />
+            <Menu {...args} />
         </Container>
     ),
 };
@@ -156,7 +156,7 @@ export const NestedList: Story = {
     },
     render: (args) => (
         <Container>
-            <List {...args} />
+            <Menu {...args} />
         </Container>
     ),
 };
@@ -168,7 +168,7 @@ export const CustomRender: Story = {
     },
     render: (args) => (
         <Container>
-            <List {...args} />
+            <Menu {...args} />
         </Container>
     ),
 };
@@ -179,7 +179,7 @@ export const WithClickHandlers: Story = {
     },
     render: (args) => (
         <Container>
-            <List {...args} />
+            <Menu {...args} />
         </Container>
     ),
 };
@@ -190,7 +190,7 @@ export const NestedWithClickHandlers: Story = {
     },
     render: (args) => (
         <Container>
-            <List {...args} />
+            <Menu {...args} />
         </Container>
     ),
 };
@@ -224,7 +224,7 @@ export const WithAvatars: Story = {
     },
     render: (args) => (
         <Container>
-            <List {...args} />
+            <Menu {...args} />
         </Container>
     ),
 };

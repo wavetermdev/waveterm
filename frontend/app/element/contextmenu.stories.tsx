@@ -56,7 +56,7 @@ const items = [
 ];
 
 const meta = {
-    title: "Elements/Menu",
+    title: "Elements/ContextMenu",
     component: ContextMenu,
     args: {
         items: [],
