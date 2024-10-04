@@ -9,6 +9,7 @@ import * as path from "path";
 import { PNG } from "pngjs";
 import * as readline from "readline";
 import { sprintf } from "sprintf-js";
+import { Readable } from "stream";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
@@ -700,6 +701,57 @@ async function createNewWaveWindow(): Promise<void> {
     const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig);
     await newBrowserWindow.readyPromise;
     newBrowserWindow.show();
+}
+
+function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string, readStream: Readable) {
+    if (defaultFileName == null || defaultFileName == "") {
+        defaultFileName = "image";
+    }
+    const window = electron.BrowserWindow.getFocusedWindow(); // Get the current window context
+    const mimeToExtension: { [key: string]: string } = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/gif": "gif",
+        "image/webp": "webp",
+        "image/bmp": "bmp",
+        "image/tiff": "tiff",
+        "image/heic": "heic",
+    };
+    function addExtensionIfNeeded(fileName: string, mimeType: string): string {
+        const extension = mimeToExtension[mimeType];
+        if (!path.extname(fileName) && extension) {
+            return `${fileName}.${extension}`;
+        }
+        return fileName;
+    }
+    defaultFileName = addExtensionIfNeeded(defaultFileName, mimeType);
+    electron.dialog
+        .showSaveDialog(window, {
+            title: "Save Image",
+            defaultPath: defaultFileName,
+            filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "heic"] }],
+        })
+        .then((file) => {
+            if (file.canceled) {
+                return;
+            }
+            const writeStream = fs.createWriteStream(file.filePath);
+            readStream.pipe(writeStream);
+            writeStream.on("finish", () => {
+                console.log("saved file", file.filePath);
+            });
+            writeStream.on("error", (err) => {
+                console.log("error saving file (writeStream)", err);
+                readStream.destroy();
+            });
+            readStream.on("error", (err) => {
+                console.error("error saving file (readStream)", err);
+                writeStream.destroy(); // Stop the write stream
+            });
+        })
+        .catch((err) => {
+            console.log("error trying to save file", err);
+        });
 }
 
 electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
