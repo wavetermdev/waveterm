@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import type { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 import { useEffect, useRef, useState } from "react";

@@ -8,7 +8,7 @@ import ReactDOM from "react-dom";
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import "./contextmenu.less";
 
-type MenuItem = {
+export type MenuItem = {
     label: string;
     subItems?: MenuItem[];
     onClick?: (e) => void;
