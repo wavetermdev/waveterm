@@ -582,39 +582,108 @@ electron.ipcMain.on("open-external", (event, url) => {
     }
 });
 
-function getUrlInSession(session: Electron.Session, url: string): Readable {
-    const request = electron.net.request({
-        url,
-        method: "GET",
-        session,
-    });
-    const readable = new Readable({
-        read() {}, // No-op, we'll push data manually
-    });
-    request.on("response", (response) => {
-        response.on("data", (chunk) => {
-            readable.push(chunk);
-        });
+type UrlInSessionResult = {
+    stream: Readable;
+    mimeType: string;
+    fileName: string;
+};
 
-        response.on("end", () => {
-            readable.push(null);
-        });
-    });
-    request.on("error", (err) => {
-        console.error("Request error:", err);
-        readable.destroy(err);
-    });
-    request.end();
-    return readable;
+function getSingleHeaderVal(headers: Record<string, string | string[]>, key: string): string {
+    const val = headers[key];
+    if (val == null) {
+        return null;
+    }
+    if (Array.isArray(val)) {
+        return val[0];
+    }
+    return val;
 }
 
-electron.ipcMain.on("save-image", (event: electron.IpcMainEvent, payload: { src: string }) => {
-    console.log("save-image", payload.src);
-    const wc = event.sender;
-    if (wc == null) {
+function cleanMimeType(mimeType: string): string {
+    if (mimeType == null) {
+        return null;
+    }
+    const parts = mimeType.split(";");
+    return parts[0].trim();
+}
+
+function getFileNameFromUrl(url: string): string {
+    try {
+        const pathname = new URL(url).pathname;
+        const filename = pathname.substring(pathname.lastIndexOf("/") + 1);
+        return filename;
+    } catch (e) {
+        return null;
+    }
+}
+
+function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInSessionResult> {
+    return new Promise((resolve, reject) => {
+        // Handle data URLs directly
+        if (url.startsWith("data:")) {
+            const parts = url.split(",");
+            if (parts.length < 2) {
+                return reject(new Error("Invalid data URL"));
+            }
+            const header = parts[0]; // Get the data URL header (e.g., data:image/png;base64)
+            const base64Data = parts[1]; // Get the base64 data part
+            const mimeType = header.split(";")[0].slice(5); // Extract the MIME type (after "data:")
+            const buffer = Buffer.from(base64Data, "base64");
+            const readable = Readable.from(buffer);
+            resolve({ stream: readable, mimeType, fileName: "image" });
+            return;
+        }
+        const request = electron.net.request({
+            url,
+            method: "GET",
+            session, // Attach the session directly to the request
+        });
+        const readable = new Readable({
+            read() {}, // No-op, we'll push data manually
+        });
+        request.on("response", (response) => {
+            const mimeType = cleanMimeType(getSingleHeaderVal(response.headers, "content-type"));
+            const fileName = getFileNameFromUrl(url) || "image";
+            response.on("data", (chunk) => {
+                readable.push(chunk); // Push data to the readable stream
+            });
+            response.on("end", () => {
+                readable.push(null); // Signal the end of the stream
+                resolve({ stream: readable, mimeType, fileName });
+            });
+        });
+        request.on("error", (err) => {
+            readable.destroy(err); // Destroy the stream on error
+            reject(err);
+        });
+        request.end();
+    });
+}
+
+electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, payload: { src: string }) => {
+    const menu = new electron.Menu();
+    const win = electron.BrowserWindow.fromWebContents(event.sender.hostWebContents);
+    if (win == null) {
         return;
     }
-    getUrlInSession(wc.session, payload.src);
+    menu.append(
+        new electron.MenuItem({
+            label: "Save Image",
+            click: () => {
+                const resultP = getUrlInSession(event.sender.session, payload.src);
+                resultP
+                    .then((result) => {
+                        saveImageFileWithNativeDialog(result.fileName, result.mimeType, result.stream);
+                    })
+                    .catch((e) => {
+                        console.log("error getting image", e);
+                    });
+            },
+        })
+    );
+    const { x, y } = electron.screen.getCursorScreenPoint();
+    const windowPos = win.getPosition();
+    menu.popup({ window: win, x: x - windowPos[0], y: y - windowPos[1] });
 });
 
 electron.ipcMain.on("download", (event, payload) => {
