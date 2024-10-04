@@ -16,6 +16,19 @@ import * as jotai from "jotai";
 import React, { memo, useEffect, useState } from "react";
 import "./webview.less";
 
+let webviewPreloadUrl = null;
+
+function getWebviewPreloadUrl() {
+    if (webviewPreloadUrl == null) {
+        webviewPreloadUrl = getApi().getWebviewPreload();
+        console.log("webviewPreloadUrl", webviewPreloadUrl);
+    }
+    if (webviewPreloadUrl == null) {
+        return null;
+    }
+    return "file://" + webviewPreloadUrl;
+}
+
 export class WebViewModel implements ViewModel {
     viewType: string;
     blockId: string;
@@ -501,6 +514,7 @@ const WebView = memo(({ model }: WebViewProps) => {
             src={metaUrlInitial}
             data-blockid={model.blockId}
             data-webcontentsid={webContentsId} // needed for emain
+            preload={getWebviewPreloadUrl()}
             // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
             allowpopups="true"
         ></webview>

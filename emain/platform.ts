@@ -36,6 +36,9 @@ ipcMain.on("get-user-name", (event) => {
 ipcMain.on("get-host-name", (event) => {
     event.returnValue = os.hostname();
 });
+ipcMain.on("get-webview-preload", (event) => {
+    event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
+});
 
 // must match golang
 function getWaveHomeDir() {

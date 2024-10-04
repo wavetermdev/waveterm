@@ -9,6 +9,7 @@ import * as path from "path";
 import { PNG } from "pngjs";
 import * as readline from "readline";
 import { sprintf } from "sprintf-js";
+import { Readable } from "stream";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
@@ -581,6 +582,110 @@ electron.ipcMain.on("open-external", (event, url) => {
     }
 });
 
+type UrlInSessionResult = {
+    stream: Readable;
+    mimeType: string;
+    fileName: string;
+};
+
+function getSingleHeaderVal(headers: Record<string, string | string[]>, key: string): string {
+    const val = headers[key];
+    if (val == null) {
+        return null;
+    }
+    if (Array.isArray(val)) {
+        return val[0];
+    }
+    return val;
+}
+
+function cleanMimeType(mimeType: string): string {
+    if (mimeType == null) {
+        return null;
+    }
+    const parts = mimeType.split(";");
+    return parts[0].trim();
+}
+
+function getFileNameFromUrl(url: string): string {
+    try {
+        const pathname = new URL(url).pathname;
+        const filename = pathname.substring(pathname.lastIndexOf("/") + 1);
+        return filename;
+    } catch (e) {
+        return null;
+    }
+}
+
+function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInSessionResult> {
+    return new Promise((resolve, reject) => {
+        // Handle data URLs directly
+        if (url.startsWith("data:")) {
+            const parts = url.split(",");
+            if (parts.length < 2) {
+                return reject(new Error("Invalid data URL"));
+            }
+            const header = parts[0]; // Get the data URL header (e.g., data:image/png;base64)
+            const base64Data = parts[1]; // Get the base64 data part
+            const mimeType = header.split(";")[0].slice(5); // Extract the MIME type (after "data:")
+            const buffer = Buffer.from(base64Data, "base64");
+            const readable = Readable.from(buffer);
+            resolve({ stream: readable, mimeType, fileName: "image" });
+            return;
+        }
+        const request = electron.net.request({
+            url,
+            method: "GET",
+            session, // Attach the session directly to the request
+        });
+        const readable = new Readable({
+            read() {}, // No-op, we'll push data manually
+        });
+        request.on("response", (response) => {
+            const mimeType = cleanMimeType(getSingleHeaderVal(response.headers, "content-type"));
+            const fileName = getFileNameFromUrl(url) || "image";
+            response.on("data", (chunk) => {
+                readable.push(chunk); // Push data to the readable stream
+            });
+            response.on("end", () => {
+                readable.push(null); // Signal the end of the stream
+                resolve({ stream: readable, mimeType, fileName });
+            });
+        });
+        request.on("error", (err) => {
+            readable.destroy(err); // Destroy the stream on error
+            reject(err);
+        });
+        request.end();
+    });
+}
+
+electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, payload: { src: string }) => {
+    const menu = new electron.Menu();
+    const win = electron.BrowserWindow.fromWebContents(event.sender.hostWebContents);
+    if (win == null) {
+        return;
+    }
+    menu.append(
+        new electron.MenuItem({
+            label: "Save Image",
+            click: () => {
+                const resultP = getUrlInSession(event.sender.session, payload.src);
+                resultP
+                    .then((result) => {
+                        saveImageFileWithNativeDialog(result.fileName, result.mimeType, result.stream);
+                    })
+                    .catch((e) => {
+                        console.log("error getting image", e);
+                    });
+            },
+        })
+    );
+    const { x, y } = electron.screen.getCursorScreenPoint();
+    const windowPos = win.getPosition();
+    menu.popup({ window: win, x: x - windowPos[0], y: y - windowPos[1] });
+});
+
 electron.ipcMain.on("download", (event, payload) => {
     const window = electron.BrowserWindow.fromWebContents(event.sender);
     const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
@@ -700,6 +805,57 @@ async function createNewWaveWindow(): Promise<void> {
     const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig);
     await newBrowserWindow.readyPromise;
     newBrowserWindow.show();
+}
+
+function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string, readStream: Readable) {
+    if (defaultFileName == null || defaultFileName == "") {
+        defaultFileName = "image";
+    }
+    const window = electron.BrowserWindow.getFocusedWindow(); // Get the current window context
+    const mimeToExtension: { [key: string]: string } = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/gif": "gif",
+        "image/webp": "webp",
+        "image/bmp": "bmp",
+        "image/tiff": "tiff",
+        "image/heic": "heic",
+    };
+    function addExtensionIfNeeded(fileName: string, mimeType: string): string {
+        const extension = mimeToExtension[mimeType];
+        if (!path.extname(fileName) && extension) {
+            return `${fileName}.${extension}`;
+        }
+        return fileName;
+    }
+    defaultFileName = addExtensionIfNeeded(defaultFileName, mimeType);
+    electron.dialog
+        .showSaveDialog(window, {
+            title: "Save Image",
+            defaultPath: defaultFileName,
+            filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "heic"] }],
+        })
+        .then((file) => {
+            if (file.canceled) {
+                return;
+            }
+            const writeStream = fs.createWriteStream(file.filePath);
+            readStream.pipe(writeStream);
+            writeStream.on("finish", () => {
+                console.log("saved file", file.filePath);
+            });
+            writeStream.on("error", (err) => {
+                console.log("error saving file (writeStream)", err);
+                readStream.destroy();
+            });
+            readStream.on("error", (err) => {
+                console.error("error saving file (readStream)", err);
+                writeStream.destroy(); // Stop the write stream
+            });
+        })
+        .catch((err) => {
+            console.log("error trying to save file", err);
+        });
 }
 
 electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
