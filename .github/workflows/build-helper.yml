@@ -48,7 +48,7 @@ jobs:
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
               if: matrix.platform == 'darwin'
-              run: brew update && brew install awscli
+              run: brew install awscli
 
             # The version of FPM that comes bundled with electron-builder doesn't include a Linux ARM target. Installing Gems onto the runner is super quick so we'll just do this for all targets.
             - name: Install FPM (not Windows)
