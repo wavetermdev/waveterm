@@ -19,7 +19,6 @@ function makeHelpViewModel() {
 
 function HelpView({}: { model: HelpViewModel }) {
     const [url] = useState(() => getApi().getDocsiteUrl());
-    console.log(url);
     return (
         <div className="help-view">
             <webview className="docsite-webview" src={url} />
