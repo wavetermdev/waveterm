@@ -202,7 +202,7 @@ func main() {
 		return
 	}
 	defer func() {
-		err = waveLock.Unlock()
+		err = waveLock.Close()
 		if err != nil {
 			log.Printf("error releasing wave lock: %v\n", err)
 		}

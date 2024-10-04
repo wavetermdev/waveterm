@@ -20,12 +20,13 @@ import { fetch } from "../frontend/util/fetchutil";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
+import { initDocsite } from "./docsite";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
-    getGoAppBasePath,
+    getElectronAppUnpackedBasePath,
     getWaveHomeDir,
     getWaveSrvCwd,
     getWaveSrvPath,
@@ -95,7 +96,7 @@ console.log(
         "waveterm-app starting, WAVETERM_HOME=%s, electronpath=%s gopath=%s arch=%s/%s",
         waveHome,
         getElectronAppBasePath(),
-        getGoAppBasePath(),
+        getElectronAppUnpackedBasePath(),
         unamePlatform,
         unameArch
     )
@@ -155,7 +156,7 @@ function runWaveSrv(): Promise<boolean> {
         pReject = argReject;
     });
     const envCopy = { ...process.env };
-    envCopy[WaveAppPathVarName] = getGoAppBasePath();
+    envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
     envCopy[AuthKeyEnv] = AuthKey;
     const waveSrvCmd = getWaveSrvPath();
@@ -871,6 +872,7 @@ async function appMain() {
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     await relaunchBrowserWindows();
+    await initDocsite();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     try {
         initElectronWshClient();
