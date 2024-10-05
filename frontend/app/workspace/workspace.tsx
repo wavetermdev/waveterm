@@ -80,20 +80,6 @@ async function handleWidgetSelect(blockDef: BlockDef) {
     createBlock(blockDef);
 }
 
-function isIconValid(icon: string): boolean {
-    if (util.isBlank(icon)) {
-        return false;
-    }
-    return icon.match(iconRegex) != null;
-}
-
-function getIconClass(icon: string): string {
-    if (!isIconValid(icon)) {
-        return "fa fa-regular fa-browser fa-fw";
-    }
-    return `fa fa-solid fa-${icon} fa-fw`;
-}
-
 const Widget = React.memo(({ widget }: { widget: WidgetConfigType }) => {
     return (
         <div
@@ -102,7 +88,7 @@ const Widget = React.memo(({ widget }: { widget: WidgetConfigType }) => {
             title={widget.description || widget.label}
         >
             <div className="widget-icon" style={{ color: widget.color }}>
-                <i className={getIconClass(widget.icon)}></i>
+                <i className={util.makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
             </div>
             {!util.isBlank(widget.label) ? <div className="widget-label">{widget.label}</div> : null}
         </div>

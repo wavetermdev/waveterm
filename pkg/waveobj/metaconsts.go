@@ -60,6 +60,7 @@ const (
 	MetaKey_TermMode                         = "term:mode"
 	MetaKey_TermTheme                        = "term:theme"
 	MetaKey_TermLocalShellPath               = "term:localshellpath"
+	MetaKey_TermLocalShellOpts               = "term:localshellopts"
 
 	MetaKey_Count                            = "count"
 )

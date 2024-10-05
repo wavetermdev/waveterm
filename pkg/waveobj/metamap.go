@@ -14,6 +14,24 @@ func (m MetaMapType) GetString(key string, def string) string {
 	return def
 }
 
+func (m MetaMapType) GetStringList(key string) []string {
+	v, ok := m[key]
+	if !ok {
+		return nil
+	}
+	varr, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	rtn := make([]string, 0)
+	for _, varrVal := range varr {
+		if s, ok := varrVal.(string); ok {
+			rtn = append(rtn, s)
+		}
+	}
+	return rtn
+}
+
 func (m MetaMapType) GetBool(key string, def bool) bool {
 	if v, ok := m[key]; ok {
 		if b, ok := v.(bool); ok {

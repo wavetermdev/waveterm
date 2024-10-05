@@ -3,10 +3,10 @@
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, createBlock, getApi } from "@/app/store/global";
+import { FileService } from "@/app/store/services";
 import type { PreviewModel } from "@/app/view/preview/preview";
-import * as services from "@/store/services";
-import * as keyutil from "@/util/keyutil";
-import * as util from "@/util/util";
+import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
+import { base64ToString, isBlank } from "@/util/util";
 import {
     Column,
     Row,
@@ -19,14 +19,11 @@ import {
 } from "@tanstack/react-table";
 import clsx from "clsx";
 import dayjs from "dayjs";
-import * as jotai from "jotai";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import { useAtom, useAtomValue } from "jotai";
+import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
-
-import { OverlayScrollbars } from "overlayscrollbars";
-
-import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
+import { debounce } from "throttle-debounce";
 import "./directorypreview.less";
 
 interface DirectoryTableProps {
@@ -95,7 +92,7 @@ function getLastModifiedTime(unixMillis: number, column: Column<FileInfo, number
 const iconRegex = /^[a-z0-9- ]+$/;
 
 function isIconValid(icon: string): boolean {
-    if (util.isBlank(icon)) {
+    if (isBlank(icon)) {
         return false;
     }
     return icon.match(iconRegex) != null;
@@ -134,11 +131,11 @@ function DirectoryTable({
     setSelectedPath,
     setRefreshVersion,
 }: DirectoryTableProps) {
-    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
             while (mimeType.length > 0) {
-                let icon = fullConfig.mimetypes?.[mimeType]?.icon ?? null;
+                const icon = fullConfig.mimetypes?.[mimeType]?.icon ?? null;
                 if (isIconValid(icon)) {
                     return `fa fa-solid fa-${icon} fa-fw`;
                 }
@@ -149,10 +146,7 @@ function DirectoryTable({
         [fullConfig.mimetypes]
     );
     const getIconColor = useCallback(
-        (mimeType: string): string => {
-            let iconColor = fullConfig.mimetypes?.[mimeType]?.color ?? "inherit";
-            return iconColor;
-        },
+        (mimeType: string): string => fullConfig.mimetypes?.[mimeType]?.color ?? "inherit",
         [fullConfig.mimetypes]
     );
     const columns = useMemo(
@@ -261,8 +255,25 @@ function DirectoryTable({
         return colSizes;
     }, [table.getState().columnSizingInfo]);
 
+    const osRef = useRef<OverlayScrollbarsComponentRef>();
+    const bodyRef = useRef<HTMLDivElement>();
+    const [scrollHeight, setScrollHeight] = useState(0);
+
+    const onScroll = useCallback(
+        debounce(2, () => {
+            setScrollHeight(osRef.current.osInstance().elements().viewport.scrollTop);
+        }),
+        []
+    );
     return (
-        <div className="dir-table" style={{ ...columnSizeVars }}>
+        <OverlayScrollbarsComponent
+            options={{ scrollbars: { autoHide: "leave" } }}
+            events={{ scroll: onScroll }}
+            className="dir-table"
+            style={{ ...columnSizeVars }}
+            ref={osRef}
+            data-scroll-height={scrollHeight}
+        >
             <div className="dir-table-head">
                 {table.getHeaderGroups().map((headerGroup) => (
                     <div className="dir-table-head-row" key={headerGroup.id}>
@@ -295,6 +306,7 @@ function DirectoryTable({
             </div>
             {table.getState().columnSizingInfo.isResizingColumn ? (
                 <MemoizedTableBody
+                    bodyRef={bodyRef}
                     model={model}
                     data={data}
                     table={table}
@@ -304,9 +316,11 @@ function DirectoryTable({
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
                     setRefreshVersion={setRefreshVersion}
+                    osRef={osRef.current}
                 />
             ) : (
                 <TableBody
+                    bodyRef={bodyRef}
                     model={model}
                     data={data}
                     table={table}
@@ -316,13 +330,15 @@ function DirectoryTable({
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
                     setRefreshVersion={setRefreshVersion}
+                    osRef={osRef.current}
                 />
             )}
-        </div>
+        </OverlayScrollbarsComponent>
     );
 }
 
 interface TableBodyProps {
+    bodyRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
     data: Array<FileInfo>;
     table: Table<FileInfo>;
@@ -332,48 +348,32 @@ interface TableBodyProps {
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
     setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
+    osRef: OverlayScrollbarsComponentRef;
 }
 
 function TableBody({
+    bodyRef,
     model,
-    data,
     table,
     search,
     focusIndex,
     setFocusIndex,
     setSearch,
-    setSelectedPath,
     setRefreshVersion,
+    osRef,
 }: TableBodyProps) {
-    const [bodyHeight, setBodyHeight] = useState(0);
-
-    const dummyLineRef = useRef<HTMLDivElement>(null);
-    const parentRef = useRef<HTMLDivElement>(null);
-    const warningBoxRef = useRef<HTMLDivElement>(null);
-    const osInstanceRef = useRef<OverlayScrollbars>(null);
+    const dummyLineRef = useRef<HTMLDivElement>();
+    const warningBoxRef = useRef<HTMLDivElement>();
     const rowRefs = useRef<HTMLDivElement[]>([]);
-    const domRect = useDimensionsWithExistingRef(parentRef, 30);
-    const parentHeight = domRect?.height ?? 0;
-    const conn = jotai.useAtomValue(model.connection);
+    const conn = useAtomValue(model.connection);
 
     useEffect(() => {
-        if (dummyLineRef.current && data && parentRef.current) {
-            const rowHeight = dummyLineRef.current.offsetHeight;
-            const fullTBodyHeight = rowHeight * data.length;
-            const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
-            const maxHeightLessHeader = parentHeight - warningBoxHeight;
-            const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
-            setBodyHeight(tbodyHeight);
-        }
-    }, [data, parentHeight]);
-
-    useEffect(() => {
-        if (focusIndex !== null && rowRefs.current[focusIndex] && parentRef.current) {
-            const viewport = osInstanceRef.current.elements().viewport;
+        if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osRef) {
+            const viewport = osRef.osInstance().elements().viewport;
             const viewportHeight = viewport.offsetHeight;
             const rowElement = rowRefs.current[focusIndex];
             const rowRect = rowElement.getBoundingClientRect();
-            const parentRect = parentRef.current.getBoundingClientRect();
+            const parentRect = bodyRef.current.getBoundingClientRect();
             const viewportScrollTop = viewport.scrollTop;
 
             const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewportScrollTop;
@@ -387,7 +387,7 @@ function TableBody({
                 viewport.scrollTo({ top: rowBottomRelativeToViewport - viewportHeight });
             }
         }
-    }, [focusIndex, parentHeight]);
+    }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
         (e: any, path: string, mimetype: string) => {
@@ -455,7 +455,7 @@ function TableBody({
             menu.push({
                 label: "Delete File",
                 click: async () => {
-                    await services.FileService.DeleteFile(conn, path).catch((e) => console.log(e));
+                    await FileService.DeleteFile(conn, path).catch((e) => console.log(e));
                     setRefreshVersion((current) => current + 1);
                 },
             });
@@ -492,12 +492,8 @@ function TableBody({
         [setSearch, handleFileContextMenu, setFocusIndex, focusIndex]
     );
 
-    const handleScrollbarInitialized = (instance) => {
-        osInstanceRef.current = instance;
-    };
-
     return (
-        <div className="dir-table-body" ref={parentRef}>
+        <div className="dir-table-body" ref={bodyRef}>
             {search !== "" && (
                 <div className="dir-table-body-search-display" ref={warningBoxRef}>
                     <span>Searching for "{search}"</span>
@@ -507,18 +503,13 @@ function TableBody({
                     </div>
                 </div>
             )}
-            <OverlayScrollbarsComponent
-                options={{ scrollbars: { autoHide: "leave" } }}
-                events={{ initialized: handleScrollbarInitialized }}
-            >
-                <div className="dir-table-body-scroll-box" style={{ height: bodyHeight }}>
-                    <div className="dummy dir-table-body-row" ref={dummyLineRef}>
-                        <div className="dir-table-body-cell">dummy-data</div>
-                    </div>
-                    {table.getTopRows().map(displayRow)}
-                    {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
+            <div className="dir-table-body-scroll-box">
+                <div className="dummy dir-table-body-row" ref={dummyLineRef}>
+                    <div className="dir-table-body-cell">dummy-data</div>
                 </div>
-            </OverlayScrollbarsComponent>
+                {table.getTopRows().map(displayRow)}
+                {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
+            </div>
         </div>
     );
 }
@@ -537,11 +528,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
     const [filteredData, setFilteredData] = useState<FileInfo[]>([]);
-    const fileName = jotai.useAtomValue(model.metaFilePath);
-    const showHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
+    const fileName = useAtomValue(model.metaFilePath);
+    const showHiddenFiles = useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = useState("");
-    const [refreshVersion, setRefreshVersion] = jotai.useAtom(model.refreshVersion);
-    const conn = jotai.useAtomValue(model.connection);
+    const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
+    const conn = useAtomValue(model.connection);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -554,8 +545,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await services.FileService.ReadFile(conn, fileName);
-            const serializedContent = util.base64ToString(file?.data64);
+            const file = await FileService.ReadFile(conn, fileName);
+            const serializedContent = base64ToString(file?.data64);
             const content: FileInfo[] = JSON.parse(serializedContent);
             setUnfilteredData(content);
         };
@@ -574,19 +565,19 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         model.directoryKeyDownHandler = (waveEvent: WaveKeyboardEvent): boolean => {
-            if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+            if (checkKeyPressed(waveEvent, "Escape")) {
                 setSearchText("");
                 return;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
+            if (checkKeyPressed(waveEvent, "ArrowUp")) {
                 setFocusIndex((idx) => Math.max(idx - 1, 0));
                 return true;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
+            if (checkKeyPressed(waveEvent, "ArrowDown")) {
                 setFocusIndex((idx) => Math.min(idx + 1, filteredData.length - 1));
                 return true;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+            if (checkKeyPressed(waveEvent, "Enter")) {
                 if (filteredData.length == 0) {
                     return;
                 }
@@ -594,14 +585,14 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 setSearchText("");
                 return true;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "Backspace")) {
+            if (checkKeyPressed(waveEvent, "Backspace")) {
                 if (searchText.length == 0) {
                     return true;
                 }
                 setSearchText((current) => current.slice(0, -1));
                 return true;
             }
-            if (keyutil.isCharacterKeyEvent(waveEvent)) {
+            if (isCharacterKeyEvent(waveEvent)) {
                 setSearchText((current) => current + waveEvent.key);
                 return true;
             }

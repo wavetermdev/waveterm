@@ -36,6 +36,9 @@ ipcMain.on("get-user-name", (event) => {
 ipcMain.on("get-host-name", (event) => {
     event.returnValue = os.hostname();
 });
+ipcMain.on("get-webview-preload", (event) => {
+    event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
+});
 
 // must match golang
 function getWaveHomeDir() {
@@ -50,7 +53,7 @@ function getElectronAppBasePath(): string {
     return path.dirname(import.meta.dirname);
 }
 
-function getGoAppBasePath(): string {
+function getElectronAppUnpackedBasePath(): string {
     return getElectronAppBasePath().replace("app.asar", "app.asar.unpacked");
 }
 
@@ -59,10 +62,10 @@ const wavesrvBinName = `wavesrv.${unameArch}`;
 function getWaveSrvPath(): string {
     if (process.platform === "win32") {
         const winBinName = `${wavesrvBinName}.exe`;
-        const appPath = path.join(getGoAppBasePath(), "bin", winBinName);
+        const appPath = path.join(getElectronAppUnpackedBasePath(), "bin", winBinName);
         return `${appPath}`;
     }
-    return path.join(getGoAppBasePath(), "bin", wavesrvBinName);
+    return path.join(getElectronAppUnpackedBasePath(), "bin", wavesrvBinName);
 }
 
 function getWaveSrvCwd(): string {
@@ -71,7 +74,7 @@ function getWaveSrvCwd(): string {
 
 export {
     getElectronAppBasePath,
-    getGoAppBasePath,
+    getElectronAppUnpackedBasePath,
     getWaveHomeDir,
     getWaveSrvCwd,
     getWaveSrvPath,

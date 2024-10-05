@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld("api", {
     getUserName: () => ipcRenderer.sendSync("get-user-name"),
     getHostName: () => ipcRenderer.sendSync("get-host-name"),
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
+    getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
+    getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),
