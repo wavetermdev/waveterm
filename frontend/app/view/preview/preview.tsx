@@ -434,7 +434,7 @@ export class PreviewModel implements ViewModel {
         const editMode = getFn(this.editMode);
 
         if (fileInfo?.notfound) {
-            return { errorStr: `File Not Found: ${fileInfo.path}` };
+            return { specializedView: "codeedit" };
         }
         if (mimeType == null) {
             return { errorStr: `Unable to determine mimetype for: ${fileInfo.path}` };
