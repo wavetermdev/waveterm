@@ -432,7 +432,12 @@ export class PreviewModel implements ViewModel {
         const fileInfo = await getFn(this.statFile);
         const fileName = await getFn(this.statFilePath);
         const editMode = getFn(this.editMode);
+        const parentFileInfo = await this.getParentInfo(fileInfo);
+        console.log(parentFileInfo);
 
+        if (parentFileInfo?.notfound ?? false) {
+            return { errorStr: `Parent Directory Not Found: ${fileInfo.path}` };
+        }
         if (fileInfo?.notfound) {
             return { specializedView: "codeedit" };
         }
@@ -492,6 +497,18 @@ export class PreviewModel implements ViewModel {
         services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
+    async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
+        const conn = globalStore.get(this.connection);
+        try {
+            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
+                route: makeConnRoute(conn),
+            });
+            return parentFileInfo;
+        } catch {
+            return undefined;
+        }
+    }
+
     async goParentDirectory() {
         const fileInfo = await globalStore.get(this.statFile);
         if (fileInfo == null) {
@@ -500,7 +517,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, ".."], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
             console.log(newFileInfo.path);
