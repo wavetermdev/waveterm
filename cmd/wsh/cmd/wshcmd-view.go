@@ -4,8 +4,6 @@
 package cmd
 
 import (
-	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -56,15 +54,6 @@ func viewRun(cmd *cobra.Command, args []string) {
 		absFile, err := filepath.Abs(fileArg)
 		if err != nil {
 			WriteStderr("[error] getting absolute path: %v\n", err)
-			return
-		}
-		_, err = os.Stat(absFile)
-		if err == fs.ErrNotExist {
-			WriteStderr("[error] file does not exist: %q\n", absFile)
-			return
-		}
-		if err != nil {
-			WriteStderr("[error] getting file info: %v\n", err)
 			return
 		}
 		wshCmd = &wshrpc.CommandCreateBlockData{
