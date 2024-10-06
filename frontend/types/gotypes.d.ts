@@ -515,7 +515,7 @@ declare global {
         foreground: string;
         selectionBackground: string;
         background: string;
-        cursorAccent: string;
+        cursor: string;
     };
 
     // wshrpc.TimeSeriesData
