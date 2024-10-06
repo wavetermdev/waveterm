@@ -110,18 +110,47 @@ export class WaveAiModel implements ViewModel {
             set(this.updateLastMessageAtom, "", false);
         });
         this.viewText = atom((get) => {
+            const viewTextChildren: HeaderElem[] = [];
             const settings = get(atoms.settingsAtom);
             const isCloud = isBlank(settings?.["ai:apitoken"]) && isBlank(settings?.["ai:baseurl"]);
             let modelText = "gpt-4o-mini";
             if (!isCloud && !isBlank(settings?.["ai:model"])) {
-                modelText = settings["ai:model"];
+                if (!isBlank(settings?.["ai:name"])) {
+                    modelText = settings["ai:name"];
+                } else {
+                    modelText = settings["ai:model"];
+                }
             }
-            const viewTextChildren: HeaderElem[] = [
-                {
-                    elemtype: "text",
-                    text: modelText,
-                },
-            ];
+            if (isCloud) {
+                viewTextChildren.push({
+                    elemtype: "iconbutton",
+                    icon: "cloud",
+                    title: "Using Wave's AI Proxy (gpt-4o-mini)",
+                    disabled: true,
+                });
+            } else {
+                const baseUrl = settings["ai:baseurl"] ?? "OpenAI Default Endpoint";
+                const modelName = settings["ai:model"];
+                if (baseUrl.startsWith("http://localhost") || baseUrl.startsWith("http://127.0.0.1")) {
+                    viewTextChildren.push({
+                        elemtype: "iconbutton",
+                        icon: "location-dot",
+                        title: "Using Local Model @ " + baseUrl + " (" + modelName + ")",
+                        disabled: true,
+                    });
+                } else {
+                    viewTextChildren.push({
+                        elemtype: "iconbutton",
+                        icon: "globe",
+                        title: "Using Remote Model @ " + baseUrl + " (" + modelName + ")",
+                        disabled: true,
+                    });
+                }
+            }
+            viewTextChildren.push({
+                elemtype: "text",
+                text: modelText,
+            });
             return viewTextChildren;
         });
     }
