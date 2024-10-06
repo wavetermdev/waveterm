@@ -441,69 +441,69 @@ const WebView = memo(({ model }: WebViewProps) => {
 
     useEffect(() => {
         const webview = model.webviewRef.current;
-
-        if (webview) {
-            const navigateListener = (e: any) => {
-                model.handleNavigate(e.url);
-            };
-            const newWindowHandler = (e: any) => {
-                e.preventDefault();
-                const newUrl = e.detail.url;
-                console.log("webview new-window event:", newUrl);
-                fireAndForget(() => openLink(newUrl, true));
-            };
-            const startLoadingHandler = () => {
-                model.setRefreshIcon("xmark-large");
-                model.setIsLoading(true);
-                webview.style.backgroundColor = "transparent";
-            };
-            const stopLoadingHandler = () => {
-                model.setRefreshIcon("rotate-right");
-                model.setIsLoading(false);
-                setBgColor();
-            };
-            const failLoadHandler = (e: any) => {
-                if (e.errorCode === -3) {
-                    console.warn("Suppressed ERR_ABORTED error", e);
-                } else {
-                    console.error(`Failed to load ${e.validatedURL}: ${e.errorDescription}`);
-                }
-            };
-            const webviewFocus = () => {
-                getApi().setWebviewFocus(webview.getWebContentsId());
-                model.nodeModel.focusNode();
-            };
-            const webviewBlur = () => {
-                getApi().setWebviewFocus(null);
-            };
-            const handleDomReady = () => {
-                setDomReady(true);
-                setBgColor();
-            };
-
-            webview.addEventListener("did-navigate-in-page", navigateListener);
-            webview.addEventListener("did-navigate", navigateListener);
-            webview.addEventListener("did-start-loading", startLoadingHandler);
-            webview.addEventListener("did-stop-loading", stopLoadingHandler);
-            webview.addEventListener("new-window", newWindowHandler);
-            webview.addEventListener("did-fail-load", failLoadHandler);
-            webview.addEventListener("focus", webviewFocus);
-            webview.addEventListener("blur", webviewBlur);
-            webview.addEventListener("dom-ready", handleDomReady);
-
-            // Clean up event listeners on component unmount
-            return () => {
-                webview.removeEventListener("did-navigate", navigateListener);
-                webview.removeEventListener("did-navigate-in-page", navigateListener);
-                webview.removeEventListener("new-window", newWindowHandler);
-                webview.removeEventListener("did-fail-load", failLoadHandler);
-                webview.removeEventListener("did-start-loading", startLoadingHandler);
-                webview.removeEventListener("did-stop-loading", stopLoadingHandler);
-                webview.removeEventListener("focus", webviewFocus);
-                webview.removeEventListener("blur", webviewBlur);
-                webview.removeEventListener("dom-ready", handleDomReady);
-            };
+        if (!webview) {
+            return;
         }
+        const navigateListener = (e: any) => {
+            model.handleNavigate(e.url);
+        };
+        const newWindowHandler = (e: any) => {
+            e.preventDefault();
+            const newUrl = e.detail.url;
+            console.log("webview new-window event:", newUrl);
+            fireAndForget(() => openLink(newUrl, true));
+        };
+        const startLoadingHandler = () => {
+            model.setRefreshIcon("xmark-large");
+            model.setIsLoading(true);
+            webview.style.backgroundColor = "transparent";
+        };
+        const stopLoadingHandler = () => {
+            model.setRefreshIcon("rotate-right");
+            model.setIsLoading(false);
+            setBgColor();
+        };
+        const failLoadHandler = (e: any) => {
+            if (e.errorCode === -3) {
+                console.warn("Suppressed ERR_ABORTED error", e);
+            } else {
+                console.error(`Failed to load ${e.validatedURL}: ${e.errorDescription}`);
+            }
+        };
+        const webviewFocus = () => {
+            getApi().setWebviewFocus(webview.getWebContentsId());
+            model.nodeModel.focusNode();
+        };
+        const webviewBlur = () => {
+            getApi().setWebviewFocus(null);
+        };
+        const handleDomReady = () => {
+            setDomReady(true);
+            setBgColor();
+        };
+
+        webview.addEventListener("did-navigate-in-page", navigateListener);
+        webview.addEventListener("did-navigate", navigateListener);
+        webview.addEventListener("did-start-loading", startLoadingHandler);
+        webview.addEventListener("did-stop-loading", stopLoadingHandler);
+        webview.addEventListener("new-window", newWindowHandler);
+        webview.addEventListener("did-fail-load", failLoadHandler);
+        webview.addEventListener("focus", webviewFocus);
+        webview.addEventListener("blur", webviewBlur);
+        webview.addEventListener("dom-ready", handleDomReady);
+
+        // Clean up event listeners on component unmount
+        return () => {
+            webview.removeEventListener("did-navigate", navigateListener);
+            webview.removeEventListener("did-navigate-in-page", navigateListener);
+            webview.removeEventListener("new-window", newWindowHandler);
+            webview.removeEventListener("did-fail-load", failLoadHandler);
+            webview.removeEventListener("did-start-loading", startLoadingHandler);
+            webview.removeEventListener("did-stop-loading", stopLoadingHandler);
+            webview.removeEventListener("focus", webviewFocus);
+            webview.removeEventListener("blur", webviewBlur);
+            webview.removeEventListener("dom-ready", handleDomReady);
+        };
     }, []);
 
     return (
