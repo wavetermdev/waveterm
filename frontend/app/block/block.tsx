@@ -51,7 +51,7 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
         return makeCpuPlotViewModel(blockId);
     }
     if (blockView === "help") {
-        return makeHelpViewModel();
+        return makeHelpViewModel(blockId);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
