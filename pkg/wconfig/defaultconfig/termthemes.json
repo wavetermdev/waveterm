@@ -23,7 +23,7 @@
         "foreground": "#c1c1c1",
         "selectionBackground": "",
         "background": "#00000077",
-        "cursorAccent": ""
+        "cursor": ""
     },
     "dracula": {
         "display:name": "Dracula",
@@ -49,7 +49,7 @@
         "foreground": "#F8F8F2",
         "selectionBackground": "#44475a",
         "background": "#282a36",
-        "cursorAccent": "#f8f8f2"
+        "cursor": "#f8f8f2"
     },
     "monokai": {
         "display:name": "Monokai",
@@ -75,7 +75,7 @@
         "foreground": "#F8F8F2",
         "selectionBackground": "#49483E",
         "background": "#272822",
-        "cursorAccent": "#F8F8F2"
+        "cursor": "#F8F8F2"
     },
     "campbell": {
         "display:name": "Campbell",
@@ -101,6 +101,6 @@
         "foreground": "#CCCCCC",
         "selectionBackground": "#3A96DD",
         "background": "#0C0C0C",
-        "cursorAccent": "#CCCCCC"
+        "cursor": "#CCCCCC"
     }
 }
