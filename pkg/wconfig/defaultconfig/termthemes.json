@@ -104,7 +104,7 @@
         "cursorAccent": "#CCCCCC"
     },
     "warmyellow": {
-    "display:name": "WarmYellow",
+    "display:name": "Warm Yellow",
     "display:order": 4,
     "black": "#3C3228",
     "red": "#E67E22",
@@ -125,6 +125,6 @@
     "background": "#2B2620",
     "foreground": "#F2E6D4",
     "selectionBackground": "#B7950B",
-    "cursorColor": "#F9D784"
-}
+    "cursorAccent": "#F9D784"
+   }
 }
