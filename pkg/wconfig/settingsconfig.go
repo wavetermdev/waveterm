@@ -392,5 +392,5 @@ type TermThemeType struct {
 	Foreground          string  `json:"foreground"`
 	SelectionBackground string  `json:"selectionBackground"`
 	Background          string  `json:"background"`
-	CursorAccent        string  `json:"cursorAccent"`
+	Cursor              string  `json:"cursor"`
 }
