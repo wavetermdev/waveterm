@@ -102,5 +102,29 @@
         "selectionBackground": "#3A96DD",
         "background": "#0C0C0C",
         "cursor": "#CCCCCC"
+    },
+    "warmyellow": {
+        "display:name": "Warm Yellow",
+        "display:order": 4,
+        "black": "#3C3228",
+        "red": "#E67E22",
+        "green": "#A5D6A7",
+        "yellow": "#F9D784",
+        "blue": "#7FB3D5",
+        "magenta": "#C39BD3",
+        "cyan": "#5DADE2",
+        "white": "#ECF0F1",
+        "brightBlack": "#7E705A",
+        "brightRed": "#E74C3C",
+        "brightGreen": "#82E0AA",
+        "brightYellow": "#F4D03F",
+        "brightBlue": "#3498DB",
+        "brightMagenta": "#9B59B6",
+        "brightCyan": "#1ABC9C",
+        "brightWhite": "#FFFFFF",
+        "background": "#2B2620",
+        "foreground": "#F2E6D4",
+        "selectionBackground": "#B7950B",
+        "cursor": "#F9D784"
     }
 }
