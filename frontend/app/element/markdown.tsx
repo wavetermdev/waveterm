@@ -178,9 +178,19 @@ type MarkdownProps = {
     className?: string;
     onClickExecute?: (cmd: string) => void;
     resolveOpts?: MarkdownResolveOpts;
+    scrollable?: boolean;
 };
 
-const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, onClickExecute }: MarkdownProps) => {
+const Markdown = ({
+    text,
+    textAtom,
+    showTocAtom,
+    style,
+    className,
+    resolveOpts,
+    scrollable = true,
+    onClickExecute,
+}: MarkdownProps) => {
     const textAtomValue = useAtomValueSafe(textAtom);
     const tocRef = useRef<TocItem[]>([]);
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
@@ -240,8 +250,8 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
 
     text = textAtomValue ?? text;
 
-    return (
-        <div className={clsx("markdown", className)} style={style}>
+    const ScrollableMarkdown = () => {
+        return (
             <OverlayScrollbarsComponent
                 ref={contentsOsRef}
                 className="content"
@@ -274,6 +284,45 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                     {text}
                 </ReactMarkdown>
             </OverlayScrollbarsComponent>
+        );
+    };
+
+    const NonScrollableMarkdown = () => {
+        return (
+            <div className="content non-scrollable">
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
+                    rehypePlugins={[
+                        rehypeRaw,
+                        rehypeHighlight,
+                        () =>
+                            rehypeSanitize({
+                                ...defaultSchema,
+                                attributes: {
+                                    ...defaultSchema.attributes,
+                                    span: [
+                                        ...(defaultSchema.attributes?.span || []),
+                                        // Allow all class names starting with `hljs-`.
+                                        ["className", /^hljs-./],
+                                        // Alternatively, to allow only certain class names:
+                                        // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
+                                    ],
+                                },
+                                tagNames: [...(defaultSchema.tagNames || []), "span"],
+                            }),
+                        () => rehypeSlug({ prefix: idPrefix }),
+                    ]}
+                    components={markdownComponents}
+                >
+                    {text}
+                </ReactMarkdown>
+            </div>
+        );
+    };
+
+    return (
+        <div className={clsx("markdown", className)} style={style}>
+            {scrollable ? <ScrollableMarkdown /> : <NonScrollableMarkdown />}
             {toc && (
                 <OverlayScrollbarsComponent className="toc" options={{ scrollbars: { autoHide: "leave" } }}>
                     <div className="toc-inner">
