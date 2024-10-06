@@ -14,7 +14,6 @@ import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } fro
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import tinycolor from "tinycolor2";
 import "./waveai.less";
 
 interface ChatMessageType {
@@ -263,11 +262,8 @@ function makeWaveAiViewModel(blockId): WaveAiModel {
 
 const ChatItem = ({ chatItem }: ChatItemProps) => {
     const { isAssistant, text, isError } = chatItem;
-    const senderClassName = isAssistant ? "chat-msg-assistant" : "chat-msg-user";
-    const msgClassName = `chat-msg ${senderClassName}`;
     const cssVar = "--panel-bg-color";
     const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-    const color = tinycolor(panelBgColor);
 
     const renderError = (err: string): React.JSX.Element => <div className="chat-msg-error">{err}</div>;
 
@@ -284,7 +280,7 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                         </div>
                     </div>
                     <div className="chat-msg chat-msg-assistant">
-                        <Markdown text={text} />
+                        <Markdown text={text} scrollable={false} />
                     </div>
                 </>
             ) : (
@@ -299,7 +295,7 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
         return (
             <>
                 <div className="chat-msg chat-msg-user">
-                    <Markdown className="msg-text" text={text} />
+                    <Markdown className="msg-text" text={text} scrollable={false} />
                 </div>
             </>
         );
