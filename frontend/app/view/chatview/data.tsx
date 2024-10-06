@@ -1,8 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 import { Avatar } from "@/app/element/avatar";
+import { ChatMessage } from "@/app/element/chatmessages";
+import { MenuItem } from "@/app/element/menu";
 
-export const channels: ListItem[] = [
+export const channels: MenuItem[] = [
     {
         text: "Channel 1",
         icon: <i className="fa-sharp fa-solid fa-wave"></i>,
@@ -239,10 +241,6 @@ export const channels: ListItem[] = [
     },
 ];
 
-export type UserListItem = ListItem & {
-    status: "online" | "busy" | "away" | "offline";
-};
-
 export const users: UserListItem[] = [
     {
         text: "John Doe",
@@ -270,42 +268,38 @@ export const users: UserListItem[] = [
     },
 ];
 
-export type MessageListItem = ListItem & {
-    timestamp: string;
-};
-
-export const messages: MessageListItem[] = [
-    { text: "Message 1 content", timestamp: "2024-09-24 17:02:12" },
-    { text: "Message 2 content", timestamp: "2024-07-11 04:17:12" },
-    { text: "Message 3 content", timestamp: "2024-07-30 15:32:12" },
-    { text: "Message 4 content", timestamp: "2024-07-22 00:05:12" },
-    { text: "Message 5 content", timestamp: "2024-06-29 17:42:12" },
-    { text: "Message 6 content", timestamp: "2024-08-05 00:48:12" },
-    { text: "Message 7 content", timestamp: "2024-08-11 01:19:12" },
-    { text: "Message 8 content", timestamp: "2024-07-08 09:43:12" },
-    { text: "Message 9 content", timestamp: "2024-09-08 21:47:12" },
-    { text: "Message 10 content", timestamp: "2024-08-26 13:30:12" },
-    { text: "Message 11 content", timestamp: "2024-07-02 14:35:12" },
-    { text: "Message 12 content", timestamp: "2024-08-04 01:43:12" },
-    { text: "Message 13 content", timestamp: "2024-06-26 17:40:12" },
-    { text: "Message 14 content", timestamp: "2024-07-15 12:19:12" },
-    { text: "Message 15 content", timestamp: "2024-09-18 21:13:12" },
-    { text: "Message 16 content", timestamp: "2024-07-20 07:41:12" },
-    { text: "Message 17 content", timestamp: "2024-09-21 05:35:12" },
-    { text: "Message 18 content", timestamp: "2024-09-09 01:02:12" },
-    { text: "Message 19 content", timestamp: "2024-08-18 12:29:12" },
-    { text: "Message 20 content", timestamp: "2024-09-22 10:10:12" },
-    { text: "Message 21 content", timestamp: "2024-09-05 08:35:12" },
-    { text: "Message 22 content", timestamp: "2024-07-12 01:07:12" },
-    { text: "Message 23 content", timestamp: "2024-06-27 11:35:12" },
-    { text: "Message 24 content", timestamp: "2024-08-19 03:15:12" },
-    { text: "Message 25 content", timestamp: "2024-09-14 20:29:12" },
-    { text: "Message 26 content", timestamp: "2024-06-29 07:10:12" },
-    { text: "Message 27 content", timestamp: "2024-07-28 14:05:12" },
-    { text: "Message 28 content", timestamp: "2024-08-22 02:15:12" },
-    { text: "Message 29 content", timestamp: "2024-09-07 15:47:12" },
-    { text: "Message 30 content", timestamp: "2024-09-01 13:21:12" },
-    { text: "Message 31 content", timestamp: "2024-07-03 16:42:12" },
-    { text: "Message 32 content", timestamp: "2024-09-04 04:11:12" },
-    { text: "Message 33 content", timestamp: "2024-08-07 03:14:12" },
+export const messages: ChatMessage[] = [
+    {
+        id: "1",
+        username: "User1",
+        message: "Hello everyone! 👋",
+        color: "#ff4500",
+        userIcon: "https://via.placeholder.com/50",
+    },
+    {
+        id: "2",
+        username: "User2",
+        message: "Check this out: ![cool icon](https://via.placeholder.com/20)",
+        color: "#1e90ff",
+    },
+    {
+        id: "3",
+        username: "User3",
+        message: "This is a simple text message without icons.",
+        color: "#32cd32",
+        userIcon: "https://via.placeholder.com/50",
+    },
+    {
+        id: "4",
+        username: "User4",
+        message: "🎉 👏 Great job!",
+        color: "#ff6347",
+    },
+    {
+        id: "5",
+        username: "User5",
+        message: "Look at this cool icon: Isn't it awesome? ![cool icon](https://via.placeholder.com/20)",
+        color: "#8a2be2",
+        userIcon: "https://via.placeholder.com/50",
+    },
 ];

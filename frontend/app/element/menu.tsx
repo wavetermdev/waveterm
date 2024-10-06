@@ -5,7 +5,7 @@ import clsx from "clsx";
 import React, { memo, useState } from "react";
 import "./menu.less";
 
-interface MenuItem {
+export interface MenuItem {
     text: string;
     icon?: React.ReactNode;
     children?: MenuItem[];
