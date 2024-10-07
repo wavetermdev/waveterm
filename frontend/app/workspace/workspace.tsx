@@ -4,7 +4,7 @@
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { atoms, createBlock } from "@/store/global";
+import { atoms, createBlock, getApi } from "@/store/global";
 import * as util from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -36,12 +36,14 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
 const Widgets = React.memo(() => {
     const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
     const newWidgetModalVisible = React.useState(false);
+    const [docsiteUrl] = React.useState(() => getApi().getDocsiteUrl());
     const helpWidget: WidgetConfigType = {
         icon: "circle-question",
         label: "help",
         blockdef: {
             meta: {
-                view: "help",
+                view: "web",
+                pinnedurl: docsiteUrl,
             },
         },
     };

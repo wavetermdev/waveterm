@@ -58,6 +58,7 @@ export class WebViewModel implements ViewModel {
         this.homepageUrl = jotai.atom((get) => {
             const defaultUrl = get(defaultUrlAtom);
             const pinnedUrl = get(this.blockAtom).meta.pinnedurl;
+            console.log("homepageUrl", pinnedUrl, defaultUrl);
             return pinnedUrl ?? defaultUrl;
         });
         this.urlWrapperClassName = jotai.atom("");
@@ -419,8 +420,7 @@ interface WebViewProps {
 
 const WebView = memo(({ model }: WebViewProps) => {
     const blockData = jotai.useAtomValue(model.blockAtom);
-    const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
-    const defaultUrl = jotai.useAtomValue(defaultUrlAtom);
+    const defaultUrl = jotai.useAtomValue(model.homepageUrl);
     const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
     const defaultSearch = jotai.useAtomValue(defaultSearchAtom);
     let metaUrl = blockData?.meta?.url || defaultUrl;
