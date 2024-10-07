@@ -63,6 +63,7 @@ type MetaTSType struct {
 	TermTheme          string   `json:"term:theme,omitempty"`
 	TermLocalShellPath string   `json:"term:localshellpath,omitempty"` // matches settings
 	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"` // matches settings
+	TermScrollback     *int     `json:"term:scrollback,omitempty"`
 
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }
