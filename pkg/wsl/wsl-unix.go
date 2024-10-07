@@ -58,6 +58,6 @@ func GetDistroCmd(ctx context.Context, wslDistroName string, cmd string) (*WslCm
 	return nil, fmt.Errorf("GetDistroCmd not implemented on this system")
 }
 
-func GetDistro(ctx context.Context, wslDistroName string) (*Distro, error) {
+func GetDistro(ctx context.Context, wslDistroName WslName) (*Distro, error) {
 	return nil, fmt.Errorf("GetDistro not implemented on this system")
 }

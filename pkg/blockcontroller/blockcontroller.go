@@ -280,7 +280,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 
 		// create jwt
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.Name}, wslConn.GetDomainSocketName())
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}, wslConn.GetDomainSocketName())
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}

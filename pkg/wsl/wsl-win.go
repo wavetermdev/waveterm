@@ -110,13 +110,13 @@ func GetDistroCmd(ctx context.Context, wslDistroName string, cmd string) (*WslCm
 	return nil, fmt.Errorf("wsl distro %s not found", wslDistroName)
 }
 
-func GetDistro(ctx context.Context, wslDistroName string) (*Distro, error) {
+func GetDistro(ctx context.Context, wslDistroName WslName) (*Distro, error) {
 	distros, err := RegisteredDistros(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, distro := range distros {
-		if distro.Name() != wslDistroName {
+		if distro.Name() != wslDistroName.Distro {
 			continue
 		}
 		wrappedDistro := Distro{distro}

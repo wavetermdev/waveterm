@@ -40,7 +40,7 @@ var wslListener *net.TCPListener
 type WslConn struct {
 	Lock               *sync.Mutex
 	Status             string
-	Name               string
+	Name               WslName
 	Client             *Distro
 	SockName           string
 	DomainSockListener net.Listener
@@ -50,6 +50,10 @@ type WslConn struct {
 	LastConnectTime    int64
 	ActiveConnNum      int
 	Context            context.Context
+}
+
+type WslName struct {
+	Distro string `json:"distro"`
 }
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
@@ -69,7 +73,7 @@ func (conn *WslConn) DeriveConnStatus() wshrpc.ConnStatus {
 	return wshrpc.ConnStatus{
 		Status:        conn.Status,
 		Connected:     conn.Status == Status_Connected,
-		Connection:    "00wsl:" + conn.Name,
+		Connection:    conn.GetName(),
 		HasConnected:  (conn.LastConnectTime > 0),
 		ActiveConnNum: conn.ActiveConnNum,
 		Error:         conn.Error,
@@ -81,7 +85,7 @@ func (conn *WslConn) FireConnChangeEvent() {
 	event := wps.WaveEvent{
 		Event: wps.Event_ConnChange,
 		Scopes: []string{
-			fmt.Sprintf("connection:%s", "00wsl:"+conn.GetName()),
+			fmt.Sprintf("connection:%s", conn.GetName()),
 		},
 		Data: status,
 	}
@@ -141,7 +145,7 @@ func (conn *WslConn) GetStatus() string {
 
 func (conn *WslConn) GetName() string {
 	// no lock required because opts is immutable
-	return conn.Name
+	return "00wsl:" + conn.Name.Distro
 }
 
 func EnsureOpenTcpSocket(serverAddr string) (net.Listener, error) {
@@ -480,7 +484,7 @@ func (conn *WslConn) connectInternal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	installErr := conn.CheckAndInstallWsh(ctx, conn.Name, nil)
+	installErr := conn.CheckAndInstallWsh(ctx, conn.GetName(), nil)
 	if installErr != nil {
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
 	}
@@ -514,9 +518,10 @@ func (conn *WslConn) waitForDisconnect() {
 func getConnInternal(name string) *WslConn {
 	globalLock.Lock()
 	defer globalLock.Unlock()
+	connName := WslName{Distro: name}
 	rtn := clientControllerMap[name]
 	if rtn == nil {
-		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: name, HasWaiter: &atomic.Bool{}, Context: context.Context(context.Background())}
+		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, HasWaiter: &atomic.Bool{}, Context: context.Context(context.Background())}
 		clientControllerMap[name] = rtn
 	}
 	return rtn
