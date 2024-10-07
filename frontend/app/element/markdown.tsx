@@ -191,7 +191,7 @@ const Markdown = ({
     scrollable = true,
     onClickExecute,
 }: MarkdownProps) => {
-    const textAtomValue = useAtomValueSafe(textAtom);
+    const textAtomValue = useAtomValueSafe<string>(textAtom);
     const tocRef = useRef<TocItem[]>([]);
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
     const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
