@@ -13,6 +13,7 @@ import {
     registerBlockComponentModel,
     unregisterBlockComponentModel,
 } from "@/store/global";
+import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank } from "@/util/util";
 import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
@@ -23,7 +24,6 @@ import { WaveAi, WaveAiModel, makeWaveAiViewModel } from "@/view/waveai/waveai";
 import { WebView, WebViewModel, makeWebViewModel } from "@/view/webview/webview";
 import { atom, useAtomValue } from "jotai";
 import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "../store/wos";
 import "./block.less";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";

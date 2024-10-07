@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getApi } from "@/app/store/global";
+import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { NodeModel } from "@/layout/index";
 import { WebviewTag } from "electron";
 import { atom } from "jotai";
 import { createRef } from "react";
-import { WebView, WebViewModel } from "../webview/webview";
 import "./helpview.less";
 
 class HelpViewModel extends WebViewModel {
