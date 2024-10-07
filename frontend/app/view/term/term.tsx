@@ -314,6 +314,9 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         if (termScrollback < 0) {
             termScrollback = 0;
         }
+        if (termScrollback > 10000) {
+            termScrollback = 10000;
+        }
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
