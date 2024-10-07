@@ -10,6 +10,7 @@ export interface UserStatus {
     text: string;
     status: "online" | "busy" | "away" | "offline";
     onClick: () => void;
+    avatarUrl?: string;
 }
 
 interface UserListProps {
@@ -20,10 +21,10 @@ interface UserListProps {
 const UserList = memo(({ users, className }: UserListProps) => {
     return (
         <div className={clsx("user-list", className)}>
-            {users.map(({ text, status, onClick }, index) => (
+            {users.map(({ text, status, onClick, avatarUrl }, index) => (
                 <div key={index} className={clsx("user-status-item", status)} onClick={onClick}>
                     <div className="user-status-icon">
-                        <Avatar name={text} status={status} className="size-sm" />
+                        <Avatar name={text} status={status} className="size-sm" imageUrl={avatarUrl} />
                     </div>
                     <div className="user-status-text">{text}</div>
                 </div>

@@ -1,8 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
-import { Avatar } from "@/app/element/avatar";
 import { ChatMessage } from "@/app/element/chatmessages";
 import { MenuItem } from "@/app/element/menu";
+import { UserStatus } from "@/app/element/userlist";
 
 export const channels: MenuItem[] = [
     {
@@ -241,29 +241,27 @@ export const channels: MenuItem[] = [
     },
 ];
 
-export const users: UserListItem[] = [
+export const users: UserStatus[] = [
     {
         text: "John Doe",
         status: "online",
-        icon: <Avatar name="John Doe" status="online" className="size-lg" />,
+        avatarUrl: "https://via.placeholder.com/50",
         onClick: () => console.log("John Doe clicked"),
     },
     {
         text: "Jane Smith",
         status: "busy",
-        icon: <Avatar name="Jane Smith" status="busy" className="size-lg" />,
         onClick: () => console.log("Jane Smith clicked"),
     },
     {
         text: "Robert Brown",
         status: "away",
-        icon: <Avatar name="Robert Brown" status="away" className="size-lg" />,
+        avatarUrl: "https://via.placeholder.com/50",
         onClick: () => console.log("Robert Brown clicked"),
     },
     {
         text: "Alice Lambert",
         status: "offline",
-        icon: <Avatar name="Alice Lambert" status="offline" className="size-lg" />,
         onClick: () => console.log("Alice Lambert clicked"),
     },
 ];

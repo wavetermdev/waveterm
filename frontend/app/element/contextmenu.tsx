@@ -142,7 +142,7 @@ const ContextMenu = memo(
         const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
         const contextMenuRef = useRef<HTMLDivElement>(null);
         const subContextMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
-        const domRect = useDimensionsWithExistingRef(scopeRef, 30);
+        const domRect = useDimensionsWithExistingRef(scopeRef);
         const width = domRect?.width ?? 0;
         const height = domRect?.height ?? 0;
 
