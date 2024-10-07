@@ -1,4 +1,4 @@
-name: Build and TestDriver.ai Regression Testing - Waveterm
+name: TestDriver.ai Regression Testing
 
 on:
   push:
