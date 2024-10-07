@@ -19,11 +19,11 @@ import {
     getBlockComponentModel,
     getConnStatusAtom,
     getHostName,
+    getSettingsKeyAtom,
     getUserName,
     globalStore,
     refocusNode,
     useBlockAtom,
-    useSettingsKeyAtom,
     WOS,
 } from "@/app/store/global";
 import * as services from "@/app/store/services";
@@ -161,7 +161,7 @@ const BlockFrame_Header = ({
 }: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
-    const showBlockIds = jotai.useAtomValue(useSettingsKeyAtom("blockheader:showblockids"));
+    const showBlockIds = jotai.useAtomValue(getSettingsKeyAtom("blockheader:showblockids"));
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);

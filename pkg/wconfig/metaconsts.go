@@ -17,6 +17,7 @@ const (
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"
 	ConfigKey_TermFontFamily                 = "term:fontfamily"
+	ConfigKey_TermTheme                      = "term:theme"
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
 	ConfigKey_TermLocalShellPath             = "term:localshellpath"
 	ConfigKey_TermLocalShellOpts             = "term:localshellopts"
@@ -38,6 +39,8 @@ const (
 	ConfigKey_AutoUpdateIntervalMs           = "autoupdate:intervalms"
 	ConfigKey_AutoUpdateInstallOnQuit        = "autoupdate:installonquit"
 	ConfigKey_AutoUpdateChannel              = "autoupdate:channel"
+
+	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
 
 	ConfigKey_WidgetClear                    = "widget:*"
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"

@@ -8,7 +8,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
-import { atoms, createBlock, getConnStatusAtom, globalStore, refocusNode } from "@/store/global";
+import { atoms, createBlock, getConnStatusAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -153,7 +153,8 @@ export class PreviewModel implements ViewModel {
         this.viewType = "preview";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
-        this.showHiddenFiles = jotai.atom(true);
+        let showHiddenFiles = globalStore.get(getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
+        this.showHiddenFiles = jotai.atom<boolean>(showHiddenFiles);
         this.refreshVersion = jotai.atom(0);
         this.previewTextRef = createRef();
         this.openFileModal = jotai.atom(false);

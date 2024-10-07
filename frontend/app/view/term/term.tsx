@@ -6,7 +6,7 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getConnStatusAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -134,7 +134,11 @@ class TermViewModel {
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
-            const theme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
+            let themeName: string = globalStore.get(getSettingsKeyAtom("term:theme"));
+            if (blockData?.meta?.["term:theme"]) {
+                themeName = blockData.meta["term:theme"];
+            }
+            const theme = computeTheme(fullConfig, themeName);
             if (theme != null && theme.background != null) {
                 return { bg: theme.background };
             }
