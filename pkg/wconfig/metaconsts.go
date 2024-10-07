@@ -20,6 +20,7 @@ const (
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
 	ConfigKey_TermLocalShellPath             = "term:localshellpath"
 	ConfigKey_TermLocalShellOpts             = "term:localshellopts"
+	ConfigKey_TermScrollback                 = "term:scrollback"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

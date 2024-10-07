@@ -305,6 +305,7 @@ declare global {
         "term:theme"?: string;
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
+        "term:scrollback"?: number;
         count?: number;
     };
 
@@ -423,6 +424,7 @@ declare global {
         "term:disablewebgl"?: boolean;
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
+        "term:scrollback"?: number;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
