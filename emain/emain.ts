@@ -327,8 +327,10 @@ function getOrCreateWebViewforTab(clientId: string, windowId: string, tabId: str
         return tabView;
     }
     tabView = getSpareTab();
+    tabView.lastUsedTs = Date.now();
     tabView.initPromise.then(() => {
         tabView.waveTabId = tabId;
+        tabView.waveWindowId = windowId;
         const initOpts = {
             tabId: tabId,
             clientId: clientId,
@@ -368,6 +370,15 @@ function getOrCreateWebViewforTab(clientId: string, windowId: string, tabId: str
     });
     configureAuthKeyRequestInjection(tabView.webContents.session);
     return tabView;
+}
+
+function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView) {
+    const curTabView: WaveTabView = bwin.getContentView() as any;
+    if (curTabView != null) {
+        curTabView.isActiveTab = false;
+    }
+    tabView.isActiveTab = true;
+    bwin.setContentView(tabView);
 }
 
 // note, this does not *show* the window.
@@ -446,7 +457,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     win.waveWindowId = waveWindow.oid;
     const tabView = getOrCreateWebViewforTab(clientId, waveWindow.oid, waveWindow.activetabid, true);
-    win.setContentView(tabView);
+    setTabViewIntoWindow(win, tabView);
     win.waveReadyPromise = tabView.waveReadyPromise;
     win.on(
         "resize",
@@ -722,7 +733,7 @@ electron.ipcMain.on("set-active-tab", async (event, tabId) => {
     const windowId = window.waveWindowId;
     const tabView = getOrCreateWebViewforTab(clientData.oid, windowId, tabId, true);
     await tabView.waveReadyPromise;
-    window.setContentView(tabView);
+    setTabViewIntoWindow(window, tabView);
 });
 
 electron.ipcMain.on("get-cursor-point", (event) => {

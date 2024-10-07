@@ -9,6 +9,7 @@ const MaxCacheSize = 10;
 let HotSpareTab: WaveTabView = null;
 
 export type WaveTabView = Electron.WebContentsView & {
+    isActiveTab: boolean;
     waveWindowId: string; // set when showing in an active window
     waveTabId: string; // always set, WaveTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
@@ -82,14 +83,15 @@ function checkAndEvictCache(): void {
         return;
     }
     const sorted = Array.from(wcvCache.values()).sort((a, b) => {
-        // Prioritize entries with null waveWindowId for eviction
-        if (a.waveWindowId === null && b.waveWindowId !== null) return -1;
-        if (a.waveWindowId !== null && b.waveWindowId === null) return 1;
+        // Prioritize entries which are active
+        if (a.isActiveTab && !b.isActiveTab) {
+            return -1;
+        }
         // Otherwise, sort by lastUsedTs
         return a.lastUsedTs - b.lastUsedTs;
     });
     for (let i = 0; i < sorted.length - MaxCacheSize; i++) {
-        if (sorted[i].waveWindowId != null) {
+        if (sorted[i].isActiveTab) {
             // don't evict WaveTabViews that are currently showing in a window
             continue;
         }
