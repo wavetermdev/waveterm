@@ -10,8 +10,6 @@ const (
 
 	MetaKey_Controller                       = "controller"
 
-	MetaKey_Title                            = "title"
-
 	MetaKey_File                             = "file"
 
 	MetaKey_Url                              = "url"
@@ -33,6 +31,9 @@ const (
 	MetaKey_FrameClear                       = "frame:*"
 	MetaKey_FrameBorderColor                 = "frame:bordercolor"
 	MetaKey_FrameBorderColor_Focused         = "frame:bordercolor:focused"
+	MetaKey_FrameTitle                       = "frame:title"
+	MetaKey_FrameIcon                        = "frame:icon"
+	MetaKey_FrameText                        = "frame:text"
 
 	MetaKey_Cmd                              = "cmd"
 	MetaKey_CmdClear                         = "cmd:*"
@@ -61,6 +62,7 @@ const (
 	MetaKey_TermTheme                        = "term:theme"
 	MetaKey_TermLocalShellPath               = "term:localshellpath"
 	MetaKey_TermLocalShellOpts               = "term:localshellopts"
+	MetaKey_TermScrollback                   = "term:scrollback"
 
 	MetaKey_Count                            = "count"
 )

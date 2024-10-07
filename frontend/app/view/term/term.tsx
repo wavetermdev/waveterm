@@ -107,7 +107,6 @@ class TermViewModel {
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
     viewIcon: jotai.Atom<string>;
-    viewText: jotai.Atom<HeaderElem[]>;
     viewName: jotai.Atom<string>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
@@ -132,11 +131,6 @@ class TermViewModel {
             return "Terminal";
         });
         this.manageConnection = jotai.atom(true);
-        this.viewText = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const titleText: HeaderText = { elemtype: "text", text: blockData?.meta?.title ?? "" };
-            return [titleText] as HeaderElem[];
-        });
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
@@ -310,6 +304,19 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         const termTheme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
         const themeCopy = { ...termTheme };
         themeCopy.background = "#00000000";
+        let termScrollback = 1000;
+        if (termSettings?.["term:scrollback"]) {
+            termScrollback = Math.floor(termSettings["term:scrollback"]);
+        }
+        if (blockData?.meta?.["term:scrollback"]) {
+            termScrollback = Math.floor(blockData.meta["term:scrollback"]);
+        }
+        if (termScrollback < 0) {
+            termScrollback = 0;
+        }
+        if (termScrollback > 10000) {
+            termScrollback = 10000;
+        }
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
@@ -321,6 +328,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 fontWeight: "normal",
                 fontWeightBold: "bold",
                 allowTransparency: true,
+                scrollback: termScrollback,
             },
             {
                 keydownHandler: handleTerminalKeydown,

@@ -54,6 +54,7 @@ type SettingsType struct {
 	TermDisableWebGl   bool     `json:"term:disablewebgl,omitempty"`
 	TermLocalShellPath string   `json:"term:localshellpath,omitempty"`
 	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"`
+	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
 
 	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
@@ -392,5 +393,5 @@ type TermThemeType struct {
 	Foreground          string  `json:"foreground"`
 	SelectionBackground string  `json:"selectionBackground"`
 	Background          string  `json:"background"`
-	CursorAccent        string  `json:"cursorAccent"`
+	Cursor              string  `json:"cursor"`
 }

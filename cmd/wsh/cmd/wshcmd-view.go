@@ -58,9 +58,14 @@ func viewRun(cmd *cobra.Command, args []string) {
 			WriteStderr("[error] getting absolute path: %v\n", err)
 			return
 		}
-		_, err = os.Stat(absFile)
+		absParent, err := filepath.Abs(filepath.Dir(fileArg))
+		if err != nil {
+			WriteStderr("[error] getting absolute path of parent dir: %v\n", err)
+			return
+		}
+		_, err = os.Stat(absParent)
 		if err == fs.ErrNotExist {
-			WriteStderr("[error] file does not exist: %q\n", absFile)
+			WriteStderr("[error] parent directory does not exist: %q\n", absParent)
 			return
 		}
 		if err != nil {

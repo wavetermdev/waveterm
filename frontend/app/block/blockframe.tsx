@@ -160,14 +160,24 @@ const BlockFrame_Header = ({
     error,
 }: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
-    const viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
+    let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     const showBlockIds = jotai.useAtomValue(useSettingsKeyAtom("blockheader:showblockids"));
-    const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
-    const headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
+    let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+
+    if (blockData?.meta?.["frame:title"]) {
+        viewName = blockData.meta["frame:title"];
+    }
+    if (blockData?.meta?.["frame:icon"]) {
+        viewIconUnion = blockData.meta["frame:icon"];
+    }
+    if (blockData?.meta?.["frame:text"]) {
+        headerTextUnion = blockData.meta["frame:text"];
+    }
 
     const onContextMenu = React.useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {

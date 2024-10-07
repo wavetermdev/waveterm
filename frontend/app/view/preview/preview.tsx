@@ -432,9 +432,14 @@ export class PreviewModel implements ViewModel {
         const fileInfo = await getFn(this.statFile);
         const fileName = await getFn(this.statFilePath);
         const editMode = getFn(this.editMode);
+        const parentFileInfo = await this.getParentInfo(fileInfo);
+        console.log(parentFileInfo);
 
+        if (parentFileInfo?.notfound ?? false) {
+            return { errorStr: `Parent Directory Not Found: ${fileInfo.path}` };
+        }
         if (fileInfo?.notfound) {
-            return { errorStr: `File Not Found: ${fileInfo.path}` };
+            return { specializedView: "codeedit" };
         }
         if (mimeType == null) {
             return { errorStr: `Unable to determine mimetype for: ${fileInfo.path}` };
@@ -492,17 +497,38 @@ export class PreviewModel implements ViewModel {
         services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
-    async goParentDirectory() {
-        const fileInfo = await globalStore.get(this.statFile);
+    async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
+        const conn = globalStore.get(this.connection);
+        try {
+            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
+                route: makeConnRoute(conn),
+            });
+            return parentFileInfo;
+        } catch {
+            return undefined;
+        }
+    }
+
+    async goParentDirectory({ fileInfo = null }: { fileInfo?: FileInfo | null }) {
+        // optional parameter needed for recursive case
+        const defaultFileInfo = await globalStore.get(this.statFile);
+        if (fileInfo === null) {
+            fileInfo = defaultFileInfo;
+        }
         if (fileInfo == null) {
             this.updateOpenFileModalAndError(false);
             return true;
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, ".."], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
+            if (newFileInfo.path != "" && newFileInfo.notfound) {
+                console.log("does not exist, ", newFileInfo.path);
+                this.goParentDirectory({ fileInfo: newFileInfo });
+                return;
+            }
             console.log(newFileInfo.path);
             this.updateOpenFileModalAndError(false);
             this.goHistory(newFileInfo.path);
@@ -677,7 +703,7 @@ export class PreviewModel implements ViewModel {
         }
         if (keyutil.checkKeyPressed(e, "Cmd:ArrowUp")) {
             // handle up directory
-            this.goParentDirectory();
+            this.goParentDirectory({});
             return true;
         }
         const openModalOpen = globalStore.get(this.openFileModal);

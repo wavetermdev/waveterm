@@ -264,7 +264,6 @@ declare global {
     type MetaType = {
         view?: string;
         controller?: string;
-        title?: string;
         file?: string;
         url?: string;
         connection?: string;
@@ -279,6 +278,9 @@ declare global {
         "frame:*"?: boolean;
         "frame:bordercolor"?: string;
         "frame:bordercolor:focused"?: string;
+        "frame:title"?: string;
+        "frame:icon"?: string;
+        "frame:text"?: string;
         cmd?: string;
         "cmd:*"?: boolean;
         "cmd:interactive"?: boolean;
@@ -303,6 +305,7 @@ declare global {
         "term:theme"?: string;
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
+        "term:scrollback"?: number;
         count?: number;
     };
 
@@ -421,6 +424,7 @@ declare global {
         "term:disablewebgl"?: boolean;
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
+        "term:scrollback"?: number;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
@@ -515,7 +519,7 @@ declare global {
         foreground: string;
         selectionBackground: string;
         background: string;
-        cursorAccent: string;
+        cursor: string;
     };
 
     // wshrpc.TimeSeriesData
