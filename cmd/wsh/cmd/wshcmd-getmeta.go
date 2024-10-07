@@ -12,9 +12,9 @@ import (
 )
 
 var getMetaCmd = &cobra.Command{
-	Use:     "getmeta {blockid|blocknum|this} [key]",
+	Use:     "getmeta [key]",
 	Short:   "get metadata for an entity",
-	Args:    cobra.RangeArgs(1, 2),
+	Args:    cobra.RangeArgs(0, 1),
 	Run:     getMetaRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -24,7 +24,7 @@ func init() {
 }
 
 func getMetaRun(cmd *cobra.Command, args []string) {
-	oref := args[0]
+	oref := blockArg
 	if oref == "" {
 		WriteStderr("[error] oref is required")
 		return
@@ -44,8 +44,8 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] getting metadata: %v\n", err)
 		return
 	}
-	if len(args) > 1 {
-		val, ok := resp[args[1]]
+	if len(args) > 0 {
+		val, ok := resp[args[0]]
 		if !ok {
 			return
 		}
