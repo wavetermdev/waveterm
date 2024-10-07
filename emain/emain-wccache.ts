@@ -8,17 +8,6 @@ import * as path from "path";
 const MaxCacheSize = 10;
 let HotSpareTab: WaveTabView = null;
 
-export type WaveTabView = Electron.WebContentsView & {
-    isActiveTab: boolean;
-    waveWindowId: string; // set when showing in an active window
-    waveTabId: string; // always set, WaveTabViews are unique per tab
-    lastUsedTs: number; // ts milliseconds
-    initPromise: Promise<void>;
-    waveReadyPromise: Promise<void>;
-    initResolve: () => void;
-    waveReadyResolve: () => void;
-};
-
 const wcvCache = new Map<string, WaveTabView>();
 
 function createBareTabView(): WaveTabView {
@@ -76,6 +65,11 @@ export function setWaveTabView(waveWindowId: string, waveTabId: string, wcv: Wav
     const cacheKey = waveWindowId + "|" + waveTabId;
     wcvCache.set(cacheKey, wcv);
     checkAndEvictCache();
+}
+
+export function removeWaveTabView(waveWindowId: string, waveTabId: string): void {
+    const cacheKey = waveWindowId + "|" + waveTabId;
+    wcvCache.delete(cacheKey);
 }
 
 function checkAndEvictCache(): void {

@@ -315,6 +315,24 @@ declare global {
         command: string;
         msgFn: (msg: RpcMessage) => void;
     };
+
+    type WaveBrowserWindow = Electron.BaseWindow & {
+        waveWindowId: string;
+        waveReadyPromise: Promise<void>;
+        hotSpareTab: WaveTabView;
+        allTabViews: Map<string, WaveTabView>;
+    };
+
+    type WaveTabView = Electron.WebContentsView & {
+        isActiveTab: boolean;
+        waveWindowId: string; // set when showing in an active window
+        waveTabId: string; // always set, WaveTabViews are unique per tab
+        lastUsedTs: number; // ts milliseconds
+        initPromise: Promise<void>;
+        waveReadyPromise: Promise<void>;
+        initResolve: () => void;
+        waveReadyResolve: () => void;
+    };
 }
 
 export {};

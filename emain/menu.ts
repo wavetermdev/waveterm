@@ -9,6 +9,7 @@ import { updater } from "./updater";
 type AppMenuCallbacks = {
     createNewWaveWindow: () => Promise<void>;
     relaunchBrowserWindows: () => Promise<void>;
+    getLastFocusedWaveWindow: () => WaveBrowserWindow;
 };
 
 function getWindowWebContents(window: electron.BaseWindow): electron.WebContents {
@@ -126,7 +127,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Toggle DevTools",
             accelerator: "Option+Command+I", // TODO fix for windows
             click: () => {
-                const win = electron.BrowserWindow.getFocusedWindow();
+                const win = callbacks.getLastFocusedWaveWindow();
                 console.log("toggleDevTools", win);
                 if (win) {
                     if (win instanceof electron.BaseWindow) {

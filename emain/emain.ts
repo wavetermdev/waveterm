@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import { WaveTabView, ensureHotSpareTab, getSpareTab, getWaveTabView, setWaveTabView } from "emain/emain-wccache";
+import { ensureHotSpareTab, getSpareTab, getWaveTabView, removeWaveTabView, setWaveTabView } from "emain/emain-wccache";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -49,10 +49,8 @@ const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 electron.nativeTheme.themeSource = "dark";
 
-type WaveBrowserWindow = Electron.BaseWindow & {
-    waveWindowId: string;
-    waveReadyPromise: Promise<void>;
-};
+const waveWindowMap = new Map<string, WaveBrowserWindow>();
+let lastFocusedWaveWindow = null;
 
 let waveSrvReadyResolve = (value: boolean) => {};
 const waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
@@ -157,6 +155,10 @@ function handleCtrlShiftFocus(sender: Electron.WebContents, focused: boolean) {
     if (!focused) {
         setCtrlShift(sender, false);
     }
+}
+
+function getLastFocusedWaveWindow(): WaveBrowserWindow {
+    return lastFocusedWaveWindow;
 }
 
 function runWaveSrv(): Promise<boolean> {
@@ -328,9 +330,9 @@ function getOrCreateWebViewforTab(clientId: string, windowId: string, tabId: str
     }
     tabView = getSpareTab();
     tabView.lastUsedTs = Date.now();
+    tabView.waveTabId = tabId;
+    tabView.waveWindowId = windowId;
     tabView.initPromise.then(() => {
-        tabView.waveTabId = tabId;
-        tabView.waveWindowId = windowId;
         const initOpts = {
             tabId: tabId,
             clientId: clientId,
@@ -378,12 +380,11 @@ function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView) {
         curTabView.isActiveTab = false;
     }
     tabView.isActiveTab = true;
+    bwin.allTabViews.set(tabView.waveTabId, tabView);
     bwin.setContentView(tabView);
 }
 
-// note, this does not *show* the window.
-// to show, await win.readyPromise and then win.show()
-function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
+function createBaseWaveBrowserWindow(waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
     let winWidth = waveWindow?.winsize?.width;
     let winHeight = waveWindow?.winsize?.height;
     let winPosX = waveWindow.pos.x;
@@ -456,9 +457,8 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     const bwin = new electron.BaseWindow(winOpts);
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     win.waveWindowId = waveWindow.oid;
-    const tabView = getOrCreateWebViewforTab(clientId, waveWindow.oid, waveWindow.activetabid, true);
-    setTabViewIntoWindow(win, tabView);
-    win.waveReadyPromise = tabView.waveReadyPromise;
+    win.allTabViews = new Map<string, WaveTabView>();
+    win.hotSpareTab = null;
     win.on(
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
@@ -470,6 +470,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
     win.on("focus", () => {
         wasInFg = true;
         wasActive = true;
+        lastFocusedWaveWindow = win;
         if (globalIsStarting) {
             return;
         }
@@ -480,6 +481,9 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         const tabView: WaveTabView = win.getContentView() as any;
         if (tabView) {
             handleCtrlShiftFocus(tabView.webContents, false);
+        }
+        if (lastFocusedWaveWindow == win) {
+            lastFocusedWaveWindow = null;
         }
     });
     win.on("enter-full-screen", async () => {
@@ -521,8 +525,23 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
             return;
         }
         services.WindowService.CloseWindow(waveWindow.oid);
+        for (const tabView of win.allTabViews.values()) {
+            removeWaveTabView(tabView.waveWindowId, tabView.waveTabId);
+            tabView.webContents.close();
+        }
+        waveWindowMap.delete(waveWindow.oid);
     });
+    waveWindowMap.set(waveWindow.oid, win);
     return win;
+}
+
+// note, this does not *show* the window.
+// to show, await win.readyPromise and then win.show()
+function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
+    const bwin = createBaseWaveBrowserWindow(waveWindow, fullConfig);
+    const tabView = getOrCreateWebViewforTab(clientId, waveWindow.oid, waveWindow.activetabid, true);
+    setTabViewIntoWindow(bwin, tabView);
+    return bwin;
 }
 
 function isWindowFullyVisible(bounds: electron.Rectangle): boolean {
@@ -732,8 +751,10 @@ electron.ipcMain.on("set-active-tab", async (event, tabId) => {
     const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
     const windowId = window.waveWindowId;
     const tabView = getOrCreateWebViewforTab(clientData.oid, windowId, tabId, true);
-    await tabView.waveReadyPromise;
+    console.log("got tabView", tabView);
     setTabViewIntoWindow(window, tabView);
+    await tabView.waveReadyPromise;
+    console.log("wave ready");
 });
 
 electron.ipcMain.on("get-cursor-point", (event) => {
@@ -1003,7 +1024,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
 }
 
 function instantiateAppMenu(): electron.Menu {
-    return getAppMenu({ createNewWaveWindow, relaunchBrowserWindows });
+    return getAppMenu({ createNewWaveWindow, relaunchBrowserWindows, getLastFocusedWaveWindow });
 }
 
 function makeAppMenu() {
