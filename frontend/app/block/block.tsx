@@ -113,10 +113,6 @@ function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
             const blockData = get(blockDataAtom);
             return blockViewToName(blockData?.meta?.view);
         }),
-        viewText: jotai.atom((get) => {
-            const blockData = get(blockDataAtom);
-            return blockData?.meta?.title;
-        }),
         preIconButton: jotai.atom(null),
         endIconButtons: jotai.atom(null),
     };

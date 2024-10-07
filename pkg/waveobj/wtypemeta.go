@@ -14,7 +14,6 @@ type MetaTSType struct {
 	// shared
 	View           string   `json:"view,omitempty"`
 	Controller     string   `json:"controller,omitempty"`
-	Title          string   `json:"title,omitempty"`
 	File           string   `json:"file,omitempty"`
 	Url            string   `json:"url,omitempty"`
 	Connection     string   `json:"connection,omitempty"`
@@ -32,6 +31,9 @@ type MetaTSType struct {
 	FrameClear               bool   `json:"frame:*,omitempty"`
 	FrameBorderColor         string `json:"frame:bordercolor,omitempty"`
 	FrameBorderColor_Focused string `json:"frame:bordercolor:focused,omitempty"`
+	FrameTitle               string `json:"frame:title,omitempty"`
+	FrameIcon                string `json:"frame:icon,omitempty"`
+	FrameText                string `json:"frame:text,omitempty"`
 
 	Cmd               string            `json:"cmd,omitempty"`
 	CmdClear          bool              `json:"cmd:*,omitempty"`

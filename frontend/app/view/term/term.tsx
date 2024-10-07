@@ -107,7 +107,6 @@ class TermViewModel {
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
     viewIcon: jotai.Atom<string>;
-    viewText: jotai.Atom<HeaderElem[]>;
     viewName: jotai.Atom<string>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
@@ -132,11 +131,6 @@ class TermViewModel {
             return "Terminal";
         });
         this.manageConnection = jotai.atom(true);
-        this.viewText = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const titleText: HeaderText = { elemtype: "text", text: blockData?.meta?.title ?? "" };
-            return [titleText] as HeaderElem[];
-        });
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
