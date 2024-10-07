@@ -17,12 +17,13 @@ import * as WOS from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import * as util from "@/util/util";
 import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
+import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
+import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
 import { WaveAi, WaveAiModel, makeWaveAiViewModel } from "@/view/waveai/waveai";
 import { WebView, WebViewModel, makeWebViewModel } from "@/view/webview/webview";
 import * as jotai from "jotai";
 import * as React from "react";
-import { QuickTipsView, QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
 import "./block.less";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
@@ -48,6 +49,9 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
     }
     if (blockView === "cpuplot") {
         return makeCpuPlotViewModel(blockId);
+    }
+    if (blockView === "help") {
+        return makeHelpViewModel(blockId, nodeModel);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -87,6 +91,9 @@ function getViewElem(
     }
     if (blockView === "cpuplot") {
         return <CpuPlotView key={blockId} blockId={blockId} model={viewModel as CpuPlotViewModel} />;
+    }
+    if (blockView == "help") {
+        return <HelpView key={blockId} model={viewModel as HelpViewModel} />;
     }
     if (blockView == "tips") {
         return <QuickTipsView key={blockId} model={viewModel as QuickTipsViewModel} />;
