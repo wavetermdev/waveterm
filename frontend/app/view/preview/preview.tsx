@@ -509,8 +509,12 @@ export class PreviewModel implements ViewModel {
         }
     }
 
-    async goParentDirectory() {
-        const fileInfo = await globalStore.get(this.statFile);
+    async goParentDirectory({ fileInfo = null }: { fileInfo?: FileInfo | null }) {
+        // optional parameter needed for recursive case
+        const defaultFileInfo = await globalStore.get(this.statFile);
+        if (fileInfo === null) {
+            fileInfo = defaultFileInfo;
+        }
         if (fileInfo == null) {
             this.updateOpenFileModalAndError(false);
             return true;
@@ -520,6 +524,11 @@ export class PreviewModel implements ViewModel {
             const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
+            if (newFileInfo.path != "" && newFileInfo.notfound) {
+                console.log("does not exist, ", newFileInfo.path);
+                this.goParentDirectory({ fileInfo: newFileInfo });
+                return;
+            }
             console.log(newFileInfo.path);
             this.updateOpenFileModalAndError(false);
             this.goHistory(newFileInfo.path);
@@ -694,7 +703,7 @@ export class PreviewModel implements ViewModel {
         }
         if (keyutil.checkKeyPressed(e, "Cmd:ArrowUp")) {
             // handle up directory
-            this.goParentDirectory();
+            this.goParentDirectory({});
             return true;
         }
         const openModalOpen = globalStore.get(this.openFileModal);
