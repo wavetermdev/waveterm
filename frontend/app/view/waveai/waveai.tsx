@@ -14,7 +14,6 @@ import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } fro
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import tinycolor from "tinycolor2";
 import "./waveai.less";
 
 interface ChatMessageType {
@@ -110,18 +109,47 @@ export class WaveAiModel implements ViewModel {
             set(this.updateLastMessageAtom, "", false);
         });
         this.viewText = atom((get) => {
+            const viewTextChildren: HeaderElem[] = [];
             const settings = get(atoms.settingsAtom);
             const isCloud = isBlank(settings?.["ai:apitoken"]) && isBlank(settings?.["ai:baseurl"]);
             let modelText = "gpt-4o-mini";
             if (!isCloud && !isBlank(settings?.["ai:model"])) {
-                modelText = settings["ai:model"];
+                if (!isBlank(settings?.["ai:name"])) {
+                    modelText = settings["ai:name"];
+                } else {
+                    modelText = settings["ai:model"];
+                }
             }
-            const viewTextChildren: HeaderElem[] = [
-                {
-                    elemtype: "text",
-                    text: modelText,
-                },
-            ];
+            if (isCloud) {
+                viewTextChildren.push({
+                    elemtype: "iconbutton",
+                    icon: "cloud",
+                    title: "Using Wave's AI Proxy (gpt-4o-mini)",
+                    disabled: true,
+                });
+            } else {
+                const baseUrl = settings["ai:baseurl"] ?? "OpenAI Default Endpoint";
+                const modelName = settings["ai:model"];
+                if (baseUrl.startsWith("http://localhost") || baseUrl.startsWith("http://127.0.0.1")) {
+                    viewTextChildren.push({
+                        elemtype: "iconbutton",
+                        icon: "location-dot",
+                        title: "Using Local Model @ " + baseUrl + " (" + modelName + ")",
+                        disabled: true,
+                    });
+                } else {
+                    viewTextChildren.push({
+                        elemtype: "iconbutton",
+                        icon: "globe",
+                        title: "Using Remote Model @ " + baseUrl + " (" + modelName + ")",
+                        disabled: true,
+                    });
+                }
+            }
+            viewTextChildren.push({
+                elemtype: "text",
+                text: modelText,
+            });
             return viewTextChildren;
         });
     }
@@ -234,11 +262,8 @@ function makeWaveAiViewModel(blockId): WaveAiModel {
 
 const ChatItem = ({ chatItem }: ChatItemProps) => {
     const { isAssistant, text, isError } = chatItem;
-    const senderClassName = isAssistant ? "chat-msg-assistant" : "chat-msg-user";
-    const msgClassName = `chat-msg ${senderClassName}`;
     const cssVar = "--panel-bg-color";
     const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-    const color = tinycolor(panelBgColor);
 
     const renderError = (err: string): React.JSX.Element => <div className="chat-msg-error">{err}</div>;
 
@@ -255,7 +280,7 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                         </div>
                     </div>
                     <div className="chat-msg chat-msg-assistant">
-                        <Markdown text={text} />
+                        <Markdown text={text} scrollable={false} />
                     </div>
                 </>
             ) : (
@@ -270,7 +295,7 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
         return (
             <>
                 <div className="chat-msg chat-msg-user">
-                    <Markdown className="msg-text" text={text} />
+                    <Markdown className="msg-text" text={text} scrollable={false} />
                 </div>
             </>
         );

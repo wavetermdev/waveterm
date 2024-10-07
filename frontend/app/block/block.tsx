@@ -51,7 +51,7 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
         return makeCpuPlotViewModel(blockId);
     }
     if (blockView === "help") {
-        return makeHelpViewModel();
+        return makeHelpViewModel(blockId);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -112,10 +112,6 @@ function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
         viewName: jotai.atom((get) => {
             const blockData = get(blockDataAtom);
             return blockViewToName(blockData?.meta?.view);
-        }),
-        viewText: jotai.atom((get) => {
-            const blockData = get(blockDataAtom);
-            return blockData?.meta?.title;
         }),
         preIconButton: jotai.atom(null),
         endIconButtons: jotai.atom(null),

@@ -128,6 +128,10 @@ function initElectronWshrpc(electronClient: WshClient, eoOpts: ElectronOverrideO
     addWSReconnectHandler(wpsReconnectHandler);
 }
 
+function shutdownWshrpc() {
+    globalWS?.shutdown();
+}
+
 function initWshrpc(tabId: string): WSControl {
     DefaultRouter = new WshRouter(new UpstreamWshRpcProxy());
     const handleFn = (event: WSEventType) => {
@@ -163,5 +167,6 @@ export {
     sendRpcCommand,
     sendRpcResponse,
     sendWSCommand,
+    shutdownWshrpc,
     TabRpcClient,
 };

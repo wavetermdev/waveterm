@@ -44,6 +44,7 @@ class WSControl {
     baseHostPort: string;
     lastReconnectTime: number = 0;
     eoOpts: ElectronOverrideOpts;
+    noReconnect: boolean = false;
 
     constructor(
         baseHostPort: string,
@@ -59,8 +60,13 @@ class WSControl {
         setInterval(this.sendPing.bind(this), 5000);
     }
 
+    shutdown() {
+        this.noReconnect = true;
+        this.wsConn.close();
+    }
+
     connectNow(desc: string) {
-        if (this.open) {
+        if (this.open || this.noReconnect) {
             return;
         }
         this.lastReconnectTime = Date.now();
@@ -82,6 +88,9 @@ class WSControl {
     }
 
     reconnect(forceClose?: boolean) {
+        if (this.noReconnect) {
+            return;
+        }
         if (this.open) {
             if (forceClose) {
                 this.wsConn.close(); // this will force a reconnect

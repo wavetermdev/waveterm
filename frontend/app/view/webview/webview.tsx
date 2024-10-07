@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi, openLink, useSettingsKeyAtom } from "@/app/store/global";
+import { getApi, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -15,6 +15,19 @@ import { WebviewTag } from "electron";
 import * as jotai from "jotai";
 import React, { memo, useEffect, useState } from "react";
 import "./webview.less";
+
+let webviewPreloadUrl = null;
+
+function getWebviewPreloadUrl() {
+    if (webviewPreloadUrl == null) {
+        webviewPreloadUrl = getApi().getWebviewPreload();
+        console.log("webviewPreloadUrl", webviewPreloadUrl);
+    }
+    if (webviewPreloadUrl == null) {
+        return null;
+    }
+    return "file://" + webviewPreloadUrl;
+}
 
 export class WebViewModel implements ViewModel {
     viewType: string;
@@ -50,7 +63,7 @@ export class WebViewModel implements ViewModel {
         this.webviewRef = React.createRef<WebviewTag>();
 
         this.viewText = jotai.atom((get) => {
-            const defaultUrlAtom = useSettingsKeyAtom("web:defaulturl");
+            const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
             let url = get(this.blockAtom)?.meta?.url || get(defaultUrlAtom);
             const currUrl = get(this.url);
             if (currUrl !== undefined) {
@@ -257,7 +270,7 @@ export class WebViewModel implements ViewModel {
      * @param newUrl The new URL to load in the webview.
      */
     loadUrl(newUrl: string, reason: string) {
-        const defaultSearchAtom = useSettingsKeyAtom("web:defaultsearch");
+        const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
         const searchTemplate = globalStore.get(defaultSearchAtom);
         const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
         console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef?.current.getURL());
@@ -371,9 +384,9 @@ interface WebViewProps {
 
 const WebView = memo(({ model }: WebViewProps) => {
     const blockData = jotai.useAtomValue(model.blockAtom);
-    const defaultUrlAtom = useSettingsKeyAtom("web:defaulturl");
+    const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
     const defaultUrl = jotai.useAtomValue(defaultUrlAtom);
-    const defaultSearchAtom = useSettingsKeyAtom("web:defaultsearch");
+    const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
     const defaultSearch = jotai.useAtomValue(defaultSearchAtom);
     let metaUrl = blockData?.meta?.url || defaultUrl;
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
@@ -428,69 +441,69 @@ const WebView = memo(({ model }: WebViewProps) => {
 
     useEffect(() => {
         const webview = model.webviewRef.current;
-
-        if (webview) {
-            const navigateListener = (e: any) => {
-                model.handleNavigate(e.url);
-            };
-            const newWindowHandler = (e: any) => {
-                e.preventDefault();
-                const newUrl = e.detail.url;
-                console.log("webview new-window event:", newUrl);
-                fireAndForget(() => openLink(newUrl, true));
-            };
-            const startLoadingHandler = () => {
-                model.setRefreshIcon("xmark-large");
-                model.setIsLoading(true);
-                webview.style.backgroundColor = "transparent";
-            };
-            const stopLoadingHandler = () => {
-                model.setRefreshIcon("rotate-right");
-                model.setIsLoading(false);
-                setBgColor();
-            };
-            const failLoadHandler = (e: any) => {
-                if (e.errorCode === -3) {
-                    console.warn("Suppressed ERR_ABORTED error", e);
-                } else {
-                    console.error(`Failed to load ${e.validatedURL}: ${e.errorDescription}`);
-                }
-            };
-            const webviewFocus = () => {
-                getApi().setWebviewFocus(webview.getWebContentsId());
-                model.nodeModel.focusNode();
-            };
-            const webviewBlur = () => {
-                getApi().setWebviewFocus(null);
-            };
-            const handleDomReady = () => {
-                setDomReady(true);
-                setBgColor();
-            };
-
-            webview.addEventListener("did-navigate-in-page", navigateListener);
-            webview.addEventListener("did-navigate", navigateListener);
-            webview.addEventListener("did-start-loading", startLoadingHandler);
-            webview.addEventListener("did-stop-loading", stopLoadingHandler);
-            webview.addEventListener("new-window", newWindowHandler);
-            webview.addEventListener("did-fail-load", failLoadHandler);
-            webview.addEventListener("focus", webviewFocus);
-            webview.addEventListener("blur", webviewBlur);
-            webview.addEventListener("dom-ready", handleDomReady);
-
-            // Clean up event listeners on component unmount
-            return () => {
-                webview.removeEventListener("did-navigate", navigateListener);
-                webview.removeEventListener("did-navigate-in-page", navigateListener);
-                webview.removeEventListener("new-window", newWindowHandler);
-                webview.removeEventListener("did-fail-load", failLoadHandler);
-                webview.removeEventListener("did-start-loading", startLoadingHandler);
-                webview.removeEventListener("did-stop-loading", stopLoadingHandler);
-                webview.removeEventListener("focus", webviewFocus);
-                webview.removeEventListener("blur", webviewBlur);
-                webview.removeEventListener("dom-ready", handleDomReady);
-            };
+        if (!webview) {
+            return;
         }
+        const navigateListener = (e: any) => {
+            model.handleNavigate(e.url);
+        };
+        const newWindowHandler = (e: any) => {
+            e.preventDefault();
+            const newUrl = e.detail.url;
+            console.log("webview new-window event:", newUrl);
+            fireAndForget(() => openLink(newUrl, true));
+        };
+        const startLoadingHandler = () => {
+            model.setRefreshIcon("xmark-large");
+            model.setIsLoading(true);
+            webview.style.backgroundColor = "transparent";
+        };
+        const stopLoadingHandler = () => {
+            model.setRefreshIcon("rotate-right");
+            model.setIsLoading(false);
+            setBgColor();
+        };
+        const failLoadHandler = (e: any) => {
+            if (e.errorCode === -3) {
+                console.warn("Suppressed ERR_ABORTED error", e);
+            } else {
+                console.error(`Failed to load ${e.validatedURL}: ${e.errorDescription}`);
+            }
+        };
+        const webviewFocus = () => {
+            getApi().setWebviewFocus(webview.getWebContentsId());
+            model.nodeModel.focusNode();
+        };
+        const webviewBlur = () => {
+            getApi().setWebviewFocus(null);
+        };
+        const handleDomReady = () => {
+            setDomReady(true);
+            setBgColor();
+        };
+
+        webview.addEventListener("did-navigate-in-page", navigateListener);
+        webview.addEventListener("did-navigate", navigateListener);
+        webview.addEventListener("did-start-loading", startLoadingHandler);
+        webview.addEventListener("did-stop-loading", stopLoadingHandler);
+        webview.addEventListener("new-window", newWindowHandler);
+        webview.addEventListener("did-fail-load", failLoadHandler);
+        webview.addEventListener("focus", webviewFocus);
+        webview.addEventListener("blur", webviewBlur);
+        webview.addEventListener("dom-ready", handleDomReady);
+
+        // Clean up event listeners on component unmount
+        return () => {
+            webview.removeEventListener("did-navigate", navigateListener);
+            webview.removeEventListener("did-navigate-in-page", navigateListener);
+            webview.removeEventListener("new-window", newWindowHandler);
+            webview.removeEventListener("did-fail-load", failLoadHandler);
+            webview.removeEventListener("did-start-loading", startLoadingHandler);
+            webview.removeEventListener("did-stop-loading", stopLoadingHandler);
+            webview.removeEventListener("focus", webviewFocus);
+            webview.removeEventListener("blur", webviewBlur);
+            webview.removeEventListener("dom-ready", handleDomReady);
+        };
     }, []);
 
     return (
@@ -501,6 +514,7 @@ const WebView = memo(({ model }: WebViewProps) => {
             src={metaUrlInitial}
             data-blockid={model.blockId}
             data-webcontentsid={webContentsId} // needed for emain
+            preload={getWebviewPreloadUrl()}
             // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
             allowpopups="true"
         ></webview>
