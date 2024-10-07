@@ -55,7 +55,7 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 			return
 		}
 		outStr := string(outBArr)
-		WriteStdout(outStr + "\n")
+		WriteStdout("%s\n", outStr)
 	} else {
 		outBArr, err := json.MarshalIndent(resp, "", "  ")
 		if err != nil {
@@ -63,6 +63,6 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 			return
 		}
 		outStr := string(outBArr)
-		WriteStdout(outStr + "\n")
+		WriteStdout("%s\n", outStr)
 	}
 }

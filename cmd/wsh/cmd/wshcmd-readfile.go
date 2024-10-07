@@ -49,5 +49,5 @@ func runReadFile(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] decoding file: %v\n", err)
 		return
 	}
-	WriteStdout(string(resp))
+	WriteStdout("%s", string(resp))
 }
