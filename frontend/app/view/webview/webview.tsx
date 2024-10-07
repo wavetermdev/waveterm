@@ -37,6 +37,7 @@ export class WebViewModel implements ViewModel {
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
     url: jotai.PrimitiveAtom<string>;
+    homepageUrl: jotai.Atom<string>;
     urlInputFocused: jotai.PrimitiveAtom<boolean>;
     isLoading: jotai.PrimitiveAtom<boolean>;
     urlWrapperClassName: jotai.PrimitiveAtom<string>;
@@ -53,6 +54,12 @@ export class WebViewModel implements ViewModel {
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
 
         this.url = jotai.atom();
+        const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
+        this.homepageUrl = jotai.atom((get) => {
+            const defaultUrl = get(defaultUrlAtom);
+            const pinnedUrl = get(this.blockAtom).meta.pinnedurl;
+            return pinnedUrl ?? defaultUrl;
+        });
         this.urlWrapperClassName = jotai.atom("");
         this.urlInputFocused = jotai.atom(false);
         this.isLoading = jotai.atom(false);
@@ -63,8 +70,7 @@ export class WebViewModel implements ViewModel {
         this.webviewRef = React.createRef<WebviewTag>();
 
         this.viewText = jotai.atom((get) => {
-            const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
-            let url = get(this.blockAtom)?.meta?.url || get(defaultUrlAtom);
+            let url = get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
             const currUrl = get(this.url);
             if (currUrl !== undefined) {
                 url = currUrl;
@@ -81,6 +87,12 @@ export class WebViewModel implements ViewModel {
                     icon: "chevron-right",
                     click: this.handleForward.bind(this),
                     disabled: this.shouldDisabledForwardButton(),
+                },
+                {
+                    elemtype: "iconbutton",
+                    icon: "house",
+                    click: this.handleHome.bind(this),
+                    disabled: this.shouldDisabledHomeButton(),
                 },
                 {
                     elemtype: "div",
@@ -145,6 +157,26 @@ export class WebViewModel implements ViewModel {
             return !this.webviewRef.current?.canGoForward();
         } catch (_) {}
         return true;
+    }
+
+    /**
+     * Whether the home button in the header should be disabled.
+     * @returns True if the current url is the pinned url or the pinned url is not set. False otherwise.
+     */
+    shouldDisabledHomeButton() {
+        try {
+            const homepageUrl = globalStore.get(this.homepageUrl);
+            return !homepageUrl || this.getUrl() === homepageUrl;
+        } catch (_) {}
+        return true;
+    }
+
+    handleHome(e?: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        this.loadUrl(globalStore.get(this.homepageUrl), "home");
     }
 
     handleUrlWrapperMouseOver(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -349,7 +381,10 @@ export class WebViewModel implements ViewModel {
                 click: async () => {
                     const url = this.getUrl();
                     if (url != null && url != "") {
-                        RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                        await RpcApi.SetMetaCommand(WindowRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { pinnedurl: url },
+                        });
                     }
                 },
             },
