@@ -175,7 +175,7 @@ func Execute() {
 			wshutil.DoShutdown("", 0, false)
 		}
 	}()
-	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "this", "for command which require a block id (default: this)")
+	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "this", "for commands which require a block id")
 	err := rootCmd.Execute()
 	if err != nil {
 		wshutil.DoShutdown("", 1, true)
