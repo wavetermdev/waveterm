@@ -129,6 +129,7 @@
     },
     "onedarkpro": {
         "display:name": "One Dark Pro",
+        "display:order": 1.5,
         "background": "#282C34",
         "foreground": "#ABB2BF",
         "cursor": "#D7DAE0",
