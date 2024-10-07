@@ -304,6 +304,19 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         const termTheme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
         const themeCopy = { ...termTheme };
         themeCopy.background = "#00000000";
+        let termScrollback = 1000;
+        if (termSettings?.["term:scrollback"]) {
+            termScrollback = Math.floor(termSettings["term:scrollback"]);
+        }
+        if (blockData?.meta?.["term:scrollback"]) {
+            termScrollback = Math.floor(blockData.meta["term:scrollback"]);
+        }
+        if (termScrollback < 0) {
+            termScrollback = 0;
+        }
+        if (termScrollback > 10000) {
+            termScrollback = 10000;
+        }
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
@@ -315,6 +328,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 fontWeight: "normal",
                 fontWeightBold: "bold",
                 allowTransparency: true,
+                scrollback: termScrollback,
             },
             {
                 keydownHandler: handleTerminalKeydown,

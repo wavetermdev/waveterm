@@ -62,6 +62,7 @@ const (
 	MetaKey_TermTheme                        = "term:theme"
 	MetaKey_TermLocalShellPath               = "term:localshellpath"
 	MetaKey_TermLocalShellOpts               = "term:localshellopts"
+	MetaKey_TermScrollback                   = "term:scrollback"
 
 	MetaKey_Count                            = "count"
 )
