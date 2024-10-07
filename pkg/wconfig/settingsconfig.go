@@ -73,6 +73,8 @@ type SettingsType struct {
 	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
 	AutoUpdateChannel       string  `json:"autoupdate:channel,omitempty"`
 
+	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
+
 	WidgetClear    bool `json:"widget:*,omitempty"`
 	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
 

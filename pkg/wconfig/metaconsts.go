@@ -39,6 +39,8 @@ const (
 	ConfigKey_AutoUpdateInstallOnQuit        = "autoupdate:installonquit"
 	ConfigKey_AutoUpdateChannel              = "autoupdate:channel"
 
+	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
+
 	ConfigKey_WidgetClear                    = "widget:*"
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"
 
