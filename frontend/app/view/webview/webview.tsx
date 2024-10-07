@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi, openLink, useSettingsKeyAtom } from "@/app/store/global";
+import { getApi, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
@@ -63,7 +63,7 @@ export class WebViewModel implements ViewModel {
         this.webviewRef = React.createRef<WebviewTag>();
 
         this.viewText = jotai.atom((get) => {
-            const defaultUrlAtom = useSettingsKeyAtom("web:defaulturl");
+            const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
             let url = get(this.blockAtom)?.meta?.url || get(defaultUrlAtom);
             const currUrl = get(this.url);
             if (currUrl !== undefined) {
@@ -270,7 +270,7 @@ export class WebViewModel implements ViewModel {
      * @param newUrl The new URL to load in the webview.
      */
     loadUrl(newUrl: string, reason: string) {
-        const defaultSearchAtom = useSettingsKeyAtom("web:defaultsearch");
+        const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
         const searchTemplate = globalStore.get(defaultSearchAtom);
         const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
         console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef?.current.getURL());
@@ -384,9 +384,9 @@ interface WebViewProps {
 
 const WebView = memo(({ model }: WebViewProps) => {
     const blockData = jotai.useAtomValue(model.blockAtom);
-    const defaultUrlAtom = useSettingsKeyAtom("web:defaulturl");
+    const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
     const defaultUrl = jotai.useAtomValue(defaultUrlAtom);
-    const defaultSearchAtom = useSettingsKeyAtom("web:defaultsearch");
+    const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
     const defaultSearch = jotai.useAtomValue(defaultSearchAtom);
     let metaUrl = blockData?.meta?.url || defaultUrl;
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);

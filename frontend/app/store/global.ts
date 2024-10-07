@@ -230,7 +230,7 @@ function useBlockCache<T>(blockId: string, name: string, makeFn: () => T): T {
 
 const settingsAtomCache = new Map<string, Atom<any>>();
 
-function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): Atom<SettingsType[T]> {
+function getSettingsKeyAtom<T extends keyof SettingsType>(key: T): Atom<SettingsType[T]> {
     let settingsKeyAtom = settingsAtomCache.get(key) as Atom<SettingsType[T]>;
     if (settingsKeyAtom == null) {
         settingsKeyAtom = atom((get) => {
@@ -534,6 +534,7 @@ export {
     getConnStatusAtom,
     getHostName,
     getObjectId,
+    getSettingsKeyAtom,
     getUserName,
     globalStore,
     initGlobal,
@@ -553,7 +554,6 @@ export {
     useBlockAtom,
     useBlockCache,
     useBlockDataLoaded,
-    useSettingsKeyAtom,
     useSettingsPrefixAtom,
     WOS,
 };
