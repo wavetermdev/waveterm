@@ -126,5 +126,31 @@
         "foreground": "#F2E6D4",
         "selectionBackground": "#B7950B",
         "cursor": "#F9D784"
+    },
+    "onedarkpro": {
+        "display:name": "One Dark Pro",
+        "display:order": 1.5,
+        "background": "#282C34",
+        "foreground": "#ABB2BF",
+        "cursor": "#D7DAE0",
+        "selectionBackground": "#528BFF",
+        "black": "#3F4451",
+        "red": "#E05561",
+        "green": "#8CC265",
+        "yellow": "#D18F52",
+        "blue": "#4AA5F0",
+        "magenta": "#C162DE",
+        "cyan": "#42B3C2",
+        "white": "#D7DAE0",
+        "brightBlack": "#4F5666",
+        "brightRed": "#FF616E",
+        "brightGreen": "#A5E075",
+        "brightYellow": "#F0A45D",
+        "brightBlue": "#4DC4FF",
+        "brightMagenta": "#DE73FF",
+        "brightCyan": "#4CD1E0",
+        "brightWhite": "#E6E6E6",
+        "gray": "#495162",
+        "cmdtext": "#ABB2BF"
     }
 }
