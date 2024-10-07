@@ -264,7 +264,6 @@ declare global {
     type MetaType = {
         view?: string;
         controller?: string;
-        title?: string;
         file?: string;
         url?: string;
         connection?: string;
@@ -279,6 +278,9 @@ declare global {
         "frame:*"?: boolean;
         "frame:bordercolor"?: string;
         "frame:bordercolor:focused"?: string;
+        "frame:title"?: string;
+        "frame:icon"?: string;
+        "frame:text"?: string;
         cmd?: string;
         "cmd:*"?: boolean;
         "cmd:interactive"?: boolean;
