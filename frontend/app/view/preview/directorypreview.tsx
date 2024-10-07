@@ -591,7 +591,17 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 }
                 setSearchText((current) => current.slice(0, -1));
                 return true;
-            }
+			}
+			if (checkKeyPressed(waveEvent, "Space")) {
+				const blockDef: BlockDef = {
+					meta: {
+						view: "preview",
+						file: selectedPath,
+					}
+                };
+                createBlock(blockDef);
+				return ;
+			}
             if (isCharacterKeyEvent(waveEvent)) {
                 setSearchText((current) => current + waveEvent.key);
                 return true;
