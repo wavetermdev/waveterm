@@ -292,12 +292,12 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
-async function createBlock(blockDef: BlockDef, magnified = false): Promise<string> {
+async function createBlock(blockDef: BlockDef, magnified = false, newLayoutNodeSize: number = undefined): Promise<string> {
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const blockId = await ObjectService.CreateBlock(blockDef, rtOpts);
     const insertNodeAction: LayoutTreeInsertNodeAction = {
         type: LayoutTreeActionType.InsertNode,
-        node: newLayoutNode(undefined, undefined, undefined, { blockId }),
+        node: newLayoutNode(undefined, newLayoutNodeSize, undefined, { blockId }),
         magnified,
         focused: true,
     };

@@ -593,13 +593,18 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 return true;
 			}
 			if (checkKeyPressed(waveEvent, "Space")) {
+				if (searchText.length != 0) {
+					// Add a space in the search text, because user is typing, not previewing
+					setSearchText((current) => current + " ");
+					return;
+				}
 				const blockDef: BlockDef = {
 					meta: {
 						view: "preview",
 						file: selectedPath,
 					}
                 };
-                createBlock(blockDef);
+                createBlock(blockDef, false, 60);
 				return ;
 			}
             if (isCharacterKeyEvent(waveEvent)) {
