@@ -9,6 +9,7 @@ const MaxCacheSize = 10;
 let HotSpareTab: WaveTabView = null;
 
 const wcvCache = new Map<string, WaveTabView>();
+const wcIdToWaveTabMap = new Map<number, WaveTabView>();
 
 function createBareTabView(): WaveTabView {
     console.log("createBareTabView");
@@ -24,12 +25,20 @@ function createBareTabView(): WaveTabView {
     tabView.waveReadyPromise = new Promise((resolve, _) => {
         tabView.waveReadyResolve = resolve;
     });
+    wcIdToWaveTabMap.set(tabView.webContents.id, tabView);
     if (isDevVite) {
         tabView.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html}`);
     } else {
         tabView.webContents.loadFile(path.join(getElectronAppBasePath(), "frontend", "index.html"));
     }
+    tabView.webContents.on("destroyed", () => {
+        wcIdToWaveTabMap.delete(tabView.webContents.id);
+    });
     return tabView;
+}
+
+export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabView {
+    return wcIdToWaveTabMap.get(webContentsId);
 }
 
 export function ensureHotSpareTab() {

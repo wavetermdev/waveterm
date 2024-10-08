@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import { ensureHotSpareTab, getSpareTab, getWaveTabView, removeWaveTabView, setWaveTabView } from "emain/emain-wccache";
+import {
+    ensureHotSpareTab,
+    getSpareTab,
+    getWaveTabView,
+    getWaveTabViewByWebContentsId,
+    removeWaveTabView,
+    setWaveTabView,
+} from "emain/emain-wccache";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -747,15 +754,20 @@ electron.ipcMain.on("download", (event, payload) => {
 });
 
 electron.ipcMain.on("set-active-tab", async (event, tabId) => {
-    console.log("set active tab", tabId, event);
     const clientData = await services.ClientService.GetClientData();
     const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
     const windowId = window.waveWindowId;
     const tabView = getOrCreateWebViewforTab(clientData.oid, windowId, tabId, true);
-    console.log("got tabView", tabView);
     setTabViewIntoWindow(window, tabView);
+    await tabView.initPromise;
+    const initOpts = {
+        tabId: tabId,
+        clientId: clientData.oid,
+        windowId: windowId,
+        activate: true,
+    };
+    tabView.webContents.send("wave-init", initOpts);
     await tabView.waveReadyPromise;
-    console.log("wave ready");
 });
 
 electron.ipcMain.on("get-cursor-point", (event) => {
@@ -895,8 +907,7 @@ function getTabViewFromEvent(event: Electron.IpcMainEvent): WaveTabView {
 }
 
 electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-ready") => {
-    const tabView = getTabViewFromEvent(event);
-    console.log("set-window-init-status", status, tabView);
+    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
     if (tabView == null || tabView.initResolve == null) {
         return;
     }
