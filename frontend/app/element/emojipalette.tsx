@@ -231,7 +231,7 @@ const EmojiPalette = memo(({ scopeRef, className }: EmojiPaletteProps) => {
         return () => {
             scopeRef?.current?.removeEventListener("mousedown", handleClickOutside);
         };
-    }, []);
+    }, [scopeRef]);
 
     const handleAnchorClick = () => {
         setIsPaletteVisible((prev) => !prev);
@@ -251,6 +251,7 @@ const EmojiPalette = memo(({ scopeRef, className }: EmojiPaletteProps) => {
             {isPaletteVisible && (
                 <Palette anchorRef={anchorRef} scopeRef={scopeRef} className="emoji-palette-content">
                     <Input placeholder="Search emojis..." value={searchTerm} onChange={handleSearchChange} />
+
                     <div className="emoji-grid">
                         {filteredEmojis.length > 0 ? (
                             filteredEmojis.map((item, index) => (
