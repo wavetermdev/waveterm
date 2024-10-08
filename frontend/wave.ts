@@ -33,6 +33,7 @@ import { createRoot } from "react-dom/client";
 
 const platform = getApi().getPlatform();
 document.title = `Wave Terminal`;
+let savedInitOpts: WaveInitOpts = null;
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
@@ -60,6 +61,10 @@ document.addEventListener("DOMContentLoaded", initBare);
 
 async function initWaveWrap(initOpts: WaveInitOpts) {
     try {
+        if (savedInitOpts) {
+            await reinitWave();
+            return;
+        }
         await initWave(initOpts);
     } catch (e) {
         getApi().sendLog("Error in initWave " + e.message);
@@ -67,7 +72,20 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
     }
 }
 
+async function reinitWave() {
+    console.log("Reinit Wave");
+    getApi().sendLog("Reinit Wave");
+    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", savedInitOpts.clientId));
+    const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", savedInitOpts.windowId));
+    await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
+    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", savedInitOpts.tabId));
+    await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
+    document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
+    getApi().setWindowInitStatus("wave-ready");
+}
+
 async function initWave(initOpts: WaveInitOpts) {
+    savedInitOpts = initOpts;
     getApi().sendLog("Init Wave " + JSON.stringify(initOpts));
     console.log(
         "Wave Init",

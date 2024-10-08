@@ -58,6 +58,27 @@ function createBareTabView(): WaveTabView {
     return tabView;
 }
 
+function positionTabOffscreen(tabView: WaveTabView, winBounds: Electron.Rectangle) {
+    console.log("positionTabOnScreen", tabView?.waveTabId, winBounds);
+    if (tabView == null) {
+        return;
+    }
+    tabView.setBounds({
+        x: -10000,
+        y: -10000,
+        width: winBounds.width,
+        height: winBounds.height,
+    });
+}
+
+function positionTabOnScreen(tabView: WaveTabView, winBounds: Electron.Rectangle) {
+    console.log("positionTabOnScreen", tabView?.waveTabId, winBounds);
+    if (tabView == null) {
+        return;
+    }
+    tabView.setBounds({ x: 0, y: 0, width: winBounds.width, height: winBounds.height });
+}
+
 export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabView {
     return wcIdToWaveTabMap.get(webContentsId);
 }
@@ -181,6 +202,16 @@ function getOrCreateWebViewForTab(windowId: string, tabId: string): [WaveTabView
         console.log("window-open denied", url);
         return { action: "deny" };
     });
+    tabView.webContents.on("focus", () => {
+        setWasInFg(true);
+        setWasActive(true);
+        if (getGlobalIsStarting()) {
+            return;
+        }
+    });
+    tabView.webContents.on("blur", () => {
+        handleCtrlShiftFocus(tabView.webContents, false);
+    });
     configureAuthKeyRequestInjection(tabView.webContents.session);
     return [tabView, false];
 }
@@ -288,39 +319,36 @@ function createBaseWaveBrowserWindow(
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
+    win.on("resize", () => {
+        if (win.isDestroyed() || win.fullScreen) {
+            return;
+        }
+        positionTabOnScreen(win.activeTabView, win.getContentBounds());
+    });
     win.on(
         "move",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
-    win.on("focus", () => {
-        setWasInFg(true);
-        setWasActive(true);
-        focusedWaveWindow = win;
-        if (getGlobalIsStarting()) {
-            return;
-        }
-        console.log("focus", waveWindow.oid);
-        ClientService.FocusWindow(waveWindow.oid);
-    });
-    win.on("blur", () => {
-        const tabView: WaveTabView = win.getContentView() as any;
-        if (tabView) {
-            handleCtrlShiftFocus(tabView.webContents, false);
-        }
-        if (focusedWaveWindow == win) {
-            focusedWaveWindow = null;
-        }
-    });
     win.on("enter-full-screen", async () => {
-        const tabView: WaveTabView = win.getContentView() as any;
+        const tabView = win.activeTabView;
         if (tabView) {
             tabView.webContents.send("fullscreen-change", true);
         }
     });
     win.on("leave-full-screen", async () => {
-        const tabView: WaveTabView = win.getContentView() as any;
+        const tabView = win.activeTabView;
         if (tabView) {
             tabView.webContents.send("fullscreen-change", false);
+        }
+    });
+    win.on("focus", () => {
+        focusedWaveWindow = win;
+        console.log("focus", win.waveWindowId);
+        ClientService.FocusWindow(win.waveWindowId);
+    });
+    win.on("blur", () => {
+        if (focusedWaveWindow == win) {
+            focusedWaveWindow = null;
         }
     });
     win.on("close", (e) => {
@@ -393,12 +421,17 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
     if (curTabView != null) {
         curTabView.isActiveTab = false;
     }
+    if (bwin.activeTabView == tabView) {
+        return;
+    }
+    const oldActiveView = bwin.activeTabView;
     tabView.isActiveTab = true;
     bwin.activeTabView = tabView;
     bwin.allTabViews.set(tabView.waveTabId, tabView);
     if (!tabInitialized) {
         await tabView.initPromise;
-        bwin.setContentView(tabView);
+        positionTabOffscreen(tabView, bwin.getContentBounds());
+        bwin.contentView.addChildView(tabView);
         const initOpts = {
             tabId: tabView.waveTabId,
             clientId: clientData.oid,
@@ -410,9 +443,12 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
         let startTime = Date.now();
         tabView.webContents.send("wave-init", initOpts);
         await tabView.waveReadyPromise;
+        positionTabOnScreen(tabView, bwin.getContentBounds());
         console.log("wave-ready init time", Date.now() - startTime + "ms");
     } else {
-        bwin.setContentView(tabView);
+        positionTabOnScreen(tabView, bwin.getContentBounds());
+        tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
     }
+    positionTabOffscreen(oldActiveView, bwin.getContentBounds());
     tabView.webContents.focus();
 }
