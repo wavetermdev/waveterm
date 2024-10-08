@@ -330,24 +330,21 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function getOrCreateWebViewforTab(clientId: string, windowId: string, tabId: string, activate: boolean): WaveTabView {
+// returns [tabview, initialized]
+function getOrCreateWebViewforTab(
+    clientId: string,
+    windowId: string,
+    tabId: string,
+    activate: boolean
+): [WaveTabView, boolean] {
     let tabView = getWaveTabView(windowId, tabId);
     if (tabView) {
-        return tabView;
+        return [tabView, true];
     }
     tabView = getSpareTab();
     tabView.lastUsedTs = Date.now();
     tabView.waveTabId = tabId;
     tabView.waveWindowId = windowId;
-    tabView.initPromise.then(() => {
-        const initOpts = {
-            tabId: tabId,
-            clientId: clientId,
-            windowId: windowId,
-            activate: activate,
-        };
-        tabView.webContents.send("wave-init", initOpts);
-    });
     setWaveTabView(windowId, tabId, tabView);
     tabView.webContents.on("will-navigate", shNavHandler);
     tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
@@ -378,18 +375,32 @@ function getOrCreateWebViewforTab(clientId: string, windowId: string, tabId: str
         return { action: "deny" };
     });
     configureAuthKeyRequestInjection(tabView.webContents.session);
-    return tabView;
+    return [tabView, false];
 }
 
-function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView) {
+async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView, tabInitialized: boolean) {
     const curTabView: WaveTabView = bwin.getContentView() as any;
+    const clientData = await services.ClientService.GetClientData();
     if (curTabView != null) {
         curTabView.isActiveTab = false;
     }
     tabView.isActiveTab = true;
     bwin.activeTabView = tabView;
     bwin.allTabViews.set(tabView.waveTabId, tabView);
-    bwin.setContentView(tabView);
+    if (!tabInitialized) {
+        await tabView.initPromise;
+        bwin.setContentView(tabView);
+        const initOpts = {
+            tabId: tabView.waveTabId,
+            clientId: clientData.oid,
+            windowId: bwin.waveWindowId,
+            activate: true,
+        };
+        tabView.webContents.send("wave-init", initOpts);
+        await tabView.waveReadyPromise;
+    } else {
+        bwin.setContentView(tabView);
+    }
 }
 
 function createBaseWaveBrowserWindow(waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
@@ -547,8 +558,8 @@ function createBaseWaveBrowserWindow(waveWindow: WaveWindow, fullConfig: FullCon
 // to show, await win.readyPromise and then win.show()
 function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
     const bwin = createBaseWaveBrowserWindow(waveWindow, fullConfig);
-    const tabView = getOrCreateWebViewforTab(clientId, waveWindow.oid, waveWindow.activetabid, true);
-    setTabViewIntoWindow(bwin, tabView);
+    const [tabView, init] = getOrCreateWebViewforTab(clientId, waveWindow.oid, waveWindow.activetabid, true);
+    setTabViewIntoWindow(bwin, tabView, init);
     return bwin;
 }
 
@@ -757,17 +768,8 @@ electron.ipcMain.on("set-active-tab", async (event, tabId) => {
     const clientData = await services.ClientService.GetClientData();
     const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
     const windowId = window.waveWindowId;
-    const tabView = getOrCreateWebViewforTab(clientData.oid, windowId, tabId, true);
-    setTabViewIntoWindow(window, tabView);
-    await tabView.initPromise;
-    const initOpts = {
-        tabId: tabId,
-        clientId: clientData.oid,
-        windowId: windowId,
-        activate: true,
-    };
-    tabView.webContents.send("wave-init", initOpts);
-    await tabView.waveReadyPromise;
+    const [tabView, tabInitialized] = getOrCreateWebViewforTab(clientData.oid, windowId, tabId, true);
+    setTabViewIntoWindow(window, tabView, tabInitialized);
 });
 
 electron.ipcMain.on("get-cursor-point", (event) => {
