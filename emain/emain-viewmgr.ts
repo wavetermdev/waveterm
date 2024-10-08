@@ -59,7 +59,6 @@ function createBareTabView(): WaveTabView {
 }
 
 function positionTabOffscreen(tabView: WaveTabView, winBounds: Electron.Rectangle) {
-    console.log("positionTabOnScreen", tabView?.waveTabId, winBounds);
     if (tabView == null) {
         return;
     }
@@ -72,7 +71,6 @@ function positionTabOffscreen(tabView: WaveTabView, winBounds: Electron.Rectangl
 }
 
 function positionTabOnScreen(tabView: WaveTabView, winBounds: Electron.Rectangle) {
-    console.log("positionTabOnScreen", tabView?.waveTabId, winBounds);
     if (tabView == null) {
         return;
     }
@@ -187,7 +185,7 @@ function getOrCreateWebViewForTab(windowId: string, tabId: string): [WaveTabView
     });
     tabView.webContents.on("before-input-event", (e, input) => {
         const waveEvent = keyutil.adaptFromElectronKeyEvent(input);
-        // console.log("WIN bie", waveEvent.type, waveEvent.code);
+        // console.log("WIN bie", tabView.waveTabId.substring(0, 8), waveEvent.type, waveEvent.code);
         handleCtrlShiftState(tabView.webContents, waveEvent);
         setWasActive(true);
     });
@@ -343,7 +341,7 @@ function createBaseWaveBrowserWindow(
     });
     win.on("focus", () => {
         focusedWaveWindow = win;
-        console.log("focus", win.waveWindowId);
+        console.log("focus win", win.waveWindowId);
         ClientService.FocusWindow(win.waveWindowId);
     });
     win.on("blur", () => {
@@ -450,5 +448,17 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
         tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
     }
     positionTabOffscreen(oldActiveView, bwin.getContentBounds());
+
+    // something is causing the new tab to lose focus so it requires manual refocusing
     tabView.webContents.focus();
+    setTimeout(() => {
+        if (bwin.activeTabView == tabView && !tabView.webContents.isFocused()) {
+            tabView.webContents.focus();
+        }
+    }, 10);
+    setTimeout(() => {
+        if (bwin.activeTabView == tabView && !tabView.webContents.isFocused()) {
+            tabView.webContents.focus();
+        }
+    }, 30);
 }
