@@ -136,7 +136,10 @@ async function initWave(initOpts: WaveInitOpts) {
         WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
         WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
     ]);
-    const ws = await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
+    const [ws, layoutState] = await Promise.all([
+        WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
+        WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
+    ]);
     loadAllWorkspaceTabs(ws);
     document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
 
