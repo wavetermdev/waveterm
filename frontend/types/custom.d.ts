@@ -316,11 +316,12 @@ declare global {
         msgFn: (msg: RpcMessage) => void;
     };
 
-    type WaveBrowserWindow = Electron.BaseWindow & {
+    type WaveBrowserWindow = Electron.BrowserWindow & {
         waveWindowId: string;
         waveReadyPromise: Promise<void>;
         hotSpareTab: WaveTabView;
         allTabViews: Map<string, WaveTabView>;
+        activeTabView: WaveTabView;
     };
 
     type WaveTabView = Electron.WebContentsView & {

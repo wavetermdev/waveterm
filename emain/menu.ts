@@ -17,6 +17,10 @@ function getWindowWebContents(window: electron.BaseWindow): electron.WebContents
         return null;
     }
     if (window instanceof electron.BrowserWindow) {
+        const waveWin = window as WaveBrowserWindow;
+        if (waveWin.activeTabView) {
+            return waveWin.activeTabView.webContents;
+        }
         return window.webContents;
     }
     return null;
@@ -127,18 +131,9 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Toggle DevTools",
             accelerator: "Option+Command+I", // TODO fix for windows
             click: () => {
-                const win = callbacks.getLastFocusedWaveWindow();
-                console.log("toggleDevTools", win);
-                if (win) {
-                    if (win instanceof electron.BaseWindow) {
-                        const cview: electron.WebContentsView = win.getContentView() as any;
-                        if (cview) {
-                            cview.webContents.toggleDevTools();
-                        }
-                    } else if (win instanceof electron.BrowserWindow) {
-                        win.webContents.toggleDevTools();
-                    }
-                }
+                const win = electron.BrowserWindow.getFocusedWindow() as WaveBrowserWindow;
+                let wc = getWindowWebContents(win);
+                wc?.toggleDevTools();
             },
         },
         {

@@ -380,6 +380,7 @@ function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView) {
         curTabView.isActiveTab = false;
     }
     tabView.isActiveTab = true;
+    bwin.activeTabView = tabView;
     bwin.allTabViews.set(tabView.waveTabId, tabView);
     bwin.setContentView(tabView);
 }
@@ -454,7 +455,7 @@ function createBaseWaveBrowserWindow(waveWindow: WaveWindow, fullConfig: FullCon
     } else {
         winOpts.backgroundColor = "#222222";
     }
-    const bwin = new electron.BaseWindow(winOpts);
+    const bwin = new electron.BrowserWindow(winOpts);
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     win.waveWindowId = waveWindow.oid;
     win.allTabViews = new Map<string, WaveTabView>();
