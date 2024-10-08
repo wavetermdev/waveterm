@@ -4,6 +4,7 @@
 import clsx from "clsx";
 import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
+import { throttle } from "throttle-debounce";
 
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import "./contextmenu.less";
@@ -269,7 +270,7 @@ const ContextMenu = memo(
             parentRef: React.RefObject<HTMLDivElement>,
             label: string
         ) => {
-            setTimeout(() => {
+            throttle(0, () => {
                 const subContextMenuRef = subContextMenuRefs.current[key]?.current;
                 if (!subContextMenuRef) return;
 
@@ -296,7 +297,7 @@ const ContextMenu = memo(
                     ...prev,
                     [key]: { top, left, label },
                 }));
-            }, 0);
+            })();
         };
 
         const handleMouseEnterItem = (

@@ -33,13 +33,13 @@ export const DefaultPalette: Story = {
             setIsMenuVisible((prev) => !prev);
         };
 
-        const handleClickOutside = (event: MouseEvent) => {
-            if (anchorRef.current && !anchorRef.current.contains(event.target as Node)) {
-                setIsMenuVisible(false);
-            }
-        };
-
         useEffect(() => {
+            const handleClickOutside = (event: MouseEvent) => {
+                if (anchorRef.current && !anchorRef.current.contains(event.target as Node)) {
+                    setIsMenuVisible(false);
+                }
+            };
+
             scopeRef?.current?.addEventListener("mousedown", handleClickOutside);
             return () => {
                 scopeRef?.current?.removeEventListener("mousedown", handleClickOutside);

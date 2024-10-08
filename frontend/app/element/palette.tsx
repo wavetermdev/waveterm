@@ -32,7 +32,7 @@ const Palette = memo(({ children, className, anchorRef, scopeRef }: PaletteProps
             // Check if the palette goes beyond the right edge of the window
             const rightEdge = left + paletteEl.offsetWidth;
             if (rightEdge > window.innerWidth) {
-                left = window.innerWidth - paletteEl.offsetWidth - 15;
+                left = window.innerWidth - paletteEl.offsetWidth - 10;
             }
 
             // Check if the palette goes beyond the bottom edge of the window
@@ -44,12 +44,14 @@ const Palette = memo(({ children, className, anchorRef, scopeRef }: PaletteProps
         }
     }, [anchorRef, scopeRef, width, height]);
 
+    useEffect(() => {
+        if (position.top > 0 && paletteRef.current?.style.visibility !== "visible") {
+            paletteRef.current.style.visibility = "visible";
+        }
+    }, [position.top]);
+
     return createPortal(
-        <div
-            ref={paletteRef}
-            style={{ top: `${position.top}px`, left: `${position.left}px` }}
-            className={clsx("palette", className)}
-        >
+        <div ref={paletteRef} style={{ top: position.top, left: position.left }} className={clsx("palette", className)}>
             {children}
         </div>,
         document.body
