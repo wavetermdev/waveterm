@@ -4,33 +4,41 @@
 import { getApi } from "@/app/store/global";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { NodeModel } from "@/layout/index";
-import { WebviewTag } from "electron";
 import { atom } from "jotai";
-import { createRef } from "react";
 import "./helpview.less";
 
 class HelpViewModel extends WebViewModel {
-    viewType: string;
-    blockId: string;
-    webviewRef: React.RefObject<WebviewTag>;
-
     constructor(blockId: string, nodeModel: NodeModel) {
         super(blockId, nodeModel);
         this.getSettingsMenuItems = undefined;
-        this.viewText = atom([
-            {
-                elemtype: "iconbutton",
-                icon: "house",
-                click: this.handleHome.bind(this),
-                disabled: this.shouldDisabledHomeButton(),
-            },
-        ]);
+        this.viewText = atom((get) => {
+            // force a dependency on meta.url so we re-render the buttons when the url changes
+            let url = get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
+            return [
+                {
+                    elemtype: "iconbutton",
+                    icon: "chevron-left",
+                    click: this.handleBack.bind(this),
+                    disabled: this.shouldDisableBackButton(),
+                },
+                {
+                    elemtype: "iconbutton",
+                    icon: "chevron-right",
+                    click: this.handleForward.bind(this),
+                    disabled: this.shouldDisableForwardButton(),
+                },
+                {
+                    elemtype: "iconbutton",
+                    icon: "house",
+                    click: this.handleHome.bind(this),
+                    disabled: this.shouldDisableHomeButton(),
+                },
+            ];
+        });
         this.homepageUrl = atom(getApi().getDocsiteUrl());
         this.viewType = "help";
-        this.blockId = blockId;
         this.viewIcon = atom("circle-question");
         this.viewName = atom("Help");
-        this.webviewRef = createRef<WebviewTag>();
     }
 }
 

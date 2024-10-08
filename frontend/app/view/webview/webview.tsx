@@ -81,19 +81,19 @@ export class WebViewModel implements ViewModel {
                     elemtype: "iconbutton",
                     icon: "chevron-left",
                     click: this.handleBack.bind(this),
-                    disabled: this.shouldDisabledBackButton(),
+                    disabled: this.shouldDisableBackButton(),
                 },
                 {
                     elemtype: "iconbutton",
                     icon: "chevron-right",
                     click: this.handleForward.bind(this),
-                    disabled: this.shouldDisabledForwardButton(),
+                    disabled: this.shouldDisableForwardButton(),
                 },
                 {
                     elemtype: "iconbutton",
                     icon: "house",
                     click: this.handleHome.bind(this),
-                    disabled: this.shouldDisabledHomeButton(),
+                    disabled: this.shouldDisableHomeButton(),
                 },
                 {
                     elemtype: "div",
@@ -142,7 +142,7 @@ export class WebViewModel implements ViewModel {
      * Whether the back button in the header should be disabled.
      * @returns True if the WebView cannot go back or if the WebView call fails. False otherwise.
      */
-    shouldDisabledBackButton() {
+    shouldDisableBackButton() {
         try {
             return !this.webviewRef.current?.canGoBack();
         } catch (_) {}
@@ -153,7 +153,7 @@ export class WebViewModel implements ViewModel {
      * Whether the forward button in the header should be disabled.
      * @returns True if the WebView cannot go forward or if the WebView call fails. False otherwise.
      */
-    shouldDisabledForwardButton() {
+    shouldDisableForwardButton() {
         try {
             return !this.webviewRef.current?.canGoForward();
         } catch (_) {}
@@ -164,7 +164,7 @@ export class WebViewModel implements ViewModel {
      * Whether the home button in the header should be disabled.
      * @returns True if the current url is the pinned url or the pinned url is not set. False otherwise.
      */
-    shouldDisabledHomeButton() {
+    shouldDisableHomeButton() {
         try {
             const homepageUrl = globalStore.get(this.homepageUrl);
             return !homepageUrl || this.getUrl() === homepageUrl;
