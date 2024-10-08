@@ -69,6 +69,7 @@ const (
 
 	Command_WebSelector = "webselector"
 	Command_Notify      = "notify"
+	Command_Quicklook   = "quicklook"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -128,6 +129,7 @@ type WshRpcInterface interface {
 
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+	QuicklookCommand(ctx context.Context, filePath string) error
 }
 
 // for frontend

@@ -36,6 +36,11 @@ export class ElectronWshClientType extends WshClient {
             silent: notificationOptions.silent,
         }).show();
     }
+
+    async handle_quicklook(rh: RpcResponseHelper, filePath: string) {
+        //const win = new electron.BaseWindow();
+        //win.previewFile(filePath);
+    }
 }
 
 export let ElectronWshClient: ElectronWshClientType;

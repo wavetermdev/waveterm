@@ -787,6 +787,11 @@ if (unamePlatform !== "darwin") {
     });
 }
 
+electron.ipcMain.on("quicklook", (event, filePath: string) => {
+    const window = electron.BrowserWindow.fromWebContents(event.sender);
+    window.previewFile(filePath);
+});
+
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
