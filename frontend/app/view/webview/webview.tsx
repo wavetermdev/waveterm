@@ -378,7 +378,7 @@ export class WebViewModel implements ViewModel {
     getSettingsMenuItems(): ContextMenuItem[] {
         return [
             {
-                label: "Set Homepage",
+                label: "Set Block Homepage",
                 click: async () => {
                     const url = this.getUrl();
                     if (url != null && url != "") {
@@ -386,6 +386,15 @@ export class WebViewModel implements ViewModel {
                             oref: WOS.makeORef("block", this.blockId),
                             meta: { pinnedurl: url },
                         });
+                    }
+                },
+            },
+            {
+                label: "Set Default Homepage",
+                click: async () => {
+                    const url = this.getUrl();
+                    if (url != null && url != "") {
+                        await RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
                     }
                 },
             },

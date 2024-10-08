@@ -9632,6 +9632,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"remark-github-blockquote-alert@npm:^1.2.1":
+  version: 1.2.1
+  resolution: "remark-github-blockquote-alert@npm:1.2.1"
+  dependencies:
+    unist-util-visit: "npm:^5.0.0"
+  checksum: 10c0/48f70a56347ba6d2649ec647f9b126fe2e22ee4efcbc4962e1645967ac0994859a930a1af3a8b75c2989d55ed5b7ce2df6fc86a4b0f2c0aa39d5ed2162c857ca
+  languageName: node
+  linkType: hard
+
 "remark-parse@npm:^11.0.0":
   version: 11.0.0
   resolution: "remark-parse@npm:11.0.0"
@@ -11496,6 +11505,7 @@ __metadata:
     rehype-slug: "npm:^6.0.0"
     remark-flexible-toc: "npm:^1.1.1"
     remark-gfm: "npm:^4.0.0"
+    remark-github-blockquote-alert: "npm:^1.2.1"
     rollup-plugin-flow: "npm:^1.1.1"
     rxjs: "npm:^7.8.1"
     semver: "npm:^7.6.3"
