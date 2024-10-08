@@ -15,7 +15,7 @@ var notifyIcon string
 var notifySilent bool
 
 var setNotifyCmd = &cobra.Command{
-	Use:     "notify [-t <title>] [-b <body>] [-i <icon>] [-s]",
+	Use:     "notify [options]",
 	Short:   "create a notification",
 	Args:    cobra.NoArgs,
 	Run:     notifyRun,
@@ -24,7 +24,7 @@ var setNotifyCmd = &cobra.Command{
 
 func init() {
 	setNotifyCmd.Flags().StringVarP(&notifyTitle, "title", "t", "Wsh Notify", "the notification title")
-	setNotifyCmd.Flags().StringVarP(&notifyBody, "body", "b", "", "the message within the notification")
+	setNotifyCmd.Flags().StringVarP(&notifyBody, "body", "m", "", "the message within the notification")
 	setNotifyCmd.Flags().StringVarP(&notifyIcon, "icon", "i", "", "the name of an icon to appear with along with the notification. requires a path to an image file.")
 	setNotifyCmd.Flags().BoolVarP(&notifySilent, "silent", "s", false, "whether or not the notification should display sound")
 	rootCmd.AddCommand(setNotifyCmd)
