@@ -130,6 +130,19 @@ function clearWaveObjectCache() {
 
 const defaultHoldTime = 5000; // 5-seconds
 
+function reloadWaveObject<T extends WaveObj>(oref: string): Promise<T> {
+    let wov = waveObjectValueCache.get(oref);
+    if (wov === undefined) {
+        wov = getWaveObjectValue<T>(oref, true);
+        return wov.pendingPromise;
+    }
+    const prtn = GetObject<T>(oref);
+    prtn.then((val) => {
+        globalStore.set(wov.dataAtom, { value: val, loading: false });
+    });
+    return prtn;
+}
+
 function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boolean): WaveObjectValue<T> {
     const wov = { pendingPromise: null, dataAtom: null, refCount: 0, holdTime: Date.now() + 5000 };
     wov.dataAtom = atom({ value: null, loading: true });
@@ -290,6 +303,7 @@ export {
     getWaveObjectLoadingAtom,
     loadAndPinWaveObject,
     makeORef,
+    reloadWaveObject,
     setObjectValue,
     updateWaveObject,
     updateWaveObjects,

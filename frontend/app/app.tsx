@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useOnResize } from "@/app/hook/useDimensions";
 import { useWaveObjectValue } from "@/app/store/wos";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
@@ -10,7 +11,6 @@ import { getWebServerEndpoint } from "@/util/endpoints";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
-import useResizeObserver from "@react-hook/resize-observer";
 import clsx from "clsx";
 import Color from "color";
 import * as csstree from "css-tree";
@@ -240,7 +240,7 @@ function AppBackground() {
         [bgRef, style]
     );
     React.useLayoutEffect(getAvgColor, [getAvgColor]);
-    useResizeObserver(bgRef, getAvgColor);
+    useOnResize(bgRef, getAvgColor);
 
     return <div ref={bgRef} className="app-background" style={style} />;
 }

@@ -75,11 +75,11 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
 async function reinitWave() {
     console.log("Reinit Wave");
     getApi().sendLog("Reinit Wave");
-    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", savedInitOpts.clientId));
-    const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", savedInitOpts.windowId));
-    await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
-    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", savedInitOpts.tabId));
-    await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
+    const client = await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedInitOpts.clientId));
+    const waveWindow = await WOS.reloadWaveObject<WaveWindow>(WOS.makeORef("window", savedInitOpts.windowId));
+    await WOS.reloadWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
+    const initialTab = await WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", savedInitOpts.tabId));
+    await WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
     document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
     getApi().setWindowInitStatus("wave-ready");
 }
