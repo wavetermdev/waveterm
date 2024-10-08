@@ -266,8 +266,8 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	}
 	var shellProc *shellexec.ShellProc
 	log.Printf("templog: remote has name %s", remoteName)
-	if strings.HasPrefix(remoteName, "00wsl:") {
-		wslName := strings.TrimPrefix(remoteName, "00wsl:")
+	if strings.HasPrefix(remoteName, "wsl:") {
+		wslName := strings.TrimPrefix(remoteName, "wsl:")
 		log.Printf("templog: detected wsl with name: %s", wslName)
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
@@ -523,8 +523,8 @@ func CheckConnStatus(blockId string) error {
 	if connName == "" {
 		return nil
 	}
-	if strings.HasPrefix(connName, "00wsl:") {
-		distroName := strings.TrimPrefix(connName, "00wsl:")
+	if strings.HasPrefix(connName, "wsl:") {
+		distroName := strings.TrimPrefix(connName, "wsl:")
 		conn := wsl.GetWslConn(context.Background(), distroName, false)
 		connStatus := conn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {

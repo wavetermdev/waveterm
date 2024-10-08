@@ -262,7 +262,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 			pipePty.Close()
 			return nil, err
 		}
-		return &ShellProc{Cmd: wslCmdWrap, ConnName: "00wsl:" + conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+		return &ShellProc{Cmd: wslCmdWrap, ConnName: "wsl:" + conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 	*/
 	////////////
 

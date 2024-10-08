@@ -652,7 +652,7 @@ const ChangeConnectionBlockModal = React.memo(
                 status: "connected",
                 icon: "laptop",
                 iconColor: "var(--grey-text-color)",
-                value: "00wsl:" + wslConn,
+                value: "wsl:" + wslConn,
                 label: wslConn,
             });
         }
