@@ -9,15 +9,17 @@ import { createPortal } from "react-dom";
 import "./palette.less";
 
 interface PaletteProps {
-    children: React.ReactNode;
-    className?: string;
     anchorRef: React.RefObject<HTMLElement>;
     scopeRef: React.RefObject<HTMLElement>;
+    children: React.ReactNode;
+    className?: string;
 }
 
 const Palette = memo(({ children, className, anchorRef, scopeRef }: PaletteProps) => {
     const paletteRef = useRef<HTMLDivElement | null>(null);
     const domRect = useDimensionsWithExistingRef(scopeRef);
+    const width = domRect?.width ?? 0;
+    const height = domRect?.height ?? 0;
 
     useEffect(() => {
         const paletteEl = paletteRef.current;
@@ -28,7 +30,7 @@ const Palette = memo(({ children, className, anchorRef, scopeRef }: PaletteProps
             paletteEl.style.top = `${bottom}px`;
             paletteEl.style.left = `${left}px`;
         }
-    }, [anchorRef]);
+    }, [width, height, anchorRef]);
 
     return createPortal(
         <div ref={paletteRef} className={clsx("palette", className)}>
