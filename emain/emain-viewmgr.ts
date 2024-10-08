@@ -18,13 +18,18 @@ import { getGlobalIsQuitting, getGlobalIsStarting, setWasActive, setWasInFg } fr
 import { getElectronAppBasePath, isDevVite } from "./platform";
 import { updater } from "./updater";
 
-const MaxCacheSize = 10;
+let MaxCacheSize = 10;
 let HotSpareTab: WaveTabView = null;
 
 const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> WaveBrowserWindow
 let focusedWaveWindow = null; // on blur we do not set this to null (but on destroy we do)
 const wcvCache = new Map<string, WaveTabView>();
 const wcIdToWaveTabMap = new Map<number, WaveTabView>();
+
+export function setMaxTabCacheSize(size: number) {
+    console.log("setMaxTabCacheSize", size);
+    MaxCacheSize = size;
+}
 
 function createBareTabView(): WaveTabView {
     console.log("createBareTabView");
@@ -424,6 +429,9 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
     }
     const oldActiveView = bwin.activeTabView;
     tabView.isActiveTab = true;
+    if (oldActiveView != null) {
+        oldActiveView.isActiveTab = false;
+    }
     bwin.activeTabView = tabView;
     bwin.allTabViews.set(tabView.waveTabId, tabView);
     if (!tabInitialized) {

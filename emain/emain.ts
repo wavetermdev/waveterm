@@ -23,6 +23,7 @@ import {
     getWaveTabViewByWebContentsId,
     getWaveWindowByWebContentsId,
     setActiveTab,
+    setMaxTabCacheSize,
 } from "emain/emain-viewmgr";
 import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "emain/emain-wavesrv";
 import { FastAverageColor } from "fast-average-color";
@@ -624,7 +625,6 @@ async function appMain() {
         console.log("disabling hardware acceleration, per launch settings");
         electronApp.disableHardwareAcceleration();
     }
-
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {
@@ -659,6 +659,10 @@ async function appMain() {
     await configureAutoUpdater();
 
     setGlobalIsStarting(false);
+    const fullConfig = await services.FileService.GetFullConfig();
+    if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
+        setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
+    }
 
     electronApp.on("activate", async () => {
         const allWindows = getAllWaveWindows();
