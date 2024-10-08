@@ -24,7 +24,7 @@ var setNotifyCmd = &cobra.Command{
 func init() {
 	setNotifyCmd.Flags().StringVarP(&notifyTitle, "title", "t", "Wsh Notify", "the notification title")
 	setNotifyCmd.Flags().StringVarP(&notifyBody, "message", "m", "", "the message within the notification")
-	setNotifyCmd.Flags().BoolVarP(&notifySilent, "silent", "s", false, "whether or not the notification should display sound")
+	setNotifyCmd.Flags().BoolVarP(&notifySilent, "silent", "s", false, "whether or not the notification sound is silenced")
 	rootCmd.AddCommand(setNotifyCmd)
 }
 
