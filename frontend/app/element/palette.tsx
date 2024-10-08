@@ -3,7 +3,7 @@
 
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import clsx from "clsx";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import "./palette.less";
@@ -17,6 +17,7 @@ interface PaletteProps {
 
 const Palette = memo(({ children, className, anchorRef, scopeRef }: PaletteProps) => {
     const paletteRef = useRef<HTMLDivElement | null>(null);
+    const [position, setPosition] = useState({ top: 0, left: 0 });
     const domRect = useDimensionsWithExistingRef(scopeRef);
     const width = domRect?.width ?? 0;
     const height = domRect?.height ?? 0;
@@ -25,15 +26,30 @@ const Palette = memo(({ children, className, anchorRef, scopeRef }: PaletteProps
         const paletteEl = paletteRef.current;
         const anchorEl = anchorRef.current;
         if (paletteEl && anchorEl) {
-            const { bottom, left } = anchorEl.getBoundingClientRect();
-            paletteEl.style.position = "absolute";
-            paletteEl.style.top = `${bottom}px`;
-            paletteEl.style.left = `${left}px`;
+            const anchorRect = anchorEl.getBoundingClientRect();
+            let { bottom, left } = anchorRect;
+
+            // Check if the palette goes beyond the right edge of the window
+            const rightEdge = left + paletteEl.offsetWidth;
+            if (rightEdge > window.innerWidth) {
+                left = window.innerWidth - paletteEl.offsetWidth - 15;
+            }
+
+            // Check if the palette goes beyond the bottom edge of the window
+            if (bottom + paletteEl.offsetHeight > window.innerHeight) {
+                bottom = anchorRect.top - paletteEl.offsetHeight;
+            }
+
+            setPosition({ top: bottom, left });
         }
-    }, [width, height, anchorRef]);
+    }, [anchorRef, scopeRef, width, height]);
 
     return createPortal(
-        <div ref={paletteRef} className={clsx("palette", className)}>
+        <div
+            ref={paletteRef}
+            style={{ top: `${position.top}px`, left: `${position.left}px` }}
+            className={clsx("palette", className)}
+        >
             {children}
         </div>,
         document.body
