@@ -38,5 +38,4 @@ func notifyRun(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] sending notification: %v\n", err)
 		return
 	}
-	WriteStdout("notification sent\n")
 }
