@@ -104,10 +104,6 @@ if (isDev) {
 
 initGlobal({ tabId: null, windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
-function delay(ms): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function handleWSEvent(evtMsg: WSEventType) {
     console.log("handleWSEvent", evtMsg?.eventtype);
     if (evtMsg.eventtype == "electron:newwindow") {
@@ -645,8 +641,9 @@ async function appMain() {
     const ready = await getWaveSrvReady();
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
-    ensureHotSpareTab();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
+    const fullConfig = await services.FileService.GetFullConfig();
+    ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();
     await initDocsite();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
@@ -659,7 +656,6 @@ async function appMain() {
     await configureAutoUpdater();
 
     setGlobalIsStarting(false);
-    const fullConfig = await services.FileService.GetFullConfig();
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
     }

@@ -6,6 +6,10 @@ import { getWebServerEndpoint } from "../frontend/util/endpoints";
 
 export const WaveAppPathVarName = "WAVETERM_APP_PATH";
 
+export function delay(ms): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function setCtrlShift(wc: Electron.WebContents, state: boolean) {
     wc.send("control-shift-state-update", state);
 }

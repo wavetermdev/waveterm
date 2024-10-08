@@ -48,6 +48,9 @@ let savedInitOpts: WaveInitOpts = null;
 
 async function initBare() {
     getApi().sendLog("Init Bare");
+    document.body.style.visibility = "hidden";
+    document.body.style.opacity = "0";
+    document.body.classList.add("is-transparent");
     getApi().onWaveInit(initWaveWrap);
     setKeyUtilPlatform(platform);
     loadFonts();
@@ -65,10 +68,15 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
             await reinitWave();
             return;
         }
+        savedInitOpts = initOpts;
         await initWave(initOpts);
     } catch (e) {
         getApi().sendLog("Error in initWave " + e.message);
         console.error("Error in initWave", e);
+    } finally {
+        document.body.style.visibility = "visible";
+        document.body.style.opacity = "1";
+        document.body.classList.remove("is-transparent");
     }
 }
 
@@ -84,8 +92,16 @@ async function reinitWave() {
     getApi().setWindowInitStatus("wave-ready");
 }
 
+function loadAllWorkspaceTabs(ws: Workspace) {
+    if (ws == null || ws.tabids == null) {
+        return;
+    }
+    ws.tabids.forEach((tabid) => {
+        WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabid));
+    });
+}
+
 async function initWave(initOpts: WaveInitOpts) {
-    savedInitOpts = initOpts;
     getApi().sendLog("Init Wave " + JSON.stringify(initOpts));
     console.log(
         "Wave Init",
@@ -115,11 +131,13 @@ async function initWave(initOpts: WaveInitOpts) {
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
-    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
-    const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId));
-    await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
-    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId));
-    await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
+    const [client, waveWindow, initialTab] = await Promise.all([
+        WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
+        WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
+        WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
+    ]);
+    const ws = await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
+    loadAllWorkspaceTabs(ws);
     document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
 
     registerGlobalKeys();
@@ -139,5 +157,6 @@ async function initWave(initOpts: WaveInitOpts) {
     const root = createRoot(elem);
     root.render(reactElem);
     await firstRenderPromise;
+    console.log("Wave First Render Done");
     getApi().setWindowInitStatus("wave-ready");
 }

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import { getFocusedWaveWindow } from "emain/emain-viewmgr";
+import { clearTabCache, getFocusedWaveWindow } from "emain/emain-viewmgr";
 import { fireAndForget } from "../frontend/util/util";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
@@ -134,6 +134,12 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Relaunch All Windows",
             click: () => {
                 callbacks.relaunchBrowserWindows();
+            },
+        },
+        {
+            label: "Clear Tab Cache",
+            click: () => {
+                clearTabCache();
             },
         },
         {

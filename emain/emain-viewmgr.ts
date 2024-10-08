@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ClientService, ObjectService, WindowService } from "@/app/store/services";
+import { ClientService, FileService, ObjectService, WindowService } from "@/app/store/services";
 import * as electron from "electron";
 import {
     ensureBoundsAreVisible,
@@ -31,7 +31,20 @@ export function setMaxTabCacheSize(size: number) {
     MaxCacheSize = size;
 }
 
-function createBareTabView(): WaveTabView {
+function computeBgColor(fullConfig: FullConfigType): string {
+    const settings = fullConfig?.settings;
+    const isTransparent = settings?.["window:transparent"] ?? false;
+    const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
+    if (isTransparent) {
+        return "#00000000";
+    } else if (isBlur) {
+        return "#00000000";
+    } else {
+        return "#222222";
+    }
+}
+
+function createBareTabView(fullConfig: FullConfigType): WaveTabView {
     console.log("createBareTabView");
     const tabView = new electron.WebContentsView({
         webPreferences: {
@@ -60,10 +73,11 @@ function createBareTabView(): WaveTabView {
         wcIdToWaveTabMap.delete(tabView.webContents.id);
         removeWaveTabView(tabView.waveWindowId, tabView.waveTabId);
     });
+    tabView.setBackgroundColor(computeBgColor(fullConfig));
     return tabView;
 }
 
-function positionTabOffscreen(tabView: WaveTabView, winBounds: Electron.Rectangle) {
+function positionTabOffScreen(tabView: WaveTabView, winBounds: Electron.Rectangle) {
     if (tabView == null) {
         return;
     }
@@ -106,14 +120,14 @@ export function getFocusedWaveWindow(): WaveBrowserWindow {
     return focusedWaveWindow;
 }
 
-export function ensureHotSpareTab() {
+export function ensureHotSpareTab(fullConfig: FullConfigType) {
     console.log("ensureHotSpareTab");
     if (HotSpareTab == null) {
-        HotSpareTab = createBareTabView();
+        HotSpareTab = createBareTabView(fullConfig);
     }
 }
 
-function getSpareTab(): WaveTabView {
+function getSpareTab(fullConfig: FullConfigType): WaveTabView {
     setTimeout(ensureHotSpareTab, 500);
     if (HotSpareTab != null) {
         const rtn = HotSpareTab;
@@ -122,7 +136,7 @@ function getSpareTab(): WaveTabView {
         return rtn;
     } else {
         console.log("getSpareTab: creating new tab");
-        return createBareTabView();
+        return createBareTabView(fullConfig);
     }
 }
 
@@ -165,17 +179,29 @@ function checkAndEvictCache(): void {
         }
         const tabView = sorted[i];
         tabView.webContents.close();
-        wcvCache.delete(sorted[i].waveTabId);
+        wcvCache.delete(sorted[i].waveWindowId + "|" + sorted[i].waveTabId);
+    }
+}
+
+export function clearTabCache() {
+    const wcVals = Array.from(wcvCache.values());
+    for (let i = 0; i < wcVals.length; i++) {
+        const tabView = wcVals[i];
+        if (tabView.isActiveTab) {
+            continue;
+        }
+        tabView.webContents.close();
+        wcvCache.delete(tabView.waveWindowId + "|" + tabView.waveTabId);
     }
 }
 
 // returns [tabview, initialized]
-function getOrCreateWebViewForTab(windowId: string, tabId: string): [WaveTabView, boolean] {
+function getOrCreateWebViewForTab(fullConfig: FullConfigType, windowId: string, tabId: string): [WaveTabView, boolean] {
     let tabView = getWaveTabView(windowId, tabId);
     if (tabView) {
         return [tabView, true];
     }
-    tabView = getSpareTab();
+    tabView = getSpareTab(fullConfig);
     tabView.lastUsedTs = Date.now();
     tabView.waveTabId = tabId;
     tabView.waveWindowId = windowId;
@@ -414,7 +440,8 @@ export function createBrowserWindow(
 export async function setActiveTab(waveWindow: WaveBrowserWindow, tabId: string) {
     const windowId = waveWindow.waveWindowId;
     ObjectService.SetActiveTab(waveWindow.waveWindowId, tabId);
-    const [tabView, tabInitialized] = getOrCreateWebViewForTab(windowId, tabId);
+    const fullConfig = await FileService.GetFullConfig();
+    const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, windowId, tabId);
     setTabViewIntoWindow(waveWindow, tabView, tabInitialized);
 }
 
@@ -435,8 +462,8 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
     bwin.activeTabView = tabView;
     bwin.allTabViews.set(tabView.waveTabId, tabView);
     if (!tabInitialized) {
+        console.log("initializing a new tab");
         await tabView.initPromise;
-        positionTabOffscreen(tabView, bwin.getContentBounds());
         bwin.contentView.addChildView(tabView);
         const initOpts = {
             tabId: tabView.waveTabId,
@@ -448,14 +475,16 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
         tabView.savedInitOpts.activate = false;
         let startTime = Date.now();
         tabView.webContents.send("wave-init", initOpts);
+        console.log("before wave ready");
         await tabView.waveReadyPromise;
         positionTabOnScreen(tabView, bwin.getContentBounds());
         console.log("wave-ready init time", Date.now() - startTime + "ms");
     } else {
+        console.log("reusing an existing tab");
         positionTabOnScreen(tabView, bwin.getContentBounds());
         tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
     }
-    positionTabOffscreen(oldActiveView, bwin.getContentBounds());
+    positionTabOffScreen(oldActiveView, bwin.getContentBounds());
 
     // something is causing the new tab to lose focus so it requires manual refocusing
     tabView.webContents.focus();
