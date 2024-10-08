@@ -632,6 +632,13 @@ declare global {
         meta: {[key: string]: any};
     };
 
+    // wshrpc.WaveNotificationOptions
+    type WaveNotificationOptions = {
+        title?: string;
+        body?: string;
+        silent?: boolean;
+    };
+
     // waveobj.WaveObj
     type WaveObj = {
         otype: string;
