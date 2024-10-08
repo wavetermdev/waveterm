@@ -74,8 +74,8 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
         getApi().sendLog("Error in initWave " + e.message);
         console.error("Error in initWave", e);
     } finally {
-        document.body.style.visibility = "visible";
-        document.body.style.opacity = "1";
+        document.body.style.visibility = null;
+        document.body.style.opacity = null;
         document.body.classList.remove("is-transparent");
     }
 }

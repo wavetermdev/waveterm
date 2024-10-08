@@ -88,13 +88,15 @@ function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
 }
 
 function AppSettingsUpdater() {
-    const windowSettings = useSettingsPrefixAtom("window");
+    const windowSettingsAtom = useSettingsPrefixAtom("window");
+    const windowSettings = jotai.useAtomValue(windowSettingsAtom);
     React.useEffect(() => {
         const isTransparentOrBlur =
             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
         const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
         let baseBgColor = windowSettings?.["window:bgcolor"];
         let mainDiv = document.getElementById("main");
+        // console.log("window settings", windowSettings, isTransparentOrBlur, opacity, baseBgColor, mainDiv);
         if (isTransparentOrBlur) {
             mainDiv.classList.add("is-transparent");
             const rootStyles = getComputedStyle(document.documentElement);
