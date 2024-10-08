@@ -49,7 +49,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const uiContextAtom = atom((get) => {
         const windowData = get(windowDataAtom);
         const uiContext: UIContext = {
-            windowid: null,
+            windowid: initOpts.windowId,
             activetabid: initOpts.tabId,
         };
         return uiContext;

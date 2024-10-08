@@ -27,8 +27,11 @@ import { CenteredDiv } from "./element/quickelems";
 const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
 
-const App = () => {
+const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
     let Provider = jotai.Provider;
+    React.useEffect(() => {
+        onFirstRender();
+    }, []);
     return (
         <Provider store={globalStore}>
             <AppInner />

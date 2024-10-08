@@ -118,11 +118,11 @@ func (svc *ObjectService) SetActiveTab_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) SetActiveTab(uiContext waveobj.UIContext, tabId string) (waveobj.UpdatesRtnType, error) {
+func (svc *ObjectService) SetActiveTab(windowId string, tabId string) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wstore.SetActiveTab(ctx, uiContext.WindowId, tabId)
+	err := wstore.SetActiveTab(ctx, windowId, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}

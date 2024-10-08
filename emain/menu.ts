@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
+import { getFocusedWaveWindow } from "emain/emain-viewmgr";
 import { fireAndForget } from "../frontend/util/util";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
@@ -16,12 +17,12 @@ function getWindowWebContents(window: electron.BaseWindow): electron.WebContents
     if (window == null) {
         return null;
     }
-    if (window instanceof electron.BrowserWindow) {
+    if (window instanceof electron.BaseWindow) {
         const waveWin = window as WaveBrowserWindow;
         if (waveWin.activeTabView) {
             return waveWin.activeTabView.webContents;
         }
-        return window.webContents;
+        return null;
     }
     return null;
 }
@@ -37,7 +38,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             role: "close",
             accelerator: "", // clear the accelerator
             click: () => {
-                electron.BrowserWindow.getFocusedWindow()?.close();
+                getFocusedWaveWindow()?.close();
             },
         },
     ];
@@ -119,7 +120,15 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
 
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
-            role: "forceReload",
+            label: "Reload Tab",
+            accelerator: "Shift+CommandOrControl+R",
+            click: (_, window) => {
+                if (window == null) {
+                    return null;
+                }
+                let ww = window as WaveBrowserWindow;
+                ww?.activeTabView?.webContents.reloadIgnoringCache();
+            },
         },
         {
             label: "Relaunch All Windows",
@@ -131,7 +140,10 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Toggle DevTools",
             accelerator: "Option+Command+I", // TODO fix for windows
             click: () => {
-                const win = electron.BrowserWindow.getFocusedWindow() as WaveBrowserWindow;
+                const win = getFocusedWaveWindow();
+                if (win == null) {
+                    return;
+                }
                 let wc = getWindowWebContents(win);
                 wc?.toggleDevTools();
             },

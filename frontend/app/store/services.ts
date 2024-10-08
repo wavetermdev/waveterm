@@ -113,7 +113,7 @@ class ObjectServiceType {
     }
 
     // @returns object updates
-    SetActiveTab(tabId: string): Promise<void> {
+    SetActiveTab(uiContext: string, tabId: string): Promise<void> {
         return WOS.callBackendService("object", "SetActiveTab", Array.from(arguments))
     }
 

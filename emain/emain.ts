@@ -17,10 +17,12 @@ import { handleCtrlShiftState } from "emain/emain-util";
 import {
     createBrowserWindow,
     ensureHotSpareTab,
+    getAllWaveWindows,
+    getFocusedWaveWindow,
     getLastFocusedWaveWindow,
-    getOrCreateWebViewForTab,
     getWaveTabViewByWebContentsId,
-    setTabViewIntoWindow,
+    getWaveWindowByWebContentsId,
+    setActiveTab,
 } from "emain/emain-viewmgr";
 import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "emain/emain-wavesrv";
 import { FastAverageColor } from "fast-average-color";
@@ -101,11 +103,6 @@ if (isDev) {
 
 initGlobal({ tabId: null, windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
-function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
-    const windowId = event.sender.id;
-    return electron.BrowserWindow.fromId(windowId);
-}
-
 function delay(ms): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -125,7 +122,7 @@ async function handleWSEvent(evtMsg: WSEventType) {
         newWin.show();
     } else if (evtMsg.eventtype == "electron:closewindow") {
         if (evtMsg.data === undefined) return;
-        const windows = electron.BrowserWindow.getAllWindows();
+        const windows = getAllWaveWindows();
         for (const window of windows) {
             if ((window as any).waveWindowId === evtMsg.data) {
                 // Bypass the "Are you sure?" dialog, since this event is called when there's no more tabs for the window.
@@ -228,7 +225,7 @@ function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInS
 
 electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, payload: { src: string }) => {
     const menu = new electron.Menu();
-    const win = electron.BrowserWindow.fromWebContents(event.sender.hostWebContents);
+    const win = getWaveWindowByWebContentsId(event.sender.hostWebContents.id);
     if (win == null) {
         return;
     }
@@ -249,35 +246,27 @@ electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, 
     );
     const { x, y } = electron.screen.getCursorScreenPoint();
     const windowPos = win.getPosition();
-    menu.popup({ window: win, x: x - windowPos[0], y: y - windowPos[1] });
+    menu.popup();
 });
 
 electron.ipcMain.on("download", (event, payload) => {
-    const window = electron.BrowserWindow.fromWebContents(event.sender);
     const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
-    window.webContents.downloadURL(streamingUrl);
+    event.sender.downloadURL(streamingUrl);
 });
 
 electron.ipcMain.on("set-active-tab", async (event, tabId) => {
-    const clientData = await services.ClientService.GetClientData();
-    const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
-    const windowId = window.waveWindowId;
-    const [tabView, tabInitialized] = getOrCreateWebViewForTab(clientData.oid, windowId, tabId, true);
-    setTabViewIntoWindow(window, tabView, tabInitialized);
+    const ww = getWaveWindowByWebContentsId(event.sender.id);
+    console.log("set-active-tab", tabId, ww?.waveWindowId);
+    setActiveTab(ww, tabId);
 });
 
 electron.ipcMain.on("get-cursor-point", (event) => {
-    const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
-    if (window == null) {
-        event.returnValue = null;
-        return;
-    }
-    const screenPoint = electron.screen.getCursorScreenPoint();
-    const tabView: WaveTabView = window.getContentView() as any;
+    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
     if (tabView == null) {
         event.returnValue = null;
         return;
     }
+    const screenPoint = electron.screen.getCursorScreenPoint();
     const windowRect = tabView.getBounds();
     const retVal: Electron.Point = {
         x: screenPoint.x - windowRect.x,
@@ -358,8 +347,8 @@ if (unamePlatform !== "darwin") {
         const overlayBuffer = overlay.toPNG();
         const png = PNG.sync.read(overlayBuffer);
         const color = fac.prepareResult(fac.getColorFromArray4(png.data));
-        const window = electron.BrowserWindow.fromWebContents(event.sender);
-        window.setTitleBarOverlay({
+        const ww = getWaveWindowByWebContentsId(event.sender.id);
+        ww.setTitleBarOverlay({
             color: unamePlatform === "linux" ? color.rgba : "#00000000", // Windows supports a true transparent overlay, so we don't need to set a background color.
             symbolColor: color.isDark ? "white" : "black",
         });
@@ -370,7 +359,8 @@ async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
     let recreatedWindow = false;
-    if (electron.BrowserWindow.getAllWindows().length === 0 && clientData?.windowids?.length >= 1) {
+    const allWindows = getAllWaveWindows();
+    if (allWindows.length === 0 && clientData?.windowids?.length >= 1) {
         // reopen the first window
         const existingWindowId = clientData.windowids[0];
         const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
@@ -390,18 +380,6 @@ async function createNewWaveWindow(): Promise<void> {
     newBrowserWindow.show();
 }
 
-function getTabViewFromEvent(event: Electron.IpcMainEvent): WaveTabView {
-    const window = electron.BrowserWindow.fromWebContents(event.sender);
-    if (window == null) {
-        return null;
-    }
-    const tabView: WaveTabView = window.getContentView() as any;
-    if (tabView.waveReadyPromise == null || tabView.initPromise == null) {
-        return null;
-    }
-    return tabView;
-}
-
 electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-ready") => {
     const tabView = getWaveTabViewByWebContentsId(event.sender.id);
     if (tabView == null || tabView.initResolve == null) {
@@ -410,6 +388,9 @@ electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-re
     if (status === "ready") {
         console.log("initResolve");
         tabView.initResolve();
+        if (tabView.savedInitOpts) {
+            tabView.webContents.send("wave-init", tabView.savedInitOpts);
+        }
     } else if (status === "wave-ready") {
         console.log("waveReadyResolve");
         tabView.waveReadyResolve();
@@ -424,7 +405,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
     if (defaultFileName == null || defaultFileName == "") {
         defaultFileName = "image";
     }
-    const window = electron.BrowserWindow.getFocusedWindow(); // Get the current window context
+    const ww = getFocusedWaveWindow();
     const mimeToExtension: { [key: string]: string } = {
         "image/png": "png",
         "image/jpeg": "jpg",
@@ -443,7 +424,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
     }
     defaultFileName = addExtensionIfNeeded(defaultFileName, mimeType);
     electron.dialog
-        .showSaveDialog(window, {
+        .showSaveDialog(ww, {
             title: "Save Image",
             defaultPath: defaultFileName,
             filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "heic"] }],
@@ -474,15 +455,13 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
 electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
 
 electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenuItem[]) => {
-    const window = electron.BrowserWindow.fromWebContents(event.sender);
     if (menuDefArr?.length === 0) {
         return;
     }
     const menu = menuDefArr ? convertMenuDefArrToMenu(menuDefArr) : instantiateAppMenu();
-    const { x, y } = electron.screen.getCursorScreenPoint();
-    const windowPos = window.getPosition();
-
-    menu.popup({ window, x: x - windowPos[0], y: y - windowPos[1] });
+    // const { x, y } = electron.screen.getCursorScreenPoint();
+    // const windowPos = window.getPosition();
+    menu.popup();
     event.returnValue = true;
 });
 
@@ -500,7 +479,8 @@ async function logActiveState() {
         console.log("error logging active state", e);
     } finally {
         // for next iteration
-        setWasInFg(electron.BrowserWindow.getFocusedWindow()?.isFocused() ?? false);
+        const ww = getFocusedWaveWindow();
+        setWasInFg(ww?.isFocused() ?? false);
         setWasActive(false);
     }
 }
@@ -562,7 +542,7 @@ electronApp.on("before-quit", (e) => {
         return;
     }
     e.preventDefault();
-    const allWindows = electron.BrowserWindow.getAllWindows();
+    const allWindows = getAllWaveWindows();
     for (const window of allWindows) {
         window.hide();
     }
@@ -603,7 +583,7 @@ process.on("uncaughtException", (error) => {
 
 async function relaunchBrowserWindows(): Promise<void> {
     setGlobalIsRelaunching(true);
-    const windows = electron.BrowserWindow.getAllWindows();
+    const windows = getAllWaveWindows();
     for (const window of windows) {
         window.removeAllListeners();
         window.close();
@@ -681,7 +661,8 @@ async function appMain() {
     setGlobalIsStarting(false);
 
     electronApp.on("activate", async () => {
-        if (electron.BrowserWindow.getAllWindows().length === 0) {
+        const allWindows = getAllWaveWindows();
+        if (allWindows.length === 0) {
             await createNewWaveWindow();
         }
     });

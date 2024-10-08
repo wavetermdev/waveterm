@@ -8,7 +8,7 @@ import {
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
-import { FileService, ObjectService } from "@/app/store/services";
+import { FileService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
@@ -111,16 +111,15 @@ async function initWave(initOpts: WaveInitOpts) {
     const fullConfig = await FileService.GetFullConfig();
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
-    if (initOpts.activate) {
-        const prtn = ObjectService.SetActiveTab(initOpts.tabId); // no need to wait
-        prtn.catch((e) => {
-            console.log("error on initial SetActiveTab", e);
-        });
-    }
-    const reactElem = createElement(App, null, null);
+    console.log("Wave First Render");
+    let firstRenderResolveFn: () => void = null;
+    let firstRenderPromise = new Promise<void>((resolve) => {
+        firstRenderResolveFn = resolve;
+    });
+    const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn }, null);
     const elem = document.getElementById("main");
     const root = createRoot(elem);
-    console.log("Wave First Render");
     root.render(reactElem);
+    await firstRenderPromise;
     getApi().setWindowInitStatus("wave-ready");
 }

@@ -92,17 +92,22 @@ function switchBlockInDirection(tabId: string, direction: NavigateDirection) {
 }
 
 function switchTabAbs(index: number) {
+    console.log("switchTabAbs", index);
     const ws = globalStore.get(atoms.workspace);
+    const waveWindow = globalStore.get(atoms.waveWindow);
     const newTabIdx = index - 1;
     if (newTabIdx < 0 || newTabIdx >= ws.tabids.length) {
         return;
     }
     const newActiveTabId = ws.tabids[newTabIdx];
-    services.ObjectService.SetActiveTab(newActiveTabId);
+    getApi().setActiveTab(newActiveTabId);
+    // services.ObjectService.SetActiveTab(waveWindow.oid, newActiveTabId);
 }
 
 function switchTab(offset: number) {
+    console.log("switchTab", offset);
     const ws = globalStore.get(atoms.workspace);
+    const waveWindow = globalStore.get(atoms.waveWindow);
     const activeTabId = globalStore.get(atoms.tabAtom).oid;
     let tabIdx = -1;
     for (let i = 0; i < ws.tabids.length; i++) {
@@ -116,7 +121,8 @@ function switchTab(offset: number) {
     }
     const newTabIdx = (tabIdx + offset + ws.tabids.length) % ws.tabids.length;
     const newActiveTabId = ws.tabids[newTabIdx];
-    services.ObjectService.SetActiveTab(newActiveTabId);
+    getApi().setActiveTab(newActiveTabId);
+    // services.ObjectService.SetActiveTab(waveWindow.oid, newActiveTabId);
 }
 
 function handleCmdI() {
@@ -297,6 +303,7 @@ function getAllGlobalKeyBindings(): string[] {
 
 // these keyboard events happen *anywhere*, even if you have focus in an input or somewhere else.
 function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
+    console.log("handleGlobalWaveKeyboardEvents", waveEvent);
     for (const key of globalKeyMap.keys()) {
         if (keyutil.checkKeyPressed(waveEvent, key)) {
             const handler = globalKeyMap.get(key);
