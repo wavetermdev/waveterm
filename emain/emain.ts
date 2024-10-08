@@ -3,13 +3,23 @@
 
 import * as electron from "electron";
 import {
+    getActivityState,
+    getGlobalIsRelaunching,
+    setGlobalIsQuitting,
+    setGlobalIsRelaunching,
+    setGlobalIsStarting,
+    setWasActive,
+    setWasInFg,
+} from "emain/emain-activity";
+import { handleCtrlShiftState } from "emain/emain-util";
+import {
+    createBrowserWindow,
     ensureHotSpareTab,
-    getSpareTab,
-    getWaveTabView,
+    getLastFocusedWaveWindow,
+    getOrCreateWebViewForTab,
     getWaveTabViewByWebContentsId,
-    removeWaveTabView,
-    setWaveTabView,
-} from "emain/emain-wccache";
+    setTabViewIntoWindow,
+} from "emain/emain-viewmgr";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -18,7 +28,6 @@ import { PNG } from "pngjs";
 import * as readline from "readline";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
-import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
 import { initGlobal } from "../frontend/app/store/global";
@@ -56,20 +65,10 @@ const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 electron.nativeTheme.themeSource = "dark";
 
-const waveWindowMap = new Map<string, WaveBrowserWindow>();
-let lastFocusedWaveWindow = null;
-
 let waveSrvReadyResolve = (value: boolean) => {};
 const waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
     waveSrvReadyResolve = resolve;
 });
-let globalIsQuitting = false;
-let globalIsStarting = true;
-let globalIsRelaunching = false;
-
-// for activity updates
-let wasActive = true;
-let wasInFg = true;
 
 let webviewFocusId: number = null; // set to the getWebContentsId of the webview that has focus (null if not focused)
 let webviewKeys: string[] = []; // the keys to trap when webview has focus
@@ -124,48 +123,8 @@ function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow
     return electron.BrowserWindow.fromId(windowId);
 }
 
-function setCtrlShift(wc: Electron.WebContents, state: boolean) {
-    wc.send("control-shift-state-update", state);
-}
-
 function delay(ms): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function handleCtrlShiftState(sender: Electron.WebContents, waveEvent: WaveKeyboardEvent) {
-    if (waveEvent.type == "keyup") {
-        if (waveEvent.key === "Control" || waveEvent.key === "Shift") {
-            setCtrlShift(sender, false);
-        }
-        if (waveEvent.key == "Meta") {
-            if (waveEvent.control && waveEvent.shift) {
-                setCtrlShift(sender, true);
-            }
-        }
-        return;
-    }
-    if (waveEvent.type == "keydown") {
-        if (waveEvent.key === "Control" || waveEvent.key === "Shift" || waveEvent.key === "Meta") {
-            if (waveEvent.control && waveEvent.shift && !waveEvent.meta) {
-                // Set the control and shift without the Meta key
-                setCtrlShift(sender, true);
-            } else {
-                // Unset if Meta is pressed
-                setCtrlShift(sender, false);
-            }
-        }
-        return;
-    }
-}
-
-function handleCtrlShiftFocus(sender: Electron.WebContents, focused: boolean) {
-    if (!focused) {
-        setCtrlShift(sender, false);
-    }
-}
-
-function getLastFocusedWaveWindow(): WaveBrowserWindow {
-    return lastFocusedWaveWindow;
 }
 
 function runWaveSrv(): Promise<boolean> {
@@ -256,7 +215,7 @@ async function handleWSEvent(evtMsg: WSEventType) {
         }
         const clientData = await services.ClientService.GetClientData();
         const fullConfig = await services.FileService.GetFullConfig();
-        const newWin = createBrowserWindow(clientData.oid, windowData, fullConfig);
+        const newWin = createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
         await newWin.waveReadyPromise;
         newWin.show();
     } else if (evtMsg.eventtype == "electron:closewindow") {
@@ -271,376 +230,6 @@ async function handleWSEvent(evtMsg: WSEventType) {
     } else {
         console.log("unhandled electron ws eventtype", evtMsg.eventtype);
     }
-}
-
-async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindow) {
-    if (win == null || win.isDestroyed() || win.fullScreen) {
-        return;
-    }
-    const bounds = win.getBounds();
-    try {
-        await services.WindowService.SetWindowPosAndSize(
-            windowId,
-            { x: bounds.x, y: bounds.y },
-            { width: bounds.width, height: bounds.height }
-        );
-    } catch (e) {
-        console.log("error resizing window", e);
-    }
-}
-
-function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
-    if (url.startsWith("http://127.0.0.1:5173/index.html") || url.startsWith("http://localhost:5173/index.html")) {
-        // this is a dev-mode hot-reload, ignore it
-        console.log("allowing hot-reload of index.html");
-        return;
-    }
-    event.preventDefault();
-    if (url.startsWith("https://") || url.startsWith("http://") || url.startsWith("file://")) {
-        console.log("open external, shNav", url);
-        electron.shell.openExternal(url);
-    } else {
-        console.log("navigation canceled", url);
-    }
-}
-
-function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNavigateEventParams>) {
-    if (!event.frame?.parent) {
-        // only use this handler to process iframe events (non-iframe events go to shNavHandler)
-        return;
-    }
-    const url = event.url;
-    console.log(`frame-navigation url=${url} frame=${event.frame.name}`);
-    if (event.frame.name == "webview") {
-        // "webview" links always open in new window
-        // this will *not* effect the initial load because srcdoc does not count as an electron navigation
-        console.log("open external, frameNav", url);
-        event.preventDefault();
-        electron.shell.openExternal(url);
-        return;
-    }
-    if (
-        event.frame.name == "pdfview" &&
-        (url.startsWith("blob:file:///") || url.startsWith(getWebServerEndpoint() + "/wave/stream-file?"))
-    ) {
-        // allowed
-        return;
-    }
-    event.preventDefault();
-    console.log("frame navigation canceled");
-}
-
-// returns [tabview, initialized]
-function getOrCreateWebViewforTab(
-    clientId: string,
-    windowId: string,
-    tabId: string,
-    activate: boolean
-): [WaveTabView, boolean] {
-    let tabView = getWaveTabView(windowId, tabId);
-    if (tabView) {
-        return [tabView, true];
-    }
-    tabView = getSpareTab();
-    tabView.lastUsedTs = Date.now();
-    tabView.waveTabId = tabId;
-    tabView.waveWindowId = windowId;
-    setWaveTabView(windowId, tabId, tabView);
-    tabView.webContents.on("will-navigate", shNavHandler);
-    tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
-    tabView.webContents.on("did-attach-webview", (event, wc) => {
-        wc.setWindowOpenHandler((details) => {
-            tabView.webContents.send("webview-new-window", wc.id, details);
-            return { action: "deny" };
-        });
-    });
-    tabView.webContents.on("before-input-event", (e, input) => {
-        const waveEvent = keyutil.adaptFromElectronKeyEvent(input);
-        // console.log("WIN bie", waveEvent.type, waveEvent.code);
-        handleCtrlShiftState(tabView.webContents, waveEvent);
-        const win = electron.BrowserWindow.fromWebContents(tabView.webContents);
-        if (win.isFocused()) {
-            wasActive = true;
-        }
-    });
-    tabView.webContents.on("zoom-changed", (e) => {
-        tabView.webContents.send("zoom-changed");
-    });
-    tabView.webContents.setWindowOpenHandler(({ url, frameName }) => {
-        if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {
-            console.log("openExternal fallback", url);
-            electron.shell.openExternal(url);
-        }
-        console.log("window-open denied", url);
-        return { action: "deny" };
-    });
-    configureAuthKeyRequestInjection(tabView.webContents.session);
-    return [tabView, false];
-}
-
-async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView, tabInitialized: boolean) {
-    const curTabView: WaveTabView = bwin.getContentView() as any;
-    const clientData = await services.ClientService.GetClientData();
-    if (curTabView != null) {
-        curTabView.isActiveTab = false;
-    }
-    tabView.isActiveTab = true;
-    bwin.activeTabView = tabView;
-    bwin.allTabViews.set(tabView.waveTabId, tabView);
-    if (!tabInitialized) {
-        await tabView.initPromise;
-        bwin.setContentView(tabView);
-        const initOpts = {
-            tabId: tabView.waveTabId,
-            clientId: clientData.oid,
-            windowId: bwin.waveWindowId,
-            activate: true,
-        };
-        tabView.webContents.send("wave-init", initOpts);
-        await tabView.waveReadyPromise;
-    } else {
-        bwin.setContentView(tabView);
-    }
-}
-
-function createBaseWaveBrowserWindow(waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
-    let winWidth = waveWindow?.winsize?.width;
-    let winHeight = waveWindow?.winsize?.height;
-    let winPosX = waveWindow.pos.x;
-    let winPosY = waveWindow.pos.y;
-    if (winWidth == null || winWidth == 0) {
-        const primaryDisplay = electron.screen.getPrimaryDisplay();
-        const { width } = primaryDisplay.workAreaSize;
-        winWidth = width - winPosX - 100;
-        if (winWidth > 2000) {
-            winWidth = 2000;
-        }
-    }
-    if (winHeight == null || winHeight == 0) {
-        const primaryDisplay = electron.screen.getPrimaryDisplay();
-        const { height } = primaryDisplay.workAreaSize;
-        winHeight = height - winPosY - 100;
-        if (winHeight > 1200) {
-            winHeight = 1200;
-        }
-    }
-    let winBounds = {
-        x: winPosX,
-        y: winPosY,
-        width: winWidth,
-        height: winHeight,
-    };
-    winBounds = ensureBoundsAreVisible(winBounds);
-    const settings = fullConfig?.settings;
-    const winOpts: Electron.BaseWindowConstructorOptions = {
-        titleBarStyle:
-            unamePlatform === "darwin" ? "hiddenInset" : settings["window:nativetitlebar"] ? "default" : "hidden",
-        titleBarOverlay:
-            unamePlatform !== "darwin"
-                ? {
-                      symbolColor: "white",
-                      color: "#00000000",
-                  }
-                : false,
-        x: winBounds.x,
-        y: winBounds.y,
-        width: winBounds.width,
-        height: winBounds.height,
-        minWidth: 400,
-        minHeight: 300,
-        icon:
-            unamePlatform == "linux"
-                ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
-                : undefined,
-        show: false,
-        autoHideMenuBar: true,
-    };
-    const isTransparent = settings?.["window:transparent"] ?? false;
-    const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
-    if (isTransparent) {
-        winOpts.transparent = true;
-    } else if (isBlur) {
-        switch (unamePlatform) {
-            case "win32": {
-                winOpts.backgroundMaterial = "acrylic";
-                break;
-            }
-            case "darwin": {
-                winOpts.vibrancy = "fullscreen-ui";
-                break;
-            }
-        }
-    } else {
-        winOpts.backgroundColor = "#222222";
-    }
-    const bwin = new electron.BrowserWindow(winOpts);
-    const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
-    win.waveWindowId = waveWindow.oid;
-    win.allTabViews = new Map<string, WaveTabView>();
-    win.hotSpareTab = null;
-    win.on(
-        "resize",
-        debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
-    );
-    win.on(
-        "move",
-        debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
-    );
-    win.on("focus", () => {
-        wasInFg = true;
-        wasActive = true;
-        lastFocusedWaveWindow = win;
-        if (globalIsStarting) {
-            return;
-        }
-        console.log("focus", waveWindow.oid);
-        services.ClientService.FocusWindow(waveWindow.oid);
-    });
-    win.on("blur", () => {
-        const tabView: WaveTabView = win.getContentView() as any;
-        if (tabView) {
-            handleCtrlShiftFocus(tabView.webContents, false);
-        }
-        if (lastFocusedWaveWindow == win) {
-            lastFocusedWaveWindow = null;
-        }
-    });
-    win.on("enter-full-screen", async () => {
-        const tabView: WaveTabView = win.getContentView() as any;
-        if (tabView) {
-            tabView.webContents.send("fullscreen-change", true);
-        }
-    });
-    win.on("leave-full-screen", async () => {
-        const tabView: WaveTabView = win.getContentView() as any;
-        if (tabView) {
-            tabView.webContents.send("fullscreen-change", false);
-        }
-    });
-    win.on("close", (e) => {
-        if (globalIsQuitting || updater?.status == "installing") {
-            return;
-        }
-        const numWindows = electron.BrowserWindow.getAllWindows().length;
-        if (numWindows == 1) {
-            return;
-        }
-        const choice = electron.dialog.showMessageBoxSync(win, {
-            type: "question",
-            buttons: ["Cancel", "Yes"],
-            title: "Confirm",
-            message: "Are you sure you want to close this window (all tabs and blocks will be deleted)?",
-        });
-        if (choice === 0) {
-            e.preventDefault();
-        }
-    });
-    win.on("closed", () => {
-        if (globalIsQuitting || updater?.status == "installing") {
-            return;
-        }
-        const numWindows = electron.BrowserWindow.getAllWindows().length;
-        if (numWindows == 0) {
-            return;
-        }
-        services.WindowService.CloseWindow(waveWindow.oid);
-        for (const tabView of win.allTabViews.values()) {
-            removeWaveTabView(tabView.waveWindowId, tabView.waveTabId);
-            tabView.webContents.close();
-        }
-        waveWindowMap.delete(waveWindow.oid);
-    });
-    waveWindowMap.set(waveWindow.oid, win);
-    return win;
-}
-
-// note, this does not *show* the window.
-// to show, await win.readyPromise and then win.show()
-function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
-    const bwin = createBaseWaveBrowserWindow(waveWindow, fullConfig);
-    const [tabView, init] = getOrCreateWebViewforTab(clientId, waveWindow.oid, waveWindow.activetabid, true);
-    setTabViewIntoWindow(bwin, tabView, init);
-    return bwin;
-}
-
-function isWindowFullyVisible(bounds: electron.Rectangle): boolean {
-    const displays = electron.screen.getAllDisplays();
-
-    // Helper function to check if a point is inside any display
-    function isPointInDisplay(x: number, y: number) {
-        for (const display of displays) {
-            const { x: dx, y: dy, width, height } = display.bounds;
-            if (x >= dx && x < dx + width && y >= dy && y < dy + height) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Check all corners of the window
-    const topLeft = isPointInDisplay(bounds.x, bounds.y);
-    const topRight = isPointInDisplay(bounds.x + bounds.width, bounds.y);
-    const bottomLeft = isPointInDisplay(bounds.x, bounds.y + bounds.height);
-    const bottomRight = isPointInDisplay(bounds.x + bounds.width, bounds.y + bounds.height);
-
-    return topLeft && topRight && bottomLeft && bottomRight;
-}
-
-function findDisplayWithMostArea(bounds: electron.Rectangle): electron.Display {
-    const displays = electron.screen.getAllDisplays();
-    let maxArea = 0;
-    let bestDisplay = null;
-
-    for (let display of displays) {
-        const { x, y, width, height } = display.bounds;
-        const overlapX = Math.max(0, Math.min(bounds.x + bounds.width, x + width) - Math.max(bounds.x, x));
-        const overlapY = Math.max(0, Math.min(bounds.y + bounds.height, y + height) - Math.max(bounds.y, y));
-        const overlapArea = overlapX * overlapY;
-
-        if (overlapArea > maxArea) {
-            maxArea = overlapArea;
-            bestDisplay = display;
-        }
-    }
-
-    return bestDisplay;
-}
-
-function adjustBoundsToFitDisplay(bounds: electron.Rectangle, display: electron.Display): electron.Rectangle {
-    const { x: dx, y: dy, width: dWidth, height: dHeight } = display.workArea;
-    let { x, y, width, height } = bounds;
-
-    // Adjust width and height to fit within the display's work area
-    width = Math.min(width, dWidth);
-    height = Math.min(height, dHeight);
-
-    // Adjust x to ensure the window fits within the display
-    if (x < dx) {
-        x = dx;
-    } else if (x + width > dx + dWidth) {
-        x = dx + dWidth - width;
-    }
-
-    // Adjust y to ensure the window fits within the display
-    if (y < dy) {
-        y = dy;
-    } else if (y + height > dy + dHeight) {
-        y = dy + dHeight - height;
-    }
-    return { x, y, width, height };
-}
-
-function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rectangle {
-    if (!isWindowFullyVisible(bounds)) {
-        let targetDisplay = findDisplayWithMostArea(bounds);
-
-        if (!targetDisplay) {
-            targetDisplay = electron.screen.getPrimaryDisplay();
-        }
-
-        return adjustBoundsToFitDisplay(bounds, targetDisplay);
-    }
-    return bounds;
 }
 
 // Listen for the open-external event from the renderer process
@@ -768,7 +357,7 @@ electron.ipcMain.on("set-active-tab", async (event, tabId) => {
     const clientData = await services.ClientService.GetClientData();
     const window: WaveBrowserWindow = electron.BrowserWindow.fromWebContents(event.sender) as any;
     const windowId = window.waveWindowId;
-    const [tabView, tabInitialized] = getOrCreateWebViewforTab(clientData.oid, windowId, tabId, true);
+    const [tabView, tabInitialized] = getOrCreateWebViewForTab(clientData.oid, windowId, tabId, true);
     setTabViewIntoWindow(window, tabView, tabInitialized);
 });
 
@@ -881,7 +470,7 @@ async function createNewWaveWindow(): Promise<void> {
         const existingWindowId = clientData.windowids[0];
         const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
-            const win = createBrowserWindow(clientData.oid, existingWindowData, fullConfig);
+            const win = createBrowserWindow(clientData.oid, existingWindowData, fullConfig, { unamePlatform });
             await win.waveReadyPromise;
             win.show();
             recreatedWindow = true;
@@ -891,7 +480,7 @@ async function createNewWaveWindow(): Promise<void> {
         return;
     }
     const newWindow = await services.ClientService.MakeWindow();
-    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig);
+    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig, { unamePlatform });
     await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
 }
@@ -993,7 +582,8 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenu
 });
 
 async function logActiveState() {
-    const activeState = { fg: wasInFg, active: wasActive, open: true };
+    const astate = getActivityState();
+    const activeState = { fg: astate.wasInFg, active: astate.wasActive, open: true };
     const url = new URL(getWebServerEndpoint() + "/wave/log-active-state");
     try {
         const resp = await fetch(url, { method: "post", body: JSON.stringify(activeState) });
@@ -1005,8 +595,8 @@ async function logActiveState() {
         console.log("error logging active state", e);
     } finally {
         // for next iteration
-        wasInFg = electron.BrowserWindow.getFocusedWindow()?.isFocused() ?? false;
-        wasActive = false;
+        setWasInFg(electron.BrowserWindow.getFocusedWindow()?.isFocused() ?? false);
+        setWasActive(false);
     }
 }
 
@@ -1038,7 +628,11 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
 }
 
 function instantiateAppMenu(): electron.Menu {
-    return getAppMenu({ createNewWaveWindow, relaunchBrowserWindows, getLastFocusedWaveWindow });
+    return getAppMenu({
+        createNewWaveWindow,
+        relaunchBrowserWindows,
+        getLastFocusedWaveWindow: getLastFocusedWaveWindow,
+    });
 }
 
 function makeAppMenu() {
@@ -1047,7 +641,7 @@ function makeAppMenu() {
 }
 
 electronApp.on("window-all-closed", () => {
-    if (globalIsRelaunching) {
+    if (getGlobalIsRelaunching()) {
         return;
     }
     if (unamePlatform !== "darwin") {
@@ -1055,7 +649,7 @@ electronApp.on("window-all-closed", () => {
     }
 });
 electronApp.on("before-quit", (e) => {
-    globalIsQuitting = true;
+    setGlobalIsQuitting(true);
     updater?.stop();
     waveSrvProc?.kill("SIGINT");
     shutdownWshrpc();
@@ -1103,13 +697,13 @@ process.on("uncaughtException", (error) => {
 });
 
 async function relaunchBrowserWindows(): Promise<void> {
-    globalIsRelaunching = true;
+    setGlobalIsRelaunching(true);
     const windows = electron.BrowserWindow.getAllWindows();
     for (const window of windows) {
         window.removeAllListeners();
         window.close();
     }
-    globalIsRelaunching = false;
+    setGlobalIsRelaunching(false);
 
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
@@ -1122,7 +716,7 @@ async function relaunchBrowserWindows(): Promise<void> {
             });
             continue;
         }
-        const win = createBrowserWindow(clientData.oid, windowData, fullConfig);
+        const win = createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
         wins.push(win);
     }
     for (const win of wins) {
@@ -1179,7 +773,7 @@ async function appMain() {
     }
     await configureAutoUpdater();
 
-    globalIsStarting = false;
+    setGlobalIsStarting(false);
 
     electronApp.on("activate", async () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
