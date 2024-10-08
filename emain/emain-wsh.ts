@@ -33,7 +33,6 @@ export class ElectronWshClientType extends WshClient {
         new electron.Notification({
             title: notificationOptions.title,
             body: notificationOptions.body,
-            icon: notificationOptions.icon,
             silent: notificationOptions.silent,
         }).show();
     }

@@ -380,6 +380,5 @@ type BlockInfoData struct {
 type WaveNotificationOptions struct {
 	Title  string `json:"title,omitempty"`
 	Body   string `json:"body,omitempty"`
-	Icon   string `json:"icon,omitempty"`
 	Silent bool   `json:"silent,omitempty"`
 }

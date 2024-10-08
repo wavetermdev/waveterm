@@ -636,7 +636,6 @@ declare global {
     type WaveNotificationOptions = {
         title?: string;
         body?: string;
-        icon?: string;
         silent?: boolean;
     };
 
