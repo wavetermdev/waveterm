@@ -414,4 +414,5 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
     } else {
         bwin.setContentView(tabView);
     }
+    tabView.webContents.focus();
 }
