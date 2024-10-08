@@ -4,7 +4,9 @@
 import * as electron from "electron";
 import {
     getActivityState,
+    getForceQuit,
     getGlobalIsRelaunching,
+    setForceQuit,
     setGlobalIsQuitting,
     setGlobalIsRelaunching,
     setGlobalIsStarting,
@@ -20,12 +22,11 @@ import {
     getWaveTabViewByWebContentsId,
     setTabViewIntoWindow,
 } from "emain/emain-viewmgr";
+import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "emain/emain-wavesrv";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
-import * as child_process from "node:child_process";
 import * as path from "path";
 import { PNG } from "pngjs";
-import * as readline from "readline";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
 import * as util from "util";
@@ -33,11 +34,11 @@ import winston from "winston";
 import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
-import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
+import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import { fetch } from "../frontend/util/fetchutil";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
-import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
+import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
 import { initDocsite } from "./docsite";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
@@ -46,8 +47,6 @@ import {
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
     getWaveHomeDir,
-    getWaveSrvCwd,
-    getWaveSrvPath,
     isDev,
     unameArch,
     unamePlatform,
@@ -55,28 +54,12 @@ import {
 import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
-let WaveVersion = "unknown"; // set by WAVESRV-ESTART
-let WaveBuildTime = 0; // set by WAVESRV-ESTART
-const devToolsWindow: electron.BrowserWindow = null;
-let forceQuit = false;
-let isWaveSrvDead = false;
 
-const WaveAppPathVarName = "WAVETERM_APP_PATH";
-const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 electron.nativeTheme.themeSource = "dark";
-
-let waveSrvReadyResolve = (value: boolean) => {};
-const waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
-    waveSrvReadyResolve = resolve;
-});
 
 let webviewFocusId: number = null; // set to the getWebContentsId of the webview that has focus (null if not focused)
 let webviewKeys: string[] = []; // the keys to trap when webview has focus
-
-let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
-
 const waveHome = getWaveHomeDir();
-
 const oldConsoleLog = console.log;
 
 const loggerTransports: winston.transport[] = [
@@ -125,84 +108,6 @@ function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow
 
 function delay(ms): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function runWaveSrv(): Promise<boolean> {
-    let pResolve: (value: boolean) => void;
-    let pReject: (reason?: any) => void;
-    const rtnPromise = new Promise<boolean>((argResolve, argReject) => {
-        pResolve = argResolve;
-        pReject = argReject;
-    });
-    const envCopy = { ...process.env };
-    envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
-    envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
-    envCopy[AuthKeyEnv] = AuthKey;
-    const waveSrvCmd = getWaveSrvPath();
-    console.log("trying to run local server", waveSrvCmd);
-    const proc = child_process.spawn(getWaveSrvPath(), {
-        cwd: getWaveSrvCwd(),
-        env: envCopy,
-    });
-    proc.on("exit", (e) => {
-        if (updater?.status == "installing") {
-            return;
-        }
-        console.log("wavesrv exited, shutting down");
-        forceQuit = true;
-        isWaveSrvDead = true;
-        electronApp.quit();
-    });
-    proc.on("spawn", (e) => {
-        console.log("spawned wavesrv");
-        waveSrvProc = proc;
-        pResolve(true);
-    });
-    proc.on("error", (e) => {
-        console.log("error running wavesrv", e);
-        pReject(e);
-    });
-    const rlStdout = readline.createInterface({
-        input: proc.stdout,
-        terminal: false,
-    });
-    rlStdout.on("line", (line) => {
-        console.log(line);
-    });
-    const rlStderr = readline.createInterface({
-        input: proc.stderr,
-        terminal: false,
-    });
-    rlStderr.on("line", (line) => {
-        if (line.includes("WAVESRV-ESTART")) {
-            const startParams = /ws:([a-z0-9.:]+) web:([a-z0-9.:]+) version:([a-z0-9.\-]+) buildtime:(\d+)/gm.exec(
-                line
-            );
-            if (startParams == null) {
-                console.log("error parsing WAVESRV-ESTART line", line);
-                electronApp.quit();
-                return;
-            }
-            process.env[WSServerEndpointVarName] = startParams[1];
-            process.env[WebServerEndpointVarName] = startParams[2];
-            WaveVersion = startParams[3];
-            WaveBuildTime = parseInt(startParams[4]);
-            waveSrvReadyResolve(true);
-            return;
-        }
-        if (line.startsWith("WAVESRV-EVENT:")) {
-            const evtJson = line.slice("WAVESRV-EVENT:".length);
-            try {
-                const evtMsg: WSEventType = JSON.parse(evtJson);
-                handleWSEvent(evtMsg);
-            } catch (e) {
-                console.log("error handling WAVESRV-EVENT", e);
-            }
-            return;
-        }
-        console.log(line);
-    });
-    return rtnPromise;
 }
 
 async function handleWSEvent(evtMsg: WSEventType) {
@@ -386,7 +291,7 @@ electron.ipcMain.on("get-env", (event, varName) => {
 });
 
 electron.ipcMain.on("get-about-modal-details", (event) => {
-    event.returnValue = { version: WaveVersion, buildTime: WaveBuildTime } as AboutModalDetails;
+    event.returnValue = getWaveVersion() as AboutModalDetails;
 });
 
 const hasBeforeInputRegisteredMap = new Map<number, boolean>();
@@ -651,9 +556,9 @@ electronApp.on("window-all-closed", () => {
 electronApp.on("before-quit", (e) => {
     setGlobalIsQuitting(true);
     updater?.stop();
-    waveSrvProc?.kill("SIGINT");
+    getWaveSrvProc()?.kill("SIGINT");
     shutdownWshrpc();
-    if (forceQuit) {
+    if (getForceQuit()) {
         return;
     }
     e.preventDefault();
@@ -661,15 +566,15 @@ electronApp.on("before-quit", (e) => {
     for (const window of allWindows) {
         window.hide();
     }
-    if (isWaveSrvDead) {
+    if (getIsWaveSrvDead()) {
         console.log("wavesrv is dead, quitting immediately");
-        forceQuit = true;
+        setForceQuit(true);
         electronApp.quit();
         return;
     }
     setTimeout(() => {
         console.log("waiting for wavesrv to exit...");
-        forceQuit = true;
+        setForceQuit(true);
         electronApp.quit();
     }, 3000);
 });
@@ -753,11 +658,11 @@ async function appMain() {
     }
     makeAppMenu();
     try {
-        await runWaveSrv();
+        await runWaveSrv(handleWSEvent);
     } catch (e) {
         console.log(e.toString());
     }
-    const ready = await waveSrvReady;
+    const ready = await getWaveSrvReady();
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
     ensureHotSpareTab();

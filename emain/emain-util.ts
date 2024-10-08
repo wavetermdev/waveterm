@@ -4,6 +4,8 @@
 import * as electron from "electron";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 
+export const WaveAppPathVarName = "WAVETERM_APP_PATH";
+
 function setCtrlShift(wc: Electron.WebContents, state: boolean) {
     wc.send("control-shift-state-update", state);
 }

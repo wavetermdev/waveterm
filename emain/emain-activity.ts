@@ -7,6 +7,7 @@ let wasInFg = true;
 let globalIsQuitting = false;
 let globalIsStarting = true;
 let globalIsRelaunching = false;
+let forceQuit = false;
 
 export function setWasActive(val: boolean) {
     wasActive = val;
@@ -42,4 +43,12 @@ export function setGlobalIsRelaunching(val: boolean) {
 
 export function getGlobalIsRelaunching(): boolean {
     return globalIsRelaunching;
+}
+
+export function setForceQuit(val: boolean) {
+    forceQuit = val;
+}
+
+export function getForceQuit(): boolean {
+    return forceQuit;
 }
