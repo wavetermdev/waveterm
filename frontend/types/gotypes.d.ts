@@ -266,6 +266,7 @@ declare global {
         controller?: string;
         file?: string;
         url?: string;
+        pinnedurl?: string;
         connection?: string;
         edit?: boolean;
         history?: string[];

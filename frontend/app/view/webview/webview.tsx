@@ -3,16 +3,16 @@
 
 import { getApi, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
+import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { NodeModel } from "@/layout/index";
 import { WOS, globalStore } from "@/store/global";
-import * as services from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
-import * as jotai from "jotai";
+import { Atom, PrimitiveAtom, atom, useAtomValue } from "jotai";
 import React, { memo, useEffect, useState } from "react";
 import "./webview.less";
 
@@ -32,19 +32,20 @@ function getWebviewPreloadUrl() {
 export class WebViewModel implements ViewModel {
     viewType: string;
     blockId: string;
-    blockAtom: jotai.Atom<Block>;
-    viewIcon: jotai.Atom<string | IconButtonDecl>;
-    viewName: jotai.Atom<string>;
-    viewText: jotai.Atom<HeaderElem[]>;
-    url: jotai.PrimitiveAtom<string>;
-    urlInputFocused: jotai.PrimitiveAtom<boolean>;
-    isLoading: jotai.PrimitiveAtom<boolean>;
-    urlWrapperClassName: jotai.PrimitiveAtom<string>;
-    refreshIcon: jotai.PrimitiveAtom<string>;
+    blockAtom: Atom<Block>;
+    viewIcon: Atom<string | IconButtonDecl>;
+    viewName: Atom<string>;
+    viewText: Atom<HeaderElem[]>;
+    url: PrimitiveAtom<string>;
+    homepageUrl: Atom<string>;
+    urlInputFocused: PrimitiveAtom<boolean>;
+    isLoading: PrimitiveAtom<boolean>;
+    urlWrapperClassName: PrimitiveAtom<string>;
+    refreshIcon: PrimitiveAtom<string>;
     webviewRef: React.RefObject<WebviewTag>;
     urlInputRef: React.RefObject<HTMLInputElement>;
     nodeModel: NodeModel;
-    endIconButtons?: jotai.Atom<IconButtonDecl[]>;
+    endIconButtons?: Atom<IconButtonDecl[]>;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.nodeModel = nodeModel;
@@ -52,19 +53,25 @@ export class WebViewModel implements ViewModel {
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
 
-        this.url = jotai.atom();
-        this.urlWrapperClassName = jotai.atom("");
-        this.urlInputFocused = jotai.atom(false);
-        this.isLoading = jotai.atom(false);
-        this.refreshIcon = jotai.atom("rotate-right");
-        this.viewIcon = jotai.atom("globe");
-        this.viewName = jotai.atom("Web");
+        this.url = atom();
+        const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
+        this.homepageUrl = atom((get) => {
+            const defaultUrl = get(defaultUrlAtom);
+            const pinnedUrl = get(this.blockAtom).meta.pinnedurl;
+            console.log("homepageUrl", pinnedUrl, defaultUrl);
+            return pinnedUrl ?? defaultUrl;
+        });
+        this.urlWrapperClassName = atom("");
+        this.urlInputFocused = atom(false);
+        this.isLoading = atom(false);
+        this.refreshIcon = atom("rotate-right");
+        this.viewIcon = atom("globe");
+        this.viewName = atom("Web");
         this.urlInputRef = React.createRef<HTMLInputElement>();
         this.webviewRef = React.createRef<WebviewTag>();
 
-        this.viewText = jotai.atom((get) => {
-            const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
-            let url = get(this.blockAtom)?.meta?.url || get(defaultUrlAtom);
+        this.viewText = atom((get) => {
+            let url = get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
             const currUrl = get(this.url);
             if (currUrl !== undefined) {
                 url = currUrl;
@@ -81,6 +88,12 @@ export class WebViewModel implements ViewModel {
                     icon: "chevron-right",
                     click: this.handleForward.bind(this),
                     disabled: this.shouldDisabledForwardButton(),
+                },
+                {
+                    elemtype: "iconbutton",
+                    icon: "house",
+                    click: this.handleHome.bind(this),
+                    disabled: this.shouldDisabledHomeButton(),
                 },
                 {
                     elemtype: "div",
@@ -108,7 +121,7 @@ export class WebViewModel implements ViewModel {
             ] as HeaderElem[];
         });
 
-        this.endIconButtons = jotai.atom((get) => {
+        this.endIconButtons = atom((get) => {
             return [
                 {
                     elemtype: "iconbutton",
@@ -145,6 +158,26 @@ export class WebViewModel implements ViewModel {
             return !this.webviewRef.current?.canGoForward();
         } catch (_) {}
         return true;
+    }
+
+    /**
+     * Whether the home button in the header should be disabled.
+     * @returns True if the current url is the pinned url or the pinned url is not set. False otherwise.
+     */
+    shouldDisabledHomeButton() {
+        try {
+            const homepageUrl = globalStore.get(this.homepageUrl);
+            return !homepageUrl || this.getUrl() === homepageUrl;
+        } catch (_) {}
+        return true;
+    }
+
+    handleHome(e?: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        this.loadUrl(globalStore.get(this.homepageUrl), "home");
     }
 
     handleUrlWrapperMouseOver(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -227,7 +260,7 @@ export class WebViewModel implements ViewModel {
      * @param url The URL that has been navigated to.
      */
     handleNavigate(url: string) {
-        services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url });
+        ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url });
         globalStore.set(this.url, url);
     }
 
@@ -349,7 +382,10 @@ export class WebViewModel implements ViewModel {
                 click: async () => {
                     const url = this.getUrl();
                     if (url != null && url != "") {
-                        RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                        await RpcApi.SetMetaCommand(WindowRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { pinnedurl: url },
+                        });
                     }
                 },
             },
@@ -383,11 +419,10 @@ interface WebViewProps {
 }
 
 const WebView = memo(({ model }: WebViewProps) => {
-    const blockData = jotai.useAtomValue(model.blockAtom);
-    const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
-    const defaultUrl = jotai.useAtomValue(defaultUrlAtom);
+    const blockData = useAtomValue(model.blockAtom);
+    const defaultUrl = useAtomValue(model.homepageUrl);
     const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
-    const defaultSearch = jotai.useAtomValue(defaultSearchAtom);
+    const defaultSearch = useAtomValue(defaultSearchAtom);
     let metaUrl = blockData?.meta?.url || defaultUrl;
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     const metaUrlRef = React.useRef(metaUrl);
