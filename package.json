@@ -124,6 +124,7 @@
         "rehype-slug": "^6.0.0",
         "remark-flexible-toc": "^1.1.1",
         "remark-gfm": "^4.0.0",
+        "remark-github-blockquote-alert": "^1.2.1",
         "rxjs": "^7.8.1",
         "sharp": "^0.33.5",
         "shell-quote": "^1.8.1",

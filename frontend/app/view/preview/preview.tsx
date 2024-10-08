@@ -1,30 +1,28 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { CenteredDiv } from "@/app/element/quickelems";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
 import { atoms, createBlock, getConnStatusAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
-import * as historyutil from "@/util/historyutil";
-import * as keyutil from "@/util/keyutil";
-import * as util from "@/util/util";
-import { makeConnRoute } from "@/util/util";
+import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
+import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
+import { base64ToString, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
-import * as jotai from "jotai";
+import { Atom, atom, Getter, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import { loadable } from "jotai/utils";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import * as React from "react";
-import { createRef, useCallback, useState } from "react";
-import { CenteredDiv } from "../../element/quickelems";
-import { CodeEditor } from "../codeeditor/codeeditor";
+import { createRef, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
 import "./preview.less";
@@ -101,70 +99,64 @@ export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
     nodeModel: NodeModel;
-    blockAtom: jotai.Atom<Block>;
-    viewIcon: jotai.Atom<string | IconButtonDecl>;
-    viewName: jotai.Atom<string>;
-    viewText: jotai.Atom<HeaderElem[]>;
-    preIconButton: jotai.Atom<IconButtonDecl>;
-    endIconButtons: jotai.Atom<IconButtonDecl[]>;
+    blockAtom: Atom<Block>;
+    viewIcon: Atom<string | IconButtonDecl>;
+    viewName: Atom<string>;
+    viewText: Atom<HeaderElem[]>;
+    preIconButton: Atom<IconButtonDecl>;
+    endIconButtons: Atom<IconButtonDecl[]>;
     previewTextRef: React.RefObject<HTMLDivElement>;
-    editMode: jotai.Atom<boolean>;
-    canPreview: jotai.PrimitiveAtom<boolean>;
-    specializedView: jotai.Atom<Promise<{ specializedView?: string; errorStr?: string }>>;
-    loadableSpecializedView: jotai.Atom<Loadable<{ specializedView?: string; errorStr?: string }>>;
-    manageConnection: jotai.Atom<boolean>;
-    connStatus: jotai.Atom<ConnStatus>;
+    editMode: Atom<boolean>;
+    canPreview: PrimitiveAtom<boolean>;
+    specializedView: Atom<Promise<{ specializedView?: string; errorStr?: string }>>;
+    loadableSpecializedView: Atom<Loadable<{ specializedView?: string; errorStr?: string }>>;
+    manageConnection: Atom<boolean>;
+    connStatus: Atom<ConnStatus>;
 
-    metaFilePath: jotai.Atom<string>;
-    statFilePath: jotai.Atom<Promise<string>>;
-    normFilePath: jotai.Atom<Promise<string>>;
-    loadableStatFilePath: jotai.Atom<Loadable<string>>;
-    loadableFileInfo: jotai.Atom<Loadable<FileInfo>>;
-    connection: jotai.Atom<string>;
-    statFile: jotai.Atom<Promise<FileInfo>>;
-    fullFile: jotai.Atom<Promise<FullFile>>;
-    fileMimeType: jotai.Atom<Promise<string>>;
-    fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
-    fileContentSaved: jotai.PrimitiveAtom<string | null>;
-    fileContent: jotai.WritableAtom<Promise<string>, [string], void>;
-    newFileContent: jotai.PrimitiveAtom<string | null>;
+    metaFilePath: Atom<string>;
+    statFilePath: Atom<Promise<string>>;
+    normFilePath: Atom<Promise<string>>;
+    loadableStatFilePath: Atom<Loadable<string>>;
+    loadableFileInfo: Atom<Loadable<FileInfo>>;
+    connection: Atom<string>;
+    statFile: Atom<Promise<FileInfo>>;
+    fullFile: Atom<Promise<FullFile>>;
+    fileMimeType: Atom<Promise<string>>;
+    fileMimeTypeLoadable: Atom<Loadable<string>>;
+    fileContentSaved: PrimitiveAtom<string | null>;
+    fileContent: WritableAtom<Promise<string>, [string], void>;
+    newFileContent: PrimitiveAtom<string | null>;
 
-    openFileModal: jotai.PrimitiveAtom<boolean>;
-    openFileError: jotai.PrimitiveAtom<string>;
+    openFileModal: PrimitiveAtom<boolean>;
+    openFileError: PrimitiveAtom<string>;
     openFileModalGiveFocusRef: React.MutableRefObject<() => boolean>;
 
-    markdownShowToc: jotai.PrimitiveAtom<boolean>;
+    markdownShowToc: PrimitiveAtom<boolean>;
 
     monacoRef: React.MutableRefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
 
-    showHiddenFiles: jotai.PrimitiveAtom<boolean>;
-    refreshVersion: jotai.PrimitiveAtom<number>;
+    showHiddenFiles: PrimitiveAtom<boolean>;
+    refreshVersion: PrimitiveAtom<number>;
     refreshCallback: () => void;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
-
-    setPreviewFileName(fileName: string) {
-        globalStore.set(this.fileContentSaved, null);
-        globalStore.set(this.newFileContent, null);
-        services.ObjectService.UpdateObjectMeta(`block:${this.blockId}`, { file: fileName });
-    }
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "preview";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         let showHiddenFiles = globalStore.get(getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
-        this.showHiddenFiles = jotai.atom<boolean>(showHiddenFiles);
-        this.refreshVersion = jotai.atom(0);
+        this.showHiddenFiles = atom<boolean>(showHiddenFiles);
+        this.refreshVersion = atom(0);
         this.previewTextRef = createRef();
-        this.openFileModal = jotai.atom(false);
-        this.openFileError = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+        this.openFileModal = atom(false);
+        this.openFileError = atom(null) as PrimitiveAtom<string>;
         this.openFileModalGiveFocusRef = createRef();
-        this.manageConnection = jotai.atom(true);
+        this.manageConnection = atom(true);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-        this.markdownShowToc = jotai.atom(false);
+        this.markdownShowToc = atom(false);
         this.monacoRef = createRef();
-        this.viewIcon = jotai.atom((get) => {
+        this.viewIcon = atom((get) => {
             const blockData = get(this.blockAtom);
             if (blockData?.meta?.icon) {
                 return blockData.meta.icon;
@@ -173,9 +165,8 @@ export class PreviewModel implements ViewModel {
             if (connStatus?.status != "connected") {
                 return null;
             }
-            const fileName = get(this.metaFilePath);
             const mimeTypeLoadable = get(this.fileMimeTypeLoadable);
-            const mimeType = util.jotaiLoadableValue(mimeTypeLoadable, "");
+            const mimeType = jotaiLoadableValue(mimeTypeLoadable, "");
             if (mimeType == "directory") {
                 return {
                     elemtype: "iconbutton",
@@ -208,12 +199,12 @@ export class PreviewModel implements ViewModel {
             }
             return iconForFile(mimeType);
         });
-        this.editMode = jotai.atom((get) => {
+        this.editMode = atom((get) => {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.edit ?? false;
         });
-        this.viewName = jotai.atom("Preview");
-        this.viewText = jotai.atom((get) => {
+        this.viewName = atom("Preview");
+        this.viewText = atom((get) => {
             let headerPath = get(this.metaFilePath);
             const connStatus = get(this.connStatus);
             if (connStatus?.status != "connected") {
@@ -282,12 +273,12 @@ export class PreviewModel implements ViewModel {
                 },
             ] as HeaderElem[];
         });
-        this.preIconButton = jotai.atom((get) => {
+        this.preIconButton = atom((get) => {
             const connStatus = get(this.connStatus);
             if (connStatus?.status != "connected") {
                 return null;
             }
-            const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
+            const mimeType = jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             const metaPath = get(this.metaFilePath);
             if (mimeType == "directory" && metaPath == "/") {
                 return null;
@@ -298,12 +289,12 @@ export class PreviewModel implements ViewModel {
                 click: this.goParentDirectory.bind(this),
             };
         });
-        this.endIconButtons = jotai.atom((get) => {
+        this.endIconButtons = atom((get) => {
             const connStatus = get(this.connStatus);
             if (connStatus?.status != "connected") {
                 return null;
             }
-            const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
+            const mimeType = jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             const loadableSV = get(this.loadableSpecializedView);
             const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
             if (mimeType == "directory") {
@@ -335,18 +326,18 @@ export class PreviewModel implements ViewModel {
             }
             return null;
         });
-        this.metaFilePath = jotai.atom<string>((get) => {
+        this.metaFilePath = atom<string>((get) => {
             const file = get(this.blockAtom)?.meta?.file;
-            if (util.isBlank(file)) {
+            if (isBlank(file)) {
                 return "~";
             }
             return file;
         });
-        this.statFilePath = jotai.atom<Promise<string>>(async (get) => {
+        this.statFilePath = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
             return fileInfo?.path;
         });
-        this.normFilePath = jotai.atom<Promise<string>>(async (get) => {
+        this.normFilePath = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
             if (fileInfo == null) {
                 return null;
@@ -357,10 +348,10 @@ export class PreviewModel implements ViewModel {
             return fileInfo.dir + "/" + fileInfo.name;
         });
         this.loadableStatFilePath = loadable(this.statFilePath);
-        this.connection = jotai.atom<string>((get) => {
+        this.connection = atom<string>((get) => {
             return get(this.blockAtom)?.meta?.connection;
         });
-        this.statFile = jotai.atom<Promise<FileInfo>>(async (get) => {
+        this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
@@ -369,15 +360,15 @@ export class PreviewModel implements ViewModel {
             const statFile = await services.FileService.StatFile(conn, fileName);
             return statFile;
         });
-        this.fileMimeType = jotai.atom<Promise<string>>(async (get) => {
+        this.fileMimeType = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
             return fileInfo?.mimetype;
         });
         this.fileMimeTypeLoadable = loadable(this.fileMimeType);
-        this.newFileContent = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        this.newFileContent = atom(null) as PrimitiveAtom<string | null>;
         this.goParentDirectory = this.goParentDirectory.bind(this);
 
-        const fullFileAtom = jotai.atom<Promise<FullFile>>(async (get) => {
+        const fullFileAtom = atom<Promise<FullFile>>(async (get) => {
             const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
@@ -387,8 +378,8 @@ export class PreviewModel implements ViewModel {
             return file;
         });
 
-        this.fileContentSaved = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
-        const fileContentAtom = jotai.atom(
+        this.fileContentSaved = atom(null) as PrimitiveAtom<string | null>;
+        const fileContentAtom = atom(
             async (get) => {
                 const _ = get(this.metaFilePath);
                 const newContent = get(this.newFileContent);
@@ -400,7 +391,7 @@ export class PreviewModel implements ViewModel {
                     return savedContent;
                 }
                 const fullFile = await get(fullFileAtom);
-                return util.base64ToString(fullFile?.data64);
+                return base64ToString(fullFile?.data64);
             },
             (get, set, update: string) => {
                 set(this.fileContentSaved, update);
@@ -410,13 +401,13 @@ export class PreviewModel implements ViewModel {
         this.fullFile = fullFileAtom;
         this.fileContent = fileContentAtom;
 
-        this.specializedView = jotai.atom<Promise<{ specializedView?: string; errorStr?: string }>>(async (get) => {
+        this.specializedView = atom<Promise<{ specializedView?: string; errorStr?: string }>>(async (get) => {
             return this.getSpecializedView(get);
         });
         this.loadableSpecializedView = loadable(this.specializedView);
-        this.canPreview = jotai.atom(false);
+        this.canPreview = atom(false);
         this.loadableFileInfo = loadable(this.statFile);
-        this.connStatus = jotai.atom((get) => {
+        this.connStatus = atom((get) => {
             const blockData = get(this.blockAtom);
             const connName = blockData?.meta?.connection;
             const connAtom = getConnStatusAtom(connName);
@@ -428,7 +419,7 @@ export class PreviewModel implements ViewModel {
         globalStore.set(this.markdownShowToc, !globalStore.get(this.markdownShowToc));
     }
 
-    async getSpecializedView(getFn: jotai.Getter): Promise<{ specializedView?: string; errorStr?: string }> {
+    async getSpecializedView(getFn: Getter): Promise<{ specializedView?: string; errorStr?: string }> {
         const mimeType = await getFn(this.fileMimeType);
         const fileInfo = await getFn(this.statFile);
         const fileName = await getFn(this.statFilePath);
@@ -490,12 +481,16 @@ export class PreviewModel implements ViewModel {
             fileName = "";
         }
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
-        const updateMeta = historyutil.goHistory("file", fileName, newPath, blockMeta);
+        const updateMeta = goHistory("file", fileName, newPath, blockMeta);
         if (updateMeta == null) {
             return;
         }
         const blockOref = WOS.makeORef("block", this.blockId);
         services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+
+        // Clear the saved file buffers
+        globalStore.set(this.fileContentSaved, null);
+        globalStore.set(this.newFileContent, null);
     }
 
     async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
@@ -543,7 +538,7 @@ export class PreviewModel implements ViewModel {
     goHistoryBack() {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const curPath = globalStore.get(this.metaFilePath);
-        const updateMeta = historyutil.goHistoryBack("file", curPath, blockMeta, true);
+        const updateMeta = goHistoryBack("file", curPath, blockMeta, true);
         if (updateMeta == null) {
             return;
         }
@@ -555,7 +550,7 @@ export class PreviewModel implements ViewModel {
     goHistoryForward() {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const curPath = globalStore.get(this.metaFilePath);
-        const updateMeta = historyutil.goHistoryForward("file", curPath, blockMeta);
+        const updateMeta = goHistoryForward("file", curPath, blockMeta);
         if (updateMeta == null) {
             return;
         }
@@ -582,7 +577,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection) ?? "";
         try {
-            services.FileService.SaveFile(conn, filePath, util.stringToBase64(newFileContent));
+            services.FileService.SaveFile(conn, filePath, stringToBase64(newFileContent));
             globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
@@ -644,7 +639,7 @@ export class PreviewModel implements ViewModel {
                 navigator.clipboard.writeText(fileInfo.name);
             },
         });
-        const mimeType = util.jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
+        const mimeType = jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
         if (mimeType == "directory") {
             menuItems.push({
                 label: "Open Terminal in New Block",
@@ -694,29 +689,29 @@ export class PreviewModel implements ViewModel {
     }
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {
-        if (keyutil.checkKeyPressed(e, "Cmd:ArrowLeft")) {
+        if (checkKeyPressed(e, "Cmd:ArrowLeft")) {
             this.goHistoryBack();
             return true;
         }
-        if (keyutil.checkKeyPressed(e, "Cmd:ArrowRight")) {
+        if (checkKeyPressed(e, "Cmd:ArrowRight")) {
             this.goHistoryForward();
             return true;
         }
-        if (keyutil.checkKeyPressed(e, "Cmd:ArrowUp")) {
+        if (checkKeyPressed(e, "Cmd:ArrowUp")) {
             // handle up directory
             this.goParentDirectory({});
             return true;
         }
         const openModalOpen = globalStore.get(this.openFileModal);
         if (!openModalOpen) {
-            if (keyutil.checkKeyPressed(e, "Cmd:o")) {
+            if (checkKeyPressed(e, "Cmd:o")) {
                 this.updateOpenFileModalAndError(true);
                 return true;
             }
         }
         const canPreview = globalStore.get(this.canPreview);
         if (canPreview) {
-            if (keyutil.checkKeyPressed(e, "Cmd:e")) {
+            if (checkKeyPressed(e, "Cmd:e")) {
                 const editMode = globalStore.get(this.editMode);
                 this.setEditMode(!editMode);
                 return true;
@@ -744,9 +739,9 @@ function makePreviewModel(blockId: string, nodeModel: NodeModel): PreviewModel {
 }
 
 function MarkdownPreview({ model }: SpecializedViewProps) {
-    const connName = jotai.useAtomValue(model.connection);
-    const fileInfo = jotai.useAtomValue(model.statFile);
-    const resolveOpts: MarkdownResolveOpts = React.useMemo<MarkdownResolveOpts>(() => {
+    const connName = useAtomValue(model.connection);
+    const fileInfo = useAtomValue(model.statFile);
+    const resolveOpts: MarkdownResolveOpts = useMemo<MarkdownResolveOpts>(() => {
         return {
             connName: connName,
             baseDir: fileInfo.dir,
@@ -760,8 +755,8 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
 }
 
 function StreamingPreview({ model }: SpecializedViewProps) {
-    const conn = jotai.useAtomValue(model.connection);
-    const fileInfo = jotai.useAtomValue(model.statFile);
+    const conn = useAtomValue(model.connection);
+    const fileInfo = useAtomValue(model.statFile);
     const filePath = fileInfo.path;
     const usp = new URLSearchParams();
     usp.set("path", filePath);
@@ -805,27 +800,27 @@ function StreamingPreview({ model }: SpecializedViewProps) {
 }
 
 function CodeEditPreview({ model }: SpecializedViewProps) {
-    const fileContent = jotai.useAtomValue(model.fileContent);
-    const setNewFileContent = jotai.useSetAtom(model.newFileContent);
-    const fileName = jotai.useAtomValue(model.statFilePath);
+    const fileContent = useAtomValue(model.fileContent);
+    const setNewFileContent = useSetAtom(model.newFileContent);
+    const fileName = useAtomValue(model.statFilePath);
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
-        if (keyutil.checkKeyPressed(e, "Cmd:e")) {
+        if (checkKeyPressed(e, "Cmd:e")) {
             model.setEditMode(false);
             return true;
         }
-        if (keyutil.checkKeyPressed(e, "Cmd:s")) {
+        if (checkKeyPressed(e, "Cmd:s")) {
             model.handleFileSave();
             return true;
         }
-        if (keyutil.checkKeyPressed(e, "Cmd:r")) {
+        if (checkKeyPressed(e, "Cmd:r")) {
             model.handleFileRevert();
             return true;
         }
         return false;
     }
 
-    React.useEffect(() => {
+    useEffect(() => {
         model.codeEditKeyDownHandler = codeEditKeyDownHandler;
         return () => {
             model.codeEditKeyDownHandler = null;
@@ -837,7 +832,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         model.monacoRef.current = editor;
 
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
-            const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(e.browserEvent);
+            const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
             const handled = tryReinjectKey(waveEvent);
             if (handled) {
                 e.stopPropagation();
@@ -864,8 +859,8 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 }
 
 function CSVViewPreview({ model, parentRef }: SpecializedViewProps) {
-    const fileContent = jotai.useAtomValue(model.fileContent);
-    const fileName = jotai.useAtomValue(model.statFilePath);
+    const fileContent = useAtomValue(model.fileContent);
+    const fileName = useAtomValue(model.statFilePath);
     return <CSVView parentRef={parentRef} readonly={true} content={fileContent} filename={fileName} />;
 }
 
@@ -898,11 +893,11 @@ function iconForFile(mimeType: string): string {
 }
 
 function SpecializedView({ parentRef, model }: SpecializedViewProps) {
-    const specializedView = jotai.useAtomValue(model.specializedView);
-    const mimeType = jotai.useAtomValue(model.fileMimeType);
-    const setCanPreview = jotai.useSetAtom(model.canPreview);
+    const specializedView = useAtomValue(model.specializedView);
+    const mimeType = useAtomValue(model.fileMimeType);
+    const setCanPreview = useSetAtom(model.canPreview);
 
-    React.useEffect(() => {
+    useEffect(() => {
         setCanPreview(canPreview(mimeType));
     }, [mimeType, setCanPreview]);
 
@@ -927,7 +922,7 @@ function PreviewView({
     contentRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
 }) {
-    const connStatus = jotai.useAtomValue(model.connStatus);
+    const connStatus = useAtomValue(model.connStatus);
     if (connStatus?.status != "connected") {
         return null;
     }
@@ -943,7 +938,7 @@ function PreviewView({
     );
 }
 
-const OpenFileModal = React.memo(
+const OpenFileModal = memo(
     ({
         model,
         blockRef,
@@ -953,19 +948,19 @@ const OpenFileModal = React.memo(
         blockRef: React.RefObject<HTMLDivElement>;
         blockId: string;
     }) => {
-        const openFileModal = jotai.useAtomValue(model.openFileModal);
-        const curFileName = jotai.useAtomValue(model.metaFilePath);
+        const openFileModal = useAtomValue(model.openFileModal);
+        const curFileName = useAtomValue(model.metaFilePath);
         const [filePath, setFilePath] = useState("");
-        const isNodeFocused = jotai.useAtomValue(model.nodeModel.isFocused);
+        const isNodeFocused = useAtomValue(model.nodeModel.isFocused);
         const handleKeyDown = useCallback(
-            keyutil.keydownWrapper((waveEvent: WaveKeyboardEvent): boolean => {
-                if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+            keydownWrapper((waveEvent: WaveKeyboardEvent): boolean => {
+                if (checkKeyPressed(waveEvent, "Escape")) {
                     model.updateOpenFileModalAndError(false);
                     return true;
                 }
 
                 const handleCommandOperations = async () => {
-                    if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+                    if (checkKeyPressed(waveEvent, "Enter")) {
                         model.handleOpenFile(filePath);
                         return true;
                     }
