@@ -14,6 +14,8 @@ const (
 
 	MetaKey_Url                              = "url"
 
+	MetaKey_PinnedUrl                        = "pinnedurl"
+
 	MetaKey_Connection                       = "connection"
 
 	MetaKey_Edit                             = "edit"

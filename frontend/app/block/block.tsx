@@ -13,17 +13,17 @@ import {
     registerBlockComponentModel,
     unregisterBlockComponentModel,
 } from "@/store/global";
-import * as WOS from "@/store/wos";
+import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
-import * as util from "@/util/util";
+import { isBlank } from "@/util/util";
 import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
+import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
 import { WaveAi, WaveAiModel, makeWaveAiViewModel } from "@/view/waveai/waveai";
 import { WebView, WebViewModel, makeWebViewModel } from "@/view/webview/webview";
-import * as jotai from "jotai";
-import * as React from "react";
-import { QuickTipsView, QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
+import { atom, useAtomValue } from "jotai";
+import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./block.less";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
@@ -51,7 +51,7 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
         return makeCpuPlotViewModel(blockId);
     }
     if (blockView === "help") {
-        return makeHelpViewModel(blockId);
+        return makeHelpViewModel(blockId, nodeModel);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -63,7 +63,7 @@ function getViewElem(
     blockView: string,
     viewModel: ViewModel
 ): JSX.Element {
-    if (util.isBlank(blockView)) {
+    if (isBlank(blockView)) {
         return <CenteredDiv>No View</CenteredDiv>;
     }
     if (blockView === "term") {
@@ -102,25 +102,25 @@ function getViewElem(
 }
 
 function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
-    const blockDataAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+    const blockDataAtom = getWaveObjectAtom<Block>(makeORef("block", blockId));
     let viewModel: ViewModel = {
         viewType: viewType,
-        viewIcon: jotai.atom((get) => {
+        viewIcon: atom((get) => {
             const blockData = get(blockDataAtom);
             return blockViewToIcon(blockData?.meta?.view);
         }),
-        viewName: jotai.atom((get) => {
+        viewName: atom((get) => {
             const blockData = get(blockDataAtom);
             return blockViewToName(blockData?.meta?.view);
         }),
-        preIconButton: jotai.atom(null),
-        endIconButtons: jotai.atom(null),
+        preIconButton: atom(null),
+        endIconButtons: atom(null),
     };
     return viewModel;
 }
 
-const BlockPreview = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
+    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     if (!blockData) {
         return null;
     }
@@ -135,22 +135,22 @@ const BlockPreview = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
     );
 });
 
-const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
+const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     counterInc("render-BlockFull");
-    const focusElemRef = React.useRef<HTMLInputElement>(null);
-    const blockRef = React.useRef<HTMLDivElement>(null);
-    const contentRef = React.useRef<HTMLDivElement>(null);
-    const [blockClicked, setBlockClicked] = React.useState(false);
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
-    const isFocused = jotai.useAtomValue(nodeModel.isFocused);
-    const disablePointerEvents = jotai.useAtomValue(nodeModel.disablePointerEvents);
+    const focusElemRef = useRef<HTMLInputElement>(null);
+    const blockRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [blockClicked, setBlockClicked] = useState(false);
+    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const isFocused = useAtomValue(nodeModel.isFocused);
+    const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
 
-    React.useLayoutEffect(() => {
+    useLayoutEffect(() => {
         setBlockClicked(isFocused);
     }, [isFocused]);
 
-    React.useLayoutEffect(() => {
+    useLayoutEffect(() => {
         if (!blockClicked) {
             return;
         }
@@ -164,13 +164,13 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
         }
     }, [blockClicked, isFocused]);
 
-    const setBlockClickedTrue = React.useCallback(() => {
+    const setBlockClickedTrue = useCallback(() => {
         setBlockClicked(true);
     }, []);
 
-    const [blockContentOffset, setBlockContentOffset] = React.useState<Dimensions>();
+    const [blockContentOffset, setBlockContentOffset] = useState<Dimensions>();
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (blockRef.current && contentRef.current) {
             const blockRect = blockRef.current.getBoundingClientRect();
             const contentRect = contentRef.current.getBoundingClientRect();
@@ -183,7 +183,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
         }
     }, [blockRef, contentRef]);
 
-    const blockContentStyle = React.useMemo<React.CSSProperties>(() => {
+    const blockContentStyle = useMemo<React.CSSProperties>(() => {
         const retVal: React.CSSProperties = {
             pointerEvents: disablePointerEvents ? "none" : undefined,
         };
@@ -194,12 +194,12 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
         return retVal;
     }, [innerRect, disablePointerEvents, blockContentOffset]);
 
-    const viewElem = React.useMemo(
+    const viewElem = useMemo(
         () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
         [nodeModel.blockId, blockData?.meta?.view, viewModel]
     );
 
-    const handleChildFocus = React.useCallback(
+    const handleChildFocus = useCallback(
         (event: React.FocusEvent<HTMLDivElement, Element>) => {
             console.log("setFocusedChild", nodeModel.blockId, getElemAsStr(event.target));
             if (!isFocused) {
@@ -210,7 +210,7 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
         [isFocused]
     );
 
-    const setFocusTarget = React.useCallback(() => {
+    const setFocusTarget = useCallback(() => {
         const ok = viewModel?.giveFocus?.();
         if (ok) {
             return;
@@ -244,29 +244,29 @@ const BlockFull = React.memo(({ nodeModel, viewModel }: FullBlockProps) => {
             </div>
             <div key="content" className="block-content" ref={contentRef} style={blockContentStyle}>
                 <ErrorBoundary>
-                    <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</React.Suspense>
+                    <Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</Suspense>
                 </ErrorBoundary>
             </div>
         </BlockFrame>
     );
 });
 
-const Block = React.memo((props: BlockProps) => {
+const Block = memo((props: BlockProps) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.nodeModel.blockId.substring(0, 8));
-    const [blockData, loading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", props.nodeModel.blockId));
+    const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
     if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
         viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
-    React.useEffect(() => {
+    useEffect(() => {
         return () => {
             unregisterBlockComponentModel(props.nodeModel.blockId);
         };
     }, []);
-    if (loading || util.isBlank(props.nodeModel.blockId) || blockData == null) {
+    if (loading || isBlank(props.nodeModel.blockId) || blockData == null) {
         return null;
     }
     if (props.preview) {
