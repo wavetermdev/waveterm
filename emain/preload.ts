@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld("api", {
     registerGlobalWebviewKeys: (keys) => ipcRenderer.send("register-global-webview-keys", keys),
     onControlShiftStateUpdate: (callback) =>
         ipcRenderer.on("control-shift-state-update", (_event, state) => callback(state)),
+    onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
 });
 
 // Custom event for "new-window"

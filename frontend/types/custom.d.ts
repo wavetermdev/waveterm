@@ -77,6 +77,7 @@ declare global {
         setWebviewFocus: (focusedId: number) => void; // focusedId si the getWebContentsId of the webview
         registerGlobalWebviewKeys: (keys: string[]) => void;
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
+        onQuicklook: (filePath: string) => void;
     };
 
     type ElectronContextMenuItem = {
