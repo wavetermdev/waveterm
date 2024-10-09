@@ -6,6 +6,7 @@ package wsl
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func DetectShell(ctx context.Context, client *Distro) (string, error) {
@@ -60,7 +62,7 @@ func GetWshPath(ctx context.Context, client *Distro) string {
 
 	// check cmd on windows since it requires an absolute path with backslashes
 	cmd = client.WslCommand(ctx, "(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none")
-	out, cmdErr := cmd.Output() //todo
+	out, cmdErr := cmd.Output()
 	if cmdErr == nil && strings.TrimSpace(string(out)) != "none" {
 		return strings.TrimSpace(string(out))
 	}
@@ -145,19 +147,39 @@ func GetClientArch(ctx context.Context, client *Distro) (string, error) {
 	return "", fmt.Errorf("unable to determine architecture: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
 }
 
-var installTemplateRawBash = `bash -c ' \
-mkdir -p {{.installDir}}; \
-cat > {{.tempPath}}; \
-mv {{.tempPath}} {{.installPath}}; \
-chmod a+x {{.installPath}};' \
-`
+type CancellableCmd struct {
+	Cmd    *WslCmd
+	Cancel func()
+}
 
-var installTemplateRawDefault = ` \
-mkdir -p {{.installDir}}; \
-cat > {{.tempPath}}; \
-mv {{.tempPath}} {{.installPath}}; \
-chmod a+x {{.installPath}}; \
-`
+var installTemplatesRawBash = map[string]string{
+	"mkdir": `bash -c 'mkdir -p {{.installDir}}'`,
+	"cat":   `bash -c 'cat > {{.tempPath}}'`,
+	"mv":    `bash -c 'mv {{.tempPath}} {{.installPath}}'`,
+	"chmod": `bash -c 'chmod a+x {{.installPath}}'`,
+}
+
+var installTemplatesRawDefault = map[string]string{
+	"mkdir": `mkdir -p {{.installDir}}`,
+	"cat":   `cat > {{.tempPath}}`,
+	"mv":    `mv {{.tempPath}} {{.installPath}}`,
+	"chmod": `chmod a+x {{.installPath}}`,
+}
+
+func makeCancellableCommand(ctx context.Context, client *Distro, cmdTemplateRaw string, words map[string]string) (*CancellableCmd, error) {
+	cmdContext, cmdCancel := context.WithCancel(ctx)
+
+	cmdStr := &bytes.Buffer{}
+	cmdTemplate, err := template.New("").Parse(cmdTemplateRaw)
+	if err != nil {
+		cmdCancel()
+		return nil, err
+	}
+	cmdTemplate.Execute(cmdStr, words)
+
+	cmd := client.WslCommand(cmdContext, cmdStr.String())
+	return &CancellableCmd{cmd, cmdCancel}, nil
+}
 
 func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, destPath string) error {
 	// warning: does not work on windows remote yet
@@ -166,12 +188,12 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 		return err
 	}
 
-	var selectedTemplateRaw string
+	var selectedTemplatesRaw map[string]string
 	if bashInstalled {
-		selectedTemplateRaw = installTemplateRawBash
+		selectedTemplatesRaw = installTemplatesRawBash
 	} else {
 		log.Printf("bash is not installed on remote. attempting with default shell")
-		selectedTemplateRaw = installTemplateRawDefault
+		selectedTemplatesRaw = installTemplatesRawDefault
 	}
 
 	// I need to use toSlash here to force unix keybindings
@@ -182,38 +204,62 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 		"installPath": destPath,
 	}
 
-	installCmd := &bytes.Buffer{}
-	installTemplate := template.Must(template.New("").Parse(selectedTemplateRaw))
-	installTemplate.Execute(installCmd, installWords)
+	installStepCmds := make(map[string]*CancellableCmd)
+	for cmdName, selectedTemplateRaw := range selectedTemplatesRaw {
+		cancellableCmd, err := makeCancellableCommand(ctx, client, selectedTemplateRaw, installWords)
+		if err != nil {
+			return err
+		}
+		installStepCmds[cmdName] = cancellableCmd
+	}
 
-	cmd := client.WslCommand(ctx, installCmd.String())
-	installStdin, err := cmd.StdinPipe()
+	_, err = installStepCmds["mkdir"].Cmd.Output()
 	if err != nil {
 		return err
 	}
 
-	err = cmd.Start()
+	// the cat part of this is complicated since it requires stdin
+	catCmd := installStepCmds["cat"].Cmd
+	catStdin, err := catCmd.StdinPipe()
 	if err != nil {
 		return err
 	}
-
+	err = catCmd.Start()
+	if err != nil {
+		return err
+	}
 	input, err := os.Open(sourcePath)
 	if err != nil {
 		return fmt.Errorf("cannot open local file %s to send to host: %v", sourcePath, err)
 	}
-
 	go func() {
-		io.Copy(installStdin, input)
-		// don't need this?
-		process := cmd.GetProcess()
-		process.Kill()
-	}()
+		io.Copy(catStdin, input)
+		installStepCmds["cat"].Cancel()
 
-	cmd.Wait()
-	// this is bad error handling, but i have to do this
-	// because of the Process.Kill()
-	// this should be replaced with another way to get
-	// passed the Wait
+		// backup just in case something weird happens
+		// could cause potential race condition, but very
+		// unlikely
+		time.Sleep(time.Second * 1)
+		process := catCmd.GetProcess()
+		if process != nil {
+			process.Kill()
+		}
+	}()
+	catErr := catCmd.Wait()
+	if catErr != nil && !errors.Is(catErr, context.Canceled) {
+		return catErr
+	}
+
+	_, err = installStepCmds["mv"].Cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	_, err = installStepCmds["chmod"].Cmd.Output()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
