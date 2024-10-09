@@ -50,5 +50,15 @@
                 "view": "cpuplot"
             }
         }
+    },
+    "defwidget@chat": {
+        "display:order": 6,
+        "icon": "comment",
+        "label": "chat",
+        "blockdef": {
+            "meta": {
+                "view": "chat"
+            }
+        }
     }
 }

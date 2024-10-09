@@ -16,6 +16,7 @@ import {
 import * as WOS from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import * as util from "@/util/util";
+import { Chat, ChatModel, makeChatModel } from "@/view/chat/chat";
 import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
@@ -52,6 +53,9 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
     }
     if (blockView === "help") {
         return makeHelpViewModel();
+    }
+    if (blockView === "chat") {
+        return makeChatModel(blockId);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -97,6 +101,9 @@ function getViewElem(
     }
     if (blockView == "tips") {
         return <QuickTipsView key={blockId} model={viewModel as QuickTipsViewModel} />;
+    }
+    if (blockView == "chat") {
+        return <Chat key={blockId} model={viewModel as ChatModel} />;
     }
     return <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
 }

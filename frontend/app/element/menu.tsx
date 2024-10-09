@@ -7,7 +7,7 @@ import "./menu.less";
 
 export interface MenuItem {
     text: string;
-    icon?: React.ReactNode;
+    icon?: string | React.ReactNode;
     children?: MenuItem[];
     onClick?: () => void;
 }
@@ -37,13 +37,18 @@ const Menu = memo(({ items, className, renderItem }: MenuProps) => {
         const hasChildren = item.children && item.children.length > 0;
 
         return (
-            <li key={itemKey} className={clsx("menu-item", className)}>
+            <li key={itemKey} className="menu-item">
                 {renderItem ? (
                     renderItem(item, isOpen, () => handleClick(item, itemKey))
                 ) : (
                     <div className="menu-item-button" onClick={() => handleClick(item, itemKey)}>
-                        <div className="menu-item-content">
-                            <div className="menu-item-icon">{item.icon}</div>
+                        <div
+                            className={clsx("menu-item-content", {
+                                "has-children": hasChildren,
+                                "is-open": isOpen && hasChildren,
+                            })}
+                        >
+                            {item.icon && <div className="menu-item-icon">{item.icon}</div>}
                             <div className="menu-item-text">{item.text}</div>
                         </div>
                         {hasChildren && (
@@ -62,7 +67,11 @@ const Menu = memo(({ items, className, renderItem }: MenuProps) => {
         );
     };
 
-    return <ul className="menu">{items.map((item, index) => renderListItem(item, index, "root"))}</ul>;
+    return (
+        <ul className={clsx("menu", className)} role="menu">
+            {items.map((item, index) => renderListItem(item, index, "root"))}
+        </ul>
+    );
 });
 
 Menu.displayName = "Menu";
