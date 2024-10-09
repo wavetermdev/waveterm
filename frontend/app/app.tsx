@@ -85,7 +85,8 @@ function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
 }
 
 function AppSettingsUpdater() {
-    const windowSettings = useSettingsPrefixAtom("window");
+    const windowSettingsAtom = useSettingsPrefixAtom("window");
+    const windowSettings = jotai.useAtomValue(windowSettingsAtom);
     React.useEffect(() => {
         const isTransparentOrBlur =
             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
