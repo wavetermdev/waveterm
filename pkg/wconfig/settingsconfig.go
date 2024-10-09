@@ -40,13 +40,16 @@ func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
 }
 
 type SettingsType struct {
-	AiClear     bool    `json:"ai:*,omitempty"`
-	AiBaseURL   string  `json:"ai:baseurl,omitempty"`
-	AiApiToken  string  `json:"ai:apitoken,omitempty"`
-	AiName      string  `json:"ai:name,omitempty"`
-	AiModel     string  `json:"ai:model,omitempty"`
-	AiMaxTokens float64 `json:"ai:maxtokens,omitempty"`
-	AiTimeoutMs float64 `json:"ai:timeoutms,omitempty"`
+	AiClear      bool    `json:"ai:*,omitempty"`
+	AiApiType    string  `json:"ai:apitype,omitempty"`
+	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
+	AiApiToken   string  `json:"ai:apitoken,omitempty"`
+	AiName       string  `json:"ai:name,omitempty"`
+	AiModel      string  `json:"ai:model,omitempty"`
+	AiOrgID      string  `json:"ai:orgid,omitempty"`
+	AIApiVersion string  `json:"ai:apiversion,omitempty"`
+	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
+	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
 
 	TermClear          bool     `json:"term:*,omitempty"`
 	TermFontSize       float64  `json:"term:fontsize,omitempty"`
