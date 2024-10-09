@@ -501,7 +501,11 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) error {
 	if strings.HasPrefix(connName, "wsl:") {
 		distroName := strings.TrimPrefix(connName, "wsl:")
-		return wsl.EnsureConnection(ctx, distroName)
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("connection not found: %s", connName)
+		}
+		return conn.Connect(ctx)
 	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
