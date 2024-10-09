@@ -8,7 +8,6 @@ import * as child_process from "node:child_process";
 import * as path from "path";
 import { PNG } from "pngjs";
 import * as readline from "readline";
-import { quote as shellQuote } from "shell-quote";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
 import { debounce } from "throttle-debounce";
@@ -789,20 +788,14 @@ if (unamePlatform !== "darwin") {
 }
 
 electron.ipcMain.on("quicklook", (event, filePath: string) => {
-    //const window = electron.BrowserWindow.fromWebContents(event.sender);
-    //window.previewFile(shellQuote([filePath]));
-    console.log("shell quote, ", shellQuote([filePath]));
-    child_process.execFile(
-        "qlmanage",
-        ["-p", `${shellQuote([filePath])}`],
-        { shell: true },
-        (error, stdout, stderr) => {
+    if (unamePlatform == "darwin") {
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
             if (error) {
                 console.error(`Error opening Quick Look: ${error}`);
                 return;
             }
-        }
-    );
+        });
+    }
 });
 
 async function createNewWaveWindow(): Promise<void> {
