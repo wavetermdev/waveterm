@@ -25,6 +25,14 @@ export class ElectronWshClientType extends WshClient {
         const rtn = await webGetSelector(wc, data.selector, data.opts);
         return rtn;
     }
+
+    async handle_notify(rh: RpcResponseHelper, notificationOptions: WaveNotificationOptions) {
+        new electron.Notification({
+            title: notificationOptions.title,
+            body: notificationOptions.body,
+            silent: notificationOptions.silent,
+        }).show();
+    }
 }
 
 export let ElectronWshClient: ElectronWshClientType;

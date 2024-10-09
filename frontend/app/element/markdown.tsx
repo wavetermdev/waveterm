@@ -17,6 +17,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
+import { remarkAlert } from "remark-github-blockquote-alert";
 import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
 import "./markdown.less";
@@ -258,7 +259,7 @@ const Markdown = ({
                 options={{ scrollbars: { autoHide: "leave" } }}
             >
                 <ReactMarkdown
-                    remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
+                    remarkPlugins={[remarkGfm, remarkAlert, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
                     rehypePlugins={[
                         rehypeRaw,
                         rehypeHighlight,
