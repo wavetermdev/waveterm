@@ -20,9 +20,7 @@ interface ChatMessageType {
     id: string;
     user: string;
     text: string;
-    isAssistant: boolean;
     isUpdating?: boolean;
-    isError?: string;
 }
 
 const outline = "2px solid var(--accent-color)";
@@ -36,7 +34,6 @@ function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
         id: crypto.randomUUID(),
         user: prompt.role,
         text: prompt.content,
-        isAssistant: prompt.role == "assistant",
     };
 }
 
@@ -78,7 +75,7 @@ export class WaveAiModel implements ViewModel {
         this.updateLastMessageAtom = atom(null, (get, set, text: string, isUpdating: boolean) => {
             const messages = get(this.messagesAtom);
             const lastMessage = messages[messages.length - 1];
-            if (lastMessage.isAssistant && !lastMessage.isError) {
+            if (lastMessage.user == "assistant") {
                 const updatedMessage = { ...lastMessage, text: lastMessage.text + text, isUpdating };
                 set(this.messagesAtom, [...messages.slice(0, -1), updatedMessage]);
             }
@@ -94,7 +91,6 @@ export class WaveAiModel implements ViewModel {
                 id: crypto.randomUUID(),
                 user: "assistant",
                 text: "",
-                isAssistant: true,
             };
 
             // Add a typing indicator
@@ -190,7 +186,6 @@ export class WaveAiModel implements ViewModel {
                 id: crypto.randomUUID(),
                 user,
                 text,
-                isAssistant: false,
             };
             addMessage(newMessage);
             // send message to backend and get response
@@ -214,7 +209,6 @@ export class WaveAiModel implements ViewModel {
                     id: crypto.randomUUID(),
                     user: "assistant",
                     text: "",
-                    isAssistant: true,
                 };
 
                 // Add a typing indicator
@@ -225,25 +219,54 @@ export class WaveAiModel implements ViewModel {
                     opts: opts,
                     prompt: [...history, newPrompt],
                 };
-                const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: opts.timeoutms });
                 let fullMsg = "";
-                for await (const msg of aiGen) {
-                    fullMsg += msg.text ?? "";
-                    globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
-                    if (this.cancel) {
-                        if (fullMsg == "") {
-                            globalStore.set(this.removeLastMessageAtom);
+                try {
+                    const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: opts.timeoutms });
+                    for await (const msg of aiGen) {
+                        fullMsg += msg.text ?? "";
+                        globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
+                        if (this.cancel) {
+                            if (fullMsg == "") {
+                                globalStore.set(this.removeLastMessageAtom);
+                            }
+                            break;
                         }
-                        break;
+                        globalStore.set(this.updateLastMessageAtom, "", false);
+                        if (fullMsg != "") {
+                            const responsePrompt: OpenAIPromptMessageType = {
+                                role: "assistant",
+                                content: fullMsg,
+                            };
+                            await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
+                        }
                     }
-                }
-                globalStore.set(this.updateLastMessageAtom, "", false);
-                if (fullMsg != "") {
-                    const responsePrompt: OpenAIPromptMessageType = {
-                        role: "assistant",
-                        content: fullMsg,
+                } catch (error) {
+                    const updatedHist = [...history, newPrompt];
+                    if (fullMsg == "") {
+                        globalStore.set(this.removeLastMessageAtom);
+                    } else {
+                        globalStore.set(this.updateLastMessageAtom, "", false);
+                        const responsePrompt: OpenAIPromptMessageType = {
+                            role: "assistant",
+                            content: fullMsg,
+                        };
+                        updatedHist.push(responsePrompt);
+                    }
+                    const errMsg: string = (error as Error).message;
+                    const errorMessage: ChatMessageType = {
+                        id: crypto.randomUUID(),
+                        user: "error",
+                        text: errMsg,
                     };
-                    await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
+                    globalStore.set(this.addMessageAtom, errorMessage);
+                    globalStore.set(this.updateLastMessageAtom, "", false);
+                    const errorPrompt: OpenAIPromptMessageType = {
+                        role: "error",
+                        content: errMsg,
+                    };
+                    updatedHist.push(errorPrompt);
+                    console.log(updatedHist);
+                    await BlockService.SaveWaveAiData(blockId, updatedHist);
                 }
                 setLocked(false);
                 this.cancel = false;
@@ -264,17 +287,26 @@ function makeWaveAiViewModel(blockId): WaveAiModel {
 }
 
 const ChatItem = ({ chatItem }: ChatItemProps) => {
-    const { isAssistant, text, isError } = chatItem;
+    const { user, text } = chatItem;
     const cssVar = "--panel-bg-color";
     const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
 
-    const renderError = (err: string): React.JSX.Element => <div className="chat-msg-error">{err}</div>;
-
     const renderContent = useMemo(() => {
-        if (isAssistant) {
-            if (isError) {
-                return renderError(isError);
-            }
+        if (user == "error") {
+            return (
+                <>
+                    <div className="chat-msg chat-msg-header">
+                        <div className="icon-box">
+                            <i className="fa-sharp fa-solid fa-circle-exclamation"></i>
+                        </div>
+                    </div>
+                    <div className="chat-msg chat-msg-error">
+                        <Markdown text={text} scrollable={false} />
+                    </div>
+                </>
+            );
+        }
+        if (user == "assistant") {
             return text ? (
                 <>
                     <div className="chat-msg chat-msg-header">
@@ -302,7 +334,7 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                 </div>
             </>
         );
-    }, [text, isAssistant, isError]);
+    }, [text, user]);
 
     return <div className={"chat-msg-container"}>{renderContent}</div>;
 };
