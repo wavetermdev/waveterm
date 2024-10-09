@@ -4,7 +4,9 @@
 import { getApi } from "@/app/store/global";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { NodeModel } from "@/layout/index";
-import { atom } from "jotai";
+import { fireAndForget } from "@/util/util";
+import { atom, useAtomValue } from "jotai";
+import { useEffect } from "react";
 import "./helpview.less";
 
 class HelpViewModel extends WebViewModel {
@@ -47,6 +49,17 @@ function makeHelpViewModel(blockId: string, nodeModel: NodeModel) {
 }
 
 function HelpView({ model }: { model: HelpViewModel }) {
+    const homepageUrl = useAtomValue(model.homepageUrl);
+    useEffect(
+        () =>
+            fireAndForget(async () => {
+                const curDocsiteUrl = getApi().getDocsiteUrl();
+                if (curDocsiteUrl !== homepageUrl) {
+                    await model.setHomepageUrl(curDocsiteUrl, "block");
+                }
+            }),
+        []
+    );
     return (
         <div className="help-view">
             <WebView blockId={model.blockId} model={model} />

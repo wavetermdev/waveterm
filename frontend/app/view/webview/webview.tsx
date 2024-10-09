@@ -334,6 +334,26 @@ export class WebViewModel implements ViewModel {
         globalStore.set(this.isLoading, isLoading);
     }
 
+    async setHomepageUrl(url: string, scope: "global" | "block") {
+        if (url != null && url != "") {
+            switch (scope) {
+                case "block":
+                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { pinnedurl: url },
+                    });
+                    break;
+                case "global":
+                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { pinnedurl: "" },
+                    });
+                    await RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                    break;
+            }
+        }
+    }
+
     giveFocus(): boolean {
         const ctrlShiftState = globalStore.get(getSimpleControlShiftAtom());
         if (ctrlShiftState) {
@@ -380,22 +400,13 @@ export class WebViewModel implements ViewModel {
             {
                 label: "Set Block Homepage",
                 click: async () => {
-                    const url = this.getUrl();
-                    if (url != null && url != "") {
-                        await RpcApi.SetMetaCommand(WindowRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { pinnedurl: url },
-                        });
-                    }
+                    await this.setHomepageUrl(this.getUrl(), "block");
                 },
             },
             {
                 label: "Set Default Homepage",
                 click: async () => {
-                    const url = this.getUrl();
-                    if (url != null && url != "") {
-                        await RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
-                    }
+                    await this.setHomepageUrl(this.getUrl(), "global");
                 },
             },
             {
