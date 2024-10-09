@@ -106,14 +106,15 @@ export class WaveAiModel implements ViewModel {
         });
         this.viewText = atom((get) => {
             const viewTextChildren: HeaderElem[] = [];
-            const settings = get(atoms.settingsAtom);
-            const isCloud = isBlank(settings?.["ai:apitoken"]) && isBlank(settings?.["ai:baseurl"]);
+            const aiOpts = this.getAiOpts();
+            const aiName = this.getAiName();
+            const isCloud = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
             let modelText = "gpt-4o-mini";
-            if (!isCloud && !isBlank(settings?.["ai:model"])) {
-                if (!isBlank(settings?.["ai:name"])) {
-                    modelText = settings["ai:name"];
+            if (!isCloud && !isBlank(aiOpts.model)) {
+                if (!isBlank(aiName)) {
+                    modelText = aiName;
                 } else {
-                    modelText = settings["ai:model"];
+                    modelText = aiOpts.model;
                 }
             }
             if (isCloud) {
@@ -124,8 +125,8 @@ export class WaveAiModel implements ViewModel {
                     disabled: true,
                 });
             } else {
-                const baseUrl = settings["ai:baseurl"] ?? "OpenAI Default Endpoint";
-                const modelName = settings["ai:model"];
+                const baseUrl = aiOpts.baseurl ?? "OpenAI Default Endpoint";
+                const modelName = aiOpts.model;
                 if (baseUrl.startsWith("http://localhost") || baseUrl.startsWith("http://127.0.0.1")) {
                     viewTextChildren.push({
                         elemtype: "iconbutton",
@@ -172,6 +173,29 @@ export class WaveAiModel implements ViewModel {
         return false;
     }
 
+    getAiOpts(): OpenAIOptsType {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta ?? {};
+        const settings = globalStore.get(atoms.settingsAtom) ?? {};
+        const opts: OpenAIOptsType = {
+            model: blockMeta["ai:model"] ?? settings["ai:model"] ?? null,
+            apitype: blockMeta["ai:apitype"] ?? settings["ai:apitype"] ?? null,
+            orgid: blockMeta["ai:orgid"] ?? settings["ai:orgid"] ?? null,
+            apitoken: blockMeta["ai:apitoken"] ?? settings["ai:apitoken"] ?? null,
+            apiversion: blockMeta["ai:apiversion"] ?? settings["ai:apiversion"] ?? null,
+            maxtokens: blockMeta["ai:maxtokens"] ?? settings["ai:maxtokens"] ?? null,
+            timeoutms: blockMeta["ai:timeoutms"] ?? settings["ai:timeoutms"] ?? 60000,
+            baseurl: blockMeta["ai:baseurl"] ?? settings["ai:baseurl"] ?? null,
+        };
+        return opts;
+    }
+
+    getAiName(): string {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta ?? {};
+        const settings = globalStore.get(atoms.settingsAtom) ?? {};
+        const name = blockMeta["ai:name"] ?? settings["ai:name"] ?? null;
+        return name;
+    }
+
     useWaveAi() {
         const messages = useAtomValue(this.messagesAtom);
         const addMessage = useSetAtom(this.addMessageAtom);
@@ -189,17 +213,7 @@ export class WaveAiModel implements ViewModel {
             };
             addMessage(newMessage);
             // send message to backend and get response
-            const settings = globalStore.get(atoms.settingsAtom) ?? {};
-            const opts: OpenAIOptsType = {
-                model: settings["ai:model"],
-                apitype: settings["ai:apitype"],
-                orgid: settings["ai:orgid"],
-                apitoken: settings["ai:apitoken"],
-                apiversion: settings["ai:apiversion"],
-                maxtokens: settings["ai:maxtokens"],
-                timeoutms: settings["ai:timeoutms"] ?? 60000,
-                baseurl: settings["ai:baseurl"],
-            };
+            const opts = this.getAiOpts();
             const newPrompt: OpenAIPromptMessageType = {
                 role: "user",
                 content: text,
