@@ -1,6 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+@import "../mixins.less";
+
 .menu {
     list-style: none;
     padding: 0;
@@ -30,6 +32,7 @@
 }
 
 .menu-item-text {
+    .ellipsis();
     text-decoration: none;
 }
 
