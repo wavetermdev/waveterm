@@ -997,8 +997,9 @@ process.on("uncaughtException", (error) => {
     if (caughtException) {
         return;
     }
-    logger.error("Uncaught Exception, shutting down: ", error);
     caughtException = true;
+    console.log("Uncaught Exception, shutting down: ", error);
+    console.log("Stack Trace:", error.stack);
     // Optionally, handle cleanup or exit the app
     electronApp.quit();
 });
@@ -1032,12 +1033,6 @@ async function relaunchBrowserWindows(): Promise<void> {
         win.show();
     }
 }
-
-process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
-    console.error("Stack Trace:", error.stack);
-    electron.app.quit();
-});
 
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.
