@@ -68,6 +68,7 @@ const (
 	Command_ConnList         = "connlist"
 
 	Command_WebSelector = "webselector"
+	Command_Notify      = "notify"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -126,6 +127,7 @@ type WshRpcInterface interface {
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
+	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 }
 
 // for frontend
@@ -373,4 +375,10 @@ type BlockInfoData struct {
 	TabId    string              `json:"tabid"`
 	WindowId string              `json:"windowid"`
 	Meta     waveobj.MetaMapType `json:"meta"`
+}
+
+type WaveNotificationOptions struct {
+	Title  string `json:"title,omitempty"`
+	Body   string `json:"body,omitempty"`
+	Silent bool   `json:"silent,omitempty"`
 }

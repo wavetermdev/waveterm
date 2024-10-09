@@ -51,6 +51,7 @@ type SettingsType struct {
 	TermClear          bool     `json:"term:*,omitempty"`
 	TermFontSize       float64  `json:"term:fontsize,omitempty"`
 	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
+	TermTheme          string   `json:"term:theme,omitempty"`
 	TermDisableWebGl   bool     `json:"term:disablewebgl,omitempty"`
 	TermLocalShellPath string   `json:"term:localshellpath,omitempty"`
 	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"`
@@ -72,6 +73,8 @@ type SettingsType struct {
 	AutoUpdateIntervalMs    float64 `json:"autoupdate:intervalms,omitempty"`
 	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
 	AutoUpdateChannel       string  `json:"autoupdate:channel,omitempty"`
+
+	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
 
 	WidgetClear    bool `json:"widget:*,omitempty"`
 	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`

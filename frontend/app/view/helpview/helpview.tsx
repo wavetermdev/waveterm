@@ -2,63 +2,54 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getApi } from "@/app/store/global";
-import { WebviewTag } from "electron";
-import { createRef, useEffect, useState } from "react";
+import { WebView, WebViewModel } from "@/app/view/webview/webview";
+import { NodeModel } from "@/layout/index";
+import { atom } from "jotai";
 import "./helpview.less";
 
-class HelpViewModel implements ViewModel {
-    viewType: string;
-    blockId: string;
-    webviewRef: React.RefObject<WebviewTag>;
-
-    constructor(blockId: string) {
+class HelpViewModel extends WebViewModel {
+    constructor(blockId: string, nodeModel: NodeModel) {
+        super(blockId, nodeModel);
+        this.getSettingsMenuItems = undefined;
+        this.viewText = atom((get) => {
+            // force a dependency on meta.url so we re-render the buttons when the url changes
+            let url = get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
+            return [
+                {
+                    elemtype: "iconbutton",
+                    icon: "chevron-left",
+                    click: this.handleBack.bind(this),
+                    disabled: this.shouldDisableBackButton(),
+                },
+                {
+                    elemtype: "iconbutton",
+                    icon: "chevron-right",
+                    click: this.handleForward.bind(this),
+                    disabled: this.shouldDisableForwardButton(),
+                },
+                {
+                    elemtype: "iconbutton",
+                    icon: "house",
+                    click: this.handleHome.bind(this),
+                    disabled: this.shouldDisableHomeButton(),
+                },
+            ];
+        });
+        this.homepageUrl = atom(getApi().getDocsiteUrl());
         this.viewType = "help";
-        this.blockId = blockId;
-        this.webviewRef = createRef<WebviewTag>();
+        this.viewIcon = atom("circle-question");
+        this.viewName = atom("Help");
     }
 }
 
-function makeHelpViewModel(blockId: string) {
-    return new HelpViewModel(blockId);
+function makeHelpViewModel(blockId: string, nodeModel: NodeModel) {
+    return new HelpViewModel(blockId, nodeModel);
 }
 
 function HelpView({ model }: { model: HelpViewModel }) {
-    const [url] = useState(() => getApi().getDocsiteUrl());
-    const [webContentsId, setWebContentsId] = useState(null);
-    const [domReady, setDomReady] = useState(false);
-
-    useEffect(() => {
-        if (model.webviewRef.current && domReady) {
-            const wcId = model.webviewRef.current.getWebContentsId?.();
-            if (wcId) {
-                setWebContentsId(wcId);
-            }
-        }
-    }, [model.webviewRef.current, domReady]);
-
-    useEffect(() => {
-        const webview = model.webviewRef.current;
-        if (!webview) {
-            return;
-        }
-        const handleDomReady = () => {
-            setDomReady(true);
-        };
-        webview.addEventListener("dom-ready", handleDomReady);
-        return () => {
-            webview.removeEventListener("dom-ready", handleDomReady);
-        };
-    });
-
     return (
         <div className="help-view">
-            <webview
-                ref={model.webviewRef}
-                data-blockid={model.blockId}
-                data-webcontentsid={webContentsId} // needed for emain
-                className="docsite-webview"
-                src={url}
-            />
+            <WebView blockId={model.blockId} model={model} />
         </div>
     );
 }

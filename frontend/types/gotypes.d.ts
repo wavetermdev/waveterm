@@ -266,6 +266,7 @@ declare global {
         controller?: string;
         file?: string;
         url?: string;
+        pinnedurl?: string;
         connection?: string;
         edit?: boolean;
         history?: string[];
@@ -421,6 +422,7 @@ declare global {
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
+        "term:theme"?: string;
         "term:disablewebgl"?: boolean;
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
@@ -438,6 +440,7 @@ declare global {
         "autoupdate:intervalms"?: number;
         "autoupdate:installonquit"?: boolean;
         "autoupdate:channel"?: string;
+        "preview:showhiddenfiles"?: boolean;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;
@@ -627,6 +630,13 @@ declare global {
         size: number;
         modts: number;
         meta: {[key: string]: any};
+    };
+
+    // wshrpc.WaveNotificationOptions
+    type WaveNotificationOptions = {
+        title?: string;
+        body?: string;
+        silent?: boolean;
     };
 
     // waveobj.WaveObj

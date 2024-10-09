@@ -1,16 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ErrorBoundary } from "@/app/element/errorboundary";
+import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { atoms, createBlock } from "@/store/global";
-import * as util from "@/util/util";
-import * as jotai from "jotai";
-import * as React from "react";
-import { CenteredDiv } from "../element/quickelems";
-
-import { ErrorBoundary } from "@/app/element/errorboundary";
+import { isBlank, makeIconClass } from "@/util/util";
+import { useAtomValue } from "jotai";
+import { memo } from "react";
 import "./workspace.less";
 
 const iconRegex = /^[a-z0-9-]+$/;
@@ -33,9 +32,8 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
     return wlist;
 }
 
-const Widgets = React.memo(() => {
-    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
-    const newWidgetModalVisible = React.useState(false);
+const Widgets = memo(() => {
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const helpWidget: WidgetConfigType = {
         icon: "circle-question",
         label: "help",
@@ -80,7 +78,7 @@ async function handleWidgetSelect(blockDef: BlockDef) {
     createBlock(blockDef);
 }
 
-const Widget = React.memo(({ widget }: { widget: WidgetConfigType }) => {
+const Widget = memo(({ widget }: { widget: WidgetConfigType }) => {
     return (
         <div
             className="widget"
@@ -88,17 +86,17 @@ const Widget = React.memo(({ widget }: { widget: WidgetConfigType }) => {
             title={widget.description || widget.label}
         >
             <div className="widget-icon" style={{ color: widget.color }}>
-                <i className={util.makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
+                <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
             </div>
-            {!util.isBlank(widget.label) ? <div className="widget-label">{widget.label}</div> : null}
+            {!isBlank(widget.label) ? <div className="widget-label">{widget.label}</div> : null}
         </div>
     );
 });
 
-const WorkspaceElem = React.memo(() => {
-    const windowData = jotai.useAtomValue(atoms.waveWindow);
+const WorkspaceElem = memo(() => {
+    const windowData = useAtomValue(atoms.waveWindow);
     const activeTabId = windowData?.activetabid;
-    const ws = jotai.useAtomValue(atoms.workspace);
+    const ws = useAtomValue(atoms.workspace);
 
     return (
         <div className="workspace">

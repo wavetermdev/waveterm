@@ -16,6 +16,7 @@ type MetaTSType struct {
 	Controller     string   `json:"controller,omitempty"`
 	File           string   `json:"file,omitempty"`
 	Url            string   `json:"url,omitempty"`
+	PinnedUrl      string   `json:"pinnedurl,omitempty"`
 	Connection     string   `json:"connection,omitempty"`
 	Edit           bool     `json:"edit,omitempty"`
 	History        []string `json:"history,omitempty"`
