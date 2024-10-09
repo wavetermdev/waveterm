@@ -593,8 +593,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 return true;
             }
             if (checkKeyPressed(waveEvent, "Space") && searchText == "" && PLATFORM == "darwin") {
-                //RpcApi.QuicklookCommand(ElectronWshClient, selectedPath, { route: "electron", timeout: 5000 });
-                //let temp = "~/Desktop/Screenshot 2024-03-07 at 6.10.31 PM.png";
                 getApi().onQuicklook(selectedPath);
                 console.log(selectedPath);
                 return true;

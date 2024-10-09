@@ -137,11 +137,6 @@ class RpcApiType {
         return client.wshRpcCall("notify", data, opts);
     }
 
-    // command "quicklook" [call]
-    QuicklookCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("quicklook", data, opts);
-    }
-
     // command "remotefiledelete" [call]
     RemoteFileDeleteCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefiledelete", data, opts);
