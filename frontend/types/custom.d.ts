@@ -57,7 +57,9 @@ declare global {
         getEnv: (varName: string) => string;
         getUserName: () => string;
         getHostName: () => string;
+        getWebviewPreload: () => string;
         getAboutModalDetails: () => AboutModalDetails;
+        getDocsiteUrl: () => string;
         showContextMenu: (menu?: ElectronContextMenuItem[]) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
         onNavigate: (callback: (url: string) => void) => void;
@@ -84,6 +86,9 @@ declare global {
         type?: "separator" | "normal" | "submenu" | "checkbox" | "radio";
         submenu?: ElectronContextMenuItem[];
         checked?: boolean;
+        visible?: boolean;
+        enabled?: boolean;
+        sublabel?: string;
     };
 
     type ContextMenuItem = {
@@ -93,6 +98,9 @@ declare global {
         click?: () => void; // not required if role is set
         submenu?: ContextMenuItem[];
         checked?: boolean;
+        visible?: boolean;
+        enabled?: boolean;
+        sublabel?: string;
     };
 
     type KeyPressDecl = {

@@ -86,5 +86,13 @@
         "bg": "linear-gradient(135deg, rgba(204, 51, 255, 0.9) 0%, rgba(255, 85, 153, 0.75) 30%, rgba(255, 51, 153, 0.65) 60%, rgba(204, 51, 255, 0.6) 80%, rgba(51, 102, 255, 0.5) 100%), radial-gradient(circle at 30% 40%, rgba(255,255,255,0.1), transparent 60%), radial-gradient(circle at 70% 70%, rgba(255,255,255,0.05), transparent 70%)",
         "bg:opacity": 0.9,
         "bg:blendmode": "overlay"
+    },
+    "bg@twilight-ember": {
+        "display:name": "Twilight Ember",
+        "display:order": 3.5,
+        "bg:*": true,
+        "bg": "linear-gradient(120deg,hsla(350, 65%, 57%, 1),hsla(30,60%,60%, .75), hsla(208,69%,50%,.15), hsl(230,60%,40%)),radial-gradient(at top right,hsla(300,60%,70%,0.3),transparent),radial-gradient(at top left,hsla(330,100%,70%,.20),transparent),radial-gradient(at top right,hsla(190,100%,40%,.20),transparent),radial-gradient(at bottom left,hsla(323,54%,50%,.5),transparent),radial-gradient(at bottom left,hsla(144,54%,50%,.25),transparent)",
+        "bg:blendmode": "overlay",
+        "bg:text": "rgb(200, 200, 200)"
     }
 }

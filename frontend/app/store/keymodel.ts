@@ -16,6 +16,13 @@ import * as jotai from "jotai";
 const simpleControlShiftAtom = jotai.atom(false);
 const globalKeyMap = new Map<string, (waveEvent: WaveKeyboardEvent) => boolean>();
 
+function getFocusedBlockInActiveTab() {
+    const activeTabId = globalStore.get(atoms.activeTabId);
+    const layoutModel = getLayoutModelForTabById(activeTabId);
+    const focusedNode = globalStore.get(layoutModel.focusedNode);
+    return focusedNode.data?.blockId;
+}
+
 function getSimpleControlShiftAtom() {
     return simpleControlShiftAtom;
 }
@@ -161,12 +168,6 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     const blockId = focusedNode?.data?.blockId;
     if (blockId != null && shouldDispatchToBlock(waveEvent)) {
         const bcm = getBlockComponentModel(blockId);
-        if (bcm.openSwitchConnection != null) {
-            if (keyutil.checkKeyPressed(waveEvent, "Cmd:g")) {
-                bcm.openSwitchConnection();
-                return true;
-            }
-        }
         const viewModel = bcm?.viewModel;
         if (viewModel?.keyDownHandler) {
             const handledByBlock = viewModel.keyDownHandler(waveEvent);
@@ -261,6 +262,13 @@ function registerGlobalKeys() {
         const tabId = globalStore.get(atoms.activeTabId);
         switchBlockInDirection(tabId, NavigateDirection.Right);
         return true;
+    });
+    globalKeyMap.set("Cmd:g", () => {
+        const bcm = getBlockComponentModel(getFocusedBlockInActiveTab());
+        if (bcm.openSwitchConnection != null) {
+            bcm.openSwitchConnection();
+            return true;
+        }
     });
     for (let idx = 1; idx <= 9; idx++) {
         globalKeyMap.set(`Cmd:${idx}`, () => {

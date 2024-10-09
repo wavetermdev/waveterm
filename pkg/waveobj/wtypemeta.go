@@ -14,9 +14,9 @@ type MetaTSType struct {
 	// shared
 	View           string   `json:"view,omitempty"`
 	Controller     string   `json:"controller,omitempty"`
-	Title          string   `json:"title,omitempty"`
 	File           string   `json:"file,omitempty"`
 	Url            string   `json:"url,omitempty"`
+	PinnedUrl      string   `json:"pinnedurl,omitempty"`
 	Connection     string   `json:"connection,omitempty"`
 	Edit           bool     `json:"edit,omitempty"`
 	History        []string `json:"history,omitempty"`
@@ -32,6 +32,9 @@ type MetaTSType struct {
 	FrameClear               bool   `json:"frame:*,omitempty"`
 	FrameBorderColor         string `json:"frame:bordercolor,omitempty"`
 	FrameBorderColor_Focused string `json:"frame:bordercolor:focused,omitempty"`
+	FrameTitle               string `json:"frame:title,omitempty"`
+	FrameIcon                string `json:"frame:icon,omitempty"`
+	FrameText                string `json:"frame:text,omitempty"`
 
 	Cmd               string            `json:"cmd,omitempty"`
 	CmdClear          bool              `json:"cmd:*,omitempty"`
@@ -61,6 +64,7 @@ type MetaTSType struct {
 	TermTheme          string   `json:"term:theme,omitempty"`
 	TermLocalShellPath string   `json:"term:localshellpath,omitempty"` // matches settings
 	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"` // matches settings
+	TermScrollback     *int     `json:"term:scrollback,omitempty"`
 
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }

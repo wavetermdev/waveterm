@@ -24,9 +24,16 @@ class ContextMenuModelType {
                 role: item.role,
                 type: item.type,
                 label: item.label,
+                sublabel: item.sublabel,
                 id: crypto.randomUUID(),
                 checked: item.checked,
             };
+            if (item.visible === false) {
+                electronItem.visible = false;
+            }
+            if (item.enabled === false) {
+                electronItem.enabled = false;
+            }
             if (item.click) {
                 this.handlers.set(electronItem.id, item.click);
             }

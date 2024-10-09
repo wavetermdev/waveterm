@@ -65,6 +65,7 @@ func doShutdown(reason string) {
 			watcher.Close()
 		}
 		time.Sleep(500 * time.Millisecond)
+		log.Printf("shutdown complete\n")
 		os.Exit(0)
 	})
 }
@@ -202,7 +203,7 @@ func main() {
 		return
 	}
 	defer func() {
-		err = waveLock.Unlock()
+		err = waveLock.Close()
 		if err != nil {
 			log.Printf("error releasing wave lock: %v\n", err)
 		}
