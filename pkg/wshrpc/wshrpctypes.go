@@ -275,7 +275,10 @@ type OpenAIPromptMessageType struct {
 
 type OpenAIOptsType struct {
 	Model      string `json:"model"`
+	APIType    string `json:"apitype,omitempty"`
 	APIToken   string `json:"apitoken"`
+	OrgID      string `json:"orgid,omitempty"`
+	APIVersion string `json:"apiversion,omitempty"`
 	BaseURL    string `json:"baseurl,omitempty"`
 	MaxTokens  int    `json:"maxtokens,omitempty"`
 	MaxChoices int    `json:"maxchoices,omitempty"`

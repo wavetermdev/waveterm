@@ -329,7 +329,10 @@ declare global {
     // wshrpc.OpenAIOptsType
     type OpenAIOptsType = {
         model: string;
+        apitype?: string;
         apitoken: string;
+        orgid?: string;
+        apiversion?: string;
         baseurl?: string;
         maxtokens?: number;
         maxchoices?: number;
