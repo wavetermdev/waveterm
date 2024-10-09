@@ -189,16 +189,17 @@ export class WaveAiModel implements ViewModel {
             };
             addMessage(newMessage);
             // send message to backend and get response
+            const blockMeta = globalStore.get(this.blockAtom)?.meta ?? {};
             const settings = globalStore.get(atoms.settingsAtom) ?? {};
             const opts: OpenAIOptsType = {
-                model: settings["ai:model"],
-                apitype: settings["ai:apitype"],
-                orgid: settings["ai:orgid"],
-                apitoken: settings["ai:apitoken"],
-                apiversion: settings["ai:apiversion"],
-                maxtokens: settings["ai:maxtokens"],
-                timeoutms: settings["ai:timeoutms"] ?? 60000,
-                baseurl: settings["ai:baseurl"],
+                model: blockMeta["ai:model"] ?? settings["ai:model"] ?? null,
+                apitype: blockMeta["ai:apitype"] ?? settings["ai:apitype"] ?? null,
+                orgid: blockMeta["ai:orgid"] ?? settings["ai:orgid"] ?? null,
+                apitoken: blockMeta["ai:apitoken"] ?? settings["ai:apitoken"] ?? null,
+                apiversion: blockMeta["ai:apiversion"] ?? settings["ai:apiversion"] ?? null,
+                maxtokens: blockMeta["ai:maxtokens"] ?? settings["ai:maxtokens"] ?? null,
+                timeoutms: blockMeta["ai:timeoutms"] ?? settings["ai:timeoutms"] ?? 60000,
+                baseurl: blockMeta["ai:baseurl"] ?? settings["ai:baseurl"] ?? null,
             };
             const newPrompt: OpenAIPromptMessageType = {
                 role: "user",
