@@ -202,7 +202,7 @@ export class WaveAiModel implements ViewModel {
                 apitoken: settings["ai:apitoken"],
                 apiversion: settings["ai:apiversion"],
                 maxtokens: settings["ai:maxtokens"],
-                timeout: settings["ai:timeoutms"] / 1000,
+                timeoutms: settings["ai:timeoutms"] ?? 60000,
                 baseurl: settings["ai:baseurl"],
             };
             const newPrompt: OpenAIPromptMessageType = {
@@ -225,7 +225,7 @@ export class WaveAiModel implements ViewModel {
                     opts: opts,
                     prompt: [...history, newPrompt],
                 };
-                const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: 60000 });
+                const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: opts.timeoutms });
                 let fullMsg = "";
                 for await (const msg of aiGen) {
                     fullMsg += msg.text ?? "";

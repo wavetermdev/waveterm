@@ -56,16 +56,6 @@ type OpenAICloudReqPacketType struct {
 	MaxChoices int                              `json:"maxchoices,omitempty"`
 }
 
-type OpenAIOptsType struct {
-	Model      string `json:"model"`
-	APIToken   string `json:"apitoken"`
-	BaseURL    string `json:"baseurl,omitempty"`
-	MaxTokens  int    `json:"maxtokens,omitempty"`
-	MaxChoices int    `json:"maxchoices,omitempty"`
-	Timeout    int    `json:"timeout,omitempty"`
-	BlockId    string `json:"blockid"`
-}
-
 func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
 	return &OpenAICloudReqPacketType{
 		Type: OpenAICloudReqStr,

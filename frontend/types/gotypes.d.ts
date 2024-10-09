@@ -336,7 +336,7 @@ declare global {
         baseurl?: string;
         maxtokens?: number;
         maxchoices?: number;
-        timeout?: number;
+        timeoutms?: number;
     };
 
     // wshrpc.OpenAIPacketType

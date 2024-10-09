@@ -282,7 +282,7 @@ type OpenAIOptsType struct {
 	BaseURL    string `json:"baseurl,omitempty"`
 	MaxTokens  int    `json:"maxtokens,omitempty"`
 	MaxChoices int    `json:"maxchoices,omitempty"`
-	Timeout    int    `json:"timeout,omitempty"`
+	TimeoutMs  int    `json:"timeoutms,omitempty"`
 }
 
 type OpenAIPacketType struct {
