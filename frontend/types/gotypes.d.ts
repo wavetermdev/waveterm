@@ -329,11 +329,14 @@ declare global {
     // wshrpc.OpenAIOptsType
     type OpenAIOptsType = {
         model: string;
+        apitype?: string;
         apitoken: string;
+        orgid?: string;
+        apiversion?: string;
         baseurl?: string;
         maxtokens?: number;
         maxchoices?: number;
-        timeout?: number;
+        timeoutms?: number;
     };
 
     // wshrpc.OpenAIPacketType
@@ -413,10 +416,13 @@ declare global {
     // wconfig.SettingsType
     type SettingsType = {
         "ai:*"?: boolean;
+        "ai:apitype"?: string;
         "ai:baseurl"?: string;
         "ai:apitoken"?: string;
         "ai:name"?: string;
         "ai:model"?: string;
+        "ai:orgid"?: string;
+        "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
         "term:*"?: boolean;

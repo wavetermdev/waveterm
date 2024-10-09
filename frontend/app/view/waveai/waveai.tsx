@@ -194,12 +194,15 @@ export class WaveAiModel implements ViewModel {
             };
             addMessage(newMessage);
             // send message to backend and get response
-            const settings = globalStore.get(atoms.settingsAtom);
+            const settings = globalStore.get(atoms.settingsAtom) ?? {};
             const opts: OpenAIOptsType = {
                 model: settings["ai:model"],
+                apitype: settings["ai:apitype"],
+                orgid: settings["ai:orgid"],
                 apitoken: settings["ai:apitoken"],
+                apiversion: settings["ai:apiversion"],
                 maxtokens: settings["ai:maxtokens"],
-                timeout: settings["ai:timeoutms"] / 1000,
+                timeoutms: settings["ai:timeoutms"] ?? 60000,
                 baseurl: settings["ai:baseurl"],
             };
             const newPrompt: OpenAIPromptMessageType = {
@@ -222,7 +225,7 @@ export class WaveAiModel implements ViewModel {
                     opts: opts,
                     prompt: [...history, newPrompt],
                 };
-                const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: 60000 });
+                const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: opts.timeoutms });
                 let fullMsg = "";
                 for await (const msg of aiGen) {
                     fullMsg += msg.text ?? "";
