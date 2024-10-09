@@ -787,6 +787,17 @@ if (unamePlatform !== "darwin") {
     });
 }
 
+electron.ipcMain.on("quicklook", (event, filePath: string) => {
+    if (unamePlatform == "darwin") {
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error opening Quick Look: ${error}`);
+                return;
+            }
+        });
+    }
+});
+
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
