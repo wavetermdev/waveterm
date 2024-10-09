@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sashabaranov/go-openai"
 	openaiapi "github.com/sashabaranov/go-openai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
@@ -150,9 +149,16 @@ func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 				rtn <- makeAIError(fmt.Errorf("unable to close openai channel: %v", err))
 			}
 		}()
+		var sendablePromptMsgs []wshrpc.OpenAIPromptMessageType
+		for _, promptMsg := range request.Prompt {
+			if promptMsg.Role == "error" {
+				continue
+			}
+			sendablePromptMsgs = append(sendablePromptMsgs, promptMsg)
+		}
 		reqPk := MakeOpenAICloudReqPacket()
 		reqPk.ClientId = request.ClientId
-		reqPk.Prompt = request.Prompt
+		reqPk.Prompt = sendablePromptMsgs
 		reqPk.MaxTokens = request.Opts.MaxTokens
 		reqPk.MaxChoices = request.Opts.MaxChoices
 		configMessageBuf, err := json.Marshal(reqPk)
@@ -200,23 +206,23 @@ func defaultAzureMapperFn(model string) string {
 	return regexp.MustCompile(`[.:]`).ReplaceAllString(model, "")
 }
 
-func setApiType(opts *wshrpc.OpenAIOptsType, clientConfig *openai.ClientConfig) error {
+func setApiType(opts *wshrpc.OpenAIOptsType, clientConfig *openaiapi.ClientConfig) error {
 	ourApiType := strings.ToLower(opts.APIType)
-	if ourApiType == "" || ourApiType == strings.ToLower(string(openai.APITypeOpenAI)) {
-		clientConfig.APIType = openai.APITypeOpenAI
+	if ourApiType == "" || ourApiType == strings.ToLower(string(openaiapi.APITypeOpenAI)) {
+		clientConfig.APIType = openaiapi.APITypeOpenAI
 		return nil
-	} else if ourApiType == strings.ToLower(string(openai.APITypeAzure)) {
-		clientConfig.APIType = openai.APITypeAzure
+	} else if ourApiType == strings.ToLower(string(openaiapi.APITypeAzure)) {
+		clientConfig.APIType = openaiapi.APITypeAzure
 		clientConfig.APIVersion = DefaultAzureAPIVersion
 		clientConfig.AzureModelMapperFunc = defaultAzureMapperFn
 		return nil
-	} else if ourApiType == strings.ToLower(string(openai.APITypeAzureAD)) {
-		clientConfig.APIType = openai.APITypeAzureAD
+	} else if ourApiType == strings.ToLower(string(openaiapi.APITypeAzureAD)) {
+		clientConfig.APIType = openaiapi.APITypeAzureAD
 		clientConfig.APIVersion = DefaultAzureAPIVersion
 		clientConfig.AzureModelMapperFunc = defaultAzureMapperFn
 		return nil
-	} else if ourApiType == strings.ToLower(string(openai.APITypeCloudflareAzure)) {
-		clientConfig.APIType = openai.APITypeCloudflareAzure
+	} else if ourApiType == strings.ToLower(string(openaiapi.APITypeCloudflareAzure)) {
+		clientConfig.APIType = openaiapi.APITypeCloudflareAzure
 		clientConfig.APIVersion = DefaultAzureAPIVersion
 		clientConfig.AzureModelMapperFunc = defaultAzureMapperFn
 		return nil
