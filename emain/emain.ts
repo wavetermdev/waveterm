@@ -942,6 +942,11 @@ electronApp.on("window-all-closed", () => {
 electronApp.on("before-quit", (e) => {
     globalIsQuitting = true;
     updater?.stop();
+    if (unamePlatform == "win32") {
+        // win32 doesn't have a SIGINT, so we just let electron die, which
+        // ends up killing wavesrv via closing it's stdin.
+        return;
+    }
     waveSrvProc?.kill("SIGINT");
     shutdownWshrpc();
     if (forceQuit) {
