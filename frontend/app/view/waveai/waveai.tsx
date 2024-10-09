@@ -194,10 +194,13 @@ export class WaveAiModel implements ViewModel {
             };
             addMessage(newMessage);
             // send message to backend and get response
-            const settings = globalStore.get(atoms.settingsAtom);
+            const settings = globalStore.get(atoms.settingsAtom) ?? {};
             const opts: OpenAIOptsType = {
                 model: settings["ai:model"],
+                apitype: settings["ai:apitype"],
+                orgid: settings["ai:orgid"],
                 apitoken: settings["ai:apitoken"],
+                apiversion: settings["ai:apiversion"],
                 maxtokens: settings["ai:maxtokens"],
                 timeout: settings["ai:timeoutms"] / 1000,
                 baseurl: settings["ai:baseurl"],
