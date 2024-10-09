@@ -81,19 +81,19 @@ export class WebViewModel implements ViewModel {
                     elemtype: "iconbutton",
                     icon: "chevron-left",
                     click: this.handleBack.bind(this),
-                    disabled: this.shouldDisabledBackButton(),
+                    disabled: this.shouldDisableBackButton(),
                 },
                 {
                     elemtype: "iconbutton",
                     icon: "chevron-right",
                     click: this.handleForward.bind(this),
-                    disabled: this.shouldDisabledForwardButton(),
+                    disabled: this.shouldDisableForwardButton(),
                 },
                 {
                     elemtype: "iconbutton",
                     icon: "house",
                     click: this.handleHome.bind(this),
-                    disabled: this.shouldDisabledHomeButton(),
+                    disabled: this.shouldDisableHomeButton(),
                 },
                 {
                     elemtype: "div",
@@ -142,7 +142,7 @@ export class WebViewModel implements ViewModel {
      * Whether the back button in the header should be disabled.
      * @returns True if the WebView cannot go back or if the WebView call fails. False otherwise.
      */
-    shouldDisabledBackButton() {
+    shouldDisableBackButton() {
         try {
             return !this.webviewRef.current?.canGoBack();
         } catch (_) {}
@@ -153,7 +153,7 @@ export class WebViewModel implements ViewModel {
      * Whether the forward button in the header should be disabled.
      * @returns True if the WebView cannot go forward or if the WebView call fails. False otherwise.
      */
-    shouldDisabledForwardButton() {
+    shouldDisableForwardButton() {
         try {
             return !this.webviewRef.current?.canGoForward();
         } catch (_) {}
@@ -164,7 +164,7 @@ export class WebViewModel implements ViewModel {
      * Whether the home button in the header should be disabled.
      * @returns True if the current url is the pinned url or the pinned url is not set. False otherwise.
      */
-    shouldDisabledHomeButton() {
+    shouldDisableHomeButton() {
         try {
             const homepageUrl = globalStore.get(this.homepageUrl);
             return !homepageUrl || this.getUrl() === homepageUrl;
@@ -334,6 +334,26 @@ export class WebViewModel implements ViewModel {
         globalStore.set(this.isLoading, isLoading);
     }
 
+    async setHomepageUrl(url: string, scope: "global" | "block") {
+        if (url != null && url != "") {
+            switch (scope) {
+                case "block":
+                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { pinnedurl: url },
+                    });
+                    break;
+                case "global":
+                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { pinnedurl: "" },
+                    });
+                    await RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                    break;
+            }
+        }
+    }
+
     giveFocus(): boolean {
         const ctrlShiftState = globalStore.get(getSimpleControlShiftAtom());
         if (ctrlShiftState) {
@@ -380,22 +400,13 @@ export class WebViewModel implements ViewModel {
             {
                 label: "Set Block Homepage",
                 click: async () => {
-                    const url = this.getUrl();
-                    if (url != null && url != "") {
-                        await RpcApi.SetMetaCommand(WindowRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { pinnedurl: url },
-                        });
-                    }
+                    await this.setHomepageUrl(this.getUrl(), "block");
                 },
             },
             {
                 label: "Set Default Homepage",
                 click: async () => {
-                    const url = this.getUrl();
-                    if (url != null && url != "") {
-                        await RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
-                    }
+                    await this.setHomepageUrl(this.getUrl(), "global");
                 },
             },
             {

@@ -261,6 +261,7 @@ function DirectoryTable({
 
     const onScroll = useCallback(
         debounce(2, () => {
+            console.log("onScroll");
             setScrollHeight(osRef.current.osInstance().elements().viewport.scrollTop);
         }),
         []
@@ -376,8 +377,8 @@ function TableBody({
             const parentRect = bodyRef.current.getBoundingClientRect();
             const viewportScrollTop = viewport.scrollTop;
 
-            const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewportScrollTop;
-            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top + viewportScrollTop;
+            const rowTopRelativeToViewport = rowRect.top - parentRect.top;
+            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top;
 
             if (rowTopRelativeToViewport < viewportScrollTop) {
                 // Row is above the visible area
@@ -387,6 +388,7 @@ function TableBody({
                 viewport.scrollTo({ top: rowBottomRelativeToViewport - viewportHeight });
             }
         }
+        // setIndexChangedFromClick(false);
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
