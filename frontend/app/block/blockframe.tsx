@@ -545,7 +545,6 @@ const ChangeConnectionBlockModal = React.memo(
                     setWslList(newWslList ?? []);
                 })
                 .catch((e) => {
-                    console.log("temp error caught message");
                     // removing this log and failing silentyly since it will happen
                     // if a system isn't using the wsl. and would happen every time the
                     // typeahead was opened. good candidate for verbose log level.

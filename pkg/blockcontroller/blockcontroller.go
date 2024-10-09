@@ -199,7 +199,6 @@ func (bc *BlockController) resetTerminalState() {
 }
 
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
-	log.Print("temp: this is the start of the DoRunShellCommand")
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
@@ -265,10 +264,8 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	log.Printf("templog: remote has name %s", remoteName)
 	if strings.HasPrefix(remoteName, "wsl:") {
 		wslName := strings.TrimPrefix(remoteName, "wsl:")
-		log.Printf("templog: detected wsl with name: %s", wslName)
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
 
