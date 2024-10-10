@@ -677,6 +677,7 @@ declare global {
     type WaveWindow = WaveObj & {
         workspaceid: string;
         activetabid: string;
+        isnew?: boolean;
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;

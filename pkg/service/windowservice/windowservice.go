@@ -38,6 +38,7 @@ func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId strin
 	if size != nil {
 		win.WinSize = *size
 	}
+	win.IsNew = false
 	err = wstore.DBUpdate(ctx, win)
 	if err != nil {
 		return nil, err
