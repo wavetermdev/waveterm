@@ -261,7 +261,6 @@ function DirectoryTable({
 
     const onScroll = useCallback(
         debounce(2, () => {
-            console.log("onScroll");
             setScrollHeight(osRef.current.osInstance().elements().viewport.scrollTop);
         }),
         []
