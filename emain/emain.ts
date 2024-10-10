@@ -1,13 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ChildProcessWithoutNullStreams, execFile, spawn } from "child_process";
 import * as electron from "electron";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
-import { extname, join } from "path";
+import * as child_process from "node:child_process";
+import * as path from "path";
 import { PNG } from "pngjs";
-import { createInterface } from "readline";
+import * as readline from "readline";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
 import { debounce } from "throttle-debounce";
@@ -64,14 +64,14 @@ let wasInFg = true;
 let webviewFocusId: number = null; // set to the getWebContentsId of the webview that has focus (null if not focused)
 let webviewKeys: string[] = []; // the keys to trap when webview has focus
 
-let waveSrvProc: ChildProcessWithoutNullStreams | null = null;
+let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 
 const waveHome = getWaveHomeDir();
 
 const oldConsoleLog = console.log;
 
 const loggerTransports: winston.transport[] = [
-    new winston.transports.File({ filename: join(getWaveHomeDir(), "waveapp.log"), level: "info" }),
+    new winston.transports.File({ filename: path.join(getWaveHomeDir(), "waveapp.log"), level: "info" }),
 ];
 if (isDev) {
     loggerTransports.push(new winston.transports.Console());
@@ -161,7 +161,7 @@ function runWaveSrv(): Promise<boolean> {
     envCopy[AuthKeyEnv] = AuthKey;
     const waveSrvCmd = getWaveSrvPath();
     console.log("trying to run local server", waveSrvCmd);
-    const proc = spawn(getWaveSrvPath(), {
+    const proc = child_process.spawn(getWaveSrvPath(), {
         cwd: getWaveSrvCwd(),
         env: envCopy,
     });
@@ -183,14 +183,14 @@ function runWaveSrv(): Promise<boolean> {
         console.log("error running wavesrv", e);
         pReject(e);
     });
-    const rlStdout = createInterface({
+    const rlStdout = readline.createInterface({
         input: proc.stdout,
         terminal: false,
     });
     rlStdout.on("line", (line) => {
         console.log(line);
     });
-    const rlStderr = createInterface({
+    const rlStderr = readline.createInterface({
         input: proc.stderr,
         terminal: false,
     });
@@ -357,9 +357,12 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         height: winBounds.height,
         minWidth: 400,
         minHeight: 300,
-        icon: unamePlatform == "linux" ? join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png") : undefined,
+        icon:
+            unamePlatform == "linux"
+                ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
+                : undefined,
         webPreferences: {
-            preload: join(getElectronAppBasePath(), "preload", "index.cjs"),
+            preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
             webviewTag: true,
         },
         show: false,
@@ -399,7 +402,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html?${usp.toString()}`);
     } else {
         console.log("running as file");
-        win.loadFile(join(getElectronAppBasePath(), "frontend", indexHtml), { search: usp.toString() });
+        win.loadFile(path.join(getElectronAppBasePath(), "frontend", indexHtml), { search: usp.toString() });
     }
     win.once("ready-to-show", () => {
         readyResolve();
@@ -783,7 +786,7 @@ if (unamePlatform !== "darwin") {
 
 electron.ipcMain.on("quicklook", (event, filePath: string) => {
     if (unamePlatform == "darwin") {
-        execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
             if (error) {
                 console.error(`Error opening Quick Look: ${error}`);
                 return;
@@ -832,7 +835,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
     };
     function addExtensionIfNeeded(fileName: string, mimeType: string): string {
         const extension = mimeToExtension[mimeType];
-        if (!extname(fileName) && extension) {
+        if (!path.extname(fileName) && extension) {
             return `${fileName}.${extension}`;
         }
         return fileName;
