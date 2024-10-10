@@ -13,7 +13,7 @@ import "./userinputmodal.less";
 const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = useState("");
     const [countdown, setCountdown] = useState(Math.floor(userInputRequest.timeoutms / 1000));
-    const checkboxStatus = useRef(false);
+    const checkboxRef = useRef<HTMLInputElement>();
 
     const handleSendCancel = useCallback(() => {
         UserInputService.SendUserInputResponse({
@@ -29,7 +29,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             type: "userinputresp",
             requestid: userInputRequest.requestid,
             text: responseText,
-            checkboxstat: checkboxStatus.current,
+            checkboxstat: checkboxRef.current?.checked ?? false,
         });
         modalsModel.popModal();
     }, [responseText, userInputRequest]);
@@ -39,7 +39,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             type: "userinputresp",
             requestid: userInputRequest.requestid,
             confirm: true,
-            checkboxstat: checkboxStatus.current,
+            checkboxstat: checkboxRef.current?.checked ?? false,
         });
         modalsModel.popModal();
     }, [userInputRequest]);
@@ -99,7 +99,12 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
         return (
             <div className="userinput-checkbox-container">
-                <input type="checkbox" id={`uicheckbox-${userInputRequest.requestid}`} className="userinput-checkbox" />
+                <input
+                    type="checkbox"
+                    id={`uicheckbox-${userInputRequest.requestid}`}
+                    className="userinput-checkbox"
+                    ref={checkboxRef}
+                />
                 <label htmlFor={`uicheckbox-${userInputRequest.requestid}}`}>{userInputRequest.checkboxmsg}</label>
             </div>
         );

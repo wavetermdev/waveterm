@@ -25,6 +25,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -314,6 +316,15 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		if err != nil || !response.Confirm {
 			return err
 		}
+		if response.CheckboxStat {
+			meta := waveobj.MetaMapType{
+				wconfig.ConfigKey_AskBeforeWshInstall: false,
+			}
+			err := wconfig.SetBaseConfigValue(meta)
+			if err != nil {
+				return fmt.Errorf("error setting askbeforewshinstall value: %w", err)
+			}
+		}
 	}
 	log.Printf("attempting to install wsh to `%s`", clientDisplayName)
 	clientOs, err := remote.GetClientOs(client)
@@ -429,7 +440,8 @@ func (conn *SSHConn) connectInternal(ctx context.Context) error {
 		log.Printf("error: unable to open domain socket listener for %s: %v\n", conn.GetName(), err)
 		return err
 	}
-	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, nil)
+	config := wconfig.ReadFullConfig()
+	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !config.Settings.AskBeforeWshInstall})
 	if installErr != nil {
 		log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
