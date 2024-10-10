@@ -7,7 +7,7 @@ import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
 import { useEffect } from "react";
-import { globalStore } from "./global";
+import { globalStore } from "./jotaiStore";
 import { ObjectService } from "./services";
 
 type WaveObjectDataItemType<T extends WaveObj> = {
