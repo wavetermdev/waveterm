@@ -119,29 +119,30 @@
 
     .terminal {
         .xterm-viewport {
-            right: -7px;
-        }
-        .xterm-viewport::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
+            z-index: var(--zindex-xterm-viewport-overlay);
 
-        .xterm-viewport::-webkit-scrollbar-track {
-            background-color: var(--scrollbar-background-color);
-        }
-
-        .xterm-viewport::-webkit-scrollbar-thumb {
-            display: none;
-            background-color: var(--scrollbar-thumb-color);
-            border-radius: 4px;
-            margin: 0 1px 0 1px;
-
-            &:hover {
-                background-color: var(--scrollbar-thumb-hover-color);
+            &::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
             }
 
-            &:active {
-                background-color: var(--scrollbar-thumb-active-color);
+            &::-webkit-scrollbar-track {
+                background-color: var(--scrollbar-background-color);
+            }
+
+            &::-webkit-scrollbar-thumb {
+                display: none;
+                background-color: var(--scrollbar-thumb-color);
+                border-radius: 4px;
+                margin: 0 1px 0 1px;
+
+                &:hover {
+                    background-color: var(--scrollbar-thumb-hover-color);
+                }
+
+                &:active {
+                    background-color: var(--scrollbar-thumb-active-color);
+                }
             }
         }
 
