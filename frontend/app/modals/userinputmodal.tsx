@@ -93,6 +93,18 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         );
     }, [userInputRequest.responsetype, userInputRequest.publictext, responseText, handleKeyDown, setResponseText]);
 
+    const optionalCheckbox = useMemo(() => {
+        if (userInputRequest.checkboxmsg == "") {
+            return <></>;
+        }
+        return (
+            <div className="userinput-checkbox-container">
+                <input type="checkbox" id={`uicheckbox-${userInputRequest.requestid}`} className="userinput-checkbox" />
+                <label htmlFor={`uicheckbox-${userInputRequest.requestid}}`}>{userInputRequest.checkboxmsg}</label>
+            </div>
+        );
+    }, []);
+
     useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
         if (countdown <= 0) {
@@ -113,6 +125,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             <div className="userinput-body">
                 {queryText}
                 {inputBox}
+                {optionalCheckbox}
             </div>
         </Modal>
     );
