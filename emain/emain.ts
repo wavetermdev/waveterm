@@ -15,7 +15,7 @@ import * as util from "util";
 import winston from "winston";
 import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
-import { initElectronWshrpc } from "../frontend/app/store/wshrpcutil";
+import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
 import { fetch } from "../frontend/util/fetchutil";
 import * as keyutil from "../frontend/util/keyutil";
@@ -41,6 +41,8 @@ import { configureAutoUpdater, updater } from "./updater";
 const electronApp = electron.app;
 let WaveVersion = "unknown"; // set by WAVESRV-ESTART
 let WaveBuildTime = 0; // set by WAVESRV-ESTART
+let forceQuit = false;
+let isWaveSrvDead = false;
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
@@ -167,10 +169,12 @@ function runWaveSrv(): Promise<boolean> {
         env: envCopy,
     });
     proc.on("exit", (e) => {
-        if (globalIsQuitting || updater?.status == "installing") {
+        if (updater?.status == "installing") {
             return;
         }
         console.log("wavesrv exited, shutting down");
+        forceQuit = true;
+        isWaveSrvDead = true;
         electronApp.quit();
     });
     proc.on("spawn", (e) => {
@@ -783,6 +787,17 @@ if (unamePlatform !== "darwin") {
     });
 }
 
+electron.ipcMain.on("quicklook", (event, filePath: string) => {
+    if (unamePlatform == "darwin") {
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error opening Quick Look: ${error}`);
+                return;
+            }
+        });
+    }
+});
+
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
@@ -935,9 +950,35 @@ electronApp.on("window-all-closed", () => {
         electronApp.quit();
     }
 });
-electronApp.on("before-quit", () => {
+electronApp.on("before-quit", (e) => {
     globalIsQuitting = true;
     updater?.stop();
+    if (unamePlatform == "win32") {
+        // win32 doesn't have a SIGINT, so we just let electron die, which
+        // ends up killing wavesrv via closing it's stdin.
+        return;
+    }
+    waveSrvProc?.kill("SIGINT");
+    shutdownWshrpc();
+    if (forceQuit) {
+        return;
+    }
+    e.preventDefault();
+    const allWindows = electron.BrowserWindow.getAllWindows();
+    for (const window of allWindows) {
+        window.hide();
+    }
+    if (isWaveSrvDead) {
+        console.log("wavesrv is dead, quitting immediately");
+        forceQuit = true;
+        electronApp.quit();
+        return;
+    }
+    setTimeout(() => {
+        console.log("waiting for wavesrv to exit...");
+        forceQuit = true;
+        electronApp.quit();
+    }, 3000);
 });
 process.on("SIGINT", () => {
     console.log("Caught SIGINT, shutting down");
@@ -956,8 +997,9 @@ process.on("uncaughtException", (error) => {
     if (caughtException) {
         return;
     }
-    logger.error("Uncaught Exception, shutting down: ", error);
     caughtException = true;
+    console.log("Uncaught Exception, shutting down: ", error);
+    console.log("Stack Trace:", error.stack);
     // Optionally, handle cleanup or exit the app
     electronApp.quit();
 });
@@ -991,12 +1033,6 @@ async function relaunchBrowserWindows(): Promise<void> {
         win.show();
     }
 }
-
-process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
-    console.error("Stack Trace:", error.stack);
-    electron.app.quit();
-});
 
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.

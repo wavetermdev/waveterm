@@ -51,7 +51,7 @@
                 }
 
                 &.chat-msg-assistant {
-                    color: var(--app-text-color);
+                    color: var(--main-text-color);
                     background-color: rgb(from var(--highlight-bg-color) r g b / 0.1);
                     margin-right: auto;
                     padding: 10px;
@@ -77,9 +77,23 @@
                 }
 
                 &.chat-msg-error {
-                    color: var(--cmdinput-text-error);
-                    font-family: var(--markdown-font);
-                    font-size: 14px;
+                    color: var(--main-text-color);
+                    background-color: rgb(from var(--error-color) r g b / 0.25);
+                    margin-right: auto;
+                    padding: 10px;
+                    max-width: 85%;
+
+                    .markdown {
+                        width: 100%;
+
+                        pre {
+                            white-space: pre-wrap;
+                            word-break: break-word;
+                            max-width: 100%;
+                            overflow-x: auto;
+                            margin-left: 0;
+                        }
+                    }
                 }
 
                 &.typing-indicator {

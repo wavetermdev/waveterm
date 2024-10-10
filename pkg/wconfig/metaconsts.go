@@ -7,19 +7,24 @@ package wconfig
 
 const (
 	ConfigKey_AiClear                        = "ai:*"
+	ConfigKey_AiApiType                      = "ai:apitype"
 	ConfigKey_AiBaseURL                      = "ai:baseurl"
 	ConfigKey_AiApiToken                     = "ai:apitoken"
 	ConfigKey_AiName                         = "ai:name"
 	ConfigKey_AiModel                        = "ai:model"
+	ConfigKey_AiOrgID                        = "ai:orgid"
+	ConfigKey_AIApiVersion                   = "ai:apiversion"
 	ConfigKey_AiMaxTokens                    = "ai:maxtokens"
 	ConfigKey_AiTimeoutMs                    = "ai:timeoutms"
 
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"
 	ConfigKey_TermFontFamily                 = "term:fontfamily"
+	ConfigKey_TermTheme                      = "term:theme"
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
 	ConfigKey_TermLocalShellPath             = "term:localshellpath"
 	ConfigKey_TermLocalShellOpts             = "term:localshellopts"
+	ConfigKey_TermScrollback                 = "term:scrollback"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
@@ -37,6 +42,8 @@ const (
 	ConfigKey_AutoUpdateIntervalMs           = "autoupdate:intervalms"
 	ConfigKey_AutoUpdateInstallOnQuit        = "autoupdate:installonquit"
 	ConfigKey_AutoUpdateChannel              = "autoupdate:channel"
+
+	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
 
 	ConfigKey_WidgetClear                    = "widget:*"
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"

@@ -16,7 +16,7 @@ import (
 var setMetaCmd = &cobra.Command{
 	Use:     "setmeta {blockid|blocknum|this} key=value ...",
 	Short:   "set metadata for an entity",
-	Args:    cobra.MinimumNArgs(2),
+	Args:    cobra.MinimumNArgs(1),
 	Run:     setMetaRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -64,8 +64,8 @@ func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
 }
 
 func setMetaRun(cmd *cobra.Command, args []string) {
-	oref := args[0]
-	metaSetsStrs := args[1:]
+	oref := blockArg
+	metaSetsStrs := args[:]
 	if oref == "" {
 		WriteStderr("[error] oref is required\n")
 		return
