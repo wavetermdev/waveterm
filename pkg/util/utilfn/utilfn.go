@@ -920,3 +920,15 @@ func GetJsonTag(field reflect.StructField) string {
 	}
 	return jsonTag
 }
+
+func WriteFileIfDifferent(fileName string, contents []byte) (bool, error) {
+	oldContents, err := os.ReadFile(fileName)
+	if err == nil && bytes.Equal(oldContents, contents) {
+		return false, nil
+	}
+	err = os.WriteFile(fileName, contents, 0644)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}

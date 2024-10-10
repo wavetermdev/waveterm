@@ -1,7 +1,7 @@
 {
     "ai:model": "gpt-4o-mini",
-    "ai:maxtokens": 1000,
-    "ai:timeoutms": 10000,
+    "ai:maxtokens": 2048,
+    "ai:timeoutms": 60000,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,

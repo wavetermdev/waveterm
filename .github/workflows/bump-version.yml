@@ -23,7 +23,7 @@ on:
                 type: boolean
                 default: true
 env:
-    NODE_VERSION: "22.5.1"
+    NODE_VERSION: "20"
 jobs:
     bump-version:
         runs-on: ubuntu-latest

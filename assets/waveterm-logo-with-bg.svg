@@ -1,0 +1,29 @@
+<svg width="74" height="73" viewBox="0 0 74 73" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Icon Center Image Artwork">
+<g id="Guide - Hide">
+<rect x="1" width="44.7379" height="44.7379" fill="#EA33EC" fill-opacity="0.1"/>
+<rect x="3.18447" y="2.18447" width="40.3689" height="40.3689" stroke="#EA33EC" stroke-opacity="0.09" stroke-width="4.36893"/>
+</g>
+<g id="wave-logo_appicon 1">
+<path id="Vector" d="M73.8156 -0.808594H0.191406V72.8156H73.8156V-0.808594Z" fill="black"/>
+<g id="Group">
+<g id="Group_2">
+<path id="Vector_2" d="M27.2969 34.6218C24.7516 34.6218 23.3523 36.2741 22.5859 39.9726L11.125 38.3132C12.5242 26.2194 17.2352 20.3624 26.5305 20.3624C33.407 20.3624 40.157 25.5866 43.4688 25.5866C46.0141 25.5866 47.4133 23.8007 48.1797 20.2358L59.6406 21.8882C58.368 33.9819 53.5305 39.846 44.2352 39.846C37.225 39.846 30.7352 34.6218 27.2969 34.6218Z" fill="url(#paint0_linear_1373_32879)"/>
+</g>
+<g id="Group_3">
+<path id="Vector_3" d="M30.5312 46.4133C27.9859 46.4133 26.5867 48.0656 25.8203 51.7641L14.3594 50.1047C15.7586 38.0109 20.4695 32.1539 29.7648 32.1539C36.6414 32.1539 43.3914 37.3781 46.7031 37.3781C49.2484 37.3781 50.6477 35.5922 51.4141 32.0273L62.875 33.6797C61.6023 45.7734 56.7648 51.6375 47.4695 51.6375C40.4664 51.6375 33.9695 46.4133 30.5312 46.4133Z" fill="url(#paint1_linear_1373_32879)"/>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<linearGradient id="paint0_linear_1373_32879" x1="11.1241" y1="30.1035" x2="59.6372" y2="30.1035" gradientUnits="userSpaceOnUse">
+<stop offset="0.1418" stop-color="#1F4D22"/>
+<stop offset="0.8656" stop-color="#418D31"/>
+</linearGradient>
+<linearGradient id="paint1_linear_1373_32879" x1="14.3628" y1="41.8964" x2="62.8759" y2="41.8964" gradientUnits="userSpaceOnUse">
+<stop offset="0.2223" stop-color="#418D31"/>
+<stop offset="0.7733" stop-color="#58C142"/>
+</linearGradient>
+</defs>
+</svg>

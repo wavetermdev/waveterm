@@ -473,7 +473,7 @@ func createHostKeyCallback(opts *SSHOpts) (ssh.HostKeyCallback, HostKeyAlgorithm
 				offendingKeysFmt = append(offendingKeysFmt, formattedKey)
 			}
 			// todo
-			_ = fmt.Sprintf("**WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!**\n\n"+
+			errorMsg := fmt.Sprintf("**WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!**\n\n"+
 				"If this is not expected, it is possible that someone could be trying to "+
 				"eavesdrop on you via a man-in-the-middle attack. "+
 				"Alternatively, the host you are connecting to may have changed its key. "+
@@ -485,6 +485,7 @@ func createHostKeyCallback(opts *SSHOpts) (ssh.HostKeyCallback, HostKeyAlgorithm
 				"%s\n\n"+
 				"**Offending Keys**  \n"+
 				"%s", key.Type(), correctKeyFingerprint, strings.Join(bulletListKnownHosts, "  \n"), strings.Join(offendingKeysFmt, "  \n"))
+			log.Print(errorMsg)
 			//update := scbus.MakeUpdatePacket()
 			// create update into alert message
 

@@ -21,7 +21,7 @@ class QuickTipsViewModel implements ViewModel {
     }
 }
 
-function makeHelpViewModel() {
+function makeQuickTipsViewModel() {
     return new QuickTipsViewModel();
 }
 
@@ -33,4 +33,4 @@ function QuickTipsView({ model }: { model: QuickTipsViewModel }) {
     );
 }
 
-export { makeHelpViewModel, QuickTipsView, QuickTipsViewModel };
+export { makeQuickTipsViewModel, QuickTipsView, QuickTipsViewModel };

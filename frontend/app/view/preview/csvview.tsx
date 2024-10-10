@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useHeight } from "@/app/hook/useHeight";
 import { useTableNav } from "@table-nav/react";
 import {
     createColumnHelper,
@@ -14,6 +13,7 @@ import { clsx } from "clsx";
 import Papa from "papaparse";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import "./csvview.less";
 
 const MAX_DATA_SIZE = 10 * 1024 * 1024; // 10MB in bytes
@@ -54,7 +54,8 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
     const [tableLoaded, setTableLoaded] = useState(false);
 
     const { listeners } = useTableNav();
-    const parentHeight = useHeight(parentRef);
+    const domRect = useDimensionsWithExistingRef(parentRef, 30);
+    const parentHeight = domRect?.height ?? 0;
 
     const cacheKey = `${filename}`;
     csvCacheRef.current.set(cacheKey, content);

@@ -27,5 +27,6 @@ artifacts/
 
 
 *storybook.log
+storybook-static/
 
 test-results.xml

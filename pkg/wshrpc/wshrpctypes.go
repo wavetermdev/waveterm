@@ -68,6 +68,7 @@ const (
 	Command_ConnList         = "connlist"
 
 	Command_WebSelector = "webselector"
+	Command_Notify      = "notify"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -126,6 +127,7 @@ type WshRpcInterface interface {
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
+	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 }
 
 // for frontend
@@ -273,11 +275,14 @@ type OpenAIPromptMessageType struct {
 
 type OpenAIOptsType struct {
 	Model      string `json:"model"`
+	APIType    string `json:"apitype,omitempty"`
 	APIToken   string `json:"apitoken"`
+	OrgID      string `json:"orgid,omitempty"`
+	APIVersion string `json:"apiversion,omitempty"`
 	BaseURL    string `json:"baseurl,omitempty"`
 	MaxTokens  int    `json:"maxtokens,omitempty"`
 	MaxChoices int    `json:"maxchoices,omitempty"`
-	Timeout    int    `json:"timeout,omitempty"`
+	TimeoutMs  int    `json:"timeoutms,omitempty"`
 }
 
 type OpenAIPacketType struct {
@@ -373,4 +378,10 @@ type BlockInfoData struct {
 	TabId    string              `json:"tabid"`
 	WindowId string              `json:"windowid"`
 	Meta     waveobj.MetaMapType `json:"meta"`
+}
+
+type WaveNotificationOptions struct {
+	Title  string `json:"title,omitempty"`
+	Body   string `json:"body,omitempty"`
+	Silent bool   `json:"silent,omitempty"`
 }

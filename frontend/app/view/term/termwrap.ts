@@ -21,6 +21,7 @@ const dlog = debug("wave:termwrap");
 
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
+const MinDataProcessedForCache = 100 * 1024;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -250,7 +251,7 @@ export class TermWrap {
     }
 
     processAndCacheData() {
-        if (this.dataBytesProcessed < 10 * 1024) {
+        if (this.dataBytesProcessed < MinDataProcessedForCache) {
             return;
         }
         const serializedOutput = this.serializeAddon.serialize();
