@@ -1,19 +1,18 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ChildProcessWithoutNullStreams, execFile, spawn } from "child_process";
 import * as electron from "electron";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
-import * as child_process from "node:child_process";
-import * as path from "path";
+import { extname, join } from "path";
 import { PNG } from "pngjs";
-import * as readline from "readline";
+import { createInterface } from "readline";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
-import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
@@ -65,14 +64,14 @@ let wasInFg = true;
 let webviewFocusId: number = null; // set to the getWebContentsId of the webview that has focus (null if not focused)
 let webviewKeys: string[] = []; // the keys to trap when webview has focus
 
-let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
+let waveSrvProc: ChildProcessWithoutNullStreams | null = null;
 
 const waveHome = getWaveHomeDir();
 
 const oldConsoleLog = console.log;
 
 const loggerTransports: winston.transport[] = [
-    new winston.transports.File({ filename: path.join(getWaveHomeDir(), "waveapp.log"), level: "info" }),
+    new winston.transports.File({ filename: join(getWaveHomeDir(), "waveapp.log"), level: "info" }),
 ];
 if (isDev) {
     loggerTransports.push(new winston.transports.Console());
@@ -107,8 +106,6 @@ console.log(
 if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
-
-initGlobal({ windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
 function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
     const windowId = event.sender.id;
@@ -164,7 +161,7 @@ function runWaveSrv(): Promise<boolean> {
     envCopy[AuthKeyEnv] = AuthKey;
     const waveSrvCmd = getWaveSrvPath();
     console.log("trying to run local server", waveSrvCmd);
-    const proc = child_process.spawn(getWaveSrvPath(), {
+    const proc = spawn(getWaveSrvPath(), {
         cwd: getWaveSrvCwd(),
         env: envCopy,
     });
@@ -186,14 +183,14 @@ function runWaveSrv(): Promise<boolean> {
         console.log("error running wavesrv", e);
         pReject(e);
     });
-    const rlStdout = readline.createInterface({
+    const rlStdout = createInterface({
         input: proc.stdout,
         terminal: false,
     });
     rlStdout.on("line", (line) => {
         console.log(line);
     });
-    const rlStderr = readline.createInterface({
+    const rlStderr = createInterface({
         input: proc.stderr,
         terminal: false,
     });
@@ -360,16 +357,13 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         height: winBounds.height,
         minWidth: 400,
         minHeight: 300,
-        icon:
-            unamePlatform == "linux"
-                ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
-                : undefined,
+        icon: unamePlatform == "linux" ? join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png") : undefined,
         webPreferences: {
-            preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
+            preload: join(getElectronAppBasePath(), "preload", "index.cjs"),
             webviewTag: true,
         },
         show: false,
-        autoHideMenuBar: true,
+        autoHideMenuBar: !settings?.["window:showmenubar"],
     };
     const isTransparent = settings?.["window:transparent"] ?? false;
     const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
@@ -405,7 +399,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html?${usp.toString()}`);
     } else {
         console.log("running as file");
-        win.loadFile(path.join(getElectronAppBasePath(), "frontend", indexHtml), { search: usp.toString() });
+        win.loadFile(join(getElectronAppBasePath(), "frontend", indexHtml), { search: usp.toString() });
     }
     win.once("ready-to-show", () => {
         readyResolve();
@@ -789,7 +783,7 @@ if (unamePlatform !== "darwin") {
 
 electron.ipcMain.on("quicklook", (event, filePath: string) => {
     if (unamePlatform == "darwin") {
-        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+        execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
             if (error) {
                 console.error(`Error opening Quick Look: ${error}`);
                 return;
@@ -838,7 +832,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
     };
     function addExtensionIfNeeded(fileName: string, mimeType: string): string {
         const extension = mimeToExtension[mimeType];
-        if (!path.extname(fileName) && extension) {
+        if (!extname(fileName) && extension) {
             return `${fileName}.${extension}`;
         }
         return fileName;

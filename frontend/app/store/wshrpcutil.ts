@@ -5,9 +5,8 @@ import { wpsReconnectHandler } from "@/app/store/wps";
 import { WshClient } from "@/app/store/wshclient";
 import { makeWindowRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
-import { addWSReconnectHandler, ElectronOverrideOpts, WSControl } from "./ws";
+import { addWSReconnectHandler, ElectronOverrideOpts, globalWS, initGlobalWS, WSControl } from "./ws";
 
-let globalWS: WSControl;
 let DefaultRouter: WshRouter;
 let WindowRpcClient: WshClient;
 
@@ -91,11 +90,6 @@ function sendRpcCommand(
     return rtnGen;
 }
 
-function sendRawRpcMessage(msg: RpcMessage) {
-    const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
-    sendWSCommand(wsMsg);
-}
-
 async function consumeGenerator(gen: AsyncGenerator<any, any, any>) {
     let idx = 0;
     try {
@@ -119,7 +113,7 @@ function initElectronWshrpc(electronClient: WshClient, eoOpts: ElectronOverrideO
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
     };
-    globalWS = new WSControl(getWSServerEndpoint(), "electron", handleFn, eoOpts);
+    initGlobalWS(getWSServerEndpoint(), "electron", handleFn, eoOpts);
     globalWS.connectNow("connectWshrpc");
     DefaultRouter.registerRoute(electronClient.routeId, electronClient);
     addWSReconnectHandler(() => {
@@ -137,7 +131,7 @@ function initWshrpc(windowId: string): WSControl {
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
     };
-    globalWS = new WSControl(getWSServerEndpoint(), windowId, handleFn);
+    initGlobalWS(getWSServerEndpoint(), windowId, handleFn);
     globalWS.connectNow("connectWshrpc");
     WindowRpcClient = new WshClient(makeWindowRouteId(windowId));
     DefaultRouter.registerRoute(WindowRpcClient.routeId, WindowRpcClient);
@@ -146,10 +140,6 @@ function initWshrpc(windowId: string): WSControl {
     });
     addWSReconnectHandler(wpsReconnectHandler);
     return globalWS;
-}
-
-function sendWSCommand(cmd: WSCommandType) {
-    globalWS?.pushMessage(cmd);
 }
 
 class UpstreamWshRpcProxy implements AbstractWshClient {
@@ -163,10 +153,8 @@ export {
     DefaultRouter,
     initElectronWshrpc,
     initWshrpc,
-    sendRawRpcMessage,
     sendRpcCommand,
     sendRpcResponse,
-    sendWSCommand,
     shutdownWshrpc,
     WindowRpcClient,
 };
