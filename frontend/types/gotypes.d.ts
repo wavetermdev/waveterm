@@ -471,6 +471,7 @@ declare global {
         "window:disablehardwareacceleration"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
+        askbeforewshinstall?: boolean;
     };
 
     // waveobj.StickerClickOptsType

@@ -95,6 +95,8 @@ type SettingsType struct {
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
+
+	AskBeforeWshInstall bool `json:"askbeforewshinstall,omitempty"`
 }
 
 type ConfigError struct {
