@@ -13,7 +13,6 @@ import { Readable } from "stream";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
-import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
@@ -107,8 +106,6 @@ console.log(
 if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
-
-initGlobal({ windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
 function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
     const windowId = event.sender.id;
@@ -369,7 +366,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
             webviewTag: true,
         },
         show: false,
-        autoHideMenuBar: true,
+        autoHideMenuBar: !settings?.["window:showmenubar"],
     };
     const isTransparent = settings?.["window:transparent"] ?? false;
     const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
