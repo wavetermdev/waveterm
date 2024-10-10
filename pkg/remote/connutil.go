@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/kevinburke/ssh_config"
-	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -359,6 +358,5 @@ func NormalizeConfigPattern(pattern string) string {
 	} else {
 		port = ":" + port
 	}
-	unnormalized := fmt.Sprintf("%s%s%s", userName, pattern, port)
-	return knownhosts.Normalize(unnormalized)
+	return fmt.Sprintf("%s%s%s", userName, pattern, port)
 }

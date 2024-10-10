@@ -28,16 +28,16 @@ type MetaTSType struct {
 	Icon      string `json:"icon,omitempty"`
 	IconColor string `json:"icon:color,omitempty"`
 
-	Frame                    bool   `json:"frame,omitempty"`
 	FrameClear               bool   `json:"frame:*,omitempty"`
+	Frame                    bool   `json:"frame,omitempty"`
 	FrameBorderColor         string `json:"frame:bordercolor,omitempty"`
 	FrameBorderColor_Focused string `json:"frame:bordercolor:focused,omitempty"`
 	FrameTitle               string `json:"frame:title,omitempty"`
 	FrameIcon                string `json:"frame:icon,omitempty"`
 	FrameText                string `json:"frame:text,omitempty"`
 
-	Cmd               string            `json:"cmd,omitempty"`
 	CmdClear          bool              `json:"cmd:*,omitempty"`
+	Cmd               string            `json:"cmd,omitempty"`
 	CmdInteractive    bool              `json:"cmd:interactive,omitempty"`
 	CmdLogin          bool              `json:"cmd:login,omitempty"`
 	CmdRunOnStart     bool              `json:"cmd:runonstart,omitempty"`
@@ -47,13 +47,25 @@ type MetaTSType struct {
 	CmdCwd            string            `json:"cmd:cwd,omitempty"`
 	CmdNoWsh          bool              `json:"cmd:nowsh,omitempty"`
 
+	// AI options match settings
+	AiClear      bool    `json:"ai:*,omitempty"`
+	AiApiType    string  `json:"ai:apitype,omitempty"`
+	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
+	AiApiToken   string  `json:"ai:apitoken,omitempty"`
+	AiName       string  `json:"ai:name,omitempty"`
+	AiModel      string  `json:"ai:model,omitempty"`
+	AiOrgID      string  `json:"ai:orgid,omitempty"`
+	AIApiVersion string  `json:"ai:apiversion,omitempty"`
+	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
+	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
+
 	GraphClear     bool     `json:"graph:*,omitempty"`
 	GraphNumPoints int      `json:"graph:numpoints,omitempty"`
 	GraphMetrics   []string `json:"graph:metrics,omitempty"`
 
 	// for tabs
-	Bg          string  `json:"bg,omitempty"`
 	BgClear     bool    `json:"bg:*,omitempty"`
+	Bg          string  `json:"bg,omitempty"`
 	BgOpacity   float64 `json:"bg:opacity,omitempty"`
 	BgBlendMode string  `json:"bg:blendmode,omitempty"`
 

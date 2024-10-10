@@ -29,16 +29,16 @@ const (
 	MetaKey_Icon                             = "icon"
 	MetaKey_IconColor                        = "icon:color"
 
-	MetaKey_Frame                            = "frame"
 	MetaKey_FrameClear                       = "frame:*"
+	MetaKey_Frame                            = "frame"
 	MetaKey_FrameBorderColor                 = "frame:bordercolor"
 	MetaKey_FrameBorderColor_Focused         = "frame:bordercolor:focused"
 	MetaKey_FrameTitle                       = "frame:title"
 	MetaKey_FrameIcon                        = "frame:icon"
 	MetaKey_FrameText                        = "frame:text"
 
-	MetaKey_Cmd                              = "cmd"
 	MetaKey_CmdClear                         = "cmd:*"
+	MetaKey_Cmd                              = "cmd"
 	MetaKey_CmdInteractive                   = "cmd:interactive"
 	MetaKey_CmdLogin                         = "cmd:login"
 	MetaKey_CmdRunOnStart                    = "cmd:runonstart"
@@ -48,12 +48,23 @@ const (
 	MetaKey_CmdCwd                           = "cmd:cwd"
 	MetaKey_CmdNoWsh                         = "cmd:nowsh"
 
+	MetaKey_AiClear                          = "ai:*"
+	MetaKey_AiApiType                        = "ai:apitype"
+	MetaKey_AiBaseURL                        = "ai:baseurl"
+	MetaKey_AiApiToken                       = "ai:apitoken"
+	MetaKey_AiName                           = "ai:name"
+	MetaKey_AiModel                          = "ai:model"
+	MetaKey_AiOrgID                          = "ai:orgid"
+	MetaKey_AIApiVersion                     = "ai:apiversion"
+	MetaKey_AiMaxTokens                      = "ai:maxtokens"
+	MetaKey_AiTimeoutMs                      = "ai:timeoutms"
+
 	MetaKey_GraphClear                       = "graph:*"
 	MetaKey_GraphNumPoints                   = "graph:numpoints"
 	MetaKey_GraphMetrics                     = "graph:metrics"
 
-	MetaKey_Bg                               = "bg"
 	MetaKey_BgClear                          = "bg:*"
+	MetaKey_Bg                               = "bg"
 	MetaKey_BgOpacity                        = "bg:opacity"
 	MetaKey_BgBlendMode                      = "bg:blendmode"
 

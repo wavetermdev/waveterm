@@ -787,6 +787,17 @@ if (unamePlatform !== "darwin") {
     });
 }
 
+electron.ipcMain.on("quicklook", (event, filePath: string) => {
+    if (unamePlatform == "darwin") {
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error opening Quick Look: ${error}`);
+                return;
+            }
+        });
+    }
+});
+
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
@@ -986,8 +997,9 @@ process.on("uncaughtException", (error) => {
     if (caughtException) {
         return;
     }
-    logger.error("Uncaught Exception, shutting down: ", error);
     caughtException = true;
+    console.log("Uncaught Exception, shutting down: ", error);
+    console.log("Stack Trace:", error.stack);
     // Optionally, handle cleanup or exit the app
     electronApp.quit();
 });
@@ -1021,12 +1033,6 @@ async function relaunchBrowserWindows(): Promise<void> {
         win.show();
     }
 }
-
-process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
-    console.error("Stack Trace:", error.stack);
-    electron.app.quit();
-});
 
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.
