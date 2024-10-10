@@ -1,0 +1,12 @@
+version: 4.0.65
+steps:
+  - prompt: complete the onboarding of wave terminal
+    commands:
+      - command: hover-text
+        text: Continue
+        description: button to complete onboarding
+        action: click
+      - command: hover-text
+        text: Get Started
+        description: button to complete onboarding
+        action: click
