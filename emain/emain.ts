@@ -318,30 +318,32 @@ function computeNewWinBounds(waveWindow: WaveWindow): Electron.Rectangle {
     const targetWidth = waveWindow.winsize?.width || 2000;
     const targetHeight = waveWindow.winsize?.height || 1080;
     const primaryDisplay = electron.screen.getPrimaryDisplay();
-    const workSize = primaryDisplay.workAreaSize;
+    const workArea = primaryDisplay.workArea;
     const targetPadding = 100;
-    let rtn = { x: 100, y: 100, width: targetWidth, height: targetHeight };
-    if (workSize.width < targetWidth + 2 * targetPadding) {
-        const spareWidth = workSize.width - targetWidth;
-        if (spareWidth < 20) {
-            rtn.x = 10;
-            rtn.width = workSize.width - 20;
-        } else if (spareWidth > 200) {
-            rtn.x = 100;
-        } else {
-            rtn.x = Math.floor(spareWidth / 2);
-        }
+    const minPadding = 10;
+    let rtn = {
+        x: workArea.x + targetPadding,
+        y: workArea.y + targetPadding,
+        width: targetWidth,
+        height: targetHeight,
+    };
+    const spareWidth = workArea.width - targetWidth;
+    if (spareWidth < 2 * minPadding) {
+        rtn.x = workArea.x + minPadding;
+        rtn.width = workArea.width - 2 * minPadding;
+    } else if (spareWidth > 2 * targetPadding) {
+        rtn.x = workArea.x + targetPadding;
+    } else {
+        rtn.x = workArea.y + Math.floor(spareWidth / 2);
     }
-    if (workSize.height < targetHeight + 2 * targetPadding) {
-        const spareHeight = workSize.height - targetHeight;
-        if (spareHeight < 20) {
-            rtn.y = 10;
-            rtn.height = workSize.height - 20;
-        } else if (spareHeight > 200) {
-            rtn.y = 100;
-        } else {
-            rtn.y = Math.floor(spareHeight / 2);
-        }
+    const spareHeight = workArea.height - targetHeight;
+    if (spareHeight < 2 * minPadding) {
+        rtn.y = workArea.y + minPadding;
+        rtn.height = workArea.height - 2 * minPadding;
+    } else if (spareHeight > 2 * targetPadding) {
+        rtn.y = workArea.y + targetPadding;
+    } else {
+        rtn.y = workArea.y + Math.floor(spareHeight / 2);
     }
     return rtn;
 }
