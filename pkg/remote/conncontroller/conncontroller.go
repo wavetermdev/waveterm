@@ -298,11 +298,8 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			"Would you like to install them?", clientDisplayName)
 		title = "Install Wave Shell Extensions"
 	} else {
-		queryText = fmt.Sprintf("Wave requires the Wave Shell Extensions  \n"+
-			"installed on `%s`  \n"+
-			"to be updated from %s to %s.  \n\n"+
-			"Would you like to update?", clientDisplayName, clientVersion, expectedVersion)
-		title = "Update Wave Shell Extensions"
+		// don't ask for upgrading the version
+		opts.NoUserPrompt = true
 	}
 	if !opts.NoUserPrompt {
 		request := &userinput.UserInputRequest{
