@@ -657,10 +657,15 @@ const ChangeConnectionBlockModal = React.memo(
             });
         }
         for (const wslConn of filteredWslList) {
+            const connStatus = connStatusMap.get(wslConn);
+            const connColorNum = computeConnColorNum(connStatus);
             localSuggestion.items.push({
                 status: "connected",
-                icon: "laptop",
-                iconColor: "var(--grey-text-color)",
+                icon: "arrow-right-arrow-left",
+                iconColor:
+                    connStatus?.status == "connected"
+                        ? `var(--conn-icon-color-${connColorNum})`
+                        : "var(--grey-text-color)",
                 value: "wsl:" + wslConn,
                 label: "wsl:" + wslConn,
             });
