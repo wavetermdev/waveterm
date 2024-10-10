@@ -253,11 +253,7 @@ async function handleWSEvent(evtMsg: WSEventType) {
     }
 }
 
-async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindow) {
-    if (win == null || win.isDestroyed() || win.fullScreen) {
-        return;
-    }
-    const bounds = win.getBounds();
+async function persistWindowBounds(windowId: string, bounds: electron.Rectangle) {
     try {
         await services.WindowService.SetWindowPosAndSize(
             windowId,
@@ -267,6 +263,14 @@ async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindo
     } catch (e) {
         console.log("error resizing window", e);
     }
+}
+
+async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindow) {
+    if (win == null || win.isDestroyed() || win.fullScreen) {
+        return;
+    }
+    const bounds = win.getBounds();
+    await persistWindowBounds(windowId, bounds);
 }
 
 function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
@@ -310,9 +314,42 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-// note, this does not *show* the window.
-// to show, await win.readyPromise and then win.show()
-function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
+function computeNewWinBounds(waveWindow: WaveWindow): Electron.Rectangle {
+    const targetWidth = waveWindow.winsize?.width || 2000;
+    const targetHeight = waveWindow.winsize?.height || 1080;
+    const primaryDisplay = electron.screen.getPrimaryDisplay();
+    const workSize = primaryDisplay.workAreaSize;
+    const targetPadding = 100;
+    let rtn = { x: 100, y: 100, width: targetWidth, height: targetHeight };
+    if (workSize.width < targetWidth + 2 * targetPadding) {
+        const spareWidth = workSize.width - targetWidth;
+        if (spareWidth < 20) {
+            rtn.x = 10;
+            rtn.width = workSize.width - 20;
+        } else if (spareWidth > 200) {
+            rtn.x = 100;
+        } else {
+            rtn.x = Math.floor(spareWidth / 2);
+        }
+    }
+    if (workSize.height < targetHeight + 2 * targetPadding) {
+        const spareHeight = workSize.height - targetHeight;
+        if (spareHeight < 20) {
+            rtn.y = 10;
+            rtn.height = workSize.height - 20;
+        } else if (spareHeight > 200) {
+            rtn.y = 100;
+        } else {
+            rtn.y = Math.floor(spareHeight / 2);
+        }
+    }
+    return rtn;
+}
+
+function computeWinBounds(waveWindow: WaveWindow): Electron.Rectangle {
+    if (waveWindow.isnew) {
+        return computeNewWinBounds(waveWindow);
+    }
     let winWidth = waveWindow?.winsize?.width;
     let winHeight = waveWindow?.winsize?.height;
     let winPosX = waveWindow.pos.x;
@@ -339,7 +376,15 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         width: winWidth,
         height: winHeight,
     };
+    return winBounds;
+}
+
+// note, this does not *show* the window.
+// to show, await win.readyPromise and then win.show()
+function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
+    let winBounds = computeWinBounds(waveWindow);
     winBounds = ensureBoundsAreVisible(winBounds);
+    persistWindowBounds(waveWindow.oid, winBounds);
     const settings = fullConfig?.settings;
     const winOpts: Electron.BrowserWindowConstructorOptions = {
         titleBarStyle:

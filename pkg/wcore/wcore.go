@@ -96,16 +96,17 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Windo
 	workspaceId := uuid.NewString()
 	if winSize == nil {
 		winSize = &waveobj.WinSize{
-			Width:  1200,
-			Height: 850,
+			Width:  0,
+			Height: 0,
 		}
 	}
 	window := &waveobj.Window{
 		OID:         windowId,
 		WorkspaceId: workspaceId,
+		IsNew:       true,
 		Pos: waveobj.Point{
-			X: 100,
-			Y: 100,
+			X: 0,
+			Y: 0,
 		},
 		WinSize: *winSize,
 	}
@@ -178,7 +179,7 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 	if len(client.WindowIds) > 0 {
 		return nil, false, nil
 	}
-	window, err := CreateWindow(ctx, &waveobj.WinSize{Height: 0, Width: 0})
+	window, err := CreateWindow(ctx, nil)
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating window: %w", err)
 	}
