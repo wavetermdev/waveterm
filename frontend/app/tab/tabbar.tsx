@@ -3,7 +3,7 @@
 
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, getApi, isDev, PLATFORM } from "@/store/global";
+import { atoms, createTab, getApi, isDev, PLATFORM } from "@/store/global";
 import * as services from "@/store/services";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -420,12 +420,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     };
 
     const handleAddTab = () => {
-        const newTabName = `T${tabIds.length + 1}`;
-        services.ObjectService.AddTabToWorkspace(newTabName, true).then((tabId) => {
-            setTabIds([...tabIds, tabId]);
-            setNewTabId(tabId);
-        });
-        services.ObjectService.GetObject;
+        createTab();
         tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 

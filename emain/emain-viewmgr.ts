@@ -439,7 +439,7 @@ export function createBrowserWindow(
 
 export async function setActiveTab(waveWindow: WaveBrowserWindow, tabId: string) {
     const windowId = waveWindow.waveWindowId;
-    ObjectService.SetActiveTab(waveWindow.waveWindowId, tabId);
+    await ObjectService.SetActiveTab(waveWindow.waveWindowId, tabId);
     const fullConfig = await FileService.GetFullConfig();
     const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, windowId, tabId);
     setTabViewIntoWindow(waveWindow, tabView, tabInitialized);

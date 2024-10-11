@@ -1,7 +1,16 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock, getApi, getBlockComponentModel, globalStore, refocusNode, WOS } from "@/app/store/global";
+import {
+    atoms,
+    createBlock,
+    createTab,
+    getApi,
+    getBlockComponentModel,
+    globalStore,
+    refocusNode,
+    WOS,
+} from "@/app/store/global";
 import * as services from "@/app/store/services";
 import {
     deleteLayoutModelForTab,
@@ -231,9 +240,7 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Cmd:t", () => {
-        const workspace = globalStore.get(atoms.workspace);
-        const newTabName = `T${workspace.tabids.length + 1}`;
-        services.ObjectService.AddTabToWorkspace(newTabName, true);
+        createTab();
         return true;
     });
     globalKeyMap.set("Cmd:w", () => {

@@ -88,7 +88,7 @@ export const FileService = new FileServiceType();
 // objectservice.ObjectService (object)
 class ObjectServiceType {
     // @returns tabId (and object updates)
-    AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<string> {
+    AddTabToWorkspace(windowId: string, tabName: string, activateTab: boolean): Promise<string> {
         return WOS.callBackendService("object", "AddTabToWorkspace", Array.from(arguments))
     }
 

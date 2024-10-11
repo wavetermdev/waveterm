@@ -21,6 +21,7 @@ import {
     getFocusedWaveWindow,
     getLastFocusedWaveWindow,
     getWaveTabViewByWebContentsId,
+    getWaveWindowById,
     getWaveWindowByWebContentsId,
     setActiveTab,
     setMaxTabCacheSize,
@@ -252,7 +253,28 @@ electron.ipcMain.on("download", (event, payload) => {
 electron.ipcMain.on("set-active-tab", async (event, tabId) => {
     const ww = getWaveWindowByWebContentsId(event.sender.id);
     console.log("set-active-tab", tabId, ww?.waveWindowId);
-    setActiveTab(ww, tabId);
+    await setActiveTab(ww, tabId);
+});
+
+electron.ipcMain.on("create-tab", async (event, opts) => {
+    const senderWc = event.sender;
+    const tabView = getWaveTabViewByWebContentsId(senderWc.id);
+    if (tabView == null) {
+        return;
+    }
+    const waveWindowId = tabView.waveWindowId;
+    const waveWindow = (await services.ObjectService.GetObject("window:" + waveWindowId)) as WaveWindow;
+    if (waveWindow == null) {
+        return;
+    }
+    const newTabId = await services.ObjectService.AddTabToWorkspace(waveWindowId, null, true);
+    const ww = getWaveWindowById(waveWindowId);
+    if (ww == null) {
+        return;
+    }
+    await setActiveTab(ww, newTabId);
+    event.returnValue = true;
+    return null;
 });
 
 electron.ipcMain.on("get-cursor-point", (event) => {

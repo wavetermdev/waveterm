@@ -513,12 +513,17 @@ function removeFlashError(id: string) {
     });
 }
 
+async function createTab(): Promise<void> {
+    await getApi().createTab();
+}
+
 export {
     atoms,
     counterInc,
     countersClear,
     countersPrint,
     createBlock,
+    createTab,
     fetchWaveFile,
     getApi,
     getBlockComponentModel,

@@ -84,6 +84,7 @@ declare global {
         registerGlobalWebviewKeys: (keys: string[]) => void;
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
         setActiveTab: (tabId: string) => void;
+        createTab: () => void;
         setWindowInitStatus: (status: "ready" | "wave-ready") => void;
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
         sendLog: (log: string) => void;

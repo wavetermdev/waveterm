@@ -74,20 +74,19 @@ func (svc *ObjectService) GetObjects(orefStrArr []string) ([]waveobj.WaveObj, er
 
 func (svc *ObjectService) AddTabToWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames:   []string{"uiContext", "tabName", "activateTab"},
+		ArgNames:   []string{"windowId", "tabName", "activateTab"},
 		ReturnDesc: "tabId",
 	}
 }
 
-func (svc *ObjectService) AddTabToWorkspace(uiContext waveobj.UIContext, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
+func (svc *ObjectService) AddTabToWorkspace(windowId string, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := wcore.CreateTab(ctx, uiContext.WindowId, tabName, activateTab)
+	tabId, err := wcore.CreateTab(ctx, windowId, tabName, activateTab)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}
-
 	err = wlayout.ApplyPortableLayout(ctx, tabId, wlayout.GetNewTabLayout())
 	if err != nil {
 		return "", nil, fmt.Errorf("error applying new tab layout: %w", err)
