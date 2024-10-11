@@ -62,6 +62,7 @@ const (
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
 
-	ConfigKey_AskBeforeWshInstall            = "askbeforewshinstall"
+	ConfigKey_ConnClear                      = "conn:*"
+	ConfigKey_ConnAskBeforeWshInstall        = "conn:askbeforewshinstall"
 )
 

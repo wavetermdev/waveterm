@@ -5,10 +5,10 @@
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
+	"conn:askbeforewshinstall": true,
     "editor:minimapenabled": true,
     "web:defaulturl": "https://github.com/wavetermdev/waveterm",
     "web:defaultsearch": "https://www.google.com/search?q={query}",
     "window:tilegapsize": 3,
-    "telemetry:enabled": true,
-	"askbeforewshinstall": true
+    "telemetry:enabled": true
 }
