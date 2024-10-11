@@ -203,7 +203,7 @@ class TermViewModel {
                     cols: this.termRef.current?.terminal?.cols,
                 };
                 const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-                    tabid: globalStore.get(atoms.activeTabId),
+                    tabid: globalStore.get(atoms.staticTabId),
                     blockid: this.blockId,
                     forcerestart: true,
                     rtopts: { termsize: termsize },
@@ -291,7 +291,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
-                const tabId = globalStore.get(atoms.activeTabId);
+                const tabId = globalStore.get(atoms.staticTabId);
                 const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, { tabid: tabId, blockid: blockId });
                 prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
                 return false;

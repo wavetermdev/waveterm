@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-    getLayoutModelForActiveTab,
     getLayoutModelForTabById,
     LayoutTreeActionType,
     LayoutTreeInsertNodeAction,
     newLayoutNode,
 } from "@/layout/index";
+import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { getPrefixedSettings, isBlank } from "@/util/util";
@@ -101,7 +101,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const tabAtom: Atom<Tab> = atom((get) => {
         return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
     });
-    const activeTabIdAtom: Atom<string> = atom((get) => {
+    const staticTabIdAtom: Atom<string> = atom((get) => {
         return initOpts.tabId;
     });
     const controlShiftDelayAtom = atom(false);
@@ -151,7 +151,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         fullConfigAtom,
         settingsAtom,
         tabAtom,
-        activeTabId: activeTabIdAtom,
+        staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
         controlShiftDelayAtom,
         updaterStatusAtom,
@@ -292,8 +292,8 @@ async function createBlock(blockDef: BlockDef, magnified = false): Promise<strin
         magnified,
         focused: true,
     };
-    const activeTabId = globalStore.get(atoms.uiContext).activetabid;
-    const layoutModel = getLayoutModelForTabById(activeTabId);
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
     layoutModel.treeReducer(insertNodeAction);
     return blockId;
 }
@@ -330,7 +330,7 @@ async function fetchWaveFile(
 }
 
 function setNodeFocus(nodeId: string) {
-    const layoutModel = getLayoutModelForActiveTab();
+    const layoutModel = getLayoutModelForStaticTab();
     layoutModel.focusNode(nodeId);
 }
 
@@ -405,7 +405,7 @@ function refocusNode(blockId: string) {
     if (blockId == null) {
         return;
     }
-    const layoutModel = getLayoutModelForActiveTab();
+    const layoutModel = getLayoutModelForStaticTab();
     const layoutNodeId = layoutModel.getNodeByBlockId(blockId);
     if (layoutNodeId?.id == null) {
         return;

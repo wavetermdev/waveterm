@@ -3,6 +3,7 @@
 
 // WaveObjectStore
 
+import { waveEventSubscribe } from "@/app/store/wps";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
@@ -74,6 +75,16 @@ function debugLogBackendCall(methodName: string, durationStr: string, args: any[
         return;
     }
     console.log("[service]", methodName, durationStr);
+}
+
+function wpsSubscribeToObject(oref: string): () => void {
+    return waveEventSubscribe({
+        eventType: "waveobj:update",
+        scope: oref,
+        handler: (event) => {
+            updateWaveObject(event.data);
+        },
+    });
 }
 
 function callBackendService(service: string, method: string, args: any[], noUIContext?: boolean): Promise<any> {
@@ -308,4 +319,5 @@ export {
     updateWaveObject,
     updateWaveObjects,
     useWaveObjectValue,
+    wpsSubscribeToObject,
 };

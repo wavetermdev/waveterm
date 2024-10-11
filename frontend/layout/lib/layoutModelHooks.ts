@@ -36,8 +36,8 @@ export function getLayoutModelForTabById(tabId: string) {
     return getLayoutModelForTab(tabAtom);
 }
 
-export function getLayoutModelForActiveTab() {
-    const tabId = globalStore.get(atoms.activeTabId);
+export function getLayoutModelForStaticTab() {
+    const tabId = globalStore.get(atoms.staticTabId);
     return getLayoutModelForTabById(tabId);
 }
 

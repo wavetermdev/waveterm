@@ -16,6 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -92,7 +93,11 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext waveobj.UICont
 			}
 		}
 	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
 }
 
 func (svc *WindowService) MoveBlockToNewWindow_Meta() tsgenmeta.MethodMeta {

@@ -62,7 +62,7 @@ function handleHeaderContextMenu(
         {
             label: "Move to New Window",
             click: () => {
-                const currentTabId = globalStore.get(atoms.activeTabId);
+                const currentTabId = globalStore.get(atoms.staticTabId);
                 try {
                     services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
                 } catch (e) {

@@ -68,10 +68,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const scrollableRef = useRef<boolean>(false);
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
-
-    const windowData = useAtomValue(atoms.waveWindow);
-    const { activetabid } = windowData;
-
+    const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     const settings = useAtomValue(atoms.settingsAtom);
@@ -452,7 +449,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     }, []);
 
     const isBeforeActive = (tabId: string) => {
-        return tabIds.indexOf(tabId) === tabIds.indexOf(activetabid) - 1;
+        return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
     };
 
     function onEllipsisClick() {
@@ -487,7 +484,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                                 id={tabId}
                                 isFirst={index === 0}
                                 onSelect={() => handleSelectTab(tabId)}
-                                active={activetabid === tabId}
+                                active={activeTabId === tabId}
                                 onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}

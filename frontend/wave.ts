@@ -12,7 +12,7 @@ import { FileService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
-import { getLayoutModelForActiveTab } from "@/layout/index";
+import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
     atoms,
     countersClear,
@@ -42,7 +42,7 @@ let savedInitOpts: WaveInitOpts = null;
 (window as any).isFullScreen = false;
 (window as any).countersPrint = countersPrint;
 (window as any).countersClear = countersClear;
-(window as any).getLayoutModelForActiveTab = getLayoutModelForActiveTab;
+(window as any).getLayoutModelForStaticTab = getLayoutModelForStaticTab;
 (window as any).pushFlashError = pushFlashError;
 (window as any).modalsModel = modalsModel;
 
@@ -142,6 +142,8 @@ async function initWave(initOpts: WaveInitOpts) {
         WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
     ]);
     loadAllWorkspaceTabs(ws);
+    WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
+
     document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
 
     registerGlobalKeys();

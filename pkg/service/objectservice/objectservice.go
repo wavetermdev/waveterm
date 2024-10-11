@@ -13,6 +13,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -91,7 +92,11 @@ func (svc *ObjectService) AddTabToWorkspace(windowId string, tabName string, act
 	if err != nil {
 		return "", nil, fmt.Errorf("error applying new tab layout: %w", err)
 	}
-	return tabId, waveobj.ContextGetUpdatesRtn(ctx), nil
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return tabId, updates, nil
 }
 
 func (svc *ObjectService) UpdateWorkspaceTabIds_Meta() tsgenmeta.MethodMeta {
@@ -136,9 +141,14 @@ func (svc *ObjectService) SetActiveTab(windowId string, tabId string) (waveobj.U
 		return nil, fmt.Errorf("error getting tab blocks: %w", err)
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	updates = append(updates, waveobj.MakeUpdate(tab))
-	updates = append(updates, waveobj.MakeUpdates(blocks)...)
-	return updates, nil
+	go func() {
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	var extraUpdates waveobj.UpdatesRtnType
+	extraUpdates = append(extraUpdates, updates...)
+	extraUpdates = append(extraUpdates, waveobj.MakeUpdate(tab))
+	extraUpdates = append(extraUpdates, waveobj.MakeUpdates(blocks)...)
+	return extraUpdates, nil
 }
 
 func (svc *ObjectService) UpdateTabName_Meta() tsgenmeta.MethodMeta {

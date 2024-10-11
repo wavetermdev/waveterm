@@ -198,7 +198,7 @@ function processBackgroundUrls(cssText: string): string {
 
 function AppBackground() {
     const bgRef = React.useRef<HTMLDivElement>(null);
-    const tabId = jotai.useAtomValue(atoms.activeTabId);
+    const tabId = jotai.useAtomValue(atoms.staticTabId);
     const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
     const bgAttr = tabData?.meta?.bg;
     const style: React.CSSProperties = {};
@@ -244,7 +244,7 @@ function AppBackground() {
     );
     React.useLayoutEffect(getAvgColor, [getAvgColor]);
     useOnResize(bgRef, getAvgColor);
-    return <div ref={bgRef} className="app-background" style={style} />;
+    return <div key={tabId} ref={bgRef} className="app-background" style={style} />;
 }
 
 const AppKeyHandlers = () => {
