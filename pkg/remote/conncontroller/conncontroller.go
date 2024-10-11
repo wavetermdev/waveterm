@@ -315,11 +315,11 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		}
 		if response.CheckboxStat {
 			meta := waveobj.MetaMapType{
-				wconfig.ConfigKey_AskBeforeWshInstall: false,
+				wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
 			}
 			err := wconfig.SetBaseConfigValue(meta)
 			if err != nil {
-				return fmt.Errorf("error setting askbeforewshinstall value: %w", err)
+				return fmt.Errorf("error setting conn:askbeforewshinstall value: %w", err)
 			}
 		}
 	}
@@ -438,7 +438,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context) error {
 		return err
 	}
 	config := wconfig.ReadFullConfig()
-	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !config.Settings.AskBeforeWshInstall})
+	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !config.Settings.ConnAskBeforeWshInstall})
 	if installErr != nil {
 		log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
