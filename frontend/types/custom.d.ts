@@ -161,7 +161,14 @@ declare global {
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
-    type HeaderElem = IconButtonDecl | HeaderText | HeaderInput | HeaderDiv | HeaderTextButton | ConnectionButton;
+    type HeaderElem =
+        | IconButtonDecl
+        | HeaderText
+        | HeaderInput
+        | HeaderDiv
+        | HeaderTextButton
+        | ConnectionButton
+        | MenuButton;
 
     type IconButtonDecl = {
         elemtype: "iconbutton";
@@ -186,7 +193,7 @@ declare global {
         text: string;
         ref?: React.MutableRefObject<HTMLDivElement>;
         className?: string;
-        onClick?: () => void;
+        onClick?: (e: React.MouseEvent<any>) => void;
     };
 
     type HeaderInput = {
@@ -217,6 +224,19 @@ declare global {
         iconColor: string;
         onClick?: (e: React.MouseEvent<any>) => void;
         connected: boolean;
+    };
+
+    type MenuItem = {
+        label: string;
+        subItems?: MenuItem[];
+        onClick?: (e: React.MouseEvent<any>) => void;
+    };
+
+    type MenuButton = {
+        elemtype: "menubutton";
+        items: MenuItem[];
+        className?: string;
+        text: string;
     };
 
     interface ViewModel {

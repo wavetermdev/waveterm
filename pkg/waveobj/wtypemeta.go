@@ -49,6 +49,7 @@ type MetaTSType struct {
 
 	// AI options match settings
 	AiClear      bool    `json:"ai:*,omitempty"`
+	AiPresetKey  string  `json:"ai:preset,omitempty"`
 	AiApiType    string  `json:"ai:apitype,omitempty"`
 	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
 	AiApiToken   string  `json:"ai:apitoken,omitempty"`

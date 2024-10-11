@@ -49,6 +49,7 @@ const (
 	MetaKey_CmdNoWsh                         = "cmd:nowsh"
 
 	MetaKey_AiClear                          = "ai:*"
+	MetaKey_AiPresetKey                      = "ai:preset"
 	MetaKey_AiApiType                        = "ai:apitype"
 	MetaKey_AiBaseURL                        = "ai:baseurl"
 	MetaKey_AiApiToken                       = "ai:apitoken"

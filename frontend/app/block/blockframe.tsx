@@ -38,6 +38,7 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
+import { Menu } from "../element/menu";
 import { BlockFrameProps } from "./blocktypes";
 
 const NumActiveConnColors = 8;
@@ -242,6 +243,31 @@ const BlockFrame_Header = ({
     );
 };
 
+const MenuButton = React.memo(({ items, className, text }: { items: MenuItem[]; className: string; text: string }) => {
+    const anchorRef = React.useRef<HTMLButtonElement>();
+    const [isMenuVisible, setIsMenuVisible] = React.useState(false);
+
+    const handleAnchorClick = () => {
+        setIsMenuVisible((prev) => !prev);
+    };
+    return (
+        <div className={clsx("block-frame-menubutton", className)}>
+            <Button
+                ref={anchorRef}
+                className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
+                style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
+                onClick={handleAnchorClick}
+            >
+                {text}
+                <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+            </Button>
+            {isMenuVisible && (
+                <Menu setVisibility={(visible) => setIsMenuVisible(visible)} anchorRef={anchorRef} items={items} />
+            )}
+        </div>
+    );
+});
+
 const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; preview: boolean }) => {
     if (elem.elemtype == "iconbutton") {
         return <IconButton decl={elem} className={clsx("block-frame-header-iconbutton", elem.className)} />;
@@ -250,7 +276,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
     } else if (elem.elemtype == "text") {
         return (
             <div className={clsx("block-frame-text", elem.className)}>
-                <span ref={preview ? null : elem.ref} onClick={() => elem?.onClick()}>
+                <span ref={preview ? null : elem.ref} onClick={(e) => elem?.onClick(e)}>
                     &lrm;{elem.text}
                 </span>
             </div>
@@ -273,6 +299,8 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
                 ))}
             </div>
         );
+    } else if (elem.elemtype == "menubutton") {
+        return <MenuButton className={elem.className} items={elem.items} text={elem.text} />;
     }
     return null;
 });

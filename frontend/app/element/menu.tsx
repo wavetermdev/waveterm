@@ -1,18 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import clsx from "clsx";
 import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-
-import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import "./menu.less";
-
-type MenuItem = {
-    label: string;
-    subItems?: MenuItem[];
-    onClick?: (e) => void;
-};
 
 const SubMenu = memo(
     ({
@@ -345,7 +338,7 @@ const Menu = memo(
 
         const handleOnClick = (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => {
             e.stopPropagation();
-            item.onClick && item.onClick(e);
+            item.onClick?.(e);
         };
 
         // const handleKeyDown = useCallback(

@@ -9,7 +9,7 @@ import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, fetchWaveFile, globalStore, WOS } from "@/store/global";
 import { BlockService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { isBlank, makeIconClass } from "@/util/util";
+import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
@@ -41,6 +41,9 @@ export class WaveAiModel implements ViewModel {
     viewType: string;
     blockId: string;
     blockAtom: Atom<Block>;
+    presetKey: Atom<string>;
+    presetMap: Atom<{ [k: string]: MetaType }>;
+    aiOpts: Atom<OpenAIOptsType>;
     viewIcon?: Atom<string | IconButtonDecl>;
     viewName?: Atom<string>;
     viewText?: Atom<string | HeaderElem[]>;
@@ -61,11 +64,18 @@ export class WaveAiModel implements ViewModel {
         this.viewType = "waveai";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-        this.viewIcon = atom((get) => {
-            return "sparkles"; // should not be hardcoded
-        });
+        this.viewIcon = atom("sparkles");
         this.viewName = atom("Wave Ai");
         this.messagesAtom = atom([]);
+        this.presetKey = atom((get) => {
+            const metaPresetKey = get(this.blockAtom).meta["ai:preset"];
+            const globalPresetKey = get(atoms.settingsAtom)["ai:defaultpreset"];
+            return metaPresetKey ?? globalPresetKey;
+        });
+        this.presetMap = atom((get) => {
+            const presets = get(atoms.fullConfigAtom).presets;
+            return Object.fromEntries(Object.entries(presets).filter(([k]) => k.startsWith("ai@")));
+        });
 
         this.addMessageAtom = atom(null, (get, set, message: ChatMessageType) => {
             const messages = get(this.messagesAtom);
@@ -104,19 +114,34 @@ export class WaveAiModel implements ViewModel {
             }
             set(this.updateLastMessageAtom, "", false);
         });
+
+        const presetAtom = atom((get) => {
+            const presetKey = get(this.presetKey);
+            const presets = get(this.presetMap);
+            return presets[presetKey];
+        });
+
+        this.aiOpts = atom((get) => {
+            const preset = get(presetAtom);
+            const opts: OpenAIOptsType = {
+                model: preset["ai:model"] ?? null,
+                apitype: preset["ai:apitype"] ?? null,
+                orgid: preset["ai:orgid"] ?? null,
+                apitoken: preset["ai:apitoken"] ?? null,
+                apiversion: preset["ai:apiversion"] ?? null,
+                maxtokens: preset["ai:maxtokens"] ?? null,
+                timeoutms: preset["ai:timeoutms"] ?? 60000,
+                baseurl: preset["ai:baseurl"] ?? null,
+            };
+            return opts;
+        });
+
         this.viewText = atom((get) => {
             const viewTextChildren: HeaderElem[] = [];
-            const aiOpts = this.getAiOpts();
-            const aiName = this.getAiName();
+            const aiOpts = get(this.aiOpts);
+            const presets = get(this.presetMap);
+            const presetName = get(presetAtom)["display:name"];
             const isCloud = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
-            let modelText = "gpt-4o-mini";
-            if (!isCloud && !isBlank(aiOpts.model)) {
-                if (!isBlank(aiName)) {
-                    modelText = aiName;
-                } else {
-                    modelText = aiOpts.model;
-                }
-            }
             if (isCloud) {
                 viewTextChildren.push({
                     elemtype: "iconbutton",
@@ -143,9 +168,25 @@ export class WaveAiModel implements ViewModel {
                     });
                 }
             }
+
             viewTextChildren.push({
-                elemtype: "text",
-                text: modelText,
+                elemtype: "menubutton",
+                text: presetName,
+                items: Object.entries(presets)
+                    .sort((a, b) => (a[1]["display:order"] > b[1]["display:order"] ? 1 : -1))
+                    .map(
+                        (preset) =>
+                            ({
+                                label: preset[1]["display:name"],
+                                onClick: () =>
+                                    fireAndForget(async () => {
+                                        await RpcApi.SetMetaCommand(WindowRpcClient, {
+                                            oref: WOS.makeORef("block", this.blockId),
+                                            meta: { "ai:preset": preset[0] },
+                                        });
+                                    }),
+                            }) as MenuItem
+                    ),
             });
             return viewTextChildren;
         });
@@ -173,22 +214,6 @@ export class WaveAiModel implements ViewModel {
         return false;
     }
 
-    getAiOpts(): OpenAIOptsType {
-        const blockMeta = globalStore.get(this.blockAtom)?.meta ?? {};
-        const settings = globalStore.get(atoms.settingsAtom) ?? {};
-        const opts: OpenAIOptsType = {
-            model: blockMeta["ai:model"] ?? settings["ai:model"] ?? null,
-            apitype: blockMeta["ai:apitype"] ?? settings["ai:apitype"] ?? null,
-            orgid: blockMeta["ai:orgid"] ?? settings["ai:orgid"] ?? null,
-            apitoken: blockMeta["ai:apitoken"] ?? settings["ai:apitoken"] ?? null,
-            apiversion: blockMeta["ai:apiversion"] ?? settings["ai:apiversion"] ?? null,
-            maxtokens: blockMeta["ai:maxtokens"] ?? settings["ai:maxtokens"] ?? null,
-            timeoutms: blockMeta["ai:timeoutms"] ?? settings["ai:timeoutms"] ?? 60000,
-            baseurl: blockMeta["ai:baseurl"] ?? settings["ai:baseurl"] ?? null,
-        };
-        return opts;
-    }
-
     getAiName(): string {
         const blockMeta = globalStore.get(this.blockAtom)?.meta ?? {};
         const settings = globalStore.get(atoms.settingsAtom) ?? {};
@@ -199,7 +224,6 @@ export class WaveAiModel implements ViewModel {
     useWaveAi() {
         const messages = useAtomValue(this.messagesAtom);
         const addMessage = useSetAtom(this.addMessageAtom);
-        const simulateResponse = useSetAtom(this.simulateAssistantResponseAtom);
         const clientId = useAtomValue(atoms.clientId);
         const blockId = this.blockId;
         const setLocked = useSetAtom(this.locked);
@@ -213,7 +237,7 @@ export class WaveAiModel implements ViewModel {
             };
             addMessage(newMessage);
             // send message to backend and get response
-            const opts = this.getAiOpts();
+            const opts = globalStore.get(this.aiOpts);
             const newPrompt: OpenAIPromptMessageType = {
                 role: "user",
                 content: text,
