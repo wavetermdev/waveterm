@@ -121,6 +121,7 @@ async function initWave(initOpts: WaveInitOpts) {
         platform,
         environment: "renderer",
     });
+    (window as any).globalAtoms = atoms;
 
     // Init WPS event handlers
     const globalWS = initWshrpc(initOpts.tabId);

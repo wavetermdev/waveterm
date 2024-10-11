@@ -319,7 +319,7 @@ function createBaseWaveBrowserWindow(
                 ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
                 : undefined,
         show: false,
-        autoHideMenuBar: !settings?.["window:showmenubar"],,
+        autoHideMenuBar: !settings?.["window:showmenubar"],
     };
     const isTransparent = settings?.["window:transparent"] ?? false;
     const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
