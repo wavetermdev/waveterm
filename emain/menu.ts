@@ -124,11 +124,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Reload Tab",
             accelerator: "Shift+CommandOrControl+R",
             click: (_, window) => {
-                if (window == null) {
-                    return null;
-                }
-                let ww = window as WaveBrowserWindow;
-                ww?.activeTabView?.webContents.reloadIgnoringCache();
+                getWindowWebContents(window)?.reloadIgnoringCache();
             },
         },
         {
@@ -146,12 +142,8 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         {
             label: "Toggle DevTools",
             accelerator: devToolsAccel,
-            click: () => {
-                const win = getFocusedWaveWindow();
-                if (win == null) {
-                    return;
-                }
-                let wc = getWindowWebContents(win);
+            click: (_, window) => {
+                let wc = getWindowWebContents(window);
                 wc?.toggleDevTools();
             },
         },
@@ -173,6 +165,9 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 if (wc == null) {
                     return;
                 }
+                if (wc.getZoomFactor() >= 5) {
+                    return;
+                }
                 wc.setZoomFactor(wc.getZoomFactor() + 0.2);
             },
         },
@@ -182,6 +177,9 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             click: (_, window) => {
                 const wc = getWindowWebContents(window);
                 if (wc == null) {
+                    return;
+                }
+                if (wc.getZoomFactor() >= 5) {
                     return;
                 }
                 wc.setZoomFactor(wc.getZoomFactor() + 0.2);
@@ -197,8 +195,27 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 if (wc == null) {
                     return;
                 }
+                if (wc.getZoomFactor() <= 0.2) {
+                    return;
+                }
                 wc.setZoomFactor(wc.getZoomFactor() - 0.2);
             },
+        },
+        {
+            label: "Zoom Out (hidden)",
+            accelerator: "CommandOrControl+Shift+-",
+            click: (_, window) => {
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                if (wc.getZoomFactor() <= 0.2) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
+            },
+            visible: false,
+            acceleratorWorksWhenHidden: true,
         },
         {
             type: "separator",
