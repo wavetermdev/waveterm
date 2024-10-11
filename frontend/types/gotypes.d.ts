@@ -472,7 +472,8 @@ declare global {
         "window:maxtabcachesize"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
-        askbeforewshinstall?: boolean;
+        "conn:*"?: boolean;
+        "conn:askbeforewshinstall"?: boolean;
     };
 
     // waveobj.StickerClickOptsType
