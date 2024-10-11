@@ -17,6 +17,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
+import { remarkAlert } from "remark-github-blockquote-alert";
 import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
 import "./markdown.less";
@@ -178,10 +179,20 @@ type MarkdownProps = {
     className?: string;
     onClickExecute?: (cmd: string) => void;
     resolveOpts?: MarkdownResolveOpts;
+    scrollable?: boolean;
 };
 
-const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, onClickExecute }: MarkdownProps) => {
-    const textAtomValue = useAtomValueSafe(textAtom);
+const Markdown = ({
+    text,
+    textAtom,
+    showTocAtom,
+    style,
+    className,
+    resolveOpts,
+    scrollable = true,
+    onClickExecute,
+}: MarkdownProps) => {
+    const textAtomValue = useAtomValueSafe<string>(textAtom);
     const tocRef = useRef<TocItem[]>([]);
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
     const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -240,13 +251,46 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
 
     text = textAtomValue ?? text;
 
-    return (
-        <div className={clsx("markdown", className)} style={style}>
+    const ScrollableMarkdown = () => {
+        return (
             <OverlayScrollbarsComponent
                 ref={contentsOsRef}
                 className="content"
                 options={{ scrollbars: { autoHide: "leave" } }}
             >
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkAlert, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
+                    rehypePlugins={[
+                        rehypeRaw,
+                        rehypeHighlight,
+                        () =>
+                            rehypeSanitize({
+                                ...defaultSchema,
+                                attributes: {
+                                    ...defaultSchema.attributes,
+                                    span: [
+                                        ...(defaultSchema.attributes?.span || []),
+                                        // Allow all class names starting with `hljs-`.
+                                        ["className", /^hljs-./],
+                                        // Alternatively, to allow only certain class names:
+                                        // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
+                                    ],
+                                },
+                                tagNames: [...(defaultSchema.tagNames || []), "span"],
+                            }),
+                        () => rehypeSlug({ prefix: idPrefix }),
+                    ]}
+                    components={markdownComponents}
+                >
+                    {text}
+                </ReactMarkdown>
+            </OverlayScrollbarsComponent>
+        );
+    };
+
+    const NonScrollableMarkdown = () => {
+        return (
+            <div className="content non-scrollable">
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
                     rehypePlugins={[
@@ -273,7 +317,13 @@ const Markdown = ({ text, textAtom, showTocAtom, style, className, resolveOpts, 
                 >
                     {text}
                 </ReactMarkdown>
-            </OverlayScrollbarsComponent>
+            </div>
+        );
+    };
+
+    return (
+        <div className={clsx("markdown", className)} style={style}>
+            {scrollable ? <ScrollableMarkdown /> : <NonScrollableMarkdown />}
             {toc && (
                 <OverlayScrollbarsComponent className="toc" options={{ scrollbars: { autoHide: "leave" } }}>
                     <div className="toc-inner">

@@ -26,7 +26,7 @@ Contributions to this project must be accompanied by a Contributor License Agree
 
 The project uses American English.
 
-Coding style and formatting is automated for each pull request. We use [Prettier](https://prettier.io/).
+We have a set of recommended Visual Studio Code extensions to enforce our style and quality standards. Please ensure you use these, especially [Prettier](https://prettier.io) and [EditorConfig](https://editorconfig.org), when contributing to our code.
 
 ## How to contribute
 
@@ -37,9 +37,13 @@ Coding style and formatting is automated for each pull request. We use [Prettier
 
 ### Development Environment
 
-To build and run Wave locally, see instructions below:
+To build and run Wave locally, see instructions at [Building Wave Terminal](./BUILD.md).
 
-- [Building Wave Terminal](./BUILD.md)
+### UI Component Library
+
+We are working to document all our UI components in [Storybook](https://storybook.js.org/docs) for easy reference and testing. If you would like to help us with this, we would be very grateful!
+
+Our Storybook site is hosted [storybook.waveterm.dev](https://storybook.waveterm.dev).
 
 ### Create a Pull Request
 

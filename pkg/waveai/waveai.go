@@ -10,6 +10,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	openaiapi "github.com/sashabaranov/go-openai"
@@ -23,6 +25,7 @@ import (
 const OpenAIPacketStr = "openai"
 const OpenAICloudReqStr = "openai-cloudreq"
 const PacketEOFStr = "EOF"
+const DefaultAzureAPIVersion = "2023-05-15"
 
 type OpenAICmdInfoPacketOutputType struct {
 	Model        string `json:"model,omitempty"`
@@ -52,16 +55,6 @@ type OpenAICloudReqPacketType struct {
 	MaxChoices int                              `json:"maxchoices,omitempty"`
 }
 
-type OpenAIOptsType struct {
-	Model      string `json:"model"`
-	APIToken   string `json:"apitoken"`
-	BaseURL    string `json:"baseurl,omitempty"`
-	MaxTokens  int    `json:"maxtokens,omitempty"`
-	MaxChoices int    `json:"maxchoices,omitempty"`
-	Timeout    int    `json:"timeout,omitempty"`
-	BlockId    string `json:"blockid"`
-}
-
 func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
 	return &OpenAICloudReqPacketType{
 		Type: OpenAICloudReqStr,
@@ -69,25 +62,30 @@ func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
 }
 
 func GetWSEndpoint() string {
-	return PCloudWSEndpoint
 	if !wavebase.IsDevMode() {
-		return PCloudWSEndpoint
+		return WCloudWSEndpoint
 	} else {
-		endpoint := os.Getenv(PCloudWSEndpointVarName)
+		endpoint := os.Getenv(WCloudWSEndpointVarName)
 		if endpoint == "" {
-			panic("Invalid PCloud ws dev endpoint, PCLOUD_WS_ENDPOINT not set or invalid")
+			panic("Invalid WCloud websocket dev endpoint, WCLOUD_WS_ENDPOINT not set or invalid")
 		}
 		return endpoint
 	}
 }
 
-const DefaultMaxTokens = 1000
+const DefaultMaxTokens = 2048
 const DefaultModel = "gpt-4o-mini"
-const DefaultStreamChanSize = 10
-const PCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
-const PCloudWSEndpointVarName = "PCLOUD_WS_ENDPOINT"
+const WCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
+const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
 
 const CloudWebsocketConnectTimeout = 1 * time.Minute
+
+func IsCloudAIRequest(opts *wshrpc.OpenAIOptsType) bool {
+	if opts == nil {
+		return true
+	}
+	return opts.BaseURL == "" && opts.APIToken == ""
+}
 
 func convertUsage(resp openaiapi.ChatCompletionResponse) *wshrpc.OpenAIUsageType {
 	if resp.Usage.TotalTokens == 0 {
@@ -111,6 +109,15 @@ func ConvertPrompt(prompt []wshrpc.OpenAIPromptMessageType) []openaiapi.ChatComp
 
 func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 	return wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: err}
+}
+
+func RunAICommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
+	if IsCloudAIRequest(request.Opts) {
+		log.Print("sending ai chat message to default waveterm cloud endpoint\n")
+		return RunCloudCompletionStream(ctx, request)
+	}
+	log.Printf("sending ai chat message to user-configured endpoint %s\n", request.Opts.BaseURL)
+	return RunLocalCompletionStream(ctx, request)
 }
 
 func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
@@ -142,9 +149,16 @@ func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 				rtn <- makeAIError(fmt.Errorf("unable to close openai channel: %v", err))
 			}
 		}()
+		var sendablePromptMsgs []wshrpc.OpenAIPromptMessageType
+		for _, promptMsg := range request.Prompt {
+			if promptMsg.Role == "error" {
+				continue
+			}
+			sendablePromptMsgs = append(sendablePromptMsgs, promptMsg)
+		}
 		reqPk := MakeOpenAICloudReqPacket()
 		reqPk.ClientId = request.ClientId
-		reqPk.Prompt = request.Prompt
+		reqPk.Prompt = sendablePromptMsgs
 		reqPk.MaxTokens = request.Opts.MaxTokens
 		reqPk.MaxChoices = request.Opts.MaxChoices
 		configMessageBuf, err := json.Marshal(reqPk)
@@ -187,6 +201,36 @@ func RunCloudCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 	return rtn
 }
 
+// copied from go-openai/config.go
+func defaultAzureMapperFn(model string) string {
+	return regexp.MustCompile(`[.:]`).ReplaceAllString(model, "")
+}
+
+func setApiType(opts *wshrpc.OpenAIOptsType, clientConfig *openaiapi.ClientConfig) error {
+	ourApiType := strings.ToLower(opts.APIType)
+	if ourApiType == "" || ourApiType == strings.ToLower(string(openaiapi.APITypeOpenAI)) {
+		clientConfig.APIType = openaiapi.APITypeOpenAI
+		return nil
+	} else if ourApiType == strings.ToLower(string(openaiapi.APITypeAzure)) {
+		clientConfig.APIType = openaiapi.APITypeAzure
+		clientConfig.APIVersion = DefaultAzureAPIVersion
+		clientConfig.AzureModelMapperFunc = defaultAzureMapperFn
+		return nil
+	} else if ourApiType == strings.ToLower(string(openaiapi.APITypeAzureAD)) {
+		clientConfig.APIType = openaiapi.APITypeAzureAD
+		clientConfig.APIVersion = DefaultAzureAPIVersion
+		clientConfig.AzureModelMapperFunc = defaultAzureMapperFn
+		return nil
+	} else if ourApiType == strings.ToLower(string(openaiapi.APITypeCloudflareAzure)) {
+		clientConfig.APIType = openaiapi.APITypeCloudflareAzure
+		clientConfig.APIVersion = DefaultAzureAPIVersion
+		clientConfig.AzureModelMapperFunc = defaultAzureMapperFn
+		return nil
+	} else {
+		return fmt.Errorf("invalid api type %q", opts.APIType)
+	}
+}
+
 func RunLocalCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
 	go func() {
@@ -206,6 +250,17 @@ func RunLocalCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 		clientConfig := openaiapi.DefaultConfig(request.Opts.APIToken)
 		if request.Opts.BaseURL != "" {
 			clientConfig.BaseURL = request.Opts.BaseURL
+		}
+		err := setApiType(request.Opts, &clientConfig)
+		if err != nil {
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: err}
+			return
+		}
+		if request.Opts.OrgID != "" {
+			clientConfig.OrgID = request.Opts.OrgID
+		}
+		if request.Opts.APIVersion != "" {
+			clientConfig.APIVersion = request.Opts.APIVersion
 		}
 		client := openaiapi.NewClientWithConfig(clientConfig)
 		req := openaiapi.ChatCompletionRequest{
@@ -250,34 +305,4 @@ func RunLocalCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 		}
 	}()
 	return rtn
-}
-
-func marshalResponse(resp openaiapi.ChatCompletionResponse) []*wshrpc.OpenAIPacketType {
-	var rtn []*wshrpc.OpenAIPacketType
-	headerPk := MakeOpenAIPacket()
-	headerPk.Model = resp.Model
-	headerPk.Created = resp.Created
-	headerPk.Usage = convertUsage(resp)
-	rtn = append(rtn, headerPk)
-	for _, choice := range resp.Choices {
-		choicePk := MakeOpenAIPacket()
-		choicePk.Index = choice.Index
-		choicePk.Text = choice.Message.Content
-		choicePk.FinishReason = string(choice.FinishReason)
-		rtn = append(rtn, choicePk)
-	}
-	return rtn
-}
-
-func CreateErrorPacket(errStr string) *wshrpc.OpenAIPacketType {
-	errPk := MakeOpenAIPacket()
-	errPk.FinishReason = "error"
-	errPk.Error = errStr
-	return errPk
-}
-
-func CreateTextPacket(text string) *wshrpc.OpenAIPacketType {
-	pk := MakeOpenAIPacket()
-	pk.Text = text
-	return pk
 }

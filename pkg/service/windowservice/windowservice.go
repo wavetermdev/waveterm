@@ -38,6 +38,7 @@ func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId strin
 	if size != nil {
 		win.WinSize = *size
 	}
+	win.IsNew = false
 	err = wstore.DBUpdate(ctx, win)
 	if err != nil {
 		return nil, err
@@ -76,6 +77,7 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext waveobj.UICont
 	}
 	if window.ActiveTabId == tabId && tabIndex != -1 {
 		if len(ws.TabIds) == 1 {
+			svc.CloseWindow(ctx, uiContext.WindowId)
 			eventbus.SendEventToElectron(eventbus.WSEventType{
 				EventType: eventbus.WSEvent_ElectronCloseWindow,
 				Data:      uiContext.WindowId,

@@ -5,7 +5,7 @@
     // override default button appearance
     border: 1px solid transparent;
     outline: 1px solid transparent;
-    border: none;
+    border: 1px solid transparent;
 
     cursor: pointer;
     display: flex;
@@ -150,8 +150,7 @@
         pointer-events: none;
     }
 
-    &:focus,
-    &.focus {
+    &:focus-visible {
         outline: 1px solid var(--success-color);
         outline-offset: 2px;
     }

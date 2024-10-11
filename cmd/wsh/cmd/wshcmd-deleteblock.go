@@ -11,7 +11,6 @@ import (
 var deleteBlockCmd = &cobra.Command{
 	Use:     "deleteblock",
 	Short:   "delete a block",
-	Args:    cobra.ExactArgs(1),
 	Run:     deleteBlockRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -21,11 +20,7 @@ func init() {
 }
 
 func deleteBlockRun(cmd *cobra.Command, args []string) {
-	oref := args[0]
-	if oref == "" {
-		WriteStderr("[error] oref is required\n")
-		return
-	}
+	oref := blockArg
 	err := validateEasyORef(oref)
 	if err != nil {
 		WriteStderr("[error]%v\n", err)

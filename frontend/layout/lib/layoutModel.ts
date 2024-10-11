@@ -389,7 +389,7 @@ export class LayoutModel {
         ) {
             this.treeState = treeState;
 
-            if (this.treeState.pendingBackendActions?.length) {
+            if (this.treeState?.pendingBackendActions?.length) {
                 const actions = this.treeState.pendingBackendActions;
                 this.treeState.pendingBackendActions = undefined;
                 for (const action of actions) {
@@ -631,7 +631,7 @@ export class LayoutModel {
             // Remove duplicates and stale entries from focus stack.
             const newFocusedNodeIdStack: string[] = [];
             for (const id of this.focusedNodeIdStack) {
-                if (leafOrder.find((leafEntry) => leafEntry.nodeid === id) && !newFocusedNodeIdStack.includes(id))
+                if (leafOrder.find((leafEntry) => leafEntry?.nodeid === id) && !newFocusedNodeIdStack.includes(id))
                     newFocusedNodeIdStack.push(id);
             }
             this.focusedNodeIdStack = newFocusedNodeIdStack;
@@ -640,7 +640,7 @@ export class LayoutModel {
             if (!this.treeState.focusedNodeId) {
                 if (this.focusedNodeIdStack.length > 0) {
                     this.treeState.focusedNodeId = this.focusedNodeIdStack.shift();
-                } else {
+                } else if (leafOrder.length > 0) {
                     // If no nodes are in the stack, use the top left node in the layout.
                     this.treeState.focusedNodeId = leafOrder[0].nodeid;
                 }

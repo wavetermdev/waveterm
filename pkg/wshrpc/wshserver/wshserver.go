@@ -33,6 +33,7 @@ import (
 )
 
 const SimpleId_This = "this"
+const SimpleId_Tab = "tab"
 
 var SimpleId_BlockNum_Regex = regexp.MustCompile(`^\d+$`)
 
@@ -73,10 +74,7 @@ func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrEr
 }
 
 func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
-	if request.Opts.BaseURL == "" && request.Opts.APIToken == "" {
-		return waveai.RunCloudCompletionStream(ctx, request)
-	}
-	return waveai.RunLocalCompletionStream(ctx, request)
+	return waveai.RunAICommand(ctx, request)
 }
 
 func MakePlotData(ctx context.Context, blockId string) error {
@@ -159,6 +157,16 @@ func resolveSimpleId(ctx context.Context, data wshrpc.CommandResolveIdsData, sim
 			return nil, fmt.Errorf("no blockid in request")
 		}
 		return &waveobj.ORef{OType: waveobj.OType_Block, OID: data.BlockId}, nil
+	}
+	if simpleId == SimpleId_Tab {
+		if data.BlockId == "" {
+			return nil, fmt.Errorf("no blockid in request")
+		}
+		tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+		if err != nil {
+			return nil, fmt.Errorf("error finding tab: %v", err)
+		}
+		return &waveobj.ORef{OType: waveobj.OType_Tab, OID: tabId}, nil
 	}
 	blockNum, err := strconv.Atoi(simpleId)
 	if err == nil {

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { handleWaveEvent } from "@/app/store/wps";
+import * as util from "@/util/util";
 import debug from "debug";
-import * as util from "../../util/util";
 
 const dlog = debug("wave:router");
 

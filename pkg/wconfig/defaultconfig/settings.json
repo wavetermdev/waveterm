@@ -1,10 +1,11 @@
 {
     "ai:model": "gpt-4o-mini",
-    "ai:maxtokens": 1000,
-    "ai:timeoutms": 10000,
+    "ai:maxtokens": 2048,
+    "ai:timeoutms": 60000,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
+	"conn:askbeforewshinstall": true,
     "editor:minimapenabled": true,
     "web:defaulturl": "https://github.com/wavetermdev/waveterm",
     "web:defaultsearch": "https://www.google.com/search?q={query}",

@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useHeight } from "@/app/hook/useHeight";
-import { useWidth } from "@/app/hook/useWidth";
 import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
@@ -11,6 +9,7 @@ import * as htl from "htl";
 import * as jotai from "jotai";
 import * as React from "react";
 
+import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -317,10 +316,11 @@ type SingleLinePlotProps = {
     defaultColor: string;
 };
 
-const SingleLinePlot = React.memo(({ plotData, yval, yvalMeta, blockId, defaultColor }: SingleLinePlotProps) => {
+function SingleLinePlot({ plotData, yval, yvalMeta, blockId, defaultColor }: SingleLinePlotProps) {
     const containerRef = React.useRef<HTMLInputElement>();
-    const parentHeight = useHeight(containerRef);
-    const parentWidth = useWidth(containerRef);
+    const domRect = useDimensionsWithExistingRef(containerRef, 300);
+    const plotHeight = domRect?.height ?? 0;
+    const plotWidth = domRect?.width ?? 0;
     const marks: Plot.Markish[] = [];
     let color = yvalMeta?.color;
     if (!color) {
@@ -352,14 +352,19 @@ const SingleLinePlot = React.memo(({ plotData, yval, yvalMeta, blockId, defaultC
             y: yval,
         })
     );
-    let maxY = yvalMeta?.maxy ?? 100;
-    let minY = yvalMeta?.miny ?? 0;
+    marks.push(
+        Plot.text([yvalMeta.name], {
+            frameAnchor: "top",
+        })
+    );
+    let maxY = resolveDomainBound(yvalMeta?.maxy, plotData[plotData.length - 1]) ?? 100;
+    let minY = resolveDomainBound(yvalMeta?.miny, plotData[plotData.length - 1]) ?? 0;
     const labelY = yvalMeta?.label ?? "?";
     const plot = Plot.plot({
         x: { grid: true, label: "time", tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}` },
         y: { label: labelY, domain: [minY, maxY] },
-        width: parentWidth,
-        height: parentHeight,
+        width: plotWidth,
+        height: plotHeight,
         marks: marks,
     });
 
@@ -369,97 +374,33 @@ const SingleLinePlot = React.memo(({ plotData, yval, yvalMeta, blockId, defaultC
         return () => {
             plot.remove();
         };
-    }, [plot, parentHeight, parentWidth]);
+    }, [plot, plotWidth, plotHeight]);
 
-    return <div className="plot-view" ref={containerRef} />;
-});
+    return <div ref={containerRef} />;
+}
 
 const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
-    const containerRef = React.useRef<HTMLInputElement>();
     const plotData = jotai.useAtomValue(model.dataAtom);
-    const parentHeight = useHeight(containerRef);
-    const parentWidth = useWidth(containerRef);
     const yvals = jotai.useAtomValue(model.metrics);
     const plotMeta = jotai.useAtomValue(model.plotMetaAtom);
 
-    React.useEffect(() => {
-        if (yvals.length == 0) {
-            // don't bother creating plots if none are selected
-            return;
-        }
-        const singleItem = yvals.length == 1;
-
-        const marks: Plot.Markish[] = [];
-        yvals.forEach((yval, idx) => {
-            // use rotating colors for
-            // color not configured
-            // plotting multiple items
-            let color = plotMeta.get(yval)?.color;
-            if (!color || !singleItem) {
-                color = plotColors[idx];
-            }
-            marks.push(
-                () => htl.svg`<defs>
-      <linearGradient id="gradient-${model.blockId}-${yval}" gradientTransform="rotate(90)">
-        <stop offset="0%" stop-color="${color}" stop-opacity="0.7" />
-        <stop offset="100%" stop-color="${color}" stop-opacity="0" />
-      </linearGradient>
-	      </defs>`
-            );
-
-            marks.push(
-                Plot.lineY(plotData, {
-                    stroke: color,
-                    strokeWidth: singleItem ? 2 : 1,
-                    x: "ts",
-                    y: yval,
-                })
-            );
-
-            // only add the gradient for single items
-            if (singleItem) {
-                marks.push(
-                    Plot.areaY(plotData, {
-                        fill: `url(#gradient-${model.blockId}-${yvals[0]})`,
-                        x: "ts",
-                        y: yval,
-                    })
+    return (
+        <div className="plot-view">
+            {yvals.map((yval, idx) => {
+                const defaultColor = plotColors[idx % plotColors.length];
+                return (
+                    <SingleLinePlot
+                        key={`plot-${model.blockId}-${yval}`}
+                        plotData={plotData}
+                        yval={yval}
+                        yvalMeta={plotMeta.get(yval)}
+                        blockId={model.blockId}
+                        defaultColor={defaultColor}
+                    />
                 );
-            }
-        });
-        // use the largest configured yval.maxYs. if none is found, use 100
-        const maxYs = yvals.map((yval) => resolveDomainBound(plotMeta.get(yval)?.maxy, plotData[plotData.length - 1]));
-        let maxY = Math.max(...maxYs.filter(Number.isFinite));
-        if (!Number.isFinite(maxY)) {
-            maxY = 100;
-        }
-        // use the smalles configured yval.minYs. if none is found, use 0
-        const minYs = yvals.map((yval) => resolveDomainBound(plotMeta.get(yval)?.miny, plotData[plotData.length - 1]));
-        let minY = Math.min(...minYs.filter(Number.isFinite));
-        if (!Number.isFinite(maxY)) {
-            minY = 0;
-        }
-        const labelY = plotMeta.get(yvals[0])?.label ?? "?";
-        const plot = Plot.plot({
-            x: { grid: true, label: "time", tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}` },
-            y: { label: labelY, domain: [minY, maxY] },
-            width: parentWidth,
-            height: parentHeight,
-            marks: marks,
-        });
-
-        if (plot !== undefined) {
-            containerRef.current.append(plot);
-        }
-
-        return () => {
-            if (plot !== undefined) {
-                plot.remove();
-            }
-        };
-    }, [plotData, parentHeight, parentWidth, yvals, plotMeta, model.blockId]);
-
-    return <div className="plot-view" ref={containerRef} />;
+            })}
+        </div>
+    );
 });
 
 export { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel };

@@ -20,6 +20,7 @@ updates:
               dependency-type: "production"
               exclude-patterns:
                   - "*electron*"
+                  - "jotai"
           electron:
               patterns:
                   - "*electron*"

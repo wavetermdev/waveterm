@@ -1,11 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getConnStatusAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -106,7 +107,6 @@ class TermViewModel {
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
     viewIcon: jotai.Atom<string>;
-    viewText: jotai.Atom<HeaderElem[]>;
     viewName: jotai.Atom<string>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
@@ -131,15 +131,14 @@ class TermViewModel {
             return "Terminal";
         });
         this.manageConnection = jotai.atom(true);
-        this.viewText = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const titleText: HeaderText = { elemtype: "text", text: blockData?.meta?.title ?? "" };
-            return [titleText] as HeaderElem[];
-        });
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
-            const theme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
+            let themeName: string = globalStore.get(getSettingsKeyAtom("term:theme"));
+            if (blockData?.meta?.["term:theme"]) {
+                themeName = blockData.meta["term:theme"];
+            }
+            const theme = computeTheme(fullConfig, themeName);
             if (theme != null && theme.background != null) {
                 return { bg: theme.background };
             }
@@ -265,6 +264,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             if (waveEvent.type != "keydown") {
                 return true;
             }
+            // deal with terminal specific keybindings
             if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -274,37 +274,20 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 });
                 return false;
             }
-            if (
-                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowLeft") ||
-                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowRight") ||
-                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowUp") ||
-                keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:ArrowDown")
-            ) {
-                return false;
-            }
-            for (let i = 1; i <= 9; i++) {
-                if (
-                    keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Digit${i}}`) ||
-                    keyutil.checkKeyPressed(waveEvent, `Ctrl:Shift:c{Numpad${i}}`)
-                ) {
-                    return false;
-                }
-            }
             if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
                 const p = navigator.clipboard.readText();
                 p.then((text) => {
                     termRef.current?.terminal.paste(text);
-                    // termRef.current?.handleTermData(text);
                 });
                 event.preventDefault();
                 event.stopPropagation();
-                return true;
+                return false;
             } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
                 const sel = termRef.current?.terminal.getSelection();
                 navigator.clipboard.writeText(sel);
                 event.preventDefault();
                 event.stopPropagation();
-                return true;
+                return false;
             }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
@@ -313,12 +296,31 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
                 return false;
             }
+            const globalKeys = getAllGlobalKeyBindings();
+            for (const key of globalKeys) {
+                if (keyutil.checkKeyPressed(waveEvent, key)) {
+                    return false;
+                }
+            }
             return true;
         }
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termTheme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
         const themeCopy = { ...termTheme };
         themeCopy.background = "#00000000";
+        let termScrollback = 1000;
+        if (termSettings?.["term:scrollback"]) {
+            termScrollback = Math.floor(termSettings["term:scrollback"]);
+        }
+        if (blockData?.meta?.["term:scrollback"]) {
+            termScrollback = Math.floor(blockData.meta["term:scrollback"]);
+        }
+        if (termScrollback < 0) {
+            termScrollback = 0;
+        }
+        if (termScrollback > 10000) {
+            termScrollback = 10000;
+        }
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
@@ -330,6 +332,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 fontWeight: "normal",
                 fontWeightBold: "bold",
                 allowTransparency: true,
+                scrollback: termScrollback,
             },
             {
                 keydownHandler: handleTerminalKeydown,

@@ -40,18 +40,25 @@ func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
 }
 
 type SettingsType struct {
-	AiClear     bool    `json:"ai:*,omitempty"`
-	AiBaseURL   string  `json:"ai:baseurl,omitempty"`
-	AiApiToken  string  `json:"ai:apitoken,omitempty"`
-	AiName      string  `json:"ai:name,omitempty"`
-	AiModel     string  `json:"ai:model,omitempty"`
-	AiMaxTokens float64 `json:"ai:maxtokens,omitempty"`
-	AiTimeoutMs float64 `json:"ai:timeoutms,omitempty"`
+	AiClear      bool    `json:"ai:*,omitempty"`
+	AiApiType    string  `json:"ai:apitype,omitempty"`
+	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
+	AiApiToken   string  `json:"ai:apitoken,omitempty"`
+	AiName       string  `json:"ai:name,omitempty"`
+	AiModel      string  `json:"ai:model,omitempty"`
+	AiOrgID      string  `json:"ai:orgid,omitempty"`
+	AIApiVersion string  `json:"ai:apiversion,omitempty"`
+	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
+	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
 
-	TermClear        bool    `json:"term:*,omitempty"`
-	TermFontSize     float64 `json:"term:fontsize,omitempty"`
-	TermFontFamily   string  `json:"term:fontfamily,omitempty"`
-	TermDisableWebGl bool    `json:"term:disablewebgl,omitempty"`
+	TermClear          bool     `json:"term:*,omitempty"`
+	TermFontSize       float64  `json:"term:fontsize,omitempty"`
+	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
+	TermTheme          string   `json:"term:theme,omitempty"`
+	TermDisableWebGl   bool     `json:"term:disablewebgl,omitempty"`
+	TermLocalShellPath string   `json:"term:localshellpath,omitempty"`
+	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"`
+	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
 
 	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
@@ -70,6 +77,8 @@ type SettingsType struct {
 	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
 	AutoUpdateChannel       string  `json:"autoupdate:channel,omitempty"`
 
+	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
+
 	WidgetClear    bool `json:"widget:*,omitempty"`
 	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
 
@@ -80,11 +89,15 @@ type SettingsType struct {
 	WindowBgColor                     string   `json:"window:bgcolor,omitempty"`
 	WindowReducedMotion               bool     `json:"window:reducedmotion,omitempty"`
 	WindowTileGapSize                 *int64   `json:"window:tilegapsize,omitempty"`
+	WindowShowMenuBar                 bool     `json:"window:showmenubar,omitempty"`
 	WindowNativeTitleBar              bool     `json:"window:nativetitlebar,omitempty"`
 	WindowDisableHardwareAcceleration bool     `json:"window:disablehardwareacceleration,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
+
+	ConnClear               bool `json:"conn:*,omitempty"`
+	ConnAskBeforeWshInstall bool `json:"conn:askbeforewshinstall,omitempty"`
 }
 
 type ConfigError struct {
@@ -390,5 +403,5 @@ type TermThemeType struct {
 	Foreground          string  `json:"foreground"`
 	SelectionBackground string  `json:"selectionBackground"`
 	Background          string  `json:"background"`
-	CursorAccent        string  `json:"cursorAccent"`
+	Cursor              string  `json:"cursor"`
 }

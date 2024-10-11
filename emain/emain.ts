@@ -9,23 +9,24 @@ import * as path from "path";
 import { PNG } from "pngjs";
 import * as readline from "readline";
 import { sprintf } from "sprintf-js";
+import { Readable } from "stream";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
-import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
-import { initElectronWshrpc } from "../frontend/app/store/wshrpcutil";
+import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
 import { fetch } from "../frontend/util/fetchutil";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, AuthKeyEnv, configureAuthKeyRequestInjection } from "./authkey";
+import { initDocsite } from "./docsite";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
-    getGoAppBasePath,
+    getElectronAppUnpackedBasePath,
     getWaveHomeDir,
     getWaveSrvCwd,
     getWaveSrvPath,
@@ -39,6 +40,8 @@ import { configureAutoUpdater, updater } from "./updater";
 const electronApp = electron.app;
 let WaveVersion = "unknown"; // set by WAVESRV-ESTART
 let WaveBuildTime = 0; // set by WAVESRV-ESTART
+let forceQuit = false;
+let isWaveSrvDead = false;
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
@@ -95,7 +98,7 @@ console.log(
         "waveterm-app starting, WAVETERM_HOME=%s, electronpath=%s gopath=%s arch=%s/%s",
         waveHome,
         getElectronAppBasePath(),
-        getGoAppBasePath(),
+        getElectronAppUnpackedBasePath(),
         unamePlatform,
         unameArch
     )
@@ -103,8 +106,6 @@ console.log(
 if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
-
-initGlobal({ windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
 function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
     const windowId = event.sender.id;
@@ -155,7 +156,7 @@ function runWaveSrv(): Promise<boolean> {
         pReject = argReject;
     });
     const envCopy = { ...process.env };
-    envCopy[WaveAppPathVarName] = getGoAppBasePath();
+    envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
     envCopy[AuthKeyEnv] = AuthKey;
     const waveSrvCmd = getWaveSrvPath();
@@ -165,10 +166,12 @@ function runWaveSrv(): Promise<boolean> {
         env: envCopy,
     });
     proc.on("exit", (e) => {
-        if (globalIsQuitting || updater?.status == "installing") {
+        if (updater?.status == "installing") {
             return;
         }
         console.log("wavesrv exited, shutting down");
+        forceQuit = true;
+        isWaveSrvDead = true;
         electronApp.quit();
     });
     proc.on("spawn", (e) => {
@@ -250,11 +253,7 @@ async function handleWSEvent(evtMsg: WSEventType) {
     }
 }
 
-async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindow) {
-    if (win == null || win.isDestroyed() || win.fullScreen) {
-        return;
-    }
-    const bounds = win.getBounds();
+async function persistWindowBounds(windowId: string, bounds: electron.Rectangle) {
     try {
         await services.WindowService.SetWindowPosAndSize(
             windowId,
@@ -264,6 +263,14 @@ async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindo
     } catch (e) {
         console.log("error resizing window", e);
     }
+}
+
+async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindow) {
+    if (win == null || win.isDestroyed() || win.fullScreen) {
+        return;
+    }
+    const bounds = win.getBounds();
+    await persistWindowBounds(windowId, bounds);
 }
 
 function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
@@ -307,9 +314,44 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-// note, this does not *show* the window.
-// to show, await win.readyPromise and then win.show()
-function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
+function computeNewWinBounds(waveWindow: WaveWindow): Electron.Rectangle {
+    const targetWidth = waveWindow.winsize?.width || 2000;
+    const targetHeight = waveWindow.winsize?.height || 1080;
+    const primaryDisplay = electron.screen.getPrimaryDisplay();
+    const workArea = primaryDisplay.workArea;
+    const targetPadding = 100;
+    const minPadding = 10;
+    let rtn = {
+        x: workArea.x + targetPadding,
+        y: workArea.y + targetPadding,
+        width: targetWidth,
+        height: targetHeight,
+    };
+    const spareWidth = workArea.width - targetWidth;
+    if (spareWidth < 2 * minPadding) {
+        rtn.x = workArea.x + minPadding;
+        rtn.width = workArea.width - 2 * minPadding;
+    } else if (spareWidth > 2 * targetPadding) {
+        rtn.x = workArea.x + targetPadding;
+    } else {
+        rtn.x = workArea.y + Math.floor(spareWidth / 2);
+    }
+    const spareHeight = workArea.height - targetHeight;
+    if (spareHeight < 2 * minPadding) {
+        rtn.y = workArea.y + minPadding;
+        rtn.height = workArea.height - 2 * minPadding;
+    } else if (spareHeight > 2 * targetPadding) {
+        rtn.y = workArea.y + targetPadding;
+    } else {
+        rtn.y = workArea.y + Math.floor(spareHeight / 2);
+    }
+    return rtn;
+}
+
+function computeWinBounds(waveWindow: WaveWindow): Electron.Rectangle {
+    if (waveWindow.isnew) {
+        return computeNewWinBounds(waveWindow);
+    }
     let winWidth = waveWindow?.winsize?.width;
     let winHeight = waveWindow?.winsize?.height;
     let winPosX = waveWindow.pos.x;
@@ -336,7 +378,15 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         width: winWidth,
         height: winHeight,
     };
+    return winBounds;
+}
+
+// note, this does not *show* the window.
+// to show, await win.readyPromise and then win.show()
+function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfig: FullConfigType): WaveBrowserWindow {
+    let winBounds = computeWinBounds(waveWindow);
     winBounds = ensureBoundsAreVisible(winBounds);
+    persistWindowBounds(waveWindow.oid, winBounds);
     const settings = fullConfig?.settings;
     const winOpts: Electron.BrowserWindowConstructorOptions = {
         titleBarStyle:
@@ -363,7 +413,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
             webviewTag: true,
         },
         show: false,
-        autoHideMenuBar: true,
+        autoHideMenuBar: !settings?.["window:showmenubar"],
     };
     const isTransparent = settings?.["window:transparent"] ?? false;
     const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
@@ -580,6 +630,110 @@ electron.ipcMain.on("open-external", (event, url) => {
     }
 });
 
+type UrlInSessionResult = {
+    stream: Readable;
+    mimeType: string;
+    fileName: string;
+};
+
+function getSingleHeaderVal(headers: Record<string, string | string[]>, key: string): string {
+    const val = headers[key];
+    if (val == null) {
+        return null;
+    }
+    if (Array.isArray(val)) {
+        return val[0];
+    }
+    return val;
+}
+
+function cleanMimeType(mimeType: string): string {
+    if (mimeType == null) {
+        return null;
+    }
+    const parts = mimeType.split(";");
+    return parts[0].trim();
+}
+
+function getFileNameFromUrl(url: string): string {
+    try {
+        const pathname = new URL(url).pathname;
+        const filename = pathname.substring(pathname.lastIndexOf("/") + 1);
+        return filename;
+    } catch (e) {
+        return null;
+    }
+}
+
+function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInSessionResult> {
+    return new Promise((resolve, reject) => {
+        // Handle data URLs directly
+        if (url.startsWith("data:")) {
+            const parts = url.split(",");
+            if (parts.length < 2) {
+                return reject(new Error("Invalid data URL"));
+            }
+            const header = parts[0]; // Get the data URL header (e.g., data:image/png;base64)
+            const base64Data = parts[1]; // Get the base64 data part
+            const mimeType = header.split(";")[0].slice(5); // Extract the MIME type (after "data:")
+            const buffer = Buffer.from(base64Data, "base64");
+            const readable = Readable.from(buffer);
+            resolve({ stream: readable, mimeType, fileName: "image" });
+            return;
+        }
+        const request = electron.net.request({
+            url,
+            method: "GET",
+            session, // Attach the session directly to the request
+        });
+        const readable = new Readable({
+            read() {}, // No-op, we'll push data manually
+        });
+        request.on("response", (response) => {
+            const mimeType = cleanMimeType(getSingleHeaderVal(response.headers, "content-type"));
+            const fileName = getFileNameFromUrl(url) || "image";
+            response.on("data", (chunk) => {
+                readable.push(chunk); // Push data to the readable stream
+            });
+            response.on("end", () => {
+                readable.push(null); // Signal the end of the stream
+                resolve({ stream: readable, mimeType, fileName });
+            });
+        });
+        request.on("error", (err) => {
+            readable.destroy(err); // Destroy the stream on error
+            reject(err);
+        });
+        request.end();
+    });
+}
+
+electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, payload: { src: string }) => {
+    const menu = new electron.Menu();
+    const win = electron.BrowserWindow.fromWebContents(event.sender.hostWebContents);
+    if (win == null) {
+        return;
+    }
+    menu.append(
+        new electron.MenuItem({
+            label: "Save Image",
+            click: () => {
+                const resultP = getUrlInSession(event.sender.session, payload.src);
+                resultP
+                    .then((result) => {
+                        saveImageFileWithNativeDialog(result.fileName, result.mimeType, result.stream);
+                    })
+                    .catch((e) => {
+                        console.log("error getting image", e);
+                    });
+            },
+        })
+    );
+    const { x, y } = electron.screen.getCursorScreenPoint();
+    const windowPos = win.getPosition();
+    menu.popup({ window: win, x: x - windowPos[0], y: y - windowPos[1] });
+});
+
 electron.ipcMain.on("download", (event, payload) => {
     const window = electron.BrowserWindow.fromWebContents(event.sender);
     const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
@@ -677,6 +831,17 @@ if (unamePlatform !== "darwin") {
     });
 }
 
+electron.ipcMain.on("quicklook", (event, filePath: string) => {
+    if (unamePlatform == "darwin") {
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error opening Quick Look: ${error}`);
+                return;
+            }
+        });
+    }
+});
+
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
@@ -699,6 +864,57 @@ async function createNewWaveWindow(): Promise<void> {
     const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig);
     await newBrowserWindow.readyPromise;
     newBrowserWindow.show();
+}
+
+function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string, readStream: Readable) {
+    if (defaultFileName == null || defaultFileName == "") {
+        defaultFileName = "image";
+    }
+    const window = electron.BrowserWindow.getFocusedWindow(); // Get the current window context
+    const mimeToExtension: { [key: string]: string } = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/gif": "gif",
+        "image/webp": "webp",
+        "image/bmp": "bmp",
+        "image/tiff": "tiff",
+        "image/heic": "heic",
+    };
+    function addExtensionIfNeeded(fileName: string, mimeType: string): string {
+        const extension = mimeToExtension[mimeType];
+        if (!path.extname(fileName) && extension) {
+            return `${fileName}.${extension}`;
+        }
+        return fileName;
+    }
+    defaultFileName = addExtensionIfNeeded(defaultFileName, mimeType);
+    electron.dialog
+        .showSaveDialog(window, {
+            title: "Save Image",
+            defaultPath: defaultFileName,
+            filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "heic"] }],
+        })
+        .then((file) => {
+            if (file.canceled) {
+                return;
+            }
+            const writeStream = fs.createWriteStream(file.filePath);
+            readStream.pipe(writeStream);
+            writeStream.on("finish", () => {
+                console.log("saved file", file.filePath);
+            });
+            writeStream.on("error", (err) => {
+                console.log("error saving file (writeStream)", err);
+                readStream.destroy();
+            });
+            readStream.on("error", (err) => {
+                console.error("error saving file (readStream)", err);
+                writeStream.destroy(); // Stop the write stream
+            });
+        })
+        .catch((err) => {
+            console.log("error trying to save file", err);
+        });
 }
 
 electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
@@ -778,9 +994,35 @@ electronApp.on("window-all-closed", () => {
         electronApp.quit();
     }
 });
-electronApp.on("before-quit", () => {
+electronApp.on("before-quit", (e) => {
     globalIsQuitting = true;
     updater?.stop();
+    if (unamePlatform == "win32") {
+        // win32 doesn't have a SIGINT, so we just let electron die, which
+        // ends up killing wavesrv via closing it's stdin.
+        return;
+    }
+    waveSrvProc?.kill("SIGINT");
+    shutdownWshrpc();
+    if (forceQuit) {
+        return;
+    }
+    e.preventDefault();
+    const allWindows = electron.BrowserWindow.getAllWindows();
+    for (const window of allWindows) {
+        window.hide();
+    }
+    if (isWaveSrvDead) {
+        console.log("wavesrv is dead, quitting immediately");
+        forceQuit = true;
+        electronApp.quit();
+        return;
+    }
+    setTimeout(() => {
+        console.log("waiting for wavesrv to exit...");
+        forceQuit = true;
+        electronApp.quit();
+    }, 3000);
 });
 process.on("SIGINT", () => {
     console.log("Caught SIGINT, shutting down");
@@ -799,8 +1041,9 @@ process.on("uncaughtException", (error) => {
     if (caughtException) {
         return;
     }
-    logger.error("Uncaught Exception, shutting down: ", error);
     caughtException = true;
+    console.log("Uncaught Exception, shutting down: ", error);
+    console.log("Stack Trace:", error.stack);
     // Optionally, handle cleanup or exit the app
     electronApp.quit();
 });
@@ -835,12 +1078,6 @@ async function relaunchBrowserWindows(): Promise<void> {
     }
 }
 
-process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
-    console.error("Stack Trace:", error.stack);
-    electron.app.quit();
-});
-
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.
     const launchSettings = getLaunchSettings();
@@ -871,6 +1108,7 @@ async function appMain() {
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     await relaunchBrowserWindows();
+    await initDocsite();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     try {
         initElectronWshClient();

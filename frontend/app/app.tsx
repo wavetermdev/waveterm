@@ -85,7 +85,8 @@ function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
 }
 
 function AppSettingsUpdater() {
-    const windowSettings = useSettingsPrefixAtom("window");
+    const windowSettingsAtom = useSettingsPrefixAtom("window");
+    const windowSettings = jotai.useAtomValue(windowSettingsAtom);
     React.useEffect(() => {
         const isTransparentOrBlur =
             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
@@ -170,6 +171,9 @@ function processBackgroundUrls(cssText: string): string {
             const originalUrl = node.value.trim();
             if (originalUrl.startsWith("javascript:")) {
                 hasJSUrl = true;
+                return;
+            }
+            if (originalUrl.startsWith("data:")) {
                 return;
             }
             const newUrl = encodeFileURL(originalUrl);

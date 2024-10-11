@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/kevinburke/ssh_config"
-	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -254,8 +253,10 @@ func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) erro
 		selectedTemplateRaw = installTemplateRawDefault
 	}
 
+	// I need to use toSlash here to force unix keybindings
+	// this means we can't guarantee it will work on a remote windows machine
 	var installWords = map[string]string{
-		"installDir":  filepath.Dir(destPath),
+		"installDir":  filepath.ToSlash(filepath.Dir(destPath)),
 		"tempPath":    destPath + ".temp",
 		"installPath": destPath,
 	}
@@ -354,6 +355,5 @@ func NormalizeConfigPattern(pattern string) string {
 	} else {
 		port = ":" + port
 	}
-	unnormalized := fmt.Sprintf("%s%s%s", userName, pattern, port)
-	return knownhosts.Normalize(unnormalized)
+	return fmt.Sprintf("%s%s%s", userName, pattern, port)
 }

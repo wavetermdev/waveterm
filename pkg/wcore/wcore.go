@@ -96,16 +96,17 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Windo
 	workspaceId := uuid.NewString()
 	if winSize == nil {
 		winSize = &waveobj.WinSize{
-			Width:  1200,
-			Height: 850,
+			Width:  0,
+			Height: 0,
 		}
 	}
 	window := &waveobj.Window{
 		OID:         windowId,
 		WorkspaceId: workspaceId,
+		IsNew:       true,
 		Pos: waveobj.Point{
-			X: 100,
-			Y: 100,
+			X: 0,
+			Y: 0,
 		},
 		WinSize: *winSize,
 	}
@@ -137,6 +138,26 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Windo
 	return wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 }
 
+func checkAndFixWindow(ctx context.Context, windowId string) {
+	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
+	if err != nil {
+		log.Printf("error getting window %q (in checkAndFixWindow): %v\n", windowId, err)
+		return
+	}
+	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
+	if err != nil {
+		log.Printf("error getting workspace %q (in checkAndFixWindow): %v\n", window.WorkspaceId, err)
+		return
+	}
+	if len(workspace.TabIds) == 0 {
+		log.Printf("fixing workspace with no tabs %q (in checkAndFixWindow)\n", workspace.OID)
+		_, err = CreateTab(ctx, windowId, "T1", true)
+		if err != nil {
+			log.Printf("error creating tab (in checkAndFixWindow): %v\n", err)
+		}
+	}
+}
+
 // returns (new-window, first-time, error)
 func EnsureInitialData() (*waveobj.Window, bool, error) {
 	// does not need to run in a transaction since it is called on startup
@@ -152,10 +173,13 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		firstRun = true
 	}
 	log.Printf("clientid: %s\n", client.OID)
+	if len(client.WindowIds) == 1 {
+		checkAndFixWindow(ctx, client.WindowIds[0])
+	}
 	if len(client.WindowIds) > 0 {
 		return nil, false, nil
 	}
-	window, err := CreateWindow(ctx, &waveobj.WinSize{Height: 0, Width: 0})
+	window, err := CreateWindow(ctx, nil)
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating window: %w", err)
 	}

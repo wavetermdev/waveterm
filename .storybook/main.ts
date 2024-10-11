@@ -10,6 +10,8 @@ const config: StorybookConfig = {
         "@storybook/addon-essentials",
         "@chromatic-com/storybook",
         "@storybook/addon-interactions",
+        "storybook-dark-mode",
+        "./custom-addons/theme/register",
     ],
 
     core: {},
@@ -21,11 +23,6 @@ const config: StorybookConfig = {
 
     docs: {},
 
-    managerHead: (head) => `
-        ${head}
-        <meta name="robots" content="noindex" />
-        `,
-
     typescript: {
         reactDocgen: "react-docgen-typescript",
     },
@@ -35,7 +32,11 @@ const config: StorybookConfig = {
         const { tsImport } = await import("tsx/esm/api");
         const electronViteConfig = (await tsImport("../electron.vite.config.ts", import.meta.url))
             .default as ElectronViteConfig;
-        return mergeConfig(config, electronViteConfig.renderer as UserConfig);
+        const mergedConfig = mergeConfig(config, electronViteConfig.renderer as UserConfig);
+        mergedConfig.build.outDir = "storybook-static";
+        return mergedConfig;
     },
+
+    staticDirs: [{ from: "../assets", to: "/assets" }],
 };
 export default config;

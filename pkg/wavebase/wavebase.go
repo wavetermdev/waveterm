@@ -17,8 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/alexflint/go-filemutex"
 )
 
 // set by main-server.go
@@ -35,12 +33,27 @@ const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
 
+const WaveAppPathVarName = "WAVETERM_APP_PATH"
+const AppPathBinDir = "bin"
+
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
+
+type FDLock interface {
+	Close() error
+}
 
 func IsDevMode() bool {
 	pdev := os.Getenv(WaveDevVarName)
 	return pdev != ""
+}
+
+func GetWaveAppPath() string {
+	return os.Getenv(WaveAppPathVarName)
+}
+
+func GetWaveAppBinPath() string {
+	return filepath.Join(GetWaveAppPath(), AppPathBinDir)
 }
 
 func GetHomeDir() string {
@@ -52,7 +65,7 @@ func GetHomeDir() string {
 }
 
 func ExpandHomeDir(pathStr string) (string, error) {
-	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
+	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") && (!strings.HasPrefix(pathStr, `~\`) || runtime.GOOS != "windows") {
 		return filepath.Clean(pathStr), nil
 	}
 	homeDir := GetHomeDir()
@@ -187,19 +200,6 @@ func DetermineLocale() string {
 		return "C"
 	}
 	return strings.Replace(truncated, "_", "-", -1)
-}
-
-func AcquireWaveLock() (*filemutex.FileMutex, error) {
-	homeDir := GetWaveHomeDir()
-	lockFileName := filepath.Join(homeDir, WaveLockFile)
-	log.Printf("[base] acquiring lock on %s\n", lockFileName)
-	m, err := filemutex.New(lockFileName)
-	if err != nil {
-		return nil, err
-	}
-
-	err = m.TryLock()
-	return m, err
 }
 
 func ClientArch() string {

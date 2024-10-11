@@ -35,6 +35,7 @@ var WrappedStdin io.Reader = os.Stdin
 var RpcClient *wshutil.WshRpc
 var RpcContext wshrpc.RpcContext
 var UsingTermWshMode bool
+var blockArg string
 
 func extraShutdownFn() {
 	if usingHtmlMode {
@@ -112,7 +113,7 @@ func setTermHtmlMode() {
 var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
 
 func validateEasyORef(oref string) error {
-	if oref == "this" {
+	if oref == "this" || oref == "tab" {
 		return nil
 	}
 	if num, err := strconv.Atoi(oref); err == nil && num >= 1 {
@@ -174,6 +175,7 @@ func Execute() {
 			wshutil.DoShutdown("", 0, false)
 		}
 	}()
+	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "this", "for commands which require a block id")
 	err := rootCmd.Execute()
 	if err != nil {
 		wshutil.DoShutdown("", 1, true)

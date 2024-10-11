@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getFileSubject } from "@/app/store/wps";
+import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient, sendWSCommand } from "@/app/store/wshrpcutil";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { PLATFORM, WOS, atoms, fetchWaveFile, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import * as util from "@/util/util";
@@ -21,6 +22,7 @@ const dlog = debug("wave:termwrap");
 
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
+const MinDataProcessedForCache = 100 * 1024;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -250,7 +252,7 @@ export class TermWrap {
     }
 
     processAndCacheData() {
-        if (this.dataBytesProcessed < 10 * 1024) {
+        if (this.dataBytesProcessed < MinDataProcessedForCache) {
             return;
         }
         const serializedOutput = this.serializeAddon.serialize();

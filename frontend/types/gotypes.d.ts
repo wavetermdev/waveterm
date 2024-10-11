@@ -264,9 +264,9 @@ declare global {
     type MetaType = {
         view?: string;
         controller?: string;
-        title?: string;
         file?: string;
         url?: string;
+        pinnedurl?: string;
         connection?: string;
         edit?: boolean;
         history?: string[];
@@ -275,12 +275,15 @@ declare global {
         "display:order"?: number;
         icon?: string;
         "icon:color"?: string;
-        frame?: boolean;
         "frame:*"?: boolean;
+        frame?: boolean;
         "frame:bordercolor"?: string;
         "frame:bordercolor:focused"?: string;
-        cmd?: string;
+        "frame:title"?: string;
+        "frame:icon"?: string;
+        "frame:text"?: string;
         "cmd:*"?: boolean;
+        cmd?: string;
         "cmd:interactive"?: boolean;
         "cmd:login"?: boolean;
         "cmd:runonstart"?: boolean;
@@ -289,11 +292,21 @@ declare global {
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
+        "ai:*"?: boolean;
+        "ai:apitype"?: string;
+        "ai:baseurl"?: string;
+        "ai:apitoken"?: string;
+        "ai:name"?: string;
+        "ai:model"?: string;
+        "ai:orgid"?: string;
+        "ai:apiversion"?: string;
+        "ai:maxtokens"?: number;
+        "ai:timeoutms"?: number;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
-        bg?: string;
         "bg:*"?: boolean;
+        bg?: string;
         "bg:opacity"?: number;
         "bg:blendmode"?: string;
         "term:*"?: boolean;
@@ -301,6 +314,9 @@ declare global {
         "term:fontfamily"?: string;
         "term:mode"?: string;
         "term:theme"?: string;
+        "term:localshellpath"?: string;
+        "term:localshellopts"?: string[];
+        "term:scrollback"?: number;
         count?: number;
     };
 
@@ -323,11 +339,14 @@ declare global {
     // wshrpc.OpenAIOptsType
     type OpenAIOptsType = {
         model: string;
+        apitype?: string;
         apitoken: string;
+        orgid?: string;
+        apiversion?: string;
         baseurl?: string;
         maxtokens?: number;
         maxchoices?: number;
-        timeout?: number;
+        timeoutms?: number;
     };
 
     // wshrpc.OpenAIPacketType
@@ -407,16 +426,23 @@ declare global {
     // wconfig.SettingsType
     type SettingsType = {
         "ai:*"?: boolean;
+        "ai:apitype"?: string;
         "ai:baseurl"?: string;
         "ai:apitoken"?: string;
         "ai:name"?: string;
         "ai:model"?: string;
+        "ai:orgid"?: string;
+        "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
+        "term:theme"?: string;
         "term:disablewebgl"?: boolean;
+        "term:localshellpath"?: string;
+        "term:localshellopts"?: string[];
+        "term:scrollback"?: number;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
@@ -430,6 +456,7 @@ declare global {
         "autoupdate:intervalms"?: number;
         "autoupdate:installonquit"?: boolean;
         "autoupdate:channel"?: string;
+        "preview:showhiddenfiles"?: boolean;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;
@@ -439,10 +466,13 @@ declare global {
         "window:bgcolor"?: string;
         "window:reducedmotion"?: boolean;
         "window:tilegapsize"?: number;
+        "window:showmenubar"?: boolean;
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
+        "conn:*"?: boolean;
+        "conn:askbeforewshinstall"?: boolean;
     };
 
     // waveobj.StickerClickOptsType
@@ -511,7 +541,7 @@ declare global {
         foreground: string;
         selectionBackground: string;
         background: string;
-        cursorAccent: string;
+        cursor: string;
     };
 
     // wshrpc.TimeSeriesData
@@ -621,6 +651,13 @@ declare global {
         meta: {[key: string]: any};
     };
 
+    // wshrpc.WaveNotificationOptions
+    type WaveNotificationOptions = {
+        title?: string;
+        body?: string;
+        silent?: boolean;
+    };
+
     // waveobj.WaveObj
     type WaveObj = {
         otype: string;
@@ -641,6 +678,7 @@ declare global {
     type WaveWindow = WaveObj & {
         workspaceid: string;
         activetabid: string;
+        isnew?: boolean;
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;
