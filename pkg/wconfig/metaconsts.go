@@ -7,10 +7,13 @@ package wconfig
 
 const (
 	ConfigKey_AiClear                        = "ai:*"
+	ConfigKey_AiApiType                      = "ai:apitype"
 	ConfigKey_AiBaseURL                      = "ai:baseurl"
 	ConfigKey_AiApiToken                     = "ai:apitoken"
 	ConfigKey_AiName                         = "ai:name"
 	ConfigKey_AiModel                        = "ai:model"
+	ConfigKey_AiOrgID                        = "ai:orgid"
+	ConfigKey_AIApiVersion                   = "ai:apiversion"
 	ConfigKey_AiMaxTokens                    = "ai:maxtokens"
 	ConfigKey_AiTimeoutMs                    = "ai:timeoutms"
 
@@ -52,11 +55,14 @@ const (
 	ConfigKey_WindowBgColor                  = "window:bgcolor"
 	ConfigKey_WindowReducedMotion            = "window:reducedmotion"
 	ConfigKey_WindowTileGapSize              = "window:tilegapsize"
+	ConfigKey_WindowShowMenuBar              = "window:showmenubar"
 	ConfigKey_WindowNativeTitleBar           = "window:nativetitlebar"
 	ConfigKey_WindowDisableHardwareAcceleration = "window:disablehardwareacceleration"
 	ConfigKey_WindowMaxTabCacheSize          = "window:maxtabcachesize"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
+
+	ConfigKey_AskBeforeWshInstall            = "askbeforewshinstall"
 )
 

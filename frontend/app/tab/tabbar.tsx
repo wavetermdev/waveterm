@@ -74,6 +74,8 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
+    const settings = useAtomValue(atoms.settingsAtom);
+
     let prevDelta: number;
     let prevDragDirection: string;
 
@@ -469,7 +471,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         </div>
     ) : undefined;
     const appMenuButton =
-        PLATFORM !== "darwin" ? (
+        PLATFORM !== "darwin" && !settings["window:showmenubar"] ? (
             <div className="app-menu-button" onClick={onEllipsisClick}>
                 <i className="fa fa-ellipsis" />
             </div>

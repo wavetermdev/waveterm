@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getFileSubject } from "@/app/store/wps";
+import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { sendWSCommand, TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, fetchWaveFile, globalStore, openLink, PLATFORM, WOS } from "@/store/global";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { PLATFORM, WOS, atoms, fetchWaveFile, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import * as util from "@/util/util";
 import { base64ToArray, fireAndForget } from "@/util/util";

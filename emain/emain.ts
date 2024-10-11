@@ -28,13 +28,13 @@ import {
 import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "emain/emain-wavesrv";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
+import * as child_process from "node:child_process";
 import * as path from "path";
 import { PNG } from "pngjs";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
 import * as util from "util";
 import winston from "winston";
-import { initGlobal } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
@@ -101,8 +101,6 @@ console.log(
 if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
-
-initGlobal({ tabId: null, windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
 async function handleWSEvent(evtMsg: WSEventType) {
     console.log("handleWSEvent", evtMsg?.eventtype);
@@ -352,6 +350,17 @@ if (unamePlatform !== "darwin") {
     });
 }
 
+electron.ipcMain.on("quicklook", (event, filePath: string) => {
+    if (unamePlatform == "darwin") {
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error opening Quick Look: ${error}`);
+                return;
+            }
+        });
+    }
+});
+
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
@@ -535,6 +544,11 @@ electronApp.on("window-all-closed", () => {
 electronApp.on("before-quit", (e) => {
     setGlobalIsQuitting(true);
     updater?.stop();
+    if (unamePlatform == "win32") {
+        // win32 doesn't have a SIGINT, so we just let electron die, which
+        // ends up killing wavesrv via closing it's stdin.
+        return;
+    }
     getWaveSrvProc()?.kill("SIGINT");
     shutdownWshrpc();
     if (getForceQuit()) {
@@ -574,8 +588,9 @@ process.on("uncaughtException", (error) => {
     if (caughtException) {
         return;
     }
-    logger.error("Uncaught Exception, shutting down: ", error);
     caughtException = true;
+    console.log("Uncaught Exception, shutting down: ", error);
+    console.log("Stack Trace:", error.stack);
     // Optionally, handle cleanup or exit the app
     electronApp.quit();
 });
@@ -609,12 +624,6 @@ async function relaunchBrowserWindows(): Promise<void> {
         win.show();
     }
 }
-
-process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
-    console.error("Stack Trace:", error.stack);
-    electron.app.quit();
-});
 
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.

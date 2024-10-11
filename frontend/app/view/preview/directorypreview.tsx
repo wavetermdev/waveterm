@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, createBlock, getApi } from "@/app/store/global";
+import { PLATFORM, atoms, createBlock, getApi } from "@/app/store/global";
 import { FileService } from "@/app/store/services";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
@@ -376,8 +376,8 @@ function TableBody({
             const parentRect = bodyRef.current.getBoundingClientRect();
             const viewportScrollTop = viewport.scrollTop;
 
-            const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewportScrollTop;
-            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top + viewportScrollTop;
+            const rowTopRelativeToViewport = rowRect.top - parentRect.top;
+            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top;
 
             if (rowTopRelativeToViewport < viewportScrollTop) {
                 // Row is above the visible area
@@ -387,6 +387,7 @@ function TableBody({
                 viewport.scrollTo({ top: rowBottomRelativeToViewport - viewportHeight });
             }
         }
+        // setIndexChangedFromClick(false);
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
@@ -592,6 +593,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 setSearchText((current) => current.slice(0, -1));
                 return true;
             }
+            if (checkKeyPressed(waveEvent, "Space") && searchText == "" && PLATFORM == "darwin") {
+                getApi().onQuicklook(selectedPath);
+                console.log(selectedPath);
+                return true;
+            }
             if (isCharacterKeyEvent(waveEvent)) {
                 setSearchText((current) => current + waveEvent.key);
                 return true;
@@ -601,7 +607,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         return () => {
             model.directoryKeyDownHandler = null;
         };
-    }, [filteredData, selectedPath]);
+    }, [filteredData, selectedPath, searchText]);
 
     useEffect(() => {
         if (filteredData.length != 0 && focusIndex > filteredData.length - 1) {

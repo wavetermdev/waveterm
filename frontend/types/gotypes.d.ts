@@ -275,15 +275,15 @@ declare global {
         "display:order"?: number;
         icon?: string;
         "icon:color"?: string;
-        frame?: boolean;
         "frame:*"?: boolean;
+        frame?: boolean;
         "frame:bordercolor"?: string;
         "frame:bordercolor:focused"?: string;
         "frame:title"?: string;
         "frame:icon"?: string;
         "frame:text"?: string;
-        cmd?: string;
         "cmd:*"?: boolean;
+        cmd?: string;
         "cmd:interactive"?: boolean;
         "cmd:login"?: boolean;
         "cmd:runonstart"?: boolean;
@@ -292,11 +292,21 @@ declare global {
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
+        "ai:*"?: boolean;
+        "ai:apitype"?: string;
+        "ai:baseurl"?: string;
+        "ai:apitoken"?: string;
+        "ai:name"?: string;
+        "ai:model"?: string;
+        "ai:orgid"?: string;
+        "ai:apiversion"?: string;
+        "ai:maxtokens"?: number;
+        "ai:timeoutms"?: number;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
-        bg?: string;
         "bg:*"?: boolean;
+        bg?: string;
         "bg:opacity"?: number;
         "bg:blendmode"?: string;
         "term:*"?: boolean;
@@ -329,11 +339,14 @@ declare global {
     // wshrpc.OpenAIOptsType
     type OpenAIOptsType = {
         model: string;
+        apitype?: string;
         apitoken: string;
+        orgid?: string;
+        apiversion?: string;
         baseurl?: string;
         maxtokens?: number;
         maxchoices?: number;
-        timeout?: number;
+        timeoutms?: number;
     };
 
     // wshrpc.OpenAIPacketType
@@ -413,10 +426,13 @@ declare global {
     // wconfig.SettingsType
     type SettingsType = {
         "ai:*"?: boolean;
+        "ai:apitype"?: string;
         "ai:baseurl"?: string;
         "ai:apitoken"?: string;
         "ai:name"?: string;
         "ai:model"?: string;
+        "ai:orgid"?: string;
+        "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
         "term:*"?: boolean;
@@ -450,11 +466,13 @@ declare global {
         "window:bgcolor"?: string;
         "window:reducedmotion"?: boolean;
         "window:tilegapsize"?: number;
+        "window:showmenubar"?: boolean;
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
         "window:maxtabcachesize"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
+        askbeforewshinstall?: boolean;
     };
 
     // waveobj.StickerClickOptsType
@@ -660,6 +678,7 @@ declare global {
     type WaveWindow = WaveObj & {
         workspaceid: string;
         activetabid: string;
+        isnew?: boolean;
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;

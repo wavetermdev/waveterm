@@ -25,6 +25,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -296,11 +298,8 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			"Would you like to install them?", clientDisplayName)
 		title = "Install Wave Shell Extensions"
 	} else {
-		queryText = fmt.Sprintf("Wave requires the Wave Shell Extensions  \n"+
-			"installed on `%s`  \n"+
-			"to be updated from %s to %s.  \n\n"+
-			"Would you like to update?", clientDisplayName, clientVersion, expectedVersion)
-		title = "Update Wave Shell Extensions"
+		// don't ask for upgrading the version
+		opts.NoUserPrompt = true
 	}
 	if !opts.NoUserPrompt {
 		request := &userinput.UserInputRequest{
@@ -313,6 +312,15 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		response, err := userinput.GetUserInput(ctx, request)
 		if err != nil || !response.Confirm {
 			return err
+		}
+		if response.CheckboxStat {
+			meta := waveobj.MetaMapType{
+				wconfig.ConfigKey_AskBeforeWshInstall: false,
+			}
+			err := wconfig.SetBaseConfigValue(meta)
+			if err != nil {
+				return fmt.Errorf("error setting askbeforewshinstall value: %w", err)
+			}
 		}
 	}
 	log.Printf("attempting to install wsh to `%s`", clientDisplayName)
@@ -429,7 +437,8 @@ func (conn *SSHConn) connectInternal(ctx context.Context) error {
 		log.Printf("error: unable to open domain socket listener for %s: %v\n", conn.GetName(), err)
 		return err
 	}
-	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, nil)
+	config := wconfig.ReadFullConfig()
+	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !config.Settings.AskBeforeWshInstall})
 	if installErr != nil {
 		log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)

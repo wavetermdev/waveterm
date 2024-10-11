@@ -87,6 +87,7 @@ declare global {
         setWindowInitStatus: (status: "ready" | "wave-ready") => void;
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
         sendLog: (log: string) => void;
+        onQuicklook: (filePath: string) => void;
     };
 
     type ElectronContextMenuItem = {

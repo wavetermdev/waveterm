@@ -11,14 +11,14 @@ import {
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { getPrefixedSettings, isBlank } from "@/util/util";
-import { atom, Atom, createStore, PrimitiveAtom, useAtomValue } from "jotai";
+import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
+import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
 import { ClientService, ObjectService } from "./services";
 import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribe } from "./wps";
 
 let PLATFORM: NodeJS.Platform = "darwin";
-const globalStore = createStore();
 let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
