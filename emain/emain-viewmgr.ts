@@ -4,6 +4,7 @@
 import { ClientService, FileService, ObjectService, WindowService } from "@/app/store/services";
 import * as electron from "electron";
 import {
+    delay,
     ensureBoundsAreVisible,
     handleCtrlShiftFocus,
     handleCtrlShiftState,
@@ -82,6 +83,31 @@ function positionTabOffScreen(tabView: WaveTabView, winBounds: Electron.Rectangl
         return;
     }
     tabView.setBounds({
+        x: -10000,
+        y: -10000,
+        width: winBounds.width,
+        height: winBounds.height,
+    });
+}
+
+async function repositionTabsSlowly(
+    newTabView: WaveTabView,
+    oldTabView: WaveTabView,
+    delayMs: number,
+    winBounds: Electron.Rectangle
+) {
+    if (newTabView == null) {
+        return;
+    }
+    newTabView.setBounds({
+        x: winBounds.width - 10,
+        y: winBounds.height - 10,
+        width: winBounds.width,
+        height: winBounds.height,
+    });
+    await delay(delayMs);
+    newTabView.setBounds({ x: 0, y: 0, width: winBounds.width, height: winBounds.height });
+    oldTabView?.setBounds({
         x: -10000,
         y: -10000,
         width: winBounds.width,
@@ -505,14 +531,15 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
         tabView.webContents.send("wave-init", initOpts);
         console.log("before wave ready");
         await tabView.waveReadyPromise;
-        positionTabOnScreen(tabView, bwin.getContentBounds());
+        // positionTabOnScreen(tabView, bwin.getContentBounds());
         console.log("wave-ready init time", Date.now() - startTime + "ms");
+        // positionTabOffScreen(oldActiveView, bwin.getContentBounds());
+        repositionTabsSlowly(tabView, oldActiveView, 100, bwin.getContentBounds());
     } else {
         console.log("reusing an existing tab");
-        positionTabOnScreen(tabView, bwin.getContentBounds());
+        repositionTabsSlowly(tabView, oldActiveView, 35, bwin.getContentBounds());
         tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
     }
-    positionTabOffScreen(oldActiveView, bwin.getContentBounds());
 
     // something is causing the new tab to lose focus so it requires manual refocusing
     tabView.webContents.focus();
