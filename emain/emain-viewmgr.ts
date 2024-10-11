@@ -127,6 +127,29 @@ export function ensureHotSpareTab(fullConfig: FullConfigType) {
     }
 }
 
+export function destroyWindow(waveWindow: WaveBrowserWindow) {
+    if (waveWindow == null) {
+        return;
+    }
+    for (const tabView of waveWindow.allTabViews.values()) {
+        destroyTab(tabView);
+    }
+    waveWindowMap.delete(waveWindow.waveWindowId);
+}
+
+export function destroyTab(tabView: WaveTabView) {
+    if (tabView == null) {
+        return;
+    }
+    tabView.webContents.close();
+    wcIdToWaveTabMap.delete(tabView.webContents.id);
+    removeWaveTabView(tabView.waveWindowId, tabView.waveTabId);
+    const waveWindow = waveWindowMap.get(tabView.waveWindowId);
+    if (waveWindow) {
+        waveWindow.allTabViews.delete(tabView.waveTabId);
+    }
+}
+
 function getSpareTab(fullConfig: FullConfigType): WaveTabView {
     setTimeout(ensureHotSpareTab, 500);
     if (HotSpareTab != null) {
@@ -160,6 +183,15 @@ function removeWaveTabView(waveWindowId: string, waveTabId: string): void {
     wcvCache.delete(cacheKey);
 }
 
+function forceRemoveAllTabsForWindow(waveWindowId: string): void {
+    const keys = Array.from(wcvCache.keys());
+    for (const key of keys) {
+        if (key.startsWith(waveWindowId)) {
+            wcvCache.delete(key);
+        }
+    }
+}
+
 function checkAndEvictCache(): void {
     if (wcvCache.size <= MaxCacheSize) {
         return;
@@ -178,8 +210,7 @@ function checkAndEvictCache(): void {
             continue;
         }
         const tabView = sorted[i];
-        tabView.webContents.close();
-        wcvCache.delete(sorted[i].waveWindowId + "|" + sorted[i].waveTabId);
+        destroyTab(tabView);
     }
 }
 
@@ -190,8 +221,7 @@ export function clearTabCache() {
         if (tabView.isActiveTab) {
             continue;
         }
-        tabView.webContents.close();
-        wcvCache.delete(tabView.waveWindowId + "|" + tabView.waveTabId);
+        destroyTab(tabView);
     }
 }
 
@@ -342,8 +372,8 @@ function createBaseWaveBrowserWindow(
     const bwin = new electron.BaseWindow(winOpts);
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     win.waveWindowId = waveWindow.oid;
+    win.alreadyClosed = false;
     win.allTabViews = new Map<string, WaveTabView>();
-    win.hotSpareTab = null;
     win.on(
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
@@ -406,12 +436,10 @@ function createBaseWaveBrowserWindow(
         if (numWindows == 0) {
             return;
         }
-        WindowService.CloseWindow(waveWindow.oid);
-        for (const tabView of win.allTabViews.values()) {
-            removeWaveTabView(tabView.waveWindowId, tabView.waveTabId);
-            tabView.webContents.close();
+        if (!win.alreadyClosed) {
+            WindowService.CloseWindow(waveWindow.oid, true);
         }
-        waveWindowMap.delete(waveWindow.oid);
+        destroyWindow(win);
     });
     waveWindowMap.set(waveWindow.oid, win);
     return win;

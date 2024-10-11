@@ -152,10 +152,10 @@ export const UserInputService = new UserInputServiceType();
 // windowservice.WindowService (window)
 class WindowServiceType {
     // @returns object updates
-    CloseTab(arg3: string): Promise<void> {
+    CloseTab(arg2: string, arg3: string, arg4: boolean): Promise<CloseTabRtnType> {
         return WOS.callBackendService("window", "CloseTab", Array.from(arguments))
     }
-    CloseWindow(arg2: string): Promise<void> {
+    CloseWindow(arg2: string, arg3: boolean): Promise<void> {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
 

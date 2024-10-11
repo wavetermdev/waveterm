@@ -118,12 +118,10 @@ async function handleWSEvent(evtMsg: WSEventType) {
         newWin.show();
     } else if (evtMsg.eventtype == "electron:closewindow") {
         if (evtMsg.data === undefined) return;
-        const windows = getAllWaveWindows();
-        for (const window of windows) {
-            if ((window as any).waveWindowId === evtMsg.data) {
-                // Bypass the "Are you sure?" dialog, since this event is called when there's no more tabs for the window.
-                window.destroy();
-            }
+        const ww = getWaveWindowById(evtMsg.data);
+        if (ww != null) {
+            ww.alreadyClosed = true;
+            ww.destroy(); // bypass the "are you sure?" dialog
         }
     } else {
         console.log("unhandled electron ws eventtype", evtMsg.eventtype);
@@ -273,6 +271,23 @@ electron.ipcMain.on("create-tab", async (event, opts) => {
         return;
     }
     await setActiveTab(ww, newTabId);
+    event.returnValue = true;
+    return null;
+});
+
+electron.ipcMain.on("close-tab", async (event, tabId) => {
+    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+    if (tabView == null) {
+        return;
+    }
+    const rtn = await services.WindowService.CloseTab(tabView.waveWindowId, tabId, true);
+    if (rtn?.closewindow) {
+        const ww = getWaveWindowById(tabView.waveWindowId);
+        ww.alreadyClosed = true;
+        ww?.destroy(); // bypass the "are you sure?" dialog
+    } else if (rtn?.newactivetabid) {
+        setActiveTab(getWaveWindowById(tabView.waveWindowId), rtn.newactivetabid);
+    }
     event.returnValue = true;
     return null;
 });
@@ -632,7 +647,7 @@ async function relaunchBrowserWindows(): Promise<void> {
     for (const windowId of clientData.windowids.slice().reverse()) {
         const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
         if (windowData == null) {
-            services.WindowService.CloseWindow(windowId).catch((e) => {
+            services.WindowService.CloseWindow(windowId, true).catch((e) => {
                 /* ignore */
             });
             continue;

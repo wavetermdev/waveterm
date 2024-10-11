@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Notification } from "electron";
 import { getWaveWindowById } from "emain/emain-viewmgr";
 import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
@@ -27,7 +28,7 @@ export class ElectronWshClientType extends WshClient {
     }
 
     async handle_notify(rh: RpcResponseHelper, notificationOptions: WaveNotificationOptions) {
-        new electron.Notification({
+        new Notification({
             title: notificationOptions.title,
             body: notificationOptions.body,
             silent: notificationOptions.silent,

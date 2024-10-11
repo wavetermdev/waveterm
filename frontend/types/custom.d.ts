@@ -85,6 +85,7 @@ declare global {
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
         setActiveTab: (tabId: string) => void;
         createTab: () => void;
+        closeTab: (tabId: string) => void;
         setWindowInitStatus: (status: "ready" | "wave-ready") => void;
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
         sendLog: (log: string) => void;
@@ -321,9 +322,9 @@ declare global {
     type WaveBrowserWindow = Electron.BaseWindow & {
         waveWindowId: string;
         waveReadyPromise: Promise<void>;
-        hotSpareTab: WaveTabView;
         allTabViews: Map<string, WaveTabView>;
         activeTabView: WaveTabView;
+        alreadyClosed: boolean;
     };
 
     type WaveTabView = Electron.WebContentsView & {

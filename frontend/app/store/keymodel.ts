@@ -11,7 +11,6 @@ import {
     refocusNode,
     WOS,
 } from "@/app/store/global";
-import * as services from "@/app/store/services";
 import {
     deleteLayoutModelForTab,
     getLayoutModelForTab,
@@ -79,7 +78,7 @@ function genericClose(tabId: string) {
     }
     if (tabData.blockids == null || tabData.blockids.length == 0) {
         // close tab
-        services.WindowService.CloseTab(tabId);
+        getApi().closeTab(tabId);
         deleteLayoutModelForTab(tabId);
         return;
     }
