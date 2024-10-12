@@ -112,11 +112,13 @@ const Menu = memo(
         items,
         children,
         className,
+        onOpenChange,
         renderMenu,
         renderMenuItem,
     }: {
         items: MenuItem[];
         className?: string;
+        onOpenChange?: (isOpen: boolean) => void;
         children: ReactNode | ReactNode[];
         renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
         renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
@@ -130,10 +132,14 @@ const Menu = memo(
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
 
         const [isOpen, setIsOpen] = useState(false);
+        const onOpenChangeMenu = (isOpen: boolean) => {
+            setIsOpen(isOpen);
+            onOpenChange?.(isOpen);
+        };
         const { refs, floatingStyles, context } = useFloating({
             placement: "bottom-start",
             open: isOpen,
-            onOpenChange: setIsOpen,
+            onOpenChange: onOpenChangeMenu,
         });
         const dismiss = useDismiss(context);
         const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
@@ -229,7 +235,7 @@ const Menu = memo(
 
         const handleOnClick = (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => {
             e.stopPropagation();
-            setIsOpen(false);
+            onOpenChangeMenu(false);
             item.onClick?.(e);
         };
 
@@ -239,7 +245,7 @@ const Menu = memo(
                     className="menu-anchor"
                     ref={refs.setReference}
                     {...getReferenceProps()}
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={() => onOpenChangeMenu(!isOpen)}
                 >
                     {children}
                 </div>
