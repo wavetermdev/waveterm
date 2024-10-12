@@ -3,7 +3,7 @@ import { memo, useState } from "react";
 import { Button } from "./button";
 import { Menu } from "./menu";
 
-const MenuButtonComponent = ({ items, className, text }: { items: MenuItem[]; className: string; text: string }) => {
+const MenuButtonComponent = ({ items, className, text, title }: MenuButtonProps) => {
     const [isOpen, setIsOpen] = useState(false);
     return (
         <div className={clsx("menubutton", className)}>
@@ -11,6 +11,7 @@ const MenuButtonComponent = ({ items, className, text }: { items: MenuItem[]; cl
                 <Button
                     className="grey border-radius-3 vertical-padding-2 horizontal-padding-2"
                     style={{ borderColor: isOpen ? "var(--accent-color)" : "transparent" }}
+                    title={title}
                 >
                     {text}
                     <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>

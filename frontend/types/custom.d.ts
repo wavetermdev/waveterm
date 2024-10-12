@@ -232,12 +232,16 @@ declare global {
         onClick?: (e: React.MouseEvent<any>) => void;
     };
 
-    type MenuButton = {
-        elemtype: "menubutton";
+    type MenuButtonProps = {
         items: MenuItem[];
         className?: string;
         text: string;
+        title?: string;
     };
+
+    type MenuButton = {
+        elemtype: "menubutton";
+    } & MenuButtonProps;
 
     interface ViewModel {
         viewType: string;

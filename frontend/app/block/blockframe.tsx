@@ -275,7 +275,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
             </div>
         );
     } else if (elem.elemtype == "menubutton") {
-        return <MenuButton className={elem.className} items={elem.items} text={elem.text} />;
+        return <MenuButton className="block-frame-menubutton" {...(elem as MenuButtonProps)} />;
     }
     return null;
 });

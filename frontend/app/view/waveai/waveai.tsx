@@ -172,6 +172,7 @@ export class WaveAiModel implements ViewModel {
             viewTextChildren.push({
                 elemtype: "menubutton",
                 text: presetName,
+                title: "Select AI Configuration",
                 items: Object.entries(presets)
                     .sort((a, b) => (a[1]["display:order"] > b[1]["display:order"] ? 1 : -1))
                     .map(
