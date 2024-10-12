@@ -4,6 +4,7 @@
 import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
+import clsx from "clsx";
 import dayjs from "dayjs";
 import * as htl from "htl";
 import * as jotai from "jotai";
@@ -17,6 +18,7 @@ import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import "./cpuplot.less";
 
 const DefaultNumPoints = 120;
+type LineType = "default" | "title" | "sparkline";
 
 type DataItem = {
     ts: number;
@@ -40,6 +42,18 @@ function defaultMemMeta(name: string, maxY: string): TimeSeriesMeta {
         maxy: maxY,
     };
 }
+
+const PlotTypes: Object = {
+    CPU: function (dataItem: DataItem): Array<string> {
+        return ["cpu"];
+    },
+    "CPU + Mem": function (dataItem: DataItem): Array<string> {
+        return ["cpu", "mem:used"];
+    },
+    "All CPU": function (dataItem: DataItem): Array<string> {
+        return Object.keys(dataItem).filter((item) => item.startsWith("cpu") && item != "cpu");
+    },
+};
 
 const DefaultPlotMeta = {
     cpu: defaultCpuMeta("CPU %"),
@@ -84,6 +98,7 @@ class CpuPlotViewModel {
     connStatus: jotai.Atom<ConnStatus>;
     plotMetaAtom: jotai.PrimitiveAtom<Map<string, TimeSeriesMeta>>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
+    plotTypeSelectedAtom: jotai.PrimitiveAtom<string>;
 
     constructor(blockId: string) {
         this.viewType = "cpuplot";
@@ -135,10 +150,12 @@ class CpuPlotViewModel {
             }
             return metrics;
         });
+        this.plotTypeSelectedAtom = jotai.atom("CPU");
         this.viewIcon = jotai.atom((get) => {
             return "chart-line"; // should not be hardcoded
         });
         this.viewName = jotai.atom((get) => {
+            return get(this.plotTypeSelectedAtom);
             const metrics = get(this.metrics);
             const meta = get(this.plotMetaAtom);
             if (metrics.length == 0) {
@@ -205,29 +222,27 @@ class CpuPlotViewModel {
         e.preventDefault();
         e.stopPropagation();
         const plotData = globalStore.get(this.dataAtom);
-        const metrics = globalStore.get(this.metrics);
         if (plotData.length == 0) {
             return;
         }
-        const menu = Object.keys(plotData[plotData.length - 1])
-            .filter((dataType) => dataType !== "ts")
-            .map((dataType) => {
-                const inMetrics = metrics.includes(dataType);
-                const newMetrics = inMetrics ? metrics.filter((dt) => dt !== dataType) : [...metrics, dataType];
-                const menuItem: ContextMenuItem = {
-                    label: dataType,
-                    type: "checkbox",
-                    checked: inMetrics,
-                    click: async () => {
-                        await RpcApi.SetMetaCommand(WindowRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "graph:metrics": newMetrics },
-                        });
-                    },
-                };
-                return menuItem;
-            });
-
+        const menu: Array<ContextMenuItem> = [];
+        for (const plotType in PlotTypes) {
+            const dataTypes = PlotTypes[plotType](plotData[plotData.length - 1]);
+            const currentlySelected = globalStore.get(this.plotTypeSelectedAtom);
+            const menuItem: ContextMenuItem = {
+                label: plotType,
+                type: "radio",
+                checked: currentlySelected == plotType,
+                click: async () => {
+                    globalStore.set(this.plotTypeSelectedAtom, plotType);
+                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "graph:metrics": dataTypes },
+                    });
+                },
+            };
+            menu.push(menuItem);
+        }
         ContextMenuModel.showContextMenu(menu, e);
     }
 
@@ -314,9 +329,17 @@ type SingleLinePlotProps = {
     yvalMeta: TimeSeriesMeta;
     blockId: string;
     defaultColor: string;
+    lineType?: LineType;
 };
 
-function SingleLinePlot({ plotData, yval, yvalMeta, blockId, defaultColor }: SingleLinePlotProps) {
+function SingleLinePlot({
+    plotData,
+    yval,
+    yvalMeta,
+    blockId,
+    defaultColor,
+    lineType = "default",
+}: SingleLinePlotProps) {
     const containerRef = React.useRef<HTMLInputElement>();
     const domRect = useDimensionsWithExistingRef(containerRef, 300);
     const plotHeight = domRect?.height ?? 0;
@@ -352,15 +375,20 @@ function SingleLinePlot({ plotData, yval, yvalMeta, blockId, defaultColor }: Sin
             y: yval,
         })
     );
-    marks.push(
-        Plot.text([yvalMeta.name], {
-            frameAnchor: "top",
-        })
-    );
+    if (lineType == "title") {
+        marks.push(
+            Plot.text([yvalMeta.name], {
+                frameAnchor: "top",
+                dy: 10,
+            })
+        );
+    }
+    marks.push(Plot.tickY([0], { stroke: "var(--grey-text-color)" }));
     let maxY = resolveDomainBound(yvalMeta?.maxy, plotData[plotData.length - 1]) ?? 100;
     let minY = resolveDomainBound(yvalMeta?.miny, plotData[plotData.length - 1]) ?? 0;
     const labelY = yvalMeta?.label ?? "?";
     const plot = Plot.plot({
+        axis: lineType != "sparkline",
         x: { grid: true, label: "time", tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}` },
         y: { label: labelY, domain: [minY, maxY] },
         width: plotWidth,
@@ -383,11 +411,16 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     const plotData = jotai.useAtomValue(model.dataAtom);
     const yvals = jotai.useAtomValue(model.metrics);
     const plotMeta = jotai.useAtomValue(model.plotMetaAtom);
+    let lineType: LineType = "default";
+    if (yvals.length > 2) {
+        lineType = "sparkline";
+    } else if (yvals.length > 1) {
+        lineType = "title";
+    }
 
     return (
-        <div className="plot-view">
+        <div className={clsx("plot-view", { sparklines: lineType == "sparkline" })}>
             {yvals.map((yval, idx) => {
-                const defaultColor = plotColors[idx % plotColors.length];
                 return (
                     <SingleLinePlot
                         key={`plot-${model.blockId}-${yval}`}
@@ -395,7 +428,8 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
                         yval={yval}
                         yvalMeta={plotMeta.get(yval)}
                         blockId={model.blockId}
-                        defaultColor={defaultColor}
+                        defaultColor={"var(--accent-color)"}
+                        lineType={lineType}
                     />
                 );
             })}
