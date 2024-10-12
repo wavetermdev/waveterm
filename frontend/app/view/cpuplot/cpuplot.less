@@ -6,9 +6,15 @@
     height: 100%;
     display: grid;
     grid-template-rows: repeat(auto-fit, minmax(1px, 1fr));
+    gap: 10px;
 
     &.sparklines {
         grid-template-columns: 1fr 1fr;
-        gap: 10px;
+    }
+
+    .plot-content {
+        background: rgb(from var(--hover-bg-color) r g b / 0.05);
+        border-radius: 6px;
+        overflow: hidden;
     }
 }

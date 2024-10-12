@@ -98,7 +98,7 @@ class CpuPlotViewModel {
     connStatus: jotai.Atom<ConnStatus>;
     plotMetaAtom: jotai.PrimitiveAtom<Map<string, TimeSeriesMeta>>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
-    plotTypeSelectedAtom: jotai.PrimitiveAtom<string>;
+    plotTypeSelectedAtom: jotai.Atom<string>;
 
     constructor(blockId: string) {
         this.viewType = "cpuplot";
@@ -143,29 +143,31 @@ class CpuPlotViewModel {
             return metaNumPoints;
         });
         this.metrics = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const metrics = blockData?.meta?.["graph:metrics"];
-            if (metrics == null || !Array.isArray(metrics)) {
+            let plotType = get(this.plotTypeSelectedAtom);
+            const plotData = get(this.dataAtom);
+            try {
+                const metrics = PlotTypes[plotType](plotData[plotData.length - 1]);
+                if (metrics == null || !Array.isArray(metrics)) {
+                    return ["cpu"];
+                }
+                return metrics;
+            } catch (e) {
                 return ["cpu"];
             }
-            return metrics;
         });
-        this.plotTypeSelectedAtom = jotai.atom("CPU");
+        this.plotTypeSelectedAtom = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const plotType = blockData?.meta?.["graph:sysinfotype"];
+            if (plotType == null || typeof plotType != "string") {
+                return "CPU";
+            }
+            return plotType;
+        });
         this.viewIcon = jotai.atom((get) => {
             return "chart-line"; // should not be hardcoded
         });
         this.viewName = jotai.atom((get) => {
             return get(this.plotTypeSelectedAtom);
-            const metrics = get(this.metrics);
-            const meta = get(this.plotMetaAtom);
-            if (metrics.length == 0) {
-                return "unknown";
-            }
-            const metaSelected = meta.get(metrics[0]);
-            if (!metaSelected) {
-                return "unknown";
-            }
-            return metaSelected.name;
         });
         this.incrementCount = jotai.atom(null, async (get, set) => {
             const meta = get(this.blockAtom).meta;
@@ -234,10 +236,9 @@ class CpuPlotViewModel {
                 type: "radio",
                 checked: currentlySelected == plotType,
                 click: async () => {
-                    globalStore.set(this.plotTypeSelectedAtom, plotType);
                     await RpcApi.SetMetaCommand(WindowRpcClient, {
                         oref: WOS.makeORef("block", this.blockId),
-                        meta: { "graph:metrics": dataTypes },
+                        meta: { "graph:metrics": dataTypes, "sysinfo:type": plotType },
                     });
                 },
             };
@@ -375,11 +376,12 @@ function SingleLinePlot({
             y: yval,
         })
     );
-    if (lineType == "title") {
+    if (lineType != "default") {
         marks.push(
             Plot.text([yvalMeta.name], {
-                frameAnchor: "top",
-                dy: 10,
+                frameAnchor: "top-left",
+                dx: 4,
+                fill: "var(--grey-text-color)",
             })
         );
     }
@@ -404,7 +406,7 @@ function SingleLinePlot({
         };
     }, [plot, plotWidth, plotHeight]);
 
-    return <div ref={containerRef} />;
+    return <div ref={containerRef} className="plot-content" />;
 }
 
 const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
