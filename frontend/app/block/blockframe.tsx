@@ -32,6 +32,7 @@ import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
+import { MenuButton } from "@/element/menubutton";
 import { NodeModel } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -250,7 +251,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
     } else if (elem.elemtype == "text") {
         return (
             <div className={clsx("block-frame-text", elem.className)}>
-                <span ref={preview ? null : elem.ref} onClick={() => elem?.onClick()}>
+                <span ref={preview ? null : elem.ref} onClick={(e) => elem?.onClick(e)}>
                     &lrm;{elem.text}
                 </span>
             </div>
@@ -273,6 +274,8 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
                 ))}
             </div>
         );
+    } else if (elem.elemtype == "menubutton") {
+        return <MenuButton className="block-frame-menubutton" {...(elem as MenuButtonProps)} />;
     }
     return null;
 });

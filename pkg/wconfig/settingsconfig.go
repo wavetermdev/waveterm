@@ -41,6 +41,7 @@ func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
 
 type SettingsType struct {
 	AiClear      bool    `json:"ai:*,omitempty"`
+	AiPreset     string  `json:"ai:preset,omitempty"`
 	AiApiType    string  `json:"ai:apitype,omitempty"`
 	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
 	AiApiToken   string  `json:"ai:apitoken,omitempty"`

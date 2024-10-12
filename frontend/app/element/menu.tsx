@@ -1,18 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import clsx from "clsx";
-import React, { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createRef, Fragment, memo, ReactNode, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-
-import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import "./menu.less";
-
-type MenuItem = {
-    label: string;
-    subItems?: MenuItem[];
-    onClick?: (e) => void;
-};
 
 const SubMenu = memo(
     ({
@@ -48,7 +41,7 @@ const SubMenu = memo(
         subItems.forEach((_, idx) => {
             const newKey = `${parentKey}-${idx}`;
             if (!subMenuRefs.current[newKey]) {
-                subMenuRefs.current[newKey] = React.createRef<HTMLDivElement>();
+                subMenuRefs.current[newKey] = createRef<HTMLDivElement>();
             }
         });
 
@@ -88,7 +81,7 @@ const SubMenu = memo(
                     );
 
                     return (
-                        <React.Fragment key={newKey}>
+                        <Fragment key={newKey}>
                             {renderedItem}
                             {visibleSubMenus[newKey]?.visible && item.subItems && (
                                 <SubMenu
@@ -104,7 +97,7 @@ const SubMenu = memo(
                                     renderMenuItem={renderMenuItem}
                                 />
                             )}
-                        </React.Fragment>
+                        </Fragment>
                     );
                 })}
             </div>
@@ -117,20 +110,16 @@ const SubMenu = memo(
 const Menu = memo(
     ({
         items,
-        anchorRef,
-        scopeRef,
-        initialPosition,
+        children,
         className,
-        setVisibility,
+        onOpenChange,
         renderMenu,
         renderMenuItem,
     }: {
         items: MenuItem[];
-        anchorRef: React.RefObject<any>;
-        scopeRef?: React.RefObject<HTMLElement>;
-        initialPosition?: { top: number; left: number };
         className?: string;
-        setVisibility: (_: boolean) => void;
+        onOpenChange?: (isOpen: boolean) => void;
+        children: ReactNode | ReactNode[];
         renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
         renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
     }) => {
@@ -139,127 +128,28 @@ const Menu = memo(
         const [subMenuPosition, setSubMenuPosition] = useState<{
             [key: string]: { top: number; left: number; label: string };
         }>({});
-        const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
         const menuRef = useRef<HTMLDivElement>(null);
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
-        const domRect = useDimensionsWithExistingRef(scopeRef, 30);
-        const width = domRect?.width ?? 0;
-        const height = domRect?.height ?? 0;
+
+        const [isOpen, setIsOpen] = useState(false);
+        const onOpenChangeMenu = (isOpen: boolean) => {
+            setIsOpen(isOpen);
+            onOpenChange?.(isOpen);
+        };
+        const { refs, floatingStyles, context } = useFloating({
+            placement: "bottom-start",
+            open: isOpen,
+            onOpenChange: onOpenChangeMenu,
+        });
+        const dismiss = useDismiss(context);
+        const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
 
         items.forEach((_, idx) => {
             const key = `${idx}`;
             if (!subMenuRefs.current[key]) {
-                subMenuRefs.current[key] = React.createRef<HTMLDivElement>();
+                subMenuRefs.current[key] = createRef<HTMLDivElement>();
             }
         });
-
-        useLayoutEffect(() => {
-            const shadowOffset = 10; // Adjust for box shadow space
-
-            if (initialPosition) {
-                // Adjust position if initialPosition is provided
-                let { top, left } = initialPosition;
-
-                const scrollTop = window.scrollY || document.documentElement.scrollTop;
-                const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
-
-                const menuWidth = menuRef.current?.offsetWidth || 0;
-                const menuHeight = menuRef.current?.offsetHeight || 0;
-
-                const boundaryTop = 0;
-                const boundaryLeft = 0;
-                const boundaryRight = window.innerWidth + scrollLeft;
-                const boundaryBottom = window.innerHeight + scrollTop;
-
-                // Adjust if the menu overflows the right boundary
-                if (left + menuWidth > boundaryRight) {
-                    left = boundaryRight - menuWidth - shadowOffset; // Shift left more for shadow
-                }
-
-                // Adjust if the menu overflows the bottom boundary: move the menu upwards so its bottom edge aligns with the initial position
-                if (top + menuHeight > boundaryBottom) {
-                    top = initialPosition.top - menuHeight - shadowOffset; // Shift up for shadow
-                }
-
-                // Adjust if the menu overflows the left boundary
-                if (left < boundaryLeft) {
-                    left = boundaryLeft + shadowOffset; // Add shadow offset from the left edge
-                }
-
-                // Adjust if the menu overflows the top boundary
-                if (top < boundaryTop) {
-                    top = boundaryTop + shadowOffset; // Add shadow offset from the top edge
-                }
-
-                setPosition({ top, left });
-            } else if (anchorRef.current && menuRef.current) {
-                // Calculate position based on anchorRef if it exists
-                const anchorRect = anchorRef.current.getBoundingClientRect();
-                const scrollTop = window.scrollY || document.documentElement.scrollTop;
-                const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
-
-                let top = anchorRect.bottom + scrollTop;
-                let left = anchorRect.left + scrollLeft;
-
-                const menuWidth = menuRef.current.offsetWidth;
-                const menuHeight = menuRef.current.offsetHeight;
-
-                const boundaryTop = 0;
-                const boundaryLeft = 0;
-                const boundaryRight = window.innerWidth + scrollLeft;
-                const boundaryBottom = window.innerHeight + scrollTop;
-
-                // Adjust if the menu overflows the right boundary
-                if (left + menuWidth > boundaryRight) {
-                    left = boundaryRight - menuWidth;
-                }
-
-                // Adjust if the menu overflows the bottom boundary: move the menu upwards so its bottom edge aligns with the anchor top
-                if (top + menuHeight > boundaryBottom) {
-                    top = anchorRect.top + scrollTop - menuHeight;
-                }
-
-                // Adjust if the menu overflows the left boundary
-                if (left < boundaryLeft) {
-                    left = boundaryLeft;
-                }
-
-                // Adjust if the menu overflows the top boundary
-                if (top < boundaryTop) {
-                    top = boundaryTop;
-                }
-
-                setPosition({ top, left });
-            } else {
-                console.warn("Neither initialPosition nor anchorRef provided. Defaulting to { top: 0, left: 0 }.");
-            }
-        }, [width, height, initialPosition]);
-
-        useEffect(() => {
-            const handleClickOutside = (event: MouseEvent) => {
-                const isClickInsideDropdown = menuRef.current && menuRef.current.contains(event.target as Node);
-
-                const isClickInsideAnchor = anchorRef?.current
-                    ? anchorRef.current.contains(event.target as Node)
-                    : false;
-
-                const isClickInsideSubMenus = Object.keys(subMenuRefs.current).some(
-                    (key) =>
-                        subMenuRefs.current[key]?.current &&
-                        subMenuRefs.current[key]?.current.contains(event.target as Node)
-                );
-
-                if (!isClickInsideDropdown && !isClickInsideAnchor && !isClickInsideSubMenus) {
-                    setVisibility(false);
-                }
-            };
-
-            scopeRef?.current?.addEventListener("mousedown", handleClickOutside);
-
-            return () => {
-                scopeRef?.current?.removeEventListener("mousedown", handleClickOutside);
-            };
-        }, []);
 
         // Position submenus based on available space and scroll position
         const handleSubMenuPosition = (
@@ -345,92 +235,72 @@ const Menu = memo(
 
         const handleOnClick = (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => {
             e.stopPropagation();
-            item.onClick && item.onClick(e);
+            onOpenChangeMenu(false);
+            item.onClick?.(e);
         };
 
-        // const handleKeyDown = useCallback(
-        //     (waveEvent: WaveKeyboardEvent): boolean => {
-        //         if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
-        //             setFocusedIndex((prev) => (prev + 1) % items.length); // Move down
-        //             return true;
-        //         }
-        //         if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
-        //             setFocusedIndex((prev) => (prev - 1 + items.length) % items.length); // Move up
-        //             return true;
-        //         }
-        //         if (keyutil.checkKeyPressed(waveEvent, "ArrowRight")) {
-        //             if (items[focusedIndex].subItems) {
-        //                 setSubmenuOpen(focusedIndex); // Open the submenu
-        //             }
-        //             return true;
-        //         }
-        //         if (keyutil.checkKeyPressed(waveEvent, "ArrowLeft")) {
-        //             if (submenuOpen !== null) {
-        //                 setSubmenuOpen(null); // Close the submenu
-        //             }
-        //             return true;
-        //         }
-        //         if (keyutil.checkKeyPressed(waveEvent, "Enter") || keyutil.checkKeyPressed(waveEvent, " ")) {
-        //             if (items[focusedIndex].onClick) {
-        //                 items[focusedIndex].onClick(); // Trigger click
-        //             }
-        //             return true;
-        //         }
-        //         if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
-        //             setVisibility(false); // Close the menu
-        //             return true;
-        //         }
-        //         return false;
-        //     },
-        //     [focusedIndex, submenuOpen, items, setVisibility]
-        // );
+        return (
+            <>
+                <div
+                    className="menu-anchor"
+                    ref={refs.setReference}
+                    {...getReferenceProps()}
+                    onClick={() => onOpenChangeMenu(!isOpen)}
+                >
+                    {children}
+                </div>
 
-        const menuMenu = (
-            <div className={clsx("menu", className)} ref={menuRef} style={{ top: position.top, left: position.left }}>
-                {items.map((item, index) => {
-                    const key = `${index}`;
-                    const isActive = hoveredItems.includes(key);
+                {isOpen && (
+                    <div
+                        className={clsx("menu", className)}
+                        ref={refs.setFloating}
+                        style={floatingStyles}
+                        {...getFloatingProps()}
+                    >
+                        {items.map((item, index) => {
+                            const key = `${index}`;
+                            const isActive = hoveredItems.includes(key);
 
-                    const menuItemProps = {
-                        className: clsx("menu-item", { active: isActive }),
-                        onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
-                            handleMouseEnterItem(event, null, index, item),
-                        onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
-                    };
+                            const menuItemProps = {
+                                className: clsx("menu-item", { active: isActive }),
+                                onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                                    handleMouseEnterItem(event, null, index, item),
+                                onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
+                            };
 
-                    const renderedItem = renderMenuItem ? (
-                        renderMenuItem(item, menuItemProps)
-                    ) : (
-                        <div key={key} {...menuItemProps}>
-                            <span className="label">{item.label}</span>
-                            {item.subItems && <i className="fa-sharp fa-solid fa-chevron-right"></i>}
-                        </div>
-                    );
+                            const renderedItem = renderMenuItem ? (
+                                renderMenuItem(item, menuItemProps)
+                            ) : (
+                                <div key={key} {...menuItemProps}>
+                                    <span className="label">{item.label}</span>
+                                    {item.subItems && <i className="fa-sharp fa-solid fa-chevron-right"></i>}
+                                </div>
+                            );
 
-                    return (
-                        <React.Fragment key={key}>
-                            {renderedItem}
-                            {visibleSubMenus[key]?.visible && item.subItems && (
-                                <SubMenu
-                                    subItems={item.subItems}
-                                    parentKey={key}
-                                    subMenuPosition={subMenuPosition}
-                                    visibleSubMenus={visibleSubMenus}
-                                    hoveredItems={hoveredItems}
-                                    handleMouseEnterItem={handleMouseEnterItem}
-                                    handleOnClick={handleOnClick}
-                                    subMenuRefs={subMenuRefs}
-                                    renderMenu={renderMenu}
-                                    renderMenuItem={renderMenuItem}
-                                />
-                            )}
-                        </React.Fragment>
-                    );
-                })}
-            </div>
+                            return (
+                                <Fragment key={key}>
+                                    {renderedItem}
+                                    {visibleSubMenus[key]?.visible && item.subItems && (
+                                        <SubMenu
+                                            subItems={item.subItems}
+                                            parentKey={key}
+                                            subMenuPosition={subMenuPosition}
+                                            visibleSubMenus={visibleSubMenus}
+                                            hoveredItems={hoveredItems}
+                                            handleMouseEnterItem={handleMouseEnterItem}
+                                            handleOnClick={handleOnClick}
+                                            subMenuRefs={subMenuRefs}
+                                            renderMenu={renderMenu}
+                                            renderMenuItem={renderMenuItem}
+                                        />
+                                    )}
+                                </Fragment>
+                            );
+                        })}
+                    </div>
+                )}
+            </>
         );
-
-        return ReactDOM.createPortal(renderMenu ? renderMenu(menuMenu, { parentKey: null }) : menuMenu, document.body);
     }
 );
 
