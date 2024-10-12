@@ -65,7 +65,7 @@ export class WaveAiModel implements ViewModel {
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = atom("sparkles");
-        this.viewName = atom("Wave Ai");
+        this.viewName = atom("Wave AI");
         this.messagesAtom = atom([]);
         this.presetKey = atom((get) => {
             const metaPresetKey = get(this.blockAtom).meta["ai:preset"];
