@@ -427,7 +427,7 @@ declare global {
     // wconfig.SettingsType
     type SettingsType = {
         "ai:*"?: boolean;
-        "ai:defaultpreset"?: string;
+        "ai:preset"?: string;
         "ai:apitype"?: string;
         "ai:baseurl"?: string;
         "ai:apitoken"?: string;

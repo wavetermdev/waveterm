@@ -69,7 +69,7 @@ export class WaveAiModel implements ViewModel {
         this.messagesAtom = atom([]);
         this.presetKey = atom((get) => {
             const metaPresetKey = get(this.blockAtom).meta["ai:preset"];
-            const globalPresetKey = get(atoms.settingsAtom)["ai:defaultpreset"];
+            const globalPresetKey = get(atoms.settingsAtom)["ai:preset"];
             return metaPresetKey ?? globalPresetKey;
         });
         this.presetMap = atom((get) => {

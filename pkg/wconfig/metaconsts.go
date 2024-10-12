@@ -7,7 +7,7 @@ package wconfig
 
 const (
 	ConfigKey_AiClear                        = "ai:*"
-	ConfigKey_AiDefaultPreset                = "ai:defaultpreset"
+	ConfigKey_AiPreset                       = "ai:preset"
 	ConfigKey_AiApiType                      = "ai:apitype"
 	ConfigKey_AiBaseURL                      = "ai:baseurl"
 	ConfigKey_AiApiToken                     = "ai:apitoken"
