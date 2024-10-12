@@ -7,7 +7,7 @@ import { TypingIndicator } from "@/app/element/typingindicator";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, fetchWaveFile, globalStore, WOS } from "@/store/global";
-import { BlockService } from "@/store/services";
+import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
@@ -115,23 +115,13 @@ export class WaveAiModel implements ViewModel {
             set(this.updateLastMessageAtom, "", false);
         });
 
-        const presetAtom = atom((get) => {
-            const presetKey = get(this.presetKey);
-            const presets = get(this.presetMap);
-            return presets[presetKey];
-        });
-
         this.aiOpts = atom((get) => {
-            const preset = get(presetAtom);
+            const meta = get(this.blockAtom).meta;
             let settings = get(atoms.settingsAtom);
-            if (preset["ai:*"]) {
-                settings = preset;
-            } else {
-                settings = {
-                    ...settings,
-                    ...preset,
-                };
-            }
+            settings = {
+                ...settings,
+                ...meta,
+            };
             const opts: OpenAIOptsType = {
                 model: settings["ai:model"] ?? null,
                 apitype: settings["ai:apitype"] ?? null,
@@ -149,7 +139,8 @@ export class WaveAiModel implements ViewModel {
             const viewTextChildren: HeaderElem[] = [];
             const aiOpts = get(this.aiOpts);
             const presets = get(this.presetMap);
-            const presetName = get(presetAtom)["display:name"];
+            const presetKey = get(this.presetKey);
+            const presetName = presets[presetKey]?.["display:name"] ?? "";
             const isCloud = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
             if (isCloud) {
                 viewTextChildren.push({
@@ -190,9 +181,9 @@ export class WaveAiModel implements ViewModel {
                                 label: preset[1]["display:name"],
                                 onClick: () =>
                                     fireAndForget(async () => {
-                                        await RpcApi.SetMetaCommand(WindowRpcClient, {
-                                            oref: WOS.makeORef("block", this.blockId),
-                                            meta: { "ai:preset": preset[0] },
+                                        await ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
+                                            ...preset[1],
+                                            "ai:preset": preset[0],
                                         });
                                     }),
                             }) as MenuItem
