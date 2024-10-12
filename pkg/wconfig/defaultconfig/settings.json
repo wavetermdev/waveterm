@@ -1,5 +1,8 @@
 {
-    "ai:defaultpreset": "ai@wave",
+    "ai:preset": "ai@global",
+    "ai:model": "gpt-4o-mini",
+    "ai:maxtokens": 2048,
+    "ai:timeoutms": 60000,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,

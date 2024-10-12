@@ -8,6 +8,15 @@ package wconfig
 const (
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiDefaultPreset                = "ai:defaultpreset"
+	ConfigKey_AiApiType                      = "ai:apitype"
+	ConfigKey_AiBaseURL                      = "ai:baseurl"
+	ConfigKey_AiApiToken                     = "ai:apitoken"
+	ConfigKey_AiName                         = "ai:name"
+	ConfigKey_AiModel                        = "ai:model"
+	ConfigKey_AiOrgID                        = "ai:orgid"
+	ConfigKey_AIApiVersion                   = "ai:apiversion"
+	ConfigKey_AiMaxTokens                    = "ai:maxtokens"
+	ConfigKey_AiTimeoutMs                    = "ai:timeoutms"
 
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"

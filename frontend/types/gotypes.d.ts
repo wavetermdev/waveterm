@@ -428,6 +428,15 @@ declare global {
     type SettingsType = {
         "ai:*"?: boolean;
         "ai:defaultpreset"?: string;
+        "ai:apitype"?: string;
+        "ai:baseurl"?: string;
+        "ai:apitoken"?: string;
+        "ai:name"?: string;
+        "ai:model"?: string;
+        "ai:orgid"?: string;
+        "ai:apiversion"?: string;
+        "ai:maxtokens"?: number;
+        "ai:timeoutms"?: number;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;

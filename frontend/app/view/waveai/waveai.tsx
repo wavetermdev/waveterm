@@ -123,15 +123,24 @@ export class WaveAiModel implements ViewModel {
 
         this.aiOpts = atom((get) => {
             const preset = get(presetAtom);
+            let settings = get(atoms.settingsAtom);
+            if (preset["ai:*"]) {
+                settings = preset;
+            } else {
+                settings = {
+                    ...settings,
+                    ...preset,
+                };
+            }
             const opts: OpenAIOptsType = {
-                model: preset["ai:model"] ?? null,
-                apitype: preset["ai:apitype"] ?? null,
-                orgid: preset["ai:orgid"] ?? null,
-                apitoken: preset["ai:apitoken"] ?? null,
-                apiversion: preset["ai:apiversion"] ?? null,
-                maxtokens: preset["ai:maxtokens"] ?? null,
-                timeoutms: preset["ai:timeoutms"] ?? 60000,
-                baseurl: preset["ai:baseurl"] ?? null,
+                model: settings["ai:model"] ?? null,
+                apitype: settings["ai:apitype"] ?? null,
+                orgid: settings["ai:orgid"] ?? null,
+                apitoken: settings["ai:apitoken"] ?? null,
+                apiversion: settings["ai:apiversion"] ?? null,
+                maxtokens: settings["ai:maxtokens"] ?? null,
+                timeoutms: settings["ai:timeoutms"] ?? 60000,
+                baseurl: settings["ai:baseurl"] ?? null,
             };
             return opts;
         });
