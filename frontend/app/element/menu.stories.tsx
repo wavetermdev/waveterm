@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { fn } from "@storybook/test";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "./button";
 import { Menu } from "./menu";
 
@@ -58,30 +57,17 @@ const meta = {
     component: Menu,
     args: {
         items: [],
-        anchorRef: undefined,
-        scopeRef: undefined,
-        initialPosition: undefined,
-        className: "",
-        setVisibility: fn(),
+        children: null,
     },
     argTypes: {
         items: {
             description: "Items of menu",
         },
-        anchorRef: {
-            description: "Element to attach the menu",
-        },
-        initialPosition: {
-            description: "Initial position of the menu",
-        },
-        setVisibility: {
-            description: "Visibility event handler",
-        },
-        scopeRef: {
-            description: "Component that defines the boundaries of the menu",
-        },
         className: {
             description: "Custom className",
+        },
+        children: {
+            description: "The contents of the menu anchor element",
         },
     },
 } satisfies Meta<typeof Menu>;
@@ -91,21 +77,12 @@ type Story = StoryObj<typeof meta>;
 
 export const DefaultRendererLeftPositioned: Story = {
     render: (args) => {
-        const anchorRef = useRef<HTMLButtonElement>(null);
-        const scopeRef = useRef<HTMLDivElement>(null);
-        const [isMenuVisible, setIsMenuVisible] = useState(false);
-
-        const handleAnchorClick = () => {
-            setIsMenuVisible((prev) => !prev);
-        };
-
         const mapItemsWithClick = (items: any[]) => {
             return items.map((item) => ({
                 ...item,
                 onClick: () => {
                     if (item.onClick) {
                         item.onClick();
-                        setIsMenuVisible(false);
                     }
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
@@ -119,29 +96,17 @@ export const DefaultRendererLeftPositioned: Story = {
 
         return (
             <div
-                ref={scopeRef}
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
-                <div style={{ position: "absolute", top: 0, left: 0 }}>
-                    <Button
-                        ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
-                        style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
-                        onClick={handleAnchorClick}
-                    >
-                        Anchor Element
-                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
-                    </Button>
-                </div>
-                {isMenuVisible && (
-                    <Menu
-                        {...modifiedArgs}
-                        setVisibility={(visible) => setIsMenuVisible(visible)}
-                        anchorRef={anchorRef}
-                        scopeRef={scopeRef}
-                    />
-                )}
+                <Menu {...modifiedArgs}>
+                    <div style={{ position: "absolute", top: 0, left: 0 }}>
+                        <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </div>
+                </Menu>
             </div>
         );
     },
@@ -152,13 +117,7 @@ export const DefaultRendererLeftPositioned: Story = {
 
 export const DefaultRendererRightPositioned: Story = {
     render: (args) => {
-        const anchorRef = useRef<HTMLButtonElement>(null);
-        const scopeRef = useRef<HTMLDivElement>(null);
         const [isMenuVisible, setIsMenuVisible] = useState(false);
-
-        const handleAnchorClick = () => {
-            setIsMenuVisible((prev) => !prev);
-        };
 
         const mapItemsWithClick = (items: any[]) => {
             return items.map((item) => ({
@@ -167,7 +126,6 @@ export const DefaultRendererRightPositioned: Story = {
                     if (item.onClick) {
                         item.onClick();
                     }
-                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
@@ -180,29 +138,17 @@ export const DefaultRendererRightPositioned: Story = {
 
         return (
             <div
-                ref={scopeRef}
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
-                <div style={{ position: "absolute", top: 0, right: 0 }}>
-                    <Button
-                        ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
-                        style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
-                        onClick={handleAnchorClick}
-                    >
-                        Anchor Element
-                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
-                    </Button>
-                </div>
-                {isMenuVisible && (
-                    <Menu
-                        {...modifiedArgs}
-                        setVisibility={(visible) => setIsMenuVisible(visible)}
-                        anchorRef={anchorRef}
-                        scopeRef={scopeRef}
-                    />
-                )}
+                <Menu {...modifiedArgs}>
+                    <div style={{ position: "absolute", top: 0, right: 0 }}>
+                        <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </div>
+                </Menu>
             </div>
         );
     },
@@ -213,14 +159,6 @@ export const DefaultRendererRightPositioned: Story = {
 
 export const DefaultRendererBottomRightPositioned: Story = {
     render: (args) => {
-        const anchorRef = useRef<HTMLButtonElement>(null);
-        const scopeRef = useRef<HTMLDivElement>(null);
-        const [isMenuVisible, setIsMenuVisible] = useState(false);
-
-        const handleAnchorClick = () => {
-            setIsMenuVisible((prev) => !prev);
-        };
-
         const mapItemsWithClick = (items: any[]) => {
             return items.map((item) => ({
                 ...item,
@@ -228,7 +166,6 @@ export const DefaultRendererBottomRightPositioned: Story = {
                     if (item.onClick) {
                         item.onClick();
                     }
-                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
@@ -241,29 +178,17 @@ export const DefaultRendererBottomRightPositioned: Story = {
 
         return (
             <div
-                ref={scopeRef}
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
-                <div style={{ position: "absolute", bottom: 0, left: 0 }}>
-                    <Button
-                        ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
-                        style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
-                        onClick={handleAnchorClick}
-                    >
-                        Anchor Element
-                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
-                    </Button>
-                </div>
-                {isMenuVisible && (
-                    <Menu
-                        {...modifiedArgs}
-                        setVisibility={(visible) => setIsMenuVisible(visible)}
-                        anchorRef={anchorRef}
-                        scopeRef={scopeRef}
-                    />
-                )}
+                <Menu {...modifiedArgs}>
+                    <div style={{ position: "absolute", bottom: 0, left: 0 }}>
+                        <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </div>
+                </Menu>
             </div>
         );
     },
@@ -276,11 +201,6 @@ export const DefaultRendererBottomLeftPositioned: Story = {
     render: (args) => {
         const anchorRef = useRef<HTMLButtonElement>(null);
         const scopeRef = useRef<HTMLDivElement>(null);
-        const [isMenuVisible, setIsMenuVisible] = useState(false);
-
-        const handleAnchorClick = () => {
-            setIsMenuVisible((prev) => !prev);
-        };
 
         const mapItemsWithClick = (items: any[]) => {
             return items.map((item) => ({
@@ -289,7 +209,6 @@ export const DefaultRendererBottomLeftPositioned: Story = {
                     if (item.onClick) {
                         item.onClick();
                     }
-                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
@@ -306,25 +225,17 @@ export const DefaultRendererBottomLeftPositioned: Story = {
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
-                <div style={{ position: "absolute", bottom: 0, right: 0 }}>
-                    <Button
-                        ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
-                        style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
-                        onClick={handleAnchorClick}
-                    >
-                        Anchor Element
-                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
-                    </Button>
-                </div>
-                {isMenuVisible && (
-                    <Menu
-                        {...modifiedArgs}
-                        setVisibility={(visible) => setIsMenuVisible(visible)}
-                        anchorRef={anchorRef}
-                        scopeRef={scopeRef}
-                    />
-                )}
+                <Menu {...modifiedArgs}>
+                    <div style={{ position: "absolute", bottom: 0, right: 0 }}>
+                        <Button
+                            ref={anchorRef}
+                            className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
+                        >
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </div>
+                </Menu>
             </div>
         );
     },
@@ -335,14 +246,6 @@ export const DefaultRendererBottomLeftPositioned: Story = {
 
 export const CustomRenderer: Story = {
     render: (args) => {
-        const anchorRef = useRef<HTMLButtonElement>(null);
-        const scopeRef = useRef<HTMLDivElement>(null);
-        const [isMenuVisible, setIsMenuVisible] = useState(false);
-
-        const handleAnchorClick = () => {
-            setIsMenuVisible((prev) => !prev);
-        };
-
         const mapItemsWithClick = (items: any[]) => {
             return items.map((item) => ({
                 ...item,
@@ -350,7 +253,6 @@ export const CustomRenderer: Story = {
                     if (item.onClick) {
                         item.onClick();
                     }
-                    setIsMenuVisible(false);
                 },
                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
             }));
@@ -371,32 +273,15 @@ export const CustomRenderer: Story = {
         };
 
         return (
-            <div
-                ref={scopeRef}
-                className="boundary"
-                style={{ padding: "20px", height: "300px", border: "2px solid black" }}
-            >
-                <div style={{ height: "400px" }}>
-                    <Button
-                        ref={anchorRef}
-                        className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
-                        style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
-                        onClick={handleAnchorClick}
-                    >
-                        Anchor Element
-                        <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
-                    </Button>
-                </div>
-                {isMenuVisible && (
-                    <Menu
-                        {...modifiedArgs}
-                        setVisibility={(visible) => setIsMenuVisible(visible)}
-                        anchorRef={anchorRef}
-                        scopeRef={scopeRef}
-                        renderMenu={renderMenu}
-                        renderMenuItem={renderMenuItem}
-                    />
-                )}
+            <div className="boundary" style={{ padding: "20px", height: "300px", border: "2px solid black" }}>
+                <Menu {...modifiedArgs} renderMenu={renderMenu} renderMenuItem={renderMenuItem}>
+                    <div style={{ height: "400px" }}>
+                        <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </div>
+                </Menu>
             </div>
         );
     },
@@ -405,67 +290,59 @@ export const CustomRenderer: Story = {
     },
 };
 
-export const ContextMenu: Story = {
-    render: (args) => {
-        const scopeRef = useRef<HTMLDivElement>(null);
-        const [isMenuVisible, setIsMenuVisible] = useState(false);
-        const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+// export const ContextMenu: Story = {
+//     render: (args) => {
+//         const scopeRef = useRef<HTMLDivElement>(null);
+//         const [isMenuVisible, setIsMenuVisible] = useState(false);
+//         const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-        const handleBlockRightClick = (e: MouseEvent) => {
-            e.preventDefault(); // Prevent the default context menu
-            setMenuPosition({ top: e.clientY, left: e.clientX });
-            setIsMenuVisible(true);
-        };
+//         const handleBlockRightClick = (e: MouseEvent) => {
+//             e.preventDefault(); // Prevent the default context menu
+//             setMenuPosition({ top: e.clientY, left: e.clientX });
+//             setIsMenuVisible(true);
+//         };
 
-        useEffect(() => {
-            const blockElement = scopeRef.current;
-            if (blockElement) {
-                blockElement.addEventListener("contextmenu", handleBlockRightClick);
-            }
+//         useEffect(() => {
+//             const blockElement = scopeRef.current;
+//             if (blockElement) {
+//                 blockElement.addEventListener("contextmenu", handleBlockRightClick);
+//             }
 
-            return () => {
-                if (blockElement) {
-                    blockElement.removeEventListener("contextmenu", handleBlockRightClick);
-                }
-            };
-        }, []);
+//             return () => {
+//                 if (blockElement) {
+//                     blockElement.removeEventListener("contextmenu", handleBlockRightClick);
+//                 }
+//             };
+//         }, []);
 
-        const mapItemsWithClick = (items: any[]) => {
-            return items.map((item) => ({
-                ...item,
-                onClick: () => {
-                    if (item.onClick) {
-                        item.onClick();
-                        setIsMenuVisible(false);
-                    }
-                },
-                subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
-            }));
-        };
+//         const mapItemsWithClick = (items: any[]) => {
+//             return items.map((item) => ({
+//                 ...item,
+//                 onClick: () => {
+//                     if (item.onClick) {
+//                         item.onClick();
+//                     }
+//                 },
+//                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+//             }));
+//         };
 
-        const modifiedArgs = {
-            ...args,
-            items: mapItemsWithClick(args.items),
-        };
+//         const modifiedArgs = {
+//             ...args,
+//             items: mapItemsWithClick(args.items),
+//         };
 
-        return (
-            <div
-                ref={scopeRef}
-                className="boundary"
-                style={{ padding: "20px", height: "300px", border: "2px solid black" }}
-            >
-                {isMenuVisible && (
-                    <Menu
-                        {...modifiedArgs}
-                        setVisibility={(visible) => setIsMenuVisible(visible)}
-                        initialPosition={menuPosition}
-                        scopeRef={scopeRef}
-                    />
-                )}
-            </div>
-        );
-    },
-    args: {
-        items: items,
-    },
-};
+//         return (
+//             <div
+//                 ref={scopeRef}
+//                 className="boundary"
+//                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
+//             >
+//                 {isMenuVisible && <Menu {...modifiedArgs} />}
+//             </div>
+//         );
+//     },
+//     args: {
+//         items: items,
+//     },
+// };

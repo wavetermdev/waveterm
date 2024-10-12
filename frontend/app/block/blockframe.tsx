@@ -32,13 +32,13 @@ import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
+import { MenuButton } from "@/element/menubutton";
 import { NodeModel } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
-import { Menu } from "../element/menu";
 import { BlockFrameProps } from "./blocktypes";
 
 const NumActiveConnColors = 8;
@@ -242,31 +242,6 @@ const BlockFrame_Header = ({
         </div>
     );
 };
-
-const MenuButton = React.memo(({ items, className, text }: { items: MenuItem[]; className: string; text: string }) => {
-    const anchorRef = React.useRef<HTMLButtonElement>();
-    const [isMenuVisible, setIsMenuVisible] = React.useState(false);
-
-    const handleAnchorClick = () => {
-        setIsMenuVisible((prev) => !prev);
-    };
-    return (
-        <div className={clsx("block-frame-menubutton", className)}>
-            <Button
-                ref={anchorRef}
-                className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
-                style={{ borderColor: isMenuVisible ? "var(--accent-color)" : "transparent" }}
-                onClick={handleAnchorClick}
-            >
-                {text}
-                <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
-            </Button>
-            {isMenuVisible && (
-                <Menu setVisibility={(visible) => setIsMenuVisible(visible)} anchorRef={anchorRef} items={items} />
-            )}
-        </div>
-    );
-});
 
 const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; preview: boolean }) => {
     if (elem.elemtype == "iconbutton") {
