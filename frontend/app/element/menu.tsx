@@ -3,7 +3,7 @@
 
 import { useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import clsx from "clsx";
-import React, { memo, ReactNode, useRef, useState } from "react";
+import { createRef, Fragment, memo, ReactNode, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import "./menu.less";
 
@@ -41,7 +41,7 @@ const SubMenu = memo(
         subItems.forEach((_, idx) => {
             const newKey = `${parentKey}-${idx}`;
             if (!subMenuRefs.current[newKey]) {
-                subMenuRefs.current[newKey] = React.createRef<HTMLDivElement>();
+                subMenuRefs.current[newKey] = createRef<HTMLDivElement>();
             }
         });
 
@@ -81,7 +81,7 @@ const SubMenu = memo(
                     );
 
                     return (
-                        <React.Fragment key={newKey}>
+                        <Fragment key={newKey}>
                             {renderedItem}
                             {visibleSubMenus[newKey]?.visible && item.subItems && (
                                 <SubMenu
@@ -97,7 +97,7 @@ const SubMenu = memo(
                                     renderMenuItem={renderMenuItem}
                                 />
                             )}
-                        </React.Fragment>
+                        </Fragment>
                     );
                 })}
             </div>
@@ -147,7 +147,7 @@ const Menu = memo(
         items.forEach((_, idx) => {
             const key = `${idx}`;
             if (!subMenuRefs.current[key]) {
-                subMenuRefs.current[key] = React.createRef<HTMLDivElement>();
+                subMenuRefs.current[key] = createRef<HTMLDivElement>();
             }
         });
 
@@ -278,7 +278,7 @@ const Menu = memo(
                             );
 
                             return (
-                                <React.Fragment key={key}>
+                                <Fragment key={key}>
                                     {renderedItem}
                                     {visibleSubMenus[key]?.visible && item.subItems && (
                                         <SubMenu
@@ -294,7 +294,7 @@ const Menu = memo(
                                             renderMenuItem={renderMenuItem}
                                         />
                                     )}
-                                </React.Fragment>
+                                </Fragment>
                             );
                         })}
                     </div>
