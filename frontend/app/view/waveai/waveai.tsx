@@ -74,7 +74,20 @@ export class WaveAiModel implements ViewModel {
         });
         this.presetMap = atom((get) => {
             const presets = get(atoms.fullConfigAtom).presets;
-            return Object.fromEntries(Object.entries(presets).filter(([k]) => k.startsWith("ai@")));
+            const settings = get(atoms.settingsAtom);
+            return Object.fromEntries(
+                Object.entries(presets)
+                    .filter(([k]) => k.startsWith("ai@"))
+                    .map(([k, v]) => {
+                        const aiPresetKeys = Object.keys(v).filter((k) => k.startsWith("ai:"));
+                        console.log(aiPresetKeys);
+                        v["display:name"] =
+                            aiPresetKeys.length == 1 && aiPresetKeys.includes("ai:*")
+                                ? `${v["display:name"] ?? "Default"} (${settings["ai:model"]})`
+                                : v["display:name"];
+                        return [k, v];
+                    })
+            );
         });
 
         this.addMessageAtom = atom(null, (get, set, message: ChatMessageType) => {
