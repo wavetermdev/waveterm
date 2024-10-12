@@ -73,8 +73,9 @@ export class WaveAiModel implements ViewModel {
             return metaPresetKey ?? globalPresetKey;
         });
         this.presetMap = atom((get) => {
-            const presets = get(atoms.fullConfigAtom).presets;
-            const settings = get(atoms.settingsAtom);
+            const fullConfig = get(atoms.fullConfigAtom);
+            const presets = fullConfig.presets;
+            const settings = fullConfig.settings;
             return Object.fromEntries(
                 Object.entries(presets)
                     .filter(([k]) => k.startsWith("ai@"))
