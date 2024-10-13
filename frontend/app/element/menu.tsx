@@ -1,134 +1,29 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useDismiss, useFloating, useInteractions } from "@floating-ui/react";
+import { type Placement, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import clsx from "clsx";
 import { createRef, Fragment, memo, ReactNode, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import "./menu.less";
 
-const SubMenu = memo(
-    ({
-        subItems,
-        parentKey,
-        subMenuPosition,
-        visibleSubMenus,
-        hoveredItems,
-        subMenuRefs,
-        handleMouseEnterItem,
-        handleOnClick,
-        renderMenu,
-        renderMenuItem,
-    }: {
-        subItems: MenuItem[];
-        parentKey: string;
-        subMenuPosition: {
-            [key: string]: { top: number; left: number; label: string };
-        };
-        visibleSubMenus: { [key: string]: any };
-        hoveredItems: string[];
-        subMenuRefs: React.MutableRefObject<{ [key: string]: React.RefObject<HTMLDivElement> }>;
-        handleMouseEnterItem: (
-            event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-            parentKey: string | null,
-            index: number,
-            item: MenuItem
-        ) => void;
-        handleOnClick: (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => void;
-        renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
-        renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
-    }) => {
-        subItems.forEach((_, idx) => {
-            const newKey = `${parentKey}-${idx}`;
-            if (!subMenuRefs.current[newKey]) {
-                subMenuRefs.current[newKey] = createRef<HTMLDivElement>();
-            }
-        });
+type MenuProps = {
+    items: MenuItem[];
+    className?: string;
+    placement?: Placement;
+    onOpenChange?: (isOpen: boolean) => void;
+    children: ReactNode | ReactNode[];
+    renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
+    renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
+};
 
-        const position = subMenuPosition[parentKey];
-        const isPositioned = position && position.top !== undefined && position.left !== undefined;
-
-        const subMenu = (
-            <div
-                className="menu sub-menu"
-                ref={subMenuRefs.current[parentKey]}
-                style={{
-                    top: position?.top || 0,
-                    left: position?.left || 0,
-                    position: "absolute",
-                    zIndex: 1000,
-                    visibility: visibleSubMenus[parentKey]?.visible && isPositioned ? "visible" : "hidden",
-                }}
-            >
-                {subItems.map((item, idx) => {
-                    const newKey = `${parentKey}-${idx}`;
-                    const isActive = hoveredItems.includes(newKey);
-
-                    const menuItemProps = {
-                        className: clsx("menu-item", { active: isActive }),
-                        onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
-                            handleMouseEnterItem(event, parentKey, idx, item),
-                        onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
-                    };
-
-                    const renderedItem = renderMenuItem ? (
-                        renderMenuItem(item, menuItemProps) // Remove portal here
-                    ) : (
-                        <div key={newKey} {...menuItemProps}>
-                            <span className="label">{item.label}</span>
-                            {item.subItems && <i className="fa-sharp fa-solid fa-chevron-right"></i>}
-                        </div>
-                    );
-
-                    return (
-                        <Fragment key={newKey}>
-                            {renderedItem}
-                            {visibleSubMenus[newKey]?.visible && item.subItems && (
-                                <SubMenu
-                                    subItems={item.subItems}
-                                    parentKey={newKey}
-                                    subMenuPosition={subMenuPosition}
-                                    visibleSubMenus={visibleSubMenus}
-                                    hoveredItems={hoveredItems}
-                                    handleMouseEnterItem={handleMouseEnterItem}
-                                    handleOnClick={handleOnClick}
-                                    subMenuRefs={subMenuRefs}
-                                    renderMenu={renderMenu}
-                                    renderMenuItem={renderMenuItem}
-                                />
-                            )}
-                        </Fragment>
-                    );
-                })}
-            </div>
-        );
-
-        return ReactDOM.createPortal(renderMenu ? renderMenu(subMenu, { parentKey }) : subMenu, document.body);
-    }
-);
-
-const Menu = memo(
-    ({
-        items,
-        children,
-        className,
-        onOpenChange,
-        renderMenu,
-        renderMenuItem,
-    }: {
-        items: MenuItem[];
-        className?: string;
-        onOpenChange?: (isOpen: boolean) => void;
-        children: ReactNode | ReactNode[];
-        renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
-        renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
-    }) => {
+const MenuComponent = memo(
+    ({ items, children, className, placement, onOpenChange, renderMenu, renderMenuItem }: MenuProps) => {
         const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({});
         const [hoveredItems, setHoveredItems] = useState<string[]>([]);
         const [subMenuPosition, setSubMenuPosition] = useState<{
             [key: string]: { top: number; left: number; label: string };
         }>({});
-        const menuRef = useRef<HTMLDivElement>(null);
         const subMenuRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
 
         const [isOpen, setIsOpen] = useState(false);
@@ -137,7 +32,7 @@ const Menu = memo(
             onOpenChange?.(isOpen);
         };
         const { refs, floatingStyles, context } = useFloating({
-            placement: "bottom-start",
+            placement: placement ?? "bottom-start",
             open: isOpen,
             onOpenChange: onOpenChangeMenu,
         });
@@ -152,12 +47,7 @@ const Menu = memo(
         });
 
         // Position submenus based on available space and scroll position
-        const handleSubMenuPosition = (
-            key: string,
-            itemRect: DOMRect,
-            parentRef: React.RefObject<HTMLDivElement>,
-            label: string
-        ) => {
+        const handleSubMenuPosition = (key: string, itemRect: DOMRect, label: string) => {
             setTimeout(() => {
                 const subMenuRef = subMenuRefs.current[key]?.current;
                 if (!subMenuRef) return;
@@ -230,7 +120,7 @@ const Menu = memo(
             setHoveredItems(newHoveredItems);
 
             const itemRect = event.currentTarget.getBoundingClientRect();
-            handleSubMenuPosition(key, itemRect, menuRef, item.label);
+            handleSubMenuPosition(key, itemRect, item.label);
         };
 
         const handleOnClick = (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => {
@@ -301,6 +191,110 @@ const Menu = memo(
                 )}
             </>
         );
+    }
+);
+
+const Menu = memo(MenuComponent) as typeof MenuComponent;
+
+type SubMenuProps = {
+    subItems: MenuItem[];
+    parentKey: string;
+    subMenuPosition: {
+        [key: string]: { top: number; left: number; label: string };
+    };
+    visibleSubMenus: { [key: string]: any };
+    hoveredItems: string[];
+    subMenuRefs: React.MutableRefObject<{ [key: string]: React.RefObject<HTMLDivElement> }>;
+    handleMouseEnterItem: (
+        event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+        parentKey: string | null,
+        index: number,
+        item: MenuItem
+    ) => void;
+    handleOnClick: (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => void;
+    renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
+    renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
+};
+
+const SubMenu = memo(
+    ({
+        subItems,
+        parentKey,
+        subMenuPosition,
+        visibleSubMenus,
+        hoveredItems,
+        subMenuRefs,
+        handleMouseEnterItem,
+        handleOnClick,
+        renderMenu,
+        renderMenuItem,
+    }: SubMenuProps) => {
+        subItems.forEach((_, idx) => {
+            const newKey = `${parentKey}-${idx}`;
+            if (!subMenuRefs.current[newKey]) {
+                subMenuRefs.current[newKey] = createRef<HTMLDivElement>();
+            }
+        });
+
+        const position = subMenuPosition[parentKey];
+        const isPositioned = position && position.top !== undefined && position.left !== undefined;
+
+        const subMenu = (
+            <div
+                className="menu sub-menu"
+                ref={subMenuRefs.current[parentKey]}
+                style={{
+                    top: position?.top || 0,
+                    left: position?.left || 0,
+                    position: "absolute",
+                    zIndex: 1000,
+                    visibility: visibleSubMenus[parentKey]?.visible && isPositioned ? "visible" : "hidden",
+                }}
+            >
+                {subItems.map((item, idx) => {
+                    const newKey = `${parentKey}-${idx}`;
+                    const isActive = hoveredItems.includes(newKey);
+
+                    const menuItemProps = {
+                        className: clsx("menu-item", { active: isActive }),
+                        onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                            handleMouseEnterItem(event, parentKey, idx, item),
+                        onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
+                    };
+
+                    const renderedItem = renderMenuItem ? (
+                        renderMenuItem(item, menuItemProps) // Remove portal here
+                    ) : (
+                        <div key={newKey} {...menuItemProps}>
+                            <span className="label">{item.label}</span>
+                            {item.subItems && <i className="fa-sharp fa-solid fa-chevron-right"></i>}
+                        </div>
+                    );
+
+                    return (
+                        <Fragment key={newKey}>
+                            {renderedItem}
+                            {visibleSubMenus[newKey]?.visible && item.subItems && (
+                                <SubMenu
+                                    subItems={item.subItems}
+                                    parentKey={newKey}
+                                    subMenuPosition={subMenuPosition}
+                                    visibleSubMenus={visibleSubMenus}
+                                    hoveredItems={hoveredItems}
+                                    handleMouseEnterItem={handleMouseEnterItem}
+                                    handleOnClick={handleOnClick}
+                                    subMenuRefs={subMenuRefs}
+                                    renderMenu={renderMenu}
+                                    renderMenuItem={renderMenuItem}
+                                />
+                            )}
+                        </Fragment>
+                    );
+                })}
+            </div>
+        );
+
+        return ReactDOM.createPortal(renderMenu ? renderMenu(subMenu, { parentKey }) : subMenu, document.body);
     }
 );
 
