@@ -932,3 +932,17 @@ func WriteFileIfDifferent(fileName string, contents []byte) (bool, error) {
 	}
 	return true, nil
 }
+
+func GetLineColFromOffset(barr []byte, offset int) (int, int) {
+	line := 1
+	col := 1
+	for i := 0; i < offset && i < len(barr); i++ {
+		if barr[i] == '\n' {
+			line++
+			col = 1
+		} else {
+			col++
+		}
+	}
+	return line, col
+}
