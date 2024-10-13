@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Button } from "./button";
 import { Menu } from "./menu";
 
@@ -99,14 +99,14 @@ export const DefaultRendererLeftPositioned: Story = {
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
-                <Menu {...modifiedArgs}>
-                    <div style={{ position: "absolute", top: 0, left: 0 }}>
+                <div style={{ position: "absolute", top: 0, left: 0 }}>
+                    <Menu {...modifiedArgs}>
                         <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </div>
-                </Menu>
+                    </Menu>
+                </div>
             </div>
         );
     },
@@ -117,8 +117,6 @@ export const DefaultRendererLeftPositioned: Story = {
 
 export const DefaultRendererRightPositioned: Story = {
     render: (args) => {
-        const [isMenuVisible, setIsMenuVisible] = useState(false);
-
         const mapItemsWithClick = (items: any[]) => {
             return items.map((item) => ({
                 ...item,
@@ -141,14 +139,14 @@ export const DefaultRendererRightPositioned: Story = {
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
-                <Menu {...modifiedArgs}>
-                    <div style={{ position: "absolute", top: 0, right: 0 }}>
+                <div style={{ position: "absolute", top: 0, right: 0 }}>
+                    <Menu {...modifiedArgs}>
                         <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </div>
-                </Menu>
+                    </Menu>
+                </div>
             </div>
         );
     },
@@ -181,14 +179,14 @@ export const DefaultRendererBottomRightPositioned: Story = {
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
-                <Menu {...modifiedArgs}>
-                    <div style={{ position: "absolute", bottom: 0, left: 0 }}>
+                <div style={{ position: "absolute", bottom: 0, left: 0 }}>
+                    <Menu {...modifiedArgs} placement="top-end">
                         <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </div>
-                </Menu>
+                    </Menu>
+                </div>
             </div>
         );
     },
@@ -225,8 +223,8 @@ export const DefaultRendererBottomLeftPositioned: Story = {
                 className="boundary"
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
-                <Menu {...modifiedArgs}>
-                    <div style={{ position: "absolute", bottom: 0, right: 0 }}>
+                <div style={{ position: "absolute", bottom: 0, right: 0 }}>
+                    <Menu {...modifiedArgs} placement="top-end">
                         <Button
                             ref={anchorRef}
                             className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
@@ -234,8 +232,8 @@ export const DefaultRendererBottomLeftPositioned: Story = {
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </div>
-                </Menu>
+                    </Menu>
+                </div>
             </div>
         );
     },
@@ -274,14 +272,14 @@ export const CustomRenderer: Story = {
 
         return (
             <div className="boundary" style={{ padding: "20px", height: "300px", border: "2px solid black" }}>
-                <Menu {...modifiedArgs} renderMenu={renderMenu} renderMenuItem={renderMenuItem}>
-                    <div style={{ height: "400px" }}>
+                <div style={{ height: "400px" }}>
+                    <Menu {...modifiedArgs} renderMenu={renderMenu} renderMenuItem={renderMenuItem}>
                         <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </div>
-                </Menu>
+                    </Menu>
+                </div>
             </div>
         );
     },
