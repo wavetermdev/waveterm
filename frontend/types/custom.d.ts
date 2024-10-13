@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { type Placement } from "@floating-ui/react";
 import type * as jotai from "jotai";
 import type * as rxjs from "rxjs";
 
@@ -237,6 +238,7 @@ declare global {
         className?: string;
         text: string;
         title?: string;
+        menuPlacement?: Placement;
     };
 
     type MenuButton = {
