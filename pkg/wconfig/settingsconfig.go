@@ -20,6 +20,13 @@ import (
 
 const SettingsFile = "settings.json"
 
+const AnySchema = `
+{
+  "type": "object",
+  "additionalProperties": true
+}
+`
+
 type MetaSettingsType struct {
 	waveobj.MetaMapType
 }
@@ -117,10 +124,37 @@ type FullConfigType struct {
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 
+func goBackWS(barr []byte, offset int) int {
+	if offset >= len(barr) {
+		offset = offset - 1
+	}
+	for i := offset - 1; i >= 0; i-- {
+		if barr[i] == ' ' || barr[i] == '\t' || barr[i] == '\n' || barr[i] == '\r' {
+			continue
+		}
+		return i
+	}
+	return 0
+}
+
+func isTrailingCommaError(barr []byte, offset int) bool {
+	if offset >= len(barr) {
+		offset = offset - 1
+	}
+	offset = goBackWS(barr, offset)
+	if barr[offset] == '}' {
+		offset = goBackWS(barr, offset)
+		if barr[offset] == ',' {
+			return true
+		}
+	}
+	return false
+}
+
 func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
 	var cerrs []ConfigError
 	if readErr != nil && !os.IsNotExist(readErr) {
-		cerrs = append(cerrs, ConfigError{File: "defaults:" + fileName, Err: readErr.Error()})
+		cerrs = append(cerrs, ConfigError{File: fileName, Err: readErr.Error()})
 	}
 	if len(barr) == 0 {
 		return nil, cerrs
@@ -128,7 +162,20 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 	var rtn waveobj.MetaMapType
 	err := json.Unmarshal(barr, &rtn)
 	if err != nil {
-		cerrs = append(cerrs, ConfigError{File: "defaults:" + fileName, Err: err.Error()})
+		if syntaxErr, ok := err.(*json.SyntaxError); ok {
+			offset := syntaxErr.Offset
+			if offset > 0 {
+				offset = offset - 1
+			}
+			lineNum, colNum := utilfn.GetLineColFromOffset(barr, int(offset))
+			isTrailingComma := isTrailingCommaError(barr, int(offset))
+			if isTrailingComma {
+				err = fmt.Errorf("json syntax error at line %d, col %d: probably an extra trailing comma: %v", lineNum, colNum, syntaxErr)
+			} else {
+				err = fmt.Errorf("json syntax error at line %d, col %d: %v", lineNum, colNum, syntaxErr)
+			}
+		}
+		cerrs = append(cerrs, ConfigError{File: fileName, Err: err.Error()})
 	}
 	return rtn, cerrs
 }
