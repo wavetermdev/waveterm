@@ -26,6 +26,7 @@ const (
 	ConfigKey_TermLocalShellPath             = "term:localshellpath"
 	ConfigKey_TermLocalShellOpts             = "term:localshellopts"
 	ConfigKey_TermScrollback                 = "term:scrollback"
+	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

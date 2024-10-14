@@ -445,6 +445,7 @@ declare global {
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
+        "term:copyonselect"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
