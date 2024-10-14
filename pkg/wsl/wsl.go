@@ -17,6 +17,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -355,11 +357,8 @@ func (conn *WslConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			"Would you like to install them?", clientDisplayName)
 		title = "Install Wave Shell Extensions"
 	} else {
-		queryText = fmt.Sprintf("Wave requires the Wave Shell Extensions  \n"+
-			"installed on `%s`  \n"+
-			"to be updated from %s to %s.  \n\n"+
-			"Would you like to update?", clientDisplayName, clientVersion, expectedVersion)
-		title = "Update Wave Shell Extensions"
+		// don't ask for upgrading the version
+		opts.NoUserPrompt = true
 	}
 	if !opts.NoUserPrompt {
 		request := &userinput.UserInputRequest{
@@ -372,6 +371,15 @@ func (conn *WslConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		response, err := userinput.GetUserInput(ctx, request)
 		if err != nil || !response.Confirm {
 			return err
+		}
+		if response.CheckboxStat {
+			meta := waveobj.MetaMapType{
+				wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
+			}
+			err := wconfig.SetBaseConfigValue(meta)
+			if err != nil {
+				return fmt.Errorf("error setting conn:askbeforewshinstall value: %w", err)
+			}
 		}
 	}
 	log.Printf("attempting to install wsh to `%s`", clientDisplayName)
@@ -484,7 +492,8 @@ func (conn *WslConn) connectInternal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	installErr := conn.CheckAndInstallWsh(ctx, conn.GetName(), nil)
+	config := wconfig.ReadFullConfig()
+	installErr := conn.CheckAndInstallWsh(ctx, conn.GetName(), &WshInstallOpts{NoUserPrompt: !config.Settings.ConnAskBeforeWshInstall})
 	if installErr != nil {
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
 	}
