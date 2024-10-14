@@ -23,7 +23,8 @@ function getUpdateChannel(settings: SettingsType): string {
     let retVal = settingsChannel;
 
     // If the user setting doesn't exist yet, set it to the value of the updater config.
-    if (!settingsChannel) {
+    // If the user was previously on the `latest` channel and has downloaded a `beta` version, update their configured channel to `beta` to prevent downgrading.
+    if (!settingsChannel || (settingsChannel == "latest" && updaterChannel == "beta")) {
         console.log("Update channel setting does not exist, setting to value from updater config.");
         RpcApi.SetConfigCommand(ElectronWshClient, { "autoupdate:channel": updaterChannel });
         retVal = updaterChannel;

@@ -90,8 +90,7 @@ export class FitAddon implements ITerminalAddon, IFitApi {
         const elementPaddingVer = elementPadding.top + elementPadding.bottom;
         const elementPaddingHor = elementPadding.right + elementPadding.left;
         const availableHeight = parentElementHeight - elementPaddingVer;
-        // UPDATED added 6 here (adjustment in xterm.css, right: -6px for scrollbar)
-        const availableWidth = parentElementWidth - elementPaddingHor - scrollbarWidth - 6;
+        const availableWidth = parentElementWidth - elementPaddingHor - scrollbarWidth;
         const geometry = {
             cols: Math.max(MINIMUM_COLS, Math.floor(availableWidth / dims.css.cell.width)),
             rows: Math.max(MINIMUM_ROWS, Math.floor(availableHeight / dims.css.cell.height)),

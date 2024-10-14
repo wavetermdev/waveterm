@@ -131,6 +131,7 @@ type Window struct {
 	Version     int         `json:"version"`
 	WorkspaceId string      `json:"workspaceid"`
 	ActiveTabId string      `json:"activetabid"`
+	IsNew       bool        `json:"isnew,omitempty"` // set when a window is created on the backend so the FE can size it properly.  cleared on first resize
 	Pos         Point       `json:"pos"`
 	WinSize     WinSize     `json:"winsize"`
 	LastFocusTs int64       `json:"lastfocusts"`
