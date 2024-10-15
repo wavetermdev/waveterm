@@ -92,6 +92,7 @@ class TermViewModel {
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
     termWshClient: TermWshClient;
+    shellProcStatusRef: React.MutableRefObject<string>;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "term";
@@ -154,6 +155,62 @@ class TermViewModel {
             }
         }
         return false;
+    }
+
+    keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
+            const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${this.blockId}`);
+            const blockData = globalStore.get(blockAtom);
+            const newTermMode = blockData?.meta?.["term:mode"] == "html" ? null : "html";
+            RpcApi.SetMetaCommand(WindowRpcClient, {
+                oref: WOS.makeORef("block", this.blockId),
+                meta: { "term:mode": newTermMode },
+            });
+            return true;
+        }
+        return false;
+    }
+
+    handleTerminalKeydown(event: KeyboardEvent): boolean {
+        const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
+        if (waveEvent.type != "keydown") {
+            return true;
+        }
+        if (this.keyDownHandler(waveEvent)) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+        // deal with terminal specific keybindings
+        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
+            const p = navigator.clipboard.readText();
+            p.then((text) => {
+                this.termRef.current?.terminal.paste(text);
+            });
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
+            const sel = this.termRef.current?.terminal.getSelection();
+            navigator.clipboard.writeText(sel);
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+        if (this.shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
+            // restart
+            const tabId = globalStore.get(atoms.activeTabId);
+            const prtn = RpcApi.ControllerResyncCommand(WindowRpcClient, { tabid: tabId, blockid: this.blockId });
+            prtn.catch((e) => console.log("error controller resync (enter)", this.blockId, e));
+            return false;
+        }
+        const globalKeys = getAllGlobalKeyBindings();
+        for (const key of globalKeys) {
+            if (keyutil.checkKeyPressed(waveEvent, key)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     setTerminalTheme(themeName: string) {
@@ -239,59 +296,15 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<TermWrap>(null);
     model.termRef = termRef;
-    const shellProcStatusRef = React.useRef<string>(null);
     const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
     model.htmlElemFocusRef = htmlElemFocusRef;
+    const spstatusRef = React.useRef<string>(null);
+    model.shellProcStatusRef = spstatusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
 
     React.useEffect(() => {
-        function handleTerminalKeydown(event: KeyboardEvent): boolean {
-            const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
-            if (waveEvent.type != "keydown") {
-                return true;
-            }
-            // deal with terminal specific keybindings
-            if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
-                event.preventDefault();
-                event.stopPropagation();
-                RpcApi.SetMetaCommand(WindowRpcClient, {
-                    oref: WOS.makeORef("block", blockId),
-                    meta: { "term:mode": null },
-                });
-                return false;
-            }
-            if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-                const p = navigator.clipboard.readText();
-                p.then((text) => {
-                    termRef.current?.terminal.paste(text);
-                });
-                event.preventDefault();
-                event.stopPropagation();
-                return false;
-            } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
-                const sel = termRef.current?.terminal.getSelection();
-                navigator.clipboard.writeText(sel);
-                event.preventDefault();
-                event.stopPropagation();
-                return false;
-            }
-            if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
-                // restart
-                const tabId = globalStore.get(atoms.activeTabId);
-                const prtn = RpcApi.ControllerResyncCommand(WindowRpcClient, { tabid: tabId, blockid: blockId });
-                prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
-                return false;
-            }
-            const globalKeys = getAllGlobalKeyBindings();
-            for (const key of globalKeys) {
-                if (keyutil.checkKeyPressed(waveEvent, key)) {
-                    return false;
-                }
-            }
-            return true;
-        }
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termTheme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
         const themeCopy = { ...termTheme };
@@ -323,7 +336,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 scrollback: termScrollback,
             },
             {
-                keydownHandler: handleTerminalKeydown,
+                keydownHandler: model.handleTerminalKeydown.bind(model),
                 useWebGl: !termSettings?.["term:disablewebgl"],
             }
         );
@@ -370,7 +383,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             if (status == null) {
                 return;
             }
-            shellProcStatusRef.current = status;
+            model.shellProcStatusRef.current = status;
             if (status == "running") {
                 termRef.current?.setIsRunning(true);
             } else {

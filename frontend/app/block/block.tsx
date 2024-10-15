@@ -253,7 +253,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
 
 const Block = memo((props: BlockProps) => {
     counterInc("render-Block");
-    counterInc("render-Block-" + props.nodeModel.blockId.substring(0, 8));
+    counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;

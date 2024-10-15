@@ -6,6 +6,7 @@ import { VDomModel } from "@/app/view/term/vdom-model";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { useAtomValueSafe } from "@/util/util";
+import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -16,6 +17,8 @@ const WaveTextTag = "wave:text";
 const VDomObjType_Ref = "ref";
 const VDomObjType_Binding = "binding";
 const VDomObjType_Func = "func";
+
+const dlog = debug("wave:vdom");
 
 const AllowedTags: { [tagName: string]: boolean } = {
     div: true,
@@ -242,6 +245,7 @@ function VDomView({
         setModel(model);
     }, []);
     let rootNode = useAtomValueSafe(model?.vdomRoot);
+    dlog("render", rootNode);
     if (!model || viewRef.current == null || rootNode == null) {
         return null;
     }
