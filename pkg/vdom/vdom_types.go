@@ -3,6 +3,8 @@
 
 package vdom
 
+import "github.com/wavetermdev/waveterm/pkg/waveobj"
+
 const TextTag = "#text"
 const WaveTextTag = "wave:text"
 const FragmentTag = "#fragment"
@@ -26,16 +28,28 @@ type VDomElem struct {
 
 //// protocol messages
 
+type CreateVDomContext struct {
+	Type     string              `json:"type" tstype:"\"createvdomcontext\""`
+	Ts       int64               `json:"ts"`
+	Meta     waveobj.MetaMapType `json:"meta,omitempty"`
+	NewBlock bool                `json:"newblock,omitempty"`
+	Persist  bool                `json:"persist,omitempty"`
+}
+
 type AsyncInitiationRequest struct {
-	Type string `json:"type" tstype:"\"asyncinitiationrequest\""`
-	Ts   int64  `json:"ts"`
+	Type    string `json:"type" tstype:"\"asyncinitiationrequest\""`
+	Ts      int64  `json:"ts"`
+	BlockId string `json:"blockid,omitempty"`
 }
 
 type VDomFrontendUpdate struct {
 	Type          string            `json:"type" tstype:"\"frontendupdate\""`
 	Ts            int64             `json:"ts"`
+	BlockId       string            `json:"blockid"`
+	CorrelationId string            `json:"correlationid,omitempty"`
 	RequestId     string            `json:"requestid"`
 	Initialize    bool              `json:"initialize,omitempty"` // initialize the app
+	Dispose       bool              `json:"dispose,omitempty"`    // the vdom context was closed
 	Resync        bool              `json:"resync,omitempty"`     // resync (send all backend data).  useful when the FE reloads
 	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
 	Events        []VDomEvent       `json:"events,omitempty"`
@@ -47,6 +61,7 @@ type VDomFrontendUpdate struct {
 type VDomBackendUpdate struct {
 	Type          string             `json:"type" tstype:"\"backendupdate\""`
 	Ts            int64              `json:"ts"`
+	BlockId       string             `json:"blockid"`
 	ResponseId    string             `json:"responseid"`
 	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
 	StateSync     []VDomStateSync    `json:"statesync,omitempty"`
@@ -107,11 +122,12 @@ type VDomEvent struct {
 }
 
 type VDomRenderContext struct {
-	BlockId   string `json:"blockid"`
-	Focused   bool   `json:"focused"`
-	Width     int    `json:"width"`
-	Height    int    `json:"height"`
-	RootRefId string `json:"rootrefid"`
+	BlockId    string `json:"blockid"`
+	Focused    bool   `json:"focused"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	RootRefId  string `json:"rootrefid"`
+	Background string `json:"background"`
 }
 
 type VDomStateSync struct {

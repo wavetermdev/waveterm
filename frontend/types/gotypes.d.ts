@@ -186,6 +186,15 @@ declare global {
         count: number;
     };
 
+    // vdom.CreateVDomContext
+    type CreateVDomContext = {
+        type: "createvdomcontext";
+        ts: number;
+        meta?: MetaType;
+        newblock?: boolean;
+        persist?: boolean;
+    };
+
     // vdom.DomRect
     type DomRect = {
         top: number;
@@ -330,6 +339,7 @@ declare global {
         "term:scrollback"?: number;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
+        "vdom:correlationid"?: string;
         count?: number;
     };
 
@@ -597,6 +607,7 @@ declare global {
     type VDomBackendUpdate = {
         type: "backendupdate";
         ts: number;
+        blockid: string;
         responseid: string;
         renderupdates?: VDomRenderUpdate[];
         statesync?: VDomStateSync[];
@@ -630,8 +641,11 @@ declare global {
     type VDomFrontendUpdate = {
         type: "frontendupdate";
         ts: number;
+        blockid: string;
+        correlationid?: string;
         requestid: string;
         initialize?: boolean;
+        dispose?: boolean;
         resync?: boolean;
         rendercontext?: VDomRenderContext;
         events?: VDomEvent[];
@@ -696,6 +710,7 @@ declare global {
         width: number;
         height: number;
         rootrefid: string;
+        background: string;
     };
 
     // vdom.VDomRenderUpdate
