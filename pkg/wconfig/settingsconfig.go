@@ -41,6 +41,7 @@ func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
 
 type SettingsType struct {
 	AiClear      bool    `json:"ai:*,omitempty"`
+	AiPreset     string  `json:"ai:preset,omitempty"`
 	AiApiType    string  `json:"ai:apitype,omitempty"`
 	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
 	AiApiToken   string  `json:"ai:apitoken,omitempty"`
@@ -89,11 +90,15 @@ type SettingsType struct {
 	WindowBgColor                     string   `json:"window:bgcolor,omitempty"`
 	WindowReducedMotion               bool     `json:"window:reducedmotion,omitempty"`
 	WindowTileGapSize                 *int64   `json:"window:tilegapsize,omitempty"`
+	WindowShowMenuBar                 bool     `json:"window:showmenubar,omitempty"`
 	WindowNativeTitleBar              bool     `json:"window:nativetitlebar,omitempty"`
 	WindowDisableHardwareAcceleration bool     `json:"window:disablehardwareacceleration,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
+
+	ConnClear               bool `json:"conn:*,omitempty"`
+	ConnAskBeforeWshInstall bool `json:"conn:askbeforewshinstall,omitempty"`
 }
 
 type ConfigError struct {

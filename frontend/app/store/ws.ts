@@ -218,4 +218,32 @@ class WSControl {
     }
 }
 
-export { WSControl, addWSReconnectHandler, removeWSReconnectHandler, type ElectronOverrideOpts };
+let globalWS: WSControl;
+function initGlobalWS(
+    baseHostPort: string,
+    windowId: string,
+    messageCallback: WSEventCallback,
+    electronOverrideOpts?: ElectronOverrideOpts
+) {
+    globalWS = new WSControl(baseHostPort, windowId, messageCallback, electronOverrideOpts);
+}
+
+function sendRawRpcMessage(msg: RpcMessage) {
+    const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
+    sendWSCommand(wsMsg);
+}
+
+function sendWSCommand(cmd: WSCommandType) {
+    globalWS?.pushMessage(cmd);
+}
+
+export {
+    WSControl,
+    addWSReconnectHandler,
+    globalWS,
+    initGlobalWS,
+    removeWSReconnectHandler,
+    sendRawRpcMessage,
+    sendWSCommand,
+    type ElectronOverrideOpts,
+};

@@ -12,10 +12,15 @@ export function useDimensionsWithCallbackRef<T extends HTMLElement>(
     const rszObjRef = React.useRef<ResizeObserver>(null);
     const oldHtmlElem = React.useRef<T>(null);
     const ref = React.useRef<T>(null);
-    const refCallback = useCallback((node: T) => {
-        setHtmlElem(node);
-        ref.current = node;
-    }, []);
+    const refCallback = useCallback(
+        (node: T) => {
+            if (ref) {
+                setHtmlElem(node);
+                ref.current = node;
+            }
+        },
+        [ref]
+    );
     const setDomRectDebounced = React.useCallback(debounceMs == null ? setDomRect : debounce(debounceMs, setDomRect), [
         debounceMs,
         setDomRect,
@@ -54,7 +59,7 @@ export function useDimensionsWithCallbackRef<T extends HTMLElement>(
 // will not react to ref changes
 // pass debounceMs of null to not debounce
 export function useDimensionsWithExistingRef<T extends HTMLElement>(
-    ref: React.RefObject<T>,
+    ref?: React.RefObject<T>,
     debounceMs: number = null
 ): DOMRectReadOnly {
     const [domRect, setDomRect] = useState<DOMRectReadOnly>(null);
@@ -76,7 +81,7 @@ export function useDimensionsWithExistingRef<T extends HTMLElement>(
                 }
             });
         }
-        if (ref.current) {
+        if (ref?.current) {
             rszObjRef.current.observe(ref.current);
             oldHtmlElem.current = ref.current;
         }
@@ -86,13 +91,13 @@ export function useDimensionsWithExistingRef<T extends HTMLElement>(
                 oldHtmlElem.current = null;
             }
         };
-    }, [ref.current]);
+    }, [ref?.current]);
     React.useEffect(() => {
         return () => {
             rszObjRef.current?.disconnect();
         };
     }, []);
-    if (ref.current != null) {
+    if (ref?.current != null) {
         return ref.current.getBoundingClientRect();
     }
     return null;

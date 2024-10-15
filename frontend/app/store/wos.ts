@@ -7,7 +7,7 @@ import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
 import { useEffect } from "react";
-import { atoms, globalStore } from "./global";
+import { globalStore } from "./jotaiStore";
 import { ObjectService } from "./services";
 
 type WaveObjectDataItemType<T extends WaveObj> = {
@@ -79,8 +79,8 @@ function debugLogBackendCall(methodName: string, durationStr: string, args: any[
 function callBackendService(service: string, method: string, args: any[], noUIContext?: boolean): Promise<any> {
     const startTs = Date.now();
     let uiContext: UIContext = null;
-    if (!noUIContext) {
-        uiContext = globalStore.get(atoms.uiContext);
+    if (!noUIContext && globalThis.window != null) {
+        uiContext = globalStore.get(((window as any).globalAtoms as GlobalAtomsType).uiContext);
     }
     const waveCall: WebCallType = {
         service: service,

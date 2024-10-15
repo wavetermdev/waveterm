@@ -1,162 +1,161 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 import { ChatMessage } from "@/app/element/chatmessages";
-import { MenuItem } from "@/app/element/menu";
 import { UserStatus } from "@/app/element/userlist";
 
 export const channels: MenuItem[] = [
     {
-        text: "Aurora Streams",
+        label: "Aurora Streams",
         icon: "#",
         onClick: () => console.log("Aurora Streams clicked"),
     },
     {
-        text: "Crimson Oasis",
+        label: "Crimson Oasis",
         onClick: () => console.log("Crimson Oasis clicked"),
-        children: [
+        subItems: [
             {
-                text: "Golden Dunes",
+                label: "Golden Dunes",
                 icon: "#",
                 onClick: () => console.log("Golden Dunes clicked"),
             },
             {
-                text: "Emerald Springs",
+                label: "Emerald Springs",
                 icon: "#",
                 onClick: () => console.log("Emerald Springs clicked"),
             },
             {
-                text: "Ruby Cascades",
+                label: "Ruby Cascades",
                 icon: "#",
                 onClick: () => console.log("Ruby Cascades clicked"),
             },
             {
-                text: "Sapphire Falls",
+                label: "Sapphire Falls",
                 icon: "#",
                 onClick: () => console.log("Sapphire Falls clicked"),
             },
         ],
     },
     {
-        text: "Velvet Horizon",
+        label: "Velvet Horizon",
         onClick: () => console.log("Velvet Horizon clicked"),
-        children: [
+        subItems: [
             {
-                text: "Amber Skies",
+                label: "Amber Skies",
                 icon: "#",
                 onClick: () => console.log("Amber Skies clicked"),
             },
         ],
     },
     {
-        text: "Mystic Meadows",
+        label: "Mystic Meadows",
         icon: "#",
         onClick: () => console.log("Mystic Meadows clicked"),
     },
     {
-        text: "Celestial Grove",
+        label: "Celestial Grove",
         icon: "#",
         onClick: () => console.log("Celestial Grove clicked"),
     },
     {
-        text: "Twilight Whisper",
+        label: "Twilight Whisper",
         icon: "#",
         onClick: () => console.log("Twilight Whisper clicked"),
     },
     {
-        text: "Starlit Haven",
+        label: "Starlit Haven",
         onClick: () => console.log("Starlit Haven clicked"),
-        children: [
+        subItems: [
             {
-                text: "Moonlit Trail",
+                label: "Moonlit Trail",
                 icon: "#",
                 onClick: () => console.log("Moonlit Trail clicked"),
             },
         ],
     },
     {
-        text: "Silver Mist",
+        label: "Silver Mist",
         icon: "#",
         onClick: () => console.log("Silver Mist clicked"),
     },
     {
-        text: "Eclipse Haven",
+        label: "Eclipse Haven",
         onClick: () => console.log("Eclipse Haven clicked"),
-        children: [
+        subItems: [
             {
-                text: "Obsidian Wave",
+                label: "Obsidian Wave",
                 icon: "#",
                 onClick: () => console.log("Obsidian Wave clicked"),
             },
             {
-                text: "Ivory Shore",
+                label: "Ivory Shore",
                 icon: "#",
                 onClick: () => console.log("Ivory Shore clicked"),
             },
             {
-                text: "Azure Tide",
+                label: "Azure Tide",
                 icon: "#",
                 onClick: () => console.log("Azure Tide clicked"),
             },
         ],
     },
     {
-        text: "Dragon's Peak",
+        label: "Dragon's Peak",
         icon: "#",
         onClick: () => console.log("Dragon's Peak clicked"),
     },
     {
-        text: "Seraph's Wing",
+        label: "Seraph's Wing",
         icon: "#",
         onClick: () => console.log("Seraph's Wing clicked"),
     },
     {
-        text: "Frozen Abyss",
+        label: "Frozen Abyss",
         icon: "#",
         onClick: () => console.log("Frozen Abyss clicked"),
     },
     {
-        text: "Radiant Blossom",
+        label: "Radiant Blossom",
         icon: "#",
         onClick: () => console.log("Radiant Blossom clicked"),
     },
     {
-        text: "Whispering Pines",
+        label: "Whispering Pines",
         icon: "#",
         onClick: () => console.log("Whispering Pines clicked"),
-        children: [
+        subItems: [
             {
-                text: "Cedar Haven",
+                label: "Cedar Haven",
                 icon: "#",
                 onClick: () => console.log("Cedar Haven clicked"),
             },
         ],
     },
     {
-        text: "Scarlet Veil",
+        label: "Scarlet Veil",
         icon: "#",
         onClick: () => console.log("Scarlet Veil clicked"),
     },
     {
-        text: "Onyx Spire",
+        label: "Onyx Spire",
         icon: "#",
         onClick: () => console.log("Onyx Spire clicked"),
     },
     {
-        text: "Violet Enclave",
+        label: "Violet Enclave",
         onClick: () => console.log("Violet Enclave clicked"),
-        children: [
+        subItems: [
             {
-                text: "Indigo Haven",
+                label: "Indigo Haven",
                 icon: "#",
                 onClick: () => console.log("Indigo Haven clicked"),
             },
             {
-                text: "Amethyst Hollow",
+                label: "Amethyst Hollow",
                 icon: "#",
                 onClick: () => console.log("Amethyst Hollow clicked"),
             },
             {
-                text: "Crimson Glow",
+                label: "Crimson Glow",
                 icon: "#",
                 onClick: () => console.log("Crimson Glow clicked"),
             },
@@ -166,24 +165,24 @@ export const channels: MenuItem[] = [
 
 export const users: UserStatus[] = [
     {
-        text: "John Doe",
+        label: "John Doe",
         status: "online",
         avatarUrl: "https://via.placeholder.com/50",
         onClick: () => console.log("John Doe clicked"),
     },
     {
-        text: "Jane Smith",
+        label: "Jane Smith",
         status: "busy",
         onClick: () => console.log("Jane Smith clicked"),
     },
     {
-        text: "Robert Brown",
+        label: "Robert Brown",
         status: "away",
         avatarUrl: "https://via.placeholder.com/50",
         onClick: () => console.log("Robert Brown clicked"),
     },
     {
-        text: "Alice Lambert",
+        label: "Alice Lambert",
         status: "offline",
         onClick: () => console.log("Alice Lambert clicked"),
     },

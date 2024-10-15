@@ -1,11 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 import { ChatMessage, ChatMessages } from "@/app/element/chatmessages";
-import { MenuItem } from "@/app/element/menu";
 import { UserStatus } from "@/app/element/userlist";
+import { UserList } from "../../element/userlist";
 import { Channels } from "./channels";
 import { channels, messages, users } from "./data";
-import { Users } from "./users";
 
 import "./chat.less";
 
@@ -40,7 +39,7 @@ const Chat = ({ model }: ChatProps) => {
             <div className="chat-section">
                 <ChatMessages messages={messages}></ChatMessages>
             </div>
-            <Users users={users}></Users>
+            <UserList users={users}></UserList>
         </div>
     );
 };

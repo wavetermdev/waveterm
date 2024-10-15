@@ -96,7 +96,7 @@
     overflow-y: scroll;
     cursor: default;
     position: absolute;
-    right: -6px; /* if this gets updated, must update fitaddon.ts */
+    right: 0; /* if this gets updated, must update fitaddon.ts */
     left: 0;
     top: 0;
     bottom: 0;

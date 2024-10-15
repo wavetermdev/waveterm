@@ -293,6 +293,7 @@ declare global {
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
         "ai:*"?: boolean;
+        "ai:preset"?: string;
         "ai:apitype"?: string;
         "ai:baseurl"?: string;
         "ai:apitoken"?: string;
@@ -426,6 +427,7 @@ declare global {
     // wconfig.SettingsType
     type SettingsType = {
         "ai:*"?: boolean;
+        "ai:preset"?: string;
         "ai:apitype"?: string;
         "ai:baseurl"?: string;
         "ai:apitoken"?: string;
@@ -466,10 +468,13 @@ declare global {
         "window:bgcolor"?: string;
         "window:reducedmotion"?: boolean;
         "window:tilegapsize"?: number;
+        "window:showmenubar"?: boolean;
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
+        "conn:*"?: boolean;
+        "conn:askbeforewshinstall"?: boolean;
     };
 
     // waveobj.StickerClickOptsType
@@ -675,6 +680,7 @@ declare global {
     type WaveWindow = WaveObj & {
         workspaceid: string;
         activetabid: string;
+        isnew?: boolean;
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;

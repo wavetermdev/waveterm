@@ -60,6 +60,10 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 - [Contribution guidelines](CONTRIBUTING.md#before-you-start)
 - [Storybook](https://storybook.waveterm.dev)
 
+### Activity
+
+![Alt](https://repobeats.axiom.co/api/embed/f06b0f7bb1656d2493012ad411bbd746e8bf680f.svg "Repobeats analytics image")
+
 ## License
 
 Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).

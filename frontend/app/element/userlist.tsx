@@ -7,7 +7,7 @@ import { Avatar } from "./avatar";
 import "./userlist.less";
 
 export interface UserStatus {
-    text: string;
+    label: string;
     status: "online" | "busy" | "away" | "offline";
     onClick: () => void;
     avatarUrl?: string;
@@ -21,12 +21,12 @@ interface UserListProps {
 const UserList = memo(({ users, className }: UserListProps) => {
     return (
         <div className={clsx("user-list", className)}>
-            {users.map(({ text, status, onClick, avatarUrl }, index) => (
+            {users.map(({ label, status, onClick, avatarUrl }, index) => (
                 <div key={index} className={clsx("user-status-item", status)} onClick={onClick}>
                     <div className="user-status-icon">
-                        <Avatar name={text} status={status} className="size-sm" imageUrl={avatarUrl} />
+                        <Avatar name={label} status={status} className="size-sm" imageUrl={avatarUrl} />
                     </div>
-                    <div className="user-status-text">{text}</div>
+                    <div className="user-status-text">{label}</div>
                 </div>
             ))}
         </div>

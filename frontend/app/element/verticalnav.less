@@ -3,32 +3,35 @@
 
 @import "../mixins.less";
 
-.menu {
-    position: absolute;
-    z-index: 1000;
-    display: flex;
-    max-width: 400px;
-    padding: 2px;
-    flex-direction: column;
-    justify-content: flex-end;
-    align-items: flex-start;
-    gap: 1px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: #212121;
-    box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.3);
+.verticalnav {
+    list-style: none;
+    padding: 0;
 }
 
-.menu-item-content {
+.verticalnav-item {
+    padding: 10px;
+    cursor: pointer;
+    user-select: none;
+    padding: 0;
+}
+
+.verticalnav-item-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.verticalnav-item-content {
     display: flex;
     align-items: center;
 }
 
-.menu-item-icon {
+.verticalnav-item-icon {
     margin-right: 10px; /* Space between icon and text */
 }
 
-.menu-item-text {
+.verticalnav-item-text {
     .ellipsis();
     text-decoration: none;
 }
@@ -46,7 +49,7 @@
     display: none;
 }
 
-.menu-item-button {
+.verticalnav-item-button {
     padding: 10px;
     color: var(--main-text-color);
 
@@ -56,6 +59,6 @@
     }
 }
 
-.menu-item-button.clickable:hover {
+.verticalnav-item-button.clickable:hover {
     background-color: #f0f0f0;
 }

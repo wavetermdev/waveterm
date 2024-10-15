@@ -94,5 +94,25 @@
         "bg": "linear-gradient(120deg,hsla(350, 65%, 57%, 1),hsla(30,60%,60%, .75), hsla(208,69%,50%,.15), hsl(230,60%,40%)),radial-gradient(at top right,hsla(300,60%,70%,0.3),transparent),radial-gradient(at top left,hsla(330,100%,70%,.20),transparent),radial-gradient(at top right,hsla(190,100%,40%,.20),transparent),radial-gradient(at bottom left,hsla(323,54%,50%,.5),transparent),radial-gradient(at bottom left,hsla(144,54%,50%,.25),transparent)",
         "bg:blendmode": "overlay",
         "bg:text": "rgb(200, 200, 200)"
+    },
+    "ai@global": {
+        "display:name": "Global default",
+        "display:order": -1,
+        "ai:*": true
+    },
+    "ai@wave": {
+        "display:name": "Wave Proxy - gpt-4o-mini",
+        "display:order": 0,
+        "ai:*": true,
+        "ai:model": "gpt-4o-mini",
+        "ai:maxtokens": 2048,
+        "ai:timeoutms": 60000
+    },
+    "ai@ollama-llama3.1": {
+        "display:name": "ollama - llama3.1",
+        "display:order": 0,
+        "ai:*": true,
+        "ai:baseurl": "http://localhost:11434/v1",
+        "ai:model": "llama3.1:latest"
     }
 }

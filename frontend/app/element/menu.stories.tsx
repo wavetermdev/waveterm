@@ -1,114 +1,37 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
-import { Meta, StoryObj } from "@storybook/react";
-import { Avatar } from "./avatar";
+import type { Meta, StoryObj } from "@storybook/react";
+import { useRef } from "react";
+import { Button } from "./button";
 import { Menu } from "./menu";
 
-import "./menu.less";
-
-const meta: Meta<typeof Menu> = {
-    title: "Elements/Menu",
-    component: Menu,
-    argTypes: {
-        items: { control: "object" },
-        renderItem: { control: false },
-    },
-};
-
-export default meta;
-type Story = StoryObj<typeof meta>;
-
-// Container style for limiting the width to 360px
-const Container = (props: any) => (
-    <div
-        style={{ width: "360px", margin: "0 auto", border: "1px solid #ccc", padding: "10px", boxSizing: "border-box" }}
-    >
-        {props.children}
-    </div>
-);
-
-const basicItems = [
+const items = [
+    { label: "Fruit", onClick: (e) => console.log("Clicked Option 1") },
     {
-        text: "Inbox",
-        icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
-        onClick: () => console.log("Inbox clicked"),
+        label: "Vegetables",
+        subItems: [
+            { label: "Carrot", onClick: (e) => console.log("Clicked Option 2 -> 1") },
+            { label: "Potato", onClick: (e) => console.log("Clicked Option 2 -> 2") },
+        ],
     },
     {
-        text: "Sent Mail",
-        icon: <i className="fa-sharp fa-solid fa-paper-plane"></i>,
-        onClick: () => console.log("Sent Mail clicked"),
-    },
-    {
-        text: "Drafts",
-        icon: <i className="fa-sharp fa-solid fa-drafting-compass"></i>,
-        onClick: () => console.log("Drafts clicked"),
-    },
-];
-
-const nestedItems = [
-    {
-        text: "Inbox",
-        icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
-        onClick: () => console.log("Inbox clicked"),
-        children: [
+        label: "Beverages",
+        subItems: [
+            { label: "Juice", onClick: (e) => console.log("Clicked Option 3 -> 1") },
+            { label: "Tea", onClick: (e) => console.log("Clicked Option 3 -> 2") },
             {
-                text: "Starred",
-                icon: <i className="fa-sharp fa-solid fa-star"></i>,
-                onClick: () => console.log("Starred clicked"),
-            },
-            {
-                text: "Important",
-                icon: <i className="fa-sharp fa-solid fa-star"></i>,
-                onClick: () => console.log("Important clicked"),
-            },
-            {
-                text: "Inbox",
-                icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
-                onClick: () => console.log("Inbox clicked"),
-                children: [
+                label: "Coffee",
+                subItems: [
+                    { label: "Espresso", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 1") },
+                    { label: "Latte", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 2") },
+                    { label: "Cappuccino", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 3") },
                     {
-                        text: "Starred",
-                        icon: <i className="fa-sharp fa-solid fa-star"></i>,
-                        onClick: () => console.log("Starred clicked"),
-                    },
-                    {
-                        text: "Important",
-                        icon: <i className="fa-sharp fa-solid fa-star"></i>,
-                        onClick: () => console.log("Important clicked"),
-                    },
-                    {
-                        text: "Inbox",
-                        icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
-                        onClick: () => console.log("Inbox clicked"),
-                        children: [
+                        label: "Mocha",
+                        subItems: [
+                            { label: "Dark Chocolate", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 1") },
                             {
-                                text: "Starred",
-                                icon: <i className="fa-sharp fa-solid fa-star"></i>,
-                                onClick: () => console.log("Starred clicked"),
+                                label: "White Chocolate",
+                                onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 2"),
                             },
-                            {
-                                text: "Important",
-                                icon: <i className="fa-sharp fa-solid fa-star"></i>,
-                                onClick: () => console.log("Important clicked"),
-                            },
-                            {
-                                text: "Inbox",
-                                icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
-                                onClick: () => console.log("Inbox clicked"),
-                                children: [
-                                    {
-                                        text: "Starred",
-                                        icon: <i className="fa-sharp fa-solid fa-star"></i>,
-                                        onClick: () => console.log("Starred clicked"),
-                                    },
-                                    {
-                                        text: "Important",
-                                        icon: <i className="fa-sharp fa-solid fa-star"></i>,
-                                        onClick: () => console.log("Important clicked"),
-                                    },
-                                ],
-                            },
+                            { label: "Milk Chocolate", onClick: (e) => console.log("Clicked Option 3 -> 3 -> 4 -> 3") },
                         ],
                     },
                 ],
@@ -116,115 +39,308 @@ const nestedItems = [
         ],
     },
     {
-        text: "Sent Mail",
-        icon: <i className="fa-sharp fa-solid fa-paper-plane"></i>,
-        onClick: () => console.log("Sent Mail clicked"),
-    },
-    {
-        text: "Drafts",
-        icon: <i className="fa-sharp fa-solid fa-drafting-compass"></i>,
-        onClick: () => console.log("Drafts clicked"),
-    },
-];
-
-const customRenderItem = (item: any, isOpen: boolean, handleClick: () => void) => (
-    <div className="custom-list-item">
-        <span className="custom-list-item-icon" onClick={handleClick}>
-            {item.icon}
-        </span>
-        <span className="custom-list-item-text" onClick={handleClick}>
-            {item.text}
-        </span>
-        {item.children && <i className={`fa-sharp fa-solid ${isOpen ? "fa-angle-up" : "fa-angle-down"}`}></i>}
-    </div>
-);
-
-export const Default: Story = {
-    args: {
-        items: basicItems,
-    },
-    render: (args) => (
-        <Container>
-            <Menu {...args} />
-        </Container>
-    ),
-};
-
-export const NestedList: Story = {
-    args: {
-        items: nestedItems,
-    },
-    render: (args) => (
-        <Container>
-            <Menu {...args} />
-        </Container>
-    ),
-};
-
-export const CustomRender: Story = {
-    args: {
-        items: nestedItems,
-        renderItem: customRenderItem,
-    },
-    render: (args) => (
-        <Container>
-            <Menu {...args} />
-        </Container>
-    ),
-};
-
-export const WithClickHandlers: Story = {
-    args: {
-        items: basicItems,
-    },
-    render: (args) => (
-        <Container>
-            <Menu {...args} />
-        </Container>
-    ),
-};
-
-export const NestedWithClickHandlers: Story = {
-    args: {
-        items: nestedItems,
-    },
-    render: (args) => (
-        <Container>
-            <Menu {...args} />
-        </Container>
-    ),
-};
-
-const avatarItems = [
-    {
-        text: "John Doe",
-        icon: <Avatar name="John Doe" status="online" className="size-lg" />,
-        onClick: () => console.log("John Doe clicked"),
-    },
-    {
-        text: "Jane Smith",
-        icon: <Avatar name="Jane Smith" status="busy" className="size-lg" />,
-        onClick: () => console.log("Jane Smith clicked"),
-    },
-    {
-        text: "Robert Brown",
-        icon: <Avatar name="Robert Brown" status="away" className="size-lg" />,
-        onClick: () => console.log("Robert Brown clicked"),
-    },
-    {
-        text: "Alice Lambert",
-        icon: <Avatar name="Alice Lambert" status="offline" className="size-lg" />,
-        onClick: () => console.log("Alice Lambert clicked"),
+        label: "Desserts",
+        subItems: [
+            { label: "Cake", onClick: (e) => console.log("Clicked Option 4 -> 1") },
+            { label: "Ice Cream", onClick: (e) => console.log("Clicked Option 4 -> 2") },
+            { label: "Cookies", onClick: (e) => console.log("Clicked Option 4 -> 3") },
+            { label: "Brownies", onClick: (e) => console.log("Clicked Option 4 -> 4") },
+            { label: "Cupcakes", onClick: (e) => console.log("Clicked Option 4 -> 5") },
+            { label: "Donuts", onClick: (e) => console.log("Clicked Option 4 -> 6") },
+            { label: "Pie", onClick: (e) => console.log("Clicked Option 4 -> 7") },
+        ],
     },
 ];
 
-export const WithAvatars: Story = {
+const meta = {
+    title: "Elements/Menu",
+    component: Menu,
     args: {
-        items: avatarItems,
+        items: [],
+        children: null,
     },
-    render: (args) => (
-        <Container>
-            <Menu {...args} />
-        </Container>
-    ),
+    argTypes: {
+        items: {
+            description: "Items of menu",
+        },
+        className: {
+            description: "Custom className",
+        },
+        children: {
+            description: "The contents of the menu anchor element",
+        },
+    },
+} satisfies Meta<typeof Menu>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const DefaultRendererLeftPositioned: Story = {
+    render: (args) => {
+        const mapItemsWithClick = (items: any[]) => {
+            return items.map((item) => ({
+                ...item,
+                onClick: () => {
+                    if (item.onClick) {
+                        item.onClick();
+                    }
+                },
+                subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+            }));
+        };
+
+        const modifiedArgs = {
+            ...args,
+            items: mapItemsWithClick(args.items),
+        };
+
+        return (
+            <div
+                className="boundary"
+                style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
+            >
+                <div style={{ position: "absolute", top: 0, left: 0 }}>
+                    <Menu {...modifiedArgs}>
+                        <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </Menu>
+                </div>
+            </div>
+        );
+    },
+    args: {
+        items: items,
+    },
 };
+
+export const DefaultRendererRightPositioned: Story = {
+    render: (args) => {
+        const mapItemsWithClick = (items: any[]) => {
+            return items.map((item) => ({
+                ...item,
+                onClick: () => {
+                    if (item.onClick) {
+                        item.onClick();
+                    }
+                },
+                subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+            }));
+        };
+
+        const modifiedArgs = {
+            ...args,
+            items: mapItemsWithClick(args.items),
+        };
+
+        return (
+            <div
+                className="boundary"
+                style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
+            >
+                <div style={{ position: "absolute", top: 0, right: 0 }}>
+                    <Menu {...modifiedArgs}>
+                        <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </Menu>
+                </div>
+            </div>
+        );
+    },
+    args: {
+        items: items,
+    },
+};
+
+export const DefaultRendererBottomRightPositioned: Story = {
+    render: (args) => {
+        const mapItemsWithClick = (items: any[]) => {
+            return items.map((item) => ({
+                ...item,
+                onClick: () => {
+                    if (item.onClick) {
+                        item.onClick();
+                    }
+                },
+                subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+            }));
+        };
+
+        const modifiedArgs = {
+            ...args,
+            items: mapItemsWithClick(args.items),
+        };
+
+        return (
+            <div
+                className="boundary"
+                style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
+            >
+                <div style={{ position: "absolute", bottom: 0, left: 0 }}>
+                    <Menu {...modifiedArgs} placement="top-end">
+                        <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </Menu>
+                </div>
+            </div>
+        );
+    },
+    args: {
+        items: items,
+    },
+};
+
+export const DefaultRendererBottomLeftPositioned: Story = {
+    render: (args) => {
+        const anchorRef = useRef<HTMLButtonElement>(null);
+        const scopeRef = useRef<HTMLDivElement>(null);
+
+        const mapItemsWithClick = (items: any[]) => {
+            return items.map((item) => ({
+                ...item,
+                onClick: () => {
+                    if (item.onClick) {
+                        item.onClick();
+                    }
+                },
+                subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+            }));
+        };
+
+        const modifiedArgs = {
+            ...args,
+            items: mapItemsWithClick(args.items),
+        };
+
+        return (
+            <div
+                ref={scopeRef}
+                className="boundary"
+                style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
+            >
+                <div style={{ position: "absolute", bottom: 0, right: 0 }}>
+                    <Menu {...modifiedArgs} placement="top-end">
+                        <Button
+                            ref={anchorRef}
+                            className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
+                        >
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </Menu>
+                </div>
+            </div>
+        );
+    },
+    args: {
+        items: items,
+    },
+};
+
+export const CustomRenderer: Story = {
+    render: (args) => {
+        const mapItemsWithClick = (items: any[]) => {
+            return items.map((item) => ({
+                ...item,
+                onClick: () => {
+                    if (item.onClick) {
+                        item.onClick();
+                    }
+                },
+                subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+            }));
+        };
+
+        const renderMenuItem = (item: any, props: any) => (
+            <div {...props}>
+                <strong>{item.label}</strong>
+                {item.subItems && <span style={{ marginLeft: "10px", color: "#888" }}>▶</span>}
+            </div>
+        );
+
+        const renderMenu = (subMenu: JSX.Element) => <div>{subMenu}</div>;
+
+        const modifiedArgs = {
+            ...args,
+            items: mapItemsWithClick(args.items),
+        };
+
+        return (
+            <div className="boundary" style={{ padding: "20px", height: "300px", border: "2px solid black" }}>
+                <div style={{ height: "400px" }}>
+                    <Menu {...modifiedArgs} renderMenu={renderMenu} renderMenuItem={renderMenuItem}>
+                        <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
+                            Anchor Element
+                            <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                        </Button>
+                    </Menu>
+                </div>
+            </div>
+        );
+    },
+    args: {
+        items: items,
+    },
+};
+
+// export const ContextMenu: Story = {
+//     render: (args) => {
+//         const scopeRef = useRef<HTMLDivElement>(null);
+//         const [isMenuVisible, setIsMenuVisible] = useState(false);
+//         const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+
+//         const handleBlockRightClick = (e: MouseEvent) => {
+//             e.preventDefault(); // Prevent the default context menu
+//             setMenuPosition({ top: e.clientY, left: e.clientX });
+//             setIsMenuVisible(true);
+//         };
+
+//         useEffect(() => {
+//             const blockElement = scopeRef.current;
+//             if (blockElement) {
+//                 blockElement.addEventListener("contextmenu", handleBlockRightClick);
+//             }
+
+//             return () => {
+//                 if (blockElement) {
+//                     blockElement.removeEventListener("contextmenu", handleBlockRightClick);
+//                 }
+//             };
+//         }, []);
+
+//         const mapItemsWithClick = (items: any[]) => {
+//             return items.map((item) => ({
+//                 ...item,
+//                 onClick: () => {
+//                     if (item.onClick) {
+//                         item.onClick();
+//                     }
+//                 },
+//                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
+//             }));
+//         };
+
+//         const modifiedArgs = {
+//             ...args,
+//             items: mapItemsWithClick(args.items),
+//         };
+
+//         return (
+//             <div
+//                 ref={scopeRef}
+//                 className="boundary"
+//                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
+//             >
+//                 {isMenuVisible && <Menu {...modifiedArgs} />}
+//             </div>
+//         );
+//     },
+//     args: {
+//         items: items,
+//     },
+// };

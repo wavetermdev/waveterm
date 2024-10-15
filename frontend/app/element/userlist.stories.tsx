@@ -18,22 +18,22 @@ const meta = {
     args: {
         users: [
             {
-                text: "John Doe",
+                label: "John Doe",
                 status: "online",
                 onClick: () => console.log("John Doe clicked"),
             },
             {
-                text: "Jane Smith",
+                label: "Jane Smith",
                 status: "busy",
                 onClick: () => console.log("Jane Smith clicked"),
             },
             {
-                text: "Robert Brown",
+                label: "Robert Brown",
                 status: "away",
                 onClick: () => console.log("Robert Brown clicked"),
             },
             {
-                text: "Alice Lambert",
+                label: "Alice Lambert",
                 status: "offline",
                 onClick: () => console.log("Alice Lambert clicked"),
             },
