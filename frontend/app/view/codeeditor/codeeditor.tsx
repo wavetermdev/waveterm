@@ -6,11 +6,41 @@ import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
 import { atom, useAtomValue } from "jotai";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import { configureMonacoYaml } from "monaco-yaml";
 import React, { useMemo, useRef } from "react";
+
+import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
+import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
+import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
+import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
+import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
+import ymlWorker from "./yamlworker?worker";
+
 import "./codeeditor.less";
 
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: Monaco;
+
+window.MonacoEnvironment = {
+    getWorker(_, label) {
+        if (label === "json") {
+            return new jsonWorker();
+        }
+        if (label === "css" || label === "scss" || label === "less") {
+            return new cssWorker();
+        }
+        if (label === "yaml" || label === "yml") {
+            return new ymlWorker();
+        }
+        if (label === "html" || label === "handlebars" || label === "razor") {
+            return new htmlWorker();
+        }
+        if (label === "typescript" || label === "javascript") {
+            return new tsWorker();
+        }
+        return new editorWorker();
+    },
+};
 
 export function loadMonaco() {
     loader.config({ paths: { vs: "monaco" } });
@@ -37,10 +67,18 @@ export function loadMonaco() {
                     focusBorder: "#00000000",
                 },
             });
-
+            configureMonacoYaml(monaco, {
+                validate: true,
+                schemas: [],
+            });
             // Disable default validation errors for typescript and javascript
             monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
                 noSemanticValidation: true,
+            });
+            monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                validate: true,
+                allowComments: false, // Set to true if you want to allow comments in JSON
+                schemas: [], // You can specify JSON schemas here if needed
             });
         })
         .catch((e) => {
