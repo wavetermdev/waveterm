@@ -20,13 +20,22 @@ import (
 
 const SettingsFile = "settings.json"
 
+const AnySchema = `
+{
+  "type": "object",
+  "additionalProperties": true
+}
+`
+
 type MetaSettingsType struct {
 	waveobj.MetaMapType
 }
 
 func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
 	var metaMap waveobj.MetaMapType
-	if err := json.Unmarshal(data, &metaMap); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&metaMap); err != nil {
 		return err
 	}
 	*m = MetaSettingsType{MetaMapType: metaMap}
@@ -38,24 +47,35 @@ func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
 }
 
 type SettingsType struct {
-	AiClear     bool    `json:"ai:*,omitempty"`
-	AiBaseURL   string  `json:"ai:baseurl,omitempty"`
-	AiApiToken  string  `json:"ai:apitoken,omitempty"`
-	AiName      string  `json:"ai:name,omitempty"`
-	AiModel     string  `json:"ai:model,omitempty"`
-	AiMaxTokens float64 `json:"ai:maxtokens,omitempty"`
-	AiTimeoutMs float64 `json:"ai:timeoutms,omitempty"`
+	AiClear      bool    `json:"ai:*,omitempty"`
+	AiPreset     string  `json:"ai:preset,omitempty"`
+	AiApiType    string  `json:"ai:apitype,omitempty"`
+	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
+	AiApiToken   string  `json:"ai:apitoken,omitempty"`
+	AiName       string  `json:"ai:name,omitempty"`
+	AiModel      string  `json:"ai:model,omitempty"`
+	AiOrgID      string  `json:"ai:orgid,omitempty"`
+	AIApiVersion string  `json:"ai:apiversion,omitempty"`
+	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
+	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
 
-	TermClear        bool    `json:"term:*,omitempty"`
-	TermFontSize     float64 `json:"term:fontsize,omitempty"`
-	TermFontFamily   string  `json:"term:fontfamily,omitempty"`
-	TermDisableWebGl bool    `json:"term:disablewebgl,omitempty"`
+	TermClear          bool     `json:"term:*,omitempty"`
+	TermFontSize       float64  `json:"term:fontsize,omitempty"`
+	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
+	TermTheme          string   `json:"term:theme,omitempty"`
+	TermDisableWebGl   bool     `json:"term:disablewebgl,omitempty"`
+	TermLocalShellPath string   `json:"term:localshellpath,omitempty"`
+	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"`
+	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
+	TermCopyOnSelect   *bool    `json:"term:copyonselect,omitempty"`
 
 	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
 
-	WebClear               bool `json:"web:*,omitempty"`
-	WebOpenLinksInternally bool `json:"web:openlinksinternally,omitempty"`
+	WebClear               bool   `json:"web:*,omitempty"`
+	WebOpenLinksInternally bool   `json:"web:openlinksinternally,omitempty"`
+	WebDefaultUrl          string `json:"web:defaulturl,omitempty"`
+	WebDefaultSearch       string `json:"web:defaultsearch,omitempty"`
 
 	BlockHeaderClear        bool `json:"blockheader:*,omitempty"`
 	BlockHeaderShowBlockIds bool `json:"blockheader:showblockids,omitempty"`
@@ -66,19 +86,27 @@ type SettingsType struct {
 	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
 	AutoUpdateChannel       string  `json:"autoupdate:channel,omitempty"`
 
+	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
+
 	WidgetClear    bool `json:"widget:*,omitempty"`
 	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
 
-	WindowClear         bool     `json:"window:*,omitempty"`
-	WindowTransparent   bool     `json:"window:transparent,omitempty"`
-	WindowBlur          bool     `json:"window:blur,omitempty"`
-	WindowOpacity       *float64 `json:"window:opacity,omitempty"`
-	WindowBgColor       string   `json:"window:bgcolor,omitempty"`
-	WindowReducedMotion bool     `json:"window:reducedmotion,omitempty"`
-	WindowTileGapSize   *int8    `json:"window:tilegapsize,omitempty"`
+	WindowClear                       bool     `json:"window:*,omitempty"`
+	WindowTransparent                 bool     `json:"window:transparent,omitempty"`
+	WindowBlur                        bool     `json:"window:blur,omitempty"`
+	WindowOpacity                     *float64 `json:"window:opacity,omitempty"`
+	WindowBgColor                     string   `json:"window:bgcolor,omitempty"`
+	WindowReducedMotion               bool     `json:"window:reducedmotion,omitempty"`
+	WindowTileGapSize                 *int64   `json:"window:tilegapsize,omitempty"`
+	WindowShowMenuBar                 bool     `json:"window:showmenubar,omitempty"`
+	WindowNativeTitleBar              bool     `json:"window:nativetitlebar,omitempty"`
+	WindowDisableHardwareAcceleration bool     `json:"window:disablehardwareacceleration,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
+
+	ConnClear               bool `json:"conn:*,omitempty"`
+	ConnAskBeforeWshInstall bool `json:"conn:askbeforewshinstall,omitempty"`
 }
 
 type ConfigError struct {
@@ -96,12 +124,37 @@ type FullConfigType struct {
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 
-var settingsAbsPath = filepath.Join(configDirAbsPath, SettingsFile)
+func goBackWS(barr []byte, offset int) int {
+	if offset >= len(barr) {
+		offset = offset - 1
+	}
+	for i := offset - 1; i >= 0; i-- {
+		if barr[i] == ' ' || barr[i] == '\t' || barr[i] == '\n' || barr[i] == '\r' {
+			continue
+		}
+		return i
+	}
+	return 0
+}
+
+func isTrailingCommaError(barr []byte, offset int) bool {
+	if offset >= len(barr) {
+		offset = offset - 1
+	}
+	offset = goBackWS(barr, offset)
+	if barr[offset] == '}' {
+		offset = goBackWS(barr, offset)
+		if barr[offset] == ',' {
+			return true
+		}
+	}
+	return false
+}
 
 func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
 	var cerrs []ConfigError
 	if readErr != nil && !os.IsNotExist(readErr) {
-		cerrs = append(cerrs, ConfigError{File: "defaults:" + fileName, Err: readErr.Error()})
+		cerrs = append(cerrs, ConfigError{File: fileName, Err: readErr.Error()})
 	}
 	if len(barr) == 0 {
 		return nil, cerrs
@@ -109,7 +162,20 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 	var rtn waveobj.MetaMapType
 	err := json.Unmarshal(barr, &rtn)
 	if err != nil {
-		cerrs = append(cerrs, ConfigError{File: "defaults:" + fileName, Err: err.Error()})
+		if syntaxErr, ok := err.(*json.SyntaxError); ok {
+			offset := syntaxErr.Offset
+			if offset > 0 {
+				offset = offset - 1
+			}
+			lineNum, colNum := utilfn.GetLineColFromOffset(barr, int(offset))
+			isTrailingComma := isTrailingCommaError(barr, int(offset))
+			if isTrailingComma {
+				err = fmt.Errorf("json syntax error at line %d, col %d: probably an extra trailing comma: %v", lineNum, colNum, syntaxErr)
+			} else {
+				err = fmt.Errorf("json syntax error at line %d, col %d: %v", lineNum, colNum, syntaxErr)
+			}
+		}
+		cerrs = append(cerrs, ConfigError{File: fileName, Err: err.Error()})
 	}
 	return rtn, cerrs
 }
@@ -240,7 +306,7 @@ func reindentJson(barr []byte, indentStr string) []byte {
 	if barr[0] != '{' && barr[0] != '[' {
 		return barr
 	}
-	if bytes.Index(barr, []byte("\n")) == -1 {
+	if bytes.Contains(barr, []byte("\n")) {
 		return barr
 	}
 	outputLines := bytes.Split(barr, []byte("\n"))
@@ -284,6 +350,32 @@ func jsonMarshalConfigInOrder(m waveobj.MetaMapType) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+var dummyNumber json.Number
+
+func convertJsonNumber(num json.Number, ctype reflect.Type) (interface{}, error) {
+	// ctype might be int64, float64, string, *int64, *float64, *string
+	// switch on ctype first
+	if ctype.Kind() == reflect.Pointer {
+		ctype = ctype.Elem()
+	}
+	if reflect.Int64 == ctype.Kind() {
+		if ival, err := num.Int64(); err == nil {
+			return ival, nil
+		}
+		return nil, fmt.Errorf("invalid number for int64: %s", num)
+	}
+	if reflect.Float64 == ctype.Kind() {
+		if fval, err := num.Float64(); err == nil {
+			return fval, nil
+		}
+		return nil, fmt.Errorf("invalid number for float64: %s", num)
+	}
+	if reflect.String == ctype.Kind() {
+		return num.String(), nil
+	}
+	return nil, fmt.Errorf("cannot convert number to %s", ctype)
+}
+
 func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
 	if len(cerrs) > 0 {
@@ -300,8 +392,21 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		if val == nil {
 			delete(m, configKey)
 		} else {
-			if reflect.TypeOf(val) != ctype {
-				return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+			rtype := reflect.TypeOf(val)
+			if rtype == reflect.TypeOf(dummyNumber) {
+				convertedVal, err := convertJsonNumber(val.(json.Number), ctype)
+				if err != nil {
+					return fmt.Errorf("cannot convert %s: %v", configKey, err)
+				}
+				val = convertedVal
+				rtype = reflect.TypeOf(val)
+			}
+			if rtype != ctype {
+				if ctype == reflect.PointerTo(rtype) {
+					m[configKey] = &val
+				} else {
+					return fmt.Errorf("invalid value type for %s: %T", configKey, val)
+				}
 			}
 			m[configKey] = val
 		}
@@ -347,5 +452,5 @@ type TermThemeType struct {
 	Foreground          string  `json:"foreground"`
 	SelectionBackground string  `json:"selectionBackground"`
 	Background          string  `json:"background"`
-	CursorAccent        string  `json:"cursorAccent"`
+	Cursor              string  `json:"cursor"`
 }

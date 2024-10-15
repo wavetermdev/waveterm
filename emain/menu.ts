@@ -11,6 +11,16 @@ type AppMenuCallbacks = {
     relaunchBrowserWindows: () => Promise<void>;
 };
 
+function getWindowWebContents(window: electron.BaseWindow): electron.WebContents {
+    if (window == null) {
+        return null;
+    }
+    if (window instanceof electron.BrowserWindow) {
+        return window.webContents;
+    }
+    return null;
+}
+
 function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
@@ -30,7 +40,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         {
             label: "About Wave Terminal",
             click: (_, window) => {
-                window?.webContents.send("menu-item-about");
+                getWindowWebContents(window)?.send("menu-item-about");
             },
         },
         {
@@ -122,21 +132,29 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Actual Size",
             accelerator: "CommandOrControl+0",
             click: (_, window) => {
-                window.webContents.setZoomFactor(1);
+                getWindowWebContents(window)?.setZoomFactor(1);
             },
         },
         {
             label: "Zoom In",
             accelerator: "CommandOrControl+=",
             click: (_, window) => {
-                window.webContents.setZoomFactor(window.webContents.getZoomFactor() + 0.2);
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() + 0.2);
             },
         },
         {
             label: "Zoom In (hidden)",
             accelerator: "CommandOrControl+Shift+=",
             click: (_, window) => {
-                window.webContents.setZoomFactor(window.webContents.getZoomFactor() + 0.2);
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() + 0.2);
             },
             visible: false,
             acceleratorWorksWhenHidden: true,
@@ -145,7 +163,11 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Zoom Out",
             accelerator: "CommandOrControl+-",
             click: (_, window) => {
-                window.webContents.setZoomFactor(window.webContents.getZoomFactor() - 0.2);
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
             },
         },
         {

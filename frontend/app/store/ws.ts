@@ -1,19 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { type WebSocket, newWebSocket } from "@/util/wsutil";
 import debug from "debug";
 import { sprintf } from "sprintf-js";
-import type { WebSocket as ElectronWebSocketType } from "ws";
 
-let ElectronWebSocket: typeof ElectronWebSocketType;
 const AuthKeyHeader = "X-AuthKey";
-
-if (typeof window === "undefined") {
-    try {
-        const WebSocket = require("ws") as typeof ElectronWebSocketType;
-        ElectronWebSocket = WebSocket;
-    } catch (e) {}
-}
 
 const dlog = debug("wave:ws");
 
@@ -34,8 +26,12 @@ function removeWSReconnectHandler(handler: () => void) {
 
 type WSEventCallback = (arg0: WSEventType) => void;
 
+type ElectronOverrideOpts = {
+    authKey: string;
+};
+
 class WSControl {
-    wsConn: WebSocket | ElectronWebSocketType;
+    wsConn: WebSocket;
     open: boolean;
     opening: boolean = false;
     reconnectTimes: number = 0;
@@ -47,31 +43,43 @@ class WSControl {
     wsLog: string[] = [];
     baseHostPort: string;
     lastReconnectTime: number = 0;
-    authKey: string = null; // used only by electron
+    eoOpts: ElectronOverrideOpts;
+    noReconnect: boolean = false;
 
-    constructor(baseHostPort: string, windowId: string, messageCallback: WSEventCallback, authKey?: string) {
+    constructor(
+        baseHostPort: string,
+        windowId: string,
+        messageCallback: WSEventCallback,
+        electronOverrideOpts?: ElectronOverrideOpts
+    ) {
         this.baseHostPort = baseHostPort;
         this.messageCallback = messageCallback;
         this.windowId = windowId;
         this.open = false;
-        this.authKey = authKey;
+        this.eoOpts = electronOverrideOpts;
         setInterval(this.sendPing.bind(this), 5000);
     }
 
+    shutdown() {
+        this.noReconnect = true;
+        this.wsConn.close();
+    }
+
     connectNow(desc: string) {
-        if (this.open) {
+        if (this.open || this.noReconnect) {
             return;
         }
         this.lastReconnectTime = Date.now();
         dlog("try reconnect:", desc);
         this.opening = true;
-        if (ElectronWebSocket) {
-            this.wsConn = new ElectronWebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId, {
-                headers: { [AuthKeyHeader]: this.authKey },
-            });
-        } else {
-            this.wsConn = new WebSocket(this.baseHostPort + "/ws?windowid=" + this.windowId);
-        }
+        this.wsConn = newWebSocket(
+            this.baseHostPort + "/ws?windowid=" + this.windowId,
+            this.eoOpts
+                ? {
+                      [AuthKeyHeader]: this.eoOpts.authKey,
+                  }
+                : null
+        );
         this.wsConn.onopen = this.onopen.bind(this);
         this.wsConn.onmessage = this.onmessage.bind(this);
         this.wsConn.onclose = this.onclose.bind(this);
@@ -80,6 +88,9 @@ class WSControl {
     }
 
     reconnect(forceClose?: boolean) {
+        if (this.noReconnect) {
+            return;
+        }
         if (this.open) {
             if (forceClose) {
                 this.wsConn.close(); // this will force a reconnect
@@ -207,4 +218,32 @@ class WSControl {
     }
 }
 
-export { addWSReconnectHandler, removeWSReconnectHandler, WSControl };
+let globalWS: WSControl;
+function initGlobalWS(
+    baseHostPort: string,
+    windowId: string,
+    messageCallback: WSEventCallback,
+    electronOverrideOpts?: ElectronOverrideOpts
+) {
+    globalWS = new WSControl(baseHostPort, windowId, messageCallback, electronOverrideOpts);
+}
+
+function sendRawRpcMessage(msg: RpcMessage) {
+    const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
+    sendWSCommand(wsMsg);
+}
+
+function sendWSCommand(cmd: WSCommandType) {
+    globalWS?.pushMessage(cmd);
+}
+
+export {
+    WSControl,
+    addWSReconnectHandler,
+    globalWS,
+    initGlobalWS,
+    removeWSReconnectHandler,
+    sendRawRpcMessage,
+    sendWSCommand,
+    type ElectronOverrideOpts,
+};

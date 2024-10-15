@@ -6,11 +6,14 @@ package clientservice
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wcloud"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -105,4 +108,35 @@ func (cs *ClientService) AgreeTos(ctx context.Context) (waveobj.UpdatesRtnType, 
 	}
 	wlayout.BootstrapStarterLayout(ctx)
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
+}
+
+func sendNoTelemetryUpdate(telemetryEnabled bool) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		log.Printf("telemetry update: error getting client data: %v\n", err)
+		return
+	}
+	if clientData == nil {
+		log.Printf("telemetry update: client data is nil\n")
+		return
+	}
+	err = wcloud.SendNoTelemetryUpdate(ctx, clientData.OID, !telemetryEnabled)
+	if err != nil {
+		log.Printf("[error] sending no-telemetry update: %v\n", err)
+		return
+	}
+}
+
+func (cs *ClientService) TelemetryUpdate(ctx context.Context, telemetryEnabled bool) error {
+	meta := waveobj.MetaMapType{
+		wconfig.ConfigKey_TelemetryEnabled: telemetryEnabled,
+	}
+	err := wconfig.SetBaseConfigValue(meta)
+	if err != nil {
+		return fmt.Errorf("error setting telemetry value: %w", err)
+	}
+	go sendNoTelemetryUpdate(telemetryEnabled)
+	return nil
 }

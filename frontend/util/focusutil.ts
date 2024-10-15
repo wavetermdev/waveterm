@@ -54,7 +54,7 @@ export function focusedBlockId(): string {
         }
     }
     const sel = document.getSelection();
-    if (sel && sel.anchorNode) {
+    if (sel && sel.anchorNode && sel.rangeCount > 0 && !sel.isCollapsed) {
         let anchor = sel.anchorNode;
         if (anchor instanceof Text) {
             anchor = anchor.parentElement;

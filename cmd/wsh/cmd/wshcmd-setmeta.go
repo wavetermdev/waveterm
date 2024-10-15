@@ -16,7 +16,7 @@ import (
 var setMetaCmd = &cobra.Command{
 	Use:     "setmeta {blockid|blocknum|this} key=value ...",
 	Short:   "set metadata for an entity",
-	Args:    cobra.MinimumNArgs(2),
+	Args:    cobra.MinimumNArgs(1),
 	Run:     setMetaRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -28,7 +28,7 @@ func init() {
 func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
 	meta := make(map[string]interface{})
 	for _, metaSet := range metaSets {
-		fields := strings.Split(metaSet, "=")
+		fields := strings.SplitN(metaSet, "=", 2)
 		if len(fields) != 2 {
 			return nil, fmt.Errorf("invalid meta set: %q", metaSet)
 		}
@@ -47,11 +47,16 @@ func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
 			}
 			meta[fields[0]] = val
 		} else {
-			fval, err := strconv.ParseFloat(setVal, 64)
+			ival, err := strconv.ParseInt(setVal, 0, 64)
 			if err == nil {
-				meta[fields[0]] = fval
+				meta[fields[0]] = ival
 			} else {
-				meta[fields[0]] = setVal
+				fval, err := strconv.ParseFloat(setVal, 64)
+				if err == nil {
+					meta[fields[0]] = fval
+				} else {
+					meta[fields[0]] = setVal
+				}
 			}
 		}
 	}
@@ -59,8 +64,8 @@ func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
 }
 
 func setMetaRun(cmd *cobra.Command, args []string) {
-	oref := args[0]
-	metaSetsStrs := args[1:]
+	oref := blockArg
+	metaSetsStrs := args[:]
 	if oref == "" {
 		WriteStderr("[error] oref is required\n")
 		return

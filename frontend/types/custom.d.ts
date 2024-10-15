@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { type Placement } from "@floating-ui/react";
 import type * as jotai from "jotai";
 import type * as rxjs from "rxjs";
 
@@ -57,7 +58,9 @@ declare global {
         getEnv: (varName: string) => string;
         getUserName: () => string;
         getHostName: () => string;
+        getWebviewPreload: () => string;
         getAboutModalDetails: () => AboutModalDetails;
+        getDocsiteUrl: () => string;
         showContextMenu: (menu?: ElectronContextMenuItem[]) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
         onNavigate: (callback: (url: string) => void) => void;
@@ -67,6 +70,7 @@ declare global {
         onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void;
         onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void;
         getUpdaterStatus: () => UpdaterStatus;
+        getUpdaterChannel: () => string;
         installAppUpdate: () => void;
         onMenuItemAbout: (callback: () => void) => void;
         updateWindowControlsOverlay: (rect: Dimensions) => void;
@@ -74,22 +78,31 @@ declare global {
         setWebviewFocus: (focusedId: number) => void; // focusedId si the getWebContentsId of the webview
         registerGlobalWebviewKeys: (keys: string[]) => void;
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
+        onQuicklook: (filePath: string) => void;
     };
 
     type ElectronContextMenuItem = {
         id: string; // unique id, used for communication
         label: string;
         role?: string; // electron role (optional)
-        type?: "separator" | "normal" | "submenu";
+        type?: "separator" | "normal" | "submenu" | "checkbox" | "radio";
         submenu?: ElectronContextMenuItem[];
+        checked?: boolean;
+        visible?: boolean;
+        enabled?: boolean;
+        sublabel?: string;
     };
 
     type ContextMenuItem = {
         label?: string;
-        type?: "separator" | "normal" | "submenu";
+        type?: "separator" | "normal" | "submenu" | "checkbox" | "radio";
         role?: string; // electron role (optional)
         click?: () => void; // not required if role is set
         submenu?: ContextMenuItem[];
+        checked?: boolean;
+        visible?: boolean;
+        enabled?: boolean;
+        sublabel?: string;
     };
 
     type KeyPressDecl = {
@@ -149,7 +162,14 @@ declare global {
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
-    type HeaderElem = IconButtonDecl | HeaderText | HeaderInput | HeaderDiv | HeaderTextButton | ConnectionButton;
+    type HeaderElem =
+        | IconButtonDecl
+        | HeaderText
+        | HeaderInput
+        | HeaderDiv
+        | HeaderTextButton
+        | ConnectionButton
+        | MenuButton;
 
     type IconButtonDecl = {
         elemtype: "iconbutton";
@@ -174,7 +194,7 @@ declare global {
         text: string;
         ref?: React.MutableRefObject<HTMLDivElement>;
         className?: string;
-        onClick?: () => void;
+        onClick?: (e: React.MouseEvent<any>) => void;
     };
 
     type HeaderInput = {
@@ -206,6 +226,24 @@ declare global {
         onClick?: (e: React.MouseEvent<any>) => void;
         connected: boolean;
     };
+
+    type MenuItem = {
+        label: string;
+        subItems?: MenuItem[];
+        onClick?: (e: React.MouseEvent<any>) => void;
+    };
+
+    type MenuButtonProps = {
+        items: MenuItem[];
+        className?: string;
+        text: string;
+        title?: string;
+        menuPlacement?: Placement;
+    };
+
+    type MenuButton = {
+        elemtype: "menubutton";
+    } & MenuButtonProps;
 
     interface ViewModel {
         viewType: string;

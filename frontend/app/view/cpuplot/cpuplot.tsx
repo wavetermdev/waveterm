@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useHeight } from "@/app/hook/useHeight";
-import { useWidth } from "@/app/hook/useWidth";
 import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
@@ -11,6 +9,7 @@ import * as htl from "htl";
 import * as jotai from "jotai";
 import * as React from "react";
 
+import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
@@ -149,8 +148,11 @@ class CpuPlotViewModel {
             if (initialData == null) {
                 return;
             }
+            const newData = this.getDefaultData();
             const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
-            globalStore.set(this.addDataAtom, initialDataItems);
+            // splice the initial data into the default data (replacing the newest points)
+            newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
+            globalStore.set(this.addDataAtom, newData);
         } catch (e) {
             console.log("Error loading initial data for cpuplot", e);
         } finally {
@@ -158,7 +160,7 @@ class CpuPlotViewModel {
         }
     }
 
-    getDefaultData(): Array<DataItem> {
+    getDefaultData(): DataItem[] {
         // set it back one to avoid backwards line being possible
         const numPoints = globalStore.get(this.numPoints);
         const currentTime = Date.now() - 1000;
@@ -197,6 +199,8 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
             lastConnName.current = connName;
             model.loadInitialData();
         }
+    }, [connStatus.status, connName]);
+    React.useEffect(() => {
         const unsubFn = waveEventSubscribe({
             eventType: "sysinfo",
             scope: connName,
@@ -209,11 +213,11 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
                 addPlotData([dataItem]);
             },
         });
+        console.log("subscribe to sysinfo", connName);
         return () => {
             unsubFn();
         };
     }, [connName]);
-    React.useEffect(() => {}, [connName]);
     if (connStatus?.status != "connected") {
         return null;
     }
@@ -226,8 +230,9 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
 const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     const containerRef = React.useRef<HTMLInputElement>();
     const plotData = jotai.useAtomValue(model.dataAtom);
-    const parentHeight = useHeight(containerRef);
-    const parentWidth = useWidth(containerRef);
+    const domRect = useDimensionsWithExistingRef(containerRef, 30);
+    const parentHeight = domRect?.height ?? 0;
+    const parentWidth = domRect?.width ?? 0;
     const yvals = jotai.useAtomValue(model.metrics);
 
     React.useEffect(() => {

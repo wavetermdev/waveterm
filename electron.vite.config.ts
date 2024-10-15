@@ -26,6 +26,10 @@ export default defineConfig({
                 "@": "frontend",
             },
         },
+        define: {
+            "process.env.WS_NO_BUFFER_UTIL": "true",
+            "process.env.WS_NO_UTF_8_VALIDATE": "true",
+        },
     },
     preload: {
         root: ".",
@@ -34,6 +38,7 @@ export default defineConfig({
             rollupOptions: {
                 input: {
                     index: "emain/preload.ts",
+                    "preload-webview": "emain/preload-webview.ts",
                 },
                 output: {
                     format: "cjs",

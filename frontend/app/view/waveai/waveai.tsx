@@ -4,27 +4,23 @@
 import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { useDimensions } from "@/app/hook/useDimensions";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, fetchWaveFile, globalStore, WOS } from "@/store/global";
-import { BlockService } from "@/store/services";
+import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { isBlank, makeIconClass } from "@/util/util";
+import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import tinycolor from "tinycolor2";
 import "./waveai.less";
 
 interface ChatMessageType {
     id: string;
     user: string;
     text: string;
-    isAssistant: boolean;
     isUpdating?: boolean;
-    isError?: string;
 }
 
 const outline = "2px solid var(--accent-color)";
@@ -38,16 +34,16 @@ function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
         id: crypto.randomUUID(),
         user: prompt.role,
         text: prompt.content,
-        isAssistant: prompt.role == "assistant",
     };
 }
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class WaveAiModel implements ViewModel {
     viewType: string;
     blockId: string;
     blockAtom: Atom<Block>;
+    presetKey: Atom<string>;
+    presetMap: Atom<{ [k: string]: MetaType }>;
+    aiOpts: Atom<OpenAIOptsType>;
     viewIcon?: Atom<string | IconButtonDecl>;
     viewName?: Atom<string>;
     viewText?: Atom<string | HeaderElem[]>;
@@ -68,11 +64,32 @@ export class WaveAiModel implements ViewModel {
         this.viewType = "waveai";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-        this.viewIcon = atom((get) => {
-            return "sparkles"; // should not be hardcoded
-        });
-        this.viewName = atom("Wave Ai");
+        this.viewIcon = atom("sparkles");
+        this.viewName = atom("Wave AI");
         this.messagesAtom = atom([]);
+        this.presetKey = atom((get) => {
+            const metaPresetKey = get(this.blockAtom).meta["ai:preset"];
+            const globalPresetKey = get(atoms.settingsAtom)["ai:preset"];
+            return metaPresetKey ?? globalPresetKey;
+        });
+        this.presetMap = atom((get) => {
+            const fullConfig = get(atoms.fullConfigAtom);
+            const presets = fullConfig.presets;
+            const settings = fullConfig.settings;
+            return Object.fromEntries(
+                Object.entries(presets)
+                    .filter(([k]) => k.startsWith("ai@"))
+                    .map(([k, v]) => {
+                        const aiPresetKeys = Object.keys(v).filter((k) => k.startsWith("ai:"));
+                        console.log(aiPresetKeys);
+                        v["display:name"] =
+                            aiPresetKeys.length == 1 && aiPresetKeys.includes("ai:*")
+                                ? `${v["display:name"] ?? "Default"} (${settings["ai:model"]})`
+                                : v["display:name"];
+                        return [k, v];
+                    })
+            );
+        });
 
         this.addMessageAtom = atom(null, (get, set, message: ChatMessageType) => {
             const messages = get(this.messagesAtom);
@@ -82,7 +99,7 @@ export class WaveAiModel implements ViewModel {
         this.updateLastMessageAtom = atom(null, (get, set, text: string, isUpdating: boolean) => {
             const messages = get(this.messagesAtom);
             const lastMessage = messages[messages.length - 1];
-            if (lastMessage.isAssistant && !lastMessage.isError) {
+            if (lastMessage.user == "assistant") {
                 const updatedMessage = { ...lastMessage, text: lastMessage.text + text, isUpdating };
                 set(this.messagesAtom, [...messages.slice(0, -1), updatedMessage]);
             }
@@ -98,35 +115,94 @@ export class WaveAiModel implements ViewModel {
                 id: crypto.randomUUID(),
                 user: "assistant",
                 text: "",
-                isAssistant: true,
             };
 
             // Add a typing indicator
             set(this.addMessageAtom, typingMessage);
-            await sleep(1500);
             const parts = userMessage.text.split(" ");
             let currentPart = 0;
             while (currentPart < parts.length) {
                 const part = parts[currentPart] + " ";
                 set(this.updateLastMessageAtom, part, true);
                 currentPart++;
-                await sleep(100);
             }
             set(this.updateLastMessageAtom, "", false);
         });
+
+        this.aiOpts = atom((get) => {
+            const meta = get(this.blockAtom).meta;
+            let settings = get(atoms.settingsAtom);
+            settings = {
+                ...settings,
+                ...meta,
+            };
+            const opts: OpenAIOptsType = {
+                model: settings["ai:model"] ?? null,
+                apitype: settings["ai:apitype"] ?? null,
+                orgid: settings["ai:orgid"] ?? null,
+                apitoken: settings["ai:apitoken"] ?? null,
+                apiversion: settings["ai:apiversion"] ?? null,
+                maxtokens: settings["ai:maxtokens"] ?? null,
+                timeoutms: settings["ai:timeoutms"] ?? 60000,
+                baseurl: settings["ai:baseurl"] ?? null,
+            };
+            return opts;
+        });
+
         this.viewText = atom((get) => {
-            const settings = get(atoms.settingsAtom);
-            const isCloud = isBlank(settings?.["ai:apitoken"]) && isBlank(settings?.["ai:baseurl"]);
-            let modelText = "gpt-4o-mini";
-            if (!isCloud && !isBlank(settings?.["ai:model"])) {
-                modelText = settings["ai:model"];
+            const viewTextChildren: HeaderElem[] = [];
+            const aiOpts = get(this.aiOpts);
+            const presets = get(this.presetMap);
+            const presetKey = get(this.presetKey);
+            const presetName = presets[presetKey]?.["display:name"] ?? "";
+            const isCloud = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
+            if (isCloud) {
+                viewTextChildren.push({
+                    elemtype: "iconbutton",
+                    icon: "cloud",
+                    title: "Using Wave's AI Proxy (gpt-4o-mini)",
+                    disabled: true,
+                });
+            } else {
+                const baseUrl = aiOpts.baseurl ?? "OpenAI Default Endpoint";
+                const modelName = aiOpts.model;
+                if (baseUrl.startsWith("http://localhost") || baseUrl.startsWith("http://127.0.0.1")) {
+                    viewTextChildren.push({
+                        elemtype: "iconbutton",
+                        icon: "location-dot",
+                        title: "Using Local Model @ " + baseUrl + " (" + modelName + ")",
+                        disabled: true,
+                    });
+                } else {
+                    viewTextChildren.push({
+                        elemtype: "iconbutton",
+                        icon: "globe",
+                        title: "Using Remote Model @ " + baseUrl + " (" + modelName + ")",
+                        disabled: true,
+                    });
+                }
             }
-            const viewTextChildren: HeaderElem[] = [
-                {
-                    elemtype: "text",
-                    text: modelText,
-                },
-            ];
+
+            viewTextChildren.push({
+                elemtype: "menubutton",
+                text: presetName,
+                title: "Select AI Configuration",
+                items: Object.entries(presets)
+                    .sort((a, b) => (a[1]["display:order"] > b[1]["display:order"] ? 1 : -1))
+                    .map(
+                        (preset) =>
+                            ({
+                                label: preset[1]["display:name"],
+                                onClick: () =>
+                                    fireAndForget(async () => {
+                                        await ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
+                                            ...preset[1],
+                                            "ai:preset": preset[0],
+                                        });
+                                    }),
+                            }) as MenuItem
+                    ),
+            });
             return viewTextChildren;
         });
     }
@@ -153,10 +229,16 @@ export class WaveAiModel implements ViewModel {
         return false;
     }
 
+    getAiName(): string {
+        const blockMeta = globalStore.get(this.blockAtom)?.meta ?? {};
+        const settings = globalStore.get(atoms.settingsAtom) ?? {};
+        const name = blockMeta["ai:name"] ?? settings["ai:name"] ?? null;
+        return name;
+    }
+
     useWaveAi() {
         const messages = useAtomValue(this.messagesAtom);
         const addMessage = useSetAtom(this.addMessageAtom);
-        const simulateResponse = useSetAtom(this.simulateAssistantResponseAtom);
         const clientId = useAtomValue(atoms.clientId);
         const blockId = this.blockId;
         const setLocked = useSetAtom(this.locked);
@@ -167,18 +249,10 @@ export class WaveAiModel implements ViewModel {
                 id: crypto.randomUUID(),
                 user,
                 text,
-                isAssistant: false,
             };
             addMessage(newMessage);
             // send message to backend and get response
-            const settings = globalStore.get(atoms.settingsAtom);
-            const opts: OpenAIOptsType = {
-                model: settings["ai:model"],
-                apitoken: settings["ai:apitoken"],
-                maxtokens: settings["ai:maxtokens"],
-                timeout: settings["ai:timeoutms"] / 1000,
-                baseurl: settings["ai:baseurl"],
-            };
+            const opts = globalStore.get(this.aiOpts);
             const newPrompt: OpenAIPromptMessageType = {
                 role: "user",
                 content: text,
@@ -188,7 +262,6 @@ export class WaveAiModel implements ViewModel {
                     id: crypto.randomUUID(),
                     user: "assistant",
                     text: "",
-                    isAssistant: true,
                 };
 
                 // Add a typing indicator
@@ -199,26 +272,54 @@ export class WaveAiModel implements ViewModel {
                     opts: opts,
                     prompt: [...history, newPrompt],
                 };
-                const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: 60000 });
                 let fullMsg = "";
-                for await (const msg of aiGen) {
-                    fullMsg += msg.text ?? "";
-                    globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
-                    if (this.cancel) {
-                        if (fullMsg == "") {
-                            globalStore.set(this.removeLastMessageAtom);
+                try {
+                    const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: opts.timeoutms });
+                    for await (const msg of aiGen) {
+                        fullMsg += msg.text ?? "";
+                        globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
+                        if (this.cancel) {
+                            if (fullMsg == "") {
+                                globalStore.set(this.removeLastMessageAtom);
+                            }
+                            break;
                         }
-                        break;
+                        globalStore.set(this.updateLastMessageAtom, "", false);
+                        if (fullMsg != "") {
+                            const responsePrompt: OpenAIPromptMessageType = {
+                                role: "assistant",
+                                content: fullMsg,
+                            };
+                            await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
+                        }
                     }
-                    await sleep(100);
-                }
-                globalStore.set(this.updateLastMessageAtom, "", false);
-                if (fullMsg != "") {
-                    const responsePrompt: OpenAIPromptMessageType = {
-                        role: "assistant",
-                        content: fullMsg,
+                } catch (error) {
+                    const updatedHist = [...history, newPrompt];
+                    if (fullMsg == "") {
+                        globalStore.set(this.removeLastMessageAtom);
+                    } else {
+                        globalStore.set(this.updateLastMessageAtom, "", false);
+                        const responsePrompt: OpenAIPromptMessageType = {
+                            role: "assistant",
+                            content: fullMsg,
+                        };
+                        updatedHist.push(responsePrompt);
+                    }
+                    const errMsg: string = (error as Error).message;
+                    const errorMessage: ChatMessageType = {
+                        id: crypto.randomUUID(),
+                        user: "error",
+                        text: errMsg,
                     };
-                    await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
+                    globalStore.set(this.addMessageAtom, errorMessage);
+                    globalStore.set(this.updateLastMessageAtom, "", false);
+                    const errorPrompt: OpenAIPromptMessageType = {
+                        role: "error",
+                        content: errMsg,
+                    };
+                    updatedHist.push(errorPrompt);
+                    console.log(updatedHist);
+                    await BlockService.SaveWaveAiData(blockId, updatedHist);
                 }
                 setLocked(false);
                 this.cancel = false;
@@ -239,20 +340,26 @@ function makeWaveAiViewModel(blockId): WaveAiModel {
 }
 
 const ChatItem = ({ chatItem }: ChatItemProps) => {
-    const { isAssistant, text, isError } = chatItem;
-    const senderClassName = isAssistant ? "chat-msg-assistant" : "chat-msg-user";
-    const msgClassName = `chat-msg ${senderClassName}`;
+    const { user, text } = chatItem;
     const cssVar = "--panel-bg-color";
     const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-    const color = tinycolor(panelBgColor);
-
-    const renderError = (err: string): React.JSX.Element => <div className="chat-msg-error">{err}</div>;
 
     const renderContent = useMemo(() => {
-        if (isAssistant) {
-            if (isError) {
-                return renderError(isError);
-            }
+        if (user == "error") {
+            return (
+                <>
+                    <div className="chat-msg chat-msg-header">
+                        <div className="icon-box">
+                            <i className="fa-sharp fa-solid fa-circle-exclamation"></i>
+                        </div>
+                    </div>
+                    <div className="chat-msg chat-msg-error">
+                        <Markdown text={text} scrollable={false} />
+                    </div>
+                </>
+            );
+        }
+        if (user == "assistant") {
             return text ? (
                 <>
                     <div className="chat-msg chat-msg-header">
@@ -260,11 +367,8 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                         </div>
                     </div>
-                    <div
-                        className="chat-msg chat-msg-assistant"
-                        style={{ maxWidth: "calc(var(--aichat-msg-width) * 1px)" }}
-                    >
-                        <Markdown text={text} />
+                    <div className="chat-msg chat-msg-assistant">
+                        <Markdown text={text} scrollable={false} />
                     </div>
                 </>
             ) : (
@@ -278,12 +382,12 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
         }
         return (
             <>
-                <div className="chat-msg chat-msg-user" style={{ maxWidth: "calc(var(--aichat-msg-width) * 1px)" }}>
-                    <Markdown className="msg-text" text={text} />
+                <div className="chat-msg chat-msg-user">
+                    <Markdown className="msg-text" text={text} scrollable={false} />
                 </div>
             </>
         );
-    }, [text, isAssistant, isError]);
+    }, [text, user]);
 
     return <div className={"chat-msg-container"}>{renderContent}</div>;
 };
@@ -342,10 +446,16 @@ const ChatWindow = memo(
 
         const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
             const { viewport } = instance.elements();
+            viewport.removeAttribute("tabindex");
             viewport.scrollTo({
                 behavior: "auto",
                 top: chatWindowRef.current?.scrollHeight || 0,
             });
+        };
+
+        const handleScrollbarUpdated = (instance: OverlayScrollbars) => {
+            const { viewport } = instance.elements();
+            viewport.removeAttribute("tabindex");
         };
 
         return (
@@ -353,7 +463,7 @@ const ChatWindow = memo(
                 ref={osRef}
                 className="scrollable"
                 options={{ scrollbars: { autoHide: "leave" } }}
-                events={{ initialized: handleScrollbarInitialized }}
+                events={{ initialized: handleScrollbarInitialized, updated: handleScrollbarUpdated }}
             >
                 <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
                     <div className="filler"></div>
@@ -433,10 +543,8 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
 
     const termFontSize: number = 14;
-    const windowDims = useDimensions(chatWindowRef);
     const msgWidths = {};
     const locked = useAtomValue(model.locked);
-    msgWidths["--aichat-msg-width"] = windowDims.width * 0.85;
 
     // a weird workaround to initialize ansynchronously
     useEffect(() => {
@@ -490,22 +598,6 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         setValue("");
         setSelectedBlockIdx(null);
     }, [messages, value]);
-
-    const handleContainerClick = (event: React.MouseEvent<HTMLDivElement>) => {
-        inputRef.current?.focus();
-
-        const target = event.target as HTMLElement;
-        if (
-            target.closest(".copy-button") ||
-            target.closest(".fa-square-terminal") ||
-            target.closest(".waveai-input")
-        ) {
-            return;
-        }
-
-        const pre = target.closest("pre");
-        updatePreTagOutline(pre);
-    };
 
     const updateScrollTop = () => {
         const pres = chatWindowRef.current?.querySelectorAll("pre");
@@ -610,7 +702,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     }, [locked, handleEnterKeyPressed]);
 
     return (
-        <div ref={waveaiRef} className="waveai" onClick={handleContainerClick}>
+        <div ref={waveaiRef} className="waveai">
             <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} msgWidths={msgWidths} />
             <div className="waveai-controls">
                 <div className="waveai-input-wrapper">

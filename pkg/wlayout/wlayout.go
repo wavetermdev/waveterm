@@ -55,10 +55,15 @@ func GetStarterLayout() PortableLayout {
 		}},
 		{IndexArr: []int{2}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "help",
+				waveobj.MetaKey_View: "tips",
 			},
 		}},
 		{IndexArr: []int{2, 1}, BlockDef: &waveobj.BlockDef{
+			Meta: waveobj.MetaMapType{
+				waveobj.MetaKey_View: "help",
+			},
+		}},
+		{IndexArr: []int{2, 2}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
 				waveobj.MetaKey_View: "waveai",
 			},
@@ -120,6 +125,7 @@ func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveo
 }
 
 func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout) error {
+	log.Printf("ApplyPortableLayout, tabId: %s, layout: %v\n", tabId, layout)
 	actions := make([]waveobj.LayoutActionData, len(layout)+1)
 	actions[0] = waveobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
 	for i := 0; i < len(layout); i++ {

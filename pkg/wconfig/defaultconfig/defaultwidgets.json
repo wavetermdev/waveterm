@@ -27,8 +27,7 @@
         "label": "web",
         "blockdef": {
             "meta": {
-                "view": "web",
-                "url": "https://waveterm.dev/"
+                "view": "web"
             }
         }
     },

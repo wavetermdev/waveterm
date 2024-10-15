@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -224,7 +225,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		cmdOpts.Login = true
 		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
 		if cmdOpts.Cwd != "" {
-			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			cwdPath, err := wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			if err != nil {
+				return err
+			}
+			cmdOpts.Cwd = cwdPath
 		}
 	} else if bc.ControllerType == BlockController_Cmd {
 		cmdStr = blockMeta.GetString(waveobj.MetaKey_Cmd, "")
@@ -233,7 +238,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		}
 		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
 		if cmdOpts.Cwd != "" {
-			cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			cwdPath, err := wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			if err != nil {
+				return err
+			}
+			cmdOpts.Cwd = cwdPath
 		}
 		cmdOpts.Interactive = blockMeta.GetBool(waveobj.MetaKey_CmdInteractive, false)
 		cmdOpts.Login = blockMeta.GetBool(waveobj.MetaKey_CmdLogin, false)
@@ -278,12 +287,26 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			return err
 		}
 	} else {
+		// local terminal
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+		}
+		settings := wconfig.GetWatcher().GetFullConfig().Settings
+		if settings.TermLocalShellPath != "" {
+			cmdOpts.ShellPath = settings.TermLocalShellPath
+		}
+		if blockMeta.GetString(waveobj.MetaKey_TermLocalShellPath, "") != "" {
+			cmdOpts.ShellPath = blockMeta.GetString(waveobj.MetaKey_TermLocalShellPath, "")
+		}
+		if len(settings.TermLocalShellOpts) > 0 {
+			cmdOpts.ShellOpts = append([]string{}, settings.TermLocalShellOpts...)
+		}
+		if len(blockMeta.GetStringList(waveobj.MetaKey_TermLocalShellOpts)) > 0 {
+			cmdOpts.ShellOpts = append([]string{}, blockMeta.GetStringList(waveobj.MetaKey_TermLocalShellOpts)...)
 		}
 		shellProc, err = shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
 		if err != nil {

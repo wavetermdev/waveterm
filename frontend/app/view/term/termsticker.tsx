@@ -165,30 +165,6 @@ export function TermStickers({ config }: { config: StickerTermConfig }) {
         });
         stickers.push({
             position: "absolute",
-            top: 10,
-            right: 5,
-            stickertype: "icon",
-            icon: "paw",
-            color: "#cc4040aa",
-            fontsize: 30,
-            transform: "rotate(-15deg)",
-            pointerevents: true,
-            clickcmd: "cd ~/work/wails/thenextwave\n",
-        });
-        stickers.push({
-            position: "absolute",
-            top: 18,
-            right: 8,
-            stickertype: "image",
-            width: 12,
-            height: 6,
-            imgsrc: "~/Downloads/natureicon.png",
-            opacity: 0.8,
-            pointerevents: true,
-            clickblockdef: { meta: { file: "~/", view: "preview" } },
-        });
-        stickers.push({
-            position: "absolute",
             top: 2,
             right: 25,
             width: 20,

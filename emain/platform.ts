@@ -1,11 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
 import { app, ipcMain } from "electron";
 import os from "os";
 import path from "path";
+import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
 import * as keyutil from "../frontend/util/keyutil";
+
+const WaveHomeVarName = "WAVETERM_HOME";
 
 const isDev = !app.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
@@ -16,7 +18,7 @@ if (isDevVite) {
     process.env[WaveDevViteVarName] = "1";
 }
 
-app.setName(isDev ? "TheNextWave (Dev)" : "TheNextWave");
+app.setName(isDev ? "Wave (Dev)" : "Wave");
 const unamePlatform = process.platform;
 const unameArch: string = process.arch;
 keyutil.setKeyUtilPlatform(unamePlatform);
@@ -34,9 +36,16 @@ ipcMain.on("get-user-name", (event) => {
 ipcMain.on("get-host-name", (event) => {
     event.returnValue = os.hostname();
 });
+ipcMain.on("get-webview-preload", (event) => {
+    event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
+});
 
 // must match golang
 function getWaveHomeDir() {
+    const override = process.env[WaveHomeVarName];
+    if (override) {
+        return override;
+    }
     return path.join(os.homedir(), isDev ? ".waveterm-dev" : ".waveterm");
 }
 
@@ -44,7 +53,7 @@ function getElectronAppBasePath(): string {
     return path.dirname(import.meta.dirname);
 }
 
-function getGoAppBasePath(): string {
+function getElectronAppUnpackedBasePath(): string {
     return getElectronAppBasePath().replace("app.asar", "app.asar.unpacked");
 }
 
@@ -53,10 +62,10 @@ const wavesrvBinName = `wavesrv.${unameArch}`;
 function getWaveSrvPath(): string {
     if (process.platform === "win32") {
         const winBinName = `${wavesrvBinName}.exe`;
-        const appPath = path.join(getGoAppBasePath(), "bin", winBinName);
+        const appPath = path.join(getElectronAppUnpackedBasePath(), "bin", winBinName);
         return `${appPath}`;
     }
-    return path.join(getGoAppBasePath(), "bin", wavesrvBinName);
+    return path.join(getElectronAppUnpackedBasePath(), "bin", wavesrvBinName);
 }
 
 function getWaveSrvCwd(): string {
@@ -65,7 +74,7 @@ function getWaveSrvCwd(): string {
 
 export {
     getElectronAppBasePath,
-    getGoAppBasePath,
+    getElectronAppUnpackedBasePath,
     getWaveHomeDir,
     getWaveSrvCwd,
     getWaveSrvPath,

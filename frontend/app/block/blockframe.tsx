@@ -11,7 +11,7 @@ import {
     Input,
 } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
-import { useWidth } from "@/app/hook/useWidth";
+import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import {
@@ -19,11 +19,11 @@ import {
     getBlockComponentModel,
     getConnStatusAtom,
     getHostName,
+    getSettingsKeyAtom,
     getUserName,
     globalStore,
     refocusNode,
     useBlockAtom,
-    useSettingsKeyAtom,
     WOS,
 } from "@/app/store/global";
 import * as services from "@/app/store/services";
@@ -32,6 +32,7 @@ import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
+import { MenuButton } from "@/element/menubutton";
 import { NodeModel } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -160,14 +161,24 @@ const BlockFrame_Header = ({
     error,
 }: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
-    const viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
-    const showBlockIds = jotai.useAtomValue(useSettingsKeyAtom("blockheader:showblockids"));
-    const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
+    const showBlockIds = jotai.useAtomValue(getSettingsKeyAtom("blockheader:showblockids"));
+    let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
-    const headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
+    let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+
+    if (blockData?.meta?.["frame:title"]) {
+        viewName = blockData.meta["frame:title"];
+    }
+    if (blockData?.meta?.["frame:icon"]) {
+        viewIconUnion = blockData.meta["frame:icon"];
+    }
+    if (blockData?.meta?.["frame:text"]) {
+        headerTextUnion = blockData.meta["frame:text"];
+    }
 
     const onContextMenu = React.useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
@@ -240,7 +251,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
     } else if (elem.elemtype == "text") {
         return (
             <div className={clsx("block-frame-text", elem.className)}>
-                <span ref={preview ? null : elem.ref} onClick={() => elem?.onClick()}>
+                <span ref={preview ? null : elem.ref} onClick={(e) => elem?.onClick(e)}>
                     &lrm;{elem.text}
                 </span>
             </div>
@@ -263,6 +274,8 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
                 ))}
             </div>
         );
+    } else if (elem.elemtype == "menubutton") {
+        return <MenuButton className="block-frame-menubutton" {...(elem as MenuButtonProps)} />;
     }
     return null;
 });
@@ -294,8 +307,8 @@ const ConnStatusOverlay = React.memo(
         const connName = blockData.meta?.connection;
         const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
         const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
-        const overlayRef = React.useRef<HTMLDivElement>(null);
-        const width = useWidth(overlayRef);
+        const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
+        const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
         const blockNum = jotai.useAtomValue(nodeModel.blockNum);
 
@@ -334,7 +347,7 @@ const ConnStatusOverlay = React.memo(
         }
 
         return (
-            <div className="connstatus-overlay" ref={overlayRef}>
+            <div className="connstatus-overlay" ref={overlayRefCallback}>
                 <div className="connstatus-content">
                     <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError })}>
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}

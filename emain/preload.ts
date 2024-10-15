@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld("api", {
     getUserName: () => ipcRenderer.sendSync("get-user-name"),
     getHostName: () => ipcRenderer.sendSync("get-host-name"),
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
+    getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
+    getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),
@@ -27,6 +29,7 @@ contextBridge.exposeInMainWorld("api", {
         ipcRenderer.on("fullscreen-change", (_event, isFullScreen) => callback(isFullScreen)),
     onUpdaterStatusChange: (callback) => ipcRenderer.on("app-update-status", (_event, status) => callback(status)),
     getUpdaterStatus: () => ipcRenderer.sendSync("get-app-update-status"),
+    getUpdaterChannel: () => ipcRenderer.sendSync("get-updater-channel"),
     installAppUpdate: () => ipcRenderer.send("install-app-update"),
     onMenuItemAbout: (callback) => ipcRenderer.on("menu-item-about", callback),
     updateWindowControlsOverlay: (rect) => ipcRenderer.send("update-window-controls-overlay", rect),
@@ -35,6 +38,7 @@ contextBridge.exposeInMainWorld("api", {
     registerGlobalWebviewKeys: (keys) => ipcRenderer.send("register-global-webview-keys", keys),
     onControlShiftStateUpdate: (callback) =>
         ipcRenderer.on("control-shift-state-update", (_event, state) => callback(state)),
+    onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
 });
 
 // Custom event for "new-window"

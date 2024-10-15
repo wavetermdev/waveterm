@@ -25,7 +25,7 @@ var shellCmd = &cobra.Command{
 	Hidden: true,
 	Short:  "Print the login shell of this user",
 	Run: func(cmd *cobra.Command, args []string) {
-		WriteStdout(shellCmdInner())
+		WriteStdout("%s", shellCmdInner())
 	},
 }
 

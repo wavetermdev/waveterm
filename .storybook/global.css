@@ -1,6 +1,7 @@
 body {
     height: 100vh;
     padding: 0;
+    overflow: auto;
 }
 
 #storybook-root {

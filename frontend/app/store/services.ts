@@ -47,6 +47,9 @@ class ClientServiceType {
     MakeWindow(): Promise<WaveWindow> {
         return WOS.callBackendService("client", "MakeWindow", Array.from(arguments))
     }
+    TelemetryUpdate(arg2: boolean): Promise<void> {
+        return WOS.callBackendService("client", "TelemetryUpdate", Array.from(arguments))
+    }
 }
 
 export const ClientService = new ClientServiceType();

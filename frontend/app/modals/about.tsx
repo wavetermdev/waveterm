@@ -16,6 +16,7 @@ interface AboutModalProps {}
 const AboutModal = ({}: AboutModalProps) => {
     const currentDate = new Date();
     const [details] = useState(() => getApi().getAboutModalDetails());
+    const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
 
     return (
         <Modal className="about-modal" onClose={() => modalsModel.popModal()}>
@@ -32,8 +33,10 @@ const AboutModal = ({}: AboutModalProps) => {
                 <div className="section text-standard">
                     Client Version {details.version} ({isDev() ? "dev-" : ""}
                     {details.buildTime})
+                    <br />
+                    Update Channel: {updaterChannel}
                 </div>
-                <div className="section">
+                <div className="section links">
                     <LinkButton
                         className="secondary solid"
                         href="https://github.com/wavetermdev/waveterm"
@@ -52,7 +55,7 @@ const AboutModal = ({}: AboutModalProps) => {
                     </LinkButton>
                     <LinkButton
                         className="secondary solid"
-                        href="https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md"
+                        href="https://github.com/wavetermdev/waveterm/blob/main/ACKNOWLEDGEMENTS.md"
                         target="_blank"
                         rel={"noopener"}
                         leftIcon={<i className="fa-sharp fa-light fa-heart"></i>}

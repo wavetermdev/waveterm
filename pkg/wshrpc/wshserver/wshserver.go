@@ -28,12 +28,12 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const SimpleId_This = "this"
+const SimpleId_Tab = "tab"
 
 var SimpleId_BlockNum_Regex = regexp.MustCompile(`^\d+$`)
 
@@ -51,32 +51,6 @@ func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 	}()
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	log.Printf("TEST src:%s | %s\n", rpcSource, data)
-	if rpcSource == "" {
-		return nil
-	}
-	go func() {
-		mainClient := GetMainRpcClient()
-		wshclient.MessageCommand(mainClient, wshrpc.CommandMessageData{Message: "test message"}, &wshrpc.RpcOpts{NoResponse: true, Route: rpcSource})
-		resp, err := wshclient.RemoteFileInfoCommand(mainClient, "~/work/wails/thenextwave/README.md", &wshrpc.RpcOpts{Route: rpcSource})
-		if err != nil {
-			log.Printf("error getting remote file info: %v", err)
-			return
-		}
-		log.Printf("remote file info: %#v\n", resp)
-		rch := wshclient.RemoteStreamFileCommand(mainClient, wshrpc.CommandRemoteStreamFileData{Path: "~/work/wails/thenextwave/README.md"}, &wshrpc.RpcOpts{Route: rpcSource})
-		for msg := range rch {
-			if msg.Error != nil {
-				log.Printf("error in stream: %v", msg.Error)
-				break
-			}
-			if msg.Response.FileInfo != nil {
-				log.Printf("stream resp (fileinfo): %v\n", msg.Response.FileInfo)
-			}
-			if msg.Response.Data64 != "" {
-				log.Printf("stream resp (data): %v\n", len(msg.Response.Data64))
-			}
-		}
-	}()
 	return nil
 }
 
@@ -100,10 +74,7 @@ func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrEr
 }
 
 func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
-	if request.Opts.BaseURL == "" && request.Opts.APIToken == "" {
-		return waveai.RunCloudCompletionStream(ctx, request)
-	}
-	return waveai.RunLocalCompletionStream(ctx, request)
+	return waveai.RunAICommand(ctx, request)
 }
 
 func MakePlotData(ctx context.Context, blockId string) error {
@@ -186,6 +157,16 @@ func resolveSimpleId(ctx context.Context, data wshrpc.CommandResolveIdsData, sim
 			return nil, fmt.Errorf("no blockid in request")
 		}
 		return &waveobj.ORef{OType: waveobj.OType_Block, OID: data.BlockId}, nil
+	}
+	if simpleId == SimpleId_Tab {
+		if data.BlockId == "" {
+			return nil, fmt.Errorf("no blockid in request")
+		}
+		tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+		if err != nil {
+			return nil, fmt.Errorf("error finding tab: %v", err)
+		}
+		return &waveobj.ORef{OType: waveobj.OType_Tab, OID: tabId}, nil
 	}
 	blockNum, err := strconv.Atoi(simpleId)
 	if err == nil {

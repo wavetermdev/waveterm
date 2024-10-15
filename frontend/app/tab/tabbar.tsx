@@ -1,6 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Button } from "@/app/element/button";
+import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, getApi, isDev, PLATFORM } from "@/store/global";
@@ -9,9 +11,9 @@ import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
-import { Button } from "../element/button";
 import { Tab } from "./tab";
 import "./tabbar.less";
+import { UpdateStatusBanner } from "./updatebanner";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
@@ -36,6 +38,69 @@ const OS_OPTIONS = {
 interface TabBarProps {
     workspace: Workspace;
 }
+
+const ConfigErrorMessage = () => {
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+
+    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
+        return (
+            <div className="config-error-message">
+                <h3>Configuration Clean</h3>
+                <p>There are no longer any errors detected in your config.</p>
+            </div>
+        );
+    }
+    if (fullConfig?.configerrors.length == 1) {
+        const singleError = fullConfig.configerrors[0];
+        return (
+            <div className="config-error-message">
+                <h3>Configuration Error</h3>
+                <div>
+                    {singleError.file}: {singleError.err}
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className="config-error-message">
+            <h3>Configuration Error</h3>
+            <ul>
+                {fullConfig.configerrors.map((error, index) => (
+                    <li key={index}>
+                        {error.file}: {error.err}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
+const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement> }) => {
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+
+    function handleClick() {
+        modalsModel.pushModal("MessageModal", { children: <ConfigErrorMessage /> });
+    }
+
+    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
+        return null;
+    }
+    return (
+        <Button
+            ref={buttonRef as React.RefObject<HTMLButtonElement>}
+            className="config-error-button red"
+            onClick={handleClick}
+        >
+            <i className="fa fa-solid fa-exclamation-triangle" />
+            Config Error
+        </Button>
+    );
+    return (
+        <div className="config-error" ref={buttonRef as React.RefObject<HTMLDivElement>}>
+            <i className="fa fa-solid fa-exclamation-triangle" />
+        </div>
+    );
+};
 
 const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
@@ -67,6 +132,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
+    const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
 
     const windowData = useAtomValue(atoms.waveWindow);
@@ -74,7 +140,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
-    const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
+    const settings = useAtomValue(atoms.settingsAtom);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -124,8 +190,10 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
         const updateStatusLabelWidth = updateStatusButtonRef.current?.getBoundingClientRect().width ?? 0;
+        const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const spaceForTabs =
-            tabbarWrapperWidth - (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth + updateStatusLabelWidth);
+            tabbarWrapperWidth -
+            (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth + updateStatusLabelWidth + configErrorWidth);
 
         const numberOfTabs = tabIds.length;
         const totalDefaultTabWidth = numberOfTabs * TAB_DEFAULT_WIDTH;
@@ -471,29 +539,11 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         </div>
     ) : undefined;
     const appMenuButton =
-        PLATFORM !== "darwin" ? (
+        PLATFORM !== "darwin" && !settings["window:showmenubar"] ? (
             <div className="app-menu-button" onClick={onEllipsisClick}>
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
-
-    function onUpdateAvailableClick() {
-        getApi().installAppUpdate();
-    }
-
-    let updateAvailableLabel: React.ReactNode = null;
-    if (appUpdateStatus === "ready") {
-        updateAvailableLabel = (
-            <Button
-                ref={updateStatusButtonRef}
-                className="update-available-button"
-                title="Click to Install Update"
-                onClick={onUpdateAvailableClick}
-            >
-                Update Available
-            </Button>
-        );
-    }
 
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
@@ -527,7 +577,8 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>
             <WindowDrag ref={draggerRightRef} className="right" />
-            {updateAvailableLabel}
+            <UpdateStatusBanner buttonRef={updateStatusButtonRef} />
+            <ConfigErrorIcon buttonRef={configErrorButtonRef} />
         </div>
     );
 });

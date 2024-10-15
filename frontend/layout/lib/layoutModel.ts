@@ -302,7 +302,7 @@ export class LayoutModel {
      * Perform an action against the layout tree state.
      * @param action The action to perform.
      */
-    treeReducer(action: LayoutTreeAction) {
+    treeReducer(action: LayoutTreeAction, setState = true) {
         switch (action.type) {
             case LayoutTreeActionType.ComputeMove:
                 this.setter(
@@ -358,6 +358,7 @@ export class LayoutModel {
                 break;
             case LayoutTreeActionType.ClearTree: {
                 clearTree(this.treeState);
+                break;
             }
             default:
                 console.error("Invalid reducer action", this.treeState, action);
@@ -368,7 +369,7 @@ export class LayoutModel {
                 this.magnifiedNodeId = this.treeState.magnifiedNodeId;
             }
             this.updateTree();
-            this.setTreeStateAtom(true);
+            if (setState) this.setTreeStateAtom(true);
         }
     }
 
@@ -388,7 +389,7 @@ export class LayoutModel {
         ) {
             this.treeState = treeState;
 
-            if (this.treeState.pendingBackendActions?.length) {
+            if (this.treeState?.pendingBackendActions?.length) {
                 const actions = this.treeState.pendingBackendActions;
                 this.treeState.pendingBackendActions = undefined;
                 for (const action of actions) {
@@ -402,7 +403,7 @@ export class LayoutModel {
                                 magnified: action.magnified,
                                 focused: action.focused,
                             };
-                            this.treeReducer(insertNodeAction);
+                            this.treeReducer(insertNodeAction, false);
                             break;
                         }
                         case LayoutTreeActionType.DeleteNode: {
@@ -433,19 +434,24 @@ export class LayoutModel {
                                 magnified: action.magnified,
                                 focused: action.focused,
                             };
-                            this.treeReducer(insertAction);
+                            this.treeReducer(insertAction, false);
                             break;
                         }
                         case LayoutTreeActionType.ClearTree: {
-                            this.treeReducer({
-                                type: LayoutTreeActionType.ClearTree,
-                            } as LayoutTreeClearTreeAction);
+                            this.treeReducer(
+                                {
+                                    type: LayoutTreeActionType.ClearTree,
+                                } as LayoutTreeClearTreeAction,
+                                false
+                            );
+                            break;
                         }
                         default:
                             console.warn("unsupported layout action", action);
                             break;
                     }
                 }
+                this.setTreeStateAtom(true);
             } else {
                 this.updateTree();
                 this.setTreeStateAtom(force);
@@ -625,7 +631,7 @@ export class LayoutModel {
             // Remove duplicates and stale entries from focus stack.
             const newFocusedNodeIdStack: string[] = [];
             for (const id of this.focusedNodeIdStack) {
-                if (leafOrder.find((leafEntry) => leafEntry.nodeid === id) && !newFocusedNodeIdStack.includes(id))
+                if (leafOrder.find((leafEntry) => leafEntry?.nodeid === id) && !newFocusedNodeIdStack.includes(id))
                     newFocusedNodeIdStack.push(id);
             }
             this.focusedNodeIdStack = newFocusedNodeIdStack;
@@ -634,7 +640,7 @@ export class LayoutModel {
             if (!this.treeState.focusedNodeId) {
                 if (this.focusedNodeIdStack.length > 0) {
                     this.treeState.focusedNodeId = this.focusedNodeIdStack.shift();
-                } else {
+                } else if (leafOrder.length > 0) {
                     // If no nodes are in the stack, use the top left node in the layout.
                     this.treeState.focusedNodeId = leafOrder[0].nodeid;
                 }

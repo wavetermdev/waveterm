@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import electron from "electron";
-import { getWebContentsByBlockId, webGetSelector } from "emain/emain-web";
+import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
+import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 
 type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string; readyPromise: Promise<void> };
 
@@ -28,4 +28,18 @@ export class ElectronWshClientType extends WshClient {
         const rtn = await webGetSelector(wc, data.selector, data.opts);
         return rtn;
     }
+
+    async handle_notify(rh: RpcResponseHelper, notificationOptions: WaveNotificationOptions) {
+        new electron.Notification({
+            title: notificationOptions.title,
+            body: notificationOptions.body,
+            silent: notificationOptions.silent,
+        }).show();
+    }
+}
+
+export let ElectronWshClient: ElectronWshClientType;
+
+export function initElectronWshClient() {
+    ElectronWshClient = new ElectronWshClientType();
 }

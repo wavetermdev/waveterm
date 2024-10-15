@@ -42,8 +42,8 @@ import (
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
-const InitialTelemetryWait = 30 * time.Second
-const TelemetryTick = 10 * time.Minute
+const InitialTelemetryWait = 10 * time.Second
+const TelemetryTick = 2 * time.Minute
 const TelemetryInterval = 4 * time.Hour
 
 const ReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID"
@@ -65,6 +65,7 @@ func doShutdown(reason string) {
 			watcher.Close()
 		}
 		time.Sleep(500 * time.Millisecond)
+		log.Printf("shutdown complete\n")
 		os.Exit(0)
 	})
 }
@@ -202,7 +203,7 @@ func main() {
 		return
 	}
 	defer func() {
-		err = waveLock.Unlock()
+		err = waveLock.Close()
 		if err != nil {
 			log.Printf("error releasing wave lock: %v\n", err)
 		}
@@ -219,10 +220,6 @@ func main() {
 		log.Printf("error initializing wstore: %v\n", err)
 		return
 	}
-	migrateErr := wstore.TryMigrateOldHistory()
-	if migrateErr != nil {
-		log.Printf("error migrating old history: %v\n", migrateErr)
-	}
 	go func() {
 		err := shellutil.InitCustomShellStartupFiles()
 		if err != nil {
@@ -233,6 +230,12 @@ func main() {
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
+	}
+	if firstRun {
+		migrateErr := wstore.TryMigrateOldHistory()
+		if migrateErr != nil {
+			log.Printf("error migrating old history: %v\n", migrateErr)
+		}
 	}
 	if window != nil {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)

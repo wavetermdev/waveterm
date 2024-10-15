@@ -629,7 +629,7 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 // on error just returns ""
 // does not return "application/octet-stream" as this is considered a detection failure
 // can pass an existing fileInfo to avoid re-statting the file
-func DetectMimeType(path string, fileInfo fs.FileInfo) string {
+func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	if fileInfo == nil {
 		statRtn, err := os.Stat(path)
 		if err != nil {
@@ -656,6 +656,9 @@ func DetectMimeType(path string, fileInfo fs.FileInfo) string {
 	}
 	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
 		return mimeType
+	}
+	if !extended {
+		return ""
 	}
 	fd, err := os.Open(path)
 	if err != nil {
@@ -916,4 +919,30 @@ func GetJsonTag(field reflect.StructField) string {
 		jsonTag = jsonTag[:commaIdx]
 	}
 	return jsonTag
+}
+
+func WriteFileIfDifferent(fileName string, contents []byte) (bool, error) {
+	oldContents, err := os.ReadFile(fileName)
+	if err == nil && bytes.Equal(oldContents, contents) {
+		return false, nil
+	}
+	err = os.WriteFile(fileName, contents, 0644)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func GetLineColFromOffset(barr []byte, offset int) (int, int) {
+	line := 1
+	col := 1
+	for i := 0; i < offset && i < len(barr); i++ {
+		if barr[i] == '\n' {
+			line++
+			col = 1
+		} else {
+			col++
+		}
+	}
+	return line, col
 }

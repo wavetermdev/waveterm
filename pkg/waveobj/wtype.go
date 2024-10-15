@@ -112,12 +112,12 @@ func (update *WaveObjUpdate) UnmarshalJSON(data []byte) error {
 }
 
 type Client struct {
-	OID             string      `json:"oid"`
-	Version         int         `json:"version"`
-	WindowIds       []string    `json:"windowids"`
-	Meta            MetaMapType `json:"meta"`
-	TosAgreed       int64       `json:"tosagreed,omitempty"`
-	HistoryMigrated bool        `json:"historymigrated,omitempty"`
+	OID           string      `json:"oid"`
+	Version       int         `json:"version"`
+	WindowIds     []string    `json:"windowids"`
+	Meta          MetaMapType `json:"meta"`
+	TosAgreed     int64       `json:"tosagreed,omitempty"`
+	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
 }
 
 func (*Client) GetOType() string {
@@ -131,6 +131,7 @@ type Window struct {
 	Version     int         `json:"version"`
 	WorkspaceId string      `json:"workspaceid"`
 	ActiveTabId string      `json:"activetabid"`
+	IsNew       bool        `json:"isnew,omitempty"` // set when a window is created on the backend so the FE can size it properly.  cleared on first resize
 	Pos         Point       `json:"pos"`
 	WinSize     WinSize     `json:"winsize"`
 	LastFocusTs int64       `json:"lastfocusts"`

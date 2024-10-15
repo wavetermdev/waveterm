@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
+	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
@@ -217,27 +219,36 @@ func serveTransparentGIF(w http.ResponseWriter) {
 	w.Write(gifBytes)
 }
 
-func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, fileName string, no404 bool) {
+func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, no404 bool) {
 	if no404 {
-		log.Printf("streaming file w/no404: %q\n", fileName)
+		log.Printf("streaming file w/no404: %q\n", path)
 		// use the custom response writer
 		rw := &notFoundBlockingResponseWriter{w: w, headers: http.Header{}}
+
 		// Serve the file using http.ServeFile
-		http.ServeFile(rw, r, fileName)
-		// if the file was not found, serve the transparent GIF
-		log.Printf("got streamfile status: %d\n", rw.status)
-		if rw.status == http.StatusNotFound {
+		path, err := wavebase.ExpandHomeDir(path)
+		if err == nil {
+			http.ServeFile(rw, r, filepath.Clean(path))
+			// if the file was not found, serve the transparent GIF
+			log.Printf("got streamfile status: %d\n", rw.status)
+			if rw.status == http.StatusNotFound {
+				serveTransparentGIF(w)
+			}
+		} else {
 			serveTransparentGIF(w)
 		}
 	} else {
-		fileName = wavebase.ExpandHomeDir(fileName)
-		http.ServeFile(w, r, fileName)
+		path, err := wavebase.ExpandHomeDir(path)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		http.ServeFile(w, r, path)
 	}
 }
 
-func handleRemoteStreamFile(w http.ResponseWriter, r *http.Request, conn string, fileName string, no404 bool) error {
+func handleRemoteStreamFile(w http.ResponseWriter, r *http.Request, conn string, path string, no404 bool) error {
 	client := wshserver.GetMainRpcClient()
-	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: fileName}
+	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
 	route := wshutil.MakeConnectionRouteId(conn)
 	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: route})
 	firstPk := true
@@ -268,11 +279,11 @@ func handleRemoteStreamFile(w http.ResponseWriter, r *http.Request, conn string,
 					serveTransparentGIF(w)
 					return nil
 				} else {
-					return fmt.Errorf("file not found: %q", fileName)
+					return fmt.Errorf("file not found: %q", path)
 				}
 			}
 			if fileInfo.IsDir {
-				return fmt.Errorf("cannot stream directory: %q", fileName)
+				return fmt.Errorf("cannot stream directory: %q", path)
 			}
 			w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
 			w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
@@ -284,7 +295,7 @@ func handleRemoteStreamFile(w http.ResponseWriter, r *http.Request, conn string,
 		decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(respUnion.Response.Data64)))
 		_, err := io.Copy(w, decoder)
 		if err != nil {
-			log.Printf("error streaming file %q: %v\n", fileName, err)
+			log.Printf("error streaming file %q: %v\n", path, err)
 			// not sure what to do here, the headers have already been sent.
 			// just return
 			return nil
@@ -299,18 +310,18 @@ func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	if conn == "" {
 		conn = wshrpc.LocalConnName
 	}
-	fileName := r.URL.Query().Get("path")
-	if fileName == "" {
+	path := r.URL.Query().Get("path")
+	if path == "" {
 		http.Error(w, "path is required", http.StatusBadRequest)
 		return
 	}
 	no404 := r.URL.Query().Get("no404")
 	if conn == wshrpc.LocalConnName {
-		handleLocalStreamFile(w, r, fileName, no404 != "")
+		handleLocalStreamFile(w, r, path, no404 != "")
 	} else {
-		err := handleRemoteStreamFile(w, r, conn, fileName, no404 != "")
+		err := handleRemoteStreamFile(w, r, conn, path, no404 != "")
 		if err != nil {
-			log.Printf("error streaming remote file %q %q: %v\n", conn, fileName, err)
+			log.Printf("error streaming remote file %q %q: %v\n", conn, path, err)
 			http.Error(w, fmt.Sprintf("error streaming file: %v", err), http.StatusInternalServerError)
 		}
 	}
@@ -431,6 +442,8 @@ func MakeUnixListener() (net.Listener, error) {
 	return rtn, nil
 }
 
+const docsitePrefix = "/docsite/"
+
 // blocking
 func RunWebServer(listener net.Listener) {
 	gr := mux.NewRouter()
@@ -438,6 +451,7 @@ func RunWebServer(listener net.Listener) {
 	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	gr.HandleFunc("/wave/log-active-state", WebFnWrap(WebFnOpts{JsonErrors: true}, handleLogActiveState))
+	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
 	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
 	if wavebase.IsDevMode() {
 		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)

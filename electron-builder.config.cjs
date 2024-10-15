@@ -10,7 +10,7 @@ const path = require("path");
 const config = {
     appId: pkg.build.appId,
     productName: pkg.productName,
-    executableName: pkg.name,
+    executableName: pkg.productName,
     artifactName: "${productName}-${platform}-${arch}-${version}.${ext}",
     generateUpdatesFilesForAllChannels: true,
     npmRebuild: false,
@@ -34,6 +34,7 @@ const config = {
     },
     asarUnpack: [
         "dist/bin/**/*", // wavesrv and wsh binaries
+        "dist/docsite/**/*", // the static docsite
     ],
     mac: {
         target: [
@@ -55,6 +56,7 @@ const config = {
     linux: {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
+        executableName: pkg.name,
         icon: "build/icons.icns",
         target: ["zip", "deb", "rpm", "AppImage", "pacman"],
         synopsis: pkg.description,
@@ -65,6 +67,10 @@ const config = {
             Keywords: "developer;terminal;emulator;",
             category: "Development;Utility;",
         },
+        executableArgs: ["--enable-features", "UseOzonePlatform", "--ozone-platform-hint", "auto"], // Hint Electron to use Ozone abstraction layer for native Wayland support
+    },
+    deb: {
+        afterInstall: "build/deb-postinstall.tpl",
     },
     win: {
         icon: "build/icons.icns",
@@ -81,12 +87,20 @@ const config = {
         provider: "generic",
         url: "https://dl.waveterm.dev/releases-w2",
     },
+    beforePack: () => {
+        const staticSourcePath = process.env.STATIC_DOCSITE_PATH;
+        const staticDestPath = "dist/docsite";
+        if (staticSourcePath) {
+            console.log(`Static docsite path is specified, copying from "${staticSourcePath}" to "${staticDestPath}"`);
+            fs.cpSync(staticSourcePath, staticDestPath, { recursive: true });
+        }
+    },
     afterPack: (context) => {
         // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.
         if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {
             const packageBinDir = path.resolve(
                 context.appOutDir,
-                `${pkg.name}.app/Contents/Resources/app.asar.unpacked/dist/bin`
+                `${pkg.productName}.app/Contents/Resources/app.asar.unpacked/dist/bin`
             );
 
             // Reapply file permissions to the wavesrv binaries in the final app package

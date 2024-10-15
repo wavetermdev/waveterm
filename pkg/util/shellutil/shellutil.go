@@ -32,9 +32,6 @@ var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 
 const DefaultShellPath = "/bin/bash"
 
-const WaveAppPathVarName = "WAVETERM_APP_PATH"
-const AppPathBinDir = "bin"
-
 const (
 	ZshIntegrationDir  = "shell/zsh"
 	BashIntegrationDir = "shell/bash"
@@ -231,7 +228,7 @@ func GetWshBaseName(version string, goos string, goarch string) string {
 }
 
 func GetWshBinaryPath(version string, goos string, goarch string) string {
-	return filepath.Join(os.Getenv(WaveAppPathVarName), AppPathBinDir, GetWshBaseName(version, goos, goarch))
+	return filepath.Join(wavebase.GetWaveAppBinPath(), GetWshBaseName(version, goos, goarch))
 }
 
 func InitRcFiles(waveHome string, wshBinDir string) error {
@@ -319,7 +316,7 @@ func initCustomShellStartupFilesInternal() error {
 	if err != nil {
 		return fmt.Errorf("error copying wsh binary to bin: %v", err)
 	}
-	log.Printf("wsh binary successfully %q copied to %q\n", wshBaseName, wshDstPath)
+	log.Printf("wsh binary successfully copied from %q to %q\n", wshBaseName, wshDstPath)
 	return nil
 }
 

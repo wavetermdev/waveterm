@@ -17,8 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/alexflint/go-filemutex"
 )
 
 // set by main-server.go
@@ -35,12 +33,27 @@ const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
 
+const WaveAppPathVarName = "WAVETERM_APP_PATH"
+const AppPathBinDir = "bin"
+
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
+
+type FDLock interface {
+	Close() error
+}
 
 func IsDevMode() bool {
 	pdev := os.Getenv(WaveDevVarName)
 	return pdev != ""
+}
+
+func GetWaveAppPath() string {
+	return os.Getenv(WaveAppPathVarName)
+}
+
+func GetWaveAppBinPath() string {
+	return filepath.Join(GetWaveAppPath(), AppPathBinDir)
 }
 
 func GetHomeDir() string {
@@ -51,15 +64,25 @@ func GetHomeDir() string {
 	return homeVar
 }
 
-func ExpandHomeDir(pathStr string) string {
-	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
-		return pathStr
+func ExpandHomeDir(pathStr string) (string, error) {
+	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") && (!strings.HasPrefix(pathStr, `~\`) || runtime.GOOS != "windows") {
+		return filepath.Clean(pathStr), nil
 	}
 	homeDir := GetHomeDir()
 	if pathStr == "~" {
-		return homeDir
+		return homeDir, nil
 	}
-	return filepath.Join(homeDir, pathStr[2:])
+	expandedPath := filepath.Clean(filepath.Join(homeDir, pathStr[2:]))
+	absPath, err := filepath.Abs(filepath.Join(homeDir, expandedPath))
+	if err != nil || !strings.HasPrefix(absPath, homeDir) {
+		return "", fmt.Errorf("potential path traversal detected for path %s", pathStr)
+	}
+	return expandedPath, nil
+}
+
+func ExpandHomeDirSafe(pathStr string) string {
+	path, _ := ExpandHomeDir(pathStr)
+	return path
 }
 
 func ReplaceHomeDir(pathStr string) string {
@@ -80,12 +103,12 @@ func GetDomainSocketName() string {
 func GetWaveHomeDir() string {
 	homeVar := os.Getenv(WaveHomeVarName)
 	if homeVar != "" {
-		return ExpandHomeDir(homeVar)
+		return ExpandHomeDirSafe(homeVar)
 	}
 	if IsDevMode() {
-		return ExpandHomeDir(DevWaveHome)
+		return ExpandHomeDirSafe(DevWaveHome)
 	}
-	return ExpandHomeDir(DefaultWaveHome)
+	return ExpandHomeDirSafe(DefaultWaveHome)
 }
 
 func EnsureWaveHomeDir() error {
@@ -177,19 +200,6 @@ func DetermineLocale() string {
 		return "C"
 	}
 	return strings.Replace(truncated, "_", "-", -1)
-}
-
-func AcquireWaveLock() (*filemutex.FileMutex, error) {
-	homeDir := GetWaveHomeDir()
-	lockFileName := filepath.Join(homeDir, WaveLockFile)
-	log.Printf("[base] acquiring lock on %s\n", lockFileName)
-	m, err := filemutex.New(lockFileName)
-	if err != nil {
-		return nil, err
-	}
-
-	err = m.TryLock()
-	return m, err
 }
 
 func ClientArch() string {

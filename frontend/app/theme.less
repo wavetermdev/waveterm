@@ -62,6 +62,7 @@
     --zindex-layout-magnified-node: 5;
     --zindex-block-mask-inner: 10;
     --zindex-flash-error-container: 550;
+    --zindex-app-background: -1;
 
     // z-indexes in xterm.css
     // xterm-helpers: 5
@@ -72,6 +73,7 @@
     // xterm-decoration-top-layer: 7
     // xterm-decoration-overview-ruler: 8
     // xterm-decoration-top: 2
+    --zindex-xterm-viewport-overlay: 5; // Viewport contains the scrollbar
 
     // modal colors
     --modal-bg-color: #232323;
@@ -133,17 +135,17 @@
     --term-cursor-accent: #000000;
 
     // button colors
-    --button-focus-border-color: rgba(88, 193, 66, 0.5);
-    --button-green-text-color: var(--term-black);
+    --button-text-color: #000000;
     --button-green-bg: var(--term-green);
-    --button-green-border-color: rgb(26, 52, 21);
-    --button-grey-text-color: var(--main-text-color);
+    --button-green-border-color: #29f200;
     --button-grey-bg: rgba(255, 255, 255, 0.04);
+    --button-grey-hover-bg: rgba(255, 255, 255, 0.09);
     --button-grey-border-color: rgba(255, 255, 255, 0.1);
-    --button-red-text-color: var(--main-text-color);
-    --button-red-bg: var(--term-red);
-    --button-red-border-color: #ff1818;
-    --button-yellow-text-color: var(--term-black);
-    --button-yellow-bg: var(--term-yellow);
-    --button-yellow-border-color: #fbd93f;
+    --button-grey-outlined-color: rgba(255, 255, 255, 0.6);
+    --button-red-bg: #cc0000;
+    --button-red-hover-bg: #f93939;
+    --button-red-border-color: #fc3131;
+    --button-red-outlined-color: #ff3c3c;
+    --button-yellow-bg: #c4a000;
+    --button-yellow-hover-bg: #fce94f;
 }

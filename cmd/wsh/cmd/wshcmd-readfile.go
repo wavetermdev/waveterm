@@ -14,7 +14,7 @@ import (
 var readFileCmd = &cobra.Command{
 	Use:     "readfile",
 	Short:   "read a blockfile",
-	Args:    cobra.ExactArgs(2),
+	Args:    cobra.ExactArgs(1),
 	Run:     runReadFile,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -49,5 +49,5 @@ func runReadFile(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] decoding file: %v\n", err)
 		return
 	}
-	WriteStdout(string(resp))
+	WriteStdout("%s", string(resp))
 }
