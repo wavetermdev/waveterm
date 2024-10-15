@@ -534,6 +534,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
     const conn = useAtomValue(model.connection);
+    const blockData = useAtomValue(model.blockAtom);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -593,7 +594,12 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 setSearchText((current) => current.slice(0, -1));
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "Space") && searchText == "" && PLATFORM == "darwin") {
+            if (
+                checkKeyPressed(waveEvent, "Space") &&
+                searchText == "" &&
+                PLATFORM == "darwin" &&
+                !blockData?.meta?.connection
+            ) {
                 getApi().onQuicklook(selectedPath);
                 console.log(selectedPath);
                 return true;
