@@ -5,6 +5,13 @@
 
 declare global {
 
+    // vdom.AsyncInitiationRequest
+    type AsyncInitiationRequest = {
+        type: "asyncinitiationrequest";
+        ts: number;
+        blockid?: string;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         blockdef: BlockDef;

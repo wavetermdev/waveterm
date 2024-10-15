@@ -260,6 +260,24 @@ func TestCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	return err
 }
 
+// command "vdomasyncinitiation", wshserver.VDomAsyncInitiationCommand
+func VDomAsyncInitiationCommand(w *wshutil.WshRpc, data vdom.AsyncInitiationRequest, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "vdomasyncinitiation", data, opts)
+	return err
+}
+
+// command "vdomcreatecontext", wshserver.VDomCreateContextCommand
+func VDomCreateContextCommand(w *wshutil.WshRpc, data vdom.CreateVDomContext, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "vdomcreatecontext", data, opts)
+	return err
+}
+
+// command "vdomrender", wshserver.VDomRenderCommand
+func VDomRenderCommand(w *wshutil.WshRpc, data vdom.VDomFrontendUpdate, opts *wshrpc.RpcOpts) (*vdom.VDomBackendUpdate, error) {
+	resp, err := sendRpcRequestCallHelper[*vdom.VDomBackendUpdate](w, "vdomrender", data, opts)
+	return resp, err
+}
+
 // command "webselector", wshserver.WebSelectorCommand
 func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "webselector", data, opts)
