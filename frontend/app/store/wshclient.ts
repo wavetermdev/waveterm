@@ -18,6 +18,10 @@ class RpcResponseHelper {
         this.done = cmdMsg.reqid == null;
     }
 
+    getSource(): string {
+        return this.cmdMsg?.source;
+    }
+
     sendResponse(msg: RpcMessage) {
         if (this.done || util.isBlank(this.cmdMsg.reqid)) {
             return;

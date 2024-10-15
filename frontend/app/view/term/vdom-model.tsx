@@ -4,6 +4,9 @@
 import { globalStore, WOS } from "@/app/store/global";
 import { ObjectService } from "@/app/store/services";
 import { makeORef } from "@/app/store/wos";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TermWshClient } from "@/app/view/term/term-wsh";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import * as jotai from "jotai";
@@ -74,11 +77,80 @@ export class VDomModel {
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
     compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
     rootRefId: string = crypto.randomUUID();
+    hasPendingRequest: boolean = false;
+    pendingTimeoutId: any;
+    termWshClient: TermWshClient;
+    backendRoute: string;
+    needsUpdate: boolean = false;
+    updateMs: number = 100;
+    nextUpdateQuick: boolean = false;
 
-    constructor(blockId: string, nodeModel: NodeModel, viewRef: React.RefObject<HTMLDivElement>) {
+    constructor(
+        blockId: string,
+        nodeModel: NodeModel,
+        viewRef: React.RefObject<HTMLDivElement>,
+        termWshClient: TermWshClient
+    ) {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.viewRef = viewRef;
+        this.termWshClient = termWshClient;
+    }
+
+    reset() {
+        globalStore.set(this.vdomRoot, null);
+        this.atoms.clear();
+        this.refs.clear();
+        this.batchedEvents = [];
+        this.refUpdates = [];
+        this.messages = [];
+        this.needsResync = true;
+        this.vdomNodeVersion = new WeakMap();
+        this.compoundAtoms.clear();
+        this.rootRefId = crypto.randomUUID();
+        this.hasPendingRequest = false;
+        this.needsUpdate = false;
+        this.nextUpdateQuick = false;
+    }
+
+    queueUpdate() {
+        if (this.pendingTimeoutId) {
+            clearTimeout(this.pendingTimeoutId);
+        }
+        let updateMs = this.nextUpdateQuick ? 0 : this.updateMs;
+        this.nextUpdateQuick = false;
+        this.pendingTimeoutId = setTimeout(() => {
+            this.sendRenderRequest(false);
+        }, updateMs);
+    }
+
+    async sendRenderRequest(force: boolean) {
+        if (this.pendingTimeoutId) {
+            clearTimeout(this.pendingTimeoutId);
+        }
+        if (this.hasPendingRequest) {
+            if (force) {
+                this.nextUpdateQuick = true;
+            }
+            return;
+        }
+        if (!force && !this.needsUpdate) {
+            this.queueUpdate();
+            return;
+        }
+        if (this.backendRoute == null) {
+            console.log("vdom-model", "no backend route");
+            return;
+        }
+        this.hasPendingRequest = true;
+        try {
+            const feUpdate = this.createFeUpdate();
+            const beUpdate = await RpcApi.VDomRenderCommand(WindowRpcClient, feUpdate, { route: this.backendRoute });
+            this.handleBackendUpdate(beUpdate);
+        } finally {
+            this.hasPendingRequest = false;
+        }
+        this.queueUpdate();
     }
 
     getAtomContainer(atomName: string): AtomContainer {
@@ -320,10 +392,12 @@ export class VDomModel {
             width: this.viewRef?.current?.offsetWidth ?? 0,
             height: this.viewRef?.current?.offsetHeight ?? 0,
             rootrefid: this.rootRefId,
+            background: false,
         };
         const feUpdate: VDomFrontendUpdate = {
             type: "frontendupdate",
             ts: Date.now(),
+            blockid: this.blockId,
             requestid: crypto.randomUUID(),
             initialize: needsInitialize,
             rendercontext: renderContext,

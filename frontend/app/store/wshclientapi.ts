@@ -218,12 +218,12 @@ class RpcApiType {
     }
 
     // command "vdomasyncinitiation" [call]
-    VDomAsyncInitiationCommand(client: WshClient, data: AsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
+    VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("vdomasyncinitiation", data, opts);
     }
 
     // command "vdomcreatecontext" [call]
-    VDomCreateContextCommand(client: WshClient, data: CreateVDomContext, opts?: RpcOpts): Promise<void> {
+    VDomCreateContextCommand(client: WshClient, data: VDomCreateContext, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("vdomcreatecontext", data, opts);
     }
 

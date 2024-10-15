@@ -262,13 +262,13 @@ func TestCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 }
 
 // command "vdomasyncinitiation", wshserver.VDomAsyncInitiationCommand
-func VDomAsyncInitiationCommand(w *wshutil.WshRpc, data vdom.AsyncInitiationRequest, opts *wshrpc.RpcOpts) error {
+func VDomAsyncInitiationCommand(w *wshutil.WshRpc, data vdom.VDomAsyncInitiationRequest, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "vdomasyncinitiation", data, opts)
 	return err
 }
 
 // command "vdomcreatecontext", wshserver.VDomCreateContextCommand
-func VDomCreateContextCommand(w *wshutil.WshRpc, data vdom.CreateVDomContext, opts *wshrpc.RpcOpts) error {
+func VDomCreateContextCommand(w *wshutil.WshRpc, data vdom.VDomCreateContext, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "vdomcreatecontext", data, opts)
 	return err
 }

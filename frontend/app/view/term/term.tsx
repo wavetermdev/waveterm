@@ -8,6 +8,7 @@ import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, WindowRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomView } from "@/app/view/term/vdom";
+import { VDomModel } from "@/app/view/term/vdom-model";
 import { NodeModel } from "@/layout/index";
 import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
@@ -93,13 +94,15 @@ class TermViewModel {
     connStatus: jotai.Atom<ConnStatus>;
     termWshClient: TermWshClient;
     shellProcStatusRef: React.MutableRefObject<string>;
+    vdomModel: VDomModel;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "term";
         this.blockId = blockId;
-        this.termWshClient = new TermWshClient(blockId);
+        this.termWshClient = new TermWshClient(blockId, this);
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.termWshClient);
         this.nodeModel = nodeModel;
+        this.vdomModel = new VDomModel(blockId, nodeModel, null);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);

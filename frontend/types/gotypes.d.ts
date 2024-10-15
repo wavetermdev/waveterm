@@ -5,13 +5,6 @@
 
 declare global {
 
-    // vdom.AsyncInitiationRequest
-    type AsyncInitiationRequest = {
-        type: "asyncinitiationrequest";
-        ts: number;
-        blockid?: string;
-    };
-
     // waveobj.Block
     type Block = WaveObj & {
         blockdef: BlockDef;
@@ -191,15 +184,6 @@ declare global {
     type CpuDataRequest = {
         id: string;
         count: number;
-    };
-
-    // vdom.CreateVDomContext
-    type CreateVDomContext = {
-        type: "createvdomcontext";
-        ts: number;
-        meta?: MetaType;
-        newblock?: boolean;
-        persist?: boolean;
     };
 
     // vdom.DomRect
@@ -610,6 +594,13 @@ declare global {
         checkboxstat?: boolean;
     };
 
+    // vdom.VDomAsyncInitiationRequest
+    type VDomAsyncInitiationRequest = {
+        type: "asyncinitiationrequest";
+        ts: number;
+        blockid?: string;
+    };
+
     // vdom.VDomBackendUpdate
     type VDomBackendUpdate = {
         type: "backendupdate";
@@ -626,6 +617,15 @@ declare global {
     type VDomBinding = {
         type: "binding";
         bind: string;
+    };
+
+    // vdom.VDomCreateContext
+    type VDomCreateContext = {
+        type: "createcontext";
+        ts: number;
+        meta?: MetaType;
+        newblock?: boolean;
+        persist?: boolean;
     };
 
     // vdom.VDomElem
@@ -717,7 +717,7 @@ declare global {
         width: number;
         height: number;
         rootrefid: string;
-        background: string;
+        background?: boolean;
     };
 
     // vdom.VDomRenderUpdate

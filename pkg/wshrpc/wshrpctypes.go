@@ -136,8 +136,8 @@ type WshRpcInterface interface {
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 
 	// terminal
-	VDomCreateContextCommand(ctx context.Context, data vdom.CreateVDomContext) error
-	VDomAsyncInitiationCommand(ctx context.Context, data vdom.AsyncInitiationRequest) error
+	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) error
+	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error)

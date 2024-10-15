@@ -28,15 +28,15 @@ type VDomElem struct {
 
 //// protocol messages
 
-type CreateVDomContext struct {
-	Type     string              `json:"type" tstype:"\"createvdomcontext\""`
+type VDomCreateContext struct {
+	Type     string              `json:"type" tstype:"\"createcontext\""`
 	Ts       int64               `json:"ts"`
 	Meta     waveobj.MetaMapType `json:"meta,omitempty"`
 	NewBlock bool                `json:"newblock,omitempty"`
 	Persist  bool                `json:"persist,omitempty"`
 }
 
-type AsyncInitiationRequest struct {
+type VDomAsyncInitiationRequest struct {
 	Type    string `json:"type" tstype:"\"asyncinitiationrequest\""`
 	Ts      int64  `json:"ts"`
 	BlockId string `json:"blockid,omitempty"`
@@ -127,7 +127,7 @@ type VDomRenderContext struct {
 	Width      int    `json:"width"`
 	Height     int    `json:"height"`
 	RootRefId  string `json:"rootrefid"`
-	Background string `json:"background"`
+	Background bool   `json:"background,omitempty"`
 }
 
 type VDomStateSync struct {
