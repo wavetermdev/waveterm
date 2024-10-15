@@ -385,13 +385,48 @@ function SingleLinePlot({
             })
         );
     }
-    marks.push(Plot.tickY([0], { stroke: "var(--grey-text-color)" }));
+    const labelY = yvalMeta?.label ?? "?";
+    marks.push(
+        Plot.ruleX(
+            plotData,
+            Plot.pointerX({ x: "ts", py: yval, stroke: "var(--grey-text-color)", strokeWidth: 1, strokeDasharray: 2 })
+        )
+    );
+    marks.push(
+        Plot.ruleY(
+            plotData,
+            Plot.pointerX({ px: "ts", y: yval, stroke: "var(--grey-text-color)", strokeWidth: 1, strokeDasharray: 2 })
+        )
+    );
+    marks.push(
+        Plot.tip(
+            plotData,
+            Plot.pointerX({
+                x: "ts",
+                y: yval,
+                fill: "var(--main-bg-color)",
+                anchor: "middle",
+                dy: -30,
+                title: (d) => `${dayjs.unix(d.ts / 1000).format("M:ss")} ${Math.round(d[yval])}${labelY}`,
+                textPadding: 3,
+            })
+        )
+    );
+    marks.push(
+        Plot.dot(
+            plotData,
+            Plot.pointerX({ x: "ts", y: yval, fill: color, r: 3, stroke: "var(--main-text-color)", strokeWidth: 1 })
+        )
+    );
     let maxY = resolveDomainBound(yvalMeta?.maxy, plotData[plotData.length - 1]) ?? 100;
     let minY = resolveDomainBound(yvalMeta?.miny, plotData[plotData.length - 1]) ?? 0;
-    const labelY = yvalMeta?.label ?? "?";
     const plot = Plot.plot({
         axis: lineType != "sparkline",
-        x: { grid: true, label: "time", tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}` },
+        x: {
+            grid: true,
+            label: "time",
+            tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}`,
+        },
         y: { label: labelY, domain: [minY, maxY] },
         width: plotWidth,
         height: plotHeight,

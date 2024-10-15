@@ -13,8 +13,14 @@
     }
 
     .plot-content {
-        background: rgb(from var(--hover-bg-color) r g b / 0.05);
-        border-radius: 6px;
-        overflow: hidden;
+        svg {
+            [aria-label="tip"] {
+                g {
+                    path {
+                        color: var(--border-color);
+                    }
+                }
+            }
+        }
     }
 }
