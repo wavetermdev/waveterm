@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { type Placement } from "@floating-ui/react";
 import type * as jotai from "jotai";
 import type * as rxjs from "rxjs";
 
@@ -173,7 +174,14 @@ declare global {
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
-    type HeaderElem = IconButtonDecl | HeaderText | HeaderInput | HeaderDiv | HeaderTextButton | ConnectionButton;
+    type HeaderElem =
+        | IconButtonDecl
+        | HeaderText
+        | HeaderInput
+        | HeaderDiv
+        | HeaderTextButton
+        | ConnectionButton
+        | MenuButton;
 
     type IconButtonDecl = {
         elemtype: "iconbutton";
@@ -198,7 +206,7 @@ declare global {
         text: string;
         ref?: React.MutableRefObject<HTMLDivElement>;
         className?: string;
-        onClick?: () => void;
+        onClick?: (e: React.MouseEvent<any>) => void;
     };
 
     type HeaderInput = {
@@ -230,6 +238,24 @@ declare global {
         onClick?: (e: React.MouseEvent<any>) => void;
         connected: boolean;
     };
+
+    type MenuItem = {
+        label: string;
+        subItems?: MenuItem[];
+        onClick?: (e: React.MouseEvent<any>) => void;
+    };
+
+    type MenuButtonProps = {
+        items: MenuItem[];
+        className?: string;
+        text: string;
+        title?: string;
+        menuPlacement?: Placement;
+    };
+
+    type MenuButton = {
+        elemtype: "menubutton";
+    } & MenuButtonProps;
 
     interface ViewModel {
         viewType: string;

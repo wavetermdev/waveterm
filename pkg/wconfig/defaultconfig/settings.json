@@ -1,4 +1,5 @@
 {
+    "ai:preset": "ai@global",
     "ai:model": "gpt-4o-mini",
     "ai:maxtokens": 2048,
     "ai:timeoutms": 60000,
@@ -11,5 +12,6 @@
     "web:defaultsearch": "https://www.google.com/search?q={query}",
     "window:tilegapsize": 3,
     "window:maxtabcachesize": 10,
-    "telemetry:enabled": true
+    "telemetry:enabled": true,
+    "term:copyonselect": true
 }

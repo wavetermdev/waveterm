@@ -299,6 +299,7 @@ declare global {
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
         "ai:*"?: boolean;
+        "ai:preset"?: string;
         "ai:apitype"?: string;
         "ai:baseurl"?: string;
         "ai:apitoken"?: string;
@@ -432,6 +433,7 @@ declare global {
     // wconfig.SettingsType
     type SettingsType = {
         "ai:*"?: boolean;
+        "ai:preset"?: string;
         "ai:apitype"?: string;
         "ai:baseurl"?: string;
         "ai:apitoken"?: string;
@@ -449,6 +451,7 @@ declare global {
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
+        "term:copyonselect"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "web:*"?: boolean;
