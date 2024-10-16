@@ -4,7 +4,16 @@
 import { useWaveObjectValue } from "@/app/store/wos";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { PLATFORM, WOS, atoms, getApi, globalStore, removeFlashError, useSettingsPrefixAtom } from "@/store/global";
+import {
+    PLATFORM,
+    WOS,
+    atoms,
+    createBlock,
+    getApi,
+    globalStore,
+    removeFlashError,
+    useSettingsPrefixAtom,
+} from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { getElemAsStr } from "@/util/focusutil";
@@ -36,7 +45,7 @@ const App = () => {
     );
 };
 
-function isContentEditableBeingEdited() {
+function isContentEditableBeingEdited(): boolean {
     const activeElement = document.activeElement;
     return (
         activeElement &&
@@ -45,17 +54,17 @@ function isContentEditableBeingEdited() {
     );
 }
 
-function canEnablePaste() {
+function canEnablePaste(): boolean {
     const activeElement = document.activeElement;
     return activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA" || isContentEditableBeingEdited();
 }
 
-function canEnableCopy() {
+function canEnableCopy(): boolean {
     const sel = window.getSelection();
     return !util.isBlank(sel?.toString());
 }
 
-function canEnableCut() {
+function canEnableCut(): boolean {
     const sel = window.getSelection();
     if (document.activeElement?.classList.contains("xterm-helper-textarea")) {
         return false;
@@ -63,12 +72,26 @@ function canEnableCut() {
     return !util.isBlank(sel?.toString()) && canEnablePaste();
 }
 
-function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+async function getClipboardURL(): Promise<URL> {
+    try {
+        const clipboardText = await navigator.clipboard.readText();
+        if (clipboardText == null) {
+            return null;
+        }
+        const url = new URL(clipboardText);
+        return url;
+    } catch (e) {
+        return null;
+    }
+}
+
+async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault();
     const canPaste = canEnablePaste();
     const canCopy = canEnableCopy();
     const canCut = canEnableCut();
-    if (!canPaste && !canCopy && !canCut) {
+    const clipboardURL = await getClipboardURL();
+    if (!canPaste && !canCopy && !canCut && !clipboardURL) {
         return;
     }
     let menu: ContextMenuItem[] = [];
@@ -80,6 +103,20 @@ function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     }
     if (canPaste) {
         menu.push({ label: "Paste", role: "paste" });
+    }
+    if (clipboardURL) {
+        menu.push({ type: "separator" });
+        menu.push({
+            label: "Open Clipboard URL (" + clipboardURL.hostname + ")",
+            click: () => {
+                createBlock({
+                    meta: {
+                        view: "web",
+                        url: clipboardURL.toString(),
+                    },
+                });
+            },
+        });
     }
     ContextMenuModel.showContextMenu(menu, e);
 }
