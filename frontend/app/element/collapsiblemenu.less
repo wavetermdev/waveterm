@@ -3,35 +3,35 @@
 
 @import "../mixins.less";
 
-.verticalnav {
+.collapsible-menu {
     list-style: none;
     padding: 0;
 }
 
-.verticalnav-item {
+.collapsible-menu-item {
     padding: 10px;
     cursor: pointer;
     user-select: none;
     padding: 0;
 }
 
-.verticalnav-item-button {
+.collapsible-menu-item-button {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
 }
 
-.verticalnav-item-content {
+.collapsible-menu-item-content {
     display: flex;
     align-items: center;
 }
 
-.verticalnav-item-icon {
+.collapsible-menu-item-icon {
     margin-right: 10px; /* Space between icon and text */
 }
 
-.verticalnav-item-text {
+.collapsible-menu-item-text {
     .ellipsis();
     text-decoration: none;
 }
@@ -49,7 +49,7 @@
     display: none;
 }
 
-.verticalnav-item-button {
+.collapsible-menu-item-button {
     padding: 10px;
     color: var(--main-text-color);
 
@@ -59,6 +59,6 @@
     }
 }
 
-.verticalnav-item-button.clickable:hover {
+.collapsible-menu-item-button.clickable:hover {
     background-color: #f0f0f0;
 }

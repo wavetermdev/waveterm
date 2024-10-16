@@ -3,7 +3,7 @@
 
 import clsx from "clsx";
 import React, { memo, useState } from "react";
-import "./verticalnav.less";
+import "./collapsiblemenu.less";
 
 interface VerticalNavProps {
     items: MenuItem[];
@@ -15,7 +15,7 @@ interface VerticalNavProps {
     ) => React.ReactNode;
 }
 
-const VerticalNav = memo(({ items, className, renderItem }: VerticalNavProps) => {
+const CollapsibleMenu = memo(({ items, className, renderItem }: VerticalNavProps) => {
     const [open, setOpen] = useState<{ [key: string]: boolean }>({});
 
     // Helper function to generate a unique key for each item based on its path in the hierarchy
@@ -34,19 +34,19 @@ const VerticalNav = memo(({ items, className, renderItem }: VerticalNavProps) =>
         const hasChildren = item.subItems && item.subItems.length > 0;
 
         return (
-            <li key={itemKey} className="verticalnav-item">
+            <li key={itemKey} className="collapsible-menu-item">
                 {renderItem ? (
                     renderItem(item, isOpen, (e) => handleClick(e, item, itemKey))
                 ) : (
-                    <div className="verticalnav-item-button" onClick={(e) => handleClick(e, item, itemKey)}>
+                    <div className="collapsible-menu-item-button" onClick={(e) => handleClick(e, item, itemKey)}>
                         <div
-                            className={clsx("verticalnav-item-content", {
+                            className={clsx("collapsible-menu-item-content", {
                                 "has-children": hasChildren,
                                 "is-open": isOpen && hasChildren,
                             })}
                         >
-                            {item.icon && <div className="verticalnav-item-icon">{item.icon}</div>}
-                            <div className="verticalnav-item-text">{item.label}</div>
+                            {item.icon && <div className="collapsible-menu-item-icon">{item.icon}</div>}
+                            <div className="collapsible-menu-item-text">{item.label}</div>
                         </div>
                         {hasChildren && (
                             <i className={`fa-sharp fa-solid ${isOpen ? "fa-angle-up" : "fa-angle-down"}`}></i>
@@ -65,12 +65,12 @@ const VerticalNav = memo(({ items, className, renderItem }: VerticalNavProps) =>
     };
 
     return (
-        <ul className={clsx("verticalnav", className)} role="navigation">
+        <ul className={clsx("collapsible-menu", className)} role="navigation">
             {items.map((item, index) => renderListItem(item, index, "root"))}
         </ul>
     );
 });
 
-VerticalNav.displayName = "VerticalNav";
+CollapsibleMenu.displayName = "CollapsibleMenu";
 
-export { VerticalNav };
+export { CollapsibleMenu };

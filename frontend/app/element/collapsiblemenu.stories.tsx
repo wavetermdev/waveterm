@@ -3,13 +3,11 @@
 
 import { Meta, StoryObj } from "@storybook/react";
 import { Avatar } from "./avatar";
-import { VerticalNav } from "./verticalnav"; // Updated import to use VerticalNav
+import { CollapsibleMenu } from "./collapsiblemenu";
 
-import "./verticalnav.less"; // Updated stylesheet import
-
-const meta: Meta<typeof VerticalNav> = {
-    title: "Elements/VerticalNav", // Updated title to reflect the component name change
-    component: VerticalNav,
+const meta: Meta<typeof CollapsibleMenu> = {
+    title: "Elements/CollapsibleMenu",
+    component: CollapsibleMenu,
     argTypes: {
         items: { control: "object" },
         renderItem: { control: false },
@@ -52,7 +50,6 @@ const nestedItems = [
         icon: <i className="fa-sharp fa-solid fa-inbox"></i>,
         onClick: () => console.log("Inbox clicked"),
         subItems: [
-            // Updated `children` to `subItems` to match the new type
             {
                 label: "Starred",
                 icon: <i className="fa-sharp fa-solid fa-star"></i>,
@@ -80,7 +77,7 @@ const nestedItems = [
 const customRenderItem = (
     item: MenuItem,
     isOpen: boolean,
-    handleClick: (e: React.MouseEvent<any>, item: MenuItem, itemKey: string) => void // Updated to pass the correct signature
+    handleClick: (e: React.MouseEvent<any>, item: MenuItem, itemKey: string) => void
 ) => (
     <div className="custom-list-item">
         <span className="custom-list-item-icon" onClick={(e) => handleClick(e, item, `${item.label}`)}>
@@ -99,7 +96,7 @@ export const Default: Story = {
     },
     render: (args) => (
         <Container>
-            <VerticalNav {...args} />
+            <CollapsibleMenu {...args} />
         </Container>
     ),
 };
@@ -110,7 +107,7 @@ export const NestedList: Story = {
     },
     render: (args) => (
         <Container>
-            <VerticalNav {...args} />
+            <CollapsibleMenu {...args} />
         </Container>
     ),
 };
@@ -122,7 +119,7 @@ export const CustomRender: Story = {
     },
     render: (args) => (
         <Container>
-            <VerticalNav {...args} />
+            <CollapsibleMenu {...args} />
         </Container>
     ),
 };
@@ -133,7 +130,7 @@ export const WithClickHandlers: Story = {
     },
     render: (args) => (
         <Container>
-            <VerticalNav {...args} />
+            <CollapsibleMenu {...args} />
         </Container>
     ),
 };
@@ -144,7 +141,7 @@ export const NestedWithClickHandlers: Story = {
     },
     render: (args) => (
         <Container>
-            <VerticalNav {...args} />
+            <CollapsibleMenu {...args} />
         </Container>
     ),
 };
@@ -171,14 +168,3 @@ const avatarItems = [
         onClick: () => console.log("Alice Lambert clicked"),
     },
 ];
-
-export const WithAvatars: Story = {
-    args: {
-        items: avatarItems,
-    },
-    render: (args) => (
-        <Container>
-            <VerticalNav {...args} /> {/* Updated to use VerticalNav */}
-        </Container>
-    ),
-};
