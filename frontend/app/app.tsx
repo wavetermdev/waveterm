@@ -159,29 +159,46 @@ function processBackgroundUrls(cssText: string): string {
     if (cssText.endsWith(";")) {
         cssText = cssText.slice(0, -1);
     }
-    const attrRe = /^background(-image):\s*/;
+    const attrRe = /^background(-image)?\s*:\s*/i;
     cssText = cssText.replace(attrRe, "");
     const ast = csstree.parse("background: " + cssText, {
         context: "declaration",
     });
-    let hasJSUrl = false;
+    let hasUnsafeUrl = false;
     csstree.walk(ast, {
         visit: "Url",
         enter(node) {
             const originalUrl = node.value.trim();
-            if (originalUrl.startsWith("javascript:")) {
-                hasJSUrl = true;
+            if (
+                originalUrl.startsWith("http:") ||
+                originalUrl.startsWith("https:") ||
+                originalUrl.startsWith("data:")
+            ) {
                 return;
             }
-            if (originalUrl.startsWith("data:")) {
+            // allow file:/// urls (if they are absolute)
+            if (originalUrl.startsWith("file://")) {
+                const path = originalUrl.slice(7);
+                if (!path.startsWith("/")) {
+                    console.log(`Invalid background, contains a non-absolute file URL: ${originalUrl}`);
+                    hasUnsafeUrl = true;
+                    return;
+                }
+                const newUrl = encodeFileURL(path);
+                node.value = newUrl;
                 return;
             }
-            const newUrl = encodeFileURL(originalUrl);
-            node.value = newUrl;
+            // allow absolute paths
+            if (originalUrl.startsWith("/") || originalUrl.startsWith("~/")) {
+                const newUrl = encodeFileURL(originalUrl);
+                node.value = newUrl;
+                return;
+            }
+            hasUnsafeUrl = true;
+            console.log(`Invalid background, contains an unsafe URL scheme: ${originalUrl}`);
         },
     });
-    if (hasJSUrl) {
-        console.log("invalid background, contains a 'javascript' protocol url which is not allowed");
+    if (hasUnsafeUrl) {
         return null;
     }
     const rtnStyle = csstree.generate(ast);
