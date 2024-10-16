@@ -51,6 +51,7 @@ jobs:
               run: task package
               env:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
+                  CSC_IDENTITY_AUTO_DISCOVERY: false # disable codesign
               shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
 
             # Upload .exe as an artifact
