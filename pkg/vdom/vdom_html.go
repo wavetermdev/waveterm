@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/htmltoken"
+	"github.com/wavetermdev/waveterm/pkg/vdom/cssparser"
 )
 
 // can tokenize and bind HTML to Elems
@@ -193,7 +194,99 @@ func processTextStr(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func Bind(htmlStr string, data map[string]any) *VDomElem {
+func makePathStr(elemPath []string) string {
+	return strings.Join(elemPath, " ")
+}
+
+func capitalizeAscii(s string) string {
+	if s == "" || s[0] < 'a' || s[0] > 'z' {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func toReactName(input string) string {
+	// Check for CSS custom properties (variables) which start with '--'
+	if strings.HasPrefix(input, "--") {
+		return input
+	}
+	parts := strings.Split(input, "-")
+	result := ""
+	index := 0
+	if parts[0] == "" && len(parts) > 1 {
+		// handle vendor prefixes
+		prefix := parts[1]
+		if prefix == "ms" {
+			result += "ms"
+		} else {
+			result += capitalizeAscii(prefix)
+		}
+		index = 2 // Skip the empty string and prefix
+	} else {
+		result += parts[0]
+		index = 1
+	}
+	// Convert remaining parts to CamelCase
+	for ; index < len(parts); index++ {
+		if parts[index] != "" {
+			result += capitalizeAscii(parts[index])
+		}
+	}
+	return result
+}
+
+func convertStyleToReactStyles(styleMap map[string]string, params map[string]any) map[string]any {
+	if len(styleMap) == 0 {
+		return nil
+	}
+	rtn := make(map[string]any)
+	for key, val := range styleMap {
+		rtn[toReactName(key)] = attrToProp(val, params)
+	}
+	return rtn
+}
+
+func fixStyleAttribute(elem *VDomElem, params map[string]any, elemPath []string) error {
+	styleText, ok := elem.Props["style"].(string)
+	if !ok {
+		return nil
+	}
+	parser := cssparser.MakeParser(styleText)
+	m, err := parser.Parse()
+	if err != nil {
+		return fmt.Errorf("%v (at %s)", err, makePathStr(elemPath))
+	}
+	elem.Props["style"] = convertStyleToReactStyles(m, params)
+	return nil
+}
+
+func fixupStyleAttributes(elem *VDomElem, params map[string]any, elemPath []string) {
+	if elem == nil {
+		return
+	}
+	// call fixStyleAttribute, and walk children
+	elemCountMap := make(map[string]int)
+	if len(elemPath) == 0 {
+		elemPath = append(elemPath, elem.Tag)
+	}
+	fixStyleAttribute(elem, params, elemPath)
+	for i := range elem.Children {
+		child := &elem.Children[i]
+		elemCountMap[child.Tag]++
+		subPath := child.Tag
+		if elemCountMap[child.Tag] > 1 {
+			subPath = fmt.Sprintf("%s[%d]", child.Tag, elemCountMap[child.Tag])
+		}
+		elemPath = append(elemPath, subPath)
+		fixupStyleAttributes(&elem.Children[i], params, elemPath)
+		elemPath = elemPath[:len(elemPath)-1]
+	}
+	if len(elemPath) == 1 {
+		elemPath = elemPath[:len(elemPath)-1]
+	}
+}
+
+func Bind(htmlStr string, params map[string]any) *VDomElem {
 	htmlStr = processWhitespace(htmlStr)
 	r := strings.NewReader(htmlStr)
 	iter := htmltoken.NewTokenizer(r)
@@ -210,7 +303,7 @@ outer:
 				tokenErr = errors.New("bind tags must be self closing")
 				break outer
 			}
-			elem := tokenToElem(token, data)
+			elem := tokenToElem(token, params)
 			elemStack = pushElemStack(elemStack, elem)
 		case htmltoken.EndTagToken:
 			if token.Data == Html_BindTagName || token.Data == Html_BindParamTagName {
@@ -229,7 +322,7 @@ outer:
 		case htmltoken.SelfClosingTagToken:
 			if token.Data == Html_BindParamTagName {
 				keyAttr := getAttr(token, "key")
-				dataVal := data[keyAttr]
+				dataVal := params[keyAttr]
 				elemList := partToElems(dataVal)
 				for _, elem := range elemList {
 					appendChildToStack(elemStack, &elem)
@@ -241,7 +334,7 @@ outer:
 				binding := &VDomBinding{Type: ObjectType_Binding, Bind: keyAttr}
 				appendChildToStack(elemStack, &VDomElem{Tag: WaveTextTag, Props: map[string]any{"text": binding}})
 			}
-			elem := tokenToElem(token, data)
+			elem := tokenToElem(token, params)
 			appendChildToStack(elemStack, elem)
 		case htmltoken.TextToken:
 			if token.Data == "" {
@@ -270,5 +363,7 @@ outer:
 		errTextElem := TextElem(tokenErr.Error())
 		appendChildToStack(elemStack, &errTextElem)
 	}
-	return finalizeStack(elemStack)
+	rtn := finalizeStack(elemStack)
+	fixupStyleAttributes(rtn, params, nil)
+	return rtn
 }

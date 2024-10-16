@@ -145,6 +145,20 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             }
             continue;
         }
+        if (key == "style" && isObject(val)) {
+            // assuming the entire style prop wasn't bound, look through the individual keys and bind them
+            for (let styleKey in val) {
+                let styleVal = val[styleKey];
+                if (isObject(styleVal) && styleVal.type == VDomObjType_Binding) {
+                    const [stylePropVal, styleAtomDeps] = resolveBinding(styleVal as VDomBinding, model);
+                    val[styleKey] = stylePropVal;
+                    for (let styleAtomDep of styleAtomDeps) {
+                        atomKeys.add(styleAtomDep);
+                    }
+                }
+            }
+            // fallthrough to set props[key] = val
+        }
         props[key] = val;
     }
     return [props, atomKeys];
