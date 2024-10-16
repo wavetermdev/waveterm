@@ -55,7 +55,8 @@ function getWaveHomeDir(): string {
             home = path.join(homeDir, `.${getWaveDirName()}`);
         }
     }
-    if (!!home && existsSync(home)) {
+    // If home exists and it has `wave.lock` in it, we know it has valid data from Wave >=v0.8. Otherwise, it could be for WaveLegacy (<v0.8)
+    if (home && existsSync(home) && existsSync(path.join(home, "wave.lock"))) {
         return home;
     }
     return null;
