@@ -10,6 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -72,6 +74,12 @@ func htmlRun(cmd *cobra.Command, args []string) {
 		WriteStderr("error creating vdom context: %v\n", err)
 		wshutil.DoShutdown(fmt.Sprintf("error creating vdom context: %v", err), 1, true)
 	}
+	wshclient.EventSubCommand(RpcClient, wps.SubscriptionRequest{Event: "blockclose", Scopes: []string{
+		waveobj.MakeORef("block", RpcContext.BlockId).String(),
+	}}, nil)
+	RpcClient.EventListener.On("blockclose", func(event *wps.WaveEvent) {
+		wshutil.DoShutdown("blockclosed", 0, true)
+	})
 	WriteStderr("created vdom context\n")
 	for {
 		var buf [1]byte
