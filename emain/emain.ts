@@ -25,9 +25,12 @@ import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
 import {
+    WaveConfigHomeVarName,
+    WaveDataHomeVarName,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
-    getWaveHomeDir,
+    getWaveConfigDir,
+    getWaveDataDir,
     getWaveSrvCwd,
     getWaveSrvPath,
     isDev,
@@ -66,12 +69,13 @@ let webviewKeys: string[] = []; // the keys to trap when webview has focus
 
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 
-const waveHome = getWaveHomeDir();
+const waveDataDir = getWaveDataDir();
+const waveConfigDir = getWaveConfigDir();
 
 const oldConsoleLog = console.log;
 
 const loggerTransports: winston.transport[] = [
-    new winston.transports.File({ filename: path.join(getWaveHomeDir(), "waveapp.log"), level: "info" }),
+    new winston.transports.File({ filename: path.join(waveDataDir, "waveapp.log"), level: "info" }),
 ];
 if (isDev) {
     loggerTransports.push(new winston.transports.Console());
@@ -95,8 +99,9 @@ function log(...msg: any[]) {
 console.log = log;
 console.log(
     sprintf(
-        "waveterm-app starting, WAVETERM_HOME=%s, electronpath=%s gopath=%s arch=%s/%s",
-        waveHome,
+        "waveterm-app starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s",
+        waveDataDir,
+        waveConfigDir,
         getElectronAppBasePath(),
         getElectronAppUnpackedBasePath(),
         unamePlatform,
@@ -159,6 +164,8 @@ function runWaveSrv(): Promise<boolean> {
     envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
     envCopy[AuthKeyEnv] = AuthKey;
+    envCopy[WaveConfigHomeVarName] = waveConfigDir;
+    envCopy[WaveDataHomeVarName] = waveDataDir;
     const waveSrvCmd = getWaveSrvPath();
     console.log("trying to run local server", waveSrvCmd);
     const proc = child_process.spawn(getWaveSrvPath(), {
@@ -1092,10 +1099,6 @@ async function appMain() {
         console.log("waveterm-app could not get single-instance-lock, shutting down");
         electronApp.quit();
         return;
-    }
-    const waveHomeDir = getWaveHomeDir();
-    if (!fs.existsSync(waveHomeDir)) {
-        fs.mkdirSync(waveHomeDir);
     }
     makeAppMenu();
     try {

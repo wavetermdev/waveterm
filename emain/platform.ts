@@ -52,10 +52,10 @@ function getWaveHomeDir(): string {
     if (!home) {
         const homeDir = process.env.HOME;
         if (homeDir) {
-            home = path.join(homeDir, getWaveDirName());
+            home = path.join(homeDir, `.${getWaveDirName()}`);
         }
     }
-    if (home && existsSync(home)) {
+    if (!!home && existsSync(home)) {
         return home;
     }
     return null;
@@ -152,4 +152,6 @@ export {
     isDevVite,
     unameArch,
     unamePlatform,
+    WaveConfigHomeVarName,
+    WaveDataHomeVarName,
 };
