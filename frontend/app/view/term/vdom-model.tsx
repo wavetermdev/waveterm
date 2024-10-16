@@ -81,7 +81,6 @@ export class VDomModel {
     pendingTimeoutId: any;
     termWshClient: TermWshClient;
     backendRoute: string;
-    needsUpdate: boolean = false;
     updateMs: number = 100;
     nextUpdateQuick: boolean = false;
 
@@ -110,8 +109,11 @@ export class VDomModel {
         this.rootRefId = crypto.randomUUID();
         this.backendRoute = null;
         this.hasPendingRequest = false;
-        this.needsUpdate = false;
         this.nextUpdateQuick = false;
+    }
+
+    needsUpdate() {
+        return this.refUpdates.length > 0 || this.batchedEvents.length > 0;
     }
 
     queueUpdate() {
@@ -135,7 +137,7 @@ export class VDomModel {
             }
             return;
         }
-        if (!force && !this.needsUpdate) {
+        if (!force && !this.needsUpdate()) {
             this.queueUpdate();
             return;
         }
