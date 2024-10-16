@@ -112,7 +112,7 @@ function getWaveDataDir(): string {
         if (configHome) {
             retVal = path.join(configHome, getWaveDirName());
         } else {
-            retVal = path.join(process.env.HOME, ".local", getWaveDirName());
+            retVal = path.join(process.env.HOME, ".local", "share", getWaveDirName());
         }
     }
     return ensurePathExists(retVal);
