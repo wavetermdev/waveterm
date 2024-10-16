@@ -47,6 +47,10 @@ function getWaveDirName(): string {
     return isDev ? "waveterm-dev" : "waveterm";
 }
 
+/**
+ * Gets the path to the old Wave home directory (defaults to `~/.waveterm`).
+ * @returns The path to the directory if it exists and contains valid data for the current app, otherwise null.
+ */
 function getWaveHomeDir(): string {
     let home = process.env[WaveHomeVarName];
     if (!home) {
@@ -62,6 +66,11 @@ function getWaveHomeDir(): string {
     return null;
 }
 
+/**
+ * Ensure the given path exists, creating it recursively if it doesn't.
+ * @param path The path to ensure.
+ * @returns The same path, for chaining.
+ */
 function ensurePathExists(path: string): string {
     if (!existsSync(path)) {
         mkdirSync(path, { recursive: true });
@@ -69,6 +78,11 @@ function ensurePathExists(path: string): string {
     return path;
 }
 
+/**
+ * Gets the path to the directory where Wave configurations are stored. Creates the directory if it does not exist.
+ * Handles backwards compatibility with the old Wave Home directory model, where configurations and data were stored together.
+ * @returns The path where configurations should be stored.
+ */
 function getWaveConfigDir(): string {
     // If wave home dir exists, use it for backwards compatibility
     const waveHomeDir = getWaveHomeDir();
@@ -93,6 +107,11 @@ function getWaveConfigDir(): string {
     return ensurePathExists(retVal);
 }
 
+/**
+ * Gets the path to the directory where Wave data is stored. Creates the directory if it does not exist.
+ * Handles backwards compatibility with the old Wave Home directory model, where configurations and data were stored together.
+ * @returns The path where data should be stored.
+ */
 function getWaveDataDir(): string {
     // If wave home dir exists, use it for backwards compatibility
     const waveHomeDir = getWaveHomeDir();
