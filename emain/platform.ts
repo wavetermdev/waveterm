@@ -68,7 +68,6 @@ function ensurePathExists(path: string): string {
     return path;
 }
 
-// must match golang
 function getWaveConfigDir(): string {
     // If wave home dir exists, use it for backwards compatibility
     const waveHomeDir = getWaveHomeDir();
