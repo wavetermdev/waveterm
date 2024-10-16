@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { app, ipcMain } from "electron";
+import { existsSync, mkdirSync } from "fs";
 import os from "os";
 import path from "path";
 import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
@@ -40,43 +41,81 @@ ipcMain.on("get-webview-preload", (event) => {
 
 const WaveConfigHomeVarName = "WAVETERM_CONFIG_HOME";
 const WaveDataHomeVarName = "WAVETERM_DATA_HOME";
+const WaveHomeVarName = "WAVETERM_HOME";
 
 function getWaveDirName(): string {
     return isDev ? "waveterm-dev" : "waveterm";
 }
 
+function getWaveHomeDir(): string {
+    let home = process.env[WaveHomeVarName];
+    if (!home) {
+        const homeDir = process.env.HOME;
+        if (homeDir) {
+            home = path.join(homeDir, getWaveDirName());
+        }
+    }
+    if (home && existsSync(home)) {
+        return home;
+    }
+    return null;
+}
+
+function ensurePathExists(path: string): string {
+    if (!existsSync(path)) {
+        mkdirSync(path, { recursive: true });
+    }
+    return path;
+}
+
 // must match golang
 function getWaveConfigDir(): string {
+    // If wave home dir exists, use it for backwards compatibility
+    const waveHomeDir = getWaveHomeDir();
+    if (waveHomeDir) {
+        return path.join(waveHomeDir, "config");
+    }
+
     const override = process.env[WaveConfigHomeVarName];
+    let retVal: string;
     if (override) {
-        return override;
+        retVal = override;
     } else if (unamePlatform === "win32") {
-        return path.join(process.env.LOCALAPPDATA, getWaveDirName(), "config");
+        retVal = path.join(process.env.LOCALAPPDATA, getWaveDirName(), "config");
     } else {
         const configHome = process.env.XDG_CONFIG_HOME;
         if (configHome) {
-            return path.join(configHome, getWaveDirName());
+            retVal = path.join(configHome, getWaveDirName());
         } else {
-            return path.join(process.env.HOME, ".config", getWaveDirName());
+            retVal = path.join(process.env.HOME, ".config", getWaveDirName());
         }
     }
+    return ensurePathExists(retVal);
 }
 
 // must match golang
 function getWaveDataDir(): string {
+    // If wave home dir exists, use it for backwards compatibility
+    const waveHomeDir = getWaveHomeDir();
+    if (waveHomeDir) {
+        return waveHomeDir;
+    }
+
     const override = process.env[WaveDataHomeVarName];
+    let retVal: string;
     if (override) {
-        return override;
+        retVal = override;
     } else if (unamePlatform === "win32") {
-        return path.join(process.env.LOCALAPPDATA, getWaveDirName(), "data");
+        retVal = path.join(process.env.LOCALAPPDATA, getWaveDirName(), "data");
     } else {
         const configHome = process.env.XDG_DATA_HOME;
         if (configHome) {
-            return path.join(configHome, getWaveDirName());
+            retVal = path.join(configHome, getWaveDirName());
         } else {
-            return path.join(process.env.HOME, ".local", getWaveDirName());
+            retVal = path.join(process.env.HOME, ".local", getWaveDirName());
         }
     }
+    return ensurePathExists(retVal);
 }
 
 function getElectronAppBasePath(): string {
