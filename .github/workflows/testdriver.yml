@@ -51,7 +51,6 @@ jobs:
               run: task package
               env:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
-                  CSC_IDENTITY_AUTO_DISCOVERY: false # disable codesign
               shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
 
             # Upload .exe as an artifact
@@ -61,6 +60,18 @@ jobs:
               with:
                   name: windows-exe
                   path: make/*.exe
+
+            - name: Modify electron-builder.config.cjs
+              run: |
+                  $filePath = "path/to/electron-builder.config.cjs"
+                  $content = Get-Content -Path $filePath
+                  $newContent = $content | Where-Object { 
+                      $_ -notmatch 'certificateSubjectName: "Command Line Inc"' -and
+                      $_ -notmatch 'certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH' -and
+                      $_ -notmatch 'signingHashAlgorithms: \["sha256"\]'
+                  }
+                  Set-Content -Path $filePath -Value $newContent -Force
+              shell: pwsh
 
             - uses: testdriverai/action@main
               id: testdriver
