@@ -7,8 +7,6 @@ import path from "path";
 import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
 import * as keyutil from "../frontend/util/keyutil";
 
-const WaveHomeVarName = "WAVETERM_HOME";
-
 const isDev = !app.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
 if (isDev) {
@@ -40,13 +38,45 @@ ipcMain.on("get-webview-preload", (event) => {
     event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
 });
 
+const WaveConfigHomeVarName = "WAVETERM_CONFIG_HOME";
+const WaveDataHomeVarName = "WAVETERM_DATA_HOME";
+
+function getWaveDirName(): string {
+    return isDev ? "waveterm-dev" : "waveterm";
+}
+
 // must match golang
-function getWaveHomeDir() {
-    const override = process.env[WaveHomeVarName];
+function getWaveConfigDir(): string {
+    const override = process.env[WaveConfigHomeVarName];
     if (override) {
         return override;
+    } else if (unamePlatform === "win32") {
+        return path.join(process.env.LOCALAPPDATA, getWaveDirName(), "config");
+    } else {
+        const configHome = process.env.XDG_CONFIG_HOME;
+        if (configHome) {
+            return path.join(configHome, getWaveDirName());
+        } else {
+            return path.join(process.env.HOME, ".config", getWaveDirName());
+        }
     }
-    return path.join(os.homedir(), isDev ? ".waveterm-dev" : ".waveterm");
+}
+
+// must match golang
+function getWaveDataDir(): string {
+    const override = process.env[WaveDataHomeVarName];
+    if (override) {
+        return override;
+    } else if (unamePlatform === "win32") {
+        return path.join(process.env.LOCALAPPDATA, getWaveDirName(), "data");
+    } else {
+        const configHome = process.env.XDG_DATA_HOME;
+        if (configHome) {
+            return path.join(configHome, getWaveDirName());
+        } else {
+            return path.join(process.env.HOME, ".local", getWaveDirName());
+        }
+    }
 }
 
 function getElectronAppBasePath(): string {
@@ -69,13 +99,14 @@ function getWaveSrvPath(): string {
 }
 
 function getWaveSrvCwd(): string {
-    return getWaveHomeDir();
+    return getWaveDataDir();
 }
 
 export {
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
-    getWaveHomeDir,
+    getWaveConfigDir,
+    getWaveDataDir,
     getWaveSrvCwd,
     getWaveSrvPath,
     isDev,
