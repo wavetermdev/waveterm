@@ -40,10 +40,10 @@ const keyMap = {
     PageDown: "\x1b[6~",
 };
 
-function keyboardEventToASCII(event: React.KeyboardEvent<HTMLInputElement>): string {
+function keyboardEventToASCII(event: WaveKeyboardEvent): string {
     // check modifiers
     // if no modifiers are set, just send the key
-    if (!event.altKey && !event.ctrlKey && !event.metaKey) {
+    if (!event.alt && !event.control && !event.meta) {
         if (event.key == null || event.key == "") {
             return "";
         }
@@ -57,11 +57,11 @@ function keyboardEventToASCII(event: React.KeyboardEvent<HTMLInputElement>): str
         }
     }
     // if meta or alt is set, there is no ASCII representation
-    if (event.metaKey || event.altKey) {
+    if (event.meta || event.alt) {
         return "";
     }
     // if ctrl is set, if it is a letter, subtract 64 from the uppercase value to get the ASCII value
-    if (event.ctrlKey) {
+    if (event.control) {
         if (
             (event.key.length === 1 && event.key >= "A" && event.key <= "Z") ||
             (event.key >= "a" && event.key <= "z")
@@ -85,7 +85,6 @@ class TermViewModel {
     termRef: React.RefObject<TermWrap>;
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
-    htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
@@ -102,7 +101,7 @@ class TermViewModel {
         this.termWshClient = new TermWshClient(blockId, this);
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.termWshClient);
         this.nodeModel = nodeModel;
-        this.vdomModel = new VDomModel(blockId, nodeModel, null);
+        this.vdomModel = new VDomModel(blockId, nodeModel, null, this.termWshClient);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -151,11 +150,6 @@ class TermViewModel {
                 this.termRef.current.terminal.focus();
                 return true;
             }
-        } else {
-            if (this.htmlElemFocusRef?.current) {
-                this.htmlElemFocusRef.current.focus();
-                return true;
-            }
         }
         return false;
     }
@@ -169,6 +163,16 @@ class TermViewModel {
                 oref: WOS.makeORef("block", this.blockId),
                 meta: { "term:mode": newTermMode },
             });
+            return true;
+        }
+        const blockData = globalStore.get(this.blockAtom);
+        if (blockData.meta?.["term:mode"] == "html") {
+            const asciiVal = keyboardEventToASCII(waveEvent);
+            if (asciiVal.length == 0) {
+                return false;
+            }
+            const b64data = util.stringToBase64(asciiVal);
+            RpcApi.ControllerInputCommand(WindowRpcClient, { blockid: this.blockId, inputdata64: b64data });
             return true;
         }
         return false;
@@ -295,17 +299,20 @@ const TermResyncHandler = React.memo(({ blockId, model }: TerminalViewProps) => 
 });
 
 const TerminalView = ({ blockId, model }: TerminalViewProps) => {
-    const viewRef = React.createRef<HTMLDivElement>();
+    const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<TermWrap>(null);
     model.termRef = termRef;
-    const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
-    model.htmlElemFocusRef = htmlElemFocusRef;
     const spstatusRef = React.useRef<string>(null);
     model.shellProcStatusRef = spstatusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
+    let termMode = blockData?.meta?.["term:mode"] ?? "term";
+    if (termMode != "term" && termMode != "html") {
+        termMode = "term";
+    }
+    const termModeRef = React.useRef(termMode);
 
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
@@ -358,27 +365,15 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
 
     const handleHtmlKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
-            // reset term:mode
-            RpcApi.SetMetaCommand(WindowRpcClient, {
-                oref: WOS.makeORef("block", blockId),
-                meta: { "term:mode": null },
-            });
-            return false;
-        }
-        const asciiVal = keyboardEventToASCII(event);
-        if (asciiVal.length == 0) {
-            return false;
-        }
-        const b64data = util.stringToBase64(asciiVal);
-        RpcApi.ControllerInputCommand(WindowRpcClient, { blockid: blockId, inputdata64: b64data });
-        return true;
     };
 
-    let termMode = blockData?.meta?.["term:mode"] ?? "term";
-    if (termMode != "term" && termMode != "html") {
-        termMode = "term";
-    }
+    React.useEffect(() => {
+        if (termModeRef.current == "html" && termMode == "term") {
+            // focus the terminal
+            model.giveFocus();
+        }
+        termModeRef.current = termMode;
+    }, [termMode]);
 
     // set intitial controller status, and then subscribe for updates
     React.useEffect(() => {
@@ -422,26 +417,9 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             <TermThemeUpdater blockId={blockId} termRef={termRef} />
             <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
-            <div
-                key="htmlElem"
-                className="term-htmlelem"
-                onClick={() => {
-                    if (htmlElemFocusRef.current != null) {
-                        htmlElemFocusRef.current.focus();
-                    }
-                }}
-            >
-                <div key="htmlElemFocus" className="term-htmlelem-focus">
-                    <input
-                        type="text"
-                        value={""}
-                        ref={htmlElemFocusRef}
-                        onKeyDown={handleHtmlKeyDown}
-                        onChange={() => {}}
-                    />
-                </div>
+            <div key="htmlElem" className="term-htmlelem">
                 <div key="htmlElemContent" className="term-htmlelem-content">
-                    <VDomView blockId={blockId} nodeModel={model.nodeModel} viewRef={viewRef} />
+                    <VDomView blockId={blockId} nodeModel={model.nodeModel} viewRef={viewRef} model={model.vdomModel} />
                 </div>
             </div>
         </div>

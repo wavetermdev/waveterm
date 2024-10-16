@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WOS } from "@/app/store/global";
+import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -23,10 +24,25 @@ export class TermWshClient extends WshClient {
     handle_vdomcreatecontext(rh: RpcResponseHelper, data: VDomCreateContext) {
         console.log("vdom-create", rh.getSource(), data);
         this.model.vdomModel.reset();
+        this.model.vdomModel.backendRoute = rh.getSource();
+        if (!data.persist) {
+            const unsubFn = waveEventSubscribe({
+                eventType: "route:gone",
+                scope: rh.getSource(),
+                handler: () => {
+                    RpcApi.SetMetaCommand(this, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:mode": null },
+                    });
+                    unsubFn();
+                },
+            });
+        }
         RpcApi.SetMetaCommand(this, {
             oref: WOS.makeORef("block", this.blockId),
             meta: { "term:mode": "html" },
         });
+        this.model.vdomModel.sendRenderRequest(true);
     }
 
     handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {

@@ -47,7 +47,6 @@ type VDomFrontendUpdate struct {
 	Ts            int64             `json:"ts"`
 	BlockId       string            `json:"blockid"`
 	CorrelationId string            `json:"correlationid,omitempty"`
-	RequestId     string            `json:"requestid"`
 	Initialize    bool              `json:"initialize,omitempty"` // initialize the app
 	Dispose       bool              `json:"dispose,omitempty"`    // the vdom context was closed
 	Resync        bool              `json:"resync,omitempty"`     // resync (send all backend data).  useful when the FE reloads
@@ -62,7 +61,6 @@ type VDomBackendUpdate struct {
 	Type          string             `json:"type" tstype:"\"backendupdate\""`
 	Ts            int64              `json:"ts"`
 	BlockId       string             `json:"blockid"`
-	ResponseId    string             `json:"responseid"`
 	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
 	StateSync     []VDomStateSync    `json:"statesync,omitempty"`
 	RefOperations []VDomRefOperation `json:"refoperations,omitempty"`
@@ -143,7 +141,7 @@ type VDomRefUpdate struct {
 
 type VDomRenderUpdate struct {
 	UpdateType string   `json:"updatetype" tstype:"\"root\"|\"append\"|\"replace\"|\"remove\"|\"insert\""`
-	WaveId     string   `json:"waveid"`
+	WaveId     string   `json:"waveid,omitempty"`
 	VDom       VDomElem `json:"vdom"`
 	Index      *int     `json:"index,omitempty"`
 }

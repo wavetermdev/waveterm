@@ -108,6 +108,7 @@ export class VDomModel {
         this.vdomNodeVersion = new WeakMap();
         this.compoundAtoms.clear();
         this.rootRefId = crypto.randomUUID();
+        this.backendRoute = null;
         this.hasPendingRequest = false;
         this.needsUpdate = false;
         this.nextUpdateQuick = false;
@@ -398,7 +399,6 @@ export class VDomModel {
             type: "frontendupdate",
             ts: Date.now(),
             blockid: this.blockId,
-            requestid: crypto.randomUUID(),
             initialize: needsInitialize,
             rendercontext: renderContext,
             resync: this.needsResync,

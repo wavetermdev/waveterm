@@ -326,6 +326,7 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 	}
 	go func() {
 		wps.Broker.UnsubscribeAll(routeId)
+		wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
 	}()
 }
 

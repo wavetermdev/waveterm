@@ -606,7 +606,6 @@ declare global {
         type: "backendupdate";
         ts: number;
         blockid: string;
-        responseid: string;
         renderupdates?: VDomRenderUpdate[];
         statesync?: VDomStateSync[];
         refoperations?: VDomRefOperation[];
@@ -650,7 +649,6 @@ declare global {
         ts: number;
         blockid: string;
         correlationid?: string;
-        requestid: string;
         initialize?: boolean;
         dispose?: boolean;
         resync?: boolean;
@@ -723,7 +721,7 @@ declare global {
     // vdom.VDomRenderUpdate
     type VDomRenderUpdate = {
         updatetype: "root"|"append"|"replace"|"remove"|"insert";
-        waveid: string;
+        waveid?: string;
         vdom: VDomElem;
         index?: number;
     };

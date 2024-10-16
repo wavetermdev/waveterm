@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore } from "@/app/store/global";
 import { VDomModel } from "@/app/view/term/vdom-model";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -199,9 +198,11 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
     }
     let childrenComps = convertChildren(elem, model);
+    dlog("children", childrenComps);
     if (elem.tag == FragmentTag) {
         return childrenComps;
     }
+    props.key = "e-" + elem.waveid;
     return React.createElement(elem.tag, props, childrenComps);
 }
 
@@ -233,22 +234,19 @@ function VDomView({
     blockId,
     nodeModel,
     viewRef,
+    model,
 }: {
     blockId: string;
     nodeModel: NodeModel;
     viewRef: React.RefObject<HTMLDivElement>;
+    model: VDomModel;
 }) {
-    let [model, setModel] = React.useState<VDomModel>(null);
-    React.useEffect(() => {
-        const model = new VDomModel(blockId, nodeModel, viewRef);
-        globalStore.set(model.vdomRoot, testVDom);
-        setModel(model);
-    }, []);
     let rootNode = useAtomValueSafe(model?.vdomRoot);
-    dlog("render", rootNode);
     if (!model || viewRef.current == null || rootNode == null) {
         return null;
     }
+    dlog("render", rootNode);
+    model.viewRef = viewRef;
     let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }
