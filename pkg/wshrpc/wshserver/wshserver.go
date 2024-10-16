@@ -29,6 +29,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -465,10 +466,22 @@ func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus
 }
 
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl:") {
+		distroName := strings.TrimPrefix(connName, "wsl:")
+		return wsl.EnsureConnection(ctx, distroName)
+	}
 	return conncontroller.EnsureConnection(ctx, connName)
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl:") {
+		distroName := strings.TrimPrefix(connName, "wsl:")
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("distro not found: %s", connName)
+		}
+		return conn.Close()
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
@@ -481,6 +494,14 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl:") {
+		distroName := strings.TrimPrefix(connName, "wsl:")
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("connection not found: %s", connName)
+		}
+		return conn.Connect(ctx)
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
@@ -493,6 +514,14 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) er
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl:") {
+		distroName := strings.TrimPrefix(connName, "wsl:")
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("connection not found: %s", connName)
+		}
+		return conn.CheckAndInstallWsh(ctx, connName, &wsl.WshInstallOpts{Force: true, NoUserPrompt: true})
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
@@ -506,6 +535,18 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
 	return conncontroller.GetConnectionsList()
+}
+
+func (ws *WshServer) WslListCommand(ctx context.Context) ([]string, error) {
+	distros, err := wsl.RegisteredDistros(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var distroNames []string
+	for _, distro := range distros {
+		distroNames = append(distroNames, distro.Name())
+	}
+	return distroNames, nil
 }
 
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
