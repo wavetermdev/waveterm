@@ -93,7 +93,6 @@ function getWaveConfigDir(): string {
     return ensurePathExists(retVal);
 }
 
-// must match golang
 function getWaveDataDir(): string {
     // If wave home dir exists, use it for backwards compatibility
     const waveHomeDir = getWaveHomeDir();
