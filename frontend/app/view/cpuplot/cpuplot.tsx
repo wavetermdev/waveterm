@@ -11,10 +11,10 @@ import * as jotai from "jotai";
 import * as React from "react";
 
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
-import { ContextMenuModel } from "@/app/store/contextmenu";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { atoms } from "@/store/global";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import "./cpuplot.less";
 
@@ -131,16 +131,6 @@ class CpuPlotViewModel {
             }
         });
         this.plotMetaAtom = jotai.atom(new Map(Object.entries(DefaultPlotMeta)));
-        this.endIconButtons = jotai.atom((get) => {
-            return [
-                {
-                    elemtype: "iconbutton",
-                    label: "Plot Type",
-                    icon: "wrench",
-                    click: (e) => this.handleContextMenu(e),
-                },
-            ];
-        });
         this.manageConnection = jotai.atom(true);
         this.loadingAtom = jotai.atom(true);
         this.numPoints = jotai.atom((get) => {
@@ -228,32 +218,44 @@ class CpuPlotViewModel {
             globalStore.set(this.loadingAtom, false);
         }
     }
-
-    handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
-        e.preventDefault();
-        e.stopPropagation();
+    getSettingsMenuItems(): ContextMenuItem[] {
+        const fullConfig = globalStore.get(atoms.fullConfigAtom);
+        const termThemes = fullConfig?.termthemes ?? {};
+        const termThemeKeys = Object.keys(termThemes);
         const plotData = globalStore.get(this.dataAtom);
+
+        termThemeKeys.sort((a, b) => {
+            return termThemes[a]["display:order"] - termThemes[b]["display:order"];
+        });
+        const fullMenu: ContextMenuItem[] = [];
+        let submenu: ContextMenuItem[];
         if (plotData.length == 0) {
-            return;
+            submenu = [];
+        } else {
+            submenu = Object.keys(PlotTypes).map((plotType) => {
+                const dataTypes = PlotTypes[plotType](plotData[plotData.length - 1]);
+                const currentlySelected = globalStore.get(this.plotTypeSelectedAtom);
+                const menuItem: ContextMenuItem = {
+                    label: plotType,
+                    type: "radio",
+                    checked: currentlySelected == plotType,
+                    click: async () => {
+                        await RpcApi.SetMetaCommand(WindowRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "graph:metrics": dataTypes, "sysinfo:type": plotType },
+                        });
+                    },
+                };
+                return menuItem;
+            });
         }
-        const menu: Array<ContextMenuItem> = [];
-        for (const plotType in PlotTypes) {
-            const dataTypes = PlotTypes[plotType](plotData[plotData.length - 1]);
-            const currentlySelected = globalStore.get(this.plotTypeSelectedAtom);
-            const menuItem: ContextMenuItem = {
-                label: plotType,
-                type: "radio",
-                checked: currentlySelected == plotType,
-                click: async () => {
-                    await RpcApi.SetMetaCommand(WindowRpcClient, {
-                        oref: WOS.makeORef("block", this.blockId),
-                        meta: { "graph:metrics": dataTypes, "sysinfo:type": plotType },
-                    });
-                },
-            };
-            menu.push(menuItem);
-        }
-        ContextMenuModel.showContextMenu(menu, e);
+
+        fullMenu.push({
+            label: "Plot Type",
+            submenu: submenu,
+        });
+        fullMenu.push({ type: "separator" });
+        return fullMenu;
     }
 
     getDefaultData(): DataItem[] {
