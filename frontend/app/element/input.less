@@ -60,28 +60,16 @@
             width: 100%;
             height: 100%;
             border: none;
-            padding: var(--inner-padding);
             font-size: 12px;
+            padding: 0;
             outline: none;
             background-color: transparent;
             color: var(--form-element-text-color);
             line-height: 20px;
 
-            &.offset-left {
-                padding: 5px 16px 5px 0;
-            }
-
             &:placeholder-shown {
                 user-select: none;
             }
-        }
-    }
-
-    &.no-label {
-        height: 34px;
-
-        input {
-            height: 32px;
         }
     }
 }
@@ -116,6 +104,14 @@
         cursor: text;
     }
 
+    .input-left-element,
+    .input-right-element {
+        padding: 0 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     /* Ensure the input elements inside the group behave correctly */
     .input {
         border: none; /* Remove the individual input border */
@@ -136,7 +132,6 @@
             flex-direction: column;
             position: relative;
             flex-grow: 1;
-            --inner-padding: 5px 0 5px 16px;
 
             .input-inner-label {
                 padding: var(--inner-padding);
@@ -161,7 +156,6 @@
                 width: 100%;
                 height: 100%;
                 border: none;
-                padding: var(--inner-padding);
                 font-size: 12px;
                 outline: none;
                 background-color: transparent;

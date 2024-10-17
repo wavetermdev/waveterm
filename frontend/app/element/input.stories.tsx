@@ -59,13 +59,6 @@ export const InputWithLeftAndRightElement: Story = {
         return (
             <div style={{ padding: "20px", height: "400px", border: "2px solid black" }}>
                 <InputGroup {...args}>
-                    <InputLeftElement>
-                        <i className="fa-sharp fa-solid fa-phone-volume"></i>
-                    </InputLeftElement>
-                    <Input placeholder="Phone number" />
-                </InputGroup>
-
-                <InputGroup {...args}>
                     <InputLeftElement>$</InputLeftElement>
                     <Input placeholder="Enter amount" />
                     <InputRightElement>
