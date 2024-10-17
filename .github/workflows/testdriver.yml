@@ -64,6 +64,8 @@ jobs:
 
       - uses: testdriverai/action@main
         id: testdriver
+        env:
+          FORCE_COLOR: "3"
         with:
           key: ${{ secrets.DASHCAM_API }}
           prerun: |
