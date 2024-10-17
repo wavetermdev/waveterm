@@ -100,11 +100,19 @@ func GetDomainSocketName() string {
 }
 
 func GetWaveDataDir() string {
-	return os.Getenv(WaveDataHomeEnvVar)
+	retVal, found := os.LookupEnv(WaveDataHomeEnvVar)
+	if !found {
+		log.Panic(WaveDataHomeEnvVar + " not set")
+	}
+	return retVal
 }
 
 func GetWaveConfigDir() string {
-	return os.Getenv(WaveConfigHomeEnvVar)
+	retVal, found := os.LookupEnv(WaveConfigHomeEnvVar)
+	if !found {
+		log.Panic(WaveConfigHomeEnvVar + " not set")
+	}
+	return retVal
 }
 
 func EnsureWaveDataDir() error {

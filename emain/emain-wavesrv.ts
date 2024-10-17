@@ -6,7 +6,15 @@ import * as electron from "electron";
 import { AuthKey, AuthKeyEnv } from "emain/authkey";
 import { setForceQuit } from "emain/emain-activity";
 import { WaveAppPathVarName } from "emain/emain-util";
-import { getElectronAppUnpackedBasePath, getWaveSrvCwd, getWaveSrvPath } from "emain/platform";
+import {
+    getElectronAppUnpackedBasePath,
+    getWaveConfigDir,
+    getWaveDataDir,
+    getWaveSrvCwd,
+    getWaveSrvPath,
+    WaveConfigHomeVarName,
+    WaveDataHomeVarName,
+} from "emain/platform";
 import { updater } from "emain/updater";
 import * as child_process from "node:child_process";
 import * as readline from "readline";
@@ -50,6 +58,8 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
     envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
     envCopy[AuthKeyEnv] = AuthKey;
+    envCopy[WaveDataHomeVarName] = getWaveDataDir();
+    envCopy[WaveConfigHomeVarName] = getWaveConfigDir();
     const waveSrvCmd = getWaveSrvPath();
     console.log("trying to run local server", waveSrvCmd);
     const proc = child_process.spawn(getWaveSrvPath(), {
