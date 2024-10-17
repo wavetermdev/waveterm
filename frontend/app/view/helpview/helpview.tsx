@@ -48,7 +48,7 @@ function makeHelpViewModel(blockId: string, nodeModel: NodeModel) {
     return new HelpViewModel(blockId, nodeModel);
 }
 
-const baseUrlRegex = /http(s)?:\/\/([^:\/])+(:\d+)?/;
+const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
 
 function HelpView({ model }: { model: HelpViewModel }) {
     const homepageUrl = useAtomValue(model.homepageUrl);
