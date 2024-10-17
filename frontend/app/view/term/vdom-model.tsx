@@ -7,7 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { NodeModel } from "@/layout/index";
-import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
 import * as jotai from "jotai";
 
@@ -83,6 +83,9 @@ export class VDomModel {
     nextUpdateQuick: boolean = false;
     lastUpdateTs: number = 0;
     updateAsked: boolean = false;
+    backendOpts: VDomBackendOpts = {};
+    shouldDispose: boolean = false;
+    disposed: boolean = false;
 
     constructor(
         blockId: string,
@@ -103,6 +106,7 @@ export class VDomModel {
         this.batchedEvents = [];
         this.messages = [];
         this.needsResync = true;
+        this.shouldDispose = false;
         this.needsInitialization = true;
         this.updateAsked = false;
         this.vdomNodeVersion = new WeakMap();
@@ -112,6 +116,30 @@ export class VDomModel {
         this.hasPendingRequest = false;
         this.nextUpdateQuick = false;
         this.lastUpdateTs = 0;
+        this.backendOpts = {};
+        this.disposed = false;
+    }
+
+    globalKeydownHandler(e: WaveKeyboardEvent): boolean {
+        if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
+            this.shouldDispose = true;
+            this.askForUpdate();
+            return true;
+        }
+        if (this.backendOpts?.globalkeyboardevents) {
+            if (e.cmd || e.meta) {
+                return false;
+            }
+            let vdomRoot = globalStore.get(this.vdomRoot);
+            this.batchedEvents.push({
+                waveid: null,
+                propname: "onKeyDown",
+                eventdata: e,
+            });
+            this.askForUpdate();
+            return true;
+        }
+        return false;
     }
 
     hasRefUpdates() {
@@ -149,7 +177,7 @@ export class VDomModel {
     }
 
     needsUpdate() {
-        return this.batchedEvents.length > 0 || this.hasRefUpdates();
+        return this.shouldDispose || this.batchedEvents.length > 0 || this.hasRefUpdates();
     }
 
     askForUpdate() {
@@ -179,6 +207,9 @@ export class VDomModel {
         if (this.pendingTimeoutId) {
             clearTimeout(this.pendingTimeoutId);
         }
+        if (this.disposed) {
+            return;
+        }
         if (this.hasPendingRequest) {
             if (force) {
                 this.nextUpdateQuick = true;
@@ -196,6 +227,7 @@ export class VDomModel {
         this.hasPendingRequest = true;
         try {
             const feUpdate = this.createFeUpdate();
+            dlog("fe-update", feUpdate);
             const beUpdate = await RpcApi.VDomRenderCommand(WindowRpcClient, feUpdate, { route: this.backendRoute });
             this.handleBackendUpdate(beUpdate);
         } finally {
@@ -404,8 +436,14 @@ export class VDomModel {
     }
 
     handleBackendUpdate(update: VDomBackendUpdate) {
+        if (update == null) {
+            return;
+        }
         const idMap = new Map<string, VDomElem>();
         const vdomRoot = globalStore.get(this.vdomRoot);
+        if (update.opts != null) {
+            this.backendOpts = update.opts;
+        }
         makeVDomIdMap(vdomRoot, idMap);
         this.handleRenderUpdates(update, idMap);
         this.handleStateSync(update, idMap);
@@ -449,6 +487,7 @@ export class VDomModel {
             blockid: this.blockId,
             initialize: this.needsInitialization,
             rendercontext: renderContext,
+            dispose: this.shouldDispose,
             resync: this.needsResync,
             events: this.batchedEvents,
             refupdates: this.getRefUpdates(),
@@ -456,6 +495,9 @@ export class VDomModel {
         this.needsResync = false;
         this.needsInitialization = false;
         this.batchedEvents = [];
+        if (this.shouldDispose) {
+            this.disposed = true;
+        }
         return feUpdate;
     }
 }

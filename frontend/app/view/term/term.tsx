@@ -13,7 +13,6 @@ import { NodeModel } from "@/layout/index";
 import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -22,56 +21,6 @@ import { TermThemeUpdater } from "./termtheme";
 import { computeTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
 import "./xterm.css";
-
-const keyMap = {
-    Enter: "\r",
-    Backspace: "\x7f",
-    Tab: "\t",
-    Escape: "\x1b",
-    ArrowUp: "\x1b[A",
-    ArrowDown: "\x1b[B",
-    ArrowRight: "\x1b[C",
-    ArrowLeft: "\x1b[D",
-    Insert: "\x1b[2~",
-    Delete: "\x1b[3~",
-    Home: "\x1b[1~",
-    End: "\x1b[4~",
-    PageUp: "\x1b[5~",
-    PageDown: "\x1b[6~",
-};
-
-function keyboardEventToASCII(event: WaveKeyboardEvent): string {
-    // check modifiers
-    // if no modifiers are set, just send the key
-    if (!event.alt && !event.control && !event.meta) {
-        if (event.key == null || event.key == "") {
-            return "";
-        }
-        if (keyMap[event.key] != null) {
-            return keyMap[event.key];
-        }
-        if (event.key.length == 1) {
-            return event.key;
-        } else {
-            console.log("not sending keyboard event", event.key, event);
-        }
-    }
-    // if meta or alt is set, there is no ASCII representation
-    if (event.meta || event.alt) {
-        return "";
-    }
-    // if ctrl is set, if it is a letter, subtract 64 from the uppercase value to get the ASCII value
-    if (event.control) {
-        if (
-            (event.key.length === 1 && event.key >= "A" && event.key <= "Z") ||
-            (event.key >= "a" && event.key <= "z")
-        ) {
-            const key = event.key.toUpperCase();
-            return String.fromCharCode(key.charCodeAt(0) - 64);
-        }
-    }
-    return "";
-}
 
 type InitialLoadDataType = {
     loaded: boolean;
@@ -167,13 +116,7 @@ class TermViewModel {
         }
         const blockData = globalStore.get(this.blockAtom);
         if (blockData.meta?.["term:mode"] == "html") {
-            const asciiVal = keyboardEventToASCII(waveEvent);
-            if (asciiVal.length == 0) {
-                return false;
-            }
-            const b64data = util.stringToBase64(asciiVal);
-            RpcApi.ControllerInputCommand(WindowRpcClient, { blockid: this.blockId, inputdata64: b64data });
-            return true;
+            return this.vdomModel?.globalKeydownHandler(waveEvent);
         }
         return false;
     }

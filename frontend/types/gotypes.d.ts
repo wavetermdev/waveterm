@@ -601,11 +601,18 @@ declare global {
         blockid?: string;
     };
 
+    // vdom.VDomBackendOpts
+    type VDomBackendOpts = {
+        closeonctrlc?: boolean;
+        globalkeyboardevents?: boolean;
+    };
+
     // vdom.VDomBackendUpdate
     type VDomBackendUpdate = {
         type: "backendupdate";
         ts: number;
         blockid: string;
+        opts?: VDomBackendOpts;
         renderupdates?: VDomRenderUpdate[];
         statesync?: VDomStateSync[];
         refoperations?: VDomRefOperation[];

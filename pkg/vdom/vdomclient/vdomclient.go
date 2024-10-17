@@ -6,11 +6,15 @@ package vdomclient
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -23,7 +27,11 @@ type Client struct {
 	RpcContext *wshrpc.RpcContext
 	ServerImpl *VDomServerImpl
 	IsDone     bool
+	RouteId    string
+	DoneReason string
+	DoneOnce   *sync.Once
 	DoneCh     chan struct{}
+	Opts       vdom.VDomBackendOpts
 }
 
 type VDomServerImpl struct {
@@ -35,7 +43,8 @@ func (*VDomServerImpl) WshServerImpl() {}
 
 func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
 	if data.Dispose {
-		close(impl.Client.DoneCh)
+		log.Printf("got dispose from frontend\n")
+		impl.Client.doShutdown("got dispose from frontend")
 		return nil, nil
 	}
 	if impl.Client.IsDone {
@@ -55,10 +64,22 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, data vdom.VDo
 	return impl.Client.incrementalRender()
 }
 
-func MakeClient() (*Client, error) {
+func (c *Client) doShutdown(reason string) {
+	c.DoneOnce.Do(func() {
+		c.DoneReason = reason
+		c.IsDone = true
+		close(c.DoneCh)
+	})
+}
+
+func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
 	client := &Client{
-		Root:   vdom.MakeRoot(),
-		DoneCh: make(chan struct{}),
+		Root:     vdom.MakeRoot(),
+		DoneCh:   make(chan struct{}),
+		DoneOnce: &sync.Once{},
+	}
+	if opts != nil {
+		client.Opts = *opts
 	}
 	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
 	if jwtToken == "" {
@@ -82,15 +103,40 @@ func MakeClient() (*Client, error) {
 		return nil, fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
 	client.RpcClient = rpcClient
+	authRtn, err := wshclient.AuthenticateCommand(client.RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true})
+	if err != nil {
+		return nil, fmt.Errorf("error authenticating rpc connection: %v", err)
+	}
+	client.RouteId = authRtn.RouteId
 	return client, nil
 }
 
-func (c *Client) CreateContext(blockId string) error {
+func (c *Client) SetRootElem(elem *vdom.VDomElem) {
+	c.RootElem = elem
+}
+
+func (c *Client) CreateVDomContext() error {
 	err := wshclient.VDomCreateContextCommand(c.RpcClient, vdom.VDomCreateContext{}, &wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(c.RpcContext.BlockId)})
 	if err != nil {
 		return err
 	}
+	wshclient.EventSubCommand(c.RpcClient, wps.SubscriptionRequest{Event: "blockclose", Scopes: []string{
+		waveobj.MakeORef("block", c.RpcContext.BlockId).String(),
+	}}, nil)
+	c.RpcClient.EventListener.On("blockclose", func(event *wps.WaveEvent) {
+		c.doShutdown("got blockclose event")
+	})
 	return nil
+}
+
+func (c *Client) SendAsyncInitiation() {
+	wshclient.VDomAsyncInitiationCommand(c.RpcClient, vdom.MakeAsyncInitiationRequest(c.RpcContext.BlockId), &wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(c.RpcContext.BlockId)})
+}
+
+func (c *Client) SetAtomVals(m map[string]any) {
+	for k, v := range m {
+		c.Root.SetAtomVal(k, v, true)
+	}
 }
 
 func (c *Client) SetAtomVal(name string, val any) {
@@ -116,6 +162,7 @@ func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
 		Type:    "backendupdate",
 		Ts:      time.Now().UnixMilli(),
 		BlockId: c.RpcContext.BlockId,
+		Opts:    &c.Opts,
 		RenderUpdates: []vdom.VDomRenderUpdate{
 			{UpdateType: "root", VDom: *renderedVDom},
 		},

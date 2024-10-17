@@ -74,6 +74,7 @@ type VDomBackendUpdate struct {
 	Type          string             `json:"type" tstype:"\"backendupdate\""`
 	Ts            int64              `json:"ts"`
 	BlockId       string             `json:"blockid"`
+	Opts          *VDomBackendOpts   `json:"opts,omitempty"`
 	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
 	StateSync     []VDomStateSync    `json:"statesync,omitempty"`
 	RefOperations []VDomRefOperation `json:"refoperations,omitempty"`
@@ -150,6 +151,11 @@ type VDomRefUpdate struct {
 	RefId      string           `json:"refid"`
 	HasCurrent bool             `json:"hascurrent"`
 	Position   *VDomRefPosition `json:"position,omitempty"`
+}
+
+type VDomBackendOpts struct {
+	CloseOnCtrlC         bool `json:"closeonctrlc,omitempty"`
+	GlobalKeyboardEvents bool `json:"globalkeyboardevents,omitempty"`
 }
 
 type VDomRenderUpdate struct {
