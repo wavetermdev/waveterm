@@ -468,9 +468,10 @@ function makeWebViewModel(blockId: string, nodeModel: NodeModel): WebViewModel {
 interface WebViewProps {
     blockId: string;
     model: WebViewModel;
+    onFailLoad?: (url: string) => void;
 }
 
-const WebView = memo(({ model }: WebViewProps) => {
+const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const blockData = useAtomValue(model.blockAtom);
     const defaultUrl = useAtomValue(model.homepageUrl);
     const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
@@ -555,6 +556,10 @@ const WebView = memo(({ model }: WebViewProps) => {
                 console.warn("Suppressed ERR_ABORTED error", e);
             } else {
                 console.error(`Failed to load ${e.validatedURL}: ${e.errorDescription}`);
+                if (onFailLoad) {
+                    const curUrl = model.webviewRef?.current.getURL();
+                    onFailLoad(curUrl);
+                }
             }
         };
         const webviewFocus = () => {

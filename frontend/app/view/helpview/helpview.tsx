@@ -6,7 +6,7 @@ import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { NodeModel } from "@/layout/index";
 import { fireAndForget } from "@/util/util";
 import { atom, useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useCallback } from "react";
 import "./helpview.less";
 
 class HelpViewModel extends WebViewModel {
@@ -48,25 +48,35 @@ function makeHelpViewModel(blockId: string, nodeModel: NodeModel) {
     return new HelpViewModel(blockId, nodeModel);
 }
 
+const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
+
 function HelpView({ model }: { model: HelpViewModel }) {
     const homepageUrl = useAtomValue(model.homepageUrl);
-    const url = useAtomValue(model.url);
 
     // Effect to update the docsite base url when the app restarts, since the webserver port is dynamic
-    useEffect(
-        () =>
+    const onFailLoad = useCallback(
+        (url: string) =>
             fireAndForget(async () => {
-                const curDocsiteUrl = getApi().getDocsiteUrl();
-                if (curDocsiteUrl !== homepageUrl) {
-                    await model.setHomepageUrl(curDocsiteUrl, "block");
-                    model.loadUrl(url.replace(homepageUrl, curDocsiteUrl), "new-base-url");
+                const newDocsiteUrl = getApi().getDocsiteUrl();
+
+                // Correct the homepage URL, if necessary
+                if (newDocsiteUrl !== homepageUrl) {
+                    await model.setHomepageUrl(newDocsiteUrl, "block");
+                }
+
+                // Correct the base URL of the current page, if necessary
+                const newBaseUrl = baseUrlRegex.exec(newDocsiteUrl)?.[0];
+                const curBaseUrl = baseUrlRegex.exec(url)?.[0];
+                console.log("fix-docsite-url", url, newDocsiteUrl, homepageUrl, curBaseUrl, newBaseUrl);
+                if (curBaseUrl && newBaseUrl && curBaseUrl !== newBaseUrl) {
+                    model.loadUrl(url.replace(curBaseUrl, newBaseUrl), "fix-fail-load");
                 }
             }),
-        []
+        [homepageUrl]
     );
     return (
         <div className="help-view">
-            <WebView blockId={model.blockId} model={model} />
+            <WebView blockId={model.blockId} model={model} onFailLoad={onFailLoad} />
         </div>
     );
 }
