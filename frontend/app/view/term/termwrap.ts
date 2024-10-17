@@ -4,7 +4,7 @@
 import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { PLATFORM, WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import * as util from "@/util/util";
@@ -168,7 +168,7 @@ export class TermWrap {
 
     handleTermData(data: string) {
         const b64data = util.stringToBase64(data);
-        RpcApi.ControllerInputCommand(WindowRpcClient, { blockid: this.blockId, inputdata64: b64data });
+        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
     addFocusListener(focusFn: () => void) {
@@ -230,10 +230,10 @@ export class TermWrap {
 
     async resyncController(reason: string) {
         dlog("resync controller", this.blockId, reason);
-        const tabId = globalStore.get(atoms.activeTabId);
+        const tabId = globalStore.get(atoms.staticTabId);
         const rtOpts: RuntimeOpts = { termsize: { rows: this.terminal.rows, cols: this.terminal.cols } };
         try {
-            await RpcApi.ControllerResyncCommand(WindowRpcClient, {
+            await RpcApi.ControllerResyncCommand(TabRpcClient, {
                 tabid: tabId,
                 blockid: this.blockId,
                 rtopts: rtOpts,

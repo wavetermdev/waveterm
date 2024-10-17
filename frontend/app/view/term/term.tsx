@@ -4,7 +4,7 @@
 import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { VDomView } from "@/app/view/term/vdom";
 import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
@@ -169,7 +169,7 @@ class TermViewModel {
     }
 
     setTerminalTheme(themeName: string) {
-        RpcApi.SetMetaCommand(WindowRpcClient, {
+        RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("block", this.blockId),
             meta: { "term:theme": themeName },
         });
@@ -202,8 +202,8 @@ class TermViewModel {
                     rows: this.termRef.current?.terminal?.rows,
                     cols: this.termRef.current?.terminal?.cols,
                 };
-                const prtn = RpcApi.ControllerResyncCommand(WindowRpcClient, {
-                    tabid: globalStore.get(atoms.activeTabId),
+                const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
+                    tabid: globalStore.get(atoms.staticTabId),
                     blockid: this.blockId,
                     forcerestart: true,
                     rtopts: { termsize: termsize },
@@ -268,7 +268,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
                 event.preventDefault();
                 event.stopPropagation();
-                RpcApi.SetMetaCommand(WindowRpcClient, {
+                RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: { "term:mode": null },
                 });
@@ -291,8 +291,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
-                const tabId = globalStore.get(atoms.activeTabId);
-                const prtn = RpcApi.ControllerResyncCommand(WindowRpcClient, { tabid: tabId, blockid: blockId });
+                const tabId = globalStore.get(atoms.staticTabId);
+                const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, { tabid: tabId, blockid: blockId });
                 prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
                 return false;
             }
@@ -356,7 +356,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
             // reset term:mode
-            RpcApi.SetMetaCommand(WindowRpcClient, {
+            RpcApi.SetMetaCommand(TabRpcClient, {
                 oref: WOS.makeORef("block", blockId),
                 meta: { "term:mode": null },
             });
@@ -367,7 +367,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             return false;
         }
         const b64data = util.stringToBase64(asciiVal);
-        RpcApi.ControllerInputCommand(WindowRpcClient, { blockid: blockId, inputdata64: b64data });
+        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: blockId, inputdata64: b64data });
         return true;
     };
 

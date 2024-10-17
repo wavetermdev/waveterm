@@ -52,12 +52,12 @@ func MakeControllerRouteId(blockId string) string {
 	return "controller:" + blockId
 }
 
-func MakeWindowRouteId(windowId string) string {
-	return "window:" + windowId
-}
-
 func MakeProcRouteId(procId string) string {
 	return "proc:" + procId
+}
+
+func MakeTabRouteId(tabId string) string {
+	return "tab:" + tabId
 }
 
 var DefaultRouter = NewWshRouter()

@@ -3,7 +3,7 @@
 
 import { CopyButton } from "@/app/element/copybutton";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { isBlank, makeConnRoute, useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
@@ -143,7 +143,7 @@ const MarkdownImg = ({
         }
         const resolveFn = async () => {
             const route = makeConnRoute(resolveOpts.connName);
-            const fileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [resolveOpts.baseDir, props.src], {
+            const fileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [resolveOpts.baseDir, props.src], {
                 route: route,
             });
             const usp = new URLSearchParams();

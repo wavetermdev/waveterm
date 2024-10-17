@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-    getLayoutModelForActiveTab,
     getLayoutModelForTabById,
     LayoutTreeActionType,
     LayoutTreeInsertNodeAction,
     newLayoutNode,
 } from "@/layout/index";
+import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { getPrefixedSettings, isBlank } from "@/util/util";
@@ -26,6 +26,7 @@ const Counters = new Map<string, number>();
 const ConnStatusMap = new Map<string, PrimitiveAtom<ConnStatus>>();
 
 type GlobalInitOptions = {
+    tabId: string;
     platform: NodeJS.Platform;
     windowId: string;
     clientId: string;
@@ -46,10 +47,9 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
     const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
     const uiContextAtom = atom((get) => {
-        const windowData = get(windowDataAtom);
         const uiContext: UIContext = {
-            windowid: get(atoms.windowId),
-            activetabid: windowData?.activetabid,
+            windowid: initOpts.windowId,
+            activetabid: initOpts.tabId,
         };
         return uiContext;
     }) as Atom<UIContext>;
@@ -99,18 +99,10 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
     const tabAtom: Atom<Tab> = atom((get) => {
-        const windowData = get(windowDataAtom);
-        if (windowData == null) {
-            return null;
-        }
-        return WOS.getObjectValue(WOS.makeORef("tab", windowData.activetabid), get);
+        return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
     });
-    const activeTabIdAtom: Atom<string> = atom((get) => {
-        const windowData = get(windowDataAtom);
-        if (windowData == null) {
-            return null;
-        }
-        return windowData.activetabid;
+    const staticTabIdAtom: Atom<string> = atom((get) => {
+        return initOpts.tabId;
     });
     const controlShiftDelayAtom = atom(false);
     const updaterStatusAtom = atom<UpdaterStatus>("up-to-date") as PrimitiveAtom<UpdaterStatus>;
@@ -151,7 +143,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
-        windowId: windowIdAtom,
         clientId: clientIdAtom,
         uiContext: uiContextAtom,
         client: clientAtom,
@@ -160,7 +151,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         fullConfigAtom,
         settingsAtom,
         tabAtom,
-        activeTabId: activeTabIdAtom,
+        staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
         controlShiftDelayAtom,
         updaterStatusAtom,
@@ -301,8 +292,8 @@ async function createBlock(blockDef: BlockDef, magnified = false): Promise<strin
         magnified,
         focused: true,
     };
-    const activeTabId = globalStore.get(atoms.uiContext).activetabid;
-    const layoutModel = getLayoutModelForTabById(activeTabId);
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
     layoutModel.treeReducer(insertNodeAction);
     return blockId;
 }
@@ -339,7 +330,7 @@ async function fetchWaveFile(
 }
 
 function setNodeFocus(nodeId: string) {
-    const layoutModel = getLayoutModelForActiveTab();
+    const layoutModel = getLayoutModelForStaticTab();
     layoutModel.focusNode(nodeId);
 }
 
@@ -414,7 +405,7 @@ function refocusNode(blockId: string) {
     if (blockId == null) {
         return;
     }
-    const layoutModel = getLayoutModelForActiveTab();
+    const layoutModel = getLayoutModelForStaticTab();
     const layoutNodeId = layoutModel.getNodeByBlockId(blockId);
     if (layoutNodeId?.id == null) {
         return;
@@ -522,12 +513,17 @@ function removeFlashError(id: string) {
     });
 }
 
+async function createTab(): Promise<void> {
+    await getApi().createTab();
+}
+
 export {
     atoms,
     counterInc,
     countersClear,
     countersPrint,
     createBlock,
+    createTab,
     fetchWaveFile,
     getApi,
     getBlockComponentModel,
