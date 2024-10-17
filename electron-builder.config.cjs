@@ -49,7 +49,6 @@ const config = {
                 arch: ["universal", "arm64", "x64"],
             },
         ],
-        icon: "build/icons.icns",
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
         mergeASARs: true,
@@ -59,7 +58,6 @@ const config = {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
         executableName: pkg.name,
-        icon: "build/icons.icns",
         target: ["zip", "deb", "rpm", "AppImage", "pacman"],
         synopsis: pkg.description,
         description: null,
@@ -75,7 +73,6 @@ const config = {
         afterInstall: "build/deb-postinstall.tpl",
     },
     win: {
-        icon: "build/icon.ico",
         target: ["nsis", "msi", "zip"],
         signtoolOptions: windowsShouldSign && {
             signingHashAlgorithms: ["sha256"],
