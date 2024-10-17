@@ -32,6 +32,7 @@ function defaultCpuMeta(name: string): TimeSeriesMeta {
         miny: 0,
         maxy: 100,
         color: "var(--sysinfo-cpu-color)",
+        decimalPlaces: 0,
     };
 }
 
@@ -42,6 +43,7 @@ function defaultMemMeta(name: string, maxY: string): TimeSeriesMeta {
         miny: 0,
         maxy: maxY,
         color: "var(--sysinfo-mem-color)",
+        decimalPlaces: 1,
     };
 }
 
@@ -359,6 +361,7 @@ function SingleLinePlot({
     const plotHeight = domRect?.height ?? 0;
     const plotWidth = domRect?.width ?? 0;
     const marks: Plot.Markish[] = [];
+    let decimalPlaces = yvalMeta?.decimalPlaces ?? 0;
     let color = yvalMeta?.color;
     if (!color) {
         color = defaultColor;
@@ -420,7 +423,8 @@ function SingleLinePlot({
                 fill: "var(--main-bg-color)",
                 anchor: "middle",
                 dy: -30,
-                title: (d) => `${dayjs.unix(d.ts / 1000).format("M:ss")} ${Math.round(d[yval])}${labelY}`,
+                title: (d) =>
+                    `${dayjs.unix(d.ts / 1000).format("M:ss")} ${Number(d[yval]).toFixed(decimalPlaces)}${labelY}`,
                 textPadding: 3,
             })
         )

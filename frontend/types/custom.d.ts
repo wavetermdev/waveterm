@@ -339,6 +339,7 @@ declare global {
         label?: string;
         maxy?: string | number;
         miny?: string | number;
+        decimalPlaces?: number;
     };
 }
 
