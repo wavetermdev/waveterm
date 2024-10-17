@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useRef } from "react";
 import { EmojiPalette } from "./emojipalette";
 
 const meta: Meta<typeof EmojiPalette> = {
@@ -26,11 +25,9 @@ type Story = StoryObj<typeof EmojiPalette>;
 
 export const DefaultEmojiPalette: Story = {
     render: (args) => {
-        const scopeRef = useRef<HTMLDivElement>(null);
-
         return (
-            <div ref={scopeRef} style={{ padding: "20px", height: "300px", border: "2px solid black" }}>
-                <EmojiPalette {...args} scopeRef={scopeRef} />
+            <div style={{ padding: "20px", height: "300px", border: "2px solid black" }}>
+                <EmojiPalette {...args} />
             </div>
         );
     },

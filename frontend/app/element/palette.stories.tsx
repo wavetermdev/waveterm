@@ -1,8 +1,10 @@
-// Story for Palette Component
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useRef, useState } from "react";
-import { Button } from "./button";
 import { Palette } from "./palette";
+import { PaletteButton } from "./palettebutton";
+import { PaletteContent } from "./palettecontent";
 
 const meta: Meta<typeof Palette> = {
     title: "Elements/Palette",
@@ -14,9 +16,6 @@ const meta: Meta<typeof Palette> = {
         className: {
             description: "Custom class for palette styling",
         },
-        anchorRef: {
-            description: "Reference to the anchor element for positioning",
-        },
     },
 };
 
@@ -25,38 +24,13 @@ type Story = StoryObj<typeof Palette>;
 
 export const DefaultPalette: Story = {
     render: (args) => {
-        const anchorRef = useRef<HTMLButtonElement>(null);
-        const scopeRef = useRef<HTMLDivElement>(null);
-        const [isMenuVisible, setIsMenuVisible] = useState(false);
-
-        const handleAnchorClick = () => {
-            setIsMenuVisible((prev) => !prev);
-        };
-
-        useEffect(() => {
-            const handleClickOutside = (event: MouseEvent) => {
-                if (anchorRef.current && !anchorRef.current.contains(event.target as Node)) {
-                    setIsMenuVisible(false);
-                }
-            };
-
-            scopeRef?.current?.addEventListener("mousedown", handleClickOutside);
-            return () => {
-                scopeRef?.current?.removeEventListener("mousedown", handleClickOutside);
-            };
-        }, []);
-
         return (
-            <div
-                ref={scopeRef}
-                className="boundary"
-                style={{ padding: "20px", height: "300px", border: "2px solid black" }}
-            >
-                <Button ref={anchorRef} className="ghost grey" onClick={handleAnchorClick}>
-                    <i className="fa-sharp fa-solid fa-face-smile"></i>
-                </Button>
-                {isMenuVisible && (
-                    <Palette anchorRef={anchorRef} scopeRef={scopeRef} {...args}>
+            <div className="boundary" style={{ padding: "20px", height: "500px", border: "2px solid black" }}>
+                <Palette {...args}>
+                    <PaletteButton className="ghost grey">
+                        <i className="fa-sharp fa-solid fa-face-smile"></i>
+                    </PaletteButton>
+                    <PaletteContent>
                         <div
                             style={{
                                 opacity: ".3",
@@ -71,8 +45,8 @@ export const DefaultPalette: Story = {
                             <i className="fa-sharp fa-solid fa-shelves-empty"></i>
                             <span style={{ fontSize: "11px" }}>Empty</span>
                         </div>
-                    </Palette>
-                )}
+                    </PaletteContent>
+                </Palette>
             </div>
         );
     },

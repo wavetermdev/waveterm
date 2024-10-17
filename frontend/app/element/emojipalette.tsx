@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import clsx from "clsx";
-import React, { memo, useEffect, useRef, useState } from "react";
+import React, { memo, useState } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Palette } from "./palette";
+import { PaletteButton } from "./palettebutton";
+import { PaletteContent } from "./palettecontent";
 
 import "./emojiPalette.less";
 
@@ -215,27 +217,12 @@ const emojiList = [
     { emoji: "💔", name: "broken heart" },
 ];
 
-const EmojiPalette = memo(({ scopeRef, className }: EmojiPaletteProps) => {
-    const anchorRef = useRef<HTMLButtonElement>(null);
-    const [isPaletteVisible, setIsPaletteVisible] = useState(false);
+interface EmojiPaletteProps {
+    className?: string;
+}
+
+const EmojiPalette = memo(({ className }: EmojiPaletteProps) => {
     const [searchTerm, setSearchTerm] = useState("");
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (anchorRef.current && !anchorRef.current.contains(event.target as Node)) {
-                setIsPaletteVisible(false);
-            }
-        };
-
-        scopeRef?.current?.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            scopeRef?.current?.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [scopeRef]);
-
-    const handleAnchorClick = () => {
-        setIsPaletteVisible((prev) => !prev);
-    };
 
     const handleSearchChange = (val: string) => {
         setSearchTerm(val.toLowerCase());
@@ -245,11 +232,11 @@ const EmojiPalette = memo(({ scopeRef, className }: EmojiPaletteProps) => {
 
     return (
         <div className={clsx("emoji-palette", className)}>
-            <Button ref={anchorRef} className="ghost grey" onClick={handleAnchorClick}>
-                <i className="fa-sharp fa-solid fa-face-smile"></i>
-            </Button>
-            {isPaletteVisible && (
-                <Palette anchorRef={anchorRef} scopeRef={scopeRef} className="emoji-palette-content">
+            <Palette>
+                <PaletteButton className="ghost grey">
+                    <i className="fa-sharp fa-solid fa-face-smile"></i>
+                </PaletteButton>
+                <PaletteContent className="emoji-palette-content">
                     <Input placeholder="Search emojis..." value={searchTerm} onChange={handleSearchChange} />
                     <div className="emoji-grid">
                         {filteredEmojis.length > 0 ? (
@@ -259,7 +246,6 @@ const EmojiPalette = memo(({ scopeRef, className }: EmojiPaletteProps) => {
                                     className="ghost emoji-button"
                                     onClick={() => {
                                         console.log(`Emoji selected: ${item.emoji}`);
-                                        setIsPaletteVisible(false);
                                     }}
                                 >
                                     {item.emoji}
@@ -269,8 +255,8 @@ const EmojiPalette = memo(({ scopeRef, className }: EmojiPaletteProps) => {
                             <div className="no-emojis">No emojis found</div>
                         )}
                     </div>
-                </Palette>
-            )}
+                </PaletteContent>
+            </Palette>
         </div>
     );
 });

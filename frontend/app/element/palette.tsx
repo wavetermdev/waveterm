@@ -1,61 +1,83 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
-import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
-import clsx from "clsx";
-import { memo, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useDismiss, useFloating, useInteractions, type Placement } from "@floating-ui/react";
+import {
+    Children,
+    cloneElement,
+    isValidElement,
+    JSXElementConstructor,
+    memo,
+    ReactElement,
+    ReactNode,
+    useState,
+} from "react";
+import { PaletteButton, PaletteButtonProps } from "./palettebutton";
+import { PaletteContent, PaletteContentProps } from "./palettecontent";
 
 import "./palette.less";
 
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 interface PaletteProps {
-    anchorRef: React.RefObject<HTMLElement>;
-    scopeRef: React.RefObject<HTMLElement>;
-    children: React.ReactNode;
+    children: ReactNode;
     className?: string;
+    placement?: Placement;
+    onOpenChange?: (isOpen: boolean) => void;
 }
 
-const Palette = memo(({ children, className, anchorRef, scopeRef }: PaletteProps) => {
-    const paletteRef = useRef<HTMLDivElement | null>(null);
-    const [position, setPosition] = useState({ top: 0, left: 0 });
-    const domRect = useDimensionsWithExistingRef(scopeRef);
-    const width = domRect?.width ?? 0;
-    const height = domRect?.height ?? 0;
+const isPaletteButton = (
+    element: ReactElement
+): element is ReactElement<PaletteButtonProps, JSXElementConstructor<PaletteButtonProps>> => {
+    return element.type === PaletteButton;
+};
 
-    useEffect(() => {
-        const paletteEl = paletteRef.current;
-        const anchorEl = anchorRef.current;
-        if (paletteEl && anchorEl) {
-            const anchorRect = anchorEl.getBoundingClientRect();
-            let { bottom, left } = anchorRect;
+const isPaletteContent = (
+    element: ReactElement
+): element is ReactElement<PaletteContentProps, JSXElementConstructor<PaletteContentProps>> => {
+    return element.type === PaletteContent;
+};
 
-            // Check if the palette goes beyond the right edge of the window
-            const rightEdge = left + paletteEl.offsetWidth;
-            if (rightEdge > window.innerWidth) {
-                left = window.innerWidth - paletteEl.offsetWidth - 10;
+const Palette = memo(({ children, className, placement, onOpenChange }: PaletteProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const toggleOpen = () => {
+        setIsOpen((prev) => !prev);
+        onOpenChange?.(!isOpen);
+    };
+
+    const { refs, floatingStyles, context } = useFloating({
+        placement: placement ?? "bottom-start",
+        open: isOpen,
+        onOpenChange: setIsOpen,
+    });
+
+    const dismiss = useDismiss(context);
+    const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
+
+    const renderChildren = Children.map(children, (child) => {
+        if (isValidElement(child)) {
+            if (isPaletteButton(child)) {
+                return cloneElement(child as any, {
+                    isActive: isOpen,
+                    ref: refs.setReference,
+                    getReferenceProps,
+                    onClick: toggleOpen,
+                });
             }
 
-            // Check if the palette goes beyond the bottom edge of the window
-            if (bottom + paletteEl.offsetHeight > window.innerHeight) {
-                bottom = anchorRect.top - paletteEl.offsetHeight;
+            if (isPaletteContent(child)) {
+                return isOpen
+                    ? cloneElement(child as any, {
+                          ref: refs.setFloating,
+                          style: floatingStyles,
+                          getFloatingProps,
+                      })
+                    : null;
             }
-
-            setPosition({ top: bottom, left });
         }
-    }, [anchorRef, scopeRef, width, height]);
+        return child;
+    });
 
-    useEffect(() => {
-        if (position.top > 0 && paletteRef.current?.style.visibility !== "visible") {
-            paletteRef.current.style.visibility = "visible";
-        }
-    }, [position.top]);
-
-    return createPortal(
-        <div ref={paletteRef} style={{ top: position.top, left: position.left }} className={clsx("palette", className)}>
-            {children}
-        </div>,
-        document.body
-    );
+    return <>{renderChildren}</>;
 });
 
 Palette.displayName = "Palette";
