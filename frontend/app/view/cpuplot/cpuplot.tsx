@@ -15,6 +15,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import "./cpuplot.less";
 
 const DefaultNumPoints = 120;
@@ -458,6 +459,7 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     const plotData = jotai.useAtomValue(model.dataAtom);
     const yvals = jotai.useAtomValue(model.metrics);
     const plotMeta = jotai.useAtomValue(model.plotMetaAtom);
+    const osRef = React.useRef<OverlayScrollbarsComponentRef>();
     let title = false;
     let cols2 = false;
     if (yvals.length > 1) {
@@ -468,21 +470,23 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     }
 
     return (
-        <div className={clsx("sysinfo-view", { "two-columns": cols2 })}>
-            {yvals.map((yval, idx) => {
-                return (
-                    <SingleLinePlot
-                        key={`plot-${model.blockId}-${yval}`}
-                        plotData={plotData}
-                        yval={yval}
-                        yvalMeta={plotMeta.get(yval)}
-                        blockId={model.blockId}
-                        defaultColor={"var(--accent-color)"}
-                        title={title}
-                    />
-                );
-            })}
-        </div>
+        <OverlayScrollbarsComponent ref={osRef} className="scrollable" options={{ scrollbars: { autoHide: "leave" } }}>
+            <div className={clsx("sysinfo-view", { "two-columns": cols2 })}>
+                {yvals.map((yval, idx) => {
+                    return (
+                        <SingleLinePlot
+                            key={`plot-${model.blockId}-${yval}`}
+                            plotData={plotData}
+                            yval={yval}
+                            yvalMeta={plotMeta.get(yval)}
+                            blockId={model.blockId}
+                            defaultColor={"var(--accent-color)"}
+                            title={title}
+                        />
+                    );
+                })}
+            </div>
+        </OverlayScrollbarsComponent>
     );
 });
 
