@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { app, ipcMain } from "electron";
+import { existsSync, mkdirSync } from "fs";
 import os from "os";
 import path from "path";
 import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
 import * as keyutil from "../frontend/util/keyutil";
-
-const WaveHomeVarName = "WAVETERM_HOME";
 
 const isDev = !app.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
@@ -40,13 +39,101 @@ ipcMain.on("get-webview-preload", (event) => {
     event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
 });
 
-// must match golang
-function getWaveHomeDir() {
-    const override = process.env[WaveHomeVarName];
-    if (override) {
-        return override;
+const WaveConfigHomeVarName = "WAVETERM_CONFIG_HOME";
+const WaveDataHomeVarName = "WAVETERM_DATA_HOME";
+const WaveHomeVarName = "WAVETERM_HOME";
+
+function getWaveDirName(): string {
+    return isDev ? "waveterm-dev" : "waveterm";
+}
+
+/**
+ * Gets the path to the old Wave home directory (defaults to `~/.waveterm`).
+ * @returns The path to the directory if it exists and contains valid data for the current app, otherwise null.
+ */
+function getWaveHomeDir(): string {
+    let home = process.env[WaveHomeVarName];
+    if (!home) {
+        const homeDir = process.env.HOME;
+        if (homeDir) {
+            home = path.join(homeDir, `.${getWaveDirName()}`);
+        }
     }
-    return path.join(os.homedir(), isDev ? ".waveterm-dev" : ".waveterm");
+    // If home exists and it has `wave.lock` in it, we know it has valid data from Wave >=v0.8. Otherwise, it could be for WaveLegacy (<v0.8)
+    if (home && existsSync(home) && existsSync(path.join(home, "wave.lock"))) {
+        return home;
+    }
+    return null;
+}
+
+/**
+ * Ensure the given path exists, creating it recursively if it doesn't.
+ * @param path The path to ensure.
+ * @returns The same path, for chaining.
+ */
+function ensurePathExists(path: string): string {
+    if (!existsSync(path)) {
+        mkdirSync(path, { recursive: true });
+    }
+    return path;
+}
+
+/**
+ * Gets the path to the directory where Wave configurations are stored. Creates the directory if it does not exist.
+ * Handles backwards compatibility with the old Wave Home directory model, where configurations and data were stored together.
+ * @returns The path where configurations should be stored.
+ */
+function getWaveConfigDir(): string {
+    // If wave home dir exists, use it for backwards compatibility
+    const waveHomeDir = getWaveHomeDir();
+    if (waveHomeDir) {
+        return path.join(waveHomeDir, "config");
+    }
+
+    const override = process.env[WaveConfigHomeVarName];
+    let retVal: string;
+    if (override) {
+        retVal = override;
+    } else if (unamePlatform === "win32") {
+        retVal = path.join(process.env.LOCALAPPDATA, getWaveDirName(), "config");
+    } else {
+        const configHome = process.env.XDG_CONFIG_HOME;
+        if (configHome) {
+            retVal = path.join(configHome, getWaveDirName());
+        } else {
+            retVal = path.join(process.env.HOME, ".config", getWaveDirName());
+        }
+    }
+    return ensurePathExists(retVal);
+}
+
+/**
+ * Gets the path to the directory where Wave data is stored. Creates the directory if it does not exist.
+ * Handles backwards compatibility with the old Wave Home directory model, where configurations and data were stored together.
+ * @returns The path where data should be stored.
+ */
+function getWaveDataDir(): string {
+    // If wave home dir exists, use it for backwards compatibility
+    const waveHomeDir = getWaveHomeDir();
+    if (waveHomeDir) {
+        return waveHomeDir;
+    }
+
+    const override = process.env[WaveDataHomeVarName];
+    let retVal: string;
+    if (override) {
+        retVal = override;
+    } else if (unamePlatform === "win32") {
+        retVal = path.join(process.env.LOCALAPPDATA, getWaveDirName(), "data");
+    } else {
+        const configHome = process.env.XDG_DATA_HOME;
+        if (configHome) {
+            retVal = path.join(configHome, getWaveDirName());
+        } else {
+            retVal = path.join(process.env.HOME, ".local", "share", getWaveDirName());
+        }
+    }
+    return ensurePathExists(retVal);
 }
 
 function getElectronAppBasePath(): string {
@@ -69,17 +156,20 @@ function getWaveSrvPath(): string {
 }
 
 function getWaveSrvCwd(): string {
-    return getWaveHomeDir();
+    return getWaveDataDir();
 }
 
 export {
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
-    getWaveHomeDir,
+    getWaveConfigDir,
+    getWaveDataDir,
     getWaveSrvCwd,
     getWaveSrvPath,
     isDev,
     isDevVite,
     unameArch,
     unamePlatform,
+    WaveConfigHomeVarName,
+    WaveDataHomeVarName,
 };

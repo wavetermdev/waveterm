@@ -14,8 +14,8 @@ import (
 )
 
 func AcquireWaveLock() (FDLock, error) {
-	homeDir := GetWaveHomeDir()
-	lockFileName := filepath.Join(homeDir, WaveLockFile)
+	dataHomeDir := GetWaveDataDir()
+	lockFileName := filepath.Join(dataHomeDir, WaveLockFile)
 	log.Printf("[base] acquiring lock on %s\n", lockFileName)
 	fd, err := os.OpenFile(lockFileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
