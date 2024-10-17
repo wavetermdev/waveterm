@@ -81,7 +81,6 @@ export class WaveAiModel implements ViewModel {
                     .filter(([k]) => k.startsWith("ai@"))
                     .map(([k, v]) => {
                         const aiPresetKeys = Object.keys(v).filter((k) => k.startsWith("ai:"));
-                        console.log(aiPresetKeys);
                         const newV = { ...v };
                         newV["display:name"] =
                             aiPresetKeys.length == 1 && aiPresetKeys.includes("ai:*")
@@ -319,7 +318,6 @@ export class WaveAiModel implements ViewModel {
                         content: errMsg,
                     };
                     updatedHist.push(errorPrompt);
-                    console.log(updatedHist);
                     await BlockService.SaveWaveAiData(blockId, updatedHist);
                 }
                 setLocked(false);
