@@ -6,9 +6,7 @@ steps:
         text: Continue
         description: button to complete onboarding
         action: click
-        method: ai
       - command: hover-text
         text: Get Started
         description: button to complete onboarding
         action: click
-        method: ai

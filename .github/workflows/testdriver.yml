@@ -1,4 +1,4 @@
-name: TestDriver.ai Regression Testing
+name: TestDriver.ai
 
 on:
   push:
@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   build_and_upload:
-    name: Build and Upload EXE
+    name: Test Onboarding
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
