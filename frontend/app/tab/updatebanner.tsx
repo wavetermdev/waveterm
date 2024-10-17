@@ -6,7 +6,7 @@ import "./updatebanner.less";
 
 const UpdateStatusBannerComponent = ({ buttonRef }: { buttonRef: React.RefObject<HTMLButtonElement> }) => {
     const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
-    const [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
+    let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
 
     useEffect(() => {
@@ -52,7 +52,6 @@ const UpdateStatusBannerComponent = ({ buttonRef }: { buttonRef: React.RefObject
     function onClick() {
         getApi().installAppUpdate();
     }
-
     if (updateStatusMessage) {
         return (
             <Button

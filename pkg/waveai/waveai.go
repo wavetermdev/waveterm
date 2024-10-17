@@ -116,7 +116,7 @@ func RunAICommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan 
 		log.Print("sending ai chat message to default waveterm cloud endpoint\n")
 		return RunCloudCompletionStream(ctx, request)
 	}
-	log.Printf("sending ai chat message to user-configured endpoint %s\n", request.Opts.BaseURL)
+	log.Printf("sending ai chat message to user-configured endpoint %s using model %s\n", request.Opts.BaseURL, request.Opts.Model)
 	return RunLocalCompletionStream(ctx, request)
 }
 

@@ -1,6 +1,6 @@
 import { isBlank } from "@/util/util";
 import { Subject } from "rxjs";
-import { sendRawRpcMessage } from "./wshrpcutil";
+import { sendRawRpcMessage } from "./ws";
 
 type WaveEventSubject = {
     handler: (event: WaveEvent) => void;
