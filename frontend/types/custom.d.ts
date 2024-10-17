@@ -274,6 +274,7 @@ declare global {
         getSettingsMenuItems?: () => ContextMenuItem[];
         giveFocus?: () => boolean;
         keyDownHandler?: (e: WaveKeyboardEvent) => boolean;
+        dispose?: () => void;
     }
 
     type UpdaterStatus = "up-to-date" | "checking" | "downloading" | "ready" | "error" | "installing";

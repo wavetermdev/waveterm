@@ -60,6 +60,10 @@ func MakeTabRouteId(tabId string) string {
 	return "tab:" + tabId
 }
 
+func MakeFeBlockRouteId(blockId string) string {
+	return "feblock:" + blockId
+}
+
 var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {
@@ -322,6 +326,7 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 	}
 	go func() {
 		wps.Broker.UnsubscribeAll(routeId)
+		wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
 	}()
 }
 

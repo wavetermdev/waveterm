@@ -217,6 +217,21 @@ class RpcApiType {
         return client.wshRpcCall("test", data, opts);
     }
 
+    // command "vdomasyncinitiation" [call]
+    VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("vdomasyncinitiation", data, opts);
+    }
+
+    // command "vdomcreatecontext" [call]
+    VDomCreateContextCommand(client: WshClient, data: VDomCreateContext, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("vdomcreatecontext", data, opts);
+    }
+
+    // command "vdomrender" [call]
+    VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): Promise<VDomBackendUpdate> {
+        return client.wshRpcCall("vdomrender", data, opts);
+    }
+
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);

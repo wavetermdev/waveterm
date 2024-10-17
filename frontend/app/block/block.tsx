@@ -36,7 +36,7 @@ type FullBlockProps = {
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel): ViewModel {
     if (blockView === "term") {
-        return makeTerminalModel(blockId);
+        return makeTerminalModel(blockId, nodeModel);
     }
     if (blockView === "preview") {
         return makePreviewModel(blockId, nodeModel);
@@ -253,7 +253,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
 
 const Block = memo((props: BlockProps) => {
     counterInc("render-Block");
-    counterInc("render-Block-" + props.nodeModel.blockId.substring(0, 8));
+    counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
@@ -264,6 +264,7 @@ const Block = memo((props: BlockProps) => {
     useEffect(() => {
         return () => {
             unregisterBlockComponentModel(props.nodeModel.blockId);
+            viewModel?.dispose?.();
         };
     }, []);
     if (loading || isBlank(props.nodeModel.blockId) || blockData == null) {

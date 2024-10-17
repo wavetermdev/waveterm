@@ -401,6 +401,7 @@ function createBaseWaveBrowserWindow(
     win.alreadyClosed = false;
     win.allTabViews = new Map<string, WaveTabView>();
     win.on(
+        // @ts-expect-error
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
@@ -411,6 +412,7 @@ function createBaseWaveBrowserWindow(
         positionTabOnScreen(win.activeTabView, win.getContentBounds());
     });
     win.on(
+        // @ts-expect-error
         "move",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );

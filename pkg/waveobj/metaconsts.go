@@ -78,6 +78,10 @@ const (
 	MetaKey_TermLocalShellOpts               = "term:localshellopts"
 	MetaKey_TermScrollback                   = "term:scrollback"
 
+	MetaKey_VDomClear                        = "vdom:*"
+	MetaKey_VDomInitialized                  = "vdom:initialized"
+	MetaKey_VDomCorrelationId                = "vdom:correlationid"
+
 	MetaKey_Count                            = "count"
 )
 

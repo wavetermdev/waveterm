@@ -79,6 +79,10 @@ type MetaTSType struct {
 	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"` // matches settings
 	TermScrollback     *int     `json:"term:scrollback,omitempty"`
 
+	VDomClear         bool   `json:"vdom:*,omitempty"`
+	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`
+	VDomCorrelationId string `json:"vdom:correlationid,omitempty"`
+
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }
 
