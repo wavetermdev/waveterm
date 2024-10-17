@@ -427,7 +427,7 @@ function SingleLinePlot({
                 anchor: "middle",
                 dy: -30,
                 title: (d) =>
-                    `${dayjs.unix(d.ts / 1000).format("M:ss")} ${Number(d[yval]).toFixed(decimalPlaces)}${labelY}`,
+                    `${dayjs.unix(d.ts / 1000).format("HH:mm:ss")} ${Number(d[yval]).toFixed(decimalPlaces)}${labelY}`,
                 textPadding: 3,
             })
         )
