@@ -51,6 +51,9 @@ const PlotTypes: Object = {
     CPU: function (dataItem: DataItem): Array<string> {
         return ["cpu"];
     },
+    Mem: function (dataItem: DataItem): Array<string> {
+        return ["mem:used"];
+    },
     "CPU + Mem": function (dataItem: DataItem): Array<string> {
         return ["cpu", "mem:used"];
     },
