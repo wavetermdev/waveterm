@@ -26,7 +26,7 @@ type Story = StoryObj<typeof EmojiPalette>;
 export const DefaultEmojiPalette: Story = {
     render: (args) => {
         return (
-            <div style={{ padding: "20px", height: "300px", border: "2px solid black" }}>
+            <div style={{ padding: "20px", height: "500px", border: "2px solid black" }}>
                 <EmojiPalette {...args} />
             </div>
         );

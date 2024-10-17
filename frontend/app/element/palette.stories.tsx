@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { Palette } from "./palette";
-import { PaletteButton } from "./palettebutton";
-import { PaletteContent } from "./palettecontent";
+import { Palette, PaletteButton, PaletteContent } from "./palette";
 
 const meta: Meta<typeof Palette> = {
     title: "Elements/Palette",
@@ -25,7 +23,7 @@ type Story = StoryObj<typeof Palette>;
 export const DefaultPalette: Story = {
     render: (args) => {
         return (
-            <div className="boundary" style={{ padding: "20px", height: "500px", border: "2px solid black" }}>
+            <div className="boundary" style={{ padding: "20px", height: "00px", border: "2px solid black" }}>
                 <Palette {...args}>
                     <PaletteButton className="ghost grey">
                         <i className="fa-sharp fa-solid fa-face-smile"></i>

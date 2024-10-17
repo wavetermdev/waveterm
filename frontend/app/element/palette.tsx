@@ -1,7 +1,12 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { useDismiss, useFloating, useInteractions, type Placement } from "@floating-ui/react";
+import clsx from "clsx";
 import {
     Children,
     cloneElement,
+    forwardRef,
     isValidElement,
     JSXElementConstructor,
     memo,
@@ -9,13 +14,9 @@ import {
     ReactNode,
     useState,
 } from "react";
-import { PaletteButton, PaletteButtonProps } from "./palettebutton";
-import { PaletteContent, PaletteContentProps } from "./palettecontent";
+import { Button } from "./button";
 
 import "./palette.less";
-
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 interface PaletteProps {
     children: ReactNode;
@@ -80,6 +81,52 @@ const Palette = memo(({ children, className, placement, onOpenChange }: PaletteP
     return <>{renderChildren}</>;
 });
 
-Palette.displayName = "Palette";
+interface PaletteButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+    isActive?: boolean;
+    children: React.ReactNode;
+    onClick?: () => void;
+    getReferenceProps?: () => any;
+}
 
-export { Palette };
+const PaletteButton = forwardRef<HTMLButtonElement, PaletteButtonProps>(
+    ({ isActive, children, onClick, getReferenceProps, className, ...props }, ref) => {
+        return (
+            <Button
+                ref={ref}
+                className={clsx("ghost grey palette-button", className, { "is-active": isActive })}
+                onClick={onClick}
+                {...getReferenceProps?.()}
+                {...props}
+            >
+                {children}
+            </Button>
+        );
+    }
+);
+
+interface PaletteContentProps extends React.HTMLAttributes<HTMLDivElement> {
+    children: React.ReactNode;
+    getFloatingProps?: () => any;
+}
+
+const PaletteContent = forwardRef<HTMLDivElement, PaletteContentProps>(
+    ({ children, className, getFloatingProps, style, ...props }, ref) => {
+        return (
+            <div
+                ref={ref}
+                className={clsx("palette-content", className)}
+                style={style}
+                {...getFloatingProps?.()}
+                {...props}
+            >
+                {children}
+            </div>
+        );
+    }
+);
+
+Palette.displayName = "Palette";
+PaletteButton.displayName = "PaletteButton";
+PaletteContent.displayName = "PaletteContent";
+
+export { Palette, PaletteButton, PaletteContent, type PaletteButtonProps, type PaletteContentProps };

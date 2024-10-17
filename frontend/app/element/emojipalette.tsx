@@ -5,9 +5,7 @@ import clsx from "clsx";
 import React, { memo, useState } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
-import { Palette } from "./palette";
-import { PaletteButton } from "./palettebutton";
-import { PaletteContent } from "./palettecontent";
+import { Palette, PaletteButton, PaletteContent } from "./palette";
 
 import "./emojiPalette.less";
 
