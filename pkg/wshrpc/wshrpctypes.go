@@ -11,6 +11,7 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
+	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -69,6 +70,10 @@ const (
 
 	Command_WebSelector = "webselector"
 	Command_Notify      = "notify"
+
+	Command_VDomCreateContext   = "vdomcreatecontext"
+	Command_VDomAsyncInitiation = "vdomasyncinitiation"
+	Command_VDomRender          = "vdomrender"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -126,8 +131,16 @@ type WshRpcInterface interface {
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 
+	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+
+	// terminal
+	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) error
+	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
+
+	// proc
+	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error)
 }
 
 // for frontend

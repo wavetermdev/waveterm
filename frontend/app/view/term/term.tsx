@@ -4,12 +4,15 @@
 import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { makeFeBlockRouteId } from "@/app/store/wshrouter";
+import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
+import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomView } from "@/app/view/term/vdom";
+import { VDomModel } from "@/app/view/term/vdom-model";
+import { NodeModel } from "@/layout/index";
 import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -19,102 +22,35 @@ import { computeTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
 import "./xterm.css";
 
-const keyMap = {
-    Enter: "\r",
-    Backspace: "\x7f",
-    Tab: "\t",
-    Escape: "\x1b",
-    ArrowUp: "\x1b[A",
-    ArrowDown: "\x1b[B",
-    ArrowRight: "\x1b[C",
-    ArrowLeft: "\x1b[D",
-    Insert: "\x1b[2~",
-    Delete: "\x1b[3~",
-    Home: "\x1b[1~",
-    End: "\x1b[4~",
-    PageUp: "\x1b[5~",
-    PageDown: "\x1b[6~",
-};
-
-function keyboardEventToASCII(event: React.KeyboardEvent<HTMLInputElement>): string {
-    // check modifiers
-    // if no modifiers are set, just send the key
-    if (!event.altKey && !event.ctrlKey && !event.metaKey) {
-        if (event.key == null || event.key == "") {
-            return "";
-        }
-        if (keyMap[event.key] != null) {
-            return keyMap[event.key];
-        }
-        if (event.key.length == 1) {
-            return event.key;
-        } else {
-            console.log("not sending keyboard event", event.key, event);
-        }
-    }
-    // if meta or alt is set, there is no ASCII representation
-    if (event.metaKey || event.altKey) {
-        return "";
-    }
-    // if ctrl is set, if it is a letter, subtract 64 from the uppercase value to get the ASCII value
-    if (event.ctrlKey) {
-        if (
-            (event.key.length === 1 && event.key >= "A" && event.key <= "Z") ||
-            (event.key >= "a" && event.key <= "z")
-        ) {
-            const key = event.key.toUpperCase();
-            return String.fromCharCode(key.charCodeAt(0) - 64);
-        }
-    }
-    return "";
-}
-
 type InitialLoadDataType = {
     loaded: boolean;
     heldData: Uint8Array[];
 };
 
-function vdomText(text: string): VDomElem {
-    return {
-        tag: "#text",
-        text: text,
-    };
-}
-
-const testVDom: VDomElem = {
-    id: "testid1",
-    tag: "div",
-    children: [
-        {
-            id: "testh1",
-            tag: "h1",
-            children: [vdomText("Hello World")],
-        },
-        {
-            id: "testp",
-            tag: "p",
-            children: [vdomText("This is a paragraph (from VDOM)")],
-        },
-    ],
-};
-
 class TermViewModel {
     viewType: string;
+    nodeModel: NodeModel;
     connected: boolean;
     termRef: React.RefObject<TermWrap>;
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
-    htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
+    termWshClient: TermWshClient;
+    shellProcStatusRef: React.MutableRefObject<string>;
+    vdomModel: VDomModel;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "term";
         this.blockId = blockId;
+        this.termWshClient = new TermWshClient(blockId, this);
+        DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.termWshClient);
+        this.nodeModel = nodeModel;
+        this.vdomModel = new VDomModel(blockId, nodeModel, null, this.termWshClient);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -152,6 +88,10 @@ class TermViewModel {
         });
     }
 
+    dispose() {
+        DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
+    }
+
     giveFocus(): boolean {
         let termMode = globalStore.get(this.termMode);
         if (termMode == "term") {
@@ -159,13 +99,68 @@ class TermViewModel {
                 this.termRef.current.terminal.focus();
                 return true;
             }
-        } else {
-            if (this.htmlElemFocusRef?.current) {
-                this.htmlElemFocusRef.current.focus();
-                return true;
-            }
         }
         return false;
+    }
+
+    keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
+            const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${this.blockId}`);
+            const blockData = globalStore.get(blockAtom);
+            const newTermMode = blockData?.meta?.["term:mode"] == "html" ? null : "html";
+            RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", this.blockId),
+                meta: { "term:mode": newTermMode },
+            });
+            return true;
+        }
+        const blockData = globalStore.get(this.blockAtom);
+        if (blockData.meta?.["term:mode"] == "html") {
+            return this.vdomModel?.globalKeydownHandler(waveEvent);
+        }
+        return false;
+    }
+
+    handleTerminalKeydown(event: KeyboardEvent): boolean {
+        const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
+        if (waveEvent.type != "keydown") {
+            return true;
+        }
+        if (this.keyDownHandler(waveEvent)) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+        // deal with terminal specific keybindings
+        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
+            const p = navigator.clipboard.readText();
+            p.then((text) => {
+                this.termRef.current?.terminal.paste(text);
+            });
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
+            const sel = this.termRef.current?.terminal.getSelection();
+            navigator.clipboard.writeText(sel);
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+        if (this.shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
+            // restart
+            const tabId = globalStore.get(atoms.staticTabId);
+            const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, { tabid: tabId, blockid: this.blockId });
+            prtn.catch((e) => console.log("error controller resync (enter)", this.blockId, e));
+            return false;
+        }
+        const globalKeys = getAllGlobalKeyBindings();
+        for (const key of globalKeys) {
+            if (keyutil.checkKeyPressed(waveEvent, key)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     setTerminalTheme(themeName: string) {
@@ -215,8 +210,8 @@ class TermViewModel {
     }
 }
 
-function makeTerminalModel(blockId: string): TermViewModel {
-    return new TermViewModel(blockId);
+function makeTerminalModel(blockId: string, nodeModel: NodeModel): TermViewModel {
+    return new TermViewModel(blockId, nodeModel);
 }
 
 interface TerminalViewProps {
@@ -247,63 +242,22 @@ const TermResyncHandler = React.memo(({ blockId, model }: TerminalViewProps) => 
 });
 
 const TerminalView = ({ blockId, model }: TerminalViewProps) => {
-    const viewRef = React.createRef<HTMLDivElement>();
+    const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<TermWrap>(null);
     model.termRef = termRef;
-    const shellProcStatusRef = React.useRef<string>(null);
-    const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
-    model.htmlElemFocusRef = htmlElemFocusRef;
+    const spstatusRef = React.useRef<string>(null);
+    model.shellProcStatusRef = spstatusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
+    let termMode = blockData?.meta?.["term:mode"] ?? "term";
+    if (termMode != "term" && termMode != "html") {
+        termMode = "term";
+    }
+    const termModeRef = React.useRef(termMode);
 
     React.useEffect(() => {
-        function handleTerminalKeydown(event: KeyboardEvent): boolean {
-            const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
-            if (waveEvent.type != "keydown") {
-                return true;
-            }
-            // deal with terminal specific keybindings
-            if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
-                event.preventDefault();
-                event.stopPropagation();
-                RpcApi.SetMetaCommand(TabRpcClient, {
-                    oref: WOS.makeORef("block", blockId),
-                    meta: { "term:mode": null },
-                });
-                return false;
-            }
-            if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-                const p = navigator.clipboard.readText();
-                p.then((text) => {
-                    termRef.current?.terminal.paste(text);
-                });
-                event.preventDefault();
-                event.stopPropagation();
-                return false;
-            } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
-                const sel = termRef.current?.terminal.getSelection();
-                navigator.clipboard.writeText(sel);
-                event.preventDefault();
-                event.stopPropagation();
-                return false;
-            }
-            if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
-                // restart
-                const tabId = globalStore.get(atoms.staticTabId);
-                const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, { tabid: tabId, blockid: blockId });
-                prtn.catch((e) => console.log("error controller resync (enter)", blockId, e));
-                return false;
-            }
-            const globalKeys = getAllGlobalKeyBindings();
-            for (const key of globalKeys) {
-                if (keyutil.checkKeyPressed(waveEvent, key)) {
-                    return false;
-                }
-            }
-            return true;
-        }
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termTheme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
         const themeCopy = { ...termTheme };
@@ -335,7 +289,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 scrollback: termScrollback,
             },
             {
-                keydownHandler: handleTerminalKeydown,
+                keydownHandler: model.handleTerminalKeydown.bind(model),
                 useWebGl: !termSettings?.["term:disablewebgl"],
             }
         );
@@ -352,29 +306,13 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         };
     }, [blockId, termSettings]);
 
-    const handleHtmlKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
-            // reset term:mode
-            RpcApi.SetMetaCommand(TabRpcClient, {
-                oref: WOS.makeORef("block", blockId),
-                meta: { "term:mode": null },
-            });
-            return false;
+    React.useEffect(() => {
+        if (termModeRef.current == "html" && termMode == "term") {
+            // focus the terminal
+            model.giveFocus();
         }
-        const asciiVal = keyboardEventToASCII(event);
-        if (asciiVal.length == 0) {
-            return false;
-        }
-        const b64data = util.stringToBase64(asciiVal);
-        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: blockId, inputdata64: b64data });
-        return true;
-    };
-
-    let termMode = blockData?.meta?.["term:mode"] ?? "term";
-    if (termMode != "term" && termMode != "html") {
-        termMode = "term";
-    }
+        termModeRef.current = termMode;
+    }, [termMode]);
 
     // set intitial controller status, and then subscribe for updates
     React.useEffect(() => {
@@ -382,7 +320,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             if (status == null) {
                 return;
             }
-            shellProcStatusRef.current = status;
+            model.shellProcStatusRef.current = status;
             if (status == "running") {
                 termRef.current?.setIsRunning(true);
             } else {
@@ -418,26 +356,9 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             <TermThemeUpdater blockId={blockId} termRef={termRef} />
             <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
-            <div
-                key="htmlElem"
-                className="term-htmlelem"
-                onClick={() => {
-                    if (htmlElemFocusRef.current != null) {
-                        htmlElemFocusRef.current.focus();
-                    }
-                }}
-            >
-                <div key="htmlElemFocus" className="term-htmlelem-focus">
-                    <input
-                        type="text"
-                        value={""}
-                        ref={htmlElemFocusRef}
-                        onKeyDown={handleHtmlKeyDown}
-                        onChange={() => {}}
-                    />
-                </div>
+            <div key="htmlElem" className="term-htmlelem">
                 <div key="htmlElemContent" className="term-htmlelem-content">
-                    <VDomView rootNode={testVDom} />
+                    <VDomView blockId={blockId} nodeModel={model.nodeModel} viewRef={viewRef} model={model.vdomModel} />
                 </div>
             </div>
         </div>
