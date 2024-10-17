@@ -156,7 +156,7 @@ class CpuPlotViewModel {
         });
         this.plotTypeSelectedAtom = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
-            const plotType = blockData?.meta?.["graph:sysinfotype"];
+            const plotType = blockData?.meta?.["sysinfo:type"];
             if (plotType == null || typeof plotType != "string") {
                 return "CPU";
             }
@@ -218,6 +218,7 @@ class CpuPlotViewModel {
             globalStore.set(this.loadingAtom, false);
         }
     }
+
     getSettingsMenuItems(): ContextMenuItem[] {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
