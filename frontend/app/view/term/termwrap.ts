@@ -5,7 +5,7 @@ import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
-import { PLATFORM, WOS, atoms, fetchWaveFile, globalStore, openLink } from "@/store/global";
+import { PLATFORM, WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import * as util from "@/util/util";
 import { base64ToArray, fireAndForget } from "@/util/util";
@@ -134,7 +134,19 @@ export class TermWrap {
     }
 
     async initTerminal() {
+        const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         this.terminal.onData(this.handleTermData.bind(this));
+        this.terminal.onSelectionChange(
+            debounce(50, () => {
+                if (!globalStore.get(copyOnSelectAtom)) {
+                    return;
+                }
+                const selectedText = this.terminal.getSelection();
+                if (selectedText.length > 0) {
+                    navigator.clipboard.writeText(selectedText);
+                }
+            })
+        );
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
         try {
