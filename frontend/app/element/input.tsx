@@ -1,6 +1,37 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import clsx from "clsx";
-import React, { forwardRef, ReactNode } from "react";
+import React, { forwardRef, useState } from "react";
 import "./input.less";
+
+interface InputGroupProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+const InputGroup = ({ children, className }: InputGroupProps) => {
+    const [isFocused, setIsFocused] = useState(false);
+
+    const manageFocus = (focused: boolean) => {
+        setIsFocused(focused);
+    };
+
+    return (
+        <div
+            className={clsx("input-group", className, {
+                focused: isFocused,
+            })}
+        >
+            {React.Children.map(children, (child) => {
+                if (React.isValidElement(child)) {
+                    return React.cloneElement(child as any, { manageFocus });
+                }
+                return child;
+            })}
+        </div>
+    );
+};
 
 interface InputLeftElementProps {
     children: React.ReactNode;
@@ -36,7 +67,7 @@ interface InputProps {
     disabled?: boolean;
     isNumber?: boolean;
     inputRef?: React.MutableRefObject<HTMLInputElement>;
-    children?: ReactNode;
+    manageFocus?: (isFocused: boolean) => void;
 }
 
 const Input = forwardRef<HTMLDivElement, InputProps>(
@@ -57,11 +88,11 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
             disabled,
             isNumber,
             inputRef,
-            children,
+            manageFocus,
         }: InputProps,
         ref
     ) => {
-        const [internalValue, setInternalValue] = React.useState(defaultValue);
+        const [internalValue, setInternalValue] = useState(defaultValue);
 
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const inputValue = e.target.value;
@@ -77,51 +108,49 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
             onChange && onChange(inputValue);
         };
 
-        const inputValue = value ?? internalValue;
+        const handleFocus = () => {
+            manageFocus?.(true);
+            onFocus?.();
+        };
 
-        let leftElement = null;
-        let rightElement = null;
-        React.Children.forEach(children, (child) => {
-            if (React.isValidElement(child)) {
-                if (child.type === InputLeftElement) {
-                    leftElement = child;
-                } else if (child.type === InputRightElement) {
-                    rightElement = child;
-                }
-            }
-        });
+        const handleBlur = () => {
+            manageFocus?.(false);
+            onBlur?.();
+        };
+
+        const inputValue = value ?? internalValue;
 
         return (
             <div
                 ref={ref}
-                className={clsx("input-wrapper", className, {
+                className={clsx("input", className, {
                     disabled: disabled,
                 })}
             >
                 <div className="input-inner">
-                    {leftElement && <div className="input-left-decoration">{leftElement}</div>}
+                    {label && (
+                        <label className={clsx("input-inner-label")} htmlFor={label}>
+                            {label}
+                        </label>
+                    )}
                     <input
-                        className={clsx("input-inner-input", {
-                            "with-left-element": leftElement,
-                            "with-right-element": rightElement,
-                        })}
+                        className="input-inner-input"
                         ref={inputRef}
                         value={inputValue}
                         onChange={handleInputChange}
                         onKeyDown={onKeyDown}
-                        onFocus={onFocus}
-                        onBlur={onBlur}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
                         placeholder={placeholder}
                         maxLength={maxLength}
                         autoFocus={autoFocus}
                         disabled={disabled}
                     />
-                    {rightElement && <div className="input-right-decoration">{rightElement}</div>}
                 </div>
             </div>
         );
     }
 );
 
-export { Input, InputLeftElement, InputRightElement };
-export type { InputLeftElementProps, InputProps, InputRightElementProps };
+export { Input, InputGroup, InputLeftElement, InputRightElement };
+export type { InputGroupProps, InputLeftElementProps, InputProps, InputRightElementProps };
