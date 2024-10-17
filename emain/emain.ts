@@ -471,10 +471,12 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         }
     });
     win.on(
+        // @ts-expect-error
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
     win.on(
+        // @ts-expect-error
         "move",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
