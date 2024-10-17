@@ -7,16 +7,15 @@ import type * as rxjs from "rxjs";
 
 declare global {
     type GlobalAtomsType = {
-        windowId: jotai.Atom<string>; // readonly
         clientId: jotai.Atom<string>; // readonly
         client: jotai.Atom<Client>; // driven from WOS
-        uiContext: jotai.Atom<UIContext>; // driven from windowId, activetabid, etc.
+        uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
         waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         tabAtom: jotai.Atom<Tab>; // driven from WOS
-        activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
+        staticTabId: jotai.Atom<string>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         prefersReducedMotionAtom: jotai.Atom<boolean>;
@@ -50,6 +49,13 @@ declare global {
         blockId: string;
     };
 
+    type WaveInitOpts = {
+        tabId: string;
+        clientId: string;
+        windowId: string;
+        activate: boolean;
+    };
+
     type ElectronApi = {
         getAuthKey(): string;
         getIsDev(): boolean;
@@ -78,6 +84,12 @@ declare global {
         setWebviewFocus: (focusedId: number) => void; // focusedId si the getWebContentsId of the webview
         registerGlobalWebviewKeys: (keys: string[]) => void;
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
+        setActiveTab: (tabId: string) => void;
+        createTab: () => void;
+        closeTab: (tabId: string) => void;
+        setWindowInitStatus: (status: "ready" | "wave-ready") => void;
+        onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
+        sendLog: (log: string) => void;
         onQuicklook: (filePath: string) => void;
     };
 
@@ -331,6 +343,27 @@ declare global {
         startTs: number;
         command: string;
         msgFn: (msg: RpcMessage) => void;
+    };
+
+    type WaveBrowserWindow = Electron.BaseWindow & {
+        waveWindowId: string;
+        waveReadyPromise: Promise<void>;
+        allTabViews: Map<string, WaveTabView>;
+        activeTabView: WaveTabView;
+        alreadyClosed: boolean;
+    };
+
+    type WaveTabView = Electron.WebContentsView & {
+        isActiveTab: boolean;
+        waveWindowId: string; // set when showing in an active window
+        waveTabId: string; // always set, WaveTabViews are unique per tab
+        lastUsedTs: number; // ts milliseconds
+        createdTs: number; // ts milliseconds
+        initPromise: Promise<void>;
+        savedInitOpts: WaveInitOpts;
+        waveReadyPromise: Promise<void>;
+        initResolve: () => void;
+        waveReadyResolve: () => void;
     };
 }
 

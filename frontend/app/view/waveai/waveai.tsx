@@ -5,7 +5,7 @@ import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, fetchWaveFile, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -274,7 +274,7 @@ export class WaveAiModel implements ViewModel {
                 };
                 let fullMsg = "";
                 try {
-                    const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: opts.timeoutms });
+                    const aiGen = RpcApi.StreamWaveAiCommand(TabRpcClient, beMsg, { timeout: opts.timeoutms });
                     for await (const msg of aiGen) {
                         fullMsg += msg.text ?? "";
                         globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);

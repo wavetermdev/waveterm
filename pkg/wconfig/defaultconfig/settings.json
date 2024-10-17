@@ -11,6 +11,7 @@
     "web:defaulturl": "https://github.com/wavetermdev/waveterm",
     "web:defaultsearch": "https://www.google.com/search?q={query}",
     "window:tilegapsize": 3,
+    "window:maxtabcachesize": 10,
     "telemetry:enabled": true,
     "term:copyonselect": true
 }

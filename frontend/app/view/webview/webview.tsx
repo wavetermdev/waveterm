@@ -5,7 +5,7 @@ import { getApi, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { NodeModel } from "@/layout/index";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -370,17 +370,17 @@ export class WebViewModel implements ViewModel {
         if (url != null && url != "") {
             switch (scope) {
                 case "block":
-                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                    await RpcApi.SetMetaCommand(TabRpcClient, {
                         oref: WOS.makeORef("block", this.blockId),
                         meta: { pinnedurl: url },
                     });
                     break;
                 case "global":
-                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                    await RpcApi.SetMetaCommand(TabRpcClient, {
                         oref: WOS.makeORef("block", this.blockId),
                         meta: { pinnedurl: "" },
                     });
-                    await RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                    await RpcApi.SetConfigCommand(TabRpcClient, { "web:defaulturl": url });
                     break;
             }
         }

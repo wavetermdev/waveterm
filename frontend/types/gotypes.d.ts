@@ -47,6 +47,12 @@ declare global {
         hasoldhistory?: boolean;
     };
 
+    // windowservice.CloseTabRtnType
+    type CloseTabRtnType = {
+        closewindow?: boolean;
+        newactivetabid?: string;
+    };
+
     // wshrpc.CommandAppendIJsonData
     type CommandAppendIJsonData = {
         zoneid: string;
@@ -472,6 +478,7 @@ declare global {
         "window:showmenubar"?: boolean;
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
+        "window:maxtabcachesize"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
