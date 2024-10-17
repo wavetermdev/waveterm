@@ -31,6 +31,7 @@ function defaultCpuMeta(name: string): TimeSeriesMeta {
         label: "%",
         miny: 0,
         maxy: 100,
+        color: "var(--sysinfo-cpu-color)",
     };
 }
 
@@ -40,6 +41,7 @@ function defaultMemMeta(name: string, maxY: string): TimeSeriesMeta {
         label: "GB",
         miny: 0,
         maxy: maxY,
+        color: "var(--sysinfo-mem-color)",
     };
 }
 
@@ -330,7 +332,8 @@ type SingleLinePlotProps = {
     yvalMeta: TimeSeriesMeta;
     blockId: string;
     defaultColor: string;
-    lineType?: LineType;
+    title?: boolean;
+    sparkline?: boolean;
 };
 
 function SingleLinePlot({
@@ -339,7 +342,8 @@ function SingleLinePlot({
     yvalMeta,
     blockId,
     defaultColor,
-    lineType = "default",
+    title = false,
+    sparkline = false,
 }: SingleLinePlotProps) {
     const containerRef = React.useRef<HTMLInputElement>();
     const domRect = useDimensionsWithExistingRef(containerRef, 300);
@@ -376,7 +380,7 @@ function SingleLinePlot({
             y: yval,
         })
     );
-    if (lineType != "default") {
+    if (title) {
         marks.push(
             Plot.text([yvalMeta.name], {
                 frameAnchor: "top-left",
@@ -421,7 +425,7 @@ function SingleLinePlot({
     let maxY = resolveDomainBound(yvalMeta?.maxy, plotData[plotData.length - 1]) ?? 100;
     let minY = resolveDomainBound(yvalMeta?.miny, plotData[plotData.length - 1]) ?? 0;
     const plot = Plot.plot({
-        axis: lineType != "sparkline",
+        axis: !sparkline,
         x: {
             grid: true,
             label: "time",
@@ -448,15 +452,17 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     const plotData = jotai.useAtomValue(model.dataAtom);
     const yvals = jotai.useAtomValue(model.metrics);
     const plotMeta = jotai.useAtomValue(model.plotMetaAtom);
-    let lineType: LineType = "default";
+    let title = false;
+    let cols2 = false;
+    if (yvals.length > 1) {
+        title = true;
+    }
     if (yvals.length > 2) {
-        lineType = "sparkline";
-    } else if (yvals.length > 1) {
-        lineType = "title";
+        cols2 = true;
     }
 
     return (
-        <div className={clsx("plot-view", { sparklines: lineType == "sparkline" })}>
+        <div className={clsx("plot-view", { sparklines: cols2 })}>
             {yvals.map((yval, idx) => {
                 return (
                     <SingleLinePlot
@@ -466,7 +472,7 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
                         yvalMeta={plotMeta.get(yval)}
                         blockId={model.blockId}
                         defaultColor={"var(--accent-color)"}
-                        lineType={lineType}
+                        title={title}
                     />
                 );
             })}
