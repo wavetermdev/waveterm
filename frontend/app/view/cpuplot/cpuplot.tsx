@@ -53,7 +53,13 @@ const PlotTypes: Object = {
         return ["cpu", "mem:used"];
     },
     "All CPU": function (dataItem: DataItem): Array<string> {
-        return Object.keys(dataItem).filter((item) => item.startsWith("cpu") && item != "cpu");
+        return Object.keys(dataItem)
+            .filter((item) => item.startsWith("cpu") && item != "cpu")
+            .sort((a, b) => {
+                const valA = parseInt(a.replace("cpu:", ""));
+                const valB = parseInt(b.replace("cpu:", ""));
+                return valA - valB;
+            });
     },
 };
 
@@ -65,7 +71,7 @@ const DefaultPlotMeta = {
     "mem:available": defaultMemMeta("Memory Available", "mem:total"),
 };
 for (let i = 0; i < 32; i++) {
-    DefaultPlotMeta[`cpu:${i}`] = defaultCpuMeta(`CPU[${i}] %`);
+    DefaultPlotMeta[`cpu:${i}`] = defaultCpuMeta(`Core ${i}`);
 }
 
 function convertWaveEventToDataItem(event: WaveEvent): DataItem {
@@ -445,7 +451,7 @@ function SingleLinePlot({
         };
     }, [plot, plotWidth, plotHeight]);
 
-    return <div ref={containerRef} className="plot-content" />;
+    return <div ref={containerRef} className="sysinfo-plot-content" />;
 }
 
 const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
@@ -462,7 +468,7 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     }
 
     return (
-        <div className={clsx("plot-view", { sparklines: cols2 })}>
+        <div className={clsx("sysinfo-view", { "two-columns": cols2 })}>
             {yvals.map((yval, idx) => {
                 return (
                     <SingleLinePlot
