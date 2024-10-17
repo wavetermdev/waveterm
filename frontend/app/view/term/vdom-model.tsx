@@ -473,14 +473,24 @@ export class VDomModel {
         }
     }
 
-    callVDomFunc(e: any, compId: string, propName: string) {
+    callVDomFunc(fnDecl: VDomFunc, e: any, compId: string, propName: string) {
         const eventData = convertEvent(e, propName);
-        const vdomEvent: VDomEvent = {
-            waveid: compId,
-            propname: propName,
-            eventdata: eventData,
-        };
-        this.batchedEvents.push(vdomEvent);
+        if (fnDecl.globalevent) {
+            const waveEvent: VDomEvent = {
+                waveid: null,
+                propname: fnDecl.globalevent,
+                eventdata: eventData,
+            };
+            this.batchedEvents.push(waveEvent);
+        } else {
+            const vdomEvent: VDomEvent = {
+                waveid: compId,
+                propname: propName,
+                eventdata: eventData,
+            };
+            this.batchedEvents.push(vdomEvent);
+        }
+        this.queueUpdate();
     }
 
     createFeUpdate(): VDomFrontendUpdate {

@@ -28,11 +28,21 @@ func MakeVDom() *vdom.VDomElem {
 	vdomStr := `
 	<div>
 	  <h1 style="color:red; background-color: #bind:$.bgcolor; border-radius: 4px; padding: 5px;">hello vdom world</h1>
-	  <div><bind key="$.text"/></div>
+	  <div><bind key="$.text"/> | num[<bind key="$.num"/>]</div>
+	  <div>
+	    <button onClick="#globalevent:clickinc">increment</button>
+	  </div>
 	</div>
 	`
 	elem := vdom.Bind(vdomStr, nil)
 	return elem
+}
+
+func GlobalEventHandler(client *vdomclient.Client, event vdom.VDomEvent) {
+	if event.PropName == "clickinc" {
+		client.SetAtomVal("num", client.GetAtomVal("num").(int)+1)
+		return
+	}
 }
 
 func htmlRun(cmd *cobra.Command, args []string) error {
@@ -42,9 +52,11 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	client.SetGlobalEventHandler(GlobalEventHandler)
 	log.Printf("created client: %v\n", client)
 	client.SetAtomVal("bgcolor", "#0000ff77")
 	client.SetAtomVal("text", "initial text")
+	client.SetAtomVal("num", 0)
 	client.SetRootElem(MakeVDom())
 	err = client.CreateVDomContext()
 	if err != nil {
@@ -55,7 +67,6 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 		<-client.DoneCh
 		wshutil.DoShutdown("vdom closed by FE", 0, true)
 	}()
-
 	log.Printf("created vdom context\n")
 	go func() {
 		time.Sleep(5 * time.Second)

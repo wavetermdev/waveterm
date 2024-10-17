@@ -54,7 +54,7 @@ function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, pro
                 if (checkKeyPressed(waveEvent, keyDesc)) {
                     e.preventDefault();
                     e.stopPropagation();
-                    model.callVDomFunc(e, compId, propName);
+                    model.callVDomFunc(fnDecl, e, compId, propName);
                     return;
                 }
             }
@@ -66,7 +66,7 @@ function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, pro
         if (fnDecl.stoppropagation) {
             e.stopPropagation();
         }
-        model.callVDomFunc(e, compId, propName);
+        model.callVDomFunc(fnDecl, e, compId, propName);
     };
 }
 

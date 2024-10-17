@@ -671,6 +671,7 @@ declare global {
         type: "func";
         stoppropagation?: boolean;
         preventdefault?: boolean;
+        globalevent?: string;
         keys?: string[];
     };
 

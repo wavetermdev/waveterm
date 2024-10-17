@@ -20,21 +20,19 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-const GlobalEventsQueueSize = 50
-
 type Client struct {
-	Root         *vdom.RootElem
-	RootElem     *vdom.VDomElem
-	RpcClient    *wshutil.WshRpc
-	RpcContext   *wshrpc.RpcContext
-	ServerImpl   *VDomServerImpl
-	IsDone       bool
-	RouteId      string
-	DoneReason   string
-	DoneOnce     *sync.Once
-	DoneCh       chan struct{}
-	Opts         vdom.VDomBackendOpts
-	GlobalEvents chan vdom.VDomEvent
+	Root               *vdom.RootElem
+	RootElem           *vdom.VDomElem
+	RpcClient          *wshutil.WshRpc
+	RpcContext         *wshrpc.RpcContext
+	ServerImpl         *VDomServerImpl
+	IsDone             bool
+	RouteId            string
+	DoneReason         string
+	DoneOnce           *sync.Once
+	DoneCh             chan struct{}
+	Opts               vdom.VDomBackendOpts
+	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
 }
 
 type VDomServerImpl struct {
@@ -60,15 +58,12 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 	// run events
 	for _, event := range feUpdate.Events {
 		if event.WaveId == "" {
-			// nonblocking add to GlobalEvents
-			select {
-			case impl.Client.GlobalEvents <- event:
-			default:
-				log.Printf("dropping global event %q (queue full)\n", event.PropName)
+			if impl.Client.GlobalEventHandler != nil {
+				impl.Client.GlobalEventHandler(impl.Client, event)
 			}
-			continue
+		} else {
+			impl.Client.Root.Event(event.WaveId, event.PropName, event.EventData)
 		}
-		impl.Client.Root.Event(event.WaveId, event.PropName, event.EventData)
 	}
 	if feUpdate.Initialize || feUpdate.Resync {
 		return impl.Client.fullRender()
@@ -84,12 +79,15 @@ func (c *Client) doShutdown(reason string) {
 	})
 }
 
+func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
+	c.GlobalEventHandler = handler
+}
+
 func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
 	client := &Client{
-		Root:         vdom.MakeRoot(),
-		DoneCh:       make(chan struct{}),
-		DoneOnce:     &sync.Once{},
-		GlobalEvents: make(chan vdom.VDomEvent, GlobalEventsQueueSize),
+		Root:     vdom.MakeRoot(),
+		DoneCh:   make(chan struct{}),
+		DoneOnce: &sync.Once{},
 	}
 	if opts != nil {
 		client.Opts = *opts

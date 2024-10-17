@@ -17,6 +17,7 @@ import (
 
 const Html_BindPrefix = "#bind:"
 const Html_ParamPrefix = "#param:"
+const Html_GlobalEventPrefix = "#globalevent"
 const Html_BindParamTagName = "bindparam"
 const Html_BindTagName = "bind"
 
@@ -95,6 +96,17 @@ func attrToProp(attrVal string, params map[string]any) any {
 			return nil
 		}
 		return &VDomBinding{Type: ObjectType_Binding, Bind: bindKey}
+	}
+	if strings.HasPrefix(attrVal, Html_GlobalEventPrefix) {
+		splitArr := strings.Split(attrVal, ":")
+		if len(splitArr) < 2 {
+			return nil
+		}
+		eventName := splitArr[1]
+		if eventName == "" {
+			return nil
+		}
+		return &VDomFunc{Type: ObjectType_Func, GlobalEvent: eventName}
 	}
 	return attrVal
 }
