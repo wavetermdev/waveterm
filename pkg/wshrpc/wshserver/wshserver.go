@@ -120,7 +120,7 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 }
 
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
-	log.Printf("SETMETA: %s | %v\n", data.ORef, data.Meta)
+	log.Printf("SetMetaCommand: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef
 	err := wstore.UpdateObjectMeta(ctx, oref, data.Meta)
 	if err != nil {
@@ -422,7 +422,7 @@ func (ws *WshServer) EventPublishCommand(ctx context.Context, data wps.WaveEvent
 }
 
 func (ws *WshServer) EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error {
-	log.Printf("EventSubCommand: %v\n", data)
+	// log.Printf("EventSubCommand: %v\n", data)
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	if rpcSource == "" {
 		return fmt.Errorf("no rpc source set")

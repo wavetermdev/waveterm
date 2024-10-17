@@ -88,7 +88,7 @@ export const FileService = new FileServiceType();
 // objectservice.ObjectService (object)
 class ObjectServiceType {
     // @returns tabId (and object updates)
-    AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<string> {
+    AddTabToWorkspace(windowId: string, tabName: string, activateTab: boolean): Promise<string> {
         return WOS.callBackendService("object", "AddTabToWorkspace", Array.from(arguments))
     }
 
@@ -113,7 +113,7 @@ class ObjectServiceType {
     }
 
     // @returns object updates
-    SetActiveTab(tabId: string): Promise<void> {
+    SetActiveTab(uiContext: string, tabId: string): Promise<void> {
         return WOS.callBackendService("object", "SetActiveTab", Array.from(arguments))
     }
 
@@ -152,10 +152,10 @@ export const UserInputService = new UserInputServiceType();
 // windowservice.WindowService (window)
 class WindowServiceType {
     // @returns object updates
-    CloseTab(arg3: string): Promise<void> {
+    CloseTab(arg2: string, arg3: string, arg4: boolean): Promise<CloseTabRtnType> {
         return WOS.callBackendService("window", "CloseTab", Array.from(arguments))
     }
-    CloseWindow(arg2: string): Promise<void> {
+    CloseWindow(arg2: string, arg3: boolean): Promise<void> {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
 

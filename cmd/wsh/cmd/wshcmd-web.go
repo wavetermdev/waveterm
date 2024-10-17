@@ -30,7 +30,7 @@ var webOpenCmd = &cobra.Command{
 var webGetCmd = &cobra.Command{
 	Use:    "get [--inner] [--all] [--json] blockid css-selector",
 	Short:  "get the html for a css selector",
-	Args:   cobra.ExactArgs(2),
+	Args:   cobra.ExactArgs(1),
 	Hidden: true,
 	RunE:   webGetRun,
 }
@@ -51,7 +51,7 @@ func init() {
 }
 
 func webGetRun(cmd *cobra.Command, args []string) error {
-	oref := args[0]
+	oref := blockArg
 	if oref == "" {
 		return fmt.Errorf("blockid not specified")
 	}
@@ -74,7 +74,7 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 		WindowId: blockInfo.WindowId,
 		BlockId:  fullORef.OID,
 		TabId:    blockInfo.TabId,
-		Selector: args[1],
+		Selector: args[0],
 		Opts: &wshrpc.WebSelectorOpts{
 			Inner: webGetInner,
 			All:   webGetAll,

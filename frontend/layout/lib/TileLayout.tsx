@@ -128,7 +128,6 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
         </Suspense>
     );
 }
-
 export const TileLayout = memo(TileLayoutComponent) as typeof TileLayoutComponent;
 
 interface DisplayNodesWrapperProps {
@@ -247,6 +246,7 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
                 magnified: addlProps?.isMagnifiedNode,
                 "last-magnified": addlProps?.isLastMagnifiedNode,
             })}
+            key={node.id}
             ref={tileNodeRef}
             id={node.id}
             style={addlProps?.transform}

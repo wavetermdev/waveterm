@@ -28,7 +28,7 @@ import {
 } from "@/app/store/global";
 import * as services from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
@@ -63,7 +63,7 @@ function handleHeaderContextMenu(
         {
             label: "Move to New Window",
             click: () => {
-                const currentTabId = globalStore.get(atoms.activeTabId);
+                const currentTabId = globalStore.get(atoms.staticTabId);
                 try {
                     services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
                 } catch (e) {
@@ -321,7 +321,7 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(WindowRpcClient, connName, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, connName, { timeout: 60000 });
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -437,7 +437,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         const connName = blockData?.meta?.connection;
         if (!util.isBlank(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
-            RpcApi.ConnEnsureCommand(WindowRpcClient, connName, { timeout: 60000 }).catch((e) => {
+            RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 }).catch((e) => {
                 console.log("error ensuring connection", nodeModel.blockId, connName, e);
             });
         }
@@ -536,7 +536,7 @@ const ChangeConnectionBlockModal = React.memo(
                 setConnList([]);
                 return;
             }
-            const prtn = RpcApi.ConnListCommand(WindowRpcClient, { timeout: 2000 });
+            const prtn = RpcApi.ConnListCommand(TabRpcClient, { timeout: 2000 });
             prtn.then((newConnList) => {
                 setConnList(newConnList ?? []);
             }).catch((e) => console.log("unable to load conn list from backend. using blank list: ", e));
@@ -557,12 +557,12 @@ const ChangeConnectionBlockModal = React.memo(
                 } else {
                     newCwd = "~";
                 }
-                await RpcApi.SetMetaCommand(WindowRpcClient, {
+                await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newCwd },
                 });
                 try {
-                    await RpcApi.ConnEnsureCommand(WindowRpcClient, connName, { timeout: 60000 });
+                    await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
                 } catch (e) {
                     console.log("error connecting", blockId, connName, e);
                 }
@@ -608,7 +608,7 @@ const ChangeConnectionBlockModal = React.memo(
             label: `Reconnect to ${connStatus.connection}`,
             value: "",
             onSelect: async (_: string) => {
-                const prtn = RpcApi.ConnConnectCommand(WindowRpcClient, connStatus.connection, { timeout: 60000 });
+                const prtn = RpcApi.ConnConnectCommand(TabRpcClient, connStatus.connection, { timeout: 60000 });
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };

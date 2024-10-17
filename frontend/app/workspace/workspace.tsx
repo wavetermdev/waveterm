@@ -94,20 +94,18 @@ const Widget = memo(({ widget }: { widget: WidgetConfigType }) => {
 });
 
 const WorkspaceElem = memo(() => {
-    const windowData = useAtomValue(atoms.waveWindow);
-    const activeTabId = windowData?.activetabid;
+    const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
-
     return (
         <div className="workspace">
             <TabBar key={ws.oid} workspace={ws} />
             <div className="workspace-tabcontent">
-                <ErrorBoundary key={activeTabId}>
-                    {activeTabId == "" ? (
+                <ErrorBoundary key={tabId}>
+                    {tabId == "" ? (
                         <CenteredDiv>No Active Tab</CenteredDiv>
                     ) : (
                         <>
-                            <TabContent key={activeTabId} tabId={activeTabId} />
+                            <TabContent key={tabId} tabId={tabId} />
                             <Widgets />
                             <ModalsRenderer />
                         </>

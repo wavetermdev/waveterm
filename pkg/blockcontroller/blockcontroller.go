@@ -359,9 +359,6 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		}
 	}()
 	go func() {
-		defer func() {
-			log.Printf("[shellproc] shellInputCh loop done\n")
-		}()
 		// handles input from the shellInputCh, sent to pty
 		// use shellInputCh instead of bc.ShellInputCh (because we want to be attached to *this* ch.  bc.ShellInputCh can be updated)
 		for ic := range shellInputCh {

@@ -4,7 +4,7 @@
 import { globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -241,7 +241,7 @@ export class VDomModel {
         try {
             const feUpdate = this.createFeUpdate();
             dlog("fe-update", feUpdate);
-            const beUpdate = await RpcApi.VDomRenderCommand(WindowRpcClient, feUpdate, { route: this.backendRoute });
+            const beUpdate = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: this.backendRoute });
             this.handleBackendUpdate(beUpdate);
         } finally {
             this.lastUpdateTs = Date.now();
