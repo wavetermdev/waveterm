@@ -83,7 +83,7 @@ func MakePlotData(ctx context.Context, blockId string) error {
 		return err
 	}
 	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
-	if viewName != "cpuplot" {
+	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
 	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, filestore.FileOptsType{})
@@ -95,7 +95,7 @@ func SavePlotData(ctx context.Context, blockId string, history string) error {
 		return err
 	}
 	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
-	if viewName != "cpuplot" {
+	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
 	// todo: interpret the data being passed

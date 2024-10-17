@@ -19,7 +19,6 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import "./cpuplot.less";
 
 const DefaultNumPoints = 120;
-type LineType = "default" | "title" | "sparkline";
 
 type DataItem = {
     ts: number;
@@ -87,7 +86,7 @@ function convertWaveEventToDataItem(event: WaveEvent): DataItem {
     return dataItem;
 }
 
-class CpuPlotViewModel {
+class SysinfoViewModel {
     viewType: string;
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
@@ -109,8 +108,8 @@ class CpuPlotViewModel {
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
     plotTypeSelectedAtom: jotai.Atom<string>;
 
-    constructor(blockId: string) {
-        this.viewType = "cpuplot";
+    constructor(blockId: string, viewType: string) {
+        this.viewType = viewType;
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.addDataAtom = jotai.atom(null, (get, set, points) => {
@@ -127,7 +126,7 @@ class CpuPlotViewModel {
                 const newData = [...data.slice(points.length), ...points];
                 set(this.dataAtom, newData);
             } catch (e) {
-                console.log("Error adding data to cpuplot", e);
+                console.log("Error adding data to sysinfo", e);
             }
         });
         this.plotMetaAtom = jotai.atom(new Map(Object.entries(DefaultPlotMeta)));
@@ -213,7 +212,7 @@ class CpuPlotViewModel {
             newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
             globalStore.set(this.addDataAtom, newData);
         } catch (e) {
-            console.log("Error loading initial data for cpuplot", e);
+            console.log("Error loading initial data for sysinfo", e);
         } finally {
             globalStore.set(this.loadingAtom, false);
         }
@@ -271,16 +270,16 @@ class CpuPlotViewModel {
     }
 }
 
-function makeCpuPlotViewModel(blockId: string): CpuPlotViewModel {
-    const cpuPlotViewModel = new CpuPlotViewModel(blockId);
-    return cpuPlotViewModel;
+function makeSysinfoViewModel(blockId: string, viewType: string): SysinfoViewModel {
+    const sysinfoViewModel = new SysinfoViewModel(blockId, viewType);
+    return sysinfoViewModel;
 }
 
 const plotColors = ["#58C142", "#FFC107", "#FF5722", "#2196F3", "#9C27B0", "#00BCD4", "#FFEB3B", "#795548"];
 
-type CpuPlotViewProps = {
+type SysinfoViewProps = {
     blockId: string;
-    model: CpuPlotViewModel;
+    model: SysinfoViewModel;
 };
 
 function resolveDomainBound(value: number | string, dataItem: DataItem): number | undefined {
@@ -293,7 +292,7 @@ function resolveDomainBound(value: number | string, dataItem: DataItem): number 
     }
 }
 
-function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
+function SysinfoView({ model, blockId }: SysinfoViewProps) {
     const connName = jotai.useAtomValue(model.connection);
     const lastConnName = React.useRef(connName);
     const connStatus = jotai.useAtomValue(model.connStatus);
@@ -333,7 +332,7 @@ function CpuPlotView({ model, blockId }: CpuPlotViewProps) {
     if (loading) {
         return null;
     }
-    return <CpuPlotViewInner key={connStatus?.connection ?? "local"} blockId={blockId} model={model} />;
+    return <SysinfoViewInner key={connStatus?.connection ?? "local"} blockId={blockId} model={model} />;
 }
 
 type SingleLinePlotProps = {
@@ -458,7 +457,7 @@ function SingleLinePlot({
     return <div ref={containerRef} className="sysinfo-plot-content" />;
 }
 
-const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
+const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
     const plotData = jotai.useAtomValue(model.dataAtom);
     const yvals = jotai.useAtomValue(model.metrics);
     const plotMeta = jotai.useAtomValue(model.plotMetaAtom);
@@ -493,4 +492,4 @@ const CpuPlotViewInner = React.memo(({ model }: CpuPlotViewProps) => {
     );
 });
 
-export { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel };
+export { makeSysinfoViewModel, SysinfoView, SysinfoViewModel };
