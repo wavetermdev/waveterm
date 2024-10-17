@@ -20,18 +20,21 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
+const GlobalEventsQueueSize = 50
+
 type Client struct {
-	Root       *vdom.RootElem
-	RootElem   *vdom.VDomElem
-	RpcClient  *wshutil.WshRpc
-	RpcContext *wshrpc.RpcContext
-	ServerImpl *VDomServerImpl
-	IsDone     bool
-	RouteId    string
-	DoneReason string
-	DoneOnce   *sync.Once
-	DoneCh     chan struct{}
-	Opts       vdom.VDomBackendOpts
+	Root         *vdom.RootElem
+	RootElem     *vdom.VDomElem
+	RpcClient    *wshutil.WshRpc
+	RpcContext   *wshrpc.RpcContext
+	ServerImpl   *VDomServerImpl
+	IsDone       bool
+	RouteId      string
+	DoneReason   string
+	DoneOnce     *sync.Once
+	DoneCh       chan struct{}
+	Opts         vdom.VDomBackendOpts
+	GlobalEvents chan vdom.VDomEvent
 }
 
 type VDomServerImpl struct {
@@ -41,8 +44,8 @@ type VDomServerImpl struct {
 
 func (*VDomServerImpl) WshServerImpl() {}
 
-func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
-	if data.Dispose {
+func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
+	if feUpdate.Dispose {
 		log.Printf("got dispose from frontend\n")
 		impl.Client.doShutdown("got dispose from frontend")
 		return nil, nil
@@ -51,14 +54,23 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, data vdom.VDo
 		return nil, nil
 	}
 	// set atoms
-	for _, ss := range data.StateSync {
+	for _, ss := range feUpdate.StateSync {
 		impl.Client.Root.SetAtomVal(ss.Atom, ss.Value, false)
 	}
 	// run events
-	for _, event := range data.Events {
+	for _, event := range feUpdate.Events {
+		if event.WaveId == "" {
+			// nonblocking add to GlobalEvents
+			select {
+			case impl.Client.GlobalEvents <- event:
+			default:
+				log.Printf("dropping global event %q (queue full)\n", event.PropName)
+			}
+			continue
+		}
 		impl.Client.Root.Event(event.WaveId, event.PropName, event.EventData)
 	}
-	if data.Initialize || data.Resync {
+	if feUpdate.Initialize || feUpdate.Resync {
 		return impl.Client.fullRender()
 	}
 	return impl.Client.incrementalRender()
@@ -74,9 +86,10 @@ func (c *Client) doShutdown(reason string) {
 
 func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
 	client := &Client{
-		Root:     vdom.MakeRoot(),
-		DoneCh:   make(chan struct{}),
-		DoneOnce: &sync.Once{},
+		Root:         vdom.MakeRoot(),
+		DoneCh:       make(chan struct{}),
+		DoneOnce:     &sync.Once{},
+		GlobalEvents: make(chan vdom.VDomEvent, GlobalEventsQueueSize),
 	}
 	if opts != nil {
 		client.Opts = *opts

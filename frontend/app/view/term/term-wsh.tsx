@@ -42,11 +42,11 @@ export class TermWshClient extends WshClient {
             oref: WOS.makeORef("block", this.blockId),
             meta: { "term:mode": "html" },
         });
-        this.model.vdomModel.sendRenderRequest(true);
+        this.model.vdomModel.queueUpdate(true);
     }
 
     handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {
         console.log("async-initiation", rh.getSource(), data);
-        this.model.vdomModel.sendRenderRequest(true);
+        this.model.vdomModel.queueUpdate(true);
     }
 }

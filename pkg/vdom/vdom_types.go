@@ -177,3 +177,18 @@ type VDomMessage struct {
 	StackTrace  string `json:"stacktrace,omitempty"`
 	Params      []any  `json:"params,omitempty"`
 }
+
+// matches WaveKeyboardEvent
+type VDomKeyboardEvent struct {
+	Type     string `json:"type"`
+	Key      string `json:"key"`
+	Code     string `json:"code"`
+	Shift    bool   `json:"shift,omitempty"`
+	Control  bool   `json:"ctrl,omitempty"`
+	Alt      bool   `json:"alt,omitempty"`
+	Meta     bool   `json:"meta,omitempty"`
+	Cmd      bool   `json:"cmd,omitempty"`
+	Option   bool   `json:"option,omitempty"`
+	Repeat   bool   `json:"repeat,omitempty"`
+	Location int    `json:"location,omitempty"`
+}

@@ -75,17 +75,17 @@ export class VDomModel {
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
     compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
     rootRefId: string = crypto.randomUUID();
-    hasPendingRequest: boolean = false;
-    pendingTimeoutId: any;
     termWshClient: TermWshClient;
     backendRoute: string;
-    updateMs: number = 100;
-    nextUpdateQuick: boolean = false;
+    backendOpts: VDomBackendOpts;
+    shouldDispose: boolean;
+    disposed: boolean;
+    hasPendingRequest: boolean;
+    needsUpdate: boolean;
+    maxNormalUpdateIntervalMs: number = 100;
+    needsImmediateUpdate: boolean;
     lastUpdateTs: number = 0;
-    updateAsked: boolean = false;
-    backendOpts: VDomBackendOpts = {};
-    shouldDispose: boolean = false;
-    disposed: boolean = false;
+    queuedUpdate: { timeoutId: any; ts: number; quick: boolean };
 
     constructor(
         blockId: string,
@@ -97,6 +97,7 @@ export class VDomModel {
         this.nodeModel = nodeModel;
         this.viewRef = viewRef;
         this.termWshClient = termWshClient;
+        this.reset();
     }
 
     reset() {
@@ -106,37 +107,38 @@ export class VDomModel {
         this.batchedEvents = [];
         this.messages = [];
         this.needsResync = true;
-        this.shouldDispose = false;
         this.needsInitialization = true;
-        this.updateAsked = false;
         this.vdomNodeVersion = new WeakMap();
         this.compoundAtoms.clear();
         this.rootRefId = crypto.randomUUID();
         this.backendRoute = null;
-        this.hasPendingRequest = false;
-        this.nextUpdateQuick = false;
-        this.lastUpdateTs = 0;
         this.backendOpts = {};
+        this.shouldDispose = false;
         this.disposed = false;
+        this.hasPendingRequest = false;
+        this.needsUpdate = false;
+        this.maxNormalUpdateIntervalMs = 100;
+        this.needsImmediateUpdate = false;
+        this.lastUpdateTs = 0;
+        this.queuedUpdate = null;
     }
 
     globalKeydownHandler(e: WaveKeyboardEvent): boolean {
         if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
             this.shouldDispose = true;
-            this.askForUpdate();
+            this.queueUpdate(true);
             return true;
         }
         if (this.backendOpts?.globalkeyboardevents) {
             if (e.cmd || e.meta) {
                 return false;
             }
-            let vdomRoot = globalStore.get(this.vdomRoot);
             this.batchedEvents.push({
                 waveid: null,
                 propname: "onKeyDown",
                 eventdata: e,
             });
-            this.askForUpdate();
+            this.queueUpdate();
             return true;
         }
         return false;
@@ -176,48 +178,58 @@ export class VDomModel {
         return updates;
     }
 
-    needsUpdate() {
-        return this.shouldDispose || this.batchedEvents.length > 0 || this.hasRefUpdates();
-    }
-
-    askForUpdate() {
-        if (this.hasPendingRequest || this.updateAsked) {
+    queueUpdate(quick: boolean = false, delay: number = 10) {
+        this.needsUpdate = true;
+        let nowTs = Date.now();
+        if (delay > this.maxNormalUpdateIntervalMs) {
+            delay = this.maxNormalUpdateIntervalMs;
+        }
+        if (quick) {
+            if (this.queuedUpdate) {
+                if (this.queuedUpdate.quick || this.queuedUpdate.ts <= nowTs) {
+                    return;
+                }
+                clearTimeout(this.queuedUpdate.timeoutId);
+                this.queuedUpdate = null;
+            }
+            let timeoutId = setTimeout(() => {
+                this._sendRenderRequest(true);
+            }, 0);
+            this.queuedUpdate = { timeoutId: timeoutId, ts: nowTs, quick: true };
             return;
         }
-        this.updateAsked = true;
-        const lastUpdateDiff = Date.now() - this.lastUpdateTs;
-        if (lastUpdateDiff > this.updateMs) {
-            setTimeout(() => this.sendRenderRequest(false), 0);
+        if (this.queuedUpdate) {
+            return;
         }
+        let lastUpdateDiff = nowTs - this.lastUpdateTs;
+        let timeoutMs: number = null;
+        if (lastUpdateDiff >= this.maxNormalUpdateIntervalMs) {
+            // it has been a while since the last update, so use delay
+            timeoutMs = delay;
+        } else {
+            timeoutMs = this.maxNormalUpdateIntervalMs - lastUpdateDiff;
+        }
+        if (timeoutMs < delay) {
+            timeoutMs = delay;
+        }
+        let timeoutId = setTimeout(() => {
+            this._sendRenderRequest(false);
+        }, timeoutMs);
+        this.queuedUpdate = { timeoutId: timeoutId, ts: nowTs + timeoutMs, quick: false };
     }
 
-    queueUpdate() {
-        if (this.pendingTimeoutId) {
-            clearTimeout(this.pendingTimeoutId);
-        }
-        let updateMs = this.nextUpdateQuick ? 0 : this.updateMs;
-        this.nextUpdateQuick = false;
-        this.pendingTimeoutId = setTimeout(() => {
-            this.sendRenderRequest(false);
-        }, updateMs);
-    }
-
-    async sendRenderRequest(force: boolean) {
-        this.updateAsked = false;
-        if (this.pendingTimeoutId) {
-            clearTimeout(this.pendingTimeoutId);
-        }
+    async _sendRenderRequest(force: boolean) {
+        this.queuedUpdate = null;
         if (this.disposed) {
             return;
         }
         if (this.hasPendingRequest) {
             if (force) {
-                this.nextUpdateQuick = true;
+                this.needsImmediateUpdate = true;
             }
             return;
         }
-        if (!force && !this.needsUpdate()) {
-            this.queueUpdate();
+        if (!force && !this.needsUpdate) {
             return;
         }
         if (this.backendRoute == null) {
@@ -225,6 +237,7 @@ export class VDomModel {
             return;
         }
         this.hasPendingRequest = true;
+        this.needsImmediateUpdate = false;
         try {
             const feUpdate = this.createFeUpdate();
             dlog("fe-update", feUpdate);
@@ -234,7 +247,9 @@ export class VDomModel {
             this.lastUpdateTs = Date.now();
             this.hasPendingRequest = false;
         }
-        this.queueUpdate();
+        if (this.needsImmediateUpdate) {
+            this.queueUpdate(true);
+        }
     }
 
     getAtomContainer(atomName: string): AtomContainer {
