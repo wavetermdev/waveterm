@@ -129,4 +129,5 @@ Palette.displayName = "Palette";
 PaletteButton.displayName = "PaletteButton";
 PaletteContent.displayName = "PaletteContent";
 
-export { Palette, PaletteButton, PaletteContent, type PaletteButtonProps, type PaletteContentProps };
+export { Palette, PaletteButton, PaletteContent };
+export type { PaletteButtonProps, PaletteContentProps };
