@@ -16,7 +16,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { atoms } from "@/store/global";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import "./cpuplot.less";
+import "./sysinfo.less";
 
 const DefaultNumPoints = 120;
 

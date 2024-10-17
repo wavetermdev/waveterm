@@ -4,6 +4,7 @@
 import { BlockComponentModel2, BlockProps } from "@/app/block/blocktypes";
 import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
+import { SysinfoView, SysinfoViewModel, makeSysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { NodeModel, useDebouncedNodeInnerRect } from "@/layout/index";
@@ -16,7 +17,6 @@ import {
 import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank } from "@/util/util";
-import { SysinfoView, SysinfoViewModel, makeSysinfoViewModel } from "@/view/cpuplot/cpuplot";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
 import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
