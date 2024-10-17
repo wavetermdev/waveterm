@@ -81,12 +81,12 @@ export class WaveAiModel implements ViewModel {
                     .filter(([k]) => k.startsWith("ai@"))
                     .map(([k, v]) => {
                         const aiPresetKeys = Object.keys(v).filter((k) => k.startsWith("ai:"));
-                        console.log(aiPresetKeys);
-                        v["display:name"] =
+                        const newV = { ...v };
+                        newV["display:name"] =
                             aiPresetKeys.length == 1 && aiPresetKeys.includes("ai:*")
-                                ? `${v["display:name"] ?? "Default"} (${settings["ai:model"]})`
-                                : v["display:name"];
-                        return [k, v];
+                                ? `${newV["display:name"] ?? "Default"} (${settings["ai:model"]})`
+                                : newV["display:name"];
+                        return [k, newV];
                     })
             );
         });
@@ -109,7 +109,7 @@ export class WaveAiModel implements ViewModel {
             messages.pop();
             set(this.messagesAtom, [...messages]);
         });
-        this.simulateAssistantResponseAtom = atom(null, async (get, set, userMessage: ChatMessageType) => {
+        this.simulateAssistantResponseAtom = atom(null, async (_, set, userMessage: ChatMessageType) => {
             // unused at the moment. can replace the temp() function in the future
             const typingMessage: ChatMessageType = {
                 id: crypto.randomUUID(),
@@ -213,7 +213,7 @@ export class WaveAiModel implements ViewModel {
     }
 
     async fetchAiData(): Promise<Array<OpenAIPromptMessageType>> {
-        const { data, fileInfo } = await fetchWaveFile(this.blockId, "aidata");
+        const { data } = await fetchWaveFile(this.blockId, "aidata");
         if (!data) {
             return [];
         }
@@ -318,7 +318,6 @@ export class WaveAiModel implements ViewModel {
                         content: errMsg,
                     };
                     updatedHist.push(errorPrompt);
-                    console.log(updatedHist);
                     await BlockService.SaveWaveAiData(blockId, updatedHist);
                 }
                 setLocked(false);

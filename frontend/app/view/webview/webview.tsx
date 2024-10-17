@@ -46,6 +46,8 @@ export class WebViewModel implements ViewModel {
     urlInputRef: React.RefObject<HTMLInputElement>;
     nodeModel: NodeModel;
     endIconButtons?: Atom<IconButtonDecl[]>;
+    mediaPlaying: PrimitiveAtom<boolean>;
+    mediaMuted: PrimitiveAtom<boolean>;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.nodeModel = nodeModel;
@@ -70,12 +72,18 @@ export class WebViewModel implements ViewModel {
         this.urlInputRef = React.createRef<HTMLInputElement>();
         this.webviewRef = React.createRef<WebviewTag>();
 
+        this.mediaPlaying = atom(false);
+        this.mediaMuted = atom(false);
+
         this.viewText = atom((get) => {
-            let url = get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
+            const homepageUrl = get(this.homepageUrl);
+            const metaUrl = get(this.blockAtom)?.meta?.url;
             const currUrl = get(this.url);
-            if (currUrl !== undefined) {
-                url = currUrl;
-            }
+            const urlWrapperClassName = get(this.urlWrapperClassName);
+            const refreshIcon = get(this.refreshIcon);
+            const mediaPlaying = get(this.mediaPlaying);
+            const mediaMuted = get(this.mediaMuted);
+            const url = currUrl ?? metaUrl ?? homepageUrl;
             return [
                 {
                     elemtype: "iconbutton",
@@ -97,7 +105,7 @@ export class WebViewModel implements ViewModel {
                 },
                 {
                     elemtype: "div",
-                    className: clsx("block-frame-div-url", get(this.urlWrapperClassName)),
+                    className: clsx("block-frame-div-url", urlWrapperClassName),
                     onMouseOver: this.handleUrlWrapperMouseOver.bind(this),
                     onMouseOut: this.handleUrlWrapperMouseOut.bind(this),
                     children: [
@@ -111,26 +119,31 @@ export class WebViewModel implements ViewModel {
                             onFocus: this.handleFocus.bind(this),
                             onBlur: this.handleBlur.bind(this),
                         },
+                        mediaPlaying && {
+                            elemtype: "iconbutton",
+                            icon: mediaMuted ? "volume-slash" : "volume",
+                            click: this.handleMuteChange.bind(this),
+                        },
                         {
                             elemtype: "iconbutton",
-                            icon: get(this.refreshIcon),
+                            icon: refreshIcon,
                             click: this.handleRefresh.bind(this),
                         },
-                    ],
+                    ].filter((v) => v),
                 },
             ] as HeaderElem[];
         });
 
         this.endIconButtons = atom((get) => {
+            const url = get(this.url);
             return [
                 {
                     elemtype: "iconbutton",
                     icon: "arrow-up-right-from-square",
                     title: "Open in External Browser",
                     click: () => {
-                        const url = this.getUrl();
                         if (url != null && url != "") {
-                            return getApi().openExternal(this.getUrl());
+                            return getApi().openExternal(url);
                         }
                     },
                 },
@@ -178,6 +191,25 @@ export class WebViewModel implements ViewModel {
             e.stopPropagation();
         }
         this.loadUrl(globalStore.get(this.homepageUrl), "home");
+    }
+
+    setMediaPlaying(isPlaying: boolean) {
+        console.log("setMediaPlaying", isPlaying);
+        globalStore.set(this.mediaPlaying, isPlaying);
+    }
+
+    handleMuteChange(e: React.ChangeEvent<HTMLInputElement>) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        try {
+            const newMutedVal = !this.webviewRef.current?.isAudioMuted();
+            globalStore.set(this.mediaMuted, newMutedVal);
+            this.webviewRef.current?.setAudioMuted(newMutedVal);
+        } catch (e) {
+            console.error("Failed to change mute value", e);
+        }
     }
 
     handleUrlWrapperMouseOver(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -536,6 +568,12 @@ const WebView = memo(({ model }: WebViewProps) => {
             setDomReady(true);
             setBgColor();
         };
+        const handleMediaPlaying = () => {
+            model.setMediaPlaying(true);
+        };
+        const handleMediaPaused = () => {
+            model.setMediaPlaying(false);
+        };
 
         webview.addEventListener("did-navigate-in-page", navigateListener);
         webview.addEventListener("did-navigate", navigateListener);
@@ -546,6 +584,8 @@ const WebView = memo(({ model }: WebViewProps) => {
         webview.addEventListener("focus", webviewFocus);
         webview.addEventListener("blur", webviewBlur);
         webview.addEventListener("dom-ready", handleDomReady);
+        webview.addEventListener("media-started-playing", handleMediaPlaying);
+        webview.addEventListener("media-paused", handleMediaPaused);
 
         // Clean up event listeners on component unmount
         return () => {
@@ -558,6 +598,8 @@ const WebView = memo(({ model }: WebViewProps) => {
             webview.removeEventListener("focus", webviewFocus);
             webview.removeEventListener("blur", webviewBlur);
             webview.removeEventListener("dom-ready", handleDomReady);
+            webview.removeEventListener("media-started-playing", handleMediaPlaying);
+            webview.removeEventListener("media-paused", handleMediaPaused);
         };
     }, []);
 
