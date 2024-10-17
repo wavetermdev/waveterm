@@ -3,6 +3,8 @@ const pkg = require("./package.json");
 const fs = require("fs");
 const path = require("path");
 
+const windowsShouldSign = !!process.env.SM_CODE_SIGNING_CERT_SHA1_HASH;
+
 /**
  * @type {import('electron-builder').Configuration}
  * @see https://www.electron.build/configuration/configuration
@@ -73,12 +75,14 @@ const config = {
         afterInstall: "build/deb-postinstall.tpl",
     },
     win: {
-        icon: "build/appicon-windows.ico",
-        publisherName: "Command Line Inc",
+        icon: "build/icon.ico",
         target: ["nsis", "msi", "zip"],
-        certificateSubjectName: "Command Line Inc",
-        certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
-        signingHashAlgorithms: ["sha256"],
+        signtoolOptions: windowsShouldSign && {
+            signingHashAlgorithms: ["sha256"],
+            publisherName: "Command Line Inc",
+            certificateSubjectName: "Command Line Inc",
+            certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
+        },
     },
     appImage: {
         license: "LICENSE",
