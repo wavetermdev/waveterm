@@ -50,12 +50,16 @@ function makeHelpViewModel(blockId: string, nodeModel: NodeModel) {
 
 function HelpView({ model }: { model: HelpViewModel }) {
     const homepageUrl = useAtomValue(model.homepageUrl);
+    const url = useAtomValue(model.url);
+
+    // Effect to update the docsite base url when the app restarts, since the webserver port is dynamic
     useEffect(
         () =>
             fireAndForget(async () => {
                 const curDocsiteUrl = getApi().getDocsiteUrl();
                 if (curDocsiteUrl !== homepageUrl) {
                     await model.setHomepageUrl(curDocsiteUrl, "block");
+                    model.loadUrl(url.replace(homepageUrl, curDocsiteUrl), "new-base-url");
                 }
             }),
         []
