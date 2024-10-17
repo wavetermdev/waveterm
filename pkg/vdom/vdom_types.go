@@ -3,7 +3,11 @@
 
 package vdom
 
-import "github.com/wavetermdev/waveterm/pkg/waveobj"
+import (
+	"time"
+
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+)
 
 const TextTag = "#text"
 const WaveTextTag = "wave:text"
@@ -40,6 +44,14 @@ type VDomAsyncInitiationRequest struct {
 	Type    string `json:"type" tstype:"\"asyncinitiationrequest\""`
 	Ts      int64  `json:"ts"`
 	BlockId string `json:"blockid,omitempty"`
+}
+
+func MakeAsyncInitiationRequest(blockId string) VDomAsyncInitiationRequest {
+	return VDomAsyncInitiationRequest{
+		Type:    "asyncinitiationrequest",
+		Ts:      time.Now().UnixMilli(),
+		BlockId: blockId,
+	}
 }
 
 type VDomFrontendUpdate struct {

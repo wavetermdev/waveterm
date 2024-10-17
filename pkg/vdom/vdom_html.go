@@ -333,6 +333,7 @@ outer:
 				keyAttr := getAttr(token, "key")
 				binding := &VDomBinding{Type: ObjectType_Binding, Bind: keyAttr}
 				appendChildToStack(elemStack, &VDomElem{Tag: WaveTextTag, Props: map[string]any{"text": binding}})
+				continue
 			}
 			elem := tokenToElem(token, params)
 			appendChildToStack(elemStack, elem)

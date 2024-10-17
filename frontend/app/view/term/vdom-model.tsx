@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { globalStore, WOS } from "@/app/store/global";
-import { ObjectService } from "@/app/store/services";
 import { makeORef } from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import debug from "debug";
 import * as jotai from "jotai";
+
+const dlog = debug("wave:vdom");
 
 type AtomContainer = {
     val: any;
@@ -73,6 +75,7 @@ export class VDomModel {
     batchedEvents: VDomEvent[] = [];
     refUpdates: VDomRefUpdate[] = [];
     messages: VDomMessage[] = [];
+    needsInitialization: boolean = true;
     needsResync: boolean = true;
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
     compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
@@ -83,6 +86,8 @@ export class VDomModel {
     backendRoute: string;
     updateMs: number = 100;
     nextUpdateQuick: boolean = false;
+    lastUpdateTs: number = 0;
+    updateAsked: boolean = false;
 
     constructor(
         blockId: string,
@@ -104,16 +109,30 @@ export class VDomModel {
         this.refUpdates = [];
         this.messages = [];
         this.needsResync = true;
+        this.needsInitialization = true;
+        this.updateAsked = false;
         this.vdomNodeVersion = new WeakMap();
         this.compoundAtoms.clear();
         this.rootRefId = crypto.randomUUID();
         this.backendRoute = null;
         this.hasPendingRequest = false;
         this.nextUpdateQuick = false;
+        this.lastUpdateTs = 0;
     }
 
     needsUpdate() {
         return this.refUpdates.length > 0 || this.batchedEvents.length > 0;
+    }
+
+    askForUpdate() {
+        if (this.hasPendingRequest || this.updateAsked) {
+            return;
+        }
+        this.updateAsked = true;
+        const lastUpdateDiff = Date.now() - this.lastUpdateTs;
+        if (lastUpdateDiff > this.updateMs) {
+            setTimeout(() => this.sendRenderRequest(false), 0);
+        }
     }
 
     queueUpdate() {
@@ -128,6 +147,7 @@ export class VDomModel {
     }
 
     async sendRenderRequest(force: boolean) {
+        this.updateAsked = false;
         if (this.pendingTimeoutId) {
             clearTimeout(this.pendingTimeoutId);
         }
@@ -151,6 +171,7 @@ export class VDomModel {
             const beUpdate = await RpcApi.VDomRenderCommand(WindowRpcClient, feUpdate, { route: this.backendRoute });
             this.handleBackendUpdate(beUpdate);
         } finally {
+            this.lastUpdateTs = Date.now();
             this.hasPendingRequest = false;
         }
         this.queueUpdate();
@@ -303,6 +324,7 @@ export class VDomModel {
     }
 
     setAtomValue(atomName: string, value: any, fromBe: boolean, idMap: Map<string, VDomElem>) {
+        dlog("setAtomValue", atomName, value, fromBe);
         let container = this.getAtomContainer(atomName);
         container.val = value;
         if (fromBe) {
@@ -387,7 +409,6 @@ export class VDomModel {
         const blockORef = makeORef("block", this.blockId);
         const blockAtom = WOS.getWaveObjectAtom<Block>(blockORef);
         const blockData = globalStore.get(blockAtom);
-        const needsInitialize = !blockData?.meta?.["vdom:initialized"];
         const isBlockFocused = globalStore.get(this.nodeModel.isFocused);
         const renderContext: VDomRenderContext = {
             blockid: this.blockId,
@@ -401,16 +422,14 @@ export class VDomModel {
             type: "frontendupdate",
             ts: Date.now(),
             blockid: this.blockId,
-            initialize: needsInitialize,
+            initialize: this.needsInitialization,
             rendercontext: renderContext,
             resync: this.needsResync,
             events: this.batchedEvents,
             refupdates: this.refUpdates,
         };
         this.needsResync = false;
-        if (needsInitialize) {
-            ObjectService.UpdateObjectMeta(blockORef, { "vdom:initialized": true });
-        }
+        this.needsInitialization = false;
         this.batchedEvents = [];
         this.refUpdates = [];
         return feUpdate;

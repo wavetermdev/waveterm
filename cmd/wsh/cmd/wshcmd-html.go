@@ -35,29 +35,48 @@ type VDomServerImpl struct {
 
 func (*VDomServerImpl) WshServerImpl() {}
 
-func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
-	WriteStderr("VDomRenderCommand: %v\n", data)
+func initialRender() *vdom.VDomBackendUpdate {
 	vdomStr := `
 	<div>
-	  <h1>hello vdom world</h1>
+	  <h1 style="color:red; background-color: #bind:$.bgcolor; border-radius: 4px; padding: 5px;">hello vdom world</h1>
+	  <div><bind key="$.text"/></div>
 	</div>
 	`
 	elem := vdom.Bind(vdomStr, nil)
 	if elem == nil {
-		return nil, fmt.Errorf("error binding vdom")
+		return nil
 	}
 	root := vdom.MakeRoot()
 	root.Render(elem)
 	renderedVDom := root.MakeVDom()
 	if renderedVDom == nil {
-		return nil, fmt.Errorf("error rendering vdom")
+		return nil
 	}
 	return &vdom.VDomBackendUpdate{
 		Type:    "backendupdate",
 		Ts:      time.Now().UnixMilli(),
-		BlockId: impl.BlockId,
+		BlockId: RpcContext.BlockId,
 		RenderUpdates: []vdom.VDomRenderUpdate{
 			{UpdateType: "root", VDom: *renderedVDom},
+		},
+		StateSync: []vdom.VDomStateSync{
+			{Atom: "bgcolor", Value: "#0000ff77"},
+			{Atom: "text", Value: "bound text"},
+		},
+	}
+}
+
+func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
+	WriteStderr("VDomRenderCommand: %v\n", data)
+	if data.Initialize {
+		return initialRender(), nil
+	}
+	return &vdom.VDomBackendUpdate{
+		Type:    "backendupdate",
+		Ts:      time.Now().UnixMilli(),
+		BlockId: RpcContext.BlockId,
+		StateSync: []vdom.VDomStateSync{
+			{Atom: "text", Value: "updated text"},
 		},
 	}, nil
 }
@@ -81,6 +100,10 @@ func htmlRun(cmd *cobra.Command, args []string) {
 		wshutil.DoShutdown("blockclosed", 0, true)
 	})
 	WriteStderr("created vdom context\n")
+	go func() {
+		time.Sleep(5 * time.Second)
+		wshclient.VDomAsyncInitiationCommand(RpcClient, vdom.MakeAsyncInitiationRequest(RpcContext.BlockId), &wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(RpcContext.BlockId)})
+	}()
 	for {
 		var buf [1]byte
 		_, err := WrappedStdin.Read(buf[:])

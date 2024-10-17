@@ -208,6 +208,9 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
         };
     }, []);
 
+    if (elem.tag == WaveTextTag) {
+        return props.text;
+    }
     if (!AllowedTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
     }
