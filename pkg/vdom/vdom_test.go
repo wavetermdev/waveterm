@@ -85,10 +85,10 @@ func Test1(t *testing.T) {
 		t.Fatalf("root.Root is nil")
 	}
 	printVDom(root)
-	root.runWork()
+	root.RunWork()
 	printVDom(root)
-	root.Event(testContext.ButtonId, "onClick")
-	root.runWork()
+	root.Event(testContext.ButtonId, "onClick", nil)
+	root.RunWork()
 	printVDom(root)
 }
 

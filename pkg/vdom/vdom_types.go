@@ -11,6 +11,7 @@ import (
 
 const TextTag = "#text"
 const WaveTextTag = "wave:text"
+const WaveNullTag = "wave:null"
 const FragmentTag = "#fragment"
 const BindTag = "#bind"
 
@@ -106,12 +107,12 @@ type VDomRef struct {
 }
 
 type DomRect struct {
-	Top    int `json:"top"`
-	Left   int `json:"left"`
-	Right  int `json:"right"`
-	Bottom int `json:"bottom"`
-	Width  int `json:"width"`
-	Height int `json:"height"`
+	Top    float64 `json:"top"`
+	Left   float64 `json:"left"`
+	Right  float64 `json:"right"`
+	Bottom float64 `json:"bottom"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
 }
 
 type VDomRefPosition struct {
@@ -127,7 +128,7 @@ type VDomRefPosition struct {
 
 type VDomEvent struct {
 	WaveId    string `json:"waveid"`
-	EventType string `json:"eventtype"`
+	PropName  string `json:"propname"`
 	EventData any    `json:"eventdata"`
 }
 

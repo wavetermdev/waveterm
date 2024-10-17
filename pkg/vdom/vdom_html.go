@@ -281,9 +281,6 @@ func fixupStyleAttributes(elem *VDomElem, params map[string]any, elemPath []stri
 		fixupStyleAttributes(&elem.Children[i], params, elemPath)
 		elemPath = elemPath[:len(elemPath)-1]
 	}
-	if len(elemPath) == 1 {
-		elemPath = elemPath[:len(elemPath)-1]
-	}
 }
 
 func Bind(htmlStr string, params map[string]any) *VDomElem {

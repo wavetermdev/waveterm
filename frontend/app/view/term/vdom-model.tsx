@@ -41,10 +41,6 @@ function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
     }
 }
 
-function updateTrackedPosition(container: RefContainer) {
-    // TODO
-}
-
 function convertEvent(e: React.SyntheticEvent, fromProp: string): any {
     if (e == null) {
         return null;
@@ -73,7 +69,6 @@ export class VDomModel {
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
     batchedEvents: VDomEvent[] = [];
-    refUpdates: VDomRefUpdate[] = [];
     messages: VDomMessage[] = [];
     needsInitialization: boolean = true;
     needsResync: boolean = true;
@@ -106,7 +101,6 @@ export class VDomModel {
         this.atoms.clear();
         this.refs.clear();
         this.batchedEvents = [];
-        this.refUpdates = [];
         this.messages = [];
         this.needsResync = true;
         this.needsInitialization = true;
@@ -120,8 +114,42 @@ export class VDomModel {
         this.lastUpdateTs = 0;
     }
 
+    hasRefUpdates() {
+        for (let ref of this.refs.values()) {
+            if (ref.updated) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    getRefUpdates(): VDomRefUpdate[] {
+        let updates: VDomRefUpdate[] = [];
+        for (let ref of this.refs.values()) {
+            if (ref.updated || (ref.vdomRef.trackposition && ref.elem != null)) {
+                const ru: VDomRefUpdate = {
+                    refid: ref.vdomRef.refid,
+                    hascurrent: ref.vdomRef.hascurrent,
+                };
+                if (ref.vdomRef.trackposition && ref.elem != null) {
+                    ru.position = {
+                        offsetheight: ref.elem.offsetHeight,
+                        offsetwidth: ref.elem.offsetWidth,
+                        scrollheight: ref.elem.scrollHeight,
+                        scrollwidth: ref.elem.scrollWidth,
+                        scrolltop: ref.elem.scrollTop,
+                        boundingclientrect: ref.elem.getBoundingClientRect(),
+                    };
+                }
+                updates.push(ru);
+                ref.updated = false;
+            }
+        }
+        return updates;
+    }
+
     needsUpdate() {
-        return this.refUpdates.length > 0 || this.batchedEvents.length > 0;
+        return this.batchedEvents.length > 0 || this.hasRefUpdates();
     }
 
     askForUpdate() {
@@ -200,9 +228,6 @@ export class VDomModel {
                     if (vdomRef.hascurrent != hasElem) {
                         container.updated = true;
                         vdomRef.hascurrent = hasElem;
-                    }
-                    if (vdomRef.trackposition) {
-                        updateTrackedPosition(container);
                     }
                 },
                 vdomRef: vdomRef,
@@ -399,7 +424,7 @@ export class VDomModel {
         const eventData = convertEvent(e, propName);
         const vdomEvent: VDomEvent = {
             waveid: compId,
-            eventtype: propName,
+            propname: propName,
             eventdata: eventData,
         };
         this.batchedEvents.push(vdomEvent);
@@ -426,12 +451,11 @@ export class VDomModel {
             rendercontext: renderContext,
             resync: this.needsResync,
             events: this.batchedEvents,
-            refupdates: this.refUpdates,
+            refupdates: this.getRefUpdates(),
         };
         this.needsResync = false;
         this.needsInitialization = false;
         this.batchedEvents = [];
-        this.refUpdates = [];
         return feUpdate;
     }
 }

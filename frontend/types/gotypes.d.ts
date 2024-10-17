@@ -639,7 +639,7 @@ declare global {
     // vdom.VDomEvent
     type VDomEvent = {
         waveid: string;
-        eventtype: string;
+        propname: string;
         eventdata: any;
     };
 

@@ -12,6 +12,7 @@ import * as React from "react";
 const TextTag = "#text";
 const FragmentTag = "#fragment";
 const WaveTextTag = "wave:text";
+const WaveNullTag = "wave:null";
 
 const VDomObjType_Ref = "ref";
 const VDomObjType_Binding = "binding";
@@ -208,6 +209,9 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
         };
     }, []);
 
+    if (elem.tag == WaveNullTag) {
+        return null;
+    }
     if (elem.tag == WaveTextTag) {
         return props.text;
     }

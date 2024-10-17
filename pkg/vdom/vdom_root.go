@@ -10,6 +10,7 @@ import (
 	"reflect"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 type vdomContextKeyType struct{}
@@ -23,8 +24,8 @@ type VDomContextVal struct {
 }
 
 type Atom struct {
-	Val    any             // the current value
-	FeVal  any             // the value from the frontend
+	Val    any
+	Dirty  bool
 	UsedBy map[string]bool // component waveid -> true
 }
 
@@ -82,9 +83,29 @@ func (r *RootElem) GetAtomVal(name string) any {
 	return atom.Val
 }
 
-func (r *RootElem) SetAtomVal(name string, val any) {
+func (r *RootElem) GetStateSync(full bool) []VDomStateSync {
+	stateSync := make([]VDomStateSync, 0)
+	for atomName, atom := range r.Atoms {
+		if atom.Dirty || full {
+			stateSync = append(stateSync, VDomStateSync{Atom: atomName, Value: atom.Val})
+			atom.Dirty = false
+		}
+	}
+	return stateSync
+}
+
+func (r *RootElem) SetAtomVal(name string, val any, markDirty bool) {
 	atom := r.GetAtom(name)
+	if !markDirty {
+		atom.Val = val
+		return
+	}
+	// try to avoid setting the value and marking as dirty if it's the "same"
+	if utilfn.JsonValEqual(val, atom.Val) {
+		return
+	}
 	atom.Val = val
+	atom.Dirty = true
 }
 
 func (r *RootElem) SetOuterCtx(ctx context.Context) {
@@ -111,30 +132,44 @@ func (vdf *VDomFunc) CallFn() {
 	rval.Call(nil)
 }
 
-func (r *RootElem) Event(id string, propName string) {
+func callVDomFn(fnVal any, data any) {
+	if fnVal == nil {
+		return
+	}
+	fn := fnVal
+	if vdf, ok := fnVal.(*VDomFunc); ok {
+		fn = vdf.Fn
+	}
+	if fn == nil {
+		return
+	}
+	rval := reflect.ValueOf(fn)
+	if rval.Kind() != reflect.Func {
+		return
+	}
+	rtype := rval.Type()
+	if rtype.NumIn() == 0 {
+		rval.Call(nil)
+		return
+	}
+	if rtype.NumIn() == 1 {
+		rval.Call([]reflect.Value{reflect.ValueOf(data)})
+		return
+	}
+}
+
+func (r *RootElem) Event(id string, propName string, data any) {
 	comp := r.CompMap[id]
 	if comp == nil || comp.Elem == nil {
 		return
 	}
 	fnVal := comp.Elem.Props[propName]
-	if fnVal == nil {
-		return
-	}
-	fn, ok := fnVal.(func())
-	if ok {
-		fn()
-		return
-	}
-	vdomFn, ok := fnVal.(*VDomFunc)
-	if ok {
-		vdomFn.CallFn()
-		return
-	}
+	callVDomFn(fnVal, data)
 }
 
 // this will be called by the frontend to say the DOM has been mounted
 // it will eventually send any updated "refs" to the backend as well
-func (r *RootElem) runWork() {
+func (r *RootElem) RunWork() {
 	workQueue := r.EffectWorkQueue
 	r.EffectWorkQueue = nil
 	// first, run effect cleanups
