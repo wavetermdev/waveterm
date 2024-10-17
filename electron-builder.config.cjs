@@ -73,7 +73,7 @@ const config = {
         afterInstall: "build/deb-postinstall.tpl",
     },
     win: {
-        icon: "build/icons.icns",
+        icon: "build/appicon-windows.ico",
         publisherName: "Command Line Inc",
         target: ["nsis", "msi", "zip"],
         certificateSubjectName: "Command Line Inc",
