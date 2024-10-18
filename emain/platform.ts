@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { app, ipcMain } from "electron";
+import envPaths from "env-paths";
 import { existsSync, mkdirSync } from "fs";
 import os from "os";
 import path from "path";
@@ -17,35 +18,20 @@ if (isDevVite) {
     process.env[WaveDevViteVarName] = "1";
 }
 
+const waveDirNamePrefix = "waveterm";
+const waveDirNameSuffix = isDev ? "dev" : "";
+const waveDirName = `${waveDirNamePrefix}${waveDirNameSuffix ? `-${waveDirNameSuffix}` : ""}`;
+
+const paths = envPaths("waveterm", { suffix: waveDirNameSuffix });
+
 app.setName(isDev ? "Wave (Dev)" : "Wave");
 const unamePlatform = process.platform;
 const unameArch: string = process.arch;
 keyutil.setKeyUtilPlatform(unamePlatform);
 
-ipcMain.on("get-is-dev", (event) => {
-    event.returnValue = isDev;
-});
-ipcMain.on("get-platform", (event, url) => {
-    event.returnValue = unamePlatform;
-});
-ipcMain.on("get-user-name", (event) => {
-    const userInfo = os.userInfo();
-    event.returnValue = userInfo.username;
-});
-ipcMain.on("get-host-name", (event) => {
-    event.returnValue = os.hostname();
-});
-ipcMain.on("get-webview-preload", (event) => {
-    event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
-});
-
 const WaveConfigHomeVarName = "WAVETERM_CONFIG_HOME";
 const WaveDataHomeVarName = "WAVETERM_DATA_HOME";
 const WaveHomeVarName = "WAVETERM_HOME";
-
-function getWaveDirName(): string {
-    return isDev ? "waveterm-dev" : "waveterm";
-}
 
 /**
  * Gets the path to the old Wave home directory (defaults to `~/.waveterm`).
@@ -56,7 +42,7 @@ function getWaveHomeDir(): string {
     if (!home) {
         const homeDir = process.env.HOME;
         if (homeDir) {
-            home = path.join(homeDir, `.${getWaveDirName()}`);
+            home = path.join(homeDir, `.${waveDirName}`);
         }
     }
     // If home exists and it has `wave.lock` in it, we know it has valid data from Wave >=v0.8. Otherwise, it could be for WaveLegacy (<v0.8)
@@ -91,18 +77,14 @@ function getWaveConfigDir(): string {
     }
 
     const override = process.env[WaveConfigHomeVarName];
+    const xdgConfigHome = process.env.XDG_CONFIG_HOME;
     let retVal: string;
     if (override) {
         retVal = override;
-    } else if (unamePlatform === "win32") {
-        retVal = path.join(process.env.LOCALAPPDATA, getWaveDirName(), "config");
+    } else if (xdgConfigHome) {
+        retVal = path.join(xdgConfigHome, waveDirName);
     } else {
-        const configHome = process.env.XDG_CONFIG_HOME;
-        if (configHome) {
-            retVal = path.join(configHome, getWaveDirName());
-        } else {
-            retVal = path.join(process.env.HOME, ".config", getWaveDirName());
-        }
+        retVal = paths.config;
     }
     return ensurePathExists(retVal);
 }
@@ -120,18 +102,14 @@ function getWaveDataDir(): string {
     }
 
     const override = process.env[WaveDataHomeVarName];
+    const xdgDataHome = process.env.XDG_DATA_HOME;
     let retVal: string;
     if (override) {
         retVal = override;
-    } else if (unamePlatform === "win32") {
-        retVal = path.join(process.env.LOCALAPPDATA, getWaveDirName(), "data");
+    } else if (xdgDataHome) {
+        retVal = path.join(xdgDataHome, waveDirName);
     } else {
-        const configHome = process.env.XDG_DATA_HOME;
-        if (configHome) {
-            retVal = path.join(configHome, getWaveDirName());
-        } else {
-            retVal = path.join(process.env.HOME, ".local", "share", getWaveDirName());
-        }
+        retVal = paths.config;
     }
     return ensurePathExists(retVal);
 }
@@ -158,6 +136,29 @@ function getWaveSrvPath(): string {
 function getWaveSrvCwd(): string {
     return getWaveDataDir();
 }
+
+ipcMain.on("get-is-dev", (event) => {
+    event.returnValue = isDev;
+});
+ipcMain.on("get-platform", (event, url) => {
+    event.returnValue = unamePlatform;
+});
+ipcMain.on("get-user-name", (event) => {
+    const userInfo = os.userInfo();
+    event.returnValue = userInfo.username;
+});
+ipcMain.on("get-host-name", (event) => {
+    event.returnValue = os.hostname();
+});
+ipcMain.on("get-webview-preload", (event) => {
+    event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
+});
+ipcMain.on("get-data-dir", (event) => {
+    event.returnValue = getWaveDataDir();
+});
+ipcMain.on("get-config-dir", (event) => {
+    event.returnValue = getWaveConfigDir();
+});
 
 export {
     getElectronAppBasePath,
