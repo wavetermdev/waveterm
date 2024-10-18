@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("api", {
     getCursorPoint: () => ipcRenderer.sendSync("get-cursor-point"),
     getUserName: () => ipcRenderer.sendSync("get-user-name"),
     getHostName: () => ipcRenderer.sendSync("get-host-name"),
+    getConfigDir: () => ipcRenderer.sendSync("get-config-dir"),
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
     getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),

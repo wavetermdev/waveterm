@@ -115,6 +115,7 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 	if event.Op == fsnotify.Chmod {
 		return
 	}
+	log.Printf("handleEvent: %s, %s\n", fileName, event.Op)
 	if !isValidSubSettingsFileName(fileName) {
 		return
 	}

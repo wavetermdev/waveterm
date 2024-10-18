@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -232,6 +234,60 @@ func ReadConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []C
 	}
 }
 
+func SelectEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.DirEntry {
+	rtn := make([]fs.DirEntry, 0)
+	for _, ent := range dirEnts {
+		if ent.IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(ent.Name(), fileNameSuffix) {
+			continue
+		}
+		rtn = append(rtn, ent)
+	}
+	return rtn
+}
+
+// Combine files from the defaults and home directory matching the supplied suffix into a single MetaMapType
+func ReadConfigsBySuffix(fileNameSuffix string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+	var rtn waveobj.MetaMapType
+	var allErrs []ConfigError
+	defaultsDirEnts, err := defaultconfig.ConfigFS.ReadDir(".")
+	if err != nil {
+		return nil, []ConfigError{{File: "", Err: err.Error()}}
+	}
+	defaultsDirSuffixEnts := SelectEntsBySuffix(defaultsDirEnts, fileNameSuffix)
+	homeDirEnts, err := os.ReadDir(configDirAbsPath)
+	if err != nil {
+		return nil, []ConfigError{{File: "", Err: err.Error()}}
+	}
+	homeDirSuffixEnts := SelectEntsBySuffix(homeDirEnts, fileNameSuffix)
+	numDefaultFiles := len(defaultsDirSuffixEnts)
+	numHomeFiles := len(homeDirSuffixEnts)
+	fileVals := make([]waveobj.MetaMapType, numDefaultFiles+numHomeFiles)
+	for i, ent := range defaultsDirSuffixEnts {
+		fileName := ent.Name()
+		fileVal, cerrs := ReadDefaultsConfigFile(fileName)
+		fileVals[i] = fileVal
+		allErrs = append(allErrs, cerrs...)
+	}
+	for i, ent := range homeDirSuffixEnts {
+		fileName := ent.Name()
+		fileVal, cerrs := ReadWaveHomeConfigFile(fileName)
+		fileVals[numDefaultFiles+i] = fileVal
+		allErrs = append(allErrs, cerrs...)
+	}
+
+	for _, fileVal := range fileVals {
+		if simpleMerge {
+			rtn = mergeMetaMapSimple(rtn, fileVal)
+		} else {
+			rtn = waveobj.MergeMeta(rtn, fileVal, true)
+		}
+	}
+	return rtn, allErrs
+}
+
 func ReadFullConfig() FullConfigType {
 	var fullConfig FullConfigType
 	configRType := reflect.TypeOf(fullConfig)
@@ -246,13 +302,19 @@ func ReadFullConfig() FullConfigType {
 			continue
 		}
 		jsonTag := utilfn.GetJsonTag(field)
+		simpleMerge := field.Tag.Get("merge") == ""
+		var configPart waveobj.MetaMapType
+		var errs []ConfigError
+		fileName := jsonTag + ".json"
 		if jsonTag == "-" || jsonTag == "" {
 			continue
+		} else if jsonTag == "presets" {
+			configPart, errs = ReadConfigsBySuffix(fileName, simpleMerge)
+			log.Printf("presets %v, %v\n", configPart, errs)
+		} else {
+			configPart, errs = ReadConfigPart(fileName, simpleMerge)
 		}
-		simpleMerge := field.Tag.Get("merge") == ""
-		fileName := jsonTag + ".json"
-		configPart, cerrs := ReadConfigPart(fileName, simpleMerge)
-		fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, cerrs...)
+		fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, errs...)
 		if configPart != nil {
 			fieldPtr := configRVal.Field(fieldIdx).Addr().Interface()
 			utilfn.ReUnmarshal(fieldPtr, configPart)
