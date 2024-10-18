@@ -118,18 +118,45 @@ class SysinfoViewModel {
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.addDataAtom = jotai.atom(null, (get, set, points) => {
-            const targetLen = get(this.numPoints) + 1;
+            const targetLen = get(this.numPoints);
             let data = get(this.dataAtom);
             try {
-                if (data.length > targetLen) {
-                    data = data.slice(data.length - targetLen);
+                const newDataRaw = [...data, ...points];
+                if (newDataRaw.length == 0) {
+                    return;
                 }
-                if (data.length < targetLen) {
-                    const defaultData = this.getDefaultData();
-                    data = [...defaultData.slice(defaultData.length - targetLen + data.length), ...data];
+                const latestItemTs = newDataRaw[newDataRaw.length - 1]?.ts ?? 0;
+                const cutoffTs = latestItemTs - 1000 * targetLen;
+                const blankItemTemplate = { ...newDataRaw[newDataRaw.length - 1] };
+                for (const key in blankItemTemplate) {
+                    blankItemTemplate[key] = NaN;
                 }
-                const newData = [...data.slice(points.length), ...points];
-                set(this.dataAtom, newData);
+
+                const newDataFiltered = newDataRaw.filter((dataItem) => dataItem.ts >= cutoffTs);
+                if (newDataFiltered.length == 0) {
+                    return;
+                }
+                const newDataWithGaps: Array<DataItem> = [];
+                if (newDataFiltered[0].ts > cutoffTs) {
+                    const blankItemStart = { ...blankItemTemplate, ts: cutoffTs };
+                    const blankItemEnd = { ...blankItemTemplate, ts: newDataFiltered[0].ts - 1 };
+                    newDataWithGaps.push(blankItemStart);
+                    newDataWithGaps.push(blankItemEnd);
+                }
+                newDataWithGaps.push(newDataFiltered[0]);
+                for (let i = 1; i < newDataFiltered.length; i++) {
+                    const prevIdxItem = newDataFiltered[i - 1];
+                    const curIdxItem = newDataFiltered[i];
+                    const timeDiff = curIdxItem.ts - prevIdxItem.ts;
+                    if (timeDiff > 2000) {
+                        const blankItemStart = { ...blankItemTemplate, ts: prevIdxItem.ts + 1, blank: 1 };
+                        const blankItemEnd = { ...blankItemTemplate, ts: curIdxItem.ts - 1, blank: 1 };
+                        newDataWithGaps.push(blankItemStart);
+                        newDataWithGaps.push(blankItemEnd);
+                    }
+                    newDataWithGaps.push(curIdxItem);
+                }
+                set(this.dataAtom, newDataWithGaps);
             } catch (e) {
                 console.log("Error adding data to sysinfo", e);
             }
@@ -188,7 +215,7 @@ class SysinfoViewModel {
             }
             return connValue;
         });
-        this.dataAtom = jotai.atom(this.getDefaultData());
+        this.dataAtom = jotai.atom([]);
         this.loadInitialData();
         this.connStatus = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -214,8 +241,8 @@ class SysinfoViewModel {
             const newData = this.getDefaultData();
             const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
             // splice the initial data into the default data (replacing the newest points)
-            newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
-            globalStore.set(this.addDataAtom, newData);
+            //newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
+            globalStore.set(this.addDataAtom, initialDataItems);
         } catch (e) {
             console.log("Error loading initial data for sysinfo", e);
         } finally {
