@@ -1075,7 +1075,7 @@ async function relaunchBrowserWindows(): Promise<void> {
     }
     for (const win of wins) {
         await win.readyPromise;
-        console.log("show", win.waveWindowId);
+        console.log("show window", win.waveWindowId);
         win.show();
     }
 }

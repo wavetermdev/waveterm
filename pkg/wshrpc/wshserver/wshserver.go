@@ -422,7 +422,6 @@ func (ws *WshServer) EventPublishCommand(ctx context.Context, data wps.WaveEvent
 }
 
 func (ws *WshServer) EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error {
-	log.Printf("EventSubCommand: %v\n", data)
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	if rpcSource == "" {
 		return fmt.Errorf("no rpc source set")
