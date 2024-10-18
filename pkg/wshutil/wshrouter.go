@@ -278,10 +278,14 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
 	log.Printf("[router] registering wsh route %q\n", routeId)
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
+	alreadyExists := router.RouteMap[routeId] != nil
+	if alreadyExists {
+		log.Printf("[router] warning: route %q already exists (replacing)\n", routeId)
+	}
 	router.RouteMap[routeId] = rpc
 	go func() {
 		// announce
-		if router.GetUpstreamClient() != nil {
+		if !alreadyExists && router.GetUpstreamClient() != nil {
 			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
 			announceBytes, _ := json.Marshal(announceMsg)
 			router.GetUpstreamClient().SendRpcMessage(announceBytes)
