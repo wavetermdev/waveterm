@@ -60,7 +60,6 @@ export class WebViewModel implements ViewModel {
         this.homepageUrl = atom((get) => {
             const defaultUrl = get(defaultUrlAtom);
             const pinnedUrl = get(this.blockAtom).meta.pinnedurl;
-            console.log("homepageUrl", pinnedUrl, defaultUrl);
             return pinnedUrl ?? defaultUrl;
         });
         this.urlWrapperClassName = atom("");

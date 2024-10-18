@@ -12,6 +12,7 @@ const dlog = debug("wave:ws");
 const WarnWebSocketSendSize = 1024 * 1024; // 1MB
 const MaxWebSocketSendSize = 5 * 1024 * 1024; // 5MB
 const reconnectHandlers: (() => void)[] = [];
+const StableConnTime = 2000;
 
 function addWSReconnectHandler(handler: () => void) {
     reconnectHandlers.push(handler);
@@ -45,6 +46,7 @@ class WSControl {
     lastReconnectTime: number = 0;
     eoOpts: ElectronOverrideOpts;
     noReconnect: boolean = false;
+    onOpenTimeoutId: NodeJS.Timeout = null;
 
     constructor(
         baseHostPort: string,
@@ -80,9 +82,15 @@ class WSControl {
                   }
                 : null
         );
-        this.wsConn.onopen = this.onopen.bind(this);
-        this.wsConn.onmessage = this.onmessage.bind(this);
-        this.wsConn.onclose = this.onclose.bind(this);
+        this.wsConn.onopen = (e: Event) => {
+            this.onopen(e);
+        };
+        this.wsConn.onmessage = (e: MessageEvent) => {
+            this.onmessage(e);
+        };
+        this.wsConn.onclose = (e: CloseEvent) => {
+            this.onclose(e);
+        };
         // turns out onerror is not necessary (onclose always follows onerror)
         // this.wsConn.onerror = this.onerror;
     }
@@ -118,8 +126,11 @@ class WSControl {
         }, timeout * 1000);
     }
 
-    onclose(event: any) {
+    onclose(event: CloseEvent) {
         // console.log("close", event);
+        if (this.onOpenTimeoutId) {
+            clearTimeout(this.onOpenTimeoutId);
+        }
         if (event.wasClean) {
             dlog("connection closed");
         } else {
@@ -132,15 +143,18 @@ class WSControl {
         }
     }
 
-    onopen() {
+    onopen(e: Event) {
         dlog("connection open");
         this.open = true;
         this.opening = false;
+        this.onOpenTimeoutId = setTimeout(() => {
+            this.reconnectTimes = 0;
+            dlog("clear reconnect times");
+        }, StableConnTime);
         for (let handler of reconnectHandlers) {
             handler();
         }
         this.runMsgQueue();
-        // reconnectTimes is reset in onmessage:hello
     }
 
     runMsgQueue() {
@@ -157,7 +171,7 @@ class WSControl {
         }, 100);
     }
 
-    onmessage(event: any) {
+    onmessage(event: MessageEvent) {
         let eventData = null;
         if (event.data != null) {
             eventData = JSON.parse(event.data);
@@ -171,10 +185,6 @@ class WSControl {
         }
         if (eventData.type == "pong") {
             // nothing
-            return;
-        }
-        if (eventData.type == "hello") {
-            this.reconnectTimes = 0;
             return;
         }
         if (this.messageCallback) {
