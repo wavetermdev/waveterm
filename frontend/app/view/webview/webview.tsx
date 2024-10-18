@@ -635,7 +635,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                 preload={getWebviewPreloadUrl()}
                 // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
                 allowpopups="true"
-            ></webview>
+            />
             {errorText && (
                 <div className="webview-error">
                     <div>{errorText}</div>
