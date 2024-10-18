@@ -30,6 +30,9 @@ const wsInitialPingTime = 1 * time.Second
 
 const DefaultCommandTimeout = 2 * time.Second
 
+var GlobalLock = &sync.Mutex{}
+var RouteToConnMap = map[string]string{}
+
 func RunWebSocketServer(listener net.Listener) {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/ws", HandleWs)
@@ -240,6 +243,17 @@ func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, routeI
 	}
 }
 
+func registerConn(wsConnId string, windowId string, routeId string, outputCh chan any, wproxy *wshutil.WshRpcProxy) {
+	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
+	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy)
+}
+
+func unregisterConn(wsConnId string, routeId string, wproxy *wshutil.WshRpcProxy) {
+	eventbus.UnregisterWSChannel(wsConnId)
+	wshutil.DefaultRouter.UnregisterRoute(routeId)
+	close(wproxy.ToRemoteCh)
+}
+
 func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	windowId := r.URL.Query().Get("windowid")
 	if windowId == "" {
@@ -261,23 +275,17 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	wsConnId := uuid.New().String()
 	outputCh := make(chan any, 100)
 	closeCh := make(chan any)
-	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
 	var routeId string
 	if windowId == wshutil.ElectronRoute {
 		routeId = wshutil.ElectronRoute
 	} else {
 		routeId = wshutil.MakeWindowRouteId(windowId)
 	}
-	defer eventbus.UnregisterWSChannel(wsConnId)
-	log.Printf("[websocket] new connection: windowid:%s connid:%s routeid:%s\n", windowId, wsConnId, routeId)
 	// we create a wshproxy to handle rpc messages to/from the window
 	wproxy := wshutil.MakeRpcProxy()
-	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy)
-	defer func() {
-		wshutil.DefaultRouter.UnregisterRoute(routeId)
-		close(wproxy.ToRemoteCh)
-	}()
-	// WshServerFactoryFn(rpcInputCh, rpcOutputCh, wshrpc.RpcContext{})
+	log.Printf("[websocket] new connection: windowid:%s connid:%s routeid:%s\n", windowId, wsConnId, routeId)
+	registerConn(wsConnId, windowId, routeId, outputCh, wproxy)
+	defer unregisterConn(wsConnId, routeId, wproxy)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
