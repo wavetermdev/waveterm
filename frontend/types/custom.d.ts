@@ -366,6 +366,15 @@ declare global {
         initResolve: () => void;
         waveReadyResolve: () => void;
     };
+
+    type TimeSeriesMeta = {
+        name?: string;
+        color?: string;
+        label?: string;
+        maxy?: string | number;
+        miny?: string | number;
+        decimalPlaces?: number;
+    };
 }
 
 export {};

@@ -40,10 +40,10 @@ func RunWebSocketServer(listener net.Listener) {
 		Handler:        gr,
 	}
 	server.SetKeepAlivesEnabled(false)
-	log.Printf("Running websocket server on %s\n", listener.Addr())
+	log.Printf("[websocket] running websocket server on %s\n", listener.Addr())
 	err := server.Serve(listener)
 	if err != nil {
-		log.Printf("[error] trying to run websocket server: %v\n", err)
+		log.Printf("[websocket] error trying to run websocket server: %v\n", err)
 	}
 }
 
@@ -81,7 +81,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 		r := recover()
 		if r != nil {
 			rtnErr = fmt.Errorf("panic: %v", r)
-			log.Printf("panic in processMessage: %v\n", r)
+			log.Printf("[websocket] panic in processMessage: %v\n", r)
 			debug.PrintStack()
 		}
 		if rtnErr == nil {
@@ -108,7 +108,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 		msgBytes, err := json.Marshal(rpcMsg)
 		if err != nil {
 			// this really should never fail since we just unmarshalled this value
-			log.Printf("error marshalling rpc message: %v\n", err)
+			log.Printf("[websocket] error marshalling rpc message: %v\n", err)
 			return
 		}
 		rpcInputCh <- msgBytes
@@ -125,7 +125,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 		msgBytes, err := json.Marshal(rpcMsg)
 		if err != nil {
 			// this really should never fail since we just unmarshalled this value
-			log.Printf("error marshalling rpc message: %v\n", err)
+			log.Printf("[websocket] error marshalling rpc message: %v\n", err)
 			return
 		}
 		rpcInputCh <- msgBytes
@@ -152,7 +152,7 @@ func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan []by
 	processWSCommand(jmsg, outputCh, rpcInputCh)
 }
 
-func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan []byte) {
+func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan []byte, routeId string) {
 	readWait := wsReadWaitTimeout
 	conn.SetReadLimit(64 * 1024)
 	conn.SetReadDeadline(time.Now().Add(readWait))
@@ -160,13 +160,13 @@ func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInpu
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Printf("ReadPump error: %v\n", err)
+			log.Printf("[websocket] ReadPump error (%s): %v\n", routeId, err)
 			break
 		}
 		jmsg := map[string]any{}
 		err = json.Unmarshal(message, &jmsg)
 		if err != nil {
-			log.Printf("Error unmarshalling json: %v\n", err)
+			log.Printf("[websocket] error unmarshalling json: %v\n", err)
 			break
 		}
 		conn.SetReadDeadline(time.Now().Add(readWait))
@@ -197,7 +197,7 @@ func WritePing(conn *websocket.Conn) error {
 	return nil
 }
 
-func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
+func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, routeId string) {
 	ticker := time.NewTicker(wsInitialPingTime)
 	defer ticker.Stop()
 	initialPing := true
@@ -211,7 +211,7 @@ func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
 			} else {
 				barr, err = json.Marshal(msg)
 				if err != nil {
-					log.Printf("cannot marshal websocket message: %v\n", err)
+					log.Printf("[websocket] cannot marshal websocket message: %v\n", err)
 					// just loop again
 					break
 				}
@@ -219,14 +219,14 @@ func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
 			err = conn.WriteMessage(websocket.TextMessage, barr)
 			if err != nil {
 				conn.Close()
-				log.Printf("WritePump error: %v\n", err)
+				log.Printf("[websocket] WritePump error (%s): %v\n", routeId, err)
 				return
 			}
 
 		case <-ticker.C:
 			err := WritePing(conn)
 			if err != nil {
-				log.Printf("WritePump error: %v\n", err)
+				log.Printf("[websocket] WritePump error (%s): %v\n", routeId, err)
 				return
 			}
 			if initialPing {
@@ -249,6 +249,7 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(fmt.Sprintf("error validating authkey: %v", err)))
+		log.Printf("[websocket] error validating authkey: %v\n", err)
 		return err
 	}
 	conn, err := WebSocketUpgrader.Upgrade(w, r, nil)
@@ -257,7 +258,6 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer conn.Close()
 	wsConnId := uuid.New().String()
-	log.Printf("New websocket connection: tabid:%s connid:%s\n", tabId, wsConnId)
 	outputCh := make(chan any, 100)
 	closeCh := make(chan any)
 	eventbus.RegisterWSChannel(wsConnId, tabId, outputCh)
@@ -268,6 +268,7 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 		routeId = wshutil.MakeTabRouteId(tabId)
 	}
 	defer eventbus.UnregisterWSChannel(wsConnId)
+	log.Printf("[websocket] new connection: tabid:%s connid:%s routeid:%s\n", tabId, wsConnId, routeId)
 	// we create a wshproxy to handle rpc messages to/from the window
 	wproxy := wshutil.MakeRpcProxy()
 	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy)
@@ -292,12 +293,12 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	go func() {
 		// read loop
 		defer wg.Done()
-		ReadLoop(conn, outputCh, closeCh, wproxy.FromRemoteCh)
+		ReadLoop(conn, outputCh, closeCh, wproxy.FromRemoteCh, routeId)
 	}()
 	go func() {
 		// write loop
 		defer wg.Done()
-		WriteLoop(conn, outputCh, closeCh)
+		WriteLoop(conn, outputCh, closeCh, routeId)
 	}()
 	wg.Wait()
 	close(wproxy.FromRemoteCh)

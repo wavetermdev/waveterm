@@ -41,13 +41,13 @@
             }
         }
     },
-    "defwidget@cpuplot": {
+    "defwidget@sysinfo": {
         "display:order": 5,
         "icon": "chart-line",
-        "label": "cpu",
+        "label": "sysinfo",
         "blockdef": {
             "meta": {
-                "view": "cpuplot"
+                "view": "sysinfo"
             }
         }
     }

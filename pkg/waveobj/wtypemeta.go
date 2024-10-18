@@ -64,6 +64,8 @@ type MetaTSType struct {
 	GraphNumPoints int      `json:"graph:numpoints,omitempty"`
 	GraphMetrics   []string `json:"graph:metrics,omitempty"`
 
+	SysinfoType string `json:"sysinfo:type,omitempty"`
+
 	// for tabs
 	BgClear     bool    `json:"bg:*,omitempty"`
 	Bg          string  `json:"bg,omitempty"`
