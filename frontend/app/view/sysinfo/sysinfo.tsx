@@ -137,7 +137,7 @@ class SysinfoViewModel {
                     return;
                 }
                 const newDataWithGaps: Array<DataItem> = [];
-                if (newDataFiltered[0].ts - 2000 > cutoffTs) {
+                if (newDataFiltered[0].ts > cutoffTs) {
                     const blankItemStart = { ...blankItemTemplate, ts: cutoffTs };
                     const blankItemEnd = { ...blankItemTemplate, ts: newDataFiltered[0].ts - 1 };
                     newDataWithGaps.push(blankItemStart);
