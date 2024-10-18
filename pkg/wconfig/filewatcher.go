@@ -14,7 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
-var configDirAbsPath = filepath.Join(wavebase.GetWaveHomeDir(), wavebase.ConfigDir)
+var configDirAbsPath = wavebase.GetWaveConfigDir()
 
 var instance *Watcher
 var once sync.Once
