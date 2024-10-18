@@ -13,7 +13,7 @@ import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue } from "jotai";
-import React, { memo, useEffect, useState } from "react";
+import { Fragment, createRef, memo, useEffect, useRef, useState } from "react";
 import "./webview.less";
 
 let webviewPreloadUrl = null;
@@ -76,8 +76,8 @@ export class WebViewModel implements ViewModel {
         this.refreshIcon = atom("rotate-right");
         this.viewIcon = atom("globe");
         this.viewName = atom("Web");
-        this.urlInputRef = React.createRef<HTMLInputElement>();
-        this.webviewRef = React.createRef<WebviewTag>();
+        this.urlInputRef = createRef<HTMLInputElement>();
+        this.webviewRef = createRef<WebviewTag>();
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -485,7 +485,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const defaultSearch = useAtomValue(defaultSearchAtom);
     let metaUrl = blockData?.meta?.url || defaultUrl;
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
-    const metaUrlRef = React.useRef(metaUrl);
+    const metaUrlRef = useRef(metaUrl);
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(metaUrl);
@@ -624,7 +624,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     }, []);
 
     return (
-        <>
+        <Fragment>
             <webview
                 id="webview"
                 className="webview"
@@ -641,7 +641,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                     <div>{errorText}</div>
                 </div>
             )}
-        </>
+        </Fragment>
     );
 });
 
