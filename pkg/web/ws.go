@@ -295,13 +295,11 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	} else {
 		routeId = wshutil.MakeWindowRouteId(windowId)
 	}
+	log.Printf("[websocket] new connection: windowid:%s connid:%s routeid:%s\n", windowId, wsConnId, routeId)
 	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
 	defer eventbus.UnregisterWSChannel(wsConnId)
-
-	// we create a wshproxy to handle rpc messages to/from the window
-	wproxy := wshutil.MakeRpcProxy()
+	wproxy := wshutil.MakeRpcProxy() // we create a wshproxy to handle rpc messages to/from the window
 	defer close(wproxy.ToRemoteCh)
-	log.Printf("[websocket] new connection: windowid:%s connid:%s routeid:%s\n", windowId, wsConnId, routeId)
 	registerConn(wsConnId, routeId, wproxy)
 	defer unregisterConn(wsConnId, routeId)
 	wg := &sync.WaitGroup{}
