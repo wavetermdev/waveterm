@@ -1,8 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Input } from "@/app/element/input";
-import { InputDecoration } from "@/app/element/inputdecoration";
+import { Input, InputGroup, InputRightElement } from "@/app/element/input";
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
@@ -216,21 +215,19 @@ const TypeAheadModal = ({
                 ref={modalRef}
                 className={clsx("type-ahead-modal", className, { "has-suggestions": suggestions?.length > 0 })}
             >
-                <Input
-                    ref={inputRef}
-                    inputRef={realInputRef}
-                    onChange={handleChange}
-                    value={value}
-                    autoFocus={autoFocus}
-                    placeholder={label}
-                    decoration={{
-                        endDecoration: (
-                            <InputDecoration>
-                                <i className="fa-regular fa-magnifying-glass"></i>
-                            </InputDecoration>
-                        ),
-                    }}
-                />
+                <InputGroup>
+                    <Input
+                        ref={inputRef}
+                        inputRef={realInputRef}
+                        onChange={handleChange}
+                        value={value}
+                        autoFocus={autoFocus}
+                        placeholder={label}
+                    />
+                    <InputRightElement>
+                        <i className="fa-regular fa-magnifying-glass"></i>
+                    </InputRightElement>
+                </InputGroup>
                 <div
                     ref={suggestionsWrapperRef}
                     className="suggestions-wrapper"

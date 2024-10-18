@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { Input, InputGroup, InputLeftElement, InputRightElement } from "./input"; // Adjust the import path if necessary
+import { Input, InputGroup, InputLeftElement, InputRightElement } from "./input";
 
-// Define the meta object
 const meta: Meta<typeof InputGroup> = {
-    title: "Elements/Input", // The title under which your story will appear in Storybook
-    component: InputGroup, // The component being documented
+    title: "Elements/Input",
+    component: InputGroup,
     args: {
-        className: "custom-input-group-class", // Default args
+        className: "custom-input-group-class",
     },
     argTypes: {
         className: {
@@ -18,7 +17,6 @@ const meta: Meta<typeof InputGroup> = {
     },
 };
 
-// Export the meta object as the default export
 export default meta;
 
 type Story = StoryObj<typeof InputGroup>;
@@ -64,6 +62,21 @@ export const InputWithLeftAndRightElement: Story = {
                     <InputRightElement>
                         <i className="fa-sharp fa-solid fa-check"></i>
                     </InputRightElement>
+                </InputGroup>
+            </div>
+        );
+    },
+    args: {
+        className: "custom-input-group-class",
+    },
+};
+
+export const InputMultiLine: Story = {
+    render: (args) => {
+        return (
+            <div style={{ padding: "20px", height: "400px", border: "2px solid black" }}>
+                <InputGroup>
+                    <Input multiLine={true} placeholder="Enter your message" rows={5} />
                 </InputGroup>
             </div>
         );

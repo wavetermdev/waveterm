@@ -3,6 +3,7 @@
 
 import clsx from "clsx";
 import React, { forwardRef, useState } from "react";
+
 import "./input.less";
 
 interface InputGroupProps {
@@ -56,7 +57,7 @@ interface InputProps {
     value?: string;
     className?: string;
     onChange?: (value: string) => void;
-    onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+    onKeyDown?: (event: React.KeyboardEvent<any>) => void;
     onFocus?: () => void;
     onBlur?: () => void;
     placeholder?: string;
@@ -66,8 +67,10 @@ interface InputProps {
     autoFocus?: boolean;
     disabled?: boolean;
     isNumber?: boolean;
-    inputRef?: React.MutableRefObject<HTMLInputElement>;
+    inputRef?: React.MutableRefObject<any>;
     manageFocus?: (isFocused: boolean) => void;
+    multiLine?: boolean;
+    rows?: number;
 }
 
 const Input = forwardRef<HTMLDivElement, InputProps>(
@@ -89,12 +92,14 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
             isNumber,
             inputRef,
             manageFocus,
+            multiLine = false,
+            rows = 1,
         }: InputProps,
         ref
     ) => {
         const [internalValue, setInternalValue] = useState(defaultValue);
 
-        const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const handleInputChange = (e: React.ChangeEvent<any>) => {
             const inputValue = e.target.value;
 
             if (isNumber && inputValue !== "" && !/^\d*$/.test(inputValue)) {
@@ -133,19 +138,36 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
                             {label}
                         </label>
                     )}
-                    <input
-                        className="input-inner-input"
-                        ref={inputRef}
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        onKeyDown={onKeyDown}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        placeholder={placeholder}
-                        maxLength={maxLength}
-                        autoFocus={autoFocus}
-                        disabled={disabled}
-                    />
+                    {multiLine ? (
+                        <textarea
+                            className={clsx("input-inner-textarea")}
+                            ref={inputRef}
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onKeyDown={onKeyDown}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
+                            placeholder={placeholder}
+                            maxLength={maxLength}
+                            autoFocus={autoFocus}
+                            disabled={disabled}
+                            rows={rows}
+                        />
+                    ) : (
+                        <input
+                            className={clsx("input-inner-input")}
+                            ref={inputRef}
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onKeyDown={onKeyDown}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
+                            placeholder={placeholder}
+                            maxLength={maxLength}
+                            autoFocus={autoFocus}
+                            disabled={disabled}
+                        />
+                    )}
                 </div>
             </div>
         );

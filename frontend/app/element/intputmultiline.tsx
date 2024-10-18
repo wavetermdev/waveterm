@@ -145,13 +145,7 @@ const InputMultiLine = forwardRef<HTMLDivElement, InputMultiLineProps>(
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div className="input-inner">
                     {label && (
-                        <label
-                            className={clsx("input-inner-label", {
-                                float: hasContent || focused || placeholder,
-                                "offset-left": decoration?.startDecoration,
-                            })}
-                            htmlFor={label}
-                        >
+                        <label className={clsx("input-inner-label")} htmlFor={label}>
                             {label}
                         </label>
                     )}
