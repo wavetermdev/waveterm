@@ -17,6 +17,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -77,7 +78,9 @@ func (cs *ClientService) MakeWindow(ctx context.Context) (*waveobj.Window, error
 }
 
 func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnStatus, error) {
-	return conncontroller.GetAllConnStatus(), nil
+	sshStatuses := conncontroller.GetAllConnStatus()
+	wslStatuses := wsl.GetAllConnStatus()
+	return append(sshStatuses, wslStatuses...), nil
 }
 
 // moves the window to the front of the windowId stack
