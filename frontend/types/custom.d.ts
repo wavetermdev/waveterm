@@ -64,6 +64,7 @@ declare global {
         getEnv: (varName: string) => string;
         getUserName: () => string;
         getHostName: () => string;
+        getConfigDir: () => string;
         getWebviewPreload: () => string;
         getAboutModalDetails: () => AboutModalDetails;
         getDocsiteUrl: () => string;
