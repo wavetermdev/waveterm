@@ -109,7 +109,7 @@ function getWaveDataDir(): string {
     } else if (xdgDataHome) {
         retVal = path.join(xdgDataHome, waveDirName);
     } else {
-        retVal = paths.config;
+        retVal = paths.data;
     }
     return ensurePathExists(retVal);
 }
