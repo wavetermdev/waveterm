@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -310,7 +309,6 @@ func ReadFullConfig() FullConfigType {
 			continue
 		} else if jsonTag == "presets" {
 			configPart, errs = ReadConfigsBySuffix(fileName, simpleMerge)
-			log.Printf("presets %v, %v\n", configPart, errs)
 		} else {
 			configPart, errs = ReadConfigPart(fileName, simpleMerge)
 		}
