@@ -31,7 +31,7 @@ const wsInitialPingTime = 1 * time.Second
 const DefaultCommandTimeout = 2 * time.Second
 
 var GlobalLock = &sync.Mutex{}
-var RouteToConnMap = map[string]string{}
+var RouteToConnMap = map[string]string{} // routeid => connid
 
 func RunWebSocketServer(listener net.Listener) {
 	gr := mux.NewRouter()
@@ -243,15 +243,29 @@ func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, routeI
 	}
 }
 
-func registerConn(wsConnId string, windowId string, routeId string, outputCh chan any, wproxy *wshutil.WshRpcProxy) {
-	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
-	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy)
+func registerConn(wsConnId string, routeId string, wproxy *wshutil.WshRpcProxy) {
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	curConnId := RouteToConnMap[routeId]
+	if curConnId != "" {
+		log.Printf("[websocket] warning: replacing existing connection for route %q\n", routeId)
+		wshutil.DefaultRouter.UnregisterRoute(routeId)
+	}
+	RouteToConnMap[routeId] = wsConnId
+	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy) // better to register
 }
 
-func unregisterConn(wsConnId string, routeId string, wproxy *wshutil.WshRpcProxy) {
-	eventbus.UnregisterWSChannel(wsConnId)
+func unregisterConn(wsConnId string, routeId string) {
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	curConnId := RouteToConnMap[routeId]
+	if curConnId != wsConnId {
+		// only unregister if we are the current connection (otherwise we were already removed)
+		log.Printf("[websocket] warning: trying to unregister connection %q for route %q but it is not the current connection (ignoring)\n", wsConnId, routeId)
+		return
+	}
+	delete(RouteToConnMap, routeId)
 	wshutil.DefaultRouter.UnregisterRoute(routeId)
-	close(wproxy.ToRemoteCh)
 }
 
 func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
@@ -281,11 +295,15 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	} else {
 		routeId = wshutil.MakeWindowRouteId(windowId)
 	}
+	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
+	defer eventbus.UnregisterWSChannel(wsConnId)
+
 	// we create a wshproxy to handle rpc messages to/from the window
 	wproxy := wshutil.MakeRpcProxy()
+	defer close(wproxy.ToRemoteCh)
 	log.Printf("[websocket] new connection: windowid:%s connid:%s routeid:%s\n", windowId, wsConnId, routeId)
-	registerConn(wsConnId, windowId, routeId, outputCh, wproxy)
-	defer unregisterConn(wsConnId, routeId, wproxy)
+	registerConn(wsConnId, routeId, wproxy)
+	defer unregisterConn(wsConnId, routeId)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
