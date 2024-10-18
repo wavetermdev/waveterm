@@ -485,6 +485,8 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const [webContentsId, setWebContentsId] = useState(null);
     const [domReady, setDomReady] = useState(false);
 
+    const [errorText, setErrorText] = useState("");
+
     function setBgColor() {
         const webview = model.webviewRef.current;
         if (!webview) {
@@ -532,6 +534,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             return;
         }
         const navigateListener = (e: any) => {
+            setErrorText("");
             model.handleNavigate(e.url);
         };
         const newWindowHandler = (e: any) => {
@@ -554,7 +557,9 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             if (e.errorCode === -3) {
                 console.warn("Suppressed ERR_ABORTED error", e);
             } else {
-                console.error(`Failed to load ${e.validatedURL}: ${e.errorDescription}`);
+                const errorMessage = `Failed to load ${e.validatedURL}: ${e.errorDescription}`;
+                console.error(errorMessage);
+                setErrorText(errorMessage);
                 if (onFailLoad) {
                     const curUrl = model.webviewRef?.current.getURL();
                     onFailLoad(curUrl);
@@ -608,17 +613,24 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     }, []);
 
     return (
-        <webview
-            id="webview"
-            className="webview"
-            ref={model.webviewRef}
-            src={metaUrlInitial}
-            data-blockid={model.blockId}
-            data-webcontentsid={webContentsId} // needed for emain
-            preload={getWebviewPreloadUrl()}
-            // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
-            allowpopups="true"
-        ></webview>
+        <>
+            <webview
+                id="webview"
+                className="webview"
+                ref={model.webviewRef}
+                src={metaUrlInitial}
+                data-blockid={model.blockId}
+                data-webcontentsid={webContentsId} // needed for emain
+                preload={getWebviewPreloadUrl()}
+                // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
+                allowpopups="true"
+            ></webview>
+            {errorText && (
+                <div className="webview-error">
+                    <div>{errorText}</div>
+                </div>
+            )}
+        </>
     );
 });
 
