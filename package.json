@@ -81,7 +81,7 @@
         "vitest": "^2.1.3"
     },
     "dependencies": {
-        "@floating-ui/react": "^0.26.24",
+        "@floating-ui/react": "^0.26.25",
         "@monaco-editor/loader": "^1.4.0",
         "@monaco-editor/react": "^4.6.0",
         "@observablehq/plot": "^0.6.16",
@@ -136,7 +136,7 @@
         "use-device-pixel-ratio": "^1.1.2",
         "winston": "^3.15.0",
         "ws": "^8.18.0",
-        "yaml": "^2.5.1"
+        "yaml": "^2.6.0"
     },
     "resolutions": {
         "send@npm:0.18.0": "0.19.0",
