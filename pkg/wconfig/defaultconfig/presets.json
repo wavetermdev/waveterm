@@ -107,12 +107,5 @@
         "ai:model": "gpt-4o-mini",
         "ai:maxtokens": 2048,
         "ai:timeoutms": 60000
-    },
-    "ai@ollama-llama3.1": {
-        "display:name": "ollama - llama3.1",
-        "display:order": 0,
-        "ai:*": true,
-        "ai:baseurl": "http://localhost:11434/v1",
-        "ai:model": "llama3.1:latest"
     }
 }
