@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getApi } from "@/app/store/global";
 import { wpsReconnectHandler } from "@/app/store/wps";
 import { WshClient } from "@/app/store/wshclient";
 import { makeTabRouteId, WshRouter } from "@/app/store/wshrouter";
@@ -139,6 +140,9 @@ function initWshrpc(tabId: string): WSControl {
         DefaultRouter.reannounceRoutes();
     });
     addWSReconnectHandler(wpsReconnectHandler);
+    getApi().onResume(() => {
+        globalWS?.onResume();
+    });
     return globalWS;
 }
 

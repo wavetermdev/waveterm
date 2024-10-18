@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld("api", {
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
     getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
+    onResume: (callback) => ipcRenderer.on("resume", callback),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),

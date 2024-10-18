@@ -65,6 +65,7 @@ declare global {
         getUserName: () => string;
         getHostName: () => string;
         getWebviewPreload: () => string;
+        onResume: (callback: () => void) => void;
         getAboutModalDetails: () => AboutModalDetails;
         getDocsiteUrl: () => string;
         showContextMenu: (menu?: ElectronContextMenuItem[]) => void;

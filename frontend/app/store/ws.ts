@@ -68,7 +68,7 @@ class WSControl {
     }
 
     connectNow(desc: string) {
-        if (this.open || this.noReconnect) {
+        if (this.open || this.noReconnect || this.opening) {
             return;
         }
         this.lastReconnectTime = Date.now();
@@ -134,7 +134,7 @@ class WSControl {
         if (event.wasClean) {
             dlog("connection closed");
         } else {
-            dlog("connection error/disconnected");
+            dlog("connection error/disconnected", event.code, event.reason);
         }
         if (this.open || this.opening) {
             this.open = false;
@@ -155,6 +155,16 @@ class WSControl {
             handler();
         }
         this.runMsgQueue();
+    }
+
+    onResume() {
+        dlog("onResume");
+        this.reconnectTimes = 0;
+        if (!this.open) {
+            this.reconnect();
+        } else {
+            this.sendPing();
+        }
     }
 
     runMsgQueue() {

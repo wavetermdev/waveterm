@@ -556,3 +556,9 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
         }
     }, 30);
 }
+
+electron.powerMonitor.on("resume", () => {
+    for (const tabView of wcvCache.values()) {
+        tabView.webContents.send("resume");
+    }
+});
