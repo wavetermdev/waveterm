@@ -122,44 +122,41 @@ class SysinfoViewModel {
             let data = get(this.dataAtom);
             try {
                 const newDataRaw = [...data, ...points];
+                if (newDataRaw.length == 0) {
+                    return;
+                }
                 const latestItemTs = newDataRaw[newDataRaw.length - 1]?.ts ?? 0;
                 const cutoffTs = latestItemTs - 1000 * targetLen;
                 const blankItemTemplate = { ...newDataRaw[newDataRaw.length - 1] };
                 for (const key in blankItemTemplate) {
                     blankItemTemplate[key] = NaN;
                 }
-                blankItemTemplate.blank = 1; // sentinel for resizing at end
-                const histLen = Math.floor(targetLen / 2);
-                const histogram: Array<Array<DataItem>> = [];
-                histogram.length = histLen;
-                for (const dataItem of newDataRaw) {
-                    const idx = Math.floor(((dataItem?.ts ?? 0) - cutoffTs) / 2000);
-                    if (idx < 0 || idx > histLen) {
-                        continue;
-                    }
-                    const curBin: Array<DataItem> = histogram[idx];
-                    if (curBin === undefined) {
-                        histogram[idx] = [dataItem];
-                    } else {
-                        histogram[idx].push(dataItem);
-                    }
+
+                const newDataFiltered = newDataRaw.filter((dataItem) => dataItem.ts >= cutoffTs);
+                if (newDataFiltered.length == 0) {
+                    return;
                 }
-                for (let i = 0; i < histLen; i++) {
-                    if (histogram[i] === undefined) {
-                        const blankItem = { ...blankItemTemplate };
-                        blankItem.ts = cutoffTs + 2000 * i + 1000;
-                        histogram[i] = [blankItem];
+                const newDataWithGaps: Array<DataItem> = [];
+                if (newDataFiltered[0].ts - 2000 > cutoffTs) {
+                    const blankItemStart = { ...blankItemTemplate, ts: cutoffTs };
+                    const blankItemEnd = { ...blankItemTemplate, ts: newDataFiltered[0].ts - 1 };
+                    newDataWithGaps.push(blankItemStart);
+                    newDataWithGaps.push(blankItemEnd);
+                }
+                newDataWithGaps.push(newDataFiltered[0]);
+                for (let i = 1; i < newDataFiltered.length; i++) {
+                    const prevIdxItem = newDataFiltered[i - 1];
+                    const curIdxItem = newDataFiltered[i];
+                    const timeDiff = curIdxItem.ts - prevIdxItem.ts;
+                    if (timeDiff > 2000) {
+                        const blankItemStart = { ...blankItemTemplate, ts: prevIdxItem.ts + 1, blank: 1 };
+                        const blankItemEnd = { ...blankItemTemplate, ts: curIdxItem.ts - 1, blank: 1 };
+                        newDataWithGaps.push(blankItemStart);
+                        newDataWithGaps.push(blankItemEnd);
                     }
+                    newDataWithGaps.push(curIdxItem);
                 }
-                const newDataWithGaps = histogram.flat();
-                const truncatedData: Array<DataItem> = [
-                    ...newDataWithGaps.slice(Math.max(newDataWithGaps.length - targetLen, 0)),
-                ];
-                // resize blank plots to keep width consistent
-                if (truncatedData[0]?.blank ?? false) {
-                    truncatedData[0].ts = cutoffTs;
-                }
-                set(this.dataAtom, truncatedData);
+                set(this.dataAtom, newDataWithGaps);
             } catch (e) {
                 console.log("Error adding data to sysinfo", e);
             }
