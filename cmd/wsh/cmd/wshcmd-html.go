@@ -30,7 +30,7 @@ func MakeVDom() *vdom.VDomElem {
 	  <h1 style="color:red; background-color: #bind:$.bgcolor; border-radius: 4px; padding: 5px;">hello vdom world</h1>
 	  <div><bind key="$.text"/> | num[<bind key="$.num"/>]</div>
 	  <div>
-	    <button onClick="#globalevent:clickinc">increment</button>
+	    <button data-text={"hello"} onClick='#globalevent:clickinc'>increment</button>
 	  </div>
 	</div>
 	`
@@ -39,7 +39,7 @@ func MakeVDom() *vdom.VDomElem {
 }
 
 func GlobalEventHandler(client *vdomclient.Client, event vdom.VDomEvent) {
-	if event.PropName == "clickinc" {
+	if event.EventType == "clickinc" {
 		client.SetAtomVal("num", client.GetAtomVal("num").(int)+1)
 		return
 	}

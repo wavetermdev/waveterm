@@ -62,7 +62,7 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 				impl.Client.GlobalEventHandler(impl.Client, event)
 			}
 		} else {
-			impl.Client.Root.Event(event.WaveId, event.PropName, event.EventData)
+			impl.Client.Root.Event(event.WaveId, event.EventType, event.EventData)
 		}
 	}
 	if feUpdate.Initialize || feUpdate.Resync {

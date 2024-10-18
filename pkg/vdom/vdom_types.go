@@ -129,8 +129,8 @@ type VDomRefPosition struct {
 ///// subbordinate protocol types
 
 type VDomEvent struct {
-	WaveId    string `json:"waveid"`
-	PropName  string `json:"propname"`
+	WaveId    string `json:"waveid"` // empty for global events
+	EventType string `json:"eventtype"`
 	EventData any    `json:"eventdata"`
 }
 

@@ -135,7 +135,7 @@ export class VDomModel {
             }
             this.batchedEvents.push({
                 waveid: null,
-                propname: "onKeyDown",
+                eventtype: "onKeyDown",
                 eventdata: e,
             });
             this.queueUpdate();
@@ -478,14 +478,14 @@ export class VDomModel {
         if (fnDecl.globalevent) {
             const waveEvent: VDomEvent = {
                 waveid: null,
-                propname: fnDecl.globalevent,
+                eventtype: fnDecl.globalevent,
                 eventdata: eventData,
             };
             this.batchedEvents.push(waveEvent);
         } else {
             const vdomEvent: VDomEvent = {
                 waveid: compId,
-                propname: propName,
+                eventtype: propName,
                 eventdata: eventData,
             };
             this.batchedEvents.push(vdomEvent);
