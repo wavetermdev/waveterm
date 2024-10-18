@@ -118,18 +118,48 @@ class SysinfoViewModel {
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.addDataAtom = jotai.atom(null, (get, set, points) => {
-            const targetLen = get(this.numPoints) + 1;
+            const targetLen = get(this.numPoints);
             let data = get(this.dataAtom);
             try {
-                if (data.length > targetLen) {
-                    data = data.slice(data.length - targetLen);
+                const newDataRaw = [...data, ...points];
+                const latestItemTs = newDataRaw[newDataRaw.length - 1]?.ts ?? 0;
+                const cutoffTs = latestItemTs - 1000 * targetLen;
+                const blankItemTemplate = { ...newDataRaw[newDataRaw.length - 1] };
+                for (const key in blankItemTemplate) {
+                    blankItemTemplate[key] = NaN;
                 }
-                if (data.length < targetLen) {
-                    const defaultData = this.getDefaultData();
-                    data = [...defaultData.slice(defaultData.length - targetLen + data.length), ...data];
+                blankItemTemplate.blank = 1; // sentinel for resizing at end
+                const histLen = Math.floor(targetLen / 2);
+                const histogram: Array<Array<DataItem>> = [];
+                histogram.length = histLen;
+                for (const dataItem of newDataRaw) {
+                    const idx = Math.floor(((dataItem?.ts ?? 0) - cutoffTs) / 2000);
+                    if (idx < 0 || idx > histLen) {
+                        continue;
+                    }
+                    const curBin: Array<DataItem> = histogram[idx];
+                    if (curBin === undefined) {
+                        histogram[idx] = [dataItem];
+                    } else {
+                        histogram[idx].push(dataItem);
+                    }
                 }
-                const newData = [...data.slice(points.length), ...points];
-                set(this.dataAtom, newData);
+                for (let i = 0; i < histLen; i++) {
+                    if (histogram[i] === undefined) {
+                        const blankItem = { ...blankItemTemplate };
+                        blankItem.ts = cutoffTs + 2000 * i + 1000;
+                        histogram[i] = [blankItem];
+                    }
+                }
+                const newDataWithGaps = histogram.flat();
+                const truncatedData: Array<DataItem> = [
+                    ...newDataWithGaps.slice(Math.max(newDataWithGaps.length - targetLen, 0)),
+                ];
+                // resize blank plots to keep width consistent
+                if (truncatedData[0]?.blank ?? false) {
+                    truncatedData[0].ts = cutoffTs;
+                }
+                set(this.dataAtom, truncatedData);
             } catch (e) {
                 console.log("Error adding data to sysinfo", e);
             }
@@ -188,7 +218,7 @@ class SysinfoViewModel {
             }
             return connValue;
         });
-        this.dataAtom = jotai.atom(this.getDefaultData());
+        this.dataAtom = jotai.atom([]);
         this.loadInitialData();
         this.connStatus = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -214,8 +244,8 @@ class SysinfoViewModel {
             const newData = this.getDefaultData();
             const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
             // splice the initial data into the default data (replacing the newest points)
-            newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
-            globalStore.set(this.addDataAtom, newData);
+            //newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
+            globalStore.set(this.addDataAtom, initialDataItems);
         } catch (e) {
             console.log("Error loading initial data for sysinfo", e);
         } finally {
