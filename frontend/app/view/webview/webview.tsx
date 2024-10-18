@@ -18,6 +18,14 @@ import "./webview.less";
 
 let webviewPreloadUrl = null;
 
+function clearSelection() {
+    if (window.getSelection) {
+        window.getSelection().removeAllRanges();
+    } else if (document.getSelection()) {
+        document.getSelection().empty();
+    }
+}
+
 function getWebviewPreloadUrl() {
     if (webviewPreloadUrl == null) {
         webviewPreloadUrl = getApi().getWebviewPreload();
@@ -542,6 +550,9 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             const newUrl = e.detail.url;
             console.log("webview new-window event:", newUrl);
             fireAndForget(() => openLink(newUrl, true));
+
+            // Address issue where full web contents sometimes becomes selected when navigating away from an error page
+            clearSelection();
         };
         const startLoadingHandler = () => {
             model.setRefreshIcon("xmark-large");
