@@ -219,7 +219,55 @@ function useBlockCache<T>(blockId: string, name: string, makeFn: () => T): T {
     return value as T;
 }
 
+function getBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T): Atom<MetaType[T]> {
+    const blockCache = getSingleBlockAtomCache(blockId);
+    const metaAtomName = "#meta-" + key;
+    let metaAtom = blockCache.get(metaAtomName);
+    if (metaAtom != null) {
+        return metaAtom;
+    }
+    metaAtom = atom((get) => {
+        let blockAtom = WOS.getWaveObjectAtom(WOS.makeORef("block", blockId));
+        let blockData = get(blockAtom);
+        return blockData?.meta?.[key];
+    });
+    blockCache.set(metaAtomName, metaAtom);
+    return metaAtom;
+}
+
+function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T): MetaType[T] {
+    return useAtomValue(getBlockMetaKeyAtom(blockId, key));
+}
+
 const settingsAtomCache = new Map<string, Atom<any>>();
+
+function makeOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): Atom<SettingsType[T]> {
+    const blockCache = getSingleBlockAtomCache(blockId);
+    const overrideAtomName = "#settingsoverride-" + key;
+    let overrideAtom = blockCache.get(overrideAtomName);
+    if (overrideAtom != null) {
+        return overrideAtom;
+    }
+    overrideAtom = atom((get) => {
+        const blockMetaKeyAtom = getBlockMetaKeyAtom(blockId, key as any);
+        const metaKeyVal = get(blockMetaKeyAtom);
+        if (metaKeyVal != null) {
+            return metaKeyVal;
+        }
+        const settingsKeyAtom = getSettingsKeyAtom(key);
+        const settingsVal = get(settingsKeyAtom);
+        if (settingsVal != null) {
+            return settingsVal;
+        }
+        return null;
+    });
+    blockCache.set(overrideAtomName, overrideAtom);
+    return overrideAtom;
+}
+
+function useOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): SettingsType[T] {
+    return useAtomValue(makeOverrideConfigAtom(blockId, key));
+}
 
 function getSettingsKeyAtom<T extends keyof SettingsType>(key: T): Atom<SettingsType[T]> {
     let settingsKeyAtom = settingsAtomCache.get(key) as Atom<SettingsType[T]>;
@@ -254,12 +302,17 @@ function useSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
 
 const blockAtomCache = new Map<string, Map<string, Atom<any>>>();
 
-function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): Atom<T> {
+function getSingleBlockAtomCache(blockId: string): Map<string, Atom<any>> {
     let blockCache = blockAtomCache.get(blockId);
     if (blockCache == null) {
         blockCache = new Map<string, Atom<any>>();
         blockAtomCache.set(blockId, blockCache);
     }
+    return blockCache;
+}
+
+function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): Atom<T> {
+    const blockCache = getSingleBlockAtomCache(blockId);
     let atom = blockCache.get(name);
     if (atom == null) {
         atom = makeFn();
@@ -527,6 +580,7 @@ export {
     fetchWaveFile,
     getApi,
     getBlockComponentModel,
+    getBlockMetaKeyAtom,
     getConnStatusAtom,
     getHostName,
     getObjectId,
@@ -537,6 +591,7 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
+    makeOverrideConfigAtom,
     openLink,
     PLATFORM,
     pushFlashError,
@@ -550,6 +605,8 @@ export {
     useBlockAtom,
     useBlockCache,
     useBlockDataLoaded,
+    useBlockMetaKeyAtom,
+    useOverrideConfigAtom,
     useSettingsPrefixAtom,
     WOS,
 };

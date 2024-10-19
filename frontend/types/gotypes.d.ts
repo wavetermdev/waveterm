@@ -322,6 +322,7 @@ declare global {
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
+        "sysinfo:type"?: string;
         "bg:*"?: boolean;
         bg?: string;
         "bg:opacity"?: number;
