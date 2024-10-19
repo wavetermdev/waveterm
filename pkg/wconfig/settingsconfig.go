@@ -184,17 +184,17 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 
 var configDirFsys = os.DirFS(configDirAbsPath)
 
-func ReadConfigFile(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
+func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
 	barr, readErr := fs.ReadFile(fsys, fileName)
 	return readConfigHelper(logPrefix+fileName, barr, readErr)
 }
 
 func ReadDefaultsConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
-	return ReadConfigFile(defaultconfig.ConfigFS, "defaults:", fileName)
+	return readConfigFileFS(defaultconfig.ConfigFS, "defaults:", fileName)
 }
 
 func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
-	return ReadConfigFile(configDirFsys, "", fileName)
+	return readConfigFileFS(configDirFsys, "", fileName)
 }
 
 func WriteWaveHomeConfigFile(fileName string, m waveobj.MetaMapType) error {
@@ -242,7 +242,7 @@ func ReadConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []C
 	return mergeMap(defConfig, userConfig, simpleMerge), allErrs
 }
 
-func SelectEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.DirEntry {
+func selectEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.DirEntry {
 	var rtn []fs.DirEntry
 	for _, ent := range dirEnts {
 		if ent.IsDir() {
@@ -259,11 +259,11 @@ func SelectEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.DirEn
 // Read and merge all preset files in the specified directory in the specified filesystem
 func readPresetsForDir(fsys fs.FS, logPrefix string, dirName string, fileNameSuffix string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
 	dirEnts, _ := fs.ReadDir(fsys, dirName)
-	suffixEnts := SelectEntsBySuffix(dirEnts, fileNameSuffix)
+	suffixEnts := selectEntsBySuffix(dirEnts, fileNameSuffix)
 	var rtn waveobj.MetaMapType
 	var errs []ConfigError
 	for _, ent := range suffixEnts {
-		fileVal, cerrs := ReadConfigFile(fsys, logPrefix, filepath.Join(dirName, ent.Name()))
+		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, filepath.Join(dirName, ent.Name()))
 		rtn = mergeMap(rtn, fileVal, simpleMerge)
 		errs = append(errs, cerrs...)
 	}
@@ -281,7 +281,7 @@ func readPresetsForFS(fsys fs.FS, logPrefix string, fileNameSuffix string, simpl
 }
 
 // Combine files from the defaults and home directory matching the supplied suffix into a single MetaMapType
-func ReadConfigsBySuffix(fileNameSuffix string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+func readPresetsByFileSuffix(fileNameSuffix string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
 	defaultPresets, cerrs := readPresetsForFS(defaultconfig.ConfigFS, "defaults:", fileNameSuffix, simpleMerge)
 	homePresets, cerrs1 := readPresetsForFS(configDirFsys, "", fileNameSuffix, simpleMerge)
 
@@ -311,7 +311,7 @@ func ReadFullConfig() FullConfigType {
 		if jsonTag == "-" || jsonTag == "" {
 			continue
 		} else if jsonTag == "presets" {
-			configPart, errs = ReadConfigsBySuffix(fileName, simpleMerge)
+			configPart, errs = readPresetsByFileSuffix(fileName, simpleMerge)
 		} else {
 			configPart, errs = ReadConfigPart(fileName, simpleMerge)
 		}
