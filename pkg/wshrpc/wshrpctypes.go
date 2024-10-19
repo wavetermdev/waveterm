@@ -58,9 +58,11 @@ const (
 	Command_Test              = "test"
 	Command_RemoteStreamFile  = "remotestreamfile"
 	Command_RemoteFileInfo    = "remotefileinfo"
+	Command_RemoteFileTouch   = "remotefiletouch"
 	Command_RemoteWriteFile   = "remotewritefile"
 	Command_RemoteFileDelete  = "remotefiledelete"
 	Command_RemoteFileJoiin   = "remotefilejoin"
+	Command_RemoteMkdir       = "remotemkdir"
 
 	Command_ConnEnsure       = "connensure"
 	Command_ConnReinstallWsh = "connreinstallwsh"
@@ -126,9 +128,11 @@ type WshRpcInterface interface {
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[CommandRemoteStreamFileRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
+	RemoteFileTouchCommand(ctx context.Context, path string) error
 	RemoteFileDeleteCommand(ctx context.Context, path string) error
 	RemoteWriteFileCommand(ctx context.Context, data CommandRemoteWriteFileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
+	RemoteMkdirCommand(ctx context.Context, path string) error
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 
 	// emain

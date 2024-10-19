@@ -61,6 +61,24 @@ func (fs *FileService) StatFile(connection string, path string) (*wshrpc.FileInf
 	return wshclient.RemoteFileInfoCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
 }
 
+func (fs *FileService) Mkdir(connection string, path string) error {
+	if connection == "" {
+		connection = wshrpc.LocalConnName
+	}
+	connRoute := wshutil.MakeConnectionRouteId(connection)
+	client := wshserver.GetMainRpcClient()
+	return wshclient.RemoteMkdirCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
+}
+
+func (fs *FileService) TouchFile(connection string, path string) error {
+	if connection == "" {
+		connection = wshrpc.LocalConnName
+	}
+	connRoute := wshutil.MakeConnectionRouteId(connection)
+	client := wshserver.GetMainRpcClient()
+	return wshclient.RemoteFileTouchCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
+}
+
 func (fs *FileService) ReadFile_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "read file",

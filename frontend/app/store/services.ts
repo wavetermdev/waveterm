@@ -81,6 +81,9 @@ class FileServiceType {
     StatFile(connection: string, path: string): Promise<FileInfo> {
         return WOS.callBackendService("file", "StatFile", Array.from(arguments))
     }
+    TouchFile(arg1: string, arg2: string): Promise<void> {
+        return WOS.callBackendService("file", "TouchFile", Array.from(arguments))
+    }
 }
 
 export const FileService = new FileServiceType();

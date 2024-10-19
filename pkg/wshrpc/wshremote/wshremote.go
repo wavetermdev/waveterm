@@ -306,6 +306,35 @@ func (impl *ServerImpl) RemoteFileInfoCommand(ctx context.Context, path string) 
 	return impl.fileInfoInternal(path, true)
 }
 
+func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string) error {
+	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	if _, err := os.Stat(cleanedPath); err == nil {
+		return fmt.Errorf("file %q already exists", path)
+	}
+	if err := os.MkdirAll(filepath.Dir(cleanedPath), 0755); err != nil {
+		return fmt.Errorf("cannot create directory %q: %w", filepath.Dir(cleanedPath), err)
+	}
+	if err := os.WriteFile(cleanedPath, []byte{}, 0644); err != nil {
+		return fmt.Errorf("cannot create file %q: %w", cleanedPath, err)
+	}
+	return nil
+}
+
+func (impl *ServerImpl) RemoteMkdirCommand(ctx context.Context, path string) error {
+	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	if stat, err := os.Stat(cleanedPath); err == nil {
+		if stat.IsDir() {
+			return fmt.Errorf("directory %q already exists", path)
+		} else {
+			return fmt.Errorf("cannot create directory %q, file exists at path", path)
+		}
+	}
+	if err := os.MkdirAll(cleanedPath, 0755); err != nil {
+		return fmt.Errorf("cannot create directory %q: %w", cleanedPath, err)
+	}
+	return nil
+}
+
 func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.CommandRemoteWriteFileData) error {
 	path, err := wavebase.ExpandHomeDir(data.Path)
 	if err != nil {
