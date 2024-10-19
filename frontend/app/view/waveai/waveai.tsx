@@ -201,7 +201,7 @@ export class WaveAiModel implements ViewModel {
                 label: "Add AI preset...",
                 onClick: () => {
                     fireAndForget(async () => {
-                        const path = `${getApi().getConfigDir()}/ai-presets.json`;
+                        const path = `${getApi().getConfigDir()}/presets/ai.json`;
                         const blockDef: BlockDef = {
                             meta: {
                                 view: "preview",
