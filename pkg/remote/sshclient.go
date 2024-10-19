@@ -517,18 +517,7 @@ func DialContext(ctx context.Context, network string, addr string, config *ssh.C
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *SSHOpts) (*ssh.Client, error) {
-	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
-	if err != nil {
-		return nil, err
-	}
-
-	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
-	if err != nil {
-		return nil, err
-	}
-	remoteName := sshKeywords.User + "@" + xknownhosts.Normalize(sshKeywords.HostName+":"+sshKeywords.Port)
-
+func CreateAuthMethods(connCtx context.Context, sshKeywords *SshKeywords, remoteName string) []ssh.AuthMethod {
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
 	conn, err := net.Dial("unix", sshKeywords.IdentityAgent)
@@ -570,6 +559,21 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts) (*ssh.Client, error
 		authMethods = append(authMethods, authMethod)
 	}
 
+	return authMethods
+}
+
+func ConnectToClient(connCtx context.Context, opts *SSHOpts) (*ssh.Client, error) {
+	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
+	if err != nil {
+		return nil, err
+	}
+
+	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
+	if err != nil {
+		return nil, err
+	}
+	remoteName := sshKeywords.User + "@" + xknownhosts.Normalize(sshKeywords.HostName+":"+sshKeywords.Port)
+
 	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(opts)
 	if err != nil {
 		return nil, err
@@ -578,9 +582,46 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts) (*ssh.Client, error
 	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
 	clientConfig := &ssh.ClientConfig{
 		User:              sshKeywords.User,
-		Auth:              authMethods,
+		Auth:              CreateAuthMethods(connCtx, sshKeywords, remoteName),
 		HostKeyCallback:   hostKeyCallback,
 		HostKeyAlgorithms: hostKeyAlgorithms(networkAddr),
+	}
+	if sshKeywords.ProxyJump != "" {
+		proxyOpts, err := ParseOpts(sshKeywords.ProxyJump)
+		if err != nil {
+			return nil, err
+		}
+		var proxyPort string
+		if proxyOpts.SSHPort != 0 && proxyOpts.SSHPort != 22 {
+			proxyPort = strconv.Itoa(proxyOpts.SSHPort)
+		} else {
+			proxyPort = "22"
+		}
+		proxyName := proxyOpts.SSHUser + "@" + xknownhosts.Normalize(proxyOpts.SSHHost+":"+proxyPort)
+		proxyAddr := proxyOpts.SSHHost + ":" + proxyPort
+		proxyKeyCallback, proxyKeyAlgorithms, err := createHostKeyCallback(opts)
+		if err != nil {
+			return nil, err
+		}
+		proxyConfig := &ssh.ClientConfig{
+			User:              proxyOpts.SSHUser,
+			Auth:              CreateAuthMethods(connCtx, sshKeywords, proxyName),
+			HostKeyCallback:   proxyKeyCallback,
+			HostKeyAlgorithms: proxyKeyAlgorithms(proxyAddr),
+		}
+		proxyClient, err := DialContext(connCtx, "tcp", proxyAddr, proxyConfig)
+		if err != nil {
+			return nil, err
+		}
+		clientConn, err := proxyClient.Dial("tcp", networkAddr)
+		if err != nil {
+			return nil, err
+		}
+		c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
+		if err != nil {
+			return nil, err
+		}
+		return ssh.NewClient(c, chans, reqs), nil
 	}
 	return DialContext(connCtx, "tcp", networkAddr, clientConfig)
 }
@@ -597,6 +638,7 @@ type SshKeywords struct {
 	PreferredAuthentications     []string
 	AddKeysToAgent               bool
 	IdentityAgent                string
+	ProxyJump                    string
 }
 
 func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeywords, error) {
@@ -641,6 +683,7 @@ func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeyword
 	sshKeywords.PreferredAuthentications = configKeywords.PreferredAuthentications
 	sshKeywords.AddKeysToAgent = configKeywords.AddKeysToAgent
 	sshKeywords.IdentityAgent = configKeywords.IdentityAgent
+	sshKeywords.ProxyJump = configKeywords.ProxyJump
 
 	return sshKeywords, nil
 }
@@ -739,6 +782,12 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 		}
 		sshKeywords.IdentityAgent = agentPath
 	}
+
+	proxyJumpRaw, err := ssh_config.GetStrict(hostPattern, "ProxyJump")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.ProxyJump = trimquotes.TryTrimQuotes(proxyJumpRaw)
 
 	return sshKeywords, nil
 }
