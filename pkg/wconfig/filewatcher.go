@@ -15,6 +15,7 @@ import (
 )
 
 var configDirAbsPath = filepath.Join(wavebase.GetWaveHomeDir(), wavebase.ConfigDir)
+var presetsDirAbsPath = filepath.Join(configDirAbsPath, wavebase.PresetsDir)
 
 var instance *Watcher
 var once sync.Once
@@ -40,8 +41,14 @@ func GetWatcher() *Watcher {
 		}
 		instance = &Watcher{watcher: watcher}
 		err = instance.watcher.Add(configDirAbsPath)
+		const failedStr = "failed to add path %s to watcher: %v"
 		if err != nil {
-			log.Printf("failed to add path %s to watcher: %v", configDirAbsPath, err)
+			log.Printf(failedStr, configDirAbsPath, err)
+		}
+
+		err = instance.watcher.Add(presetsDirAbsPath)
+		if err != nil {
+			log.Printf(failedStr, presetsDirAbsPath, err)
 		}
 	})
 	return instance

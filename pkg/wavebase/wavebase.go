@@ -32,6 +32,7 @@ const DomainSocketBaseName = "wave.sock"
 const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
+const PresetsDir = "presets"
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const AppPathBinDir = "bin"
@@ -121,6 +122,10 @@ func EnsureWaveDBDir() error {
 
 func EnsureWaveConfigDir() error {
 	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), ConfigDir), "waveconfig", 0700, "wave config directory")
+}
+
+func EnsureWavePresetsDir() error {
+	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), ConfigDir, PresetsDir), "wavepresets", 0700, "wave presets directory")
 }
 
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {
