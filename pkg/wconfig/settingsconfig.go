@@ -227,7 +227,7 @@ func mergeMetaMapSimple(m waveobj.MetaMapType, toMerge waveobj.MetaMapType) wave
 	return m
 }
 
-func mergeMap(m waveobj.MetaMapType, toMerge waveobj.MetaMapType, simpleMerge bool) waveobj.MetaMapType {
+func mergeMetaMap(m waveobj.MetaMapType, toMerge waveobj.MetaMapType, simpleMerge bool) waveobj.MetaMapType {
 	if simpleMerge {
 		return mergeMetaMapSimple(m, toMerge)
 	} else {
@@ -235,14 +235,7 @@ func mergeMap(m waveobj.MetaMapType, toMerge waveobj.MetaMapType, simpleMerge bo
 	}
 }
 
-func ReadConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
-	defConfig, cerrs1 := ReadDefaultsConfigFile(partName)
-	userConfig, cerrs2 := ReadWaveHomeConfigFile(partName)
-	allErrs := append(cerrs1, cerrs2...)
-	return mergeMap(defConfig, userConfig, simpleMerge), allErrs
-}
-
-func selectEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.DirEntry {
+func selectDirEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.DirEntry {
 	var rtn []fs.DirEntry
 	for _, ent := range dirEnts {
 		if ent.IsDir() {
@@ -256,38 +249,38 @@ func selectEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.DirEn
 	return rtn
 }
 
-// Read and merge all preset files in the specified directory in the specified filesystem
-func readPresetsForDir(fsys fs.FS, logPrefix string, dirName string, fileNameSuffix string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+// Read and merge all files in the specified directory matching the supplied suffix
+func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
 	dirEnts, _ := fs.ReadDir(fsys, dirName)
-	suffixEnts := selectEntsBySuffix(dirEnts, fileNameSuffix)
+	suffixEnts := selectDirEntsBySuffix(dirEnts, fileName+".json")
 	var rtn waveobj.MetaMapType
 	var errs []ConfigError
 	for _, ent := range suffixEnts {
 		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, filepath.Join(dirName, ent.Name()))
-		rtn = mergeMap(rtn, fileVal, simpleMerge)
+		rtn = mergeMetaMap(rtn, fileVal, simpleMerge)
 		errs = append(errs, cerrs...)
 	}
 	return rtn, errs
 }
 
-// Read and merge preset files in the specified config filesystem
-func readPresetsForFS(fsys fs.FS, logPrefix string, fileNameSuffix string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
-	preset, errs := readPresetsForDir(fsys, logPrefix, ".", fileNameSuffix, simpleMerge)
+// Read and merge all files in the specified config filesystem matching the patterns `<partName>.json` and `<partName>/*.json`
+func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+	config, errs := readConfigFileFS(fsys, logPrefix, partName+".json")
 	allErrs := errs
-	rtn := preset
-	preset, errs = readPresetsForDir(fsys, logPrefix, "presets", ".json", simpleMerge)
+	rtn := config
+	config, errs = readConfigFilesForDir(fsys, logPrefix, partName, "", simpleMerge)
 	allErrs = append(allErrs, errs...)
-	return mergeMap(rtn, preset, simpleMerge), allErrs
+	return mergeMetaMap(rtn, config, simpleMerge), allErrs
 }
 
-// Combine files from the defaults and home directory matching the supplied suffix into a single MetaMapType
-func readPresetsByFileSuffix(fileNameSuffix string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
-	defaultPresets, cerrs := readPresetsForFS(defaultconfig.ConfigFS, "defaults:", fileNameSuffix, simpleMerge)
-	homePresets, cerrs1 := readPresetsForFS(configDirFsys, "", fileNameSuffix, simpleMerge)
+// Combine files from the defaults and home directory for the specified config part name
+func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+	defaultConfigs, cerrs := readConfigPartForFS(defaultconfig.ConfigFS, "defaults:", partName, simpleMerge)
+	homeConfigs, cerrs1 := readConfigPartForFS(configDirFsys, "", partName, simpleMerge)
 
-	rtn := defaultPresets
+	rtn := defaultConfigs
 	allErrs := append(cerrs, cerrs1...)
-	return mergeMap(rtn, homePresets, simpleMerge), allErrs
+	return mergeMetaMap(rtn, homeConfigs, simpleMerge), allErrs
 }
 
 func ReadFullConfig() FullConfigType {
@@ -307,13 +300,10 @@ func ReadFullConfig() FullConfigType {
 		simpleMerge := field.Tag.Get("merge") == ""
 		var configPart waveobj.MetaMapType
 		var errs []ConfigError
-		fileName := jsonTag + ".json"
 		if jsonTag == "-" || jsonTag == "" {
 			continue
-		} else if jsonTag == "presets" {
-			configPart, errs = readPresetsByFileSuffix(fileName, simpleMerge)
 		} else {
-			configPart, errs = ReadConfigPart(fileName, simpleMerge)
+			configPart, errs = readConfigPart(jsonTag, simpleMerge)
 		}
 		fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, errs...)
 		if configPart != nil {
