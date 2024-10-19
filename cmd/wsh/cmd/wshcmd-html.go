@@ -32,6 +32,9 @@ func MakeVDom() *vdom.VDomElem {
 	  <div>
 	    <button data-text={"hello"} onClick='#globalevent:clickinc'>increment</button>
 	  </div>
+	  <div>
+	      <wave:markdown text="*hello from markdown*"/>
+	  </div>
 	</div>
 	`
 	elem := vdom.Bind(vdomStr, nil)

@@ -57,10 +57,19 @@ class TermViewModel {
             return blockData?.meta?.["term:mode"] ?? "term";
         });
         this.viewIcon = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "html") {
+                return "bolt";
+            }
             return "terminal";
         });
         this.viewName = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
+            const termMode = get(this.termMode);
+            if (termMode == "html") {
+                const viewNameAtom = this.vdomModel?.getAtomContainer("view:name");
+                return viewNameAtom?.val ?? "Wave App";
+            }
             if (blockData?.meta?.controller == "cmd") {
                 return "Command";
             }

@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Markdown } from "@/app/element/markdown";
 import { VDomModel } from "@/app/view/term/vdom-model";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -19,6 +20,12 @@ const VDomObjType_Binding = "binding";
 const VDomObjType_Func = "func";
 
 const dlog = debug("wave:vdom");
+
+type VDomReactTagType = (props: { elem: VDomElem; model: VDomModel }) => JSX.Element;
+
+const WaveTagMap: Record<string, VDomReactTagType> = {
+    "wave:markdown": WaveMarkdown,
+};
 
 const AllowedTags: { [tagName: string]: boolean } = {
     div: true,
@@ -191,7 +198,7 @@ function stringSetsEqual(set1: Set<string>, set2: Set<string>): boolean {
     return true;
 }
 
-function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+function useVDom(model: VDomModel, elem: VDomElem): GenericPropsType {
     const version = jotai.useAtomValue(model.getVDomNodeVersionAtom(elem));
     const [oldAtomKeys, setOldAtomKeys] = React.useState<Set<string>>(new Set());
     let [props, atomKeys] = convertProps(elem, model);
@@ -208,18 +215,32 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
             model.tagUnuseAtoms(elem.waveid, oldAtomKeys);
         };
     }, []);
+    return props;
+}
 
+function WaveMarkdown({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const props = useVDom(model, elem);
+    return (
+        <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
+    );
+}
+
+function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const props = useVDom(model, elem);
     if (elem.tag == WaveNullTag) {
         return null;
     }
     if (elem.tag == WaveTextTag) {
         return props.text;
     }
+    const waveTag = WaveTagMap[elem.tag];
+    if (waveTag) {
+        return waveTag({ elem, model });
+    }
     if (!AllowedTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
     }
     let childrenComps = convertChildren(elem, model);
-    dlog("children", childrenComps);
     if (elem.tag == FragmentTag) {
         return childrenComps;
     }

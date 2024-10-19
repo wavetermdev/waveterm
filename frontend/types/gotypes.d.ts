@@ -638,7 +638,7 @@ declare global {
         type: "createcontext";
         ts: number;
         meta?: MetaType;
-        newblock?: boolean;
+        target?: VDomTarget;
         persist?: boolean;
     };
 
@@ -746,6 +746,11 @@ declare global {
     type VDomStateSync = {
         atom: string;
         value: any;
+    };
+
+    // vdom.VDomTarget
+    type VDomTarget = {
+        newblock?: boolean;
     };
 
     type WSCommandType = {
