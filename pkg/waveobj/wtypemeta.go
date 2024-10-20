@@ -76,6 +76,7 @@ type MetaTSType struct {
 	TermFontSize       int      `json:"term:fontsize,omitempty"`
 	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
 	TermMode           string   `json:"term:mode,omitempty"`
+	TermVdomRoute      string   `json:"term:vdomroute,omitempty"`
 	TermTheme          string   `json:"term:theme,omitempty"`
 	TermLocalShellPath string   `json:"term:localshellpath,omitempty"` // matches settings
 	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"` // matches settings

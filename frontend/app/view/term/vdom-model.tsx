@@ -3,6 +3,7 @@
 
 import { globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
+import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
@@ -124,6 +125,27 @@ export class VDomModel {
         this.lastUpdateTs = 0;
         this.queuedUpdate = null;
         globalStore.set(this.contextActive, false);
+    }
+
+    resyncVDom(backendRoute: string) {
+        this.reset();
+        this.backendRoute = backendRoute;
+        this.needsResync = true;
+        this.needsInitialization = true;
+        const unsubFn = waveEventSubscribe({
+            eventType: "route:gone",
+            scope: backendRoute,
+            handler: () => {
+                dlog("route:gone", backendRoute);
+                globalStore.set(this.contextActive, false);
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:mode": "term", "term:vdomroute": null },
+                });
+                unsubFn();
+            },
+        });
+        this.queueUpdate(true);
     }
 
     globalKeydownHandler(e: WaveKeyboardEvent): boolean {
@@ -457,6 +479,7 @@ export class VDomModel {
         if (update == null) {
             return;
         }
+        globalStore.set(this.contextActive, true);
         const idMap = new Map<string, VDomElem>();
         const vdomRoot = globalStore.get(this.vdomRoot);
         if (update.opts != null) {

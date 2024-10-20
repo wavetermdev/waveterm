@@ -132,6 +132,12 @@ class TermViewModel {
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
         });
+        let blockData = globalStore.get(this.blockAtom);
+        if (blockData?.meta?.["term:vdomroute"]) {
+            setTimeout(() => {
+                this.vdomModel?.resyncVDom(blockData?.meta?.["term:vdomroute"]);
+            }, 0);
+        }
     }
 
     setTermMode(mode: "term" | "html") {

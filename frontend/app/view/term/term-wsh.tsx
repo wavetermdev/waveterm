@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore } from "@/app/store/global";
-import { waveEventSubscribe } from "@/app/store/wps";
+import { WOS } from "@/app/store/global";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { TermViewModel } from "@/app/view/term/term";
 import debug from "debug";
@@ -22,22 +22,13 @@ export class TermWshClient extends WshClient {
 
     handle_vdomcreatecontext(rh: RpcResponseHelper, data: VDomCreateContext) {
         console.log("vdom-create", rh.getSource(), data);
-        this.model.vdomModel.reset();
-        this.model.vdomModel.backendRoute = rh.getSource();
-        globalStore.set(this.model.vdomModel.contextActive, true);
-        if (!data.persist) {
-            const unsubFn = waveEventSubscribe({
-                eventType: "route:gone",
-                scope: rh.getSource(),
-                handler: () => {
-                    globalStore.set(this.model.vdomModel.contextActive, false);
-                    this.model.setTermMode("term");
-                    unsubFn();
-                },
-            });
-        }
-        this.model.setTermMode("html");
-        this.model.vdomModel.queueUpdate(true);
+        const prtn = RpcApi.SetMetaCommand(this, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "term:mode": "html", "term:vdomroute": rh.getSource() },
+        });
+        prtn.then(() => {
+            this.model.vdomModel.resyncVDom(rh.getSource());
+        });
     }
 
     handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {

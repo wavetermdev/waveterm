@@ -75,6 +75,7 @@ const (
 	MetaKey_TermFontSize                     = "term:fontsize"
 	MetaKey_TermFontFamily                   = "term:fontfamily"
 	MetaKey_TermMode                         = "term:mode"
+	MetaKey_TermVdomRoute                    = "term:vdomroute"
 	MetaKey_TermTheme                        = "term:theme"
 	MetaKey_TermLocalShellPath               = "term:localshellpath"
 	MetaKey_TermLocalShellOpts               = "term:localshellopts"
