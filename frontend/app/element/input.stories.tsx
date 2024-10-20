@@ -70,18 +70,3 @@ export const InputWithLeftAndRightElement: Story = {
         className: "custom-input-group-class",
     },
 };
-
-export const InputMultiLine: Story = {
-    render: (args) => {
-        return (
-            <div style={{ padding: "20px", height: "400px", border: "2px solid black" }}>
-                <InputGroup>
-                    <Input multiLine={true} placeholder="Enter your message" rows={5} />
-                </InputGroup>
-            </div>
-        );
-    },
-    args: {
-        className: "custom-input-group-class",
-    },
-};

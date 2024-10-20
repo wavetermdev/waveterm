@@ -1,18 +1,14 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { type Placement } from "@floating-ui/react";
 import clsx from "clsx";
-import React, { memo, useState } from "react";
+import { memo, useState } from "react";
 import { Button } from "./button";
-import { Input } from "./input";
+import { Input, InputGroup, InputLeftElement } from "./input";
 import { Palette, PaletteButton, PaletteContent } from "./palette";
 
 import "./emojiPalette.less";
-
-interface EmojiPaletteProps {
-    scopeRef: React.RefObject<HTMLElement>;
-    className?: string;
-}
 
 const emojiList = [
     // Smileys & Emotion
@@ -217,9 +213,10 @@ const emojiList = [
 
 interface EmojiPaletteProps {
     className?: string;
+    placement?: Placement;
 }
 
-const EmojiPalette = memo(({ className }: EmojiPaletteProps) => {
+const EmojiPalette = memo(({ className, placement }: EmojiPaletteProps) => {
     const [searchTerm, setSearchTerm] = useState("");
 
     const handleSearchChange = (val: string) => {
@@ -230,12 +227,17 @@ const EmojiPalette = memo(({ className }: EmojiPaletteProps) => {
 
     return (
         <div className={clsx("emoji-palette", className)}>
-            <Palette>
+            <Palette placement={placement}>
                 <PaletteButton className="ghost grey">
                     <i className="fa-sharp fa-solid fa-face-smile"></i>
                 </PaletteButton>
                 <PaletteContent className="emoji-palette-content">
-                    <Input placeholder="Search emojis..." value={searchTerm} onChange={handleSearchChange} />
+                    <InputGroup>
+                        <InputLeftElement>
+                            <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
+                        </InputLeftElement>
+                        <Input placeholder="Search emojis..." value={searchTerm} onChange={handleSearchChange} />
+                    </InputGroup>
                     <div className="emoji-grid">
                         {filteredEmojis.length > 0 ? (
                             filteredEmojis.map((item, index) => (

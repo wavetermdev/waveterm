@@ -11,9 +11,6 @@ const meta: Meta<typeof EmojiPalette> = {
         className: "custom-emoji-palette-class",
     },
     argTypes: {
-        scopeRef: {
-            description: "Reference to the outer container element for positioning",
-        },
         className: {
             description: "Custom class for emoji palette styling",
         },

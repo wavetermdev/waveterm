@@ -69,8 +69,6 @@ interface InputProps {
     isNumber?: boolean;
     inputRef?: React.MutableRefObject<any>;
     manageFocus?: (isFocused: boolean) => void;
-    multiLine?: boolean;
-    rows?: number;
 }
 
 const Input = forwardRef<HTMLDivElement, InputProps>(
@@ -92,8 +90,6 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
             isNumber,
             inputRef,
             manageFocus,
-            multiLine = false,
-            rows = 1,
         }: InputProps,
         ref
     ) => {
@@ -138,36 +134,20 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
                             {label}
                         </label>
                     )}
-                    {multiLine ? (
-                        <textarea
-                            className={clsx("input-inner-textarea")}
-                            ref={inputRef}
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={onKeyDown}
-                            onFocus={handleFocus}
-                            onBlur={handleBlur}
-                            placeholder={placeholder}
-                            maxLength={maxLength}
-                            autoFocus={autoFocus}
-                            disabled={disabled}
-                            rows={rows}
-                        />
-                    ) : (
-                        <input
-                            className={clsx("input-inner-input")}
-                            ref={inputRef}
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={onKeyDown}
-                            onFocus={handleFocus}
-                            onBlur={handleBlur}
-                            placeholder={placeholder}
-                            maxLength={maxLength}
-                            autoFocus={autoFocus}
-                            disabled={disabled}
-                        />
-                    )}
+
+                    <input
+                        className={clsx("input-inner-input")}
+                        ref={inputRef}
+                        value={inputValue}
+                        onChange={handleInputChange}
+                        onKeyDown={onKeyDown}
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+                        placeholder={placeholder}
+                        maxLength={maxLength}
+                        autoFocus={autoFocus}
+                        disabled={disabled}
+                    />
                 </div>
             </div>
         );
