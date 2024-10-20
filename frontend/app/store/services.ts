@@ -66,6 +66,9 @@ class FileServiceType {
     GetWaveFile(arg1: string, arg2: string): Promise<any> {
         return WOS.callBackendService("file", "GetWaveFile", Array.from(arguments))
     }
+    Mkdir(arg1: string, arg2: string): Promise<void> {
+        return WOS.callBackendService("file", "Mkdir", Array.from(arguments))
+    }
 
     // read file
     ReadFile(connection: string, path: string): Promise<FullFile> {

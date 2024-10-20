@@ -10,6 +10,7 @@ import { base64ToString, isBlank } from "@/util/util";
 import {
     Column,
     Row,
+    RowData,
     Table,
     createColumnHelper,
     flexRender,
@@ -25,6 +26,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.less";
+
+declare module "@tanstack/react-table" {
+    interface TableMeta<TData extends RowData> {
+        updateName: (rowIndex: number, value: string) => void;
+        newFile: () => void;
+        newFolder: () => void;
+    }
+}
 
 interface DirectoryTableProps {
     model: PreviewModel;
@@ -351,6 +360,8 @@ interface TableBodyProps {
     osRef: OverlayScrollbarsComponentRef;
 }
 
+type CreateOperation = "file" | "folder" | null;
+
 function TableBody({
     bodyRef,
     model,
@@ -366,6 +377,7 @@ function TableBody({
     const warningBoxRef = useRef<HTMLDivElement>();
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const conn = useAtomValue(model.connection);
+    const [createOperation, setCreateOperation] = useState<CreateOperation>(null);
 
     useEffect(() => {
         if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osRef) {
@@ -396,6 +408,21 @@ function TableBody({
             e.stopPropagation();
             const fileName = path.split("/").pop();
             const menu: ContextMenuItem[] = [
+                {
+                    label: "New File",
+                    click: () => {
+                        setCreateOperation("file");
+                    },
+                },
+                {
+                    label: "New Folder",
+                    click: () => {
+                        setCreateOperation("folder");
+                    },
+                },
+                {
+                    type: "separator",
+                },
                 {
                     label: "Copy File Name",
                     click: () => navigator.clipboard.writeText(fileName),
