@@ -1,6 +1,3 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
 import clsx from "clsx";
 import React, { useEffect, useRef, useState } from "react";
 import { EmojiPalette } from "./emojipalette";
@@ -47,16 +44,35 @@ const ChatInput = ({
     const [internalValue, setInternalValue] = useState(defaultValue);
     const [lineHeight, setLineHeight] = useState(24); // Default line height fallback of 24px
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = "auto"; // Reset height
-            const maxHeight = maxRows * lineHeight; // Calculate max height
-            const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight);
-            textareaRef.current.style.height = `${newHeight}px`; // Set height dynamically
-        }
+    // Function to count the number of lines in the textarea value
+    const countLines = (text: string) => {
+        return text.split("\n").length;
+    };
 
+    const adjustTextareaHeight = () => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "auto"; // Reset height to auto first
+
+            const maxHeight = maxRows * lineHeight; // Max height based on maxRows
+            const currentLines = countLines(textareaRef.current.value); // Count the number of lines
+            const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight); // Calculate new height
+
+            // If the number of lines is less than or equal to maxRows, set height accordingly
+            const calculatedHeight = currentLines <= maxRows ? `${lineHeight * currentLines}px` : `${newHeight}px`;
+
+            textareaRef.current.style.height = calculatedHeight; // Set new height based on lines or scrollHeight
+            if (actionWrapperRef.current) {
+                actionWrapperRef.current.style.height = calculatedHeight; // Adjust emoji palette wrapper height
+            }
+        }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInternalValue(e.target.value);
         onChange && onChange(e.target.value);
+
+        // Adjust the height of the textarea after text change
+        adjustTextareaHeight();
     };
 
     const handleFocus = () => {
@@ -73,25 +89,13 @@ const ChatInput = ({
         if (textareaRef.current) {
             const computedStyle = window.getComputedStyle(textareaRef.current);
             let lineHeightValue = computedStyle.lineHeight;
-
-            if (lineHeightValue === "normal") {
-                const fontSize = parseFloat(computedStyle.fontSize);
-                lineHeightValue = `${fontSize * 1.2}px`; // Fallback to 1.2 ratio of font size
-            }
-
             const detectedLineHeight = parseFloat(lineHeightValue);
-            setLineHeight(detectedLineHeight || 24); // Fallback if detection fails
+            setLineHeight(detectedLineHeight);
         }
     }, [textareaRef]);
 
     useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = "auto";
-            const maxHeight = maxRows * lineHeight;
-            const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight);
-            textareaRef.current.style.height = `${newHeight}px`;
-            actionWrapperRef.current.style.height = `${newHeight}px`;
-        }
+        adjustTextareaHeight(); // Adjust the height when the component mounts or value changes
     }, [value, maxRows, lineHeight]);
 
     const inputValue = value ?? internalValue;
@@ -118,7 +122,7 @@ const ChatInput = ({
                             : "hidden",
                 }}
             />
-            <div ref={actionWrapperRef}>
+            <div ref={actionWrapperRef} className="emoji-palette-wrapper">
                 <EmojiPalette placement="top-end" />
             </div>
         </div>

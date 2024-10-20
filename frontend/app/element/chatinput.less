@@ -1,25 +1,22 @@
 .chat-group {
     display: flex;
-    align-items: stretch; /* Make both textarea and palette stretch equally */
+    align-items: stretch;
     border-radius: 6px;
     position: relative;
     width: 100%;
     border: 2px solid var(--form-element-border-color);
     background: var(--form-element-bg-color);
     padding: 5px;
-    gap: 5px;
+    gap: 10px;
 
-    /* Focus style */
     &.focused {
         border-color: var(--form-element-primary-color);
     }
 
-    /* Error state */
     &.error {
         border-color: var(--form-element-error-color);
     }
 
-    /* Disabled state */
     &.disabled {
         opacity: 0.75;
     }
@@ -36,31 +33,32 @@
         justify-content: center;
     }
 
-    /* Textarea */
     .chat-textarea {
-        flex-grow: 1; /* Textarea should take up remaining space */
+        flex-grow: 1;
         margin: 0;
-        padding: 5px;
         border: none;
         box-shadow: none;
+        box-sizing: border-box;
         background-color: transparent;
         resize: none;
-        overflow-y: auto; /* Only scroll when the max height is reached */
-        line-height: 1.5;
+        overflow-y: auto;
+        line-height: 1.4;
         color: var(--form-element-text-color);
-        min-height: 24px;
+        vertical-align: top;
+        height: auto;
+        padding: 0;
 
         &:focus-visible {
             outline: none;
         }
     }
 
-    /* Emoji palette container, stays at the bottom */
-    .emoji-palette {
+    .emoji-palette-wrapper {
         display: flex;
-        align-items: flex-end; /* Aligns the emoji palette button to the bottom */
-        justify-content: center;
-        height: 100%; /* Ensure full height */
-        min-width: 40px; /* Set a minimum width for the emoji button area */
+        align-items: flex-end;
+
+        button {
+            padding: 3px 4px;
+        }
     }
 }

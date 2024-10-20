@@ -98,7 +98,7 @@ export const ChatInputWithLongText: Story = {
     },
     args: {
         placeholder: "Type a long message...",
-        rows: 2,
+        rows: 1,
         maxRows: 10,
     },
 };
