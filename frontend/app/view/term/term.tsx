@@ -37,6 +37,7 @@ class TermViewModel {
     blockId: string;
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
+    viewText: jotai.Atom<HeaderElem[]>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
@@ -75,7 +76,43 @@ class TermViewModel {
             }
             return "Terminal";
         });
-        this.manageConnection = jotai.atom(true);
+        this.viewText = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "html") {
+                return [
+                    {
+                        elemtype: "iconbutton",
+                        icon: "square-terminal",
+                        title: "Switch back to Terminal",
+                        click: () => {
+                            this.setTermMode("term");
+                        },
+                    },
+                ];
+            } else {
+                const vdomActive = get(this.vdomModel.contextActive);
+                if (vdomActive) {
+                    return [
+                        {
+                            elemtype: "iconbutton",
+                            icon: "bolt",
+                            title: "Switch to Wave App",
+                            click: () => {
+                                this.setTermMode("html");
+                            },
+                        },
+                    ];
+                }
+            }
+            return null;
+        });
+        this.manageConnection = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "html") {
+                return false;
+            }
+            return true;
+        });
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
@@ -94,6 +131,16 @@ class TermViewModel {
             const connName = blockData?.meta?.connection;
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
+        });
+    }
+
+    setTermMode(mode: "term" | "html") {
+        if (mode == "term") {
+            mode = null;
+        }
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "term:mode": mode },
         });
     }
 
@@ -117,10 +164,11 @@ class TermViewModel {
             const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${this.blockId}`);
             const blockData = globalStore.get(blockAtom);
             const newTermMode = blockData?.meta?.["term:mode"] == "html" ? null : "html";
-            RpcApi.SetMetaCommand(TabRpcClient, {
-                oref: WOS.makeORef("block", this.blockId),
-                meta: { "term:mode": newTermMode },
-            });
+            const isVDomActive = globalStore.get(this.vdomModel.contextActive);
+            if (newTermMode == "html" && !isVDomActive) {
+                return;
+            }
+            this.setTermMode(newTermMode);
             return true;
         }
         const blockData = globalStore.get(this.blockAtom);

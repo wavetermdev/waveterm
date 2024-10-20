@@ -86,6 +86,7 @@ export class VDomModel {
     needsImmediateUpdate: boolean;
     lastUpdateTs: number = 0;
     queuedUpdate: { timeoutId: any; ts: number; quick: boolean };
+    contextActive: jotai.PrimitiveAtom<boolean>;
 
     constructor(
         blockId: string,
@@ -97,6 +98,7 @@ export class VDomModel {
         this.nodeModel = nodeModel;
         this.viewRef = viewRef;
         this.termWshClient = termWshClient;
+        this.contextActive = jotai.atom(false);
         this.reset();
     }
 
@@ -121,6 +123,7 @@ export class VDomModel {
         this.needsImmediateUpdate = false;
         this.lastUpdateTs = 0;
         this.queuedUpdate = null;
+        globalStore.set(this.contextActive, false);
     }
 
     globalKeydownHandler(e: WaveKeyboardEvent): boolean {
