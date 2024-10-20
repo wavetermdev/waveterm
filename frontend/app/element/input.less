@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.input {
+.input-wrapper {
     display: flex;
     align-items: center;
     border-radius: 6px;
@@ -103,7 +103,7 @@
     }
 
     /* Ensure the input elements inside the group behave correctly */
-    .input {
+    .input-wrapper {
         border: none; /* Remove the individual input border */
         flex-grow: 1;
         margin: 0;
@@ -117,13 +117,13 @@
             border-color: transparent; /* Make sure individual input error doesn't override group error */
         }
 
-        .input-inner {
+        .input-wrapper-inner {
             display: flex;
             flex-direction: column;
             position: relative;
             flex-grow: 1;
 
-            .input-inner-label {
+            .label {
                 padding: var(--inner-padding);
                 font-size: 12.5px;
                 transition: all 0.3s;
@@ -132,7 +132,7 @@
                 user-select: none;
             }
 
-            .input-inner-input {
+            .input {
                 width: 100%;
                 height: 100%;
                 border: none;
@@ -141,23 +141,10 @@
                 background-color: transparent;
                 color: var(--form-element-text-color);
                 line-height: 24;
-                padding: 0 5px;
-
-                &:placeholder-shown {
-                    user-select: none;
-                }
+                padding: 0 7px;
             }
 
-            .input-inner-textarea {
-                padding: 0 5px;
-                resize: vertical;
-                // overflow-y: auto;
-                line-height: 1.5;
-                color: var(--form-element-text-color);
-            }
-
-            .input-inner-input,
-            .input-inner-textarea {
+            .input {
                 background-color: transparent;
             }
         }

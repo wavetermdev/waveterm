@@ -124,19 +124,19 @@ const Input = forwardRef<HTMLDivElement, InputProps>(
         return (
             <div
                 ref={ref}
-                className={clsx("input", className, {
+                className={clsx("input-wrapper", className, {
                     disabled: disabled,
                 })}
             >
-                <div className="input-inner">
+                <div className="input-wrapper-inner">
                     {label && (
-                        <label className={clsx("input-inner-label")} htmlFor={label}>
+                        <label className={clsx("label")} htmlFor={label}>
                             {label}
                         </label>
                     )}
 
                     <input
-                        className={clsx("input-inner-input")}
+                        className={clsx("input")}
                         ref={inputRef}
                         value={inputValue}
                         onChange={handleInputChange}

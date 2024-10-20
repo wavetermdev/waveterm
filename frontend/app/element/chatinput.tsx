@@ -7,7 +7,7 @@ import "./chatinput.less";
 interface ChatInputProps {
     value?: string;
     className?: string;
-    onChange?: (value: string) => void;
+    onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onFocus?: () => void;
     onBlur?: () => void;
@@ -69,7 +69,7 @@ const ChatInput = ({
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInternalValue(e.target.value);
-        onChange && onChange(e.target.value);
+        onChange?.(e);
 
         // Adjust the height of the textarea after text change
         adjustTextareaHeight();

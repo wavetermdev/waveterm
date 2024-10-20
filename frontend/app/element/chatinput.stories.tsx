@@ -54,6 +54,10 @@ export const DefaultChatInput: Story = {
     render: (args) => {
         const [message, setMessage] = useState("");
 
+        const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+            setMessage(e.target.value);
+        };
+
         return (
             <div
                 style={{
@@ -65,7 +69,7 @@ export const DefaultChatInput: Story = {
                     justifyContent: "center",
                 }}
             >
-                <ChatInput {...args} value={message} onChange={setMessage} />
+                <ChatInput {...args} value={message} onChange={handleChange} />
             </div>
         );
     },
@@ -81,6 +85,10 @@ export const ChatInputWithLongText: Story = {
     render: (args) => {
         const [message, setMessage] = useState("This is a long message that will expand the textarea.");
 
+        const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+            setMessage(e.target.value);
+        };
+
         return (
             <div
                 style={{
@@ -92,7 +100,7 @@ export const ChatInputWithLongText: Story = {
                     justifyContent: "center",
                 }}
             >
-                <ChatInput {...args} value={message} onChange={setMessage} />
+                <ChatInput {...args} value={message} onChange={handleChange} />
             </div>
         );
     },
