@@ -39,7 +39,7 @@ jobs:
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
-                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools bsdtar
+                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
                   sudo snap install snapcraft --classic # needed for snap
                   sudo addgroup --system lxd
                   sudo adduser $USER lxd
