@@ -38,7 +38,7 @@ func GetStarterLayout() PortableLayout {
 		}, Focused: true},
 		{IndexArr: []int{1}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "cpuplot",
+				waveobj.MetaKey_View: "sysinfo",
 			},
 		}},
 		{IndexArr: []int{1, 1}, BlockDef: &waveobj.BlockDef{

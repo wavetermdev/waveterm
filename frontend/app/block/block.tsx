@@ -4,6 +4,7 @@
 import { BlockComponentModel2, BlockProps } from "@/app/block/blocktypes";
 import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
+import { SysinfoView, SysinfoViewModel, makeSysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { NodeModel, useDebouncedNodeInnerRect } from "@/layout/index";
@@ -17,7 +18,6 @@ import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank } from "@/util/util";
 import { Chat, ChatModel, makeChatModel } from "@/view/chat/chat";
-import { CpuPlotView, CpuPlotViewModel, makeCpuPlotViewModel } from "@/view/cpuplot/cpuplot";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
 import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
@@ -48,8 +48,9 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
     if (blockView === "waveai") {
         return makeWaveAiViewModel(blockId);
     }
-    if (blockView === "cpuplot") {
-        return makeCpuPlotViewModel(blockId);
+    if (blockView === "cpuplot" || blockView == "sysinfo") {
+        // "cpuplot" is for backwards compatibility with already-opened widgets
+        return makeSysinfoViewModel(blockId, blockView);
     }
     if (blockView === "help") {
         return makeHelpViewModel(blockId, nodeModel);
@@ -96,8 +97,9 @@ function getViewElem(
     if (blockView === "waveai") {
         return <WaveAi key={blockId} blockId={blockId} model={viewModel as WaveAiModel} />;
     }
-    if (blockView === "cpuplot") {
-        return <CpuPlotView key={blockId} blockId={blockId} model={viewModel as CpuPlotViewModel} />;
+    if (blockView === "cpuplot" || blockView === "sysinfo") {
+        // "cpuplot" is for backwards compatibility with already opened widgets
+        return <SysinfoView key={blockId} blockId={blockId} model={viewModel as SysinfoViewModel} />;
     }
     if (blockView == "help") {
         return <HelpView key={blockId} model={viewModel as HelpViewModel} />;

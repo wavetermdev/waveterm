@@ -64,6 +64,8 @@ const (
 	MetaKey_GraphNumPoints                   = "graph:numpoints"
 	MetaKey_GraphMetrics                     = "graph:metrics"
 
+	MetaKey_SysinfoType                      = "sysinfo:type"
+
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_Bg                               = "bg"
 	MetaKey_BgOpacity                        = "bg:opacity"

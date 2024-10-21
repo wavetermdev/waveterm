@@ -471,10 +471,12 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow, fullConfi
         }
     });
     win.on(
+        // @ts-expect-error
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
     win.on(
+        // @ts-expect-error
         "move",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
@@ -1073,7 +1075,7 @@ async function relaunchBrowserWindows(): Promise<void> {
     }
     for (const win of wins) {
         await win.readyPromise;
-        console.log("show", win.waveWindowId);
+        console.log("show window", win.waveWindowId);
         win.show();
     }
 }
