@@ -8,6 +8,24 @@
     height: 100%;
 
     .chat-section {
+        display: flex;
+        flex-direction: column;
         flex-grow: 1;
+
+        .message-wrapper {
+            flex-grow: 1; // Make the ChatMessages take up available height
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; // Ensure content doesn't overflow
+        }
+
+        .chatbox {
+            display: flex;
+            align-items: center;
+
+            textarea {
+                border: none;
+            }
+        }
     }
 }

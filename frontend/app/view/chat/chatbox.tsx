@@ -1,45 +1,43 @@
-// ChatBox Component
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { EmojiPalette } from "@/app/element/emojipalette";
-import { Input } from "@/app/element/input";
-import { InputDecoration } from "@/app/element/inputdecoration";
-import React, { useRef, useState } from "react";
+import { InputGroup } from "@/app/element/input";
+import { MultiLineInput } from "@/app/element/multilineinput";
+import * as keyutil from "@/util/keyutil";
+import React, { useState } from "react";
 
 interface ChatBoxProps {
     onSendMessage: (message: string) => void;
 }
 
-const ChatBox: React.FC<ChatBoxProps> = ({ onSendMessage }) => {
+const ChatBox = ({ onSendMessage }: ChatBoxProps) => {
     const [message, setMessage] = useState("");
-    const anchorRef = useRef<HTMLButtonElement>(null);
-    const scopeRef = useRef<HTMLDivElement>(null);
 
-    const handleInputChange = (value: string) => {
-        setMessage(value);
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setMessage(e.target.value);
     };
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === "Enter" && message.trim() !== "") {
+    const handleKeyDown = (waveEvent: WaveKeyboardEvent): boolean => {
+        if (keyutil.checkKeyPressed(waveEvent, "Enter") && !waveEvent.shift && message.trim() !== "") {
             onSendMessage(message);
             setMessage("");
+            return true;
         }
+        return false;
     };
 
     return (
-        <div ref={scopeRef} className="chatbox">
-            <Input
+        <InputGroup className="chatbox">
+            <MultiLineInput
+                className="input"
                 value={message}
                 onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
+                onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
                 placeholder="Type a message..."
-                decoration={{
-                    endDecoration: (
-                        <InputDecoration>
-                            <EmojiPalette scopeRef={scopeRef} className="emoji-palette" />
-                        </InputDecoration>
-                    ),
-                }}
             />
-        </div>
+            <EmojiPalette placement="top-end" />
+        </InputGroup>
     );
 };
 

@@ -3,7 +3,7 @@
 
 import clsx from "clsx";
 import { memo } from "react";
-import { Avatar } from "./avatar";
+import { Avatar } from "../../element/avatar";
 import "./userlist.less";
 
 export interface UserStatus {

@@ -1,10 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
-import { ChatMessage, ChatMessages } from "@/app/element/chatmessages";
-import { UserStatus } from "@/app/element/userlist";
-import { UserList } from "../../element/userlist";
+
+import { ChatMessage, ChatMessages } from "@/app/view/chat/chatmessages";
+import { UserStatus } from "@/app/view/chat/userlist";
 import { Channels } from "./channels";
+import { ChatBox } from "./chatbox";
 import { channels, messages, users } from "./data";
+import { UserList } from "./userlist";
 
 import "./chat.less";
 
@@ -37,7 +39,10 @@ const Chat = ({ model }: ChatProps) => {
         <div className="chat-view">
             <Channels channels={channels}></Channels>
             <div className="chat-section">
-                <ChatMessages messages={messages}></ChatMessages>
+                <div className="message-wrapper">
+                    <ChatMessages messages={messages}></ChatMessages>
+                </div>
+                <ChatBox onSendMessage={(message: string) => console.log("message: ", message)} />
             </div>
             <UserList users={users}></UserList>
         </div>

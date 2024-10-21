@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
-import { ChatMessage } from "@/app/element/chatmessages";
-import { UserStatus } from "@/app/element/userlist";
+import { ChatMessage } from "@/app/view/chat/chatmessages";
+import { UserStatus } from "@/app/view/chat/userlist";
 
 export const channels: MenuItem[] = [
     {
