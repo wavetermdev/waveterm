@@ -114,7 +114,6 @@ const config = {
         } else if (context.electronPlatformName === "linux") {
             const chromeSandboxPath = path.resolve(context.appOutDir, "chrome-sandbox");
             fs.chmodSync(chromeSandboxPath, 0o4755);
-            fs.chownSync(chromeSandboxPath, 0, 0);
         }
     },
 };
