@@ -137,15 +137,21 @@ func (p *WshRpcProxy) HandleClientProxyAuth(upstream *WshRpc) (string, error) {
 		}
 		resp, err := upstream.SendRpcRequest(msg.Command, msg.Data, nil)
 		if err != nil {
-			return "", fmt.Errorf("error authenticating: %w", err)
+			respErr := fmt.Errorf("error authenticating: %w", err)
+			p.sendResponseError(msg, respErr)
+			return "", respErr
 		}
 		var respData wshrpc.CommandAuthenticateRtnData
 		err = utilfn.ReUnmarshal(&respData, resp)
 		if err != nil {
-			return "", fmt.Errorf("error unmarshalling authenticate response: %w", err)
+			respErr := fmt.Errorf("error unmarshalling authenticate response: %w", err)
+			p.sendResponseError(msg, respErr)
+			return "", respErr
 		}
 		if respData.AuthToken == "" {
-			return "", fmt.Errorf("no auth token in authenticate response")
+			respErr := fmt.Errorf("no auth token in authenticate response")
+			p.sendResponseError(msg, respErr)
+			return "", respErr
 		}
 		p.SetAuthToken(respData.AuthToken)
 		announceMsg := RpcMessage{
@@ -155,6 +161,7 @@ func (p *WshRpcProxy) HandleClientProxyAuth(upstream *WshRpc) (string, error) {
 		}
 		announceBytes, _ := json.Marshal(announceMsg)
 		upstream.SendRpcMessage(announceBytes)
+		p.sendAuthenticateResponse(msg, respData.RouteId)
 		return respData.RouteId, nil
 	}
 }

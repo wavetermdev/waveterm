@@ -82,6 +82,7 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 	routeId, err := proxy.HandleClientProxyAuth(upstreamClient)
 	if err != nil {
 		log.Printf("error handling client proxy auth: %v\n", err)
+		conn.Close()
 		return
 	}
 	router.RegisterRoute(routeId, proxy, false)
