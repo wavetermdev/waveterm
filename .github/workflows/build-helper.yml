@@ -3,7 +3,7 @@
 # For more information on the Windows Code Signing, see https://docs.digicert.com/en/digicert-keylocker/ci-cd-integrations/plugins/github-custom-action-for-keypair-signing.html and https://docs.digicert.com/en/digicert-keylocker/signing-tools/sign-authenticode-with-electron-builder-using-ksp-integration.html
 
 name: Build Helper
-run-name: Build ${{ github.ref_name }}
+run-name: Build ${{ github.ref_name }}${{ github.event_name == 'workflow_dispatch' && ' - Manual'}}
 on:
     push:
         tags:
