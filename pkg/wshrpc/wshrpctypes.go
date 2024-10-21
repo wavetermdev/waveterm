@@ -28,6 +28,7 @@ const (
 
 const (
 	Command_Authenticate      = "authenticate"    // special
+	Command_Dispose           = "dispose"         // special (disposes of the route, for multiproxy only)
 	Command_RouteAnnounce     = "routeannounce"   // special (for routing)
 	Command_RouteUnannounce   = "routeunannounce" // special (for routing)
 	Command_Message           = "message"
@@ -83,6 +84,7 @@ type RespOrErrorUnion[T any] struct {
 
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
+	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
 
@@ -200,7 +202,13 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 }
 
 type CommandAuthenticateRtnData struct {
+	RouteId   string `json:"routeid"`
+	AuthToken string `json:"authtoken,omitempty"`
+}
+
+type CommandDisposeData struct {
 	RouteId string `json:"routeid"`
+	// auth token travels in the packet directly
 }
 
 type CommandMessageData struct {

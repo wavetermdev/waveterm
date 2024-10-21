@@ -136,9 +136,9 @@ func (p *WshRpcProxy) SendRpcMessage(msg []byte) {
 }
 
 func (p *WshRpcProxy) RecvRpcMessage() ([]byte, bool) {
-	msgBytes, ok := <-p.FromRemoteCh
-	if !ok || p.RpcContext == nil {
-		return msgBytes, ok
+	msgBytes, more := <-p.FromRemoteCh
+	if !more || p.RpcContext == nil {
+		return msgBytes, more
 	}
 	var msg RpcMessage
 	err := json.Unmarshal(msgBytes, &msg)

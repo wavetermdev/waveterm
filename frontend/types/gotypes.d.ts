@@ -63,6 +63,7 @@ declare global {
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
         routeid: string;
+        authtoken?: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -98,6 +99,11 @@ declare global {
     // wshrpc.CommandDeleteBlockData
     type CommandDeleteBlockData = {
         blockid: string;
+    };
+
+    // wshrpc.CommandDisposeData
+    type CommandDisposeData = {
+        routeid: string;
     };
 
     // wshrpc.CommandEventReadHistoryData
@@ -416,6 +422,7 @@ declare global {
         resid?: string;
         timeout?: number;
         route?: string;
+        authtoken?: string;
         source?: string;
         cont?: boolean;
         cancel?: boolean;

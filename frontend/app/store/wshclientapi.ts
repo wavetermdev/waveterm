@@ -72,6 +72,11 @@ class RpcApiType {
         return client.wshRpcCall("deleteblock", data, opts);
     }
 
+    // command "dispose" [call]
+    DisposeCommand(client: WshClient, data: CommandDisposeData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("dispose", data, opts);
+    }
+
     // command "eventpublish" [call]
     EventPublishCommand(client: WshClient, data: WaveEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("eventpublish", data, opts);
