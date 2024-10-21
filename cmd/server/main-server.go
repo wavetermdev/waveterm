@@ -192,9 +192,16 @@ func main() {
 		log.Printf("error ensuring wave db dir: %v\n", err)
 		return
 	}
-	err = wavebase.EnsureWaveConfigDir()
+	err = wconfig.EnsureWaveConfigDir()
 	if err != nil {
 		log.Printf("error ensuring wave config dir: %v\n", err)
+		return
+	}
+
+	// TODO: rather than ensure this dir exists, we should let the editor recursively create parent dirs on save
+	err = wconfig.EnsureWavePresetsDir()
+	if err != nil {
+		log.Printf("error ensuring wave presets dir: %v\n", err)
 		return
 	}
 	waveLock, err := wavebase.AcquireWaveLock()
