@@ -6,9 +6,9 @@ import clsx from "clsx";
 import { memo, useState } from "react";
 import { Button } from "./button";
 import { Input, InputGroup, InputLeftElement } from "./input";
-import { Palette, PaletteButton, PaletteContent } from "./palette";
+import { Popover, PopoverButton, PopoverContent } from "./popover";
 
-import "./emojiPalette.less";
+import "./emojipalette.less";
 
 type EmojiItem = { emoji: string; name: string };
 
@@ -234,11 +234,11 @@ const EmojiPalette = memo(({ className, placement, onSelect }: EmojiPaletteProps
 
     return (
         <div className={clsx("emoji-palette", className)}>
-            <Palette placement={placement}>
-                <PaletteButton className="ghost grey">
+            <Popover placement={placement}>
+                <PopoverButton className="ghost grey">
                     <i className="fa-sharp fa-solid fa-face-smile"></i>
-                </PaletteButton>
-                <PaletteContent className="emoji-palette-content">
+                </PopoverButton>
+                <PopoverContent className="emoji-palette-content">
                     <InputGroup>
                         <InputLeftElement>
                             <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
@@ -256,8 +256,8 @@ const EmojiPalette = memo(({ className, placement, onSelect }: EmojiPaletteProps
                             <div className="no-emojis">No emojis found</div>
                         )}
                     </div>
-                </PaletteContent>
-            </Palette>
+                </PopoverContent>
+            </Popover>
         </div>
     );
 });

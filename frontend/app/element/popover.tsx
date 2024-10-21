@@ -16,28 +16,28 @@ import {
 } from "react";
 import { Button } from "./button";
 
-import "./palette.less";
+import "./popover.less";
 
-interface PaletteProps {
+interface PopoverProps {
     children: ReactNode;
     className?: string;
     placement?: Placement;
     onOpenChange?: (isOpen: boolean) => void;
 }
 
-const isPaletteButton = (
+const isPopoverButton = (
     element: ReactElement
-): element is ReactElement<PaletteButtonProps, JSXElementConstructor<PaletteButtonProps>> => {
-    return element.type === PaletteButton;
+): element is ReactElement<PopoverButtonProps, JSXElementConstructor<PopoverButtonProps>> => {
+    return element.type === PopoverButton;
 };
 
-const isPaletteContent = (
+const isPopoverContent = (
     element: ReactElement
-): element is ReactElement<PaletteContentProps, JSXElementConstructor<PaletteContentProps>> => {
-    return element.type === PaletteContent;
+): element is ReactElement<PopoverContentProps, JSXElementConstructor<PopoverContentProps>> => {
+    return element.type === PopoverContent;
 };
 
-const Palette = memo(({ children, className, placement, onOpenChange }: PaletteProps) => {
+const Popover = memo(({ children, className, placement, onOpenChange }: PopoverProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleOpen = () => {
@@ -56,7 +56,7 @@ const Palette = memo(({ children, className, placement, onOpenChange }: PaletteP
 
     const renderChildren = Children.map(children, (child) => {
         if (isValidElement(child)) {
-            if (isPaletteButton(child)) {
+            if (isPopoverButton(child)) {
                 return cloneElement(child as any, {
                     isActive: isOpen,
                     ref: refs.setReference,
@@ -65,7 +65,7 @@ const Palette = memo(({ children, className, placement, onOpenChange }: PaletteP
                 });
             }
 
-            if (isPaletteContent(child)) {
+            if (isPopoverContent(child)) {
                 return isOpen
                     ? cloneElement(child as any, {
                           ref: refs.setFloating,
@@ -81,19 +81,19 @@ const Palette = memo(({ children, className, placement, onOpenChange }: PaletteP
     return <>{renderChildren}</>;
 });
 
-interface PaletteButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     isActive?: boolean;
     children: React.ReactNode;
     onClick?: () => void;
     getReferenceProps?: () => any;
 }
 
-const PaletteButton = forwardRef<HTMLButtonElement, PaletteButtonProps>(
+const PopoverButton = forwardRef<HTMLButtonElement, PopoverButtonProps>(
     ({ isActive, children, onClick, getReferenceProps, className, ...props }, ref) => {
         return (
             <Button
                 ref={ref}
-                className={clsx("ghost grey palette-button", className, { "is-active": isActive })}
+                className={clsx("ghost grey popover-button", className, { "is-active": isActive })}
                 onClick={onClick}
                 {...getReferenceProps?.()}
                 {...props}
@@ -104,17 +104,17 @@ const PaletteButton = forwardRef<HTMLButtonElement, PaletteButtonProps>(
     }
 );
 
-interface PaletteContentProps extends React.HTMLAttributes<HTMLDivElement> {
+interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement> {
     children: React.ReactNode;
     getFloatingProps?: () => any;
 }
 
-const PaletteContent = forwardRef<HTMLDivElement, PaletteContentProps>(
+const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
     ({ children, className, getFloatingProps, style, ...props }, ref) => {
         return (
             <div
                 ref={ref}
-                className={clsx("palette-content", className)}
+                className={clsx("popover-content", className)}
                 style={style}
                 {...getFloatingProps?.()}
                 {...props}
@@ -125,9 +125,9 @@ const PaletteContent = forwardRef<HTMLDivElement, PaletteContentProps>(
     }
 );
 
-Palette.displayName = "Palette";
-PaletteButton.displayName = "PaletteButton";
-PaletteContent.displayName = "PaletteContent";
+Popover.displayName = "Popover";
+PopoverButton.displayName = "PopoverButton";
+PopoverContent.displayName = "PopoverContent";
 
-export { Palette, PaletteButton, PaletteContent };
-export type { PaletteButtonProps, PaletteContentProps };
+export { Popover, PopoverButton, PopoverContent };
+export type { PopoverButtonProps, PopoverContentProps };

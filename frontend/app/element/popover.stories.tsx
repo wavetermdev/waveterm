@@ -2,33 +2,33 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { Palette, PaletteButton, PaletteContent } from "./palette";
+import { Popover, PopoverButton, PopoverContent } from "./popover";
 
-const meta: Meta<typeof Palette> = {
-    title: "Elements/Palette",
-    component: Palette,
+const meta: Meta<typeof Popover> = {
+    title: "Elements/Popover",
+    component: Popover,
     args: {
-        className: "custom-palette-class",
+        className: "custom-popover-class",
     },
     argTypes: {
         className: {
-            description: "Custom class for palette styling",
+            description: "Custom class for popover styling",
         },
     },
 };
 
 export default meta;
-type Story = StoryObj<typeof Palette>;
+type Story = StoryObj<typeof Popover>;
 
-export const DefaultPalette: Story = {
+export const DefaultPopover: Story = {
     render: (args) => {
         return (
             <div className="boundary" style={{ padding: "20px", height: "00px", border: "2px solid black" }}>
-                <Palette {...args}>
-                    <PaletteButton className="ghost grey">
+                <Popover {...args}>
+                    <PopoverButton className="ghost grey">
                         <i className="fa-sharp fa-solid fa-face-smile"></i>
-                    </PaletteButton>
-                    <PaletteContent>
+                    </PopoverButton>
+                    <PopoverContent>
                         <div
                             style={{
                                 opacity: ".3",
@@ -43,12 +43,12 @@ export const DefaultPalette: Story = {
                             <i className="fa-sharp fa-solid fa-shelves-empty"></i>
                             <span style={{ fontSize: "11px" }}>Empty</span>
                         </div>
-                    </PaletteContent>
-                </Palette>
+                    </PopoverContent>
+                </Popover>
             </div>
         );
     },
     args: {
-        className: "custom-palette-class",
+        className: "custom-popover-class",
     },
 };
