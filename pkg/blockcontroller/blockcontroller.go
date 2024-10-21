@@ -383,7 +383,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	go func() {
 		// handles outputCh -> shellInputCh
 		for msg := range wshProxy.ToRemoteCh {
-			encodedMsg := wshutil.EncodeWaveOSCBytes(wshutil.WaveServerOSC, msg)
+			encodedMsg, err := wshutil.EncodeWaveOSCBytes(wshutil.WaveServerOSC, msg)
+			if err != nil {
+				log.Printf("error encoding OSC message: %v\n", err)
+			}
 			shellInputCh <- &BlockInputUnion{InputData: encodedMsg}
 		}
 	}()
