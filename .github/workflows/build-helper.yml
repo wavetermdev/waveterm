@@ -42,7 +42,7 @@ jobs:
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
                   sudo snap install snapcraft --classic # needed for snap
                   sudo snap install lxd
-                  sudo lxd init
+                  sudo lxd init --minimal
                   sudo snap install zig --classic --beta # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
