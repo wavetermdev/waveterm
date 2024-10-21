@@ -15,7 +15,6 @@ import (
 )
 
 var configDirAbsPath = filepath.Join(wavebase.GetWaveHomeDir(), wavebase.ConfigDir)
-var presetsDirAbsPath = filepath.Join(configDirAbsPath, wavebase.PresetsDir)
 
 var instance *Watcher
 var once sync.Once
@@ -46,9 +45,12 @@ func GetWatcher() *Watcher {
 			log.Printf(failedStr, configDirAbsPath, err)
 		}
 
-		err = instance.watcher.Add(presetsDirAbsPath)
-		if err != nil {
-			log.Printf(failedStr, presetsDirAbsPath, err)
+		subdirs := GetConfigSubdirs()
+		for _, dir := range subdirs {
+			err = instance.watcher.Add(dir)
+			if err != nil {
+				log.Printf(failedStr, dir, err)
+			}
 		}
 	})
 	return instance
