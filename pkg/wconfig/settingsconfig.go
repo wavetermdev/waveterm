@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -329,10 +330,11 @@ func GetConfigSubdirs() []string {
 			continue
 		}
 		jsonTag := utilfn.GetJsonTag(field)
-		if jsonTag != "-" && jsonTag != "" {
+		if jsonTag != "-" && jsonTag != "" && jsonTag != "settings" {
 			retVal = append(retVal, filepath.Join(configDirAbsPath, jsonTag))
 		}
 	}
+	log.Printf("subdirs: %v\n", retVal)
 	return retVal
 }
 
@@ -493,16 +495,8 @@ func EnsureWaveConfigDir() error {
 	return wavebase.CacheEnsureDir(configDirAbsPath, "waveconfig", 0700, "wave config directory")
 }
 
-func EnsureWaveConfigSubdirs() error {
-	subdirs := GetConfigSubdirs()
-	var err error
-	for _, dir := range subdirs {
-		err = wavebase.CacheEnsureDir(dir, "waveconfigsubdir", 0700, "wave config subdirectory")
-		if err != nil {
-			break
-		}
-	}
-	return err
+func EnsureWavePresetsDir() error {
+	return wavebase.CacheEnsureDir(filepath.Join(configDirAbsPath, "presets"), "wavepresets", 0700, "wave presets directory")
 }
 
 type WidgetConfigType struct {

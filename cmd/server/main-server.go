@@ -197,9 +197,9 @@ func main() {
 		log.Printf("error ensuring wave config dir: %v\n", err)
 		return
 	}
-	err = wconfig.EnsureWaveConfigSubdirs()
+	err = wconfig.EnsureWavePresetsDir()
 	if err != nil {
-		log.Printf("error ensuring wave config subdirs: %v\n", err)
+		log.Printf("error ensuring wave presets dir: %v\n", err)
 		return
 	}
 	waveLock, err := wavebase.AcquireWaveLock()
