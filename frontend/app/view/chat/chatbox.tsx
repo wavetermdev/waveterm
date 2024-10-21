@@ -5,14 +5,14 @@ import { EmojiPalette, type EmojiItem } from "@/app/element/emojipalette";
 import { InputGroup } from "@/app/element/input";
 import { MultiLineInput } from "@/app/element/multilineinput";
 import * as keyutil from "@/util/keyutil";
-import React, { useRef, useState } from "react";
+import React, { memo, useRef, useState } from "react";
 import { throttle } from "throttle-debounce";
 
 interface ChatBoxProps {
     onSendMessage: (message: string) => void;
 }
 
-const ChatBox = ({ onSendMessage }: ChatBoxProps) => {
+const ChatBox = memo(({ onSendMessage }: ChatBoxProps) => {
     const [message, setMessage] = useState("");
     const multiLineInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -73,6 +73,6 @@ const ChatBox = ({ onSendMessage }: ChatBoxProps) => {
             <EmojiPalette placement="top-end" onSelect={handleEmojiSelect} />
         </InputGroup>
     );
-};
+});
 
 export { ChatBox };

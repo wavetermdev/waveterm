@@ -4,6 +4,7 @@
 import { ChatMessage, ChatMessages } from "@/app/view/chat/chatmessages";
 import { UserStatus } from "@/app/view/chat/userlist";
 import * as jotai from "jotai";
+import { memo } from "react";
 import { Channels } from "./channels";
 import { ChatBox } from "./chatbox";
 import { channels, messages, users } from "./data";
@@ -38,7 +39,7 @@ interface ChatProps {
     model: ChatModel;
 }
 
-const Chat = ({ model }: ChatProps) => {
+const Chat = memo(({ model }: ChatProps) => {
     const { channels, users } = model;
     const messages = jotai.useAtomValue(model.messagesAtom);
     const [, appendMessage] = jotai.useAtom(model.addMessageAtom);
@@ -64,6 +65,6 @@ const Chat = ({ model }: ChatProps) => {
             <UserList users={users}></UserList>
         </div>
     );
-};
+});
 
 export { Chat, ChatModel, makeChatModel };
