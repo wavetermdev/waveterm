@@ -58,7 +58,7 @@ const config = {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
         executableName: pkg.name,
-        target: ["zip", "deb", "rpm", "AppImage", "pacman"],
+        target: ["zip", "deb", "rpm", "snap", "pacman"],
         synopsis: pkg.description,
         description: null,
         desktop: {
