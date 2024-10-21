@@ -3,9 +3,7 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { VDomModel } from "@/app/view/term/vdom-model";
-import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { useAtomValueSafe } from "@/util/util";
 import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -272,25 +270,14 @@ const testVDom: VDomElem = {
     ],
 };
 
-function VDomView({
-    blockId,
-    nodeModel,
-    viewRef,
-    model,
-}: {
-    blockId: string;
-    nodeModel: NodeModel;
-    viewRef: React.RefObject<HTMLDivElement>;
-    model: VDomModel;
-}) {
-    let rootNode = useAtomValueSafe(model?.vdomRoot);
-    if (!model || viewRef.current == null || rootNode == null) {
+function VDomRoot({ model }: { model: VDomModel }) {
+    let rootNode = jotai.useAtomValue(model.vdomRoot);
+    if (model.viewRef.current == null || rootNode == null) {
         return null;
     }
     dlog("render", rootNode);
-    model.viewRef = viewRef;
     let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }
 
-export { VDomView };
+export { VDomRoot };

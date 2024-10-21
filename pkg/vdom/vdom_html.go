@@ -80,7 +80,7 @@ func attrVal(attr htmltoken.Attribute) (any, error) {
 	var val any
 	err := json.Unmarshal([]byte(attr.Val), &val)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing json attr %q: ", attr.Key, err)
+		return nil, fmt.Errorf("error parsing json attr %q: %v", attr.Key, err)
 	}
 	return val, nil
 }

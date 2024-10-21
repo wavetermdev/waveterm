@@ -5,6 +5,8 @@ import { BlockComponentModel2, BlockProps } from "@/app/block/blocktypes";
 import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { SysinfoView, SysinfoViewModel, makeSysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
+import { VDomModel } from "@/app/view/term/vdom-model";
+import { VDomView, makeVDomModel } from "@/app/view/vdom/vdomv-view";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { NodeModel, useDebouncedNodeInnerRect } from "@/layout/index";
@@ -50,6 +52,9 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
     if (blockView === "cpuplot" || blockView == "sysinfo") {
         // "cpuplot" is for backwards compatibility with already-opened widgets
         return makeSysinfoViewModel(blockId, blockView);
+    }
+    if (blockView == "vdom") {
+        return makeVDomModel(blockId, nodeModel);
     }
     if (blockView === "help") {
         return makeHelpViewModel(blockId, nodeModel);
@@ -99,6 +104,9 @@ function getViewElem(
     }
     if (blockView == "tips") {
         return <QuickTipsView key={blockId} model={viewModel as QuickTipsViewModel} />;
+    }
+    if (blockView == "vdom") {
+        return <VDomView key={blockId} blockId={blockId} model={viewModel as VDomModel} />;
     }
     return <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
 }

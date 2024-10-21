@@ -6,7 +6,6 @@ import { makeORef } from "@/app/store/wos";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { TermWshClient } from "@/app/view/term/term-wsh";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
@@ -65,7 +64,8 @@ function convertEvent(e: React.SyntheticEvent, fromProp: string): any {
 export class VDomModel {
     blockId: string;
     nodeModel: NodeModel;
-    viewRef: React.RefObject<HTMLDivElement>;
+    viewType: string;
+    viewRef: React.RefObject<HTMLDivElement> = { current: null };
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
@@ -76,7 +76,6 @@ export class VDomModel {
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
     compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
     rootRefId: string = crypto.randomUUID();
-    termWshClient: TermWshClient;
     backendRoute: string;
     backendOpts: VDomBackendOpts;
     shouldDispose: boolean;
@@ -89,16 +88,10 @@ export class VDomModel {
     queuedUpdate: { timeoutId: any; ts: number; quick: boolean };
     contextActive: jotai.PrimitiveAtom<boolean>;
 
-    constructor(
-        blockId: string,
-        nodeModel: NodeModel,
-        viewRef: React.RefObject<HTMLDivElement>,
-        termWshClient: TermWshClient
-    ) {
+    constructor(blockId: string, nodeModel: NodeModel) {
+        this.viewType = "vdom";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
-        this.viewRef = viewRef;
-        this.termWshClient = termWshClient;
         this.contextActive = jotai.atom(false);
         this.reset();
     }

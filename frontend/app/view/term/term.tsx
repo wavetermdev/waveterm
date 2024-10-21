@@ -7,7 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
-import { VDomView } from "@/app/view/term/vdom";
+import { VDomRoot } from "@/app/view/term/vdom";
 import { VDomModel } from "@/app/view/term/vdom-model";
 import { NodeModel } from "@/layout/index";
 import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
@@ -51,7 +51,7 @@ class TermViewModel {
         this.termWshClient = new TermWshClient(blockId, this);
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.termWshClient);
         this.nodeModel = nodeModel;
-        this.vdomModel = new VDomModel(blockId, nodeModel, null, this.termWshClient);
+        this.vdomModel = new VDomModel(blockId, nodeModel);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -412,7 +412,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         cols: termRef.current?.terminal.cols ?? 80,
         blockId: blockId,
     };
-
+    model.vdomModel.viewRef = viewRef;
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
             <TermResyncHandler blockId={blockId} model={model} />
@@ -421,7 +421,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
             <div key="htmlElem" className="term-htmlelem">
                 <div key="htmlElemContent" className="term-htmlelem-content">
-                    <VDomView blockId={blockId} nodeModel={model.nodeModel} viewRef={viewRef} model={model.vdomModel} />
+                    <VDomRoot model={model.vdomModel} />
                 </div>
             </div>
         </div>
