@@ -81,8 +81,9 @@ const config = {
             certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
         },
     },
-    appImage: {
-        license: "LICENSE",
+    snap: {
+        confinement: "classic",
+        allowNativeWayland: true,
     },
     publish: {
         provider: "generic",

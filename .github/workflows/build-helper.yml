@@ -40,6 +40,7 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
+                  sudo snap install snapcraft --classic
 
             # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
             - name: Setup Zig (Linux only)
