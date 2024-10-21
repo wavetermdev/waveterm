@@ -10,7 +10,7 @@ interface MultiLineInputProps {
     value?: string;
     className?: string;
     onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-    onKeyDown?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+    onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onFocus?: () => void;
     onBlur?: () => void;
     placeholder?: string;
@@ -20,7 +20,6 @@ interface MultiLineInputProps {
     disabled?: boolean;
     rows?: number;
     maxRows?: number;
-    inputRef?: React.MutableRefObject<HTMLTextAreaElement>;
     manageFocus?: (isFocused: boolean) => void;
 }
 
