@@ -41,7 +41,7 @@ tasks:
         cmds:
             - cmd: '{{.RMRF}} "make"'
               ignore_error: true
-            - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
+            - yarn build:prod && {{if eq OS "linux"}}sudo {{end}}yarn electron-builder -c electron-builder.config.cjs -p never
         deps:
             - yarn
             - build:backend
