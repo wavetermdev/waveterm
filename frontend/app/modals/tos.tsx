@@ -95,7 +95,7 @@ const ModalPage1 = () => {
                         <div className="content-section-title">Telemetry</div>
                         <div className="content-section-text">
                             We collect minimal anonymous{" "}
-                            <a target="_blank" href="https://docs.waveterm.dev/reference/telemetry" rel={"noopener"}>
+                            <a target="_blank" href="https://docs.waveterm.dev/telemetry" rel={"noopener"}>
                                 telemetry data
                             </a>{" "}
                             to help us understand how people are using Wave (
