@@ -63,7 +63,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // do nothing
     }
 
-    const showAboutModalAtom = atom(false) as PrimitiveAtom<boolean>;
     try {
         getApi().onMenuItemAbout(() => {
             modalsModel.pushModal("AboutModal");

@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
 )
@@ -181,15 +184,19 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 	return rtn, cerrs
 }
 
+var configDirFsys = os.DirFS(configDirAbsPath)
+
+func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
+	barr, readErr := fs.ReadFile(fsys, fileName)
+	return readConfigHelper(logPrefix+fileName, barr, readErr)
+}
+
 func ReadDefaultsConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
-	barr, readErr := defaultconfig.ConfigFS.ReadFile(fileName)
-	return readConfigHelper("defaults:"+fileName, barr, readErr)
+	return readConfigFileFS(defaultconfig.ConfigFS, "defaults:", fileName)
 }
 
 func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
-	fullFileName := filepath.Join(configDirAbsPath, fileName)
-	barr, err := os.ReadFile(fullFileName)
-	return readConfigHelper(fullFileName, barr, err)
+	return readConfigFileFS(configDirFsys, "", fileName)
 }
 
 func WriteWaveHomeConfigFile(fileName string, m waveobj.MetaMapType) error {
@@ -222,15 +229,67 @@ func mergeMetaMapSimple(m waveobj.MetaMapType, toMerge waveobj.MetaMapType) wave
 	return m
 }
 
-func ReadConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
-	defConfig, cerrs1 := ReadDefaultsConfigFile(partName)
-	userConfig, cerrs2 := ReadWaveHomeConfigFile(partName)
-	allErrs := append(cerrs1, cerrs2...)
+func mergeMetaMap(m waveobj.MetaMapType, toMerge waveobj.MetaMapType, simpleMerge bool) waveobj.MetaMapType {
 	if simpleMerge {
-		return mergeMetaMapSimple(defConfig, userConfig), allErrs
+		return mergeMetaMapSimple(m, toMerge)
 	} else {
-		return waveobj.MergeMeta(defConfig, userConfig, true), allErrs
+		return waveobj.MergeMeta(m, toMerge, true)
 	}
+}
+
+func selectDirEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.DirEntry {
+	var rtn []fs.DirEntry
+	for _, ent := range dirEnts {
+		if ent.IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(ent.Name(), fileNameSuffix) {
+			continue
+		}
+		rtn = append(rtn, ent)
+	}
+	return rtn
+}
+
+func SortFileNameDescend(files []fs.DirEntry) {
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Name() > files[j].Name()
+	})
+}
+
+// Read and merge all files in the specified directory matching the supplied suffix
+func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+	dirEnts, _ := fs.ReadDir(fsys, dirName)
+	suffixEnts := selectDirEntsBySuffix(dirEnts, fileName+".json")
+	SortFileNameDescend(suffixEnts)
+	var rtn waveobj.MetaMapType
+	var errs []ConfigError
+	for _, ent := range suffixEnts {
+		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, filepath.Join(dirName, ent.Name()))
+		rtn = mergeMetaMap(rtn, fileVal, simpleMerge)
+		errs = append(errs, cerrs...)
+	}
+	return rtn, errs
+}
+
+// Read and merge all files in the specified config filesystem matching the patterns `<partName>.json` and `<partName>/*.json`
+func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+	config, errs := readConfigFilesForDir(fsys, logPrefix, partName, "", simpleMerge)
+	allErrs := errs
+	rtn := config
+	config, errs = readConfigFileFS(fsys, logPrefix, partName+".json")
+	allErrs = append(allErrs, errs...)
+	return mergeMetaMap(rtn, config, simpleMerge), allErrs
+}
+
+// Combine files from the defaults and home directory for the specified config part name
+func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+	defaultConfigs, cerrs := readConfigPartForFS(defaultconfig.ConfigFS, "defaults:", partName, simpleMerge)
+	homeConfigs, cerrs1 := readConfigPartForFS(configDirFsys, "", partName, simpleMerge)
+
+	rtn := defaultConfigs
+	allErrs := append(cerrs, cerrs1...)
+	return mergeMetaMap(rtn, homeConfigs, simpleMerge), allErrs
 }
 
 func ReadFullConfig() FullConfigType {
@@ -247,19 +306,43 @@ func ReadFullConfig() FullConfigType {
 			continue
 		}
 		jsonTag := utilfn.GetJsonTag(field)
+		simpleMerge := field.Tag.Get("merge") == ""
+		var configPart waveobj.MetaMapType
+		var errs []ConfigError
 		if jsonTag == "-" || jsonTag == "" {
 			continue
+		} else {
+			configPart, errs = readConfigPart(jsonTag, simpleMerge)
 		}
-		simpleMerge := field.Tag.Get("merge") == ""
-		fileName := jsonTag + ".json"
-		configPart, cerrs := ReadConfigPart(fileName, simpleMerge)
-		fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, cerrs...)
+		fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, errs...)
 		if configPart != nil {
 			fieldPtr := configRVal.Field(fieldIdx).Addr().Interface()
 			utilfn.ReUnmarshal(fieldPtr, configPart)
 		}
 	}
 	return fullConfig
+}
+
+func GetConfigSubdirs() []string {
+	var fullConfig FullConfigType
+	configRType := reflect.TypeOf(fullConfig)
+	var retVal []string
+	for fieldIdx := 0; fieldIdx < configRType.NumField(); fieldIdx++ {
+		field := configRType.Field(fieldIdx)
+		if field.PkgPath != "" {
+			continue
+		}
+		configFile := field.Tag.Get("configfile")
+		if configFile == "-" {
+			continue
+		}
+		jsonTag := utilfn.GetJsonTag(field)
+		if jsonTag != "-" && jsonTag != "" && jsonTag != "settings" {
+			retVal = append(retVal, filepath.Join(configDirAbsPath, jsonTag))
+		}
+	}
+	log.Printf("subdirs: %v\n", retVal)
+	return retVal
 }
 
 func getConfigKeyType(configKey string) reflect.Type {
@@ -413,6 +496,14 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		}
 	}
 	return WriteWaveHomeConfigFile(SettingsFile, m)
+}
+
+func EnsureWaveConfigDir() error {
+	return wavebase.CacheEnsureDir(configDirAbsPath, "waveconfig", 0700, "wave config directory")
+}
+
+func EnsureWavePresetsDir() error {
+	return wavebase.CacheEnsureDir(filepath.Join(configDirAbsPath, "presets"), "wavepresets", 0700, "wave presets directory")
 }
 
 type WidgetConfigType struct {

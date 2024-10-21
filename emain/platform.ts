@@ -23,23 +23,6 @@ const unamePlatform = process.platform;
 const unameArch: string = process.arch;
 keyutil.setKeyUtilPlatform(unamePlatform);
 
-ipcMain.on("get-is-dev", (event) => {
-    event.returnValue = isDev;
-});
-ipcMain.on("get-platform", (event, url) => {
-    event.returnValue = unamePlatform;
-});
-ipcMain.on("get-user-name", (event) => {
-    const userInfo = os.userInfo();
-    event.returnValue = userInfo.username;
-});
-ipcMain.on("get-host-name", (event) => {
-    event.returnValue = os.hostname();
-});
-ipcMain.on("get-webview-preload", (event) => {
-    event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
-});
-
 // must match golang
 function getWaveHomeDir() {
     const override = process.env[WaveHomeVarName];
@@ -71,6 +54,26 @@ function getWaveSrvPath(): string {
 function getWaveSrvCwd(): string {
     return getWaveHomeDir();
 }
+
+ipcMain.on("get-is-dev", (event) => {
+    event.returnValue = isDev;
+});
+ipcMain.on("get-platform", (event, url) => {
+    event.returnValue = unamePlatform;
+});
+ipcMain.on("get-user-name", (event) => {
+    const userInfo = os.userInfo();
+    event.returnValue = userInfo.username;
+});
+ipcMain.on("get-host-name", (event) => {
+    event.returnValue = os.hostname();
+});
+ipcMain.on("get-webview-preload", (event) => {
+    event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
+});
+ipcMain.on("get-config-dir", (event) => {
+    event.returnValue = path.join(getWaveHomeDir(), "config");
+});
 
 export {
     getElectronAppBasePath,
