@@ -30,7 +30,7 @@ const ChatMessages = memo(({ messages, className }: ChatMessagesProps) => {
     };
 
     useEffect(() => {
-        scrollToBottom();
+        // scrollToBottom();
     }, [messages]);
 
     return (

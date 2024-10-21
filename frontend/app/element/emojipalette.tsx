@@ -10,7 +10,9 @@ import { Palette, PaletteButton, PaletteContent } from "./palette";
 
 import "./emojiPalette.less";
 
-const emojiList = [
+type EmojiItem = { emoji: string; name: string };
+
+const emojiList: EmojiItem[] = [
     // Smileys & Emotion
     { emoji: "😀", name: "grinning face" },
     { emoji: "😁", name: "beaming face with smiling eyes" },
@@ -214,13 +216,18 @@ const emojiList = [
 interface EmojiPaletteProps {
     className?: string;
     placement?: Placement;
+    onSelect?: (_: EmojiItem) => void;
 }
 
-const EmojiPalette = memo(({ className, placement }: EmojiPaletteProps) => {
+const EmojiPalette = memo(({ className, placement, onSelect }: EmojiPaletteProps) => {
     const [searchTerm, setSearchTerm] = useState("");
 
     const handleSearchChange = (val: string) => {
         setSearchTerm(val.toLowerCase());
+    };
+
+    const handleSelect = (item: { name: string; emoji: string }) => {
+        onSelect?.(item);
     };
 
     const filteredEmojis = emojiList.filter((item) => item.name.includes(searchTerm));
@@ -241,13 +248,7 @@ const EmojiPalette = memo(({ className, placement }: EmojiPaletteProps) => {
                     <div className="emoji-grid">
                         {filteredEmojis.length > 0 ? (
                             filteredEmojis.map((item, index) => (
-                                <Button
-                                    key={index}
-                                    className="ghost emoji-button"
-                                    onClick={() => {
-                                        console.log(`Emoji selected: ${item.emoji}`);
-                                    }}
-                                >
+                                <Button key={index} className="ghost emoji-button" onClick={() => handleSelect(item)}>
                                     {item.emoji}
                                 </Button>
                             ))
@@ -264,3 +265,4 @@ const EmojiPalette = memo(({ className, placement }: EmojiPaletteProps) => {
 EmojiPalette.displayName = "EmojiPalette";
 
 export { EmojiPalette };
+export type { EmojiItem };
