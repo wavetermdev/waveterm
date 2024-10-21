@@ -83,7 +83,6 @@ const config = {
     },
     appImage: {
         license: "LICENSE",
-        executableArgs: ["--no-sandbox"],
     },
     publish: {
         provider: "generic",
