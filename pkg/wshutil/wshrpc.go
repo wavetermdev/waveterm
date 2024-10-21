@@ -45,6 +45,7 @@ type WshRpc struct {
 	InputCh            chan []byte
 	OutputCh           chan []byte
 	RpcContext         *atomic.Pointer[wshrpc.RpcContext]
+	AuthToken          string
 	RpcMap             map[string]*rpcData
 	ServerImpl         ServerImpl
 	EventListener      *EventListener
@@ -225,6 +226,14 @@ func (w *WshRpc) GetRpcContext() wshrpc.RpcContext {
 
 func (w *WshRpc) SetRpcContext(ctx wshrpc.RpcContext) {
 	w.RpcContext.Store(&ctx)
+}
+
+func (w *WshRpc) SetAuthToken(token string) {
+	w.AuthToken = token
+}
+
+func (w *WshRpc) GetAuthToken() string {
+	return w.AuthToken
 }
 
 func (w *WshRpc) registerResponseHandler(reqId string, handler *RpcResponseHandler) {

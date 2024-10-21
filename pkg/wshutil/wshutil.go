@@ -4,6 +4,7 @@
 package wshutil
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -355,6 +357,61 @@ func MakeRouteIdFromCtx(rpcCtx *wshrpc.RpcContext) (string, error) {
 	return MakeProcRouteId(procId), nil
 }
 
+type WriteFlusher interface {
+	Write([]byte) (int, error)
+	Flush() error
+}
+
+// blocking, returns if there is an error, or on EOF of input
+func HandleStdIOClient(logName string, input io.Reader, output WriteFlusher) {
+	proxy := MakeRpcMultiProxy()
+	ptyBuffer := MakePtyBuffer(WaveServerOSCPrefix, input, proxy.FromRemoteRawCh)
+	doneCh := make(chan struct{})
+	var doneOnce sync.Once
+	closeDoneCh := func() {
+		doneOnce.Do(func() {
+			close(doneCh)
+		})
+	}
+	go func() {
+		defer closeDoneCh()
+		for msg := range proxy.ToRemoteCh {
+			barr := EncodeWaveOSCBytes(WaveOSC, msg)
+			_, err := output.Write(barr)
+			if err != nil {
+				log.Printf("[%s] error writing to output: %v\n", logName, err)
+				break
+			}
+			err = output.Flush()
+			if err != nil {
+				log.Printf("[%s] error flushing output: %v\n", logName, err)
+				break
+			}
+		}
+	}()
+	go func() {
+		defer closeDoneCh()
+		br := bufio.NewReader(ptyBuffer.InputReader)
+		for {
+			line, err := br.ReadString('\n')
+			if line != "" {
+				if !strings.HasSuffix(line, "\n") {
+					line += "\n"
+				}
+				log.Printf("[%s] %s", logName, line)
+			}
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Printf("[%s] error reading from pty buffer: %v\n", logName, err)
+				break
+			}
+		}
+	}()
+	<-doneCh
+}
+
 func handleDomainSocketClient(conn net.Conn) {
 	var routeIdContainer atomic.Pointer[string]
 	proxy := MakeRpcProxy()
@@ -391,7 +448,7 @@ func handleDomainSocketClient(conn net.Conn) {
 		return
 	}
 	routeIdContainer.Store(&routeId)
-	DefaultRouter.RegisterRoute(routeId, proxy)
+	DefaultRouter.RegisterRoute(routeId, proxy, true)
 }
 
 // only for use on client

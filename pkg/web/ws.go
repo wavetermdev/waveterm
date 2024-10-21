@@ -252,7 +252,7 @@ func registerConn(wsConnId string, routeId string, wproxy *wshutil.WshRpcProxy) 
 		wshutil.DefaultRouter.UnregisterRoute(routeId)
 	}
 	RouteToConnMap[routeId] = wsConnId
-	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy)
+	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy, true)
 }
 
 func unregisterConn(wsConnId string, routeId string) {

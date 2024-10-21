@@ -269,7 +269,7 @@ func (router *WshRouter) WaitForRegister(ctx context.Context, routeId string) er
 }
 
 // this will also consume the output channel of the abstract client
-func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
+func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, shouldAnnounce bool) {
 	if routeId == SysRoute {
 		// cannot register sys route
 		log.Printf("error: WshRouter cannot register sys route\n")
@@ -285,7 +285,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
 	router.RouteMap[routeId] = rpc
 	go func() {
 		// announce
-		if !alreadyExists && router.GetUpstreamClient() != nil {
+		if shouldAnnounce && !alreadyExists && router.GetUpstreamClient() != nil {
 			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
 			announceBytes, _ := json.Marshal(announceMsg)
 			router.GetUpstreamClient().SendRpcMessage(announceBytes)

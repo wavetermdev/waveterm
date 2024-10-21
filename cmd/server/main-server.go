@@ -159,11 +159,11 @@ func shutdownActivityUpdate() {
 
 func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
-	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc)
+	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
 	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{})
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh)
+	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
 }
 
 func main() {
