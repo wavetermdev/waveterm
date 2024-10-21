@@ -8,6 +8,7 @@ on:
     push:
         tags:
             - "v[0-9]+.[0-9]+.[0-9]+*"
+    workflow_dispatch:
 env:
     GO_VERSION: "1.22"
     NODE_VERSION: "20"
@@ -84,12 +85,12 @@ jobs:
 
             # Windows Code Signing Setup
             - name: Set up certificate (Windows only)
-              if: matrix.platform == 'windows'
+              if: matrix.platform == 'windows' && github.event_name != 'workflow_dispatch'
               run: |
                   echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
               shell: bash
             - name: Set signing variables (Windows only)
-              if: matrix.platform == 'windows'
+              if: matrix.platform == 'windows' && github.event_name != 'workflow_dispatch'
               id: variables
               run: |
                   echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
@@ -103,7 +104,7 @@ jobs:
                   echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
               shell: bash
             - name: Setup Keylocker KSP (Windows only)
-              if: matrix.platform == 'windows'
+              if: matrix.platform == 'windows' && github.event_name != 'workflow_dispatch'
               run: |
                   curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o Keylockertools-windows-x64.msi
                   msiexec /i Keylockertools-windows-x64.msi /quiet /qn
@@ -141,14 +142,16 @@ jobs:
                   CSC_KEY_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
                   STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
               shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
+
             - name: Upload to S3 staging
+              if: github.event_name != 'workflow_dispatch'
               run: task artifacts:upload
               env:
                   AWS_ACCESS_KEY_ID: "${{ secrets.ARTIFACTS_KEY_ID }}"
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.ARTIFACTS_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2
-
             - name: Create draft release
+              if: github.event_name != 'workflow_dispatch'
               uses: softprops/action-gh-release@v2
               with:
                   prerelease: ${{ contains(github.ref_name, '-beta') }}
@@ -166,3 +169,9 @@ jobs:
                       make/*.snap
                       make/*.flatpak
                       make/*.AppImage
+            - name: Upload build artifacts to workflow (manual runs only)
+              if: github.event_name == 'workflow_dispatch'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{matrix.runner}}
+                  path: make
