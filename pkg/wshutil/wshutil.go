@@ -198,7 +198,11 @@ func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	go func() {
 		for msg := range outputCh {
-			barr := EncodeWaveOSCBytes(WaveOSC, msg)
+			barr, err := EncodeWaveOSCBytes(WaveOSC, msg)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error encoding OSC message: %v\n", err)
+				continue
+			}
 			os.Stdout.Write(barr)
 		}
 	}()
