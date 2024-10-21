@@ -3,11 +3,11 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { ChatInput } from "./chatinput";
+import { MultiLineInput } from "./multilineinput";
 
-const meta: Meta<typeof ChatInput> = {
-    title: "Elements/ChatInput",
-    component: ChatInput,
+const meta: Meta<typeof MultiLineInput> = {
+    title: "Elements/MultiLineInput",
+    component: MultiLineInput,
     argTypes: {
         value: {
             description: "The value of the textarea.",
@@ -47,10 +47,10 @@ const meta: Meta<typeof ChatInput> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof ChatInput>;
+type Story = StoryObj<typeof MultiLineInput>;
 
-// Default ChatInput Story
-export const DefaultChatInput: Story = {
+// Default MultiLineInput Story
+export const DefaultMultiLineInput: Story = {
     render: (args) => {
         const [message, setMessage] = useState("");
 
@@ -65,11 +65,11 @@ export const DefaultChatInput: Story = {
                     height: "600px",
                     padding: "20px",
                     display: "flex",
-                    alignItems: "flex-end",
+                    alignItems: "flex-start",
                     justifyContent: "center",
                 }}
             >
-                <ChatInput {...args} value={message} onChange={handleChange} />
+                <MultiLineInput {...args} value={message} onChange={handleChange} />
             </div>
         );
     },
@@ -80,8 +80,8 @@ export const DefaultChatInput: Story = {
     },
 };
 
-// ChatInput with long text
-export const ChatInputWithLongText: Story = {
+// MultiLineInput with long text
+export const MultiLineInputWithLongText: Story = {
     render: (args) => {
         const [message, setMessage] = useState("This is a long message that will expand the textarea.");
 
@@ -96,11 +96,11 @@ export const ChatInputWithLongText: Story = {
                     height: "600px",
                     padding: "20px",
                     display: "flex",
-                    alignItems: "flex-end",
+                    alignItems: "flex-start",
                     justifyContent: "center",
                 }}
             >
-                <ChatInput {...args} value={message} onChange={handleChange} />
+                <MultiLineInput {...args} value={message} onChange={handleChange} />
             </div>
         );
     },

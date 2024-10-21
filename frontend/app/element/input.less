@@ -18,10 +18,6 @@
         cursor: text;
     }
 
-    &.focused {
-        border-color: var(--form-element-primary-color);
-    }
-
     &.disabled {
         opacity: 0.75;
     }
@@ -58,8 +54,8 @@
             line-height: 24;
             padding: 5px 7px;
 
-            &:placeholder-shown {
-                user-select: none;
+            &:focus {
+                border-color: var(--form-element-primary-color);
             }
         }
     }
@@ -104,17 +100,17 @@
 
     /* Ensure the input elements inside the group behave correctly */
     .input-wrapper {
-        border: none; /* Remove the individual input border */
+        border: none;
         flex-grow: 1;
         margin: 0;
         box-shadow: none;
 
         &.focused {
-            border-color: transparent; /* Make sure individual input focus doesn't override group focus */
+            border-color: transparent;
         }
 
         &.error {
-            border-color: transparent; /* Make sure individual input error doesn't override group error */
+            border-color: transparent;
         }
 
         .input-wrapper-inner {

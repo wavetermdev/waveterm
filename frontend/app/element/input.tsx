@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import clsx from "clsx";
-import React, { forwardRef, useState } from "react";
+import React, { forwardRef, memo, useImperativeHandle, useRef, useState } from "react";
 
 import "./input.less";
 
@@ -71,87 +71,91 @@ interface InputProps {
     manageFocus?: (isFocused: boolean) => void;
 }
 
-const Input = forwardRef<HTMLDivElement, InputProps>(
-    (
-        {
-            label,
-            value,
-            className,
-            onChange,
-            onKeyDown,
-            onFocus,
-            onBlur,
-            placeholder,
-            defaultValue = "",
-            required,
-            maxLength,
-            autoFocus,
-            disabled,
-            isNumber,
-            inputRef,
-            manageFocus,
-        }: InputProps,
-        ref
-    ) => {
-        const [internalValue, setInternalValue] = useState(defaultValue);
+const Input = memo(
+    forwardRef<HTMLInputElement, InputProps>(
+        (
+            {
+                label,
+                value,
+                className,
+                onChange,
+                onKeyDown,
+                onFocus,
+                onBlur,
+                placeholder,
+                defaultValue = "",
+                required,
+                maxLength,
+                autoFocus,
+                disabled,
+                isNumber,
+                manageFocus,
+            }: InputProps,
+            ref
+        ) => {
+            const [internalValue, setInternalValue] = useState(defaultValue);
+            const inputRef = useRef<HTMLInputElement>(null);
 
-        const handleInputChange = (e: React.ChangeEvent<any>) => {
-            const inputValue = e.target.value;
+            useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
-            if (isNumber && inputValue !== "" && !/^\d*$/.test(inputValue)) {
-                return;
-            }
+            const handleInputChange = (e: React.ChangeEvent<any>) => {
+                const inputValue = e.target.value;
 
-            if (value === undefined) {
-                setInternalValue(inputValue);
-            }
+                if (isNumber && inputValue !== "" && !/^\d*$/.test(inputValue)) {
+                    return;
+                }
 
-            onChange && onChange(inputValue);
-        };
+                if (value === undefined) {
+                    setInternalValue(inputValue);
+                }
 
-        const handleFocus = () => {
-            manageFocus?.(true);
-            onFocus?.();
-        };
+                onChange && onChange(inputValue);
+            };
 
-        const handleBlur = () => {
-            manageFocus?.(false);
-            onBlur?.();
-        };
+            const handleFocus = () => {
+                manageFocus?.(true);
+                onFocus?.();
+            };
 
-        const inputValue = value ?? internalValue;
+            const handleBlur = () => {
+                manageFocus?.(false);
+                onBlur?.();
+            };
 
-        return (
-            <div
-                ref={ref}
-                className={clsx("input-wrapper", className, {
-                    disabled: disabled,
-                })}
-            >
-                <div className="input-wrapper-inner">
-                    {label && (
-                        <label className={clsx("label")} htmlFor={label}>
-                            {label}
-                        </label>
-                    )}
+            const inputValue = value ?? internalValue;
 
-                    <input
-                        className={clsx("input")}
-                        ref={inputRef}
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        onKeyDown={onKeyDown}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        placeholder={placeholder}
-                        maxLength={maxLength}
-                        autoFocus={autoFocus}
-                        disabled={disabled}
-                    />
+            return (
+                <div
+                    ref={ref}
+                    className={clsx("input-wrapper", className, {
+                        disabled: disabled,
+                    })}
+                >
+                    <div className="input-wrapper-inner">
+                        {label && (
+                            <label className={clsx("label")} htmlFor={label}>
+                                {label}
+                            </label>
+                        )}
+
+                        <input
+                            className={clsx("input")}
+                            ref={inputRef}
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onKeyDown={onKeyDown}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
+                            placeholder={placeholder}
+                            maxLength={maxLength}
+                            autoFocus={autoFocus}
+                            disabled={disabled}
+                        />
+                    </div>
                 </div>
-            </div>
-        );
-    }
+            );
+        }
+    )
 );
 
 export { Input, InputGroup, InputLeftElement, InputRightElement };
