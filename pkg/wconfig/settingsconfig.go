@@ -251,10 +251,17 @@ func selectDirEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.Di
 	return rtn
 }
 
+func SortFileNameDescend(files []fs.DirEntry) {
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Name() > files[j].Name()
+	})
+}
+
 // Read and merge all files in the specified directory matching the supplied suffix
 func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
 	dirEnts, _ := fs.ReadDir(fsys, dirName)
 	suffixEnts := selectDirEntsBySuffix(dirEnts, fileName+".json")
+	SortFileNameDescend(suffixEnts)
 	var rtn waveobj.MetaMapType
 	var errs []ConfigError
 	for _, ent := range suffixEnts {
@@ -267,10 +274,10 @@ func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileNam
 
 // Read and merge all files in the specified config filesystem matching the patterns `<partName>.json` and `<partName>/*.json`
 func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
-	config, errs := readConfigFileFS(fsys, logPrefix, partName+".json")
+	config, errs := readConfigFilesForDir(fsys, logPrefix, partName, "", simpleMerge)
 	allErrs := errs
 	rtn := config
-	config, errs = readConfigFilesForDir(fsys, logPrefix, partName, "", simpleMerge)
+	config, errs = readConfigFileFS(fsys, logPrefix, partName+".json")
 	allErrs = append(allErrs, errs...)
 	return mergeMetaMap(rtn, config, simpleMerge), allErrs
 }
