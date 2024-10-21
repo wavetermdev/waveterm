@@ -14,8 +14,8 @@ import (
 )
 
 func AcquireWaveLock() (FDLock, error) {
-	homeDir := GetWaveHomeDir()
-	lockFileName := filepath.Join(homeDir, WaveLockFile)
+	dataHomeDir := GetWaveDataDir()
+	lockFileName := filepath.Join(dataHomeDir, WaveLockFile)
 	log.Printf("[base] acquiring lock on %s\n", lockFileName)
 	m, err := filemutex.New(lockFileName)
 	if err != nil {

@@ -431,7 +431,7 @@ func MakeTCPListener(serviceName string) (net.Listener, error) {
 }
 
 func MakeUnixListener() (net.Listener, error) {
-	serverAddr := wavebase.GetWaveHomeDir() + "/wave.sock"
+	serverAddr := wavebase.GetWaveDataDir() + "/wave.sock"
 	os.Remove(serverAddr) // ignore error
 	rtn, err := net.Listen("unix", serverAddr)
 	if err != nil {
