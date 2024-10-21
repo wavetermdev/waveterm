@@ -112,9 +112,8 @@ const config = {
                 .filter((f) => f.isFile() && f.name.startsWith("wavesrv"))
                 .forEach((f) => fs.chmodSync(path.resolve(f.parentPath ?? f.path, f.name), 0o755)); // 0o755 corresponds to -rwxr-xr-x
         } else if (context.electronPlatformName === "linux") {
-            const chromeSandboxPath = path.resolve(context.appOutDir, "Wave", "chrome-sandbox");
+            const chromeSandboxPath = path.resolve(context.appOutDir, "chrome-sandbox");
             fs.chmodSync(chromeSandboxPath, 0o4755);
-            fs.chownSync(chromeSandboxPath, 0, 0);
         }
     },
 };
