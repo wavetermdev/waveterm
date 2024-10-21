@@ -39,7 +39,7 @@ jobs:
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
-                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools bsdtar
+                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
                   sudo snap install zig --classic --beta # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
 
             - name: Install Snapcraft
