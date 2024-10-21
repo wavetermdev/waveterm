@@ -120,14 +120,6 @@ func EnsureWaveDBDir() error {
 	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), WaveDBDir), "wavedb", 0700, "wave db directory")
 }
 
-func EnsureWaveConfigDir() error {
-	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), ConfigDir), "waveconfig", 0700, "wave config directory")
-}
-
-func EnsureWavePresetsDir() error {
-	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), ConfigDir, PresetsDir), "wavepresets", 0700, "wave presets directory")
-}
-
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {
 	baseLock.Lock()
 	ok := ensureDirCache[cacheKey]

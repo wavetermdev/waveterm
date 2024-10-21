@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
 )
@@ -314,6 +315,27 @@ func ReadFullConfig() FullConfigType {
 	return fullConfig
 }
 
+func GetConfigSubdirs() []string {
+	var fullConfig FullConfigType
+	configRType := reflect.TypeOf(fullConfig)
+	var retVal []string
+	for fieldIdx := 0; fieldIdx < configRType.NumField(); fieldIdx++ {
+		field := configRType.Field(fieldIdx)
+		if field.PkgPath != "" {
+			continue
+		}
+		configFile := field.Tag.Get("configfile")
+		if configFile == "-" {
+			continue
+		}
+		jsonTag := utilfn.GetJsonTag(field)
+		if jsonTag != "-" && jsonTag != "" {
+			retVal = append(retVal, filepath.Join(configDirAbsPath, jsonTag))
+		}
+	}
+	return retVal
+}
+
 func getConfigKeyType(configKey string) reflect.Type {
 	ctype := reflect.TypeOf(SettingsType{})
 	for i := 0; i < ctype.NumField(); i++ {
@@ -465,6 +487,22 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		}
 	}
 	return WriteWaveHomeConfigFile(SettingsFile, m)
+}
+
+func EnsureWaveConfigDir() error {
+	return wavebase.CacheEnsureDir(configDirAbsPath, "waveconfig", 0700, "wave config directory")
+}
+
+func EnsureWaveConfigSubdirs() error {
+	subdirs := GetConfigSubdirs()
+	var err error
+	for _, dir := range subdirs {
+		err = wavebase.CacheEnsureDir(dir, "waveconfigsubdir", 0700, "wave config subdirectory")
+		if err != nil {
+			break
+		}
+	}
+	return err
 }
 
 type WidgetConfigType struct {

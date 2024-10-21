@@ -5,5 +5,5 @@ package defaultconfig
 
 import "embed"
 
-//go:embed *.json presets/*.json
+//go:embed *.json all:*/*.json
 var ConfigFS embed.FS
