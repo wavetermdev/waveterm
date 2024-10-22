@@ -268,8 +268,9 @@ export class TermWrap {
             return;
         }
         const serializedOutput = this.serializeAddon.serialize();
-        console.log("idle timeout term", this.dataBytesProcessed, serializedOutput.length);
-        services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset);
+        const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+        console.log("idle timeout term", this.dataBytesProcessed, serializedOutput.length, termSize);
+        services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset, termSize);
         this.dataBytesProcessed = 0;
     }
 

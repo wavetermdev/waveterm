@@ -12,7 +12,7 @@ class BlockServiceType {
     }
 
     // save the terminal state to a blockfile
-    SaveTerminalState(state: string, stateType: string, ptyOffset: string, arg5: number): Promise<void> {
+    SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize): Promise<void> {
         return WOS.callBackendService("block", "SaveTerminalState", Array.from(arguments))
     }
     SaveWaveAiData(arg2: string, arg3: OpenAIPromptMessageType[]): Promise<void> {
