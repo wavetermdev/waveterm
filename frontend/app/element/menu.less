@@ -1,6 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+@import "../mixins.less";
+
 .menu {
     display: flex;
     flex-direction: column;
@@ -16,6 +18,10 @@
     cursor: pointer;
     box-sizing: border-box;
     border-radius: 4px;
+
+    .label {
+        .ellipsis();
+    }
 }
 
 .menu-item-group-title {
@@ -44,6 +50,7 @@
 
 .menu-item-right {
     margin-left: auto; /* This keeps the right element (if any) on the far right */
+    white-space: nowrap;
 }
 
 .menu-item-content {

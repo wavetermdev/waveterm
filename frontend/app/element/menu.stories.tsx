@@ -356,7 +356,7 @@ const renderMenu = (menuItems: MenuItemData[]) => {
             return (
                 <MenuItem key={item.id} withHoverEffect={typeof item.content === "string"}>
                     {item.leftElement && <MenuItemLeftElement>{item.leftElement}</MenuItemLeftElement>}
-                    <div>{item.content}</div>
+                    <div className="label">{item.content}</div>
                     {item.rightElement && <MenuItemRightElement>{item.rightElement}</MenuItemRightElement>}
                 </MenuItem>
             );
@@ -365,7 +365,7 @@ const renderMenu = (menuItems: MenuItemData[]) => {
                 <MenuItemGroup key={item.id} defaultExpanded={item.defaultExpanded}>
                     <MenuItemGroupTitle>
                         {item.title.leftElement && <MenuItemLeftElement>{item.title.leftElement}</MenuItemLeftElement>}
-                        <div>{item.title.label}</div>
+                        <div className="label">{item.title.label}</div>
                         {item.title.rightElement && (
                             <MenuItemRightElement>{item.title.rightElement}</MenuItemRightElement>
                         )}
