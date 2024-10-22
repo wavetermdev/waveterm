@@ -50,6 +50,8 @@ type WshRpc struct {
 	ServerImpl         ServerImpl
 	EventListener      *EventListener
 	ResponseHandlerMap map[string]*RpcResponseHandler // reqId => handler
+	Debug              bool
+	DebugName          string
 }
 
 type wshRpcContextKey struct{}
@@ -333,6 +335,9 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 func (w *WshRpc) runServer() {
 	defer close(w.OutputCh)
 	for msgBytes := range w.InputCh {
+		if w.Debug {
+			log.Printf("[%s] received message: %s\n", w.DebugName, string(msgBytes))
+		}
 		var msg RpcMessage
 		err := json.Unmarshal(msgBytes, &msg)
 		if err != nil {
@@ -465,8 +470,9 @@ func (handler *RpcRequestHandler) SendCancel() {
 		}
 	}()
 	msg := &RpcMessage{
-		Cancel: true,
-		ReqId:  handler.reqId,
+		Cancel:    true,
+		ReqId:     handler.reqId,
+		AuthToken: handler.w.GetAuthToken(),
 	}
 	barr, _ := json.Marshal(msg) // will never fail
 	handler.w.OutputCh <- barr
@@ -560,6 +566,7 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 		Data: wshrpc.CommandMessageData{
 			Message: msg,
 		},
+		AuthToken: handler.w.GetAuthToken(),
 	}
 	msgBytes, _ := json.Marshal(rpcMsg) // will never fail
 	handler.w.OutputCh <- msgBytes
@@ -583,9 +590,10 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 		defer handler.close()
 	}
 	msg := &RpcMessage{
-		ResId: handler.reqId,
-		Data:  data,
-		Cont:  !done,
+		ResId:     handler.reqId,
+		Data:      data,
+		Cont:      !done,
+		AuthToken: handler.w.GetAuthToken(),
 	}
 	barr, err := json.Marshal(msg)
 	if err != nil {
@@ -608,8 +616,9 @@ func (handler *RpcResponseHandler) SendResponseError(err error) {
 	}
 	defer handler.close()
 	msg := &RpcMessage{
-		ResId: handler.reqId,
-		Error: err.Error(),
+		ResId:     handler.reqId,
+		Error:     err.Error(),
+		AuthToken: handler.w.GetAuthToken(),
 	}
 	barr, _ := json.Marshal(msg) // will never fail
 	handler.w.OutputCh <- barr
@@ -670,11 +679,12 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 		handler.reqId = uuid.New().String()
 	}
 	req := &RpcMessage{
-		Command: command,
-		ReqId:   handler.reqId,
-		Data:    data,
-		Timeout: timeoutMs,
-		Route:   opts.Route,
+		Command:   command,
+		ReqId:     handler.reqId,
+		Data:      data,
+		Timeout:   timeoutMs,
+		Route:     opts.Route,
+		AuthToken: w.GetAuthToken(),
 	}
 	barr, err := json.Marshal(req)
 	if err != nil {

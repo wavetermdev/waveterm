@@ -6,7 +6,6 @@ package wshutil
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -34,6 +33,15 @@ func MakeRpcMultiProxy() *WshRpcMultiProxy {
 		RouteInfo:       make(map[string]*multiProxyRouteInfo),
 		ToRemoteCh:      make(chan []byte, DefaultInputChSize),
 		FromRemoteRawCh: make(chan []byte, DefaultOutputChSize),
+	}
+}
+
+func (p *WshRpcMultiProxy) DisposeRoutes() {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	for authToken, routeInfo := range p.RouteInfo {
+		DefaultRouter.UnregisterRoute(routeInfo.RouteId)
+		delete(p.RouteInfo, authToken)
 	}
 }
 
@@ -91,7 +99,6 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 	if msg.Command == wshrpc.Command_Authenticate {
 		rpcContext, routeId, err := handleAuthenticationCommand(msg)
 		if err != nil {
-			log.Printf("error handling authentication command (multiproxy): %v\n", err)
 			p.sendResponseError(msg, err)
 			return
 		}
@@ -104,6 +111,11 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		routeInfo.Proxy.SetRpcContext(rpcContext)
 		p.setRouteInfo(routeInfo.AuthToken, routeInfo)
 		p.sendAuthResponse(msg, routeId, routeInfo.AuthToken)
+		go func() {
+			for msgBytes := range routeInfo.Proxy.ToRemoteCh {
+				p.ToRemoteCh <- msgBytes
+			}
+		}()
 		DefaultRouter.RegisterRoute(routeId, routeInfo.Proxy, true)
 		return
 	}
@@ -116,13 +128,15 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		p.sendResponseError(msg, fmt.Errorf("invalid auth token"))
 		return
 	}
-	if msg.Source != routeInfo.RouteId {
+	if msg.Command != "" && msg.Source != routeInfo.RouteId {
 		p.sendResponseError(msg, fmt.Errorf("invalid source route for auth token"))
 		return
 	}
 	if msg.Command == wshrpc.Command_Dispose {
 		DefaultRouter.UnregisterRoute(routeInfo.RouteId)
 		p.removeRouteInfo(msg.AuthToken)
+		close(routeInfo.Proxy.ToRemoteCh)
+		close(routeInfo.Proxy.FromRemoteCh)
 		return
 	}
 	routeInfo.Proxy.FromRemoteCh <- msgBytes

@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -113,56 +112,44 @@ func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, string, er
 }
 
 // runs on the client (stdio client)
-func (p *WshRpcProxy) HandleClientProxyAuth(upstream *WshRpc) (string, error) {
+func (p *WshRpcProxy) HandleClientProxyAuth(router *WshRouter) (string, error) {
 	for {
 		msgBytes, ok := <-p.FromRemoteCh
 		if !ok {
 			return "", fmt.Errorf("remote closed, not authenticated")
 		}
-		var msg RpcMessage
-		err := json.Unmarshal(msgBytes, &msg)
+		var origMsg RpcMessage
+		err := json.Unmarshal(msgBytes, &origMsg)
 		if err != nil {
 			// nothing to do, can't even send a response since we don't have Source or ReqId
 			continue
 		}
-		if msg.Command == "" {
+		if origMsg.Command == "" {
 			// this message is not allowed (protocol error at this point), ignore
 			continue
 		}
 		// we only allow one command "authenticate", everything else returns an error
-		if msg.Command != wshrpc.Command_Authenticate {
+		if origMsg.Command != wshrpc.Command_Authenticate {
 			respErr := fmt.Errorf("connection not authenticated")
-			p.sendResponseError(msg, respErr)
+			p.sendResponseError(origMsg, respErr)
 			continue
 		}
-		resp, err := upstream.SendRpcRequest(msg.Command, msg.Data, nil)
+		authRtn, err := router.HandleProxyAuth(origMsg.Data)
 		if err != nil {
-			respErr := fmt.Errorf("error authenticating: %w", err)
-			p.sendResponseError(msg, respErr)
+			respErr := fmt.Errorf("error handling proxy auth: %w", err)
+			p.sendResponseError(origMsg, respErr)
 			return "", respErr
 		}
-		var respData wshrpc.CommandAuthenticateRtnData
-		err = utilfn.ReUnmarshal(&respData, resp)
-		if err != nil {
-			respErr := fmt.Errorf("error unmarshalling authenticate response: %w", err)
-			p.sendResponseError(msg, respErr)
-			return "", respErr
-		}
-		if respData.AuthToken == "" {
-			respErr := fmt.Errorf("no auth token in authenticate response")
-			p.sendResponseError(msg, respErr)
-			return "", respErr
-		}
-		p.SetAuthToken(respData.AuthToken)
+		p.SetAuthToken(authRtn.AuthToken)
 		announceMsg := RpcMessage{
 			Command:   wshrpc.Command_RouteAnnounce,
-			Source:    respData.RouteId,
-			AuthToken: respData.AuthToken,
+			Source:    authRtn.RouteId,
+			AuthToken: authRtn.AuthToken,
 		}
 		announceBytes, _ := json.Marshal(announceMsg)
-		upstream.SendRpcMessage(announceBytes)
-		p.sendAuthenticateResponse(msg, respData.RouteId)
-		return respData.RouteId, nil
+		router.InjectMessage(announceBytes, authRtn.RouteId)
+		p.sendAuthenticateResponse(origMsg, authRtn.RouteId)
+		return authRtn.RouteId, nil
 	}
 }
 

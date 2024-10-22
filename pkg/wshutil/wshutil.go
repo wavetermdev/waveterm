@@ -4,7 +4,6 @@
 package wshutil
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -21,6 +19,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
@@ -198,9 +197,24 @@ func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 		for msg := range outputCh {
 			barr := EncodeWaveOSCBytes(WaveOSC, msg)
 			os.Stdout.Write(barr)
+			os.Stdout.Write([]byte{'\n'})
 		}
 	}()
 	return rpcClient, ptyBuf
+}
+
+func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl) (*WshRpc, chan []byte) {
+	messageCh := make(chan []byte, DefaultInputChSize)
+	outputCh := make(chan []byte, DefaultOutputChSize)
+	rawCh := make(chan []byte, DefaultOutputChSize)
+	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
+	go packetparser.Parse(input, messageCh, rawCh)
+	go func() {
+		for msg := range outputCh {
+			packetparser.WritePacket(output, msg)
+		}
+	}()
+	return rpcClient, rawCh
 }
 
 func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan error, error) {
@@ -364,15 +378,16 @@ type WriteFlusher interface {
 
 // blocking, returns if there is an error, or on EOF of input
 func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
-	log.Printf("[%s] starting (HandleStdIOClient)\n", logName)
 	proxy := MakeRpcMultiProxy()
-	ptyBuffer := MakePtyBuffer(WaveOSCPrefix, input, proxy.FromRemoteRawCh)
+	rawCh := make(chan []byte, DefaultInputChSize)
+	go packetparser.Parse(input, proxy.FromRemoteRawCh, rawCh)
 	doneCh := make(chan struct{})
 	var doneOnce sync.Once
 	closeDoneCh := func() {
 		doneOnce.Do(func() {
 			close(doneCh)
 		})
+		proxy.DisposeRoutes()
 	}
 	go func() {
 		proxy.RunUnauthLoop()
@@ -380,9 +395,7 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 	go func() {
 		defer closeDoneCh()
 		for msg := range proxy.ToRemoteCh {
-			log.Printf("[%s] sending message: %s\n", logName, string(msg))
-			barr := EncodeWaveOSCBytes(WaveServerOSC, msg)
-			_, err := output.Write(barr)
+			err := packetparser.WritePacket(output, msg)
 			if err != nil {
 				log.Printf("[%s] error writing to output: %v\n", logName, err)
 				break
@@ -391,22 +404,8 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 	}()
 	go func() {
 		defer closeDoneCh()
-		br := bufio.NewReader(ptyBuffer.InputReader)
-		for {
-			line, err := br.ReadString('\n')
-			if line != "" {
-				if !strings.HasSuffix(line, "\n") {
-					line += "\n"
-				}
-				log.Printf("[%s] %s", logName, line)
-			}
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Printf("[%s] error reading from pty buffer: %v\n", logName, err)
-				break
-			}
+		for msg := range rawCh {
+			log.Printf("[%s:stdout] %s", logName, msg)
 		}
 	}()
 	<-doneCh
