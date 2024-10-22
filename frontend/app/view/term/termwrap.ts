@@ -216,7 +216,21 @@ export class TermWrap {
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
             if (cacheData.byteLength > 0) {
+                const curTermSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+                const fileTermSize: TermSize = cacheFile.meta["termsize"];
+                let didResize = false;
+                if (
+                    fileTermSize != null &&
+                    (fileTermSize.rows != curTermSize.rows || fileTermSize.cols != curTermSize.cols)
+                ) {
+                    console.log("terminal restore size mismatch, temp resize", fileTermSize, curTermSize);
+                    this.terminal.resize(fileTermSize.cols, fileTermSize.rows);
+                    didResize = true;
+                }
                 this.doTerminalWrite(cacheData, ptyOffset);
+                if (didResize) {
+                    this.terminal.resize(curTermSize.cols, curTermSize.rows);
+                }
             }
         }
         const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(this.blockId, TermFileName, ptyOffset);
