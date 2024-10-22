@@ -83,10 +83,8 @@ function getWaveConfigDir(): string {
         retVal = override;
     } else if (xdgConfigHome) {
         retVal = path.join(xdgConfigHome, waveDirName);
-    } else if (unamePlatform == "darwin") {
-        retVal = path.join(app.getPath("home"), ".config", waveDirName);
     } else {
-        retVal = paths.config;
+        retVal = path.join(app.getPath("home"), ".config", waveDirName);
     }
     return ensurePathExists(retVal);
 }
