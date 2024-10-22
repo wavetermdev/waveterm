@@ -10,11 +10,18 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/htmltoken"
+	"github.com/wavetermdev/waveterm/pkg/vdom/cssparser"
 )
 
 // can tokenize and bind HTML to Elems
 
-func appendChildToStack(stack []*Elem, child *Elem) {
+const Html_BindPrefix = "#bind:"
+const Html_ParamPrefix = "#param:"
+const Html_GlobalEventPrefix = "#globalevent"
+const Html_BindParamTagName = "bindparam"
+const Html_BindTagName = "bind"
+
+func appendChildToStack(stack []*VDomElem, child *VDomElem) {
 	if child == nil {
 		return
 	}
@@ -25,14 +32,14 @@ func appendChildToStack(stack []*Elem, child *Elem) {
 	parent.Children = append(parent.Children, *child)
 }
 
-func pushElemStack(stack []*Elem, elem *Elem) []*Elem {
+func pushElemStack(stack []*VDomElem, elem *VDomElem) []*VDomElem {
 	if elem == nil {
 		return stack
 	}
 	return append(stack, elem)
 }
 
-func popElemStack(stack []*Elem) []*Elem {
+func popElemStack(stack []*VDomElem) []*VDomElem {
 	if len(stack) <= 1 {
 		return stack
 	}
@@ -41,14 +48,14 @@ func popElemStack(stack []*Elem) []*Elem {
 	return stack[:len(stack)-1]
 }
 
-func curElemTag(stack []*Elem) string {
+func curElemTag(stack []*VDomElem) string {
 	if len(stack) == 0 {
 		return ""
 	}
 	return stack[len(stack)-1].Tag
 }
 
-func finalizeStack(stack []*Elem) *Elem {
+func finalizeStack(stack []*VDomElem) *VDomElem {
 	if len(stack) == 0 {
 		return nil
 	}
@@ -74,8 +81,38 @@ func getAttr(token htmltoken.Token, key string) string {
 	return ""
 }
 
-func tokenToElem(token htmltoken.Token, data map[string]any) *Elem {
-	elem := &Elem{Tag: token.Data}
+func attrToProp(attrVal string, params map[string]any) any {
+	if strings.HasPrefix(attrVal, Html_ParamPrefix) {
+		bindKey := attrVal[len(Html_ParamPrefix):]
+		bindVal, ok := params[bindKey]
+		if !ok {
+			return nil
+		}
+		return bindVal
+	}
+	if strings.HasPrefix(attrVal, Html_BindPrefix) {
+		bindKey := attrVal[len(Html_BindPrefix):]
+		if bindKey == "" {
+			return nil
+		}
+		return &VDomBinding{Type: ObjectType_Binding, Bind: bindKey}
+	}
+	if strings.HasPrefix(attrVal, Html_GlobalEventPrefix) {
+		splitArr := strings.Split(attrVal, ":")
+		if len(splitArr) < 2 {
+			return nil
+		}
+		eventName := splitArr[1]
+		if eventName == "" {
+			return nil
+		}
+		return &VDomFunc{Type: ObjectType_Func, GlobalEvent: eventName}
+	}
+	return attrVal
+}
+
+func tokenToElem(token htmltoken.Token, params map[string]any) *VDomElem {
+	elem := &VDomElem{Tag: token.Data}
 	if len(token.Attr) > 0 {
 		elem.Props = make(map[string]any)
 	}
@@ -83,16 +120,8 @@ func tokenToElem(token htmltoken.Token, data map[string]any) *Elem {
 		if attr.Key == "" || attr.Val == "" {
 			continue
 		}
-		if strings.HasPrefix(attr.Val, "#bind:") {
-			bindKey := attr.Val[6:]
-			bindVal, ok := data[bindKey]
-			if !ok {
-				continue
-			}
-			elem.Props[attr.Key] = bindVal
-			continue
-		}
-		elem.Props[attr.Key] = attr.Val
+		propVal := attrToProp(attr.Val, params)
+		elem.Props[attr.Key] = propVal
 	}
 	return elem
 }
@@ -177,12 +206,101 @@ func processTextStr(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func Bind(htmlStr string, data map[string]any) *Elem {
+func makePathStr(elemPath []string) string {
+	return strings.Join(elemPath, " ")
+}
+
+func capitalizeAscii(s string) string {
+	if s == "" || s[0] < 'a' || s[0] > 'z' {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func toReactName(input string) string {
+	// Check for CSS custom properties (variables) which start with '--'
+	if strings.HasPrefix(input, "--") {
+		return input
+	}
+	parts := strings.Split(input, "-")
+	result := ""
+	index := 0
+	if parts[0] == "" && len(parts) > 1 {
+		// handle vendor prefixes
+		prefix := parts[1]
+		if prefix == "ms" {
+			result += "ms"
+		} else {
+			result += capitalizeAscii(prefix)
+		}
+		index = 2 // Skip the empty string and prefix
+	} else {
+		result += parts[0]
+		index = 1
+	}
+	// Convert remaining parts to CamelCase
+	for ; index < len(parts); index++ {
+		if parts[index] != "" {
+			result += capitalizeAscii(parts[index])
+		}
+	}
+	return result
+}
+
+func convertStyleToReactStyles(styleMap map[string]string, params map[string]any) map[string]any {
+	if len(styleMap) == 0 {
+		return nil
+	}
+	rtn := make(map[string]any)
+	for key, val := range styleMap {
+		rtn[toReactName(key)] = attrToProp(val, params)
+	}
+	return rtn
+}
+
+func fixStyleAttribute(elem *VDomElem, params map[string]any, elemPath []string) error {
+	styleText, ok := elem.Props["style"].(string)
+	if !ok {
+		return nil
+	}
+	parser := cssparser.MakeParser(styleText)
+	m, err := parser.Parse()
+	if err != nil {
+		return fmt.Errorf("%v (at %s)", err, makePathStr(elemPath))
+	}
+	elem.Props["style"] = convertStyleToReactStyles(m, params)
+	return nil
+}
+
+func fixupStyleAttributes(elem *VDomElem, params map[string]any, elemPath []string) {
+	if elem == nil {
+		return
+	}
+	// call fixStyleAttribute, and walk children
+	elemCountMap := make(map[string]int)
+	if len(elemPath) == 0 {
+		elemPath = append(elemPath, elem.Tag)
+	}
+	fixStyleAttribute(elem, params, elemPath)
+	for i := range elem.Children {
+		child := &elem.Children[i]
+		elemCountMap[child.Tag]++
+		subPath := child.Tag
+		if elemCountMap[child.Tag] > 1 {
+			subPath = fmt.Sprintf("%s[%d]", child.Tag, elemCountMap[child.Tag])
+		}
+		elemPath = append(elemPath, subPath)
+		fixupStyleAttributes(&elem.Children[i], params, elemPath)
+		elemPath = elemPath[:len(elemPath)-1]
+	}
+}
+
+func Bind(htmlStr string, params map[string]any) *VDomElem {
 	htmlStr = processWhitespace(htmlStr)
 	r := strings.NewReader(htmlStr)
 	iter := htmltoken.NewTokenizer(r)
-	var elemStack []*Elem
-	elemStack = append(elemStack, &Elem{Tag: FragmentTag})
+	var elemStack []*VDomElem
+	elemStack = append(elemStack, &VDomElem{Tag: FragmentTag})
 	var tokenErr error
 outer:
 	for {
@@ -190,15 +308,15 @@ outer:
 		token := iter.Token()
 		switch tokenType {
 		case htmltoken.StartTagToken:
-			if token.Data == "bind" {
-				tokenErr = errors.New("bind tag must be self closing")
+			if token.Data == Html_BindTagName || token.Data == Html_BindParamTagName {
+				tokenErr = errors.New("bind tags must be self closing")
 				break outer
 			}
-			elem := tokenToElem(token, data)
+			elem := tokenToElem(token, params)
 			elemStack = pushElemStack(elemStack, elem)
 		case htmltoken.EndTagToken:
-			if token.Data == "bind" {
-				tokenErr = errors.New("bind tag must be self closing")
+			if token.Data == Html_BindTagName || token.Data == Html_BindParamTagName {
+				tokenErr = errors.New("bind tags must be self closing")
 				break outer
 			}
 			if len(elemStack) <= 1 {
@@ -211,16 +329,22 @@ outer:
 			}
 			elemStack = popElemStack(elemStack)
 		case htmltoken.SelfClosingTagToken:
-			if token.Data == "bind" {
+			if token.Data == Html_BindParamTagName {
 				keyAttr := getAttr(token, "key")
-				dataVal := data[keyAttr]
+				dataVal := params[keyAttr]
 				elemList := partToElems(dataVal)
 				for _, elem := range elemList {
 					appendChildToStack(elemStack, &elem)
 				}
 				continue
 			}
-			elem := tokenToElem(token, data)
+			if token.Data == Html_BindTagName {
+				keyAttr := getAttr(token, "key")
+				binding := &VDomBinding{Type: ObjectType_Binding, Bind: keyAttr}
+				appendChildToStack(elemStack, &VDomElem{Tag: WaveTextTag, Props: map[string]any{"text": binding}})
+				continue
+			}
+			elem := tokenToElem(token, params)
 			appendChildToStack(elemStack, elem)
 		case htmltoken.TextToken:
 			if token.Data == "" {
@@ -249,5 +373,7 @@ outer:
 		errTextElem := TextElem(tokenErr.Error())
 		appendChildToStack(elemStack, &errTextElem)
 	}
-	return finalizeStack(elemStack)
+	rtn := finalizeStack(elemStack)
+	fixupStyleAttributes(rtn, params, nil)
+	return rtn
 }

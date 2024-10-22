@@ -9,7 +9,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -271,9 +270,9 @@ func (conn *WslConn) StartConnServer() error {
 	}
 	var cmdStr string
 	if IsPowershell(shellPath) {
-		cmdStr = fmt.Sprintf("$env:%s=\"%s\"; %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
+		cmdStr = fmt.Sprintf("$env:%s=\"%s\"; %s connserver --router", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	} else {
-		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
+		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver --router", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	}
 	log.Printf("starting conn controller: %s\n", cmdStr)
 	// keeping this dead code around so i remember to
@@ -286,8 +285,10 @@ func (conn *WslConn) StartConnServer() error {
 	*/
 	cmd := client.WslCommand(conn.Context, cmdStr)
 	pipeRead, pipeWrite := io.Pipe()
+	inputPipeRead, inputPipeWrite := io.Pipe()
 	cmd.SetStdout(pipeWrite)
 	cmd.SetStderr(pipeWrite)
+	cmd.SetStdin(inputPipeRead)
 	err = cmd.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start conn controller: %w", err)
@@ -305,16 +306,8 @@ func (conn *WslConn) StartConnServer() error {
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
-		readErr := wshutil.StreamToLines(pipeRead, func(line []byte) {
-			lineStr := string(line)
-			if !strings.HasSuffix(lineStr, "\n") {
-				lineStr += "\n"
-			}
-			log.Printf("[conncontroller:%s:output] %s", conn.GetName(), lineStr)
-		})
-		if readErr != nil && readErr != io.EOF {
-			log.Printf("[conncontroller:%s] error reading output: %v\n", conn.GetName(), readErr)
-		}
+		logName := fmt.Sprintf("conncontroller:%s", conn.GetName())
+		wshutil.HandleStdIOClient(logName, pipeRead, inputPipeWrite)
 	}()
 	regCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()

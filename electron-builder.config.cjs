@@ -3,6 +3,8 @@ const pkg = require("./package.json");
 const fs = require("fs");
 const path = require("path");
 
+const windowsShouldSign = !!process.env.SM_CODE_SIGNING_CERT_SHA1_HASH;
+
 /**
  * @type {import('electron-builder').Configuration}
  * @see https://www.electron.build/configuration/configuration
@@ -47,7 +49,6 @@ const config = {
                 arch: ["universal", "arm64", "x64"],
             },
         ],
-        icon: "build/icons.icns",
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
         mergeASARs: true,
@@ -57,7 +58,6 @@ const config = {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
         executableName: pkg.name,
-        icon: "build/icons.icns",
         target: ["zip", "deb", "rpm", "AppImage", "pacman"],
         synopsis: pkg.description,
         description: null,
@@ -73,12 +73,13 @@ const config = {
         afterInstall: "build/deb-postinstall.tpl",
     },
     win: {
-        icon: "build/icons.icns",
-        publisherName: "Command Line Inc",
         target: ["nsis", "msi", "zip"],
-        certificateSubjectName: "Command Line Inc",
-        certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
-        signingHashAlgorithms: ["sha256"],
+        signtoolOptions: windowsShouldSign && {
+            signingHashAlgorithms: ["sha256"],
+            publisherName: "Command Line Inc",
+            certificateSubjectName: "Command Line Inc",
+            certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
+        },
     },
     appImage: {
         license: "LICENSE",

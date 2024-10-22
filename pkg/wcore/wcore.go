@@ -78,6 +78,13 @@ func CreateTab(ctx context.Context, windowId string, tabName string, activateTab
 	if err != nil {
 		return "", fmt.Errorf("error getting window: %w", err)
 	}
+	if tabName == "" {
+		ws, err := wstore.DBMustGet[*waveobj.Workspace](ctx, windowData.WorkspaceId)
+		if err != nil {
+			return "", fmt.Errorf("error getting workspace: %w", err)
+		}
+		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
+	}
 	tab, err := wstore.CreateTab(ctx, windowData.WorkspaceId, tabName)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)

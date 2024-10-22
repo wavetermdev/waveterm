@@ -11,6 +11,7 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
+	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -27,6 +28,7 @@ const (
 
 const (
 	Command_Authenticate      = "authenticate"    // special
+	Command_Dispose           = "dispose"         // special (disposes of the route, for multiproxy only)
 	Command_RouteAnnounce     = "routeannounce"   // special (for routing)
 	Command_RouteUnannounce   = "routeunannounce" // special (for routing)
 	Command_Message           = "message"
@@ -69,6 +71,10 @@ const (
 
 	Command_WebSelector = "webselector"
 	Command_Notify      = "notify"
+
+	Command_VDomCreateContext   = "vdomcreatecontext"
+	Command_VDomAsyncInitiation = "vdomasyncinitiation"
+	Command_VDomRender          = "vdomrender"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -78,6 +84,7 @@ type RespOrErrorUnion[T any] struct {
 
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
+	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
 
@@ -127,8 +134,16 @@ type WshRpcInterface interface {
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 
+	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+
+	// terminal
+	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) error
+	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
+
+	// proc
+	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error)
 }
 
 // for frontend
@@ -188,7 +203,13 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 }
 
 type CommandAuthenticateRtnData struct {
+	RouteId   string `json:"routeid"`
+	AuthToken string `json:"authtoken,omitempty"`
+}
+
+type CommandDisposeData struct {
 	RouteId string `json:"routeid"`
+	// auth token travels in the packet directly
 }
 
 type CommandMessageData struct {

@@ -6,7 +6,7 @@ import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import { NodeModel } from "@/layout/index";
@@ -496,7 +496,7 @@ export class PreviewModel implements ViewModel {
     async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
         const conn = globalStore.get(this.connection);
         try {
-            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
+            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
             return parentFileInfo;
@@ -517,7 +517,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
             if (newFileInfo.path != "" && newFileInfo.notfound) {
@@ -600,7 +600,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, filePath], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, filePath], {
                 route: makeConnRoute(conn),
             });
             this.updateOpenFileModalAndError(false);

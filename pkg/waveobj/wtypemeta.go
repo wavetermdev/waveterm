@@ -64,6 +64,8 @@ type MetaTSType struct {
 	GraphNumPoints int      `json:"graph:numpoints,omitempty"`
 	GraphMetrics   []string `json:"graph:metrics,omitempty"`
 
+	SysinfoType string `json:"sysinfo:type,omitempty"`
+
 	// for tabs
 	BgClear     bool    `json:"bg:*,omitempty"`
 	Bg          string  `json:"bg,omitempty"`
@@ -78,6 +80,10 @@ type MetaTSType struct {
 	TermLocalShellPath string   `json:"term:localshellpath,omitempty"` // matches settings
 	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"` // matches settings
 	TermScrollback     *int     `json:"term:scrollback,omitempty"`
+
+	VDomClear         bool   `json:"vdom:*,omitempty"`
+	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`
+	VDomCorrelationId string `json:"vdom:correlationid,omitempty"`
 
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }

@@ -72,6 +72,11 @@ class RpcApiType {
         return client.wshRpcCall("deleteblock", data, opts);
     }
 
+    // command "dispose" [call]
+    DisposeCommand(client: WshClient, data: CommandDisposeData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("dispose", data, opts);
+    }
+
     // command "eventpublish" [call]
     EventPublishCommand(client: WshClient, data: WaveEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("eventpublish", data, opts);
@@ -215,6 +220,21 @@ class RpcApiType {
     // command "test" [call]
     TestCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("test", data, opts);
+    }
+
+    // command "vdomasyncinitiation" [call]
+    VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("vdomasyncinitiation", data, opts);
+    }
+
+    // command "vdomcreatecontext" [call]
+    VDomCreateContextCommand(client: WshClient, data: VDomCreateContext, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("vdomcreatecontext", data, opts);
+    }
+
+    // command "vdomrender" [call]
+    VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): Promise<VDomBackendUpdate> {
+        return client.wshRpcCall("vdomrender", data, opts);
     }
 
     // command "webselector" [call]

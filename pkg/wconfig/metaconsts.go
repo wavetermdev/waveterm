@@ -60,6 +60,7 @@ const (
 	ConfigKey_WindowShowMenuBar              = "window:showmenubar"
 	ConfigKey_WindowNativeTitleBar           = "window:nativetitlebar"
 	ConfigKey_WindowDisableHardwareAcceleration = "window:disablehardwareacceleration"
+	ConfigKey_WindowMaxTabCacheSize          = "window:maxtabcachesize"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"

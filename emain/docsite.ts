@@ -17,7 +17,10 @@ export async function initDocsite() {
             console.log("Embedded docsite is running, using embedded version for help view");
             docsiteUrl = docsiteEmbeddedUrl;
         } else {
-            console.log("Embedded docsite is not running, using web version for help view", response);
+            console.log(
+                "Embedded docsite is not running, using web version for help view",
+                "status: " + response?.status
+            );
             docsiteUrl = docsiteWebUrl;
         }
     } catch (error) {

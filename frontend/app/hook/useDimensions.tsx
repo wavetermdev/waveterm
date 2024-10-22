@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import { useCallback, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -54,6 +57,49 @@ export function useDimensionsWithCallbackRef<T extends HTMLElement>(
         };
     }, []);
     return [refCallback, ref, domRect];
+}
+
+export function useOnResize<T extends HTMLElement>(
+    ref: React.RefObject<T>,
+    callback: (domRect: DOMRectReadOnly) => void,
+    debounceMs: number = null
+) {
+    const isFirst = React.useRef(true);
+    const rszObjRef = React.useRef<ResizeObserver>(null);
+    const oldHtmlElem = React.useRef<T>(null);
+    const setDomRectDebounced = React.useCallback(debounceMs == null ? callback : debounce(debounceMs, callback), [
+        debounceMs,
+        callback,
+    ]);
+    React.useEffect(() => {
+        if (!rszObjRef.current) {
+            rszObjRef.current = new ResizeObserver((entries) => {
+                for (const entry of entries) {
+                    if (isFirst.current) {
+                        isFirst.current = false;
+                        callback(entry.contentRect);
+                    } else {
+                        setDomRectDebounced(entry.contentRect);
+                    }
+                }
+            });
+        }
+        if (ref.current) {
+            rszObjRef.current.observe(ref.current);
+            oldHtmlElem.current = ref.current;
+        }
+        return () => {
+            if (oldHtmlElem.current) {
+                rszObjRef.current?.unobserve(oldHtmlElem.current);
+                oldHtmlElem.current = null;
+            }
+        };
+    }, [ref.current, callback]);
+    React.useEffect(() => {
+        return () => {
+            rszObjRef.current?.disconnect();
+        };
+    }, []);
 }
 
 // will not react to ref changes

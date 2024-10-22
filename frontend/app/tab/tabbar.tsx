@@ -1,9 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Button } from "@/app/element/button";
+import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, getApi, isDev, PLATFORM } from "@/store/global";
+import { atoms, createTab, getApi, isDev, PLATFORM } from "@/store/global";
 import * as services from "@/store/services";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -37,6 +39,69 @@ interface TabBarProps {
     workspace: Workspace;
 }
 
+const ConfigErrorMessage = () => {
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+
+    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
+        return (
+            <div className="config-error-message">
+                <h3>Configuration Clean</h3>
+                <p>There are no longer any errors detected in your config.</p>
+            </div>
+        );
+    }
+    if (fullConfig?.configerrors.length == 1) {
+        const singleError = fullConfig.configerrors[0];
+        return (
+            <div className="config-error-message">
+                <h3>Configuration Error</h3>
+                <div>
+                    {singleError.file}: {singleError.err}
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className="config-error-message">
+            <h3>Configuration Error</h3>
+            <ul>
+                {fullConfig.configerrors.map((error, index) => (
+                    <li key={index}>
+                        {error.file}: {error.err}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
+const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement> }) => {
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+
+    function handleClick() {
+        modalsModel.pushModal("MessageModal", { children: <ConfigErrorMessage /> });
+    }
+
+    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
+        return null;
+    }
+    return (
+        <Button
+            ref={buttonRef as React.RefObject<HTMLButtonElement>}
+            className="config-error-button red"
+            onClick={handleClick}
+        >
+            <i className="fa fa-solid fa-exclamation-triangle" />
+            Config Error
+        </Button>
+    );
+    return (
+        <div className="config-error" ref={buttonRef as React.RefObject<HTMLDivElement>}>
+            <i className="fa fa-solid fa-exclamation-triangle" />
+        </div>
+    );
+};
+
 const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
@@ -67,11 +132,9 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
+    const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
-
-    const windowData = useAtomValue(atoms.waveWindow);
-    const { activetabid } = windowData;
-
+    const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     const settings = useAtomValue(atoms.settingsAtom);
@@ -124,8 +187,10 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
         const updateStatusLabelWidth = updateStatusButtonRef.current?.getBoundingClientRect().width ?? 0;
+        const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const spaceForTabs =
-            tabbarWrapperWidth - (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth + updateStatusLabelWidth);
+            tabbarWrapperWidth -
+            (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth + updateStatusLabelWidth + configErrorWidth);
 
         const numberOfTabs = tabIds.length;
         const totalDefaultTabWidth = numberOfTabs * TAB_DEFAULT_WIDTH;
@@ -415,17 +480,12 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
-            services.ObjectService.SetActiveTab(tabId);
+            getApi().setActiveTab(tabId);
         }
     };
 
     const handleAddTab = () => {
-        const newTabName = `T${tabIds.length + 1}`;
-        services.ObjectService.AddTabToWorkspace(newTabName, true).then((tabId) => {
-            setTabIds([...tabIds, tabId]);
-            setNewTabId(tabId);
-        });
-        services.ObjectService.GetObject;
+        createTab();
         tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
@@ -441,7 +501,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        services.WindowService.CloseTab(tabId);
+        getApi().closeTab(tabId);
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutModelForTab(tabId);
     };
@@ -457,7 +517,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     }, []);
 
     const isBeforeActive = (tabId: string) => {
-        return tabIds.indexOf(tabId) === tabIds.indexOf(activetabid) - 1;
+        return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
     };
 
     function onEllipsisClick() {
@@ -492,7 +552,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                                 id={tabId}
                                 isFirst={index === 0}
                                 onSelect={() => handleSelectTab(tabId)}
-                                active={activetabid === tabId}
+                                active={activeTabId === tabId}
                                 onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}
@@ -510,6 +570,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
             </div>
             <WindowDrag ref={draggerRightRef} className="right" />
             <UpdateStatusBanner buttonRef={updateStatusButtonRef} />
+            <ConfigErrorIcon buttonRef={configErrorButtonRef} />
         </div>
     );
 });

@@ -30,6 +30,9 @@ const wsInitialPingTime = 1 * time.Second
 
 const DefaultCommandTimeout = 2 * time.Second
 
+var GlobalLock = &sync.Mutex{}
+var RouteToConnMap = map[string]string{} // routeid => connid
+
 func RunWebSocketServer(listener net.Listener) {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/ws", HandleWs)
@@ -40,10 +43,10 @@ func RunWebSocketServer(listener net.Listener) {
 		Handler:        gr,
 	}
 	server.SetKeepAlivesEnabled(false)
-	log.Printf("Running websocket server on %s\n", listener.Addr())
+	log.Printf("[websocket] running websocket server on %s\n", listener.Addr())
 	err := server.Serve(listener)
 	if err != nil {
-		log.Printf("[error] trying to run websocket server: %v\n", err)
+		log.Printf("[websocket] error trying to run websocket server: %v\n", err)
 	}
 }
 
@@ -81,7 +84,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 		r := recover()
 		if r != nil {
 			rtnErr = fmt.Errorf("panic: %v", r)
-			log.Printf("panic in processMessage: %v\n", r)
+			log.Printf("[websocket] panic in processMessage: %v\n", r)
 			debug.PrintStack()
 		}
 		if rtnErr == nil {
@@ -108,7 +111,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 		msgBytes, err := json.Marshal(rpcMsg)
 		if err != nil {
 			// this really should never fail since we just unmarshalled this value
-			log.Printf("error marshalling rpc message: %v\n", err)
+			log.Printf("[websocket] error marshalling rpc message: %v\n", err)
 			return
 		}
 		rpcInputCh <- msgBytes
@@ -125,7 +128,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 		msgBytes, err := json.Marshal(rpcMsg)
 		if err != nil {
 			// this really should never fail since we just unmarshalled this value
-			log.Printf("error marshalling rpc message: %v\n", err)
+			log.Printf("[websocket] error marshalling rpc message: %v\n", err)
 			return
 		}
 		rpcInputCh <- msgBytes
@@ -152,7 +155,7 @@ func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan []by
 	processWSCommand(jmsg, outputCh, rpcInputCh)
 }
 
-func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan []byte) {
+func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan []byte, routeId string) {
 	readWait := wsReadWaitTimeout
 	conn.SetReadLimit(64 * 1024)
 	conn.SetReadDeadline(time.Now().Add(readWait))
@@ -160,13 +163,13 @@ func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInpu
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Printf("ReadPump error: %v\n", err)
+			log.Printf("[websocket] ReadPump error (%s): %v\n", routeId, err)
 			break
 		}
 		jmsg := map[string]any{}
 		err = json.Unmarshal(message, &jmsg)
 		if err != nil {
-			log.Printf("Error unmarshalling json: %v\n", err)
+			log.Printf("[websocket] error unmarshalling json: %v\n", err)
 			break
 		}
 		conn.SetReadDeadline(time.Now().Add(readWait))
@@ -197,7 +200,7 @@ func WritePing(conn *websocket.Conn) error {
 	return nil
 }
 
-func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
+func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, routeId string) {
 	ticker := time.NewTicker(wsInitialPingTime)
 	defer ticker.Stop()
 	initialPing := true
@@ -211,7 +214,7 @@ func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
 			} else {
 				barr, err = json.Marshal(msg)
 				if err != nil {
-					log.Printf("cannot marshal websocket message: %v\n", err)
+					log.Printf("[websocket] cannot marshal websocket message: %v\n", err)
 					// just loop again
 					break
 				}
@@ -219,14 +222,14 @@ func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
 			err = conn.WriteMessage(websocket.TextMessage, barr)
 			if err != nil {
 				conn.Close()
-				log.Printf("WritePump error: %v\n", err)
+				log.Printf("[websocket] WritePump error (%s): %v\n", routeId, err)
 				return
 			}
 
 		case <-ticker.C:
 			err := WritePing(conn)
 			if err != nil {
-				log.Printf("WritePump error: %v\n", err)
+				log.Printf("[websocket] WritePump error (%s): %v\n", routeId, err)
 				return
 			}
 			if initialPing {
@@ -240,16 +243,41 @@ func WriteLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
 	}
 }
 
-func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
-	windowId := r.URL.Query().Get("windowid")
-	if windowId == "" {
-		return fmt.Errorf("windowid is required")
+func registerConn(wsConnId string, routeId string, wproxy *wshutil.WshRpcProxy) {
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	curConnId := RouteToConnMap[routeId]
+	if curConnId != "" {
+		log.Printf("[websocket] warning: replacing existing connection for route %q\n", routeId)
+		wshutil.DefaultRouter.UnregisterRoute(routeId)
 	}
+	RouteToConnMap[routeId] = wsConnId
+	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy, true)
+}
 
+func unregisterConn(wsConnId string, routeId string) {
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	curConnId := RouteToConnMap[routeId]
+	if curConnId != wsConnId {
+		// only unregister if we are the current connection (otherwise we were already removed)
+		log.Printf("[websocket] warning: trying to unregister connection %q for route %q but it is not the current connection (ignoring)\n", wsConnId, routeId)
+		return
+	}
+	delete(RouteToConnMap, routeId)
+	wshutil.DefaultRouter.UnregisterRoute(routeId)
+}
+
+func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
+	tabId := r.URL.Query().Get("tabid")
+	if tabId == "" {
+		return fmt.Errorf("tabid is required")
+	}
 	err := authkey.ValidateIncomingRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(fmt.Sprintf("error validating authkey: %v", err)))
+		log.Printf("[websocket] error validating authkey: %v\n", err)
 		return err
 	}
 	conn, err := WebSocketUpgrader.Upgrade(w, r, nil)
@@ -258,25 +286,21 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer conn.Close()
 	wsConnId := uuid.New().String()
-	log.Printf("New websocket connection: windowid:%s connid:%s\n", windowId, wsConnId)
 	outputCh := make(chan any, 100)
 	closeCh := make(chan any)
-	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
 	var routeId string
-	if windowId == wshutil.ElectronRoute {
+	if tabId == wshutil.ElectronRoute {
 		routeId = wshutil.ElectronRoute
 	} else {
-		routeId = wshutil.MakeWindowRouteId(windowId)
+		routeId = wshutil.MakeTabRouteId(tabId)
 	}
+	log.Printf("[websocket] new connection: tabid:%s connid:%s routeid:%s\n", tabId, wsConnId, routeId)
+	eventbus.RegisterWSChannel(wsConnId, tabId, outputCh)
 	defer eventbus.UnregisterWSChannel(wsConnId)
-	// we create a wshproxy to handle rpc messages to/from the window
-	wproxy := wshutil.MakeRpcProxy()
-	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy)
-	defer func() {
-		wshutil.DefaultRouter.UnregisterRoute(routeId)
-		close(wproxy.ToRemoteCh)
-	}()
-	// WshServerFactoryFn(rpcInputCh, rpcOutputCh, wshrpc.RpcContext{})
+	wproxy := wshutil.MakeRpcProxy() // we create a wshproxy to handle rpc messages to/from the window
+	defer close(wproxy.ToRemoteCh)
+	registerConn(wsConnId, routeId, wproxy)
+	defer unregisterConn(wsConnId, routeId)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
@@ -293,12 +317,12 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	go func() {
 		// read loop
 		defer wg.Done()
-		ReadLoop(conn, outputCh, closeCh, wproxy.FromRemoteCh)
+		ReadLoop(conn, outputCh, closeCh, wproxy.FromRemoteCh, routeId)
 	}()
 	go func() {
 		// write loop
 		defer wg.Done()
-		WriteLoop(conn, outputCh, closeCh)
+		WriteLoop(conn, outputCh, closeCh, routeId)
 	}()
 	wg.Wait()
 	close(wproxy.FromRemoteCh)

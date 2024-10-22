@@ -10,8 +10,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
 
 const (
@@ -27,21 +25,19 @@ type WSEventType struct {
 }
 
 type WindowWatchData struct {
-	WindowWSCh   chan any
-	WaveWindowId string
-	WatchedORefs map[waveobj.ORef]bool
+	WindowWSCh chan any
+	TabId      string
 }
 
 var globalLock = &sync.Mutex{}
 var wsMap = make(map[string]*WindowWatchData) // websocketid => WindowWatchData
 
-func RegisterWSChannel(connId string, windowId string, ch chan any) {
+func RegisterWSChannel(connId string, tabId string, ch chan any) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	wsMap[connId] = &WindowWatchData{
-		WindowWSCh:   ch,
-		WaveWindowId: windowId,
-		WatchedORefs: make(map[waveobj.ORef]bool),
+		WindowWSCh: ch,
+		TabId:      tabId,
 	}
 }
 
@@ -56,7 +52,7 @@ func getWindowWatchesForWindowId(windowId string) []*WindowWatchData {
 	defer globalLock.Unlock()
 	var watches []*WindowWatchData
 	for _, wdata := range wsMap {
-		if wdata.WaveWindowId == windowId {
+		if wdata.TabId == windowId {
 			watches = append(watches, wdata)
 		}
 	}

@@ -64,6 +64,8 @@ const (
 	MetaKey_GraphNumPoints                   = "graph:numpoints"
 	MetaKey_GraphMetrics                     = "graph:metrics"
 
+	MetaKey_SysinfoType                      = "sysinfo:type"
+
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_Bg                               = "bg"
 	MetaKey_BgOpacity                        = "bg:opacity"
@@ -77,6 +79,10 @@ const (
 	MetaKey_TermLocalShellPath               = "term:localshellpath"
 	MetaKey_TermLocalShellOpts               = "term:localshellopts"
 	MetaKey_TermScrollback                   = "term:scrollback"
+
+	MetaKey_VDomClear                        = "vdom:*"
+	MetaKey_VDomInitialized                  = "vdom:initialized"
+	MetaKey_VDomCorrelationId                = "vdom:correlationid"
 
 	MetaKey_Count                            = "count"
 )

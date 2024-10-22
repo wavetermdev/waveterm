@@ -16,6 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -46,19 +47,25 @@ func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId strin
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *WindowService) CloseTab(ctx context.Context, uiContext waveobj.UIContext, tabId string) (waveobj.UpdatesRtnType, error) {
+type CloseTabRtnType struct {
+	CloseWindow    bool   `json:"closewindow,omitempty"`
+	NewActiveTabId string `json:"newactivetabid,omitempty"`
+}
+
+// returns the new active tabid
+func (svc *WindowService) CloseTab(ctx context.Context, windowId string, tabId string, fromElectron bool) (*CloseTabRtnType, waveobj.UpdatesRtnType, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, uiContext.WindowId)
+	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 	if err != nil {
-		return nil, fmt.Errorf("error getting window: %w", err)
+		return nil, nil, fmt.Errorf("error getting window: %w", err)
 	}
 	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
 	if err != nil {
-		return nil, fmt.Errorf("error getting tab: %w", err)
+		return nil, nil, fmt.Errorf("error getting tab: %w", err)
 	}
 	ws, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
 	if err != nil {
-		return nil, fmt.Errorf("error getting workspace: %w", err)
+		return nil, nil, fmt.Errorf("error getting workspace: %w", err)
 	}
 	tabIndex := -1
 	for i, id := range ws.TabIds {
@@ -73,26 +80,36 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext waveobj.UICont
 		}
 	}()
 	if err := wcore.DeleteTab(ctx, window.WorkspaceId, tabId); err != nil {
-		return nil, fmt.Errorf("error closing tab: %w", err)
+		return nil, nil, fmt.Errorf("error closing tab: %w", err)
 	}
+	rtn := &CloseTabRtnType{}
 	if window.ActiveTabId == tabId && tabIndex != -1 {
 		if len(ws.TabIds) == 1 {
-			svc.CloseWindow(ctx, uiContext.WindowId)
-			eventbus.SendEventToElectron(eventbus.WSEventType{
-				EventType: eventbus.WSEvent_ElectronCloseWindow,
-				Data:      uiContext.WindowId,
-			})
+			rtn.CloseWindow = true
+			svc.CloseWindow(ctx, windowId, fromElectron)
+			if !fromElectron {
+				eventbus.SendEventToElectron(eventbus.WSEventType{
+					EventType: eventbus.WSEvent_ElectronCloseWindow,
+					Data:      windowId,
+				})
+			}
 		} else {
 			if tabIndex < len(ws.TabIds)-1 {
 				newActiveTabId := ws.TabIds[tabIndex+1]
-				wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
+				wstore.SetActiveTab(ctx, windowId, newActiveTabId)
+				rtn.NewActiveTabId = newActiveTabId
 			} else {
 				newActiveTabId := ws.TabIds[tabIndex-1]
-				wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
+				wstore.SetActiveTab(ctx, windowId, newActiveTabId)
+				rtn.NewActiveTabId = newActiveTabId
 			}
 		}
 	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return rtn, updates, nil
 }
 
 func (svc *WindowService) MoveBlockToNewWindow_Meta() tsgenmeta.MethodMeta {
@@ -148,7 +165,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *WindowService) CloseWindow(ctx context.Context, windowId string) error {
+func (svc *WindowService) CloseWindow(ctx context.Context, windowId string, fromElectron bool) error {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 	if err != nil {
@@ -159,8 +176,7 @@ func (svc *WindowService) CloseWindow(ctx context.Context, windowId string) erro
 		return fmt.Errorf("error getting workspace: %w", err)
 	}
 	for _, tabId := range workspace.TabIds {
-		uiContext := waveobj.UIContext{WindowId: windowId}
-		_, err := svc.CloseTab(ctx, uiContext, tabId)
+		_, _, err := svc.CloseTab(ctx, windowId, tabId, fromElectron)
 		if err != nil {
 			return fmt.Errorf("error closing tab: %w", err)
 		}

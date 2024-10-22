@@ -84,7 +84,7 @@ func MakePlotData(ctx context.Context, blockId string) error {
 		return err
 	}
 	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
-	if viewName != "cpuplot" {
+	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
 	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, filestore.FileOptsType{})
@@ -96,7 +96,7 @@ func SavePlotData(ctx context.Context, blockId string, history string) error {
 		return err
 	}
 	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
-	if viewName != "cpuplot" {
+	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
 	// todo: interpret the data being passed
@@ -121,7 +121,7 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 }
 
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
-	log.Printf("SETMETA: %s | %v\n", data.ORef, data.Meta)
+	log.Printf("SetMetaCommand: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef
 	err := wstore.UpdateObjectMeta(ctx, oref, data.Meta)
 	if err != nil {
@@ -423,7 +423,6 @@ func (ws *WshServer) EventPublishCommand(ctx context.Context, data wps.WaveEvent
 }
 
 func (ws *WshServer) EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error {
-	log.Printf("EventSubCommand: %v\n", data)
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	if rpcSource == "" {
 		return fmt.Errorf("no rpc source set")
