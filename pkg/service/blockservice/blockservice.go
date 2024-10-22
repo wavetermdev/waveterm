@@ -38,6 +38,13 @@ func (bs *BlockService) GetControllerStatus(ctx context.Context, blockId string)
 	return bc.GetRuntimeStatus(), nil
 }
 
+func (*BlockService) SaveTerminalState_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "save the terminal state to a blockfile",
+		ArgNames: []string{"blockId", "state", "stateType", "ptyOffset"},
+	}
+}
+
 func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, state string, stateType string, ptyOffset int64) error {
 	_, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
