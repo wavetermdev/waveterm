@@ -127,6 +127,10 @@ func EnsureWaveConfigDir() error {
 	return CacheEnsureDir(GetWaveConfigDir(), "waveconfig", 0700, "wave config directory")
 }
 
+func EnsureWavePresetsDir() error {
+	return CacheEnsureDir(filepath.Join(GetWaveConfigDir(), "presets"), "wavepresets", 0700, "wave presets directory")
+}
+
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {
 	baseLock.Lock()
 	ok := ensureDirCache[cacheKey]
