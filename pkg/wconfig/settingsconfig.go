@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
 )
@@ -183,8 +184,6 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 	return rtn, cerrs
 }
 
-var configDirFsys = os.DirFS(configDirAbsPath)
-
 func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
 	barr, readErr := fs.ReadFile(fsys, fileName)
 	return readConfigHelper(logPrefix+fileName, barr, readErr)
@@ -195,10 +194,13 @@ func ReadDefaultsConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError
 }
 
 func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
+	configDirAbsPath := wavebase.GetWaveConfigDir()
+	configDirFsys := os.DirFS(configDirAbsPath)
 	return readConfigFileFS(configDirFsys, "", fileName)
 }
 
 func WriteWaveHomeConfigFile(fileName string, m waveobj.MetaMapType) error {
+	configDirAbsPath := wavebase.GetWaveConfigDir()
 	fullFileName := filepath.Join(configDirAbsPath, fileName)
 	barr, err := jsonMarshalConfigInOrder(m)
 	if err != nil {
@@ -283,6 +285,8 @@ func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMe
 
 // Combine files from the defaults and home directory for the specified config part name
 func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+	configDirAbsPath := wavebase.GetWaveConfigDir()
+	configDirFsys := os.DirFS(configDirAbsPath)
 	defaultConfigs, cerrs := readConfigPartForFS(defaultconfig.ConfigFS, "defaults:", partName, simpleMerge)
 	homeConfigs, cerrs1 := readConfigPartForFS(configDirFsys, "", partName, simpleMerge)
 
@@ -326,6 +330,7 @@ func GetConfigSubdirs() []string {
 	var fullConfig FullConfigType
 	configRType := reflect.TypeOf(fullConfig)
 	var retVal []string
+	configDirAbsPath := wavebase.GetWaveConfigDir()
 	for fieldIdx := 0; fieldIdx < configRType.NumField(); fieldIdx++ {
 		field := configRType.Field(fieldIdx)
 		if field.PkgPath != "" {
