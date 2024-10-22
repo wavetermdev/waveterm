@@ -1,8 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ClientService, FileService, ObjectService, WindowService } from "@/app/store/services";
 import * as electron from "electron";
+import * as path from "path";
+import { debounce } from "throttle-debounce";
+import { ClientService, FileService, ObjectService, WindowService } from "../frontend/app/store/services";
+import * as keyutil from "../frontend/util/keyutil";
+import { configureAuthKeyRequestInjection } from "./authkey";
+import { getGlobalIsQuitting, getGlobalIsStarting, setWasActive, setWasInFg } from "./emain-activity";
 import {
     delay,
     ensureBoundsAreVisible,
@@ -10,12 +15,7 @@ import {
     handleCtrlShiftState,
     shFrameNavHandler,
     shNavHandler,
-} from "emain/emain-util";
-import * as keyutil from "frontend/util/keyutil";
-import * as path from "path";
-import { debounce } from "throttle-debounce";
-import { configureAuthKeyRequestInjection } from "./authkey";
-import { getGlobalIsQuitting, getGlobalIsStarting, setWasActive, setWasInFg } from "./emain-activity";
+} from "./emain-util";
 import { getElectronAppBasePath, isDevVite } from "./platform";
 import { updater } from "./updater";
 
