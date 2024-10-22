@@ -3,11 +3,12 @@
 # For more information on the Windows Code Signing, see https://docs.digicert.com/en/digicert-keylocker/ci-cd-integrations/plugins/github-custom-action-for-keypair-signing.html and https://docs.digicert.com/en/digicert-keylocker/signing-tools/sign-authenticode-with-electron-builder-using-ksp-integration.html
 
 name: Build Helper
-run-name: Build ${{ github.ref_name }}
+run-name: Build ${{ github.ref_name }}${{ github.event_name == 'workflow_dispatch' && ' - Manual'}}
 on:
     push:
         tags:
             - "v[0-9]+.[0-9]+.[0-9]+*"
+    workflow_dispatch:
 env:
     GO_VERSION: "1.22"
     NODE_VERSION: "20"
@@ -39,11 +40,8 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
-
-            # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
-            - name: Setup Zig (Linux only)
-              if: matrix.platform == 'linux'
-              run: sudo snap install zig --classic --beta
+                  sudo snap install snapcraft --classic
+                  sudo snap install zig --classic --beta # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
@@ -84,12 +82,12 @@ jobs:
 
             # Windows Code Signing Setup
             - name: Set up certificate (Windows only)
-              if: matrix.platform == 'windows'
+              if: matrix.platform == 'windows' && github.event_name != 'workflow_dispatch'
               run: |
                   echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
               shell: bash
             - name: Set signing variables (Windows only)
-              if: matrix.platform == 'windows'
+              if: matrix.platform == 'windows' && github.event_name != 'workflow_dispatch'
               id: variables
               run: |
                   echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
@@ -103,7 +101,7 @@ jobs:
                   echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
               shell: bash
             - name: Setup Keylocker KSP (Windows only)
-              if: matrix.platform == 'windows'
+              if: matrix.platform == 'windows' && github.event_name != 'workflow_dispatch'
               run: |
                   curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/Keylockertools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o Keylockertools-windows-x64.msi
                   msiexec /i Keylockertools-windows-x64.msi /quiet /qn
@@ -121,8 +119,15 @@ jobs:
                   path: ${{env.STATIC_DOCSITE_PATH}}
 
             # Build and upload packages
-            - name: Build (not Windows)
-              if: matrix.platform != 'windows'
+            - name: Build (Linux)
+              if: matrix.platform == 'linux'
+              run: task package
+              env:
+                  USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
+                  STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
+                  SNAPCRAFT_BUILD_ENVIRONMENT: host
+            - name: Build (Darwin)
+              if: matrix.platform == 'darwin'
               run: task package
               env:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
@@ -132,7 +137,7 @@ jobs:
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD_2 }}
                   APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID_2 }}
                   STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
-            - name: Build (Windows only)
+            - name: Build (Windows)
               if: matrix.platform == 'windows'
               run: task package
               env:
@@ -141,14 +146,16 @@ jobs:
                   CSC_KEY_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
                   STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
               shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
+
             - name: Upload to S3 staging
+              if: github.event_name != 'workflow_dispatch'
               run: task artifacts:upload
               env:
                   AWS_ACCESS_KEY_ID: "${{ secrets.ARTIFACTS_KEY_ID }}"
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.ARTIFACTS_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2
-
             - name: Create draft release
+              if: github.event_name != 'workflow_dispatch'
               uses: softprops/action-gh-release@v2
               with:
                   prerelease: ${{ contains(github.ref_name, '-beta') }}
@@ -166,3 +173,9 @@ jobs:
                       make/*.snap
                       make/*.flatpak
                       make/*.AppImage
+            - name: Upload build artifacts to workflow (manual runs only)
+              if: github.event_name == 'workflow_dispatch'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{matrix.runner}}
+                  path: make
