@@ -1,6 +1,3 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
 import { useDismiss, useFloating, useInteractions, type Placement } from "@floating-ui/react";
 import clsx from "clsx";
 import {
@@ -14,7 +11,6 @@ import {
     ReactNode,
     useState,
 } from "react";
-import { Button } from "./button";
 
 import "./popover.less";
 
@@ -37,7 +33,7 @@ const isPopoverContent = (
     return element.type === PopoverContent;
 };
 
-const Popover = memo(({ children, className, placement, onOpenChange }: PopoverProps) => {
+const Popover = memo(({ children, className, placement = "bottom-start", onOpenChange }: PopoverProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleOpen = () => {
@@ -46,7 +42,7 @@ const Popover = memo(({ children, className, placement, onOpenChange }: PopoverP
     };
 
     const { refs, floatingStyles, context } = useFloating({
-        placement: placement ?? "bottom-start",
+        placement,
         open: isOpen,
         onOpenChange: setIsOpen,
     });
@@ -86,12 +82,13 @@ interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
     children: React.ReactNode;
     onClick?: () => void;
     getReferenceProps?: () => any;
+    as?: keyof JSX.IntrinsicElements | React.ComponentType<any>;
 }
 
-const PopoverButton = forwardRef<HTMLButtonElement, PopoverButtonProps>(
-    ({ isActive, children, onClick, getReferenceProps, className, ...props }, ref) => {
+const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButtonProps>(
+    ({ isActive, children, onClick, getReferenceProps, className, as: Component = "button", ...props }, ref) => {
         return (
-            <Button
+            <Component
                 ref={ref}
                 className={clsx("ghost grey popover-button", className, { "is-active": isActive })}
                 onClick={onClick}
@@ -99,7 +96,7 @@ const PopoverButton = forwardRef<HTMLButtonElement, PopoverButtonProps>(
                 {...props}
             >
                 {children}
-            </Button>
+            </Component>
         );
     }
 );

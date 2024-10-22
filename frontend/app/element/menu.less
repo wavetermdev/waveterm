@@ -1,54 +1,61 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
-@import "../mixins.less";
-
 .menu {
-    position: absolute;
-    z-index: 1000;
     display: flex;
-    max-width: 400px;
-    min-width: 125px;
-    padding: 2px;
     flex-direction: column;
-    justify-content: flex-end;
-    align-items: flex-start;
-    gap: 1px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: #212121;
-    box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.3);
-}
-
-.menu-item {
-    display: flex;
-    align-items: center;
-    padding: 4px 6px;
-    cursor: pointer;
-    color: var(--main-text-color);
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: normal;
-    letter-spacing: -0.12px;
     width: 100%;
-    border-radius: 2px;
+    overflow: visible;
+}
+
+.menu-item,
+.menu-item-group-title {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-
-    .label {
-        .ellipsis();
-        text-decoration: none;
+    padding: 8px 16px; /* Left and right padding, we'll adjust this for the right side */
+    cursor: pointer;
+    border-bottom: 1px solid #ddd;
+    box-sizing: border-box;
+    width: 100%;
+    &:hover {
+        background-color: var(--button-grey-hover-bg);
     }
 }
 
-.menu-item {
-    color: var(--main-text-color);
+.menu-item-left,
+.menu-item-right {
+    display: flex;
+    align-items: center;
+}
 
-    &:hover {
-        background-color: var(--accent-color);
-        color: var(--button-text-color);
-        border-radius: 2px;
+.menu-item-left {
+    margin-right: 8px; /* Space for the left element */
+}
+
+.menu-item-right {
+    margin-left: auto; /* This keeps the right element (if any) on the far right */
+}
+
+.menu-item-content {
+    flex-grow: 1; /* Ensures the content grows to fill available space between left and right elements */
+}
+
+.menu-item-group-content {
+    max-height: 0;
+    overflow: hidden;
+    padding-left: 16px; /* Retaining left indentation */
+    padding-right: 0; /* Removing right padding */
+
+    &.expanded {
+        max-height: 1000px; /* Ensure large enough max-height for expansion */
+        padding-left: 16px; /* Keep left indentation */
+        padding-right: 0; /* Remove right indentation */
     }
+}
+
+.menu-item-group.open .menu-item-group-title {
+    // background-color: #e0e0e0;
+}
+
+.menu-item-group-content .menu-item,
+.menu-item-group-content .menu-item-group-title {
+    padding-left: 24px; /* Increased left indentation for nested items */
+    padding-right: 0; /* Ensure no right indentation */
 }
