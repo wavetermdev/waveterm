@@ -1,7 +1,34 @@
 // Menu.tsx
 import { clsx } from "clsx";
-import { ReactNode, useState } from "react";
+import { Children, ReactElement, ReactNode, cloneElement, useState } from "react";
+
 import "./menu.less";
+
+type BaseMenuItem = {
+    type: "item" | "group";
+};
+
+interface MenuItemType extends BaseMenuItem {
+    type: "item";
+    leftElement?: string | ReactNode;
+    rightElement?: string | ReactNode;
+    content?: React.ReactNode;
+}
+
+interface MenuItemGroupTitleType {
+    leftElement?: string | ReactNode;
+    label: string;
+    rightElement?: string | ReactNode;
+}
+
+interface MenuItemGroupType extends BaseMenuItem {
+    type: "group";
+    title: MenuItemGroupTitleType;
+    defaultExpanded?: boolean;
+    children?: MenuItemData[];
+}
+
+type MenuItemData = MenuItemType | MenuItemGroupType;
 
 type MenuProps = {
     children: React.ReactNode;
@@ -26,44 +53,72 @@ const MenuItem = ({ children, className, onClick }: MenuItemProps) => {
     );
 };
 
+type MenuItemGroupTitleProps = {
+    children: ReactNode;
+    className?: string;
+    onClick?: () => void;
+};
+
+const MenuItemGroupTitle = ({ children, className, onClick }: MenuItemGroupTitleProps) => {
+    return (
+        <div className={clsx("menu-item-group-title", className)} onClick={() => onClick?.()}>
+            {children}
+        </div>
+    );
+};
+
 type MenuItemGroupProps = {
-    title: ReactNode;
     children: React.ReactNode;
     className?: string;
     defaultExpanded?: boolean;
 };
 
-const MenuItemGroup = ({ title, children, className, defaultExpanded = false }: MenuItemGroupProps) => {
+const MenuItemGroup = ({ children, className, defaultExpanded = false }: MenuItemGroupProps) => {
     const [isOpen, setIsOpen] = useState(defaultExpanded);
 
     const toggleOpen = () => {
         setIsOpen(!isOpen);
     };
 
-    return (
-        <div className={clsx("menu-item-group", className, { open: isOpen })}>
-            <div className="menu-item-group-title" onClick={toggleOpen}>
-                {title}
-            </div>
-            <div className={clsx("menu-item-group-content", { expanded: isOpen })}>{children}</div>
-        </div>
-    );
+    const renderChildren = Children.map(children, (child: ReactElement) => {
+        if (child.type === MenuItemGroupTitle) {
+            return cloneElement(child as any, {
+                ...child.props,
+                onClick: toggleOpen,
+            });
+        } else {
+            return <div className={clsx("menu-item-group-content", { expanded: isOpen })}>{child}</div>;
+        }
+    });
+
+    return <div className={clsx("menu-item-group", className, { open: isOpen })}>{renderChildren}</div>;
 };
 
 type MenuItemLeftElementProps = {
     children: ReactNode;
+    onClick?: () => void;
 };
 
-const MenuItemLeftElement = ({ children }: MenuItemLeftElementProps) => {
-    return <div className="menu-item-left">{children}</div>;
+const MenuItemLeftElement = ({ children, onClick }: MenuItemLeftElementProps) => {
+    return (
+        <div className="menu-item-left" onClick={() => onClick?.()}>
+            {children}
+        </div>
+    );
 };
 
 type MenuItemRightElementProps = {
     children: ReactNode;
+    onClick?: () => void;
 };
 
-const MenuItemRightElement = ({ children }: MenuItemRightElementProps) => {
-    return <div className="menu-item-right">{children}</div>;
+const MenuItemRightElement = ({ children, onClick }: MenuItemRightElementProps) => {
+    return (
+        <div className="menu-item-right" onClick={() => onClick?.()}>
+            {children}
+        </div>
+    );
 };
 
-export { Menu, MenuItem, MenuItemGroup, MenuItemLeftElement, MenuItemRightElement };
+export { Menu, MenuItem, MenuItemGroup, MenuItemGroupTitle, MenuItemLeftElement, MenuItemRightElement };
+export type { MenuItemData };
