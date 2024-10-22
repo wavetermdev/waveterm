@@ -63,7 +63,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // do nothing
     }
 
-    const showAboutModalAtom = atom(false) as PrimitiveAtom<boolean>;
     try {
         getApi().onMenuItemAbout(() => {
             modalsModel.pushModal("AboutModal");
@@ -282,6 +281,10 @@ function getSettingsKeyAtom<T extends keyof SettingsType>(key: T): Atom<Settings
         settingsAtomCache.set(key, settingsKeyAtom);
     }
     return settingsKeyAtom;
+}
+
+function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): SettingsType[T] {
+    return useAtomValue(getSettingsKeyAtom(key));
 }
 
 function useSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
@@ -607,6 +610,7 @@ export {
     useBlockDataLoaded,
     useBlockMetaKeyAtom,
     useOverrideConfigAtom,
+    useSettingsKeyAtom,
     useSettingsPrefixAtom,
     WOS,
 };

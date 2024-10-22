@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import { clearTabCache, getFocusedWaveWindow } from "emain/emain-viewmgr";
 import { fireAndForget } from "../frontend/util/util";
+import { clearTabCache, getFocusedWaveWindow } from "./emain-viewmgr";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
 

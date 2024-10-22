@@ -2,31 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import {
-    getActivityState,
-    getForceQuit,
-    getGlobalIsRelaunching,
-    setForceQuit,
-    setGlobalIsQuitting,
-    setGlobalIsRelaunching,
-    setGlobalIsStarting,
-    setWasActive,
-    setWasInFg,
-} from "emain/emain-activity";
-import { handleCtrlShiftState } from "emain/emain-util";
-import {
-    createBrowserWindow,
-    ensureHotSpareTab,
-    getAllWaveWindows,
-    getFocusedWaveWindow,
-    getLastFocusedWaveWindow,
-    getWaveTabViewByWebContentsId,
-    getWaveWindowById,
-    getWaveWindowByWebContentsId,
-    setActiveTab,
-    setMaxTabCacheSize,
-} from "emain/emain-viewmgr";
-import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "emain/emain-wavesrv";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -44,13 +19,39 @@ import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
 import { initDocsite } from "./docsite";
+import {
+    getActivityState,
+    getForceQuit,
+    getGlobalIsRelaunching,
+    setForceQuit,
+    setGlobalIsQuitting,
+    setGlobalIsRelaunching,
+    setGlobalIsStarting,
+    setWasActive,
+    setWasInFg,
+} from "./emain-activity";
+import { handleCtrlShiftState } from "./emain-util";
+import {
+    createBrowserWindow,
+    ensureHotSpareTab,
+    getAllWaveWindows,
+    getFocusedWaveWindow,
+    getLastFocusedWaveWindow,
+    getWaveTabViewByWebContentsId,
+    getWaveWindowById,
+    getWaveWindowByWebContentsId,
+    setActiveTab,
+    setMaxTabCacheSize,
+} from "./emain-viewmgr";
+import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
-    getWaveHomeDir,
+    getWaveConfigDir,
+    getWaveDataDir,
     isDev,
     unameArch,
     unamePlatform,
@@ -59,15 +60,17 @@ import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
 
+const waveDataDir = getWaveDataDir();
+const waveConfigDir = getWaveConfigDir();
+
 electron.nativeTheme.themeSource = "dark";
 
 let webviewFocusId: number = null; // set to the getWebContentsId of the webview that has focus (null if not focused)
 let webviewKeys: string[] = []; // the keys to trap when webview has focus
-const waveHome = getWaveHomeDir();
 const oldConsoleLog = console.log;
 
 const loggerTransports: winston.transport[] = [
-    new winston.transports.File({ filename: path.join(getWaveHomeDir(), "waveapp.log"), level: "info" }),
+    new winston.transports.File({ filename: path.join(waveDataDir, "waveapp.log"), level: "info" }),
 ];
 if (isDev) {
     loggerTransports.push(new winston.transports.Console());
@@ -91,8 +94,9 @@ function log(...msg: any[]) {
 console.log = log;
 console.log(
     sprintf(
-        "waveterm-app starting, WAVETERM_HOME=%s, electronpath=%s gopath=%s arch=%s/%s",
-        waveHome,
+        "waveterm-app starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s",
+        waveDataDir,
+        waveConfigDir,
         getElectronAppBasePath(),
         getElectronAppUnpackedBasePath(),
         unamePlatform,
@@ -675,10 +679,6 @@ async function appMain() {
         console.log("waveterm-app could not get single-instance-lock, shutting down");
         electronApp.quit();
         return;
-    }
-    const waveHomeDir = getWaveHomeDir();
-    if (!fs.existsSync(waveHomeDir)) {
-        fs.mkdirSync(waveHomeDir);
     }
     makeAppMenu();
     try {
