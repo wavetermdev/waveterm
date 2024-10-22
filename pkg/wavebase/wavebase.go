@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wavetermdev/waveterm/pkg/util/panic"
 )
 
 // set by main-server.go
@@ -101,16 +103,16 @@ func GetDomainSocketName() string {
 
 func GetWaveDataDir() string {
 	retVal, found := os.LookupEnv(WaveDataHomeEnvVar)
-	if !found && len(os.Getenv("NO_PANIC")) == 0 {
-		log.Panic(WaveDataHomeEnvVar + " not set")
+	if !found {
+		panic.Panic(WaveDataHomeEnvVar + " not set")
 	}
 	return retVal
 }
 
 func GetWaveConfigDir() string {
 	retVal, found := os.LookupEnv(WaveConfigHomeEnvVar)
-	if !found && len(os.Getenv("NO_PANIC")) == 0 {
-		log.Panic(WaveConfigHomeEnvVar + " not set")
+	if !found {
+		panic.Panic(WaveConfigHomeEnvVar + " not set")
 	}
 	return retVal
 }
