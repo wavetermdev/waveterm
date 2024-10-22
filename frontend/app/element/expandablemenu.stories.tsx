@@ -3,149 +3,149 @@
 
 import { Meta, StoryObj } from "@storybook/react";
 import {
-    Menu,
-    MenuItem,
-    MenuItemGroup,
-    MenuItemGroupTitle,
-    MenuItemLeftElement,
-    MenuItemRightElement,
-    type MenuItemData,
-} from "./menu";
+    ExpandableMenu,
+    ExpandableMenuItem,
+    ExpandableMenuItemGroup,
+    ExpandableMenuItemGroupTitle,
+    ExpandableMenuItemLeftElement,
+    ExpandableMenuItemRightElement,
+    type ExpandableMenuItemData,
+} from "./expandablemenu";
 
 const meta: Meta = {
-    title: "Components/Menu",
-    component: Menu,
+    title: "Components/ExpandableMenu",
+    component: ExpandableMenu,
     tags: ["autodocs"],
 };
 
 export default meta;
 
-type Story = StoryObj<typeof Menu>;
+type Story = StoryObj<typeof ExpandableMenu>;
 
 export const Default: Story = {
     render: () => (
-        <Menu>
-            <MenuItem>
-                <MenuItemLeftElement>🏠</MenuItemLeftElement>
+        <ExpandableMenu>
+            <ExpandableMenuItem>
+                <ExpandableMenuItemLeftElement>🏠</ExpandableMenuItemLeftElement>
                 <div>Dashboard</div>
-                <MenuItemRightElement>Ctrl + D</MenuItemRightElement>
-            </MenuItem>
-            <MenuItemGroup>
-                <MenuItemGroupTitle>Settings</MenuItemGroupTitle>
-                <MenuItem>
-                    <MenuItemLeftElement>👤</MenuItemLeftElement>
+                <ExpandableMenuItemRightElement>Ctrl + D</ExpandableMenuItemRightElement>
+            </ExpandableMenuItem>
+            <ExpandableMenuItemGroup>
+                <ExpandableMenuItemGroupTitle>Settings</ExpandableMenuItemGroupTitle>
+                <ExpandableMenuItem>
+                    <ExpandableMenuItemLeftElement>👤</ExpandableMenuItemLeftElement>
                     <div>Profile</div>
-                </MenuItem>
-                <MenuItem>
-                    <MenuItemLeftElement>🔒</MenuItemLeftElement>
+                </ExpandableMenuItem>
+                <ExpandableMenuItem>
+                    <ExpandableMenuItemLeftElement>🔒</ExpandableMenuItemLeftElement>
                     <div>Account</div>
-                </MenuItem>
-            </MenuItemGroup>
-            <MenuItemGroup>
-                <MenuItemGroupTitle>More</MenuItemGroupTitle>
-                <MenuItemGroup>
-                    <MenuItemGroupTitle>Submenu</MenuItemGroupTitle>
-                    <MenuItem>
-                        <MenuItemLeftElement>📄</MenuItemLeftElement>
+                </ExpandableMenuItem>
+            </ExpandableMenuItemGroup>
+            <ExpandableMenuItemGroup>
+                <ExpandableMenuItemGroupTitle>More</ExpandableMenuItemGroupTitle>
+                <ExpandableMenuItemGroup>
+                    <ExpandableMenuItemGroupTitle>Submenu</ExpandableMenuItemGroupTitle>
+                    <ExpandableMenuItem>
+                        <ExpandableMenuItemLeftElement>📄</ExpandableMenuItemLeftElement>
                         <div>Item 1</div>
-                    </MenuItem>
-                    <MenuItem>
-                        <MenuItemLeftElement>📄</MenuItemLeftElement>
+                    </ExpandableMenuItem>
+                    <ExpandableMenuItem>
+                        <ExpandableMenuItemLeftElement>📄</ExpandableMenuItemLeftElement>
                         <div>Item 2</div>
-                    </MenuItem>
-                </MenuItemGroup>
-            </MenuItemGroup>
-        </Menu>
+                    </ExpandableMenuItem>
+                </ExpandableMenuItemGroup>
+            </ExpandableMenuItemGroup>
+        </ExpandableMenu>
     ),
 };
 
-export const NestedMenu: Story = {
+export const NestedExpandableMenu: Story = {
     render: () => (
-        <Menu>
-            <MenuItem>
-                <MenuItemLeftElement>🏠</MenuItemLeftElement>
+        <ExpandableMenu>
+            <ExpandableMenuItem>
+                <ExpandableMenuItemLeftElement>🏠</ExpandableMenuItemLeftElement>
                 <div>Home</div>
-            </MenuItem>
-            <MenuItemGroup defaultExpanded={true}>
-                <MenuItemGroupTitle>
-                    <MenuItemLeftElement>📁</MenuItemLeftElement>
+            </ExpandableMenuItem>
+            <ExpandableMenuItemGroup defaultExpanded={true}>
+                <ExpandableMenuItemGroupTitle>
+                    <ExpandableMenuItemLeftElement>📁</ExpandableMenuItemLeftElement>
                     <div>Categories</div>
-                    <MenuItemRightElement>{">"}</MenuItemRightElement>
-                </MenuItemGroupTitle>
-                <MenuItemGroup>
-                    <MenuItemGroupTitle>
-                        <MenuItemLeftElement>📱</MenuItemLeftElement>
+                    <ExpandableMenuItemRightElement>{">"}</ExpandableMenuItemRightElement>
+                </ExpandableMenuItemGroupTitle>
+                <ExpandableMenuItemGroup>
+                    <ExpandableMenuItemGroupTitle>
+                        <ExpandableMenuItemLeftElement>📱</ExpandableMenuItemLeftElement>
                         <div>Electronics</div>
-                    </MenuItemGroupTitle>
-                    <MenuItemGroup>
-                        <MenuItemGroupTitle>
-                            <MenuItemLeftElement>📱</MenuItemLeftElement>
+                    </ExpandableMenuItemGroupTitle>
+                    <ExpandableMenuItemGroup>
+                        <ExpandableMenuItemGroupTitle>
+                            <ExpandableMenuItemLeftElement>📱</ExpandableMenuItemLeftElement>
                             <div>Mobile Phones</div>
-                        </MenuItemGroupTitle>
-                        <MenuItemGroup>
-                            <MenuItemGroupTitle>
-                                <MenuItemLeftElement>🤖</MenuItemLeftElement>
+                        </ExpandableMenuItemGroupTitle>
+                        <ExpandableMenuItemGroup>
+                            <ExpandableMenuItemGroupTitle>
+                                <ExpandableMenuItemLeftElement>🤖</ExpandableMenuItemLeftElement>
                                 <div>Android Phones</div>
-                            </MenuItemGroupTitle>
-                            <MenuItemGroup>
-                                <MenuItemGroupTitle>
-                                    <MenuItemLeftElement>🔝</MenuItemLeftElement>
+                            </ExpandableMenuItemGroupTitle>
+                            <ExpandableMenuItemGroup>
+                                <ExpandableMenuItemGroupTitle>
+                                    <ExpandableMenuItemLeftElement>🔝</ExpandableMenuItemLeftElement>
                                     <div>High-End</div>
-                                </MenuItemGroupTitle>
-                                <MenuItem>
-                                    <MenuItemLeftElement>📱</MenuItemLeftElement>
+                                </ExpandableMenuItemGroupTitle>
+                                <ExpandableMenuItem>
+                                    <ExpandableMenuItemLeftElement>📱</ExpandableMenuItemLeftElement>
                                     <div>Samsung Galaxy S Series</div>
-                                    <MenuItemRightElement>Ctrl + 1</MenuItemRightElement>
-                                </MenuItem>
-                                <MenuItem>
-                                    <MenuItemLeftElement>📱</MenuItemLeftElement>
+                                    <ExpandableMenuItemRightElement>Ctrl + 1</ExpandableMenuItemRightElement>
+                                </ExpandableMenuItem>
+                                <ExpandableMenuItem>
+                                    <ExpandableMenuItemLeftElement>📱</ExpandableMenuItemLeftElement>
                                     <div>Google Pixel</div>
-                                    <MenuItemRightElement>Ctrl + 2</MenuItemRightElement>
-                                </MenuItem>
-                            </MenuItemGroup>
-                            <MenuItemGroup>
-                                <MenuItemGroupTitle>Budget</MenuItemGroupTitle>
-                                <MenuItem>Redmi Note Series</MenuItem>
-                                <MenuItem>Realme</MenuItem>
-                            </MenuItemGroup>
-                        </MenuItemGroup>
-                        <MenuItemGroup>
-                            <MenuItemGroupTitle>iPhones</MenuItemGroupTitle>
-                            <MenuItem>iPhone 14</MenuItem>
-                            <MenuItem>iPhone SE</MenuItem>
-                        </MenuItemGroup>
-                    </MenuItemGroup>
-                    <MenuItemGroup>
-                        <MenuItemGroupTitle>Laptops</MenuItemGroupTitle>
-                        <MenuItem>Gaming Laptops</MenuItem>
-                        <MenuItem>Ultrabooks</MenuItem>
-                    </MenuItemGroup>
-                </MenuItemGroup>
-                <MenuItemGroup>
-                    <MenuItemGroupTitle>Appliances</MenuItemGroupTitle>
-                    <MenuItemGroup>
-                        <MenuItemGroupTitle>Kitchen Appliances</MenuItemGroupTitle>
-                        <MenuItem>Microwaves</MenuItem>
-                        <MenuItem>Ovens</MenuItem>
-                    </MenuItemGroup>
-                    <MenuItemGroup>
-                        <MenuItemGroupTitle>Large Appliances</MenuItemGroupTitle>
-                        <MenuItem>Refrigerators</MenuItem>
-                        <MenuItem>Washing Machines</MenuItem>
-                    </MenuItemGroup>
-                    <MenuItemGroup>
-                        <MenuItemGroupTitle>Palette</MenuItemGroupTitle>
-                        <MenuItem>
+                                    <ExpandableMenuItemRightElement>Ctrl + 2</ExpandableMenuItemRightElement>
+                                </ExpandableMenuItem>
+                            </ExpandableMenuItemGroup>
+                            <ExpandableMenuItemGroup>
+                                <ExpandableMenuItemGroupTitle>Budget</ExpandableMenuItemGroupTitle>
+                                <ExpandableMenuItem>Redmi Note Series</ExpandableMenuItem>
+                                <ExpandableMenuItem>Realme</ExpandableMenuItem>
+                            </ExpandableMenuItemGroup>
+                        </ExpandableMenuItemGroup>
+                        <ExpandableMenuItemGroup>
+                            <ExpandableMenuItemGroupTitle>iPhones</ExpandableMenuItemGroupTitle>
+                            <ExpandableMenuItem>iPhone 14</ExpandableMenuItem>
+                            <ExpandableMenuItem>iPhone SE</ExpandableMenuItem>
+                        </ExpandableMenuItemGroup>
+                    </ExpandableMenuItemGroup>
+                    <ExpandableMenuItemGroup>
+                        <ExpandableMenuItemGroupTitle>Laptops</ExpandableMenuItemGroupTitle>
+                        <ExpandableMenuItem>Gaming Laptops</ExpandableMenuItem>
+                        <ExpandableMenuItem>Ultrabooks</ExpandableMenuItem>
+                    </ExpandableMenuItemGroup>
+                </ExpandableMenuItemGroup>
+                <ExpandableMenuItemGroup>
+                    <ExpandableMenuItemGroupTitle>Appliances</ExpandableMenuItemGroupTitle>
+                    <ExpandableMenuItemGroup>
+                        <ExpandableMenuItemGroupTitle>Kitchen Appliances</ExpandableMenuItemGroupTitle>
+                        <ExpandableMenuItem>Microwaves</ExpandableMenuItem>
+                        <ExpandableMenuItem>Ovens</ExpandableMenuItem>
+                    </ExpandableMenuItemGroup>
+                    <ExpandableMenuItemGroup>
+                        <ExpandableMenuItemGroupTitle>Large Appliances</ExpandableMenuItemGroupTitle>
+                        <ExpandableMenuItem>Refrigerators</ExpandableMenuItem>
+                        <ExpandableMenuItem>Washing Machines</ExpandableMenuItem>
+                    </ExpandableMenuItemGroup>
+                    <ExpandableMenuItemGroup>
+                        <ExpandableMenuItemGroupTitle>Palette</ExpandableMenuItemGroupTitle>
+                        <ExpandableMenuItem>
                             <div style={{ width: "400px", height: "500px" }}>test</div>
-                        </MenuItem>
-                    </MenuItemGroup>
-                </MenuItemGroup>
-            </MenuItemGroup>
-        </Menu>
+                        </ExpandableMenuItem>
+                    </ExpandableMenuItemGroup>
+                </ExpandableMenuItemGroup>
+            </ExpandableMenuItemGroup>
+        </ExpandableMenu>
     ),
 };
 
-const menuData: MenuItemData[] = [
+const menuData: ExpandableMenuItemData[] = [
     {
         type: "item",
         leftElement: "🏠",
@@ -349,34 +349,40 @@ const menuData: MenuItemData[] = [
     },
 ];
 
-const renderMenu = (menuItems: MenuItemData[]) => {
+const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
     return menuItems.map((item) => {
         if (item.type === "item") {
             console.log("typeof item.content", typeof item.content === "string");
             return (
-                <MenuItem key={item.id} withHoverEffect={typeof item.content === "string"}>
-                    {item.leftElement && <MenuItemLeftElement>{item.leftElement}</MenuItemLeftElement>}
+                <ExpandableMenuItem key={item.id} withHoverEffect={typeof item.content === "string"}>
+                    {item.leftElement && (
+                        <ExpandableMenuItemLeftElement>{item.leftElement}</ExpandableMenuItemLeftElement>
+                    )}
                     <div className="label">{item.content}</div>
-                    {item.rightElement && <MenuItemRightElement>{item.rightElement}</MenuItemRightElement>}
-                </MenuItem>
+                    {item.rightElement && (
+                        <ExpandableMenuItemRightElement>{item.rightElement}</ExpandableMenuItemRightElement>
+                    )}
+                </ExpandableMenuItem>
             );
         } else if (item.type === "group") {
             return (
-                <MenuItemGroup key={item.id} defaultExpanded={item.defaultExpanded}>
-                    <MenuItemGroupTitle>
-                        {item.title.leftElement && <MenuItemLeftElement>{item.title.leftElement}</MenuItemLeftElement>}
+                <ExpandableMenuItemGroup key={item.id} defaultExpanded={item.defaultExpanded}>
+                    <ExpandableMenuItemGroupTitle>
+                        {item.title.leftElement && (
+                            <ExpandableMenuItemLeftElement>{item.title.leftElement}</ExpandableMenuItemLeftElement>
+                        )}
                         <div className="label">{item.title.label}</div>
                         {item.title.rightElement && (
-                            <MenuItemRightElement>{item.title.rightElement}</MenuItemRightElement>
+                            <ExpandableMenuItemRightElement>{item.title.rightElement}</ExpandableMenuItemRightElement>
                         )}
-                    </MenuItemGroupTitle>
-                    {item.children && renderMenu(item.children)}
-                </MenuItemGroup>
+                    </ExpandableMenuItemGroupTitle>
+                    {item.children && renderExpandableMenu(item.children)}
+                </ExpandableMenuItemGroup>
             );
         }
     });
 };
 
-export const DynamicNestedMenu: Story = {
-    render: () => <Menu>{renderMenu(menuData)}</Menu>,
+export const DynamicNestedExpandableMenu: Story = {
+    render: () => <ExpandableMenu>{renderExpandableMenu(menuData)}</ExpandableMenu>,
 };
