@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -131,7 +132,7 @@ func sendNoTelemetryUpdate(telemetryEnabled bool) {
 
 func (cs *ClientService) TelemetryUpdate(ctx context.Context, telemetryEnabled bool) error {
 	meta := waveobj.MetaMapType{
-		wconfig.ConfigKey_TelemetryEnabled: telemetryEnabled,
+		wconfigtypes.ConfigKey_TelemetryEnabled: telemetryEnabled,
 	}
 	err := wconfig.SetBaseConfigValue(meta)
 	if err != nil {

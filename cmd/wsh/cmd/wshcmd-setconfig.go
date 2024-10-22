@@ -5,7 +5,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
@@ -29,7 +29,7 @@ func setConfigRun(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] %v\n", err)
 		return
 	}
-	commandData := wconfig.MetaSettingsType{MetaMapType: meta}
+	commandData := wconfigtypes.MetaSettingsType{MetaMapType: meta}
 	err = wshclient.SetConfigCommand(RpcClient, commandData, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		WriteStderr("[error] setting config: %v\n", err)

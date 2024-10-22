@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
@@ -21,11 +21,11 @@ type Watcher struct {
 	initialized bool
 	watcher     *fsnotify.Watcher
 	mutex       sync.Mutex
-	fullConfig  FullConfigType
+	fullConfig  wconfigtypes.FullConfigType
 }
 
 type WatcherUpdate struct {
-	FullConfig FullConfigType `json:"fullconfig"`
+	FullConfig wconfigtypes.FullConfigType `json:"fullconfig"`
 }
 
 // GetWatcher returns the singleton instance of the Watcher
@@ -36,7 +36,6 @@ func GetWatcher() *Watcher {
 			log.Printf("failed to create file watcher: %v", err)
 			return
 		}
-		configDirAbsPath := wavebase.GetWaveConfigDir()
 		instance = &Watcher{watcher: watcher}
 		err = instance.watcher.Add(configDirAbsPath)
 		const failedStr = "failed to add path %s to watcher: %v"
@@ -109,7 +108,7 @@ func (w *Watcher) broadcast(message WatcherUpdate) {
 	})
 }
 
-func (w *Watcher) GetFullConfig() FullConfigType {
+func (w *Watcher) GetFullConfig() wconfigtypes.FullConfigType {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 	return w.fullConfig

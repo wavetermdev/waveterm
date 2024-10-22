@@ -12,13 +12,13 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/gogen"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const WshClientFileName = "pkg/wshrpc/wshclient/wshclient.go"
 const WaveObjMetaConstsFileName = "pkg/waveobj/metaconsts.go"
-const SettingsMetaConstsFileName = "pkg/wconfig/metaconsts.go"
+const SettingsMetaConstsFileName = "pkg/wconfigtypes/metaconsts.go"
 
 func GenerateWshClient() error {
 	fmt.Fprintf(os.Stderr, "generating wshclient file to %s\n", WshClientFileName)
@@ -27,7 +27,7 @@ func GenerateWshClient() error {
 		"github.com/wavetermdev/waveterm/pkg/wshutil",
 		"github.com/wavetermdev/waveterm/pkg/wshrpc",
 		"github.com/wavetermdev/waveterm/pkg/waveobj",
-		"github.com/wavetermdev/waveterm/pkg/wconfig",
+		"github.com/wavetermdev/waveterm/pkg/wconfigtypes",
 		"github.com/wavetermdev/waveterm/pkg/wps",
 		"github.com/wavetermdev/waveterm/pkg/vdom",
 	})
@@ -66,8 +66,8 @@ func GenerateWaveObjMetaConsts() error {
 func GenerateSettingsMetaConsts() error {
 	fmt.Fprintf(os.Stderr, "generating settings meta consts file to %s\n", SettingsMetaConstsFileName)
 	var buf strings.Builder
-	gogen.GenerateBoilerplate(&buf, "wconfig", []string{})
-	gogen.GenerateMetaMapConsts(&buf, "ConfigKey_", reflect.TypeOf(wconfig.SettingsType{}))
+	gogen.GenerateBoilerplate(&buf, "wconfigtypes", []string{})
+	gogen.GenerateMetaMapConsts(&buf, "ConfigKey_", reflect.TypeOf(wconfigtypes.SettingsType{}))
 	buf.WriteString("\n")
 	written, err := utilfn.WriteFileIfDifferent(SettingsMetaConstsFileName, []byte(buf.String()))
 	if !written {

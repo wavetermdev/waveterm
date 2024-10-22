@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -315,7 +316,7 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		}
 		if response.CheckboxStat {
 			meta := waveobj.MetaMapType{
-				wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
+				wconfigtypes.ConfigKey_ConnAskBeforeWshInstall: false,
 			}
 			err := wconfig.SetBaseConfigValue(meta)
 			if err != nil {

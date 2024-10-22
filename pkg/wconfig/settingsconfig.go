@@ -19,114 +19,14 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 )
 
 const SettingsFile = "settings.json"
 
-const AnySchema = `
-{
-  "type": "object",
-  "additionalProperties": true
-}
-`
+var configDirAbsPath = wavebase.GetWaveConfigDir()
 
-type MetaSettingsType struct {
-	waveobj.MetaMapType
-}
-
-func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
-	var metaMap waveobj.MetaMapType
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	if err := decoder.Decode(&metaMap); err != nil {
-		return err
-	}
-	*m = MetaSettingsType{MetaMapType: metaMap}
-	return nil
-}
-
-func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.MetaMapType)
-}
-
-type SettingsType struct {
-	AiClear      bool    `json:"ai:*,omitempty"`
-	AiPreset     string  `json:"ai:preset,omitempty"`
-	AiApiType    string  `json:"ai:apitype,omitempty"`
-	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
-	AiApiToken   string  `json:"ai:apitoken,omitempty"`
-	AiName       string  `json:"ai:name,omitempty"`
-	AiModel      string  `json:"ai:model,omitempty"`
-	AiOrgID      string  `json:"ai:orgid,omitempty"`
-	AIApiVersion string  `json:"ai:apiversion,omitempty"`
-	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
-	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
-
-	TermClear          bool     `json:"term:*,omitempty"`
-	TermFontSize       float64  `json:"term:fontsize,omitempty"`
-	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
-	TermTheme          string   `json:"term:theme,omitempty"`
-	TermDisableWebGl   bool     `json:"term:disablewebgl,omitempty"`
-	TermLocalShellPath string   `json:"term:localshellpath,omitempty"`
-	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"`
-	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
-	TermCopyOnSelect   *bool    `json:"term:copyonselect,omitempty"`
-
-	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
-	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
-
-	WebClear               bool   `json:"web:*,omitempty"`
-	WebOpenLinksInternally bool   `json:"web:openlinksinternally,omitempty"`
-	WebDefaultUrl          string `json:"web:defaulturl,omitempty"`
-	WebDefaultSearch       string `json:"web:defaultsearch,omitempty"`
-
-	BlockHeaderClear        bool `json:"blockheader:*,omitempty"`
-	BlockHeaderShowBlockIds bool `json:"blockheader:showblockids,omitempty"`
-
-	AutoUpdateClear         bool    `json:"autoupdate:*,omitempty"`
-	AutoUpdateEnabled       bool    `json:"autoupdate:enabled,omitempty"`
-	AutoUpdateIntervalMs    float64 `json:"autoupdate:intervalms,omitempty"`
-	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
-	AutoUpdateChannel       string  `json:"autoupdate:channel,omitempty"`
-
-	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
-
-	WidgetClear    bool `json:"widget:*,omitempty"`
-	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
-
-	WindowClear                       bool     `json:"window:*,omitempty"`
-	WindowTransparent                 bool     `json:"window:transparent,omitempty"`
-	WindowBlur                        bool     `json:"window:blur,omitempty"`
-	WindowOpacity                     *float64 `json:"window:opacity,omitempty"`
-	WindowBgColor                     string   `json:"window:bgcolor,omitempty"`
-	WindowReducedMotion               bool     `json:"window:reducedmotion,omitempty"`
-	WindowTileGapSize                 *int64   `json:"window:tilegapsize,omitempty"`
-	WindowShowMenuBar                 bool     `json:"window:showmenubar,omitempty"`
-	WindowNativeTitleBar              bool     `json:"window:nativetitlebar,omitempty"`
-	WindowDisableHardwareAcceleration bool     `json:"window:disablehardwareacceleration,omitempty"`
-	WindowMaxTabCacheSize             int      `json:"window:maxtabcachesize,omitempty"`
-
-	TelemetryClear   bool `json:"telemetry:*,omitempty"`
-	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
-
-	ConnClear               bool `json:"conn:*,omitempty"`
-	ConnAskBeforeWshInstall bool `json:"conn:askbeforewshinstall,omitempty"`
-}
-
-type ConfigError struct {
-	File string `json:"file"`
-	Err  string `json:"err"`
-}
-
-type FullConfigType struct {
-	Settings       SettingsType                   `json:"settings" merge:"meta"`
-	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
-	DefaultWidgets map[string]WidgetConfigType    `json:"defaultwidgets"`
-	Widgets        map[string]WidgetConfigType    `json:"widgets"`
-	Presets        map[string]waveobj.MetaMapType `json:"presets"`
-	TermThemes     map[string]TermThemeType       `json:"termthemes"`
-	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
-}
+var configDirFsys = os.DirFS(configDirAbsPath)
 
 func goBackWS(barr []byte, offset int) int {
 	if offset >= len(barr) {
@@ -155,10 +55,10 @@ func isTrailingCommaError(barr []byte, offset int) bool {
 	return false
 }
 
-func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
-	var cerrs []ConfigError
+func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []wconfigtypes.ConfigError) {
+	var cerrs []wconfigtypes.ConfigError
 	if readErr != nil && !os.IsNotExist(readErr) {
-		cerrs = append(cerrs, ConfigError{File: fileName, Err: readErr.Error()})
+		cerrs = append(cerrs, wconfigtypes.ConfigError{File: fileName, Err: readErr.Error()})
 	}
 	if len(barr) == 0 {
 		return nil, cerrs
@@ -179,23 +79,21 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 				err = fmt.Errorf("json syntax error at line %d, col %d: %v", lineNum, colNum, syntaxErr)
 			}
 		}
-		cerrs = append(cerrs, ConfigError{File: fileName, Err: err.Error()})
+		cerrs = append(cerrs, wconfigtypes.ConfigError{File: fileName, Err: err.Error()})
 	}
 	return rtn, cerrs
 }
 
-func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
+func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []wconfigtypes.ConfigError) {
 	barr, readErr := fs.ReadFile(fsys, fileName)
 	return readConfigHelper(logPrefix+fileName, barr, readErr)
 }
 
-func ReadDefaultsConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
+func ReadDefaultsConfigFile(fileName string) (waveobj.MetaMapType, []wconfigtypes.ConfigError) {
 	return readConfigFileFS(defaultconfig.ConfigFS, "defaults:", fileName)
 }
 
-func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
-	configDirAbsPath := wavebase.GetWaveConfigDir()
-	configDirFsys := os.DirFS(configDirAbsPath)
+func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []wconfigtypes.ConfigError) {
 	return readConfigFileFS(configDirFsys, "", fileName)
 }
 
@@ -259,12 +157,12 @@ func SortFileNameDescend(files []fs.DirEntry) {
 }
 
 // Read and merge all files in the specified directory matching the supplied suffix
-func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileName string, simpleMerge bool) (waveobj.MetaMapType, []wconfigtypes.ConfigError) {
 	dirEnts, _ := fs.ReadDir(fsys, dirName)
 	suffixEnts := selectDirEntsBySuffix(dirEnts, fileName+".json")
 	SortFileNameDescend(suffixEnts)
 	var rtn waveobj.MetaMapType
-	var errs []ConfigError
+	var errs []wconfigtypes.ConfigError
 	for _, ent := range suffixEnts {
 		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, filepath.Join(dirName, ent.Name()))
 		rtn = mergeMetaMap(rtn, fileVal, simpleMerge)
@@ -274,7 +172,7 @@ func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileNam
 }
 
 // Read and merge all files in the specified config filesystem matching the patterns `<partName>.json` and `<partName>/*.json`
-func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMerge bool) (waveobj.MetaMapType, []wconfigtypes.ConfigError) {
 	config, errs := readConfigFilesForDir(fsys, logPrefix, partName, "", simpleMerge)
 	allErrs := errs
 	rtn := config
@@ -284,7 +182,7 @@ func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMe
 }
 
 // Combine files from the defaults and home directory for the specified config part name
-func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []wconfigtypes.ConfigError) {
 	configDirAbsPath := wavebase.GetWaveConfigDir()
 	configDirFsys := os.DirFS(configDirAbsPath)
 	defaultConfigs, cerrs := readConfigPartForFS(defaultconfig.ConfigFS, "defaults:", partName, simpleMerge)
@@ -295,8 +193,8 @@ func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []C
 	return mergeMetaMap(rtn, homeConfigs, simpleMerge), allErrs
 }
 
-func ReadFullConfig() FullConfigType {
-	var fullConfig FullConfigType
+func ReadFullConfig() wconfigtypes.FullConfigType {
+	var fullConfig wconfigtypes.FullConfigType
 	configRType := reflect.TypeOf(fullConfig)
 	configRVal := reflect.ValueOf(&fullConfig).Elem()
 	for fieldIdx := 0; fieldIdx < configRType.NumField(); fieldIdx++ {
@@ -311,7 +209,7 @@ func ReadFullConfig() FullConfigType {
 		jsonTag := utilfn.GetJsonTag(field)
 		simpleMerge := field.Tag.Get("merge") == ""
 		var configPart waveobj.MetaMapType
-		var errs []ConfigError
+		var errs []wconfigtypes.ConfigError
 		if jsonTag == "-" || jsonTag == "" {
 			continue
 		} else {
@@ -327,7 +225,7 @@ func ReadFullConfig() FullConfigType {
 }
 
 func GetConfigSubdirs() []string {
-	var fullConfig FullConfigType
+	var fullConfig wconfigtypes.FullConfigType
 	configRType := reflect.TypeOf(fullConfig)
 	var retVal []string
 	configDirAbsPath := wavebase.GetWaveConfigDir()
@@ -350,7 +248,7 @@ func GetConfigSubdirs() []string {
 }
 
 func getConfigKeyType(configKey string) reflect.Type {
-	ctype := reflect.TypeOf(SettingsType{})
+	ctype := reflect.TypeOf(wconfigtypes.SettingsType{})
 	for i := 0; i < ctype.NumField(); i++ {
 		field := ctype.Field(i)
 		jsonTag := utilfn.GetJsonTag(field)
@@ -500,45 +398,4 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		}
 	}
 	return WriteWaveHomeConfigFile(SettingsFile, m)
-}
-
-type WidgetConfigType struct {
-	DisplayOrder float64          `json:"display:order,omitempty"`
-	Icon         string           `json:"icon,omitempty"`
-	Color        string           `json:"color,omitempty"`
-	Label        string           `json:"label,omitempty"`
-	Description  string           `json:"description,omitempty"`
-	BlockDef     waveobj.BlockDef `json:"blockdef"`
-}
-
-type MimeTypeConfigType struct {
-	Icon  string `json:"icon"`
-	Color string `json:"color"`
-}
-
-type TermThemeType struct {
-	DisplayName         string  `json:"display:name"`
-	DisplayOrder        float64 `json:"display:order"`
-	Black               string  `json:"black"`
-	Red                 string  `json:"red"`
-	Green               string  `json:"green"`
-	Yellow              string  `json:"yellow"`
-	Blue                string  `json:"blue"`
-	Magenta             string  `json:"magenta"`
-	Cyan                string  `json:"cyan"`
-	White               string  `json:"white"`
-	BrightBlack         string  `json:"brightBlack"`
-	BrightRed           string  `json:"brightRed"`
-	BrightGreen         string  `json:"brightGreen"`
-	BrightYellow        string  `json:"brightYellow"`
-	BrightBlue          string  `json:"brightBlue"`
-	BrightMagenta       string  `json:"brightMagenta"`
-	BrightCyan          string  `json:"brightCyan"`
-	BrightWhite         string  `json:"brightWhite"`
-	Gray                string  `json:"gray"`
-	CmdText             string  `json:"cmdtext"`
-	Foreground          string  `json:"foreground"`
-	SelectionBackground string  `json:"selectionBackground"`
-	Background          string  `json:"background"`
-	Cursor              string  `json:"cursor"`
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
@@ -109,7 +109,7 @@ type WshRpcInterface interface {
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
-	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
+	SetConfigCommand(ctx context.Context, data wconfigtypes.MetaSettingsType) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 
 	// connection functions

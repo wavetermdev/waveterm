@@ -3,7 +3,7 @@
 
 // Generated Code. DO NOT EDIT.
 
-package wconfig
+package wconfigtypes
 
 const (
 	ConfigKey_AiClear                        = "ai:*"

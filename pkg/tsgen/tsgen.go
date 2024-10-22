@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -37,7 +38,7 @@ var ExtraTypes = []any{
 	wps.WSFileEventData{},
 	waveobj.LayoutActionData{},
 	filestore.WaveFile{},
-	wconfig.FullConfigType{},
+	wconfigtypes.FullConfigType{},
 	wconfig.WatcherUpdate{},
 	wshutil.RpcMessage{},
 	wshrpc.WshServerCommandMeta{},
@@ -61,7 +62,7 @@ var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
 var anyRType = reflect.TypeOf((*interface{})(nil)).Elem()
 var metaRType = reflect.TypeOf((*waveobj.MetaMapType)(nil)).Elem()
-var metaSettingsType = reflect.TypeOf((*wconfig.MetaSettingsType)(nil)).Elem()
+var metaSettingsType = reflect.TypeOf((*wconfigtypes.MetaSettingsType)(nil)).Elem()
 var uiContextRType = reflect.TypeOf((*waveobj.UIContext)(nil)).Elem()
 var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 var updatesRtnRType = reflect.TypeOf(waveobj.UpdatesRtnType{})

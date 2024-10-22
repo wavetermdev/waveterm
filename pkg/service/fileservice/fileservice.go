@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
@@ -153,7 +154,7 @@ func (fs *FileService) DeleteFile(connection string, path string) error {
 	return wshclient.RemoteFileDeleteCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
 }
 
-func (fs *FileService) GetFullConfig() wconfig.FullConfigType {
+func (fs *FileService) GetFullConfig() wconfigtypes.FullConfigType {
 	watcher := wconfig.GetWatcher()
 	return watcher.GetFullConfig()
 }

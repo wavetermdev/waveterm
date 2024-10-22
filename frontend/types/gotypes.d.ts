@@ -170,7 +170,7 @@ declare global {
         opts?: WebSelectorOpts;
     };
 
-    // wconfig.ConfigError
+    // wconfigtypes.ConfigError
     type ConfigError = {
         file: string;
         err: string;
@@ -234,7 +234,7 @@ declare global {
         ijsonbudget?: number;
     };
 
-    // wconfig.FullConfigType
+    // wconfigtypes.FullConfigType
     type FullConfigType = {
         settings: SettingsType;
         mimetypes: {[key: string]: MimeTypeConfigType};
@@ -348,7 +348,7 @@ declare global {
         ReturnDesc: string;
     };
 
-    // wconfig.MimeTypeConfigType
+    // wconfigtypes.MimeTypeConfigType
     type MimeTypeConfigType = {
         icon: string;
         color: string;
@@ -444,7 +444,7 @@ declare global {
         termsize: TermSize;
     };
 
-    // wconfig.SettingsType
+    // wconfigtypes.SettingsType
     type SettingsType = {
         "ai:*"?: boolean;
         "ai:preset"?: string;
@@ -540,7 +540,7 @@ declare global {
         cols: number;
     };
 
-    // wconfig.TermThemeType
+    // wconfigtypes.TermThemeType
     type TermThemeType = {
         "display:name": string;
         "display:order": number;
@@ -853,7 +853,7 @@ declare global {
         inner?: boolean;
     };
 
-    // wconfig.WidgetConfigType
+    // wconfigtypes.WidgetConfigType
     type WidgetConfigType = {
         "display:order"?: number;
         icon?: string;
