@@ -1,11 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WebServerEndpointVarName, WSServerEndpointVarName } from "@/util/endpoints";
 import * as electron from "electron";
-import { AuthKey, AuthKeyEnv } from "emain/authkey";
-import { setForceQuit } from "emain/emain-activity";
-import { WaveAppPathVarName } from "emain/emain-util";
 import {
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
@@ -18,6 +14,10 @@ import {
 import { updater } from "emain/updater";
 import * as child_process from "node:child_process";
 import * as readline from "readline";
+import { WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
+import { AuthKey, AuthKeyEnv } from "./authkey";
+import { setForceQuit } from "./emain-activity";
+import { WaveAppPathVarName } from "./emain-util";
 
 export const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 

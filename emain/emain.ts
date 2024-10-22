@@ -2,31 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import {
-    getActivityState,
-    getForceQuit,
-    getGlobalIsRelaunching,
-    setForceQuit,
-    setGlobalIsQuitting,
-    setGlobalIsRelaunching,
-    setGlobalIsStarting,
-    setWasActive,
-    setWasInFg,
-} from "emain/emain-activity";
-import { handleCtrlShiftState } from "emain/emain-util";
-import {
-    createBrowserWindow,
-    ensureHotSpareTab,
-    getAllWaveWindows,
-    getFocusedWaveWindow,
-    getLastFocusedWaveWindow,
-    getWaveTabViewByWebContentsId,
-    getWaveWindowById,
-    getWaveWindowByWebContentsId,
-    setActiveTab,
-    setMaxTabCacheSize,
-} from "emain/emain-viewmgr";
-import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "emain/emain-wavesrv";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -44,6 +19,31 @@ import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
 import { initDocsite } from "./docsite";
+import {
+    getActivityState,
+    getForceQuit,
+    getGlobalIsRelaunching,
+    setForceQuit,
+    setGlobalIsQuitting,
+    setGlobalIsRelaunching,
+    setGlobalIsStarting,
+    setWasActive,
+    setWasInFg,
+} from "./emain-activity";
+import { handleCtrlShiftState } from "./emain-util";
+import {
+    createBrowserWindow,
+    ensureHotSpareTab,
+    getAllWaveWindows,
+    getFocusedWaveWindow,
+    getLastFocusedWaveWindow,
+    getWaveTabViewByWebContentsId,
+    getWaveWindowById,
+    getWaveWindowByWebContentsId,
+    setActiveTab,
+    setMaxTabCacheSize,
+} from "./emain-viewmgr";
+import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
