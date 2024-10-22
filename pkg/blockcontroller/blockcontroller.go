@@ -276,7 +276,9 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			return fmt.Errorf("not connected, cannot start shellproc")
 		}
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.GetDomainSocketName())
+			sockName := conn.GetDomainSocketName()
+			sockName = "~/.waveterm/wave-remote.sock"
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, sockName)
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}

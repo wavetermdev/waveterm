@@ -216,8 +216,10 @@ func (conn *SSHConn) StartConnServer() error {
 		return fmt.Errorf("unable to create ssh session for conn controller: %w", err)
 	}
 	pipeRead, pipeWrite := io.Pipe()
+	inputPipeRead, inputPipeWrite := io.Pipe()
 	sshSession.Stdout = pipeWrite
 	sshSession.Stderr = pipeWrite
+	sshSession.Stdin = inputPipeRead
 	shellPath, err := remote.DetectShell(client)
 	if err != nil {
 		return err
@@ -226,7 +228,7 @@ func (conn *SSHConn) StartConnServer() error {
 	if remote.IsPowershell(shellPath) {
 		cmdStr = fmt.Sprintf("$env:%s=\"%s\"; %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	} else {
-		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
+		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver --router", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	}
 	log.Printf("starting conn controller: %s\n", cmdStr)
 	err = sshSession.Start(cmdStr)
@@ -246,6 +248,10 @@ func (conn *SSHConn) StartConnServer() error {
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
+		logName := fmt.Sprintf("conncontroller:%s", conn.GetName())
+		wshutil.HandleStdIOClient(logName, pipeRead, inputPipeWrite)
+		return
+
 		readErr := wshutil.StreamToLines(pipeRead, func(line []byte) {
 			lineStr := string(line)
 			if !strings.HasSuffix(lineStr, "\n") {
