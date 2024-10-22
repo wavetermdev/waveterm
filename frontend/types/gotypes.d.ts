@@ -7,9 +7,11 @@ declare global {
 
     // waveobj.Block
     type Block = WaveObj & {
+        parentoref?: string;
         blockdef: BlockDef;
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
+        subblockids?: string[];
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
