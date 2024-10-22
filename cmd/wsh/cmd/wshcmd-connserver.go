@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"golang.org/x/crypto/ssh/terminal"
@@ -108,6 +109,34 @@ func runListener(listener net.Listener, router *wshutil.WshRouter) {
 	}
 }
 
+func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.WshRpc, error) {
+	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
+	if jwtToken == "" {
+		return nil, fmt.Errorf("no jwt token found for connserver")
+	}
+	rpcCtx, err := wshutil.ExtractUnverifiedRpcContext(jwtToken)
+	if err != nil {
+		return nil, fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)
+	}
+	RpcContext = *rpcCtx
+	inputCh := make(chan []byte, wshutil.DefaultInputChSize)
+	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
+	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, *rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout})
+	upstreamClient := router.GetUpstreamClient().(*wshutil.WshRpc)
+	resp, err := wshclient.AuthenticateCommand(upstreamClient, jwtToken, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error authenticating connserver: %v", err)
+	}
+	if resp.AuthToken == "" {
+		return nil, fmt.Errorf("no auth token returned from connserver")
+	}
+	log.Printf("authenticated connserver route: %s\n", resp.RouteId)
+	connServerClient.SetAuthToken(resp.AuthToken)
+	router.RegisterRoute(resp.RouteId, connServerClient, false)
+	wshclient.RouteAnnounceCommand(connServerClient, nil)
+	return connServerClient, nil
+}
+
 func serverRunRouter() error {
 	isTerminal := terminal.IsTerminal(int(os.Stdout.Fd()))
 	if isTerminal {
@@ -137,8 +166,13 @@ func serverRunRouter() error {
 	if err != nil {
 		return fmt.Errorf("cannot create unix listener: %v", err)
 	}
-	runListener(unixListener, router)
-
+	go runListener(unixListener, router)
+	client, err := setupConnServerRpcClientWithRouter(router)
+	if err != nil {
+		return fmt.Errorf("error setting up connserver rpc client: %v", err)
+	}
+	// run the sysinfo loop
+	wshremote.RunSysInfoLoop(client, client.GetRpcContext().Conn)
 	select {}
 }
 

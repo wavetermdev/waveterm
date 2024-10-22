@@ -363,9 +363,10 @@ type WriteFlusher interface {
 }
 
 // blocking, returns if there is an error, or on EOF of input
-func HandleStdIOClient(logName string, input io.Reader, output WriteFlusher) {
+func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
+	log.Printf("[%s] starting (HandleStdIOClient)\n", logName)
 	proxy := MakeRpcMultiProxy()
-	ptyBuffer := MakePtyBuffer(WaveServerOSCPrefix, input, proxy.FromRemoteRawCh)
+	ptyBuffer := MakePtyBuffer(WaveOSCPrefix, input, proxy.FromRemoteRawCh)
 	doneCh := make(chan struct{})
 	var doneOnce sync.Once
 	closeDoneCh := func() {
@@ -374,17 +375,16 @@ func HandleStdIOClient(logName string, input io.Reader, output WriteFlusher) {
 		})
 	}
 	go func() {
+		proxy.RunUnauthLoop()
+	}()
+	go func() {
 		defer closeDoneCh()
 		for msg := range proxy.ToRemoteCh {
-			barr := EncodeWaveOSCBytes(WaveOSC, msg)
+			log.Printf("[%s] sending message: %s\n", logName, string(msg))
+			barr := EncodeWaveOSCBytes(WaveServerOSC, msg)
 			_, err := output.Write(barr)
 			if err != nil {
 				log.Printf("[%s] error writing to output: %v\n", logName, err)
-				break
-			}
-			err = output.Flush()
-			if err != nil {
-				log.Printf("[%s] error flushing output: %v\n", logName, err)
 				break
 			}
 		}
@@ -482,5 +482,6 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("sock claim is missing or invalid")
 	}
+	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	return sockName, nil
 }
