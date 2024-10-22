@@ -58,7 +58,7 @@ const config = {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
         executableName: pkg.name,
-        target: ["zip", "deb", "rpm", "AppImage", "pacman"],
+        target: ["zip", "deb", "rpm", "snap", "AppImage", "pacman"],
         synopsis: pkg.description,
         description: null,
         desktop: {
@@ -83,6 +83,11 @@ const config = {
     },
     appImage: {
         license: "LICENSE",
+    },
+    snap: {
+        base: "core22",
+        confinement: "classic",
+        allowNativeWayland: true,
     },
     publish: {
         provider: "generic",
@@ -111,9 +116,6 @@ const config = {
             })
                 .filter((f) => f.isFile() && f.name.startsWith("wavesrv"))
                 .forEach((f) => fs.chmodSync(path.resolve(f.parentPath ?? f.path, f.name), 0o755)); // 0o755 corresponds to -rwxr-xr-x
-        } else if (context.electronPlatformName === "linux") {
-            const chromeSandboxPath = path.resolve(context.appOutDir, "chrome-sandbox");
-            fs.chmodSync(chromeSandboxPath, 0o4755);
         }
     },
 };
