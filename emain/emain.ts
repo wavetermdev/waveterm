@@ -60,8 +60,6 @@ import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
 
-electronApp.setName("waveterm/electron");
-
 const waveDataDir = getWaveDataDir();
 const waveConfigDir = getWaveConfigDir();
 
