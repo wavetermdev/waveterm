@@ -3,7 +3,6 @@
 
 import { dialog, ipcMain, Notification } from "electron";
 import { autoUpdater } from "electron-updater";
-import { getAllWaveWindows, getFocusedWaveWindow } from "emain/emain-viewmgr";
 import { readFileSync } from "fs";
 import path from "path";
 import YAML from "yaml";
@@ -11,6 +10,7 @@ import { FileService } from "../frontend/app/store/services";
 import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { isDev } from "../frontend/util/isdev";
 import { fireAndForget } from "../frontend/util/util";
+import { getAllWaveWindows, getFocusedWaveWindow } from "./emain-viewmgr";
 import { ElectronWshClient } from "./emain-wsh";
 
 export let updater: Updater;
