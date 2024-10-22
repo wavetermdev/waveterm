@@ -13,7 +13,7 @@ import {
 } from "./expandablemenu";
 
 const meta: Meta = {
-    title: "Components/ExpandableMenu",
+    title: "Elements/ExpandableMenu",
     component: ExpandableMenu,
     tags: ["autodocs"],
 };

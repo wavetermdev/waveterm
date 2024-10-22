@@ -5,7 +5,8 @@ import { type Placement, useDismiss, useFloating, useInteractions } from "@float
 import clsx from "clsx";
 import { createRef, Fragment, memo, ReactNode, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import "./menu.less";
+
+import "./flyoutmenu.less";
 
 type MenuProps = {
     items: MenuItem[];
