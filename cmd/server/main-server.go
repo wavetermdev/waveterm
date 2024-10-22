@@ -182,7 +182,7 @@ func main() {
 		log.Printf("error validating service map: %v\n", err)
 		return
 	}
-	err = wavebase.EnsureWaveHomeDir()
+	err = wavebase.EnsureWaveDataDir()
 	if err != nil {
 		log.Printf("error ensuring wave home dir: %v\n", err)
 		return
@@ -192,14 +192,14 @@ func main() {
 		log.Printf("error ensuring wave db dir: %v\n", err)
 		return
 	}
-	err = wconfig.EnsureWaveConfigDir()
+	err = wavebase.EnsureWaveConfigDir()
 	if err != nil {
 		log.Printf("error ensuring wave config dir: %v\n", err)
 		return
 	}
 
 	// TODO: rather than ensure this dir exists, we should let the editor recursively create parent dirs on save
-	err = wconfig.EnsureWavePresetsDir()
+	err = wavebase.EnsureWavePresetsDir()
 	if err != nil {
 		log.Printf("error ensuring wave presets dir: %v\n", err)
 		return
@@ -216,7 +216,8 @@ func main() {
 		}
 	}()
 	log.Printf("wave version: %s (%s)\n", WaveVersion, BuildTime)
-	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
+	log.Printf("wave data dir: %s\n", wavebase.GetWaveDataDir())
+	log.Printf("wave config dir: %s\n", wavebase.GetWaveConfigDir())
 	err = filestore.InitFilestore()
 	if err != nil {
 		log.Printf("error initializing filestore: %v\n", err)

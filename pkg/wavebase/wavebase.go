@@ -17,15 +17,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wavetermdev/waveterm/pkg/util/panic"
 )
 
 // set by main-server.go
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
-const DefaultWaveHome = "~/.waveterm"
-const DevWaveHome = "~/.waveterm-dev"
-const WaveHomeVarName = "WAVETERM_HOME"
+const WaveConfigHomeEnvVar = "WAVETERM_CONFIG_HOME"
+const WaveDataHomeEnvVar = "WAVETERM_DATA_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
 const WaveLockFile = "wave.lock"
 const DomainSocketBaseName = "wave.sock"
@@ -97,26 +98,39 @@ func ReplaceHomeDir(pathStr string) string {
 }
 
 func GetDomainSocketName() string {
-	return filepath.Join(GetWaveHomeDir(), DomainSocketBaseName)
+	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
 }
 
-func GetWaveHomeDir() string {
-	homeVar := os.Getenv(WaveHomeVarName)
-	if homeVar != "" {
-		return ExpandHomeDirSafe(homeVar)
+func GetWaveDataDir() string {
+	retVal, found := os.LookupEnv(WaveDataHomeEnvVar)
+	if !found {
+		panic.Panic(WaveDataHomeEnvVar + " not set")
 	}
-	if IsDevMode() {
-		return ExpandHomeDirSafe(DevWaveHome)
-	}
-	return ExpandHomeDirSafe(DefaultWaveHome)
+	return retVal
 }
 
-func EnsureWaveHomeDir() error {
-	return CacheEnsureDir(GetWaveHomeDir(), "wavehome", 0700, "wave home directory")
+func GetWaveConfigDir() string {
+	retVal, found := os.LookupEnv(WaveConfigHomeEnvVar)
+	if !found {
+		panic.Panic(WaveConfigHomeEnvVar + " not set")
+	}
+	return retVal
+}
+
+func EnsureWaveDataDir() error {
+	return CacheEnsureDir(GetWaveDataDir(), "wavehome", 0700, "wave home directory")
 }
 
 func EnsureWaveDBDir() error {
-	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), WaveDBDir), "wavedb", 0700, "wave db directory")
+	return CacheEnsureDir(filepath.Join(GetWaveDataDir(), WaveDBDir), "wavedb", 0700, "wave db directory")
+}
+
+func EnsureWaveConfigDir() error {
+	return CacheEnsureDir(GetWaveConfigDir(), "waveconfig", 0700, "wave config directory")
+}
+
+func EnsureWavePresetsDir() error {
+	return CacheEnsureDir(filepath.Join(GetWaveConfigDir(), "presets"), "wavepresets", 0700, "wave presets directory")
 }
 
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {

@@ -102,6 +102,7 @@
         "dayjs": "^1.11.13",
         "debug": "^4.3.7",
         "electron-updater": "6.3.9",
+        "env-paths": "^3.0.0",
         "fast-average-color": "^9.4.0",
         "htl": "^0.3.1",
         "html-to-image": "^1.11.11",

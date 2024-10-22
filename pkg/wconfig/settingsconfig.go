@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
 )
@@ -496,14 +495,6 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		}
 	}
 	return WriteWaveHomeConfigFile(SettingsFile, m)
-}
-
-func EnsureWaveConfigDir() error {
-	return wavebase.CacheEnsureDir(configDirAbsPath, "waveconfig", 0700, "wave config directory")
-}
-
-func EnsureWavePresetsDir() error {
-	return wavebase.CacheEnsureDir(filepath.Join(configDirAbsPath, "presets"), "wavepresets", 0700, "wave presets directory")
 }
 
 type WidgetConfigType struct {
