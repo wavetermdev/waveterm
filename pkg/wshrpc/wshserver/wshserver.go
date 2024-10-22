@@ -24,6 +24,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -453,7 +454,7 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 	return events, nil
 }
 
-func (ws *WshServer) SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error {
+func (ws *WshServer) SetConfigCommand(ctx context.Context, data wconfigtypes.MetaSettingsType) error {
 	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }

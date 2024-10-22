@@ -11,6 +11,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfigtypes"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
@@ -23,11 +24,11 @@ type Watcher struct {
 	initialized bool
 	watcher     *fsnotify.Watcher
 	mutex       sync.Mutex
-	fullConfig  FullConfigType
+	fullConfig  wconfigtypes.FullConfigType
 }
 
 type WatcherUpdate struct {
-	FullConfig FullConfigType `json:"fullconfig"`
+	FullConfig wconfigtypes.FullConfigType `json:"fullconfig"`
 }
 
 // GetWatcher returns the singleton instance of the Watcher
@@ -101,7 +102,7 @@ func (w *Watcher) broadcast(message WatcherUpdate) {
 	})
 }
 
-func (w *Watcher) GetFullConfig() FullConfigType {
+func (w *Watcher) GetFullConfig() wconfigtypes.FullConfigType {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 	return w.fullConfig
