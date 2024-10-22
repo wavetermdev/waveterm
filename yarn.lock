@@ -3493,9 +3493,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"app-builder-lib@npm:25.1.7":
-  version: 25.1.7
-  resolution: "app-builder-lib@npm:25.1.7"
+"app-builder-lib@npm:25.1.8":
+  version: 25.1.8
+  resolution: "app-builder-lib@npm:25.1.8"
   dependencies:
     "@develar/schema-utils": "npm:~2.6.5"
     "@electron/notarize": "npm:2.5.0"
@@ -3530,9 +3530,9 @@ __metadata:
     tar: "npm:^6.1.12"
     temp-file: "npm:^3.4.0"
   peerDependencies:
-    dmg-builder: 25.1.7
-    electron-builder-squirrel-windows: 25.1.7
-  checksum: 10c0/f1428c330d5220f84d3648ae5dd7a5a812012d14d516d5ac073481e63b8e8668746ae61958851670537b89901bdae64ccf6a3e958ea0ebf1ed10e3d6f00e5b2d
+    dmg-builder: 25.1.8
+    electron-builder-squirrel-windows: 25.1.8
+  checksum: 10c0/e646d4b45872b51ae562788df87024cf0b0c09db66538712837043561712976dbd511ecc56c1172114f676b14518c23b78c412db22173a91cc42f23e88c556d0
   languageName: node
   linkType: hard
 
@@ -5002,11 +5002,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dmg-builder@npm:25.1.7":
-  version: 25.1.7
-  resolution: "dmg-builder@npm:25.1.7"
+"dmg-builder@npm:25.1.8":
+  version: 25.1.8
+  resolution: "dmg-builder@npm:25.1.8"
   dependencies:
-    app-builder-lib: "npm:25.1.7"
+    app-builder-lib: "npm:25.1.8"
     builder-util: "npm:25.1.7"
     builder-util-runtime: "npm:9.2.10"
     dmg-license: "npm:^1.0.11"
@@ -5016,7 +5016,7 @@ __metadata:
   dependenciesMeta:
     dmg-license:
       optional: true
-  checksum: 10c0/a449c0afe051a61bee12069d2e02896cef49e0ddbed63920bd74c86ff1e6cd7039b9fb02725cbbcfea87972e5d4bdd8c3bb5514d9469f335c9acc63c9caa6c53
+  checksum: 10c0/a472aba3398664259713f4baf6557509ce0a3832ff49fae2f580e97168a33dcee8f99be2f990a15d795cd28b5477b10fbb8a17bed4f8d410c8181b4b9e2d0063
   languageName: node
   linkType: hard
 
@@ -5123,15 +5123,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron-builder@npm:^25.1.7":
-  version: 25.1.7
-  resolution: "electron-builder@npm:25.1.7"
+"electron-builder@npm:^25.1.8":
+  version: 25.1.8
+  resolution: "electron-builder@npm:25.1.8"
   dependencies:
-    app-builder-lib: "npm:25.1.7"
+    app-builder-lib: "npm:25.1.8"
     builder-util: "npm:25.1.7"
     builder-util-runtime: "npm:9.2.10"
     chalk: "npm:^4.1.2"
-    dmg-builder: "npm:25.1.7"
+    dmg-builder: "npm:25.1.8"
     fs-extra: "npm:^10.1.0"
     is-ci: "npm:^3.0.0"
     lazy-val: "npm:^1.0.5"
@@ -5140,7 +5140,7 @@ __metadata:
   bin:
     electron-builder: cli.js
     install-app-deps: install-app-deps.js
-  checksum: 10c0/19ca437486c9200e10f8e21aff02af6438c786093bd90b383c3b57a68a8de0946e23ac402da9ec28a0626a36db4ec615886edc1c56572374dff26cd86ba035d9
+  checksum: 10c0/9602a19f8c647fb75b07e44dc856012d2b1fe1afcb257ffd24cf17e07d7ae3b51405cf31da10403965ddcc7b194d60aca6bc5d7890e367b1be2ec95219edcbe8
   languageName: node
   linkType: hard
 
@@ -5217,16 +5217,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:^32.2.0":
-  version: 32.2.0
-  resolution: "electron@npm:32.2.0"
+"electron@npm:^33.0.1":
+  version: 33.0.1
+  resolution: "electron@npm:33.0.1"
   dependencies:
     "@electron/get": "npm:^2.0.0"
     "@types/node": "npm:^20.9.0"
     extract-zip: "npm:^2.0.1"
   bin:
     electron: cli.js
-  checksum: 10c0/28d988a9d05c89e93d70cc790bd53ecc97135cc3fa9efe3617f10b87cdf85ada468d383afd7858bcf8f064aa189ea7f8987e32c7ebaac70bda64e8f9f85621e8
+  checksum: 10c0/cd5e5cef21df2d5e1ffc95cfe90397c984152db54ac1032deb97f1716f778d41f5fa7c83e42bc86ae3c509a6d45f578515a540b6453ebf818310cc303e95f083
   languageName: node
   linkType: hard
 
@@ -11688,8 +11688,8 @@ __metadata:
     css-tree: "npm:^3.0.0"
     dayjs: "npm:^1.11.13"
     debug: "npm:^4.3.7"
-    electron: "npm:^32.2.0"
-    electron-builder: "npm:^25.1.7"
+    electron: "npm:^33.0.1"
+    electron-builder: "npm:^25.1.8"
     electron-updater: "npm:6.3.9"
     electron-vite: "npm:^2.3.0"
     env-paths: "npm:^3.0.0"
