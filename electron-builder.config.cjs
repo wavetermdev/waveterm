@@ -58,7 +58,7 @@ const config = {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
         executableName: pkg.name,
-        target: ["zip", "deb", "rpm", "snap", "pacman"],
+        target: ["zip", "deb", "rpm", "snap", "AppImage", "pacman"],
         synopsis: pkg.description,
         description: null,
         desktop: {
@@ -80,6 +80,9 @@ const config = {
             certificateSubjectName: "Command Line Inc",
             certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
         },
+    },
+    appImage: {
+        license: "LICENSE",
     },
     snap: {
         base: "core22",
