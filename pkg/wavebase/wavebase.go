@@ -101,7 +101,7 @@ func GetDomainSocketName() string {
 
 func GetWaveDataDir() string {
 	retVal, found := os.LookupEnv(WaveDataHomeEnvVar)
-	if !found {
+	if !found && len(os.Getenv("NO_PANIC")) == 0 {
 		log.Panic(WaveDataHomeEnvVar + " not set")
 	}
 	return retVal
@@ -109,7 +109,7 @@ func GetWaveDataDir() string {
 
 func GetWaveConfigDir() string {
 	retVal, found := os.LookupEnv(WaveConfigHomeEnvVar)
-	if !found {
+	if !found && len(os.Getenv("NO_PANIC")) == 0 {
 		log.Panic(WaveConfigHomeEnvVar + " not set")
 	}
 	return retVal
