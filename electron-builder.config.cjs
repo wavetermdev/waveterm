@@ -82,6 +82,7 @@ const config = {
         },
     },
     snap: {
+        base: "core22",
         confinement: "classic",
         allowNativeWayland: true,
     },
