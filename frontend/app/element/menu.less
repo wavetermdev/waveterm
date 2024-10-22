@@ -12,13 +12,23 @@
 .menu-item-group-title {
     display: flex;
     align-items: center;
-    padding: 8px 16px; /* Left and right padding, we'll adjust this for the right side */
+    padding: 8px 12px; /* Left and right padding, we'll adjust this for the right side */
     cursor: pointer;
-    border-bottom: 1px solid #ddd;
     box-sizing: border-box;
-    width: 100%;
+    border-radius: 4px;
+}
+
+.menu-item-group-title {
     &:hover {
         background-color: var(--button-grey-hover-bg);
+    }
+}
+
+.menu-item {
+    &.with-hover-effect {
+        &:hover {
+            background-color: var(--button-grey-hover-bg);
+        }
     }
 }
 
@@ -43,22 +53,12 @@
 .menu-item-group-content {
     max-height: 0;
     overflow: hidden;
-    padding-left: 16px; /* Retaining left indentation */
-    padding-right: 0; /* Removing right padding */
+    margin-left: 16px; /* Retaining left indentation */
+    margin-right: 0; /* Removing right padding */
 
     &.expanded {
         max-height: 1000px; /* Ensure large enough max-height for expansion */
-        padding-left: 16px; /* Keep left indentation */
-        padding-right: 0; /* Remove right indentation */
+        margin-left: 16px; /* Keep left indentation */
+        margin-right: 0; /* Remove right indentation */
     }
-}
-
-.menu-item-group.open .menu-item-group-title {
-    // background-color: #e0e0e0;
-}
-
-.menu-item-group-content .menu-item,
-.menu-item-group-content .menu-item-group-title {
-    padding-left: 24px; /* Increased left indentation for nested items */
-    padding-right: 0; /* Ensure no right indentation */
 }

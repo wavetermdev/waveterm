@@ -5,6 +5,7 @@ import { Children, ReactElement, ReactNode, cloneElement, useState } from "react
 import "./menu.less";
 
 type BaseMenuItem = {
+    id: string;
     type: "item" | "group";
 };
 
@@ -42,12 +43,16 @@ const Menu = ({ children, className }: MenuProps) => {
 type MenuItemProps = {
     children: ReactNode;
     className?: string;
+    withHoverEffect?: boolean;
     onClick?: () => void;
 };
 
-const MenuItem = ({ children, className, onClick }: MenuItemProps) => {
+const MenuItem = ({ children, className, withHoverEffect = true, onClick }: MenuItemProps) => {
     return (
-        <div className={clsx("menu-item", className)} onClick={onClick}>
+        <div
+            className={clsx("menu-item", className, { "with-hover-effect": withHoverEffect === true })}
+            onClick={onClick}
+        >
             {children}
         </div>
     );
