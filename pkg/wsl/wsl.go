@@ -146,7 +146,7 @@ func (conn *WslConn) GetStatus() string {
 
 func (conn *WslConn) GetName() string {
 	// no lock required because opts is immutable
-	return "wsl:" + conn.Name.Distro
+	return "wsl://" + conn.Name.Distro
 }
 
 func EnsureOpenTcpSocket(serverAddr string) (net.Listener, error) {

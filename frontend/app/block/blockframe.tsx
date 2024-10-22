@@ -669,8 +669,8 @@ const ChangeConnectionBlockModal = React.memo(
                     connStatus?.status == "connected"
                         ? `var(--conn-icon-color-${connColorNum})`
                         : "var(--grey-text-color)",
-                value: "wsl:" + wslConn,
-                label: "wsl:" + wslConn,
+                value: "wsl://" + wslConn,
+                label: "wsl://" + wslConn,
             });
         }
         const remoteItems = filteredList.map((connName) => {

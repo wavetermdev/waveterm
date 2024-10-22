@@ -264,8 +264,8 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	if strings.HasPrefix(remoteName, "wsl:") {
-		wslName := strings.TrimPrefix(remoteName, "wsl:")
+	if strings.HasPrefix(remoteName, "wsl://") {
+		wslName := strings.TrimPrefix(remoteName, "wsl://")
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
 
@@ -519,8 +519,8 @@ func CheckConnStatus(blockId string) error {
 	if connName == "" {
 		return nil
 	}
-	if strings.HasPrefix(connName, "wsl:") {
-		distroName := strings.TrimPrefix(connName, "wsl:")
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(context.Background(), distroName, false)
 		connStatus := conn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {

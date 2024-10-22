@@ -465,16 +465,16 @@ func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus
 }
 
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
-	if strings.HasPrefix(connName, "wsl:") {
-		distroName := strings.TrimPrefix(connName, "wsl:")
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
 		return wsl.EnsureConnection(ctx, distroName)
 	}
 	return conncontroller.EnsureConnection(ctx, connName)
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
-	if strings.HasPrefix(connName, "wsl:") {
-		distroName := strings.TrimPrefix(connName, "wsl:")
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("distro not found: %s", connName)
@@ -493,8 +493,8 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) error {
-	if strings.HasPrefix(connName, "wsl:") {
-		distroName := strings.TrimPrefix(connName, "wsl:")
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
@@ -513,8 +513,8 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) er
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
-	if strings.HasPrefix(connName, "wsl:") {
-		distroName := strings.TrimPrefix(connName, "wsl:")
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
