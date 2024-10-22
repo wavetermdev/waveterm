@@ -68,9 +68,13 @@ func makeOscPrefix(oscNum string) []byte {
 	return output
 }
 
-func EncodeWaveOSCBytes(oscNum string, barr []byte) []byte {
+func EncodeWaveOSCBytes(oscNum string, barr []byte) ([]byte, error) {
 	if len(oscNum) != 5 {
-		panic("oscNum must be 5 characters")
+		return nil, fmt.Errorf("oscNum must be 5 characters")
+	}
+	const maxSize = 64 * 1024 * 1024 // 64 MB
+	if len(barr) > maxSize {
+		return nil, fmt.Errorf("input data too large")
 	}
 	hasControlChars := false
 	for _, b := range barr {
@@ -86,7 +90,7 @@ func EncodeWaveOSCBytes(oscNum string, barr []byte) []byte {
 		copyOscPrefix(output, oscNum)
 		copy(output[oscPrefixLen(oscNum):], barr)
 		output[len(output)-1] = BEL
-		return output
+		return output, nil
 	}
 
 	var buf bytes.Buffer
@@ -102,7 +106,7 @@ func EncodeWaveOSCBytes(oscNum string, barr []byte) []byte {
 		}
 	}
 	buf.WriteByte(BEL)
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
 func EncodeWaveOSCMessageEx(oscNum string, msg *RpcMessage) ([]byte, error) {
@@ -113,7 +117,7 @@ func EncodeWaveOSCMessageEx(oscNum string, msg *RpcMessage) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling message to json: %w", err)
 	}
-	return EncodeWaveOSCBytes(oscNum, barr), nil
+	return EncodeWaveOSCBytes(oscNum, barr)
 }
 
 var termModeLock = sync.Mutex{}
@@ -195,7 +199,11 @@ func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	go func() {
 		for msg := range outputCh {
-			barr := EncodeWaveOSCBytes(WaveOSC, msg)
+			barr, err := EncodeWaveOSCBytes(WaveOSC, msg)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error encoding OSC message: %v\n", err)
+				continue
+			}
 			os.Stdout.Write(barr)
 			os.Stdout.Write([]byte{'\n'})
 		}

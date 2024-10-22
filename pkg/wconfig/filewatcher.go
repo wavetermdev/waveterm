@@ -14,8 +14,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
-var configDirAbsPath = wavebase.GetWaveConfigDir()
-
 var instance *Watcher
 var once sync.Once
 
@@ -38,6 +36,7 @@ func GetWatcher() *Watcher {
 			log.Printf("failed to create file watcher: %v", err)
 			return
 		}
+		configDirAbsPath := wavebase.GetWaveConfigDir()
 		instance = &Watcher{watcher: watcher}
 		err = instance.watcher.Add(configDirAbsPath)
 		const failedStr = "failed to add path %s to watcher: %v"
