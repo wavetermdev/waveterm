@@ -6,7 +6,6 @@ package wshutil
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -178,7 +177,6 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 		}
 		newCtx, routeId, err := handleAuthenticationCommand(msg)
 		if err != nil {
-			log.Printf("error handling authentication: %v\n", err)
 			p.sendResponseError(msg, err)
 			continue
 		}

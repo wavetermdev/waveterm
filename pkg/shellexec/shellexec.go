@@ -289,7 +289,7 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", shellutil.GetBashRcFileOverride())
 		} else if isFishShell(shellPath) {
-			wshBinDir := filepath.Join(wavebase.GetWaveHomeDir(), shellutil.WaveHomeBinDir)
+			wshBinDir := filepath.Join(wavebase.GetWaveDataDir(), shellutil.WaveHomeBinDir)
 			quotedWshBinDir := utilfn.ShellQuote(wshBinDir, false, 300)
 			shellOpts = append(shellOpts, "-C", fmt.Sprintf("set -x PATH %s $PATH", quotedWshBinDir))
 		} else if remote.IsPowershell(shellPath) {

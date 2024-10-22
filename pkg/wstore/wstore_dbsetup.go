@@ -42,7 +42,7 @@ func InitWStore() error {
 }
 
 func GetDBName() string {
-	waveHome := wavebase.GetWaveHomeDir()
+	waveHome := wavebase.GetWaveDataDir()
 	return filepath.Join(waveHome, wavebase.WaveDBDir, WStoreDBName)
 }
 

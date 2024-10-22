@@ -149,7 +149,7 @@ func WaveshellLocalEnvVars(termType string) map[string]string {
 	rtn["TERM_PROGRAM"] = "waveterm"
 	rtn["WAVETERM"], _ = os.Executable()
 	rtn["WAVETERM_VERSION"] = wavebase.WaveVersion
-	rtn["WAVETERM_WSHBINDIR"] = filepath.Join(wavebase.GetWaveHomeDir(), WaveHomeBinDir)
+	rtn["WAVETERM_WSHBINDIR"] = filepath.Join(wavebase.GetWaveDataDir(), WaveHomeBinDir)
 	return rtn
 }
 
@@ -202,15 +202,15 @@ func InitCustomShellStartupFiles() error {
 }
 
 func GetBashRcFileOverride() string {
-	return filepath.Join(wavebase.GetWaveHomeDir(), BashIntegrationDir, ".bashrc")
+	return filepath.Join(wavebase.GetWaveDataDir(), BashIntegrationDir, ".bashrc")
 }
 
 func GetWavePowershellEnv() string {
-	return filepath.Join(wavebase.GetWaveHomeDir(), PwshIntegrationDir, "wavepwsh.ps1")
+	return filepath.Join(wavebase.GetWaveDataDir(), PwshIntegrationDir, "wavepwsh.ps1")
 }
 
 func GetZshZDotDir() string {
-	return filepath.Join(wavebase.GetWaveHomeDir(), ZshIntegrationDir)
+	return filepath.Join(wavebase.GetWaveDataDir(), ZshIntegrationDir)
 }
 
 func GetWshBaseName(version string, goos string, goarch string) string {
@@ -289,9 +289,9 @@ func InitRcFiles(waveHome string, wshBinDir string) error {
 
 func initCustomShellStartupFilesInternal() error {
 	log.Printf("initializing wsh and shell startup files\n")
-	waveHome := wavebase.GetWaveHomeDir()
-	binDir := filepath.Join(waveHome, WaveHomeBinDir)
-	err := InitRcFiles(waveHome, `$WAVETERM_WSHBINDIR`)
+	waveDataHome := wavebase.GetWaveDataDir()
+	binDir := filepath.Join(waveDataHome, WaveHomeBinDir)
+	err := InitRcFiles(waveDataHome, `$WAVETERM_WSHBINDIR`)
 	if err != nil {
 		return err
 	}
