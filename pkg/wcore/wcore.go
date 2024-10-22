@@ -26,7 +26,7 @@ import (
 const DefaultTimeout = 2 * time.Second
 const DefaultActivateBlockTimeout = 60 * time.Second
 
-func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
+func DeleteBlock(ctx context.Context, blockId string) error {
 	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
@@ -36,33 +36,28 @@ func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 	}
 	if len(block.SubBlockIds) > 0 {
 		for _, subBlockId := range block.SubBlockIds {
-			err := DeleteSubBlock(ctx, blockId, subBlockId)
+			err := DeleteBlock(ctx, subBlockId)
 			if err != nil {
 				return fmt.Errorf("error deleting subblock %s: %w", subBlockId, err)
 			}
 		}
 	}
-	err = wstore.DeleteBlock(ctx, tabId, blockId)
+	err = wstore.DeleteBlock(ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
 	go blockcontroller.StopBlockController(blockId)
-	sendBlockCloseEvent(tabId, blockId)
+	sendBlockCloseEvent(blockId)
 	return nil
 }
 
-// tabid is optional
-func sendBlockCloseEvent(tabId string, blockId string) {
-	scopes := []string{
-		waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
-	}
-	if tabId != "" {
-		scopes = append(scopes, waveobj.MakeORef(waveobj.OType_Tab, tabId).String())
-	}
+func sendBlockCloseEvent(blockId string) {
 	waveEvent := wps.WaveEvent{
-		Event:  wps.Event_BlockClose,
-		Scopes: scopes,
-		Data:   blockId,
+		Event: wps.Event_BlockClose,
+		Scopes: []string{
+			waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
+		},
+		Data: blockId,
 	}
 	wps.Broker.Publish(waveEvent)
 }
@@ -77,7 +72,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 	}
 	// close blocks (sends events + stops block controllers)
 	for _, blockId := range tabData.BlockIds {
-		err := DeleteBlock(ctx, tabId, blockId)
+		err := DeleteBlock(ctx, blockId)
 		if err != nil {
 			return fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
@@ -222,32 +217,6 @@ func CreateClient(ctx context.Context) (*waveobj.Client, error) {
 		return nil, fmt.Errorf("error inserting client: %w", err)
 	}
 	return client, nil
-}
-
-func DeleteSubBlock(ctx context.Context, parentBlockId string, blockId string) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
-	if err != nil {
-		return fmt.Errorf("error getting block: %w", err)
-	}
-	if block == nil {
-		return nil
-	}
-	if len(block.SubBlockIds) > 0 {
-		// recursively delete sub-blocks
-		for _, subBlockId := range block.SubBlockIds {
-			err := DeleteSubBlock(ctx, blockId, subBlockId)
-			if err != nil {
-				return fmt.Errorf("error deleting subblock %s: %w", subBlockId, err)
-			}
-		}
-	}
-	err = wstore.DeleteSubBlock(ctx, parentBlockId, blockId)
-	if err != nil {
-		return fmt.Errorf("error deleting block: %w", err)
-	}
-	go blockcontroller.StopBlockController(blockId)
-	sendBlockCloseEvent("", blockId)
-	return nil
 }
 
 func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {

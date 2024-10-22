@@ -131,7 +131,7 @@ func (c *Client) CreateVDomContext() error {
 	if err != nil {
 		return err
 	}
-	wshclient.EventSubCommand(c.RpcClient, wps.SubscriptionRequest{Event: "blockclose", Scopes: []string{
+	wshclient.EventSubCommand(c.RpcClient, wps.SubscriptionRequest{Event: wps.Event_BlockClose, Scopes: []string{
 		waveobj.MakeORef("block", c.RpcContext.BlockId).String(),
 	}}, nil)
 	c.RpcClient.EventListener.On("blockclose", func(event *wps.WaveEvent) {

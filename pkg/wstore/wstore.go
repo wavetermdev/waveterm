@@ -146,31 +146,33 @@ func findStringInSlice(slice []string, val string) int {
 	return -1
 }
 
-func DeleteSubBlock(ctx context.Context, parentBlockId string, blockId string) error {
+func DeleteBlock(ctx context.Context, blockId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		parentBlock, _ := DBGet[*waveobj.Block](tx.Context(), parentBlockId)
-		if parentBlock != nil {
-			parentBlock.SubBlockIds = utilfn.RemoveElemFromSlice(parentBlock.SubBlockIds, blockId)
-			DBUpdate(tx.Context(), parentBlock)
+		block, err := DBGet[*waveobj.Block](tx.Context(), blockId)
+		if err != nil {
+			return fmt.Errorf("error getting block: %w", err)
 		}
-		DBDelete(tx.Context(), waveobj.OType_Block, blockId)
-		return nil
-	})
-}
-
-func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		block, _ := DBGet[*waveobj.Block](tx.Context(), blockId)
 		if block == nil {
 			return nil
 		}
 		if len(block.SubBlockIds) > 0 {
 			return fmt.Errorf("block has subblocks, must delete subblocks first")
 		}
-		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
-		if tab != nil {
-			tab.BlockIds = utilfn.RemoveElemFromSlice(tab.BlockIds, blockId)
-			DBUpdate(tx.Context(), tab)
+		parentORef := waveobj.ParseORefNoErr(block.ParentORef)
+		if parentORef != nil {
+			if parentORef.OType == waveobj.OType_Tab {
+				tab, _ := DBGet[*waveobj.Tab](tx.Context(), parentORef.OID)
+				if tab != nil {
+					tab.BlockIds = utilfn.RemoveElemFromSlice(tab.BlockIds, blockId)
+					DBUpdate(tx.Context(), tab)
+				}
+			} else if parentORef.OType == waveobj.OType_Block {
+				parentBlock, _ := DBGet[*waveobj.Block](tx.Context(), parentORef.OID)
+				if parentBlock != nil {
+					parentBlock.SubBlockIds = utilfn.RemoveElemFromSlice(parentBlock.SubBlockIds, blockId)
+					DBUpdate(tx.Context(), parentBlock)
+				}
+			}
 		}
 		DBDelete(tx.Context(), waveobj.OType_Block, blockId)
 		return nil

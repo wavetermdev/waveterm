@@ -65,11 +65,11 @@ func editorRun(cmd *cobra.Command, args []string) {
 		return
 	}
 	doneCh := make(chan bool)
-	RpcClient.EventListener.On("blockclose", func(event *wps.WaveEvent) {
+	RpcClient.EventListener.On(wps.Event_BlockClose, func(event *wps.WaveEvent) {
 		if event.HasScope(blockRef.String()) {
 			close(doneCh)
 		}
 	})
-	wshclient.EventSubCommand(RpcClient, wps.SubscriptionRequest{Event: "blockclose", Scopes: []string{blockRef.String()}}, nil)
+	wshclient.EventSubCommand(RpcClient, wps.SubscriptionRequest{Event: wps.Event_BlockClose, Scopes: []string{blockRef.String()}}, nil)
 	<-doneCh
 }
