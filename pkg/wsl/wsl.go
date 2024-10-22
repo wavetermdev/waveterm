@@ -36,7 +36,6 @@ const DefaultConnectionTimeout = 60 * time.Second
 var globalLock = &sync.Mutex{}
 var clientControllerMap = make(map[string]*WslConn)
 var activeConnCounter = &atomic.Int32{}
-var wslListener *net.TCPListener
 
 type WslConn struct {
 	Lock               *sync.Mutex
@@ -150,23 +149,10 @@ func (conn *WslConn) GetName() string {
 	return "wsl://" + conn.Name.Distro
 }
 
-func EnsureOpenTcpSocket(serverAddr string) (net.Listener, error) {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-	if wslListener != nil {
-		return wslListener, nil
-	}
-
-	tcpListener, err := net.Listen("tcp", serverAddr)
-	if err != nil {
-		log.Printf("error creating tcp listener at: %s: %v\n", serverAddr, err)
-		return nil, fmt.Errorf("error creating listener at %s: %w", serverAddr, err)
-	}
-	wslListener = tcpListener.(*net.TCPListener)
-	go wshutil.RunWshRpcOverListener(tcpListener)
-	return tcpListener, nil
-}
-
+/**
+ * This function is does not set a listener for WslConn
+ * It is still required in order to set SockName
+**/
 func (conn *WslConn) OpenDomainSocketListener() error {
 	var allowed bool
 	conn.WithLock(func() {
@@ -179,13 +165,8 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 	if !allowed {
 		return fmt.Errorf("cannot open domain socket for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
-	sockName := "127.0.0.1:"
-	listener, err := EnsureOpenTcpSocket(sockName)
-	if err != nil {
-		return err
-	}
 	conn.WithLock(func() {
-		conn.SockName = listener.Addr().String()
+		conn.SockName = "~/.waveterm/wave-remote.sock"
 	})
 	return nil
 }

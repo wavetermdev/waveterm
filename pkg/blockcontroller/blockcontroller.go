@@ -277,8 +277,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 
 		// create jwt
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
-			sockName := "~/.waveterm/wave-remote.sock"
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}, sockName)
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}, wslConn.GetDomainSocketName())
 			if err != nil {
 				return fmt.Errorf("error making jwt token: %w", err)
 			}
