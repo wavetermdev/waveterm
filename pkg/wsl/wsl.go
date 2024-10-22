@@ -51,6 +51,7 @@ type WslConn struct {
 	LastConnectTime    int64
 	ActiveConnNum      int
 	Context            context.Context
+	cancelFn           func()
 }
 
 type WslName struct {
@@ -121,13 +122,13 @@ func (conn *WslConn) close_nolock() {
 		conn.DomainSockListener = nil
 	}
 	if conn.ConnController != nil {
-		// not relevant in this case???
-		//conn.ConnController.Close()
+		conn.cancelFn() // this suspends the conn controller
 		conn.ConnController = nil
 	}
 	if conn.Client != nil {
-		// not relevant in this case???
-		//conn.Client.Close()
+		// conn.Client.Close() is not relevant here
+		// we do not want to completely close the wsl in case
+		// other applications are using it
 		conn.Client = nil
 	}
 }
@@ -150,17 +151,6 @@ func (conn *WslConn) GetName() string {
 }
 
 func EnsureOpenTcpSocket(serverAddr string) (net.Listener, error) {
-	/*
-		routeId := "conn:" + sockName
-		existingRpc := wshutil.DefaultRouter.GetRpc(routeId)
-		if existingRpc != nil {
-			return fmt.Errorf("route already exists - no need to recreate")
-		}
-		wslConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: "wsl"}, &wshremote.ServerImpl{})
-		//go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
-		wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId("wsl"), wslConnWsh)
-		return nil
-	*/
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	if wslListener != nil {
@@ -189,46 +179,14 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 	if !allowed {
 		return fmt.Errorf("cannot open domain socket for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
-	//randStr, err := utilfn.RandomHexString(16) // 64-bits of randomness
-	/*
-		if err != nil {
-			return fmt.Errorf("error generating random string: %w", err)
-		}
-	*/
-	//sockName := "/mnt/c/Users/oneirocosm/.waveterm/wave.sock"
-	// todo request listener registration on socket if it doesn't already exist
 	sockName := "127.0.0.1:"
 	listener, err := EnsureOpenTcpSocket(sockName)
 	if err != nil {
 		return err
 	}
-	//sockName := "http://localhost:234123/wsh"
 	conn.WithLock(func() {
 		conn.SockName = listener.Addr().String()
 	})
-	//log.Printf("remote domain socket %s %q\n", conn.GetName(), conn.GetDomainSocketName())
-	// this is going to be difficult to replicate
-	// attempt. do i need to request the socket be open???
-	//sockName := filepath.Join(`\\wsl$\`, conn.Name, `tmp`, fmt.Sprintf("waveterm-%s.sock", randStr))
-	//sockName := "~/.waveterm/temp.sock"
-	//listenName := fmt.Sprintf(`\Users\oneirocosm\waveterm-%s.sock`, randStr)
-	//listener, err := net.Listen("unix", listenName)
-	/*
-		if err != nil {
-			return fmt.Errorf("unable to request connection domain socket: %v", err)
-		}
-		conn.WithLock(func() {
-			conn.SockName = sockName
-			conn.DomainSockListener = listener
-		})
-		go func() {
-			defer conn.WithLock(func() {
-				conn.DomainSockListener = nil
-				conn.SockName = ""
-			})
-			wshutil.RunWshRpcOverListener(listener)
-		}()
-	*/
 	return nil
 }
 
@@ -255,15 +213,6 @@ func (conn *WslConn) StartConnServer() error {
 	if err != nil {
 		return fmt.Errorf("unable to create jwt token for conn controller: %w", err)
 	}
-	/*
-		sshSession, err := client.NewSession()
-		if err != nil {
-			return fmt.Errorf("unable to create ssh session for conn controller: %w", err)
-		}
-		pipeRead, pipeWrite := io.Pipe()
-		sshSession.Stdout = pipeWrite
-		sshSession.Stderr = pipeWrite
-	*/
 	shellPath, err := DetectShell(conn.Context, client)
 	if err != nil {
 		return err
@@ -275,14 +224,6 @@ func (conn *WslConn) StartConnServer() error {
 		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver --router", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	}
 	log.Printf("starting conn controller: %s\n", cmdStr)
-	// keeping this dead code around so i remember to
-	// revert it if my pr is accepted
-	/*
-		cmd := client.Command(ctx, cmdStr)
-		pipeRead, pipeWrite := io.Pipe()
-		cmd.Stdout = pipeWrite
-		cmd.Stderr = pipeWrite
-	*/
 	cmd := client.WslCommand(conn.Context, cmdStr)
 	pipeRead, pipeWrite := io.Pipe()
 	inputPipeRead, inputPipeWrite := io.Pipe()
@@ -523,7 +464,8 @@ func getConnInternal(name string) *WslConn {
 	connName := WslName{Distro: name}
 	rtn := clientControllerMap[name]
 	if rtn == nil {
-		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, HasWaiter: &atomic.Bool{}, Context: context.Context(context.Background())}
+		ctx, cancelFn := context.WithCancel(context.Background())
+		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, HasWaiter: &atomic.Bool{}, Context: ctx, cancelFn: cancelFn}
 		clientControllerMap[name] = rtn
 	}
 	return rtn
