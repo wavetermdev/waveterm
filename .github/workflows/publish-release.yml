@@ -15,6 +15,8 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Install Snapcraft
+              uses: samuelmeuli/action-snapcraft@v2
             - name: Publish from staging
               if: startsWith(github.ref, 'refs/tags/')
               run: "task artifacts:publish:${{ github.ref_name }}"
@@ -23,3 +25,14 @@ jobs:
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.PUBLISHER_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2
               shell: bash
+            - name: Download Snap from Release
+              uses: i3h/download-release-asset@v1
+              with:
+                  owner: wavetermdev
+                  repo: waveterm
+                  tag: ${{github.ref_name}}
+                  file: /*.snap/
+            - name: Publish to Snapcraft
+              run: "task artifacts:publish:snap:${{ github.ref_name }}"
+              env:
+                  SNAPCRAFT_STORE_CREDENTIALS: "${{secrets.SNAPCRAFT_LOGIN_CREDS}}"
