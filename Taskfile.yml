@@ -13,6 +13,7 @@ vars:
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
     RELEASES_BUCKET: dl.waveterm.dev/releases-w2
+    WINGET_PACKAGE: CommandLine.Wave
 
 tasks:
     electron:dev:
@@ -229,6 +230,16 @@ tasks:
                     echo "https://$SUFFIX"
                 fi
             done
+
+    artifacts:publish:winget:*:
+        desc: Submits a version bump request to WinGet for the latest release.
+        status:
+            - exit {{if contains UP_VERSION "beta"}}0{{else}}1{{end}}
+        vars:
+            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+        cmd: |
+            iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+            .\wingetcreate.exe update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.exe" -t $env:GITHUB_TOKEN
 
     yarn:
         desc: Runs `yarn`
