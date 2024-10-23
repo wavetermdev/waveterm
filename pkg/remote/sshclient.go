@@ -504,19 +504,6 @@ func createHostKeyCallback(opts *SSHOpts) (ssh.HostKeyCallback, HostKeyAlgorithm
 	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
-func DialContext(ctx context.Context, network string, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-	d := net.Dialer{Timeout: config.Timeout}
-	conn, err := d.DialContext(ctx, network, addr)
-	if err != nil {
-		return nil, err
-	}
-	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
-	if err != nil {
-		return nil, err
-	}
-	return ssh.NewClient(c, chans, reqs), nil
-}
-
 func CreateAuthMethods(connCtx context.Context, sshKeywords *SshKeywords, remoteName string) []ssh.AuthMethod {
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
@@ -562,7 +549,7 @@ func CreateAuthMethods(connCtx context.Context, sshKeywords *SshKeywords, remote
 	return authMethods
 }
 
-func ConnectToClient(connCtx context.Context, opts *SSHOpts) (*ssh.Client, error) {
+func createClientConfig(connCtx context.Context, opts *SSHOpts) (*ssh.ClientConfig, error) {
 	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
 	if err != nil {
 		return nil, err
@@ -574,56 +561,111 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts) (*ssh.Client, error
 	}
 	remoteName := sshKeywords.User + "@" + xknownhosts.Normalize(sshKeywords.HostName+":"+sshKeywords.Port)
 
+	var authSockSigners []ssh.Signer
+	var agentClient agent.ExtendedAgent
+	conn, err := net.Dial("unix", sshKeywords.IdentityAgent)
+	if err != nil {
+		log.Printf("Failed to open Identity Agent Socket: %v", err)
+	} else {
+		agentClient = agent.NewClient(conn)
+		authSockSigners, _ = agentClient.Signers()
+	}
+
+	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, authSockSigners, agentClient))
+	keyboardInteractive := ssh.KeyboardInteractive(createInteractiveKbdInteractiveChallenge(connCtx, remoteName))
+	passwordCallback := ssh.PasswordCallback(createInteractivePasswordCallbackPrompt(connCtx, remoteName))
+
+	// exclude gssapi-with-mic and hostbased until implemented
+	authMethodMap := map[string]ssh.AuthMethod{
+		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)+len(authSockSigners)),
+		"keyboard-interactive": ssh.RetryableAuthMethod(keyboardInteractive, 1),
+		"password":             ssh.RetryableAuthMethod(passwordCallback, 1),
+	}
+
+	// note: batch mode turns off interactive input
+	authMethodActiveMap := map[string]bool{
+		"publickey":            sshKeywords.PubkeyAuthentication,
+		"keyboard-interactive": sshKeywords.KbdInteractiveAuthentication && !sshKeywords.BatchMode,
+		"password":             sshKeywords.PasswordAuthentication && !sshKeywords.BatchMode,
+	}
+
+	var authMethods []ssh.AuthMethod
+	for _, authMethodName := range sshKeywords.PreferredAuthentications {
+		authMethodActive, ok := authMethodActiveMap[authMethodName]
+		if !ok || !authMethodActive {
+			continue
+		}
+		authMethod, ok := authMethodMap[authMethodName]
+		if !ok {
+			continue
+		}
+		authMethods = append(authMethods, authMethod)
+	}
+
 	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(opts)
 	if err != nil {
 		return nil, err
 	}
 
 	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
-	clientConfig := &ssh.ClientConfig{
+	return &ssh.ClientConfig{
 		User:              sshKeywords.User,
-		Auth:              CreateAuthMethods(connCtx, sshKeywords, remoteName),
+		Auth:              authMethods,
 		HostKeyCallback:   hostKeyCallback,
 		HostKeyAlgorithms: hostKeyAlgorithms(networkAddr),
+	}, nil
+}
+
+func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.ClientConfig, currentClient *ssh.Client) (*ssh.Client, error) {
+	var clientConn net.Conn
+	var err error
+	if currentClient == nil {
+		d := net.Dialer{Timeout: clientConfig.Timeout}
+		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
+		if err != nil {
+			return nil, err
+		}
 	}
-	if sshKeywords.ProxyJump != "" {
-		proxyOpts, err := ParseOpts(sshKeywords.ProxyJump)
-		if err != nil {
-			return nil, err
-		}
-		var proxyPort string
-		if proxyOpts.SSHPort != 0 && proxyOpts.SSHPort != 22 {
-			proxyPort = strconv.Itoa(proxyOpts.SSHPort)
-		} else {
-			proxyPort = "22"
-		}
-		proxyName := proxyOpts.SSHUser + "@" + xknownhosts.Normalize(proxyOpts.SSHHost+":"+proxyPort)
-		proxyAddr := proxyOpts.SSHHost + ":" + proxyPort
-		proxyKeyCallback, proxyKeyAlgorithms, err := createHostKeyCallback(opts)
-		if err != nil {
-			return nil, err
-		}
-		proxyConfig := &ssh.ClientConfig{
-			User:              proxyOpts.SSHUser,
-			Auth:              CreateAuthMethods(connCtx, sshKeywords, proxyName),
-			HostKeyCallback:   proxyKeyCallback,
-			HostKeyAlgorithms: proxyKeyAlgorithms(proxyAddr),
-		}
-		proxyClient, err := DialContext(connCtx, "tcp", proxyAddr, proxyConfig)
-		if err != nil {
-			return nil, err
-		}
-		clientConn, err := proxyClient.Dial("tcp", networkAddr)
-		if err != nil {
-			return nil, err
-		}
-		c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
-		if err != nil {
-			return nil, err
-		}
-		return ssh.NewClient(c, chans, reqs), nil
+	c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
+	if err != nil {
+		return nil, err
 	}
-	return DialContext(connCtx, "tcp", networkAddr, clientConfig)
+	return ssh.NewClient(c, chans, reqs), nil
+}
+
+func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client) (*ssh.Client, error) {
+	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
+	if err != nil {
+		return nil, err
+	}
+
+	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, proxyName := range sshKeywords.ProxyJump {
+		proxyOpts, err := ParseOpts(proxyName)
+		if err != nil {
+			return nil, err
+		}
+		// maybe make this recursive and delete the rest
+		currentClient, err = ConnectToClient(connCtx, proxyOpts, currentClient)
+		if err != nil {
+			return nil, err
+		}
+	}
+	clientConfig, err := createClientConfig(connCtx, opts)
+	if err != nil {
+		return nil, err
+	}
+	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
+	return connectInternal(connCtx, networkAddr, clientConfig, currentClient)
 }
 
 type SshKeywords struct {
@@ -638,7 +680,7 @@ type SshKeywords struct {
 	PreferredAuthentications     []string
 	AddKeysToAgent               bool
 	IdentityAgent                string
-	ProxyJump                    string
+	ProxyJump                    []string
 }
 
 func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeywords, error) {
@@ -787,7 +829,14 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.ProxyJump = trimquotes.TryTrimQuotes(proxyJumpRaw)
+	proxyJumpSplit := strings.Split(proxyJumpRaw, ",")
+	for _, proxyJumpName := range proxyJumpSplit {
+		proxyJumpName = strings.TrimSpace(proxyJumpName)
+		if proxyJumpName == "" {
+			continue
+		}
+		sshKeywords.ProxyJump = append(sshKeywords.ProxyJump, proxyJumpName)
+	}
 
 	return sshKeywords, nil
 }
