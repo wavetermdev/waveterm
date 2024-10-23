@@ -40,11 +40,8 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
-
-            # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
-            - name: Setup Zig (Linux only)
-              if: matrix.platform == 'linux'
-              run: sudo snap install zig --classic --beta
+                  sudo snap install snapcraft --classic
+                  sudo snap install zig --classic --beta # We use Zig instead of glibc for cgo compilation as it is more-easily statically linked
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
@@ -122,8 +119,15 @@ jobs:
                   path: ${{env.STATIC_DOCSITE_PATH}}
 
             # Build and upload packages
-            - name: Build (not Windows)
-              if: matrix.platform != 'windows'
+            - name: Build (Linux)
+              if: matrix.platform == 'linux'
+              run: task package
+              env:
+                  USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
+                  STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
+                  SNAPCRAFT_BUILD_ENVIRONMENT: host
+            - name: Build (Darwin)
+              if: matrix.platform == 'darwin'
               run: task package
               env:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
@@ -133,7 +137,7 @@ jobs:
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD_2 }}
                   APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID_2 }}
                   STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
-            - name: Build (Windows only)
+            - name: Build (Windows)
               if: matrix.platform == 'windows'
               run: task package
               env:
