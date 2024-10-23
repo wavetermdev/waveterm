@@ -35,5 +35,5 @@ jobs:
             - name: Submit Winget version bump
               run: "task artifacts:publish:winget:${{ github.ref_name }}"
               env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GITHUB_TOKEN: ${{ secrets.WINGET_BUMP_PAT }}
               shell: pwsh
