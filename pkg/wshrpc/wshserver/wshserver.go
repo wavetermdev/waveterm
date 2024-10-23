@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -37,6 +38,7 @@ const SimpleId_This = "this"
 const SimpleId_Tab = "tab"
 
 var SimpleId_BlockNum_Regex = regexp.MustCompile(`^\d+$`)
+var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data"}
 
 type WshServer struct{}
 
@@ -548,7 +550,11 @@ func (ws *WshServer) WslListCommand(ctx context.Context) ([]string, error) {
 	}
 	var distroNames []string
 	for _, distro := range distros {
-		distroNames = append(distroNames, distro.Name())
+		distroName := distro.Name()
+		if utilfn.ContainsStr(InvalidWslDistroNames, distroName) {
+			continue
+		}
+		distroNames = append(distroNames, distroName)
 	}
 	return distroNames, nil
 }
