@@ -13,9 +13,20 @@
             cursor: pointer;
             padding: 8px 12px;
             border-radius: 4px;
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: flex-start;
 
             &:hover {
                 background-color: var(--button-grey-hover-bg);
+            }
+
+            .bg-preview {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 50%;
             }
 
             .bg-label {
