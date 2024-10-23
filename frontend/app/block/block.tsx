@@ -6,7 +6,7 @@ import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { SysinfoView, SysinfoViewModel, makeSysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { VDomModel } from "@/app/view/term/vdom-model";
-import { VDomView, makeVDomModel } from "@/app/view/vdom/vdomv-view";
+import { VDomView, makeVDomModel } from "@/app/view/vdom/vdom-view";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { NodeModel, useDebouncedNodeInnerRect } from "@/layout/index";

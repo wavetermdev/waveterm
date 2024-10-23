@@ -85,6 +85,7 @@ type MetaTSType struct {
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`
 	VDomCorrelationId string `json:"vdom:correlationid,omitempty"`
+	VDomRoute         string `json:"vdom:route,omitempty"`
 
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }

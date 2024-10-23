@@ -341,6 +341,7 @@ declare global {
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
+        "vdom:route"?: string;
         count?: number;
     };
 

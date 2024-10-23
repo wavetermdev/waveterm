@@ -84,6 +84,7 @@ const (
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"
 	MetaKey_VDomCorrelationId                = "vdom:correlationid"
+	MetaKey_VDomRoute                        = "vdom:route"
 
 	MetaKey_Count                            = "count"
 )
