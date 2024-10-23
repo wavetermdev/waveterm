@@ -24,6 +24,7 @@ jobs:
                   AWS_DEFAULT_REGION: us-west-2
               shell: bash
     bump-winget:
+        if: ${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, 'beta') }}
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v4
