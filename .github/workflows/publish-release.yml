@@ -23,3 +23,17 @@ jobs:
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.PUBLISHER_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2
               shell: bash
+    bump-winget:
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Submit Winget version bump
+              run: "task artifacts:publish:winget:${{ github.ref_name }}"
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              shell: pwsh
