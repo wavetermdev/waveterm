@@ -832,7 +832,7 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 	proxyJumpSplit := strings.Split(proxyJumpRaw, ",")
 	for _, proxyJumpName := range proxyJumpSplit {
 		proxyJumpName = strings.TrimSpace(proxyJumpName)
-		if proxyJumpName == "" {
+		if proxyJumpName == "" || strings.ToLower(proxyJumpName) == "none" {
 			continue
 		}
 		sshKeywords.ProxyJump = append(sshKeywords.ProxyJump, proxyJumpName)
