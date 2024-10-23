@@ -12,6 +12,7 @@ import "./background.less";
 
 type BackgroundType = {
     label: string;
+    color: string;
     click: () => void;
 };
 
@@ -56,6 +57,7 @@ function Background({ model }: { model: BackgroundModel }) {
             }
             backgrounds.push({
                 label: preset["display:name"] ?? presetName,
+                color: preset["bg"] ?? "var(--main-bg-color)",
                 click: () => {
                     services.ObjectService.UpdateObjectMeta(oref, preset);
                 },
@@ -69,7 +71,7 @@ function Background({ model }: { model: BackgroundModel }) {
                 {backgrounds.map((bg, index) => {
                     return (
                         <div key={`${bg.label}-${index}`} className="bg-item" onClick={() => bg.click()}>
-                            <div className="bg-preview" style={{ backgroundColor: bg.label }}></div>
+                            <div className="bg-preview" style={{ background: bg.color }}></div>
                             <div className="bg-label">{bg.label}</div>
                         </div>
                     );
