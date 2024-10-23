@@ -1,8 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-    - name: Reporting a security vulnerability
-      url: https://github.com/wavetermdev/waveterm/blob/main/SECURITY.md
-      about: Please review our security policy for more details
     - name: General Question
       url: https://github.com/wavetermdev/waveterm/discussions
       about: Have a question on something? Start a new discussion thread.
