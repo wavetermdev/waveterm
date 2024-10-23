@@ -358,7 +358,7 @@ const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
                     {item.leftElement && (
                         <ExpandableMenuItemLeftElement>{item.leftElement}</ExpandableMenuItemLeftElement>
                     )}
-                    <div className="label">{item.content}</div>
+                    <div className="content">{item.content}</div>
                     {item.rightElement && (
                         <ExpandableMenuItemRightElement>{item.rightElement}</ExpandableMenuItemRightElement>
                     )}

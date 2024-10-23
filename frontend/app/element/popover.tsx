@@ -1,3 +1,4 @@
+import { Button } from "@/element/button";
 import { useDismiss, useFloating, useInteractions, type Placement } from "@floating-ui/react";
 import clsx from "clsx";
 import {
@@ -88,15 +89,15 @@ interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButtonProps>(
     ({ isActive, children, onClick, getReferenceProps, className, as: Component = "button", ...props }, ref) => {
         return (
-            <Component
+            <Button
                 ref={ref}
-                className={clsx("ghost grey popover-button", className, { "is-active": isActive })}
+                className={clsx("popover-button", className, { "is-active": isActive })}
                 onClick={onClick}
                 {...getReferenceProps?.()}
                 {...props}
             >
                 {children}
-            </Component>
+            </Button>
         );
     }
 );
