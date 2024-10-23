@@ -297,4 +297,10 @@ func WslListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
 	return resp, err
 }
 
+// command "wslstatus", wshserver.WslStatusCommand
+func WslStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnStatus, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.ConnStatus](w, "wslstatus", nil, opts)
+	return resp, err
+}
+
 

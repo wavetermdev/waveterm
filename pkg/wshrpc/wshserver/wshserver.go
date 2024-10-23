@@ -464,6 +464,11 @@ func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus
 	return rtn, nil
 }
 
+func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
+	rtn := wsl.GetAllConnStatus()
+	return rtn, nil
+}
+
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")

@@ -63,11 +63,14 @@ const (
 	Command_RemoteFileDelete  = "remotefiledelete"
 	Command_RemoteFileJoiin   = "remotefilejoin"
 
+	Command_ConnStatus       = "connstatus"
+	Command_WslStatus        = "wslstatus"
 	Command_ConnEnsure       = "connensure"
 	Command_ConnReinstallWsh = "connreinstallwsh"
 	Command_ConnConnect      = "connconnect"
 	Command_ConnDisconnect   = "conndisconnect"
 	Command_ConnList         = "connlist"
+	Command_WslList          = "wsllist"
 
 	Command_WebSelector = "webselector"
 	Command_Notify      = "notify"
@@ -116,6 +119,7 @@ type WshRpcInterface interface {
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
+	WslStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	ConnEnsureCommand(ctx context.Context, connName string) error
 	ConnReinstallWshCommand(ctx context.Context, connName string) error
 	ConnConnectCommand(ctx context.Context, connName string) error

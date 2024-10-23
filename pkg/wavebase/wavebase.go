@@ -34,7 +34,8 @@ const RemoteDomainSocketBaseName = "wave-remote.sock"
 const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
-const RemoteWaveHome = "~/.waveterm"
+
+var RemoteWaveHome = ExpandHomeDirSafe("~/.waveterm")
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const AppPathBinDir = "bin"

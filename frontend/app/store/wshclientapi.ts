@@ -247,6 +247,11 @@ class RpcApiType {
         return client.wshRpcCall("wsllist", null, opts);
     }
 
+    // command "wslstatus" [call]
+    WslStatusCommand(client: WshClient, opts?: RpcOpts): Promise<ConnStatus[]> {
+        return client.wshRpcCall("wslstatus", null, opts);
+    }
+
 }
 
 export const RpcApi = new RpcApiType();
