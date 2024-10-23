@@ -50,5 +50,15 @@
                 "view": "sysinfo"
             }
         }
+    },
+    "defwidget@background": {
+        "display:order": 5,
+        "icon": "fill-drip",
+        "label": "bg",
+        "blockdef": {
+            "meta": {
+                "view": "background"
+            }
+        }
     }
 }
