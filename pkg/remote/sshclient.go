@@ -336,12 +336,9 @@ func lineContainsMatch(line []byte, matches [][]byte) bool {
 	return false
 }
 
-func createHostKeyCallback(opts *SSHOpts) (ssh.HostKeyCallback, HostKeyAlgorithms, error) {
-	ssh_config.ReloadConfigs()
-	rawUserKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "UserKnownHostsFile")
-	userKnownHostsFiles := strings.Fields(rawUserKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
-	rawGlobalKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "GlobalKnownHostsFile")
-	globalKnownHostsFiles := strings.Fields(rawGlobalKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
+func createHostKeyCallback(sshKeywords *SshKeywords) (ssh.HostKeyCallback, HostKeyAlgorithms, error) {
+	globalKnownHostsFiles := sshKeywords.GlobalKnownHostsFile
+	userKnownHostsFiles := sshKeywords.UserKnownHostsFile
 
 	osUser, err := user.Current()
 	if err != nil {
@@ -504,61 +501,7 @@ func createHostKeyCallback(opts *SSHOpts) (ssh.HostKeyCallback, HostKeyAlgorithm
 	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
-func CreateAuthMethods(connCtx context.Context, sshKeywords *SshKeywords, remoteName string) []ssh.AuthMethod {
-	var authSockSigners []ssh.Signer
-	var agentClient agent.ExtendedAgent
-	conn, err := net.Dial("unix", sshKeywords.IdentityAgent)
-	if err != nil {
-		log.Printf("Failed to open Identity Agent Socket: %v", err)
-	} else {
-		agentClient = agent.NewClient(conn)
-		authSockSigners, _ = agentClient.Signers()
-	}
-
-	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, authSockSigners, agentClient))
-	keyboardInteractive := ssh.KeyboardInteractive(createInteractiveKbdInteractiveChallenge(connCtx, remoteName))
-	passwordCallback := ssh.PasswordCallback(createInteractivePasswordCallbackPrompt(connCtx, remoteName))
-
-	// exclude gssapi-with-mic and hostbased until implemented
-	authMethodMap := map[string]ssh.AuthMethod{
-		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)+len(authSockSigners)),
-		"keyboard-interactive": ssh.RetryableAuthMethod(keyboardInteractive, 1),
-		"password":             ssh.RetryableAuthMethod(passwordCallback, 1),
-	}
-
-	// note: batch mode turns off interactive input
-	authMethodActiveMap := map[string]bool{
-		"publickey":            sshKeywords.PubkeyAuthentication,
-		"keyboard-interactive": sshKeywords.KbdInteractiveAuthentication && !sshKeywords.BatchMode,
-		"password":             sshKeywords.PasswordAuthentication && !sshKeywords.BatchMode,
-	}
-
-	var authMethods []ssh.AuthMethod
-	for _, authMethodName := range sshKeywords.PreferredAuthentications {
-		authMethodActive, ok := authMethodActiveMap[authMethodName]
-		if !ok || !authMethodActive {
-			continue
-		}
-		authMethod, ok := authMethodMap[authMethodName]
-		if !ok {
-			continue
-		}
-		authMethods = append(authMethods, authMethod)
-	}
-
-	return authMethods
-}
-
-func createClientConfig(connCtx context.Context, opts *SSHOpts) (*ssh.ClientConfig, error) {
-	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
-	if err != nil {
-		return nil, err
-	}
-
-	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
-	if err != nil {
-		return nil, err
-	}
+func createClientConfig(connCtx context.Context, sshKeywords *SshKeywords) (*ssh.ClientConfig, error) {
 	remoteName := sshKeywords.User + "@" + xknownhosts.Normalize(sshKeywords.HostName+":"+sshKeywords.Port)
 
 	var authSockSigners []ssh.Signer
@@ -602,7 +545,7 @@ func createClientConfig(connCtx context.Context, opts *SSHOpts) (*ssh.ClientConf
 		authMethods = append(authMethods, authMethod)
 	}
 
-	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(opts)
+	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(sshKeywords)
 	if err != nil {
 		return nil, err
 	}
@@ -660,7 +603,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 			return nil, err
 		}
 	}
-	clientConfig, err := createClientConfig(connCtx, opts)
+	clientConfig, err := createClientConfig(connCtx, sshKeywords)
 	if err != nil {
 		return nil, err
 	}
@@ -681,6 +624,8 @@ type SshKeywords struct {
 	AddKeysToAgent               bool
 	IdentityAgent                string
 	ProxyJump                    []string
+	UserKnownHostsFile           []string
+	GlobalKnownHostsFile         []string
 }
 
 func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeywords, error) {
@@ -726,6 +671,8 @@ func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeyword
 	sshKeywords.AddKeysToAgent = configKeywords.AddKeysToAgent
 	sshKeywords.IdentityAgent = configKeywords.IdentityAgent
 	sshKeywords.ProxyJump = configKeywords.ProxyJump
+	sshKeywords.UserKnownHostsFile = configKeywords.UserKnownHostsFile
+	sshKeywords.GlobalKnownHostsFile = configKeywords.GlobalKnownHostsFile
 
 	return sshKeywords, nil
 }
@@ -837,6 +784,10 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 		}
 		sshKeywords.ProxyJump = append(sshKeywords.ProxyJump, proxyJumpName)
 	}
+	rawUserKnownHostsFile, _ := ssh_config.GetStrict(hostPattern, "UserKnownHostsFile")
+	sshKeywords.UserKnownHostsFile = strings.Fields(rawUserKnownHostsFile) // TODO - smarter splitting escaped spaces and quotes
+	rawGlobalKnownHostsFile, _ := ssh_config.GetStrict(hostPattern, "GlobalKnownHostsFile")
+	sshKeywords.GlobalKnownHostsFile = strings.Fields(rawGlobalKnownHostsFile) // TODO - smarter splitting escaped spaces and quotes
 
 	return sshKeywords, nil
 }
