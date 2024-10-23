@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.workspace-button {
+.workspace-switcher-button {
     display: flex;
     height: 26px;
     padding: 0px 12px;
@@ -27,4 +27,95 @@
     width: 1px;
     height: 20px;
     background: rgba(255, 255, 255, 0.08);
+}
+
+.workspace-switcher-content {
+    min-height: auto;
+    display: flex;
+    width: 256px;
+    padding: 6px 8px;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 8px;
+    border: 0.5px solid rgba(255, 255, 255, 0.1);
+    background: #232323;
+    box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.8);
+
+    .title {
+        color: #fff;
+        font-size: 12px;
+        line-height: 19px;
+        width: 100%;
+    }
+
+    .expandable-menu-item,
+    .expandable-menu-item-group-title {
+        color: #fff;
+        font-family: Inter;
+        font-size: 11px;
+        line-height: 19px;
+        padding: 4px 8px;
+
+        .content {
+            width: 100%;
+        }
+    }
+
+    .color-selector {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15px, 15px)); // Ensures each color circle has a fixed 14px size
+        grid-gap: 15px; // Space between items
+        justify-content: center;
+        align-items: center;
+        margin-top: 5px;
+
+        .color-circle {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+
+            // Border offset outward
+            &:before {
+                content: "";
+                position: absolute;
+                top: -3px;
+                left: -3px;
+                right: -3px;
+                bottom: -3px;
+                border-radius: 50%;
+                border: 1px solid transparent;
+            }
+
+            &.selected:before {
+                border-color: white; // Highlight for the selected circle
+            }
+        }
+    }
+
+    .icon-selector {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(16px, 16px)); // Ensures each color circle has a fixed 14px size
+        grid-column-gap: 15px; // Space between items
+        grid-row-gap: 13px; // Space between items
+        justify-content: center;
+        align-items: center;
+        margin-top: 15px;
+
+        .icon-item {
+            font-size: 15px;
+            color: #666;
+            cursor: pointer;
+            transition: color 0.3s ease;
+
+            &.selected {
+                color: white;
+            }
+
+            &:hover {
+                color: #fff;
+            }
+        }
+    }
 }
