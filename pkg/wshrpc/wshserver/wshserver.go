@@ -392,7 +392,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if windowId == "" {
 		return fmt.Errorf("no window found for tab")
 	}
-	err = wcore.DeleteBlock(ctx, tabId, data.BlockId)
+	err = wcore.DeleteBlock(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}

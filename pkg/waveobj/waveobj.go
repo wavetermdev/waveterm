@@ -94,6 +94,14 @@ func ParseORef(orefStr string) (ORef, error) {
 	return ORef{OType: otype, OID: oid}, nil
 }
 
+func ParseORefNoErr(orefStr string) *ORef {
+	oref, err := ParseORef(orefStr)
+	if err != nil {
+		return nil
+	}
+	return &oref
+}
+
 type WaveObj interface {
 	GetOType() string // should not depend on object state (should work with nil value)
 }
