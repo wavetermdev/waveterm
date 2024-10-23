@@ -17,6 +17,10 @@ func RegisteredDistros(ctx context.Context) (distros []Distro, err error) {
 	return nil, fmt.Errorf("RegisteredDistros not implemented on this system")
 }
 
+func DefaultDistro(ctx context.Context) (d Distro, ok bool, err error) {
+	return d, false, fmt.Errorf("DefaultDistro not implemented on this system")
+}
+
 type Distro struct{}
 
 func (d *Distro) Name() string {

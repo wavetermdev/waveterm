@@ -71,6 +71,7 @@ const (
 	Command_ConnDisconnect   = "conndisconnect"
 	Command_ConnList         = "connlist"
 	Command_WslList          = "wsllist"
+	Command_WslDefaultDistro = "wsldefaultdistro"
 
 	Command_WebSelector = "webselector"
 	Command_Notify      = "notify"
@@ -126,6 +127,7 @@ type WshRpcInterface interface {
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
 	WslListCommand(ctx context.Context) ([]string, error)
+	WslDefaultDistroCommand(ctx context.Context) (string, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error

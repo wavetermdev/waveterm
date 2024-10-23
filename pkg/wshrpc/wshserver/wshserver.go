@@ -553,6 +553,17 @@ func (ws *WshServer) WslListCommand(ctx context.Context) ([]string, error) {
 	return distroNames, nil
 }
 
+func (ws *WshServer) WslDefaultDistroCommand(ctx context.Context) (string, error) {
+	distro, ok, err := wsl.DefaultDistro(ctx)
+	if err != nil {
+		return "", fmt.Errorf("unable to determine default distro: %w", err)
+	}
+	if !ok {
+		return "", fmt.Errorf("unable to determine default distro")
+	}
+	return distro.Name(), nil
+}
+
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {

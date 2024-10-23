@@ -16,6 +16,7 @@ import (
 )
 
 var RegisteredDistros = gowsl.RegisteredDistros
+var DefaultDistro = gowsl.DefaultDistro
 
 type Distro struct {
 	gowsl.Distro
