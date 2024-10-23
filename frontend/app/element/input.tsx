@@ -11,46 +11,49 @@ interface InputGroupProps {
     className?: string;
 }
 
-const InputGroup = ({ children, className }: InputGroupProps) => {
-    const [isFocused, setIsFocused] = useState(false);
+const InputGroup = memo(
+    forwardRef<HTMLDivElement, InputGroupProps>(({ children, className }: InputGroupProps, ref) => {
+        const [isFocused, setIsFocused] = useState(false);
 
-    const manageFocus = (focused: boolean) => {
-        setIsFocused(focused);
-    };
+        const manageFocus = (focused: boolean) => {
+            setIsFocused(focused);
+        };
 
-    return (
-        <div
-            className={clsx("input-group", className, {
-                focused: isFocused,
-            })}
-        >
-            {React.Children.map(children, (child) => {
-                if (React.isValidElement(child)) {
-                    return React.cloneElement(child as any, { manageFocus });
-                }
-                return child;
-            })}
-        </div>
-    );
-};
+        return (
+            <div
+                ref={ref}
+                className={clsx("input-group", className, {
+                    focused: isFocused,
+                })}
+            >
+                {React.Children.map(children, (child) => {
+                    if (React.isValidElement(child)) {
+                        return React.cloneElement(child as any, { manageFocus });
+                    }
+                    return child;
+                })}
+            </div>
+        );
+    })
+);
 
 interface InputLeftElementProps {
     children: React.ReactNode;
     className?: string;
 }
 
-const InputLeftElement = ({ children, className }: InputLeftElementProps) => {
+const InputLeftElement = memo(({ children, className }: InputLeftElementProps) => {
     return <div className={clsx("input-left-element", className)}>{children}</div>;
-};
+});
 
 interface InputRightElementProps {
     children: React.ReactNode;
     className?: string;
 }
 
-const InputRightElement = ({ children, className }: InputRightElementProps) => {
+const InputRightElement = memo(({ children, className }: InputRightElementProps) => {
     return <div className={clsx("input-right-element", className)}>{children}</div>;
-};
+});
 
 interface InputProps {
     label?: string;
@@ -67,7 +70,6 @@ interface InputProps {
     autoFocus?: boolean;
     disabled?: boolean;
     isNumber?: boolean;
-    inputRef?: React.MutableRefObject<any>;
     manageFocus?: (isFocused: boolean) => void;
 }
 
@@ -126,7 +128,6 @@ const Input = memo(
 
             return (
                 <div
-                    ref={ref}
                     className={clsx("input-wrapper", className, {
                         disabled: disabled,
                     })}

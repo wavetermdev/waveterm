@@ -102,13 +102,12 @@ const TypeAheadModal = ({
     const width = domRect?.width ?? 0;
     const height = domRect?.height ?? 0;
     const modalRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const realInputRef = useRef<HTMLInputElement>(null);
+    const inputGroupRef = useRef<HTMLInputElement>(null);
     const suggestionsWrapperRef = useRef<HTMLDivElement>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
-        if (!modalRef.current || !inputRef.current || !suggestionsRef.current || !suggestionsWrapperRef.current) {
+        if (!modalRef.current || !inputGroupRef.current || !suggestionsRef.current || !suggestionsWrapperRef.current) {
             return;
         }
 
@@ -123,7 +122,8 @@ const TypeAheadModal = ({
         const suggestionsWrapperStyles = window.getComputedStyle(suggestionsWrapperRef.current);
         const suggestionsWrapperMarginTop = parseFloat(suggestionsWrapperStyles.marginTop) || 0;
 
-        const inputHeight = inputRef.current.getBoundingClientRect().height;
+        const inputGroupHeight = inputGroupRef.current.getBoundingClientRect().height;
+        console.log("inputHeight=========", inputGroupHeight);
         let suggestionsTotalHeight = 0;
 
         const suggestionItems = suggestionsRef.current.children;
@@ -131,14 +131,16 @@ const TypeAheadModal = ({
             suggestionsTotalHeight += suggestionItems[i].getBoundingClientRect().height;
         }
 
+        console.log("suggestionsTotalHeight", suggestionsTotalHeight);
+
         const totalHeight =
-            modalPadding + modalBorder + inputHeight + suggestionsTotalHeight + suggestionsWrapperMarginTop;
+            modalPadding + modalBorder + inputGroupHeight + suggestionsTotalHeight + suggestionsWrapperMarginTop;
         const maxHeight = height * 0.8;
         const computedHeight = totalHeight > maxHeight ? maxHeight : totalHeight;
 
         modalRef.current.style.height = `${computedHeight}px`;
 
-        suggestionsWrapperRef.current.style.height = `${computedHeight - inputHeight - modalPadding - modalBorder - suggestionsWrapperMarginTop}px`;
+        suggestionsWrapperRef.current.style.height = `${computedHeight - inputGroupHeight - modalPadding - modalBorder - suggestionsWrapperMarginTop}px`;
     }, [height, suggestions]);
 
     useLayoutEffect(() => {
@@ -176,7 +178,7 @@ const TypeAheadModal = ({
     useLayoutEffect(() => {
         if (giveFocusRef) {
             giveFocusRef.current = () => {
-                realInputRef.current?.focus();
+                inputGroupRef.current?.focus();
                 return true;
             };
         }
@@ -215,15 +217,8 @@ const TypeAheadModal = ({
                 ref={modalRef}
                 className={clsx("type-ahead-modal", className, { "has-suggestions": suggestions?.length > 0 })}
             >
-                <InputGroup>
-                    <Input
-                        ref={inputRef}
-                        inputRef={realInputRef}
-                        onChange={handleChange}
-                        value={value}
-                        autoFocus={autoFocus}
-                        placeholder={label}
-                    />
+                <InputGroup ref={inputGroupRef}>
+                    <Input onChange={handleChange} value={value} autoFocus={autoFocus} placeholder={label} />
                     <InputRightElement>
                         <i className="fa-regular fa-magnifying-glass"></i>
                     </InputRightElement>
