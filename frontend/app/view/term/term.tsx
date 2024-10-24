@@ -8,7 +8,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
-import { VDomModel } from "@/app/view/term/vdom-model";
+import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { NodeModel } from "@/layout/index";
 import {
     WOS,

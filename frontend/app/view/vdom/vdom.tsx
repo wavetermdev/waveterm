@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Markdown } from "@/app/element/markdown";
-import { VDomModel } from "@/app/view/term/vdom-model";
+import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
+
+import { NodeModel } from "@/layout/index";
+import "./vdom.less";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
@@ -280,4 +283,23 @@ function VDomRoot({ model }: { model: VDomModel }) {
     return <div className="vdom">{rtn}</div>;
 }
 
-export { VDomRoot };
+function makeVDomModel(blockId: string, nodeModel: NodeModel): VDomModel {
+    return new VDomModel(blockId, nodeModel);
+}
+
+type VDomViewProps = {
+    model: VDomModel;
+    blockId: string;
+};
+
+function VDomView({ blockId, model }: VDomViewProps) {
+    let viewRef = React.useRef(null);
+    model.viewRef = viewRef;
+    return (
+        <div className="vdom-view" ref={viewRef}>
+            <VDomRoot model={model} />
+        </div>
+    );
+}
+
+export { makeVDomModel, VDomView };
