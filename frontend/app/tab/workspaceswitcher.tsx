@@ -16,7 +16,8 @@ import { Input } from "@/element/input";
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import { memo, useState } from "react";
+import { atom, useAtom } from "jotai";
+import { memo } from "react";
 import ThunderSVG from "../asset/thunder.svg";
 import WorskpaceSVG from "../asset/workspace.svg";
 
@@ -30,10 +31,7 @@ interface ColorSelectorProps {
 }
 
 const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: ColorSelectorProps) => {
-    const [activeColor, setActiveColor] = useState<string | undefined>(selectedColor);
-
     const handleColorClick = (color: string) => {
-        setActiveColor(color);
         onSelect(color);
     };
 
@@ -42,7 +40,7 @@ const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: Colo
             {colors.map((color) => (
                 <div
                     key={color}
-                    className={clsx("color-circle", { selected: activeColor === color })}
+                    className={clsx("color-circle", { selected: selectedColor === color })}
                     style={{ backgroundColor: color }}
                     onClick={() => handleColorClick(color)}
                 />
@@ -59,10 +57,7 @@ interface IconSelectorProps {
 }
 
 const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSelectorProps) => {
-    const [activeIcon, setActiveIcon] = useState<string | undefined>(selectedIcon);
-
     const handleIconClick = (icon: string) => {
-        setActiveIcon(icon);
         onSelect(icon);
     };
 
@@ -73,7 +68,7 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
                 return (
                     <i
                         key={icon}
-                        className={clsx(iconClass, "icon-item", { selected: activeIcon === icon })}
+                        className={clsx(iconClass, "icon-item", { selected: selectedIcon === icon })}
                         onClick={() => handleIconClick(icon)}
                     />
                 );
@@ -92,20 +87,13 @@ interface ColorAndIconSelectorProps {
 }
 const ColorAndIconSelector = memo(
     ({ title, icon, color, onTitleChange, onColorChange, onIconChange }: ColorAndIconSelectorProps) => {
-        const [inputValue, setInputValue] = useState(title);
-
-        const handleTitleChange = (newTitle: string) => {
-            setInputValue(newTitle);
-            onTitleChange(newTitle);
-        };
-
         return (
             <div className="color-icon-selector">
-                <Input className="vertical-padding-3" onChange={handleTitleChange} value={inputValue} />
+                <Input className="vertical-padding-3" onChange={onTitleChange} value={title} autoFocus />
                 <ColorSelector
                     selectedColor={color}
                     colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
-                    onSelect={(color) => onColorChange(color)}
+                    onSelect={onColorChange}
                 />
                 <IconSelector
                     selectedIcon={icon}
@@ -125,7 +113,7 @@ const ColorAndIconSelector = memo(
                         "mug-hot",
                         "circle",
                     ]}
-                    onSelect={(icon) => onIconChange(icon)}
+                    onSelect={onIconChange}
                 />
                 <div className="delete-ws-btn-wrapper">
                     <Button className="ghost grey font-size-12">Delete workspace</Button>
@@ -160,11 +148,13 @@ const workspaceData: WorkspaceDataType[] = [
     },
 ];
 
+export const menuDataAtom = atom<WorkspaceDataType[]>(workspaceData);
+
 const WorkspaceSwitcher = () => {
-    const [menuData, setMenuData] = useState<WorkspaceDataType[]>(workspaceData);
+    const [menuData, setMenuData] = useAtom(menuDataAtom);
 
     const handleTitleChange = (id: string, newTitle: string) => {
-        // This is should be call a to service
+        // This should call a service
         setMenuData((prevMenuData) =>
             prevMenuData.map((item) => {
                 if (item.id === id) {
@@ -179,7 +169,7 @@ const WorkspaceSwitcher = () => {
     };
 
     const handleColorChange = (id: string, newColor: string) => {
-        // This is should be call a to service
+        // This should call a service
         setMenuData((prevMenuData) =>
             prevMenuData.map((item) => {
                 if (item.id === id) {
@@ -194,7 +184,7 @@ const WorkspaceSwitcher = () => {
     };
 
     const handleIconChange = (id: string, newIcon: string) => {
-        // This is should be call a to service
+        // This should call a service
         setMenuData((prevMenuData) =>
             prevMenuData.map((item) => {
                 if (item.id === id) {
@@ -209,7 +199,7 @@ const WorkspaceSwitcher = () => {
     };
 
     const setActiveWorkspace = (id: string) => {
-        // This should be a call to service
+        // This should call a service
         setMenuData((prevMenuData) =>
             prevMenuData.map((item) => {
                 if (item.id === id) {
@@ -290,6 +280,7 @@ const WorkspaceSwitcher = () => {
                     </ExpandableMenuItemGroup>
                 );
             }
+            return null;
         });
     };
 
