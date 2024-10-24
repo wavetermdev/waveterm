@@ -234,15 +234,16 @@ tasks:
         desc: Publishes the specified artifacts version to Snapcraft.
         vars:
             UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
-            CHANNEL: '{{if contains .UP_VERSION "beta"}}beta{{else}}beta,stable{{end}}'
+            CHANNEL: '{{if contains "beta" .UP_VERSION}}beta{{else}}beta,stable{{end}}'
         cmd: |
+            echo "Releasing to channels: [{{.CHANNEL}}]"
             snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_arm64.snap
             snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_amd64.snap
 
     artifacts:winget:publish:*:
         desc: Submits a version bump request to WinGet for the latest release.
         status:
-            - exit {{if contains UP_VERSION "beta"}}0{{else}}1{{end}}
+            - exit {{if contains "beta" .UP_VERSION}}0{{else}}1{{end}}
         vars:
             UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
         cmd: |
