@@ -26,12 +26,10 @@ jobs:
                   AWS_DEFAULT_REGION: us-west-2
               shell: bash
             - name: Download Snap from Release
-              uses: i3h/download-release-asset@v1
+              uses: robinraju/release-downloader@v1
               with:
-                  owner: wavetermdev
-                  repo: waveterm
                   tag: ${{github.ref_name}}
-                  file: /*.snap/
+                  fileName: "*.snap"
             - name: Publish to Snapcraft
               run: "task artifacts:publish:snap:${{ github.ref_name }}"
               env:
