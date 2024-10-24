@@ -8,6 +8,7 @@ import {
     ExpandableMenuItemData,
     ExpandableMenuItemGroup,
     ExpandableMenuItemGroupTitle,
+    ExpandableMenuItemGroupTitleType,
     ExpandableMenuItemLeftElement,
     ExpandableMenuItemRightElement,
 } from "@/element/expandablemenu";
@@ -81,59 +82,157 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
     );
 });
 
-const ColorAndIconSelector = memo(() => {
-    return (
-        <div className="color-icon-selector">
-            <Input className="vertical-padding-3" />
-            <ColorSelector
-                colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
-                onSelect={(color) => console.log("Selected color:", color)}
-            />
-            <IconSelector
-                icons={[
-                    "triangle",
-                    "star",
-                    "cube",
-                    "gem",
-                    "chess-knight",
-                    "heart",
-                    "plane",
-                    "rocket",
-                    "shield-cat",
-                    "paw-simple",
-                    "umbrella",
-                    "graduation-cap",
-                    "mug-hot",
-                    "circle",
-                ]}
-                onSelect={(icon) => console.log("Selected icon:", icon)}
-            />
-            <div className="delete-ws-btn-wrapper">
-                <Button className="ghost grey">Delete workspace</Button>
-            </div>
-        </div>
-    );
-});
+interface ColorAndIconSelectorProps {
+    title: string;
+    icon: string;
+    color: string;
+    onTitleChange: (newTitle: string) => void;
+    onColorChange: (newColor: string) => void;
+    onIconChange: (newIcon: string) => void;
+}
+const ColorAndIconSelector = memo(
+    ({ title, icon, color, onTitleChange, onColorChange, onIconChange }: ColorAndIconSelectorProps) => {
+        const [inputValue, setInputValue] = useState(title);
 
-const dummyData: ExpandableMenuItemData[] = [
+        const handleTitleChange = (newTitle: string) => {
+            setInputValue(newTitle);
+            onTitleChange(newTitle);
+        };
+
+        return (
+            <div className="color-icon-selector">
+                <Input className="vertical-padding-3" onChange={handleTitleChange} value={inputValue} />
+                <ColorSelector
+                    selectedColor={color}
+                    colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
+                    onSelect={(color) => onColorChange(color)}
+                />
+                <IconSelector
+                    selectedIcon={icon}
+                    icons={[
+                        "triangle",
+                        "star",
+                        "cube",
+                        "gem",
+                        "chess-knight",
+                        "heart",
+                        "plane",
+                        "rocket",
+                        "shield-cat",
+                        "paw-simple",
+                        "umbrella",
+                        "graduation-cap",
+                        "mug-hot",
+                        "circle",
+                    ]}
+                    onSelect={(icon) => onIconChange(icon)}
+                />
+                <div className="delete-ws-btn-wrapper">
+                    <Button className="ghost grey font-size-12">Delete workspace</Button>
+                </div>
+            </div>
+        );
+    }
+);
+
+interface WorkspaceDataType {
+    id: string;
+    icon: string;
+    label: string;
+    color: string;
+    isActive: boolean;
+}
+
+const workspaceData: WorkspaceDataType[] = [
     {
         id: "596e76eb-d87d-425e-9f6e-1519069ee447",
-        type: "group",
-        title: {
-            leftElement: <i className="fa-sharp fa-solid fa-shield-cat"></i>,
-            label: "Cat Space",
-        },
-        children: [
-            {
-                id: "7cc2a2df-37d8-426e-9235-c1a0902d5843",
-                type: "item",
-                content: <ColorAndIconSelector />,
-            },
-        ],
+        icon: "shield-cat",
+        label: "Cat Space",
+        color: "#e91e63",
+        isActive: true,
     },
 ];
 
 const WorkspaceSwitcher = () => {
+    const [menuData, setMenuData] = useState<WorkspaceDataType[]>(workspaceData);
+
+    const handleTitleChange = (id: string, newTitle: string) => {
+        // This is should be just a to service
+        setMenuData((prevMenuData) =>
+            prevMenuData.map((item) => {
+                if (item.id === id) {
+                    return {
+                        ...item,
+                        label: newTitle,
+                    };
+                }
+                return item;
+            })
+        );
+    };
+
+    const handleColorChange = (id: string, newColor: string) => {
+        // This is should be just a to service
+        setMenuData((prevMenuData) =>
+            prevMenuData.map((item) => {
+                if (item.id === id) {
+                    return {
+                        ...item,
+                        color: newColor,
+                    };
+                }
+                return item;
+            })
+        );
+    };
+
+    const handleIconChange = (id: string, newIcon: string) => {
+        // This is should be just a to service
+        setMenuData((prevMenuData) =>
+            prevMenuData.map((item) => {
+                if (item.id === id) {
+                    return {
+                        ...item,
+                        icon: newIcon,
+                    };
+                }
+                return item;
+            })
+        );
+    };
+
+    const data = menuData.map((item): ExpandableMenuItemData => {
+        const { id, icon, label, color, isActive } = item;
+        const title: ExpandableMenuItemGroupTitleType = { label };
+        const leftElement = icon ? (
+            <i className={clsx("left-icon", makeIconClass(icon, false))} style={{ color: color }}></i>
+        ) : null;
+        title.leftElement = leftElement;
+        title.rightElement = isActive ? <i className="fa-sharp fa-solid fa-check" style={{ color: color }}></i> : null;
+
+        return {
+            id,
+            type: "group",
+            title,
+            defaultExpanded: isActive,
+            children: [
+                {
+                    type: "item",
+                    content: (
+                        <ColorAndIconSelector
+                            title={label}
+                            icon={icon}
+                            color={color}
+                            onTitleChange={(title) => handleTitleChange(id, title)}
+                            onColorChange={(color) => handleColorChange(id, color)}
+                            onIconChange={(icon) => handleIconChange(id, icon)}
+                        />
+                    ),
+                },
+            ],
+        };
+    });
+
     const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
         return menuItems.map((item) => {
             if (item.type === "item") {
@@ -182,7 +281,7 @@ const WorkspaceSwitcher = () => {
             </PopoverButton>
             <PopoverContent className="workspace-switcher-content">
                 <div className="title">Switch workspace</div>
-                <ExpandableMenu noIndent>{renderExpandableMenu(dummyData)}</ExpandableMenu>
+                <ExpandableMenu noIndent>{renderExpandableMenu(data)}</ExpandableMenu>
             </PopoverContent>
         </Popover>
     );

@@ -5,8 +5,8 @@ import { Children, ReactElement, ReactNode, cloneElement, useState } from "react
 import "./expandablemenu.less";
 
 type BaseExpandableMenuItem = {
-    id: string;
     type: "item" | "group";
+    id?: string;
 };
 
 interface ExpandableMenuItemType extends BaseExpandableMenuItem {
@@ -136,4 +136,4 @@ export {
     ExpandableMenuItemLeftElement,
     ExpandableMenuItemRightElement,
 };
-export type { ExpandableMenuItemData };
+export type { ExpandableMenuItemData, ExpandableMenuItemGroupTitleType };
