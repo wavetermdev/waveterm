@@ -107,6 +107,7 @@ export class VDomModel {
     wshClient: VDomWshClient;
     persist: jotai.Atom<boolean>;
     routeGoneUnsub: () => void;
+    routeConfirmed: boolean = false;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         dlog("create vdom model", blockId);
@@ -132,12 +133,27 @@ export class VDomModel {
             eventType: "route:gone",
             scope: curBackendRoute,
             handler: (event: WaveEvent) => {
+                this.disposed = true;
                 const shouldPersist = globalStore.get(this.persist);
                 if (!shouldPersist) {
                     this.nodeModel?.onClose?.();
                 }
             },
         });
+        RpcApi.WaitForRouteCommand(TabRpcClient, { routeid: curBackendRoute, waitms: 4000 }, { timeout: 5000 }).then(
+            (routeOk: boolean) => {
+                if (routeOk) {
+                    this.routeConfirmed = true;
+                    this.queueUpdate(true);
+                } else {
+                    this.disposed = true;
+                    const shouldPersist = globalStore.get(this.persist);
+                    if (!shouldPersist) {
+                        this.nodeModel?.onClose?.();
+                    }
+                }
+            }
+        );
     }
 
     dispose() {
@@ -174,6 +190,7 @@ export class VDomModel {
 
     globalKeydownHandler(e: WaveKeyboardEvent): boolean {
         if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
+            dlog("closeonctrlc");
             this.shouldDispose = true;
             this.queueUpdate(true);
             return true;
@@ -228,6 +245,9 @@ export class VDomModel {
     }
 
     queueUpdate(quick: boolean = false, delay: number = 10) {
+        if (this.disposed) {
+            return;
+        }
         this.needsUpdate = true;
         let nowTs = Date.now();
         if (delay > this.maxNormalUpdateIntervalMs) {
@@ -269,7 +289,7 @@ export class VDomModel {
 
     async _sendRenderRequest(force: boolean) {
         this.queuedUpdate = null;
-        if (this.disposed) {
+        if (this.disposed || !this.routeConfirmed) {
             return;
         }
         if (this.hasPendingRequest) {

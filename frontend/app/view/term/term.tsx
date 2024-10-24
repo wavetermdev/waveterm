@@ -343,8 +343,12 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
             unsub();
         };
     }, []);
+    const isFocusedAtom = jotai.atom((get) => {
+        return get(model.nodeModel.isFocused) && get(model.termMode) == "vdom";
+    });
     let vdomNodeModel = {
         blockId: vdomBlockId,
+        isFocused: isFocusedAtom,
         onClose: () => {
             if (vdomBlockId != null) {
                 RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
@@ -354,7 +358,7 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
     dlog("rendering VDomBlock", vdomBlockId);
     return (
         <div key="htmlElem" className="term-htmlelem">
-            <Block key="vdom" preview={false} nodeModel={vdomNodeModel} />
+            <Block key="vdom" isSubBlock={true} preview={false} nodeModel={vdomNodeModel} />
         </div>
     );
 };

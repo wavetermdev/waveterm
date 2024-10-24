@@ -60,9 +60,8 @@ type VDomFrontendUpdate struct {
 	Ts            int64             `json:"ts"`
 	BlockId       string            `json:"blockid"`
 	CorrelationId string            `json:"correlationid,omitempty"`
-	Initialize    bool              `json:"initialize,omitempty"` // initialize the app
-	Dispose       bool              `json:"dispose,omitempty"`    // the vdom context was closed
-	Resync        bool              `json:"resync,omitempty"`     // resync (send all backend data).  useful when the FE reloads
+	Dispose       bool              `json:"dispose,omitempty"` // the vdom context was closed
+	Resync        bool              `json:"resync,omitempty"`  // resync (send all backend data).  useful when the FE reloads
 	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
 	Events        []VDomEvent       `json:"events,omitempty"`
 	StateSync     []VDomStateSync   `json:"statesync,omitempty"`

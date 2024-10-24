@@ -682,7 +682,6 @@ declare global {
         ts: number;
         blockid: string;
         correlationid?: string;
-        initialize?: boolean;
         dispose?: boolean;
         resync?: boolean;
         rendercontext?: VDomRenderContext;

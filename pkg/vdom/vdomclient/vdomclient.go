@@ -65,7 +65,7 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 			impl.Client.Root.Event(event.WaveId, event.EventType, event.EventData)
 		}
 	}
-	if feUpdate.Initialize || feUpdate.Resync {
+	if feUpdate.Resync {
 		return impl.Client.fullRender()
 	}
 	return impl.Client.incrementalRender()

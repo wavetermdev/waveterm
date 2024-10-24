@@ -386,6 +386,14 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 	return nil
 }
 
+func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	err := wcore.DeleteBlock(ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error deleting block: %w", err)
+	}
+	return nil
+}
+
 func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)

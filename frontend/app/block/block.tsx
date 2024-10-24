@@ -31,6 +31,7 @@ import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 
 type FullBlockProps = {
+    isSubBlock?: boolean;
     preview: boolean;
     nodeModel: NodeModel;
     viewModel: ViewModel;
@@ -142,6 +143,26 @@ const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
             blockModel={null}
             viewModel={viewModel}
         />
+    );
+});
+
+const BlockSubBlock = memo(({ nodeModel, viewModel }: FullBlockProps) => {
+    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const blockRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const viewElem = useMemo(
+        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
+        [nodeModel.blockId, blockData?.meta?.view, viewModel]
+    );
+    if (!blockData) {
+        return null;
+    }
+    return (
+        <div key="content" className="block-content" ref={contentRef}>
+            <ErrorBoundary>
+                <Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</Suspense>
+            </ErrorBoundary>
+        </div>
     );
 });
 
@@ -282,6 +303,9 @@ const Block = memo((props: BlockProps) => {
     }
     if (props.preview) {
         return <BlockPreview {...props} viewModel={viewModel} />;
+    }
+    if (props.isSubBlock) {
+        return <BlockSubBlock {...props} viewModel={viewModel} />;
     }
     return <BlockFull {...props} viewModel={viewModel} />;
 });
