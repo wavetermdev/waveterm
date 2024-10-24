@@ -31,7 +31,7 @@ jobs:
                   tag: ${{github.ref_name}}
                   fileName: "*.snap"
             - name: Publish to Snapcraft
-              run: "task artifacts:publish:snap:${{ github.ref_name }}"
+              run: "task artifacts:snap:publish:${{ github.ref_name }}"
               env:
                   SNAPCRAFT_STORE_CREDENTIALS: "${{secrets.SNAPCRAFT_LOGIN_CREDS}}"
     bump-winget:
@@ -44,8 +44,8 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - name: Submit Winget version bump
-              run: "task artifacts:publish:winget:${{ github.ref_name }}"
+            - name: Submit WinGet version bump
+              run: "task artifacts:winget:publish:${{ github.ref_name }}"
               env:
                   GITHUB_TOKEN: ${{ secrets.WINGET_BUMP_PAT }}
               shell: pwsh
