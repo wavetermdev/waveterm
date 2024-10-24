@@ -17,7 +17,7 @@ jobs:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
             - name: Install Snapcraft
-              uses: samuelmeuli/action-snapcraft@v2
+              run: sudo snap install snapcraft --classic
             - name: Publish from staging
               run: "task artifacts:publish:${{ github.ref_name }}"
               env:
