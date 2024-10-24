@@ -424,7 +424,7 @@ func (conn *SSHConn) WithLock(fn func()) {
 func (conn *SSHConn) connectInternal(ctx context.Context) error {
 	client, err := remote.ConnectToClient(ctx, conn.Opts, nil)
 	if err != nil {
-		log.Printf("error: failed to connect to client %s: %v\n", conn.GetName(), err)
+		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
 		return err
 	}
 	fmtAddr := knownhosts.Normalize(fmt.Sprintf("%s@%s", client.User(), client.RemoteAddr().String()))

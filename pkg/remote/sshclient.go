@@ -41,6 +41,21 @@ func (uice UserInputCancelError) Error() string {
 	return uice.Err.Error()
 }
 
+type ConnectionDebugInfo struct {
+	CurrentClient *ssh.Client
+	NextOpts      *SSHOpts
+	Warnings      error
+}
+
+type ConnectionError struct {
+	*ConnectionDebugInfo
+	Err error
+}
+
+func (ce ConnectionError) Error() string {
+	return fmt.Sprintf("Warnings: {%s}, Connecting from %v to %+#v, Error: %v", ce.Warnings, ce.CurrentClient, ce.NextOpts, ce.Err)
+}
+
 // This exists to trick the ssh library into continuing to try
 // different public keys even when the current key cannot be
 // properly parsed
@@ -68,7 +83,7 @@ func createDummySigner() ([]ssh.Signer, error) {
 // they were successes. An error in this function prevents any other
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
-func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, authSockSignersExt []ssh.Signer, agentClient agent.ExtendedAgent) func() ([]ssh.Signer, error) {
+func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, authSockSignersExt []ssh.Signer, agentClient agent.ExtendedAgent, debugInfo *ConnectionDebugInfo) func() ([]ssh.Signer, error) {
 	var identityFiles []string
 	existingKeys := make(map[string][]byte)
 
@@ -103,7 +118,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 		}
 
 		if len(*identityFilesPtr) == 0 {
-			return nil, fmt.Errorf("no identity files remaining")
+			return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: fmt.Errorf("no identity files remaining")}
 		}
 		identityFile := (*identityFilesPtr)[0]
 		*identityFilesPtr = (*identityFilesPtr)[1:]
@@ -123,7 +138,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 						PrivateKey: unencryptedPrivateKey,
 					})
 				}
-				return []ssh.Signer{signer}, err
+				return []ssh.Signer{signer}, nil
 			}
 		}
 		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
@@ -148,7 +163,8 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 		if err != nil {
 			// this is an error where we actually do want to stop
 			// trying keys
-			return nil, UserInputCancelError{Err: err}
+
+			return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: UserInputCancelError{Err: err}}
 		}
 		unencryptedPrivateKey, err = ssh.ParseRawPrivateKeyWithPassphrase(privateKey, []byte([]byte(response.Text)))
 		if err != nil {
@@ -165,11 +181,11 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 				PrivateKey: unencryptedPrivateKey,
 			})
 		}
-		return []ssh.Signer{signer}, err
+		return []ssh.Signer{signer}, nil
 	}
 }
 
-func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string) func() (secret string, err error) {
+func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string, debugInfo *ConnectionDebugInfo) func() (secret string, err error) {
 	return func() (secret string, err error) {
 		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
@@ -185,13 +201,13 @@ func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisp
 		}
 		response, err := userinput.GetUserInput(ctx, request)
 		if err != nil {
-			return "", err
+			return "", ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 		return response.Text, nil
 	}
 }
 
-func createInteractiveKbdInteractiveChallenge(connCtx context.Context, remoteName string) func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+func createInteractiveKbdInteractiveChallenge(connCtx context.Context, remoteName string, debugInfo *ConnectionDebugInfo) func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 		if len(questions) != len(echos) {
 			return nil, fmt.Errorf("bad response from server: questions has len %d, echos has len %d", len(questions), len(echos))
@@ -200,7 +216,7 @@ func createInteractiveKbdInteractiveChallenge(connCtx context.Context, remoteNam
 			echo := echos[i]
 			answer, err := promptChallengeQuestion(connCtx, question, echo, remoteName)
 			if err != nil {
-				return nil, err
+				return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 			}
 			answers = append(answers, answer)
 		}
@@ -501,7 +517,7 @@ func createHostKeyCallback(sshKeywords *SshKeywords) (ssh.HostKeyCallback, HostK
 	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
-func createClientConfig(connCtx context.Context, sshKeywords *SshKeywords) (*ssh.ClientConfig, error) {
+func createClientConfig(connCtx context.Context, sshKeywords *SshKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
 	remoteName := sshKeywords.User + "@" + xknownhosts.Normalize(sshKeywords.HostName+":"+sshKeywords.Port)
 
 	var authSockSigners []ssh.Signer
@@ -509,14 +525,16 @@ func createClientConfig(connCtx context.Context, sshKeywords *SshKeywords) (*ssh
 	conn, err := net.Dial("unix", sshKeywords.IdentityAgent)
 	if err != nil {
 		log.Printf("Failed to open Identity Agent Socket: %v", err)
+		//warningMsg := fmt.Errorf("failed to open identity agent socket: %v", err)
+		//debugInfo.Warnings = errors.Join(debugInfo.Warnings, warningMsg)
 	} else {
 		agentClient = agent.NewClient(conn)
 		authSockSigners, _ = agentClient.Signers()
 	}
 
-	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, authSockSigners, agentClient))
-	keyboardInteractive := ssh.KeyboardInteractive(createInteractiveKbdInteractiveChallenge(connCtx, remoteName))
-	passwordCallback := ssh.PasswordCallback(createInteractivePasswordCallbackPrompt(connCtx, remoteName))
+	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, authSockSigners, agentClient, debugInfo))
+	keyboardInteractive := ssh.KeyboardInteractive(createInteractiveKbdInteractiveChallenge(connCtx, remoteName, debugInfo))
+	passwordCallback := ssh.PasswordCallback(createInteractivePasswordCallbackPrompt(connCtx, remoteName, debugInfo))
 
 	// exclude gssapi-with-mic and hostbased until implemented
 	authMethodMap := map[string]ssh.AuthMethod{
@@ -582,30 +600,35 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 }
 
 func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client) (*ssh.Client, error) {
+	debugInfo := &ConnectionDebugInfo{
+		CurrentClient: currentClient,
+		NextOpts:      opts,
+	}
 	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
 	if err != nil {
-		return nil, err
+		return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+
 	}
 
 	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
 	if err != nil {
-		return nil, err
+		return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 
 	for _, proxyName := range sshKeywords.ProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
 		if err != nil {
-			return nil, err
+			return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
-		// maybe make this recursive and delete the rest
 		currentClient, err = ConnectToClient(connCtx, proxyOpts, currentClient)
 		if err != nil {
+			// do not add a context on a recursive call
 			return nil, err
 		}
 	}
-	clientConfig, err := createClientConfig(connCtx, sshKeywords)
+	clientConfig, err := createClientConfig(connCtx, sshKeywords, debugInfo)
 	if err != nil {
-		return nil, err
+		return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
 	return connectInternal(connCtx, networkAddr, clientConfig, currentClient)
