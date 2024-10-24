@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/vdom"
 )
 
 // command "authenticate", wshserver.AuthenticateCommand
@@ -85,9 +86,27 @@ func CreateBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateBlockData, o
 	return resp, err
 }
 
+// command "createsubblock", wshserver.CreateSubBlockCommand
+func CreateSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateSubBlockData, opts *wshrpc.RpcOpts) (waveobj.ORef, error) {
+	resp, err := sendRpcRequestCallHelper[waveobj.ORef](w, "createsubblock", data, opts)
+	return resp, err
+}
+
 // command "deleteblock", wshserver.DeleteBlockCommand
 func DeleteBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "deleteblock", data, opts)
+	return err
+}
+
+// command "deletesubblock", wshserver.DeleteSubBlockCommand
+func DeleteSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "deletesubblock", data, opts)
+	return err
+}
+
+// command "dispose", wshserver.DisposeCommand
+func DisposeCommand(w *wshutil.WshRpc, data wshrpc.CommandDisposeData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "dispose", data, opts)
 	return err
 }
 
@@ -260,9 +279,51 @@ func TestCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	return err
 }
 
+// command "vdomasyncinitiation", wshserver.VDomAsyncInitiationCommand
+func VDomAsyncInitiationCommand(w *wshutil.WshRpc, data vdom.VDomAsyncInitiationRequest, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "vdomasyncinitiation", data, opts)
+	return err
+}
+
+// command "vdomcreatecontext", wshserver.VDomCreateContextCommand
+func VDomCreateContextCommand(w *wshutil.WshRpc, data vdom.VDomCreateContext, opts *wshrpc.RpcOpts) (*waveobj.ORef, error) {
+	resp, err := sendRpcRequestCallHelper[*waveobj.ORef](w, "vdomcreatecontext", data, opts)
+	return resp, err
+}
+
+// command "vdomrender", wshserver.VDomRenderCommand
+func VDomRenderCommand(w *wshutil.WshRpc, data vdom.VDomFrontendUpdate, opts *wshrpc.RpcOpts) (*vdom.VDomBackendUpdate, error) {
+	resp, err := sendRpcRequestCallHelper[*vdom.VDomBackendUpdate](w, "vdomrender", data, opts)
+	return resp, err
+}
+
+// command "waitforroute", wshserver.WaitForRouteCommand
+func WaitForRouteCommand(w *wshutil.WshRpc, data wshrpc.CommandWaitForRouteData, opts *wshrpc.RpcOpts) (bool, error) {
+	resp, err := sendRpcRequestCallHelper[bool](w, "waitforroute", data, opts)
+	return resp, err
+}
+
 // command "webselector", wshserver.WebSelectorCommand
 func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "webselector", data, opts)
+	return resp, err
+}
+
+// command "wsldefaultdistro", wshserver.WslDefaultDistroCommand
+func WslDefaultDistroCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "wsldefaultdistro", nil, opts)
+	return resp, err
+}
+
+// command "wsllist", wshserver.WslListCommand
+func WslListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
+	resp, err := sendRpcRequestCallHelper[[]string](w, "wsllist", nil, opts)
+	return resp, err
+}
+
+// command "wslstatus", wshserver.WslStatusCommand
+func WslStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnStatus, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.ConnStatus](w, "wslstatus", nil, opts)
 	return resp, err
 }
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
@@ -67,9 +68,13 @@ func makeOscPrefix(oscNum string) []byte {
 	return output
 }
 
-func EncodeWaveOSCBytes(oscNum string, barr []byte) []byte {
+func EncodeWaveOSCBytes(oscNum string, barr []byte) ([]byte, error) {
 	if len(oscNum) != 5 {
-		panic("oscNum must be 5 characters")
+		return nil, fmt.Errorf("oscNum must be 5 characters")
+	}
+	const maxSize = 64 * 1024 * 1024 // 64 MB
+	if len(barr) > maxSize {
+		return nil, fmt.Errorf("input data too large")
 	}
 	hasControlChars := false
 	for _, b := range barr {
@@ -85,7 +90,7 @@ func EncodeWaveOSCBytes(oscNum string, barr []byte) []byte {
 		copyOscPrefix(output, oscNum)
 		copy(output[oscPrefixLen(oscNum):], barr)
 		output[len(output)-1] = BEL
-		return output
+		return output, nil
 	}
 
 	var buf bytes.Buffer
@@ -101,7 +106,7 @@ func EncodeWaveOSCBytes(oscNum string, barr []byte) []byte {
 		}
 	}
 	buf.WriteByte(BEL)
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
 func EncodeWaveOSCMessageEx(oscNum string, msg *RpcMessage) ([]byte, error) {
@@ -112,7 +117,7 @@ func EncodeWaveOSCMessageEx(oscNum string, msg *RpcMessage) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling message to json: %w", err)
 	}
-	return EncodeWaveOSCBytes(oscNum, barr), nil
+	return EncodeWaveOSCBytes(oscNum, barr)
 }
 
 var termModeLock = sync.Mutex{}
@@ -194,11 +199,30 @@ func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	go func() {
 		for msg := range outputCh {
-			barr := EncodeWaveOSCBytes(WaveOSC, msg)
+			barr, err := EncodeWaveOSCBytes(WaveOSC, msg)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error encoding OSC message: %v\n", err)
+				continue
+			}
 			os.Stdout.Write(barr)
+			os.Stdout.Write([]byte{'\n'})
 		}
 	}()
 	return rpcClient, ptyBuf
+}
+
+func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl) (*WshRpc, chan []byte) {
+	messageCh := make(chan []byte, DefaultInputChSize)
+	outputCh := make(chan []byte, DefaultOutputChSize)
+	rawCh := make(chan []byte, DefaultOutputChSize)
+	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
+	go packetparser.Parse(input, messageCh, rawCh)
+	go func() {
+		for msg := range outputCh {
+			packetparser.WritePacket(output, msg)
+		}
+	}()
+	return rpcClient, rawCh
 }
 
 func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan error, error) {
@@ -221,10 +245,22 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan err
 	return rtn, writeErrCh, nil
 }
 
-func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc, error) {
-	conn, err := net.Dial("unix", sockName)
+func tryTcpSocket(sockName string) (net.Conn, error) {
+	addr, err := net.ResolveTCPAddr("tcp", sockName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Unix domain socket: %w", err)
+		return nil, err
+	}
+	return net.DialTCP("tcp", nil, addr)
+}
+
+func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc, error) {
+	conn, tcpErr := tryTcpSocket(sockName)
+	var unixErr error
+	if tcpErr != nil {
+		conn, unixErr = net.Dial("unix", sockName)
+	}
+	if tcpErr != nil && unixErr != nil {
+		return nil, fmt.Errorf("failed to connect to tcp or unix domain socket: tcp err:%w: unix socket err: %w", tcpErr, unixErr)
 	}
 	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl)
 	go func() {
@@ -355,6 +391,46 @@ func MakeRouteIdFromCtx(rpcCtx *wshrpc.RpcContext) (string, error) {
 	return MakeProcRouteId(procId), nil
 }
 
+type WriteFlusher interface {
+	Write([]byte) (int, error)
+	Flush() error
+}
+
+// blocking, returns if there is an error, or on EOF of input
+func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
+	proxy := MakeRpcMultiProxy()
+	rawCh := make(chan []byte, DefaultInputChSize)
+	go packetparser.Parse(input, proxy.FromRemoteRawCh, rawCh)
+	doneCh := make(chan struct{})
+	var doneOnce sync.Once
+	closeDoneCh := func() {
+		doneOnce.Do(func() {
+			close(doneCh)
+		})
+		proxy.DisposeRoutes()
+	}
+	go func() {
+		proxy.RunUnauthLoop()
+	}()
+	go func() {
+		defer closeDoneCh()
+		for msg := range proxy.ToRemoteCh {
+			err := packetparser.WritePacket(output, msg)
+			if err != nil {
+				log.Printf("[%s] error writing to output: %v\n", logName, err)
+				break
+			}
+		}
+	}()
+	go func() {
+		defer closeDoneCh()
+		for msg := range rawCh {
+			log.Printf("[%s:stdout] %s", logName, msg)
+		}
+	}()
+	<-doneCh
+}
+
 func handleDomainSocketClient(conn net.Conn) {
 	var routeIdContainer atomic.Pointer[string]
 	proxy := MakeRpcProxy()
@@ -391,7 +467,7 @@ func handleDomainSocketClient(conn net.Conn) {
 		return
 	}
 	routeIdContainer.Store(&routeId)
-	DefaultRouter.RegisterRoute(routeId, proxy)
+	DefaultRouter.RegisterRoute(routeId, proxy, true)
 }
 
 // only for use on client
@@ -425,5 +501,6 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("sock claim is missing or invalid")
 	}
+	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	return sockName, nil
 }

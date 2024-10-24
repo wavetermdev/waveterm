@@ -241,6 +241,56 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     return rtn;
 }
 
+const keyMap = {
+    Enter: "\r",
+    Backspace: "\x7f",
+    Tab: "\t",
+    Escape: "\x1b",
+    ArrowUp: "\x1b[A",
+    ArrowDown: "\x1b[B",
+    ArrowRight: "\x1b[C",
+    ArrowLeft: "\x1b[D",
+    Insert: "\x1b[2~",
+    Delete: "\x1b[3~",
+    Home: "\x1b[1~",
+    End: "\x1b[4~",
+    PageUp: "\x1b[5~",
+    PageDown: "\x1b[6~",
+};
+
+function keyboardEventToASCII(event: WaveKeyboardEvent): string {
+    // check modifiers
+    // if no modifiers are set, just send the key
+    if (!event.alt && !event.control && !event.meta) {
+        if (event.key == null || event.key == "") {
+            return "";
+        }
+        if (keyMap[event.key] != null) {
+            return keyMap[event.key];
+        }
+        if (event.key.length == 1) {
+            return event.key;
+        } else {
+            console.log("not sending keyboard event", event.key, event);
+        }
+    }
+    // if meta or alt is set, there is no ASCII representation
+    if (event.meta || event.alt) {
+        return "";
+    }
+    // if ctrl is set, if it is a letter, subtract 64 from the uppercase value to get the ASCII value
+    if (event.control) {
+        if (
+            (event.key.length === 1 && event.key >= "A" && event.key <= "Z") ||
+            (event.key >= "a" && event.key <= "z")
+        ) {
+            const key = event.key.toUpperCase();
+            return String.fromCharCode(key.charCodeAt(0) - 64);
+        }
+    }
+    return "";
+}
+
 export {
     adaptFromElectronKeyEvent,
     adaptFromReactOrNativeKeyEvent,
@@ -248,6 +298,7 @@ export {
     getKeyUtilPlatform,
     isCharacterKeyEvent,
     isInputEvent,
+    keyboardEventToASCII,
     keydownWrapper,
     parseKeyDescription,
     setKeyUtilPlatform,

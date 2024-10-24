@@ -5,7 +5,6 @@
 package wps
 
 import (
-	"log"
 	"strings"
 	"sync"
 
@@ -76,7 +75,7 @@ func (b *BrokerType) GetClient() Client {
 
 // if already subscribed, this will *resubscribe* with the new subscription (remove the old one, and replace with this one)
 func (b *BrokerType) Subscribe(subRouteId string, sub SubscriptionRequest) {
-	log.Printf("[wps] sub %s %s\n", subRouteId, sub.Event)
+	// log.Printf("[wps] sub %s %s\n", subRouteId, sub.Event)
 	if sub.Event == "" {
 		return
 	}
@@ -138,7 +137,7 @@ func addStrToScopeMap(scopeMap map[string][]string, scope string, routeId string
 }
 
 func (b *BrokerType) Unsubscribe(subRouteId string, eventName string) {
-	log.Printf("[wps] unsub %s %s\n", subRouteId, eventName)
+	// log.Printf("[wps] unsub %s %s\n", subRouteId, eventName)
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 	b.unsubscribe_nolock(subRouteId, eventName)
