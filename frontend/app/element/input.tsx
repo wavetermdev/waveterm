@@ -53,7 +53,6 @@ const InputRightElement = ({ children, className }: InputRightElementProps) => {
 };
 
 interface InputProps {
-    label?: string;
     value?: string;
     className?: string;
     onChange?: (value: string) => void;
@@ -75,7 +74,6 @@ const Input = memo(
     forwardRef<HTMLInputElement, InputProps>(
         (
             {
-                label,
                 value,
                 className,
                 onChange,
@@ -125,34 +123,21 @@ const Input = memo(
             const inputValue = value ?? internalValue;
 
             return (
-                <div
-                    ref={ref}
-                    className={clsx("input-wrapper", className, {
+                <input
+                    className={clsx("input", className, {
                         disabled: disabled,
                     })}
-                >
-                    <div className="input-wrapper-inner">
-                        {label && (
-                            <label className={clsx("label")} htmlFor={label}>
-                                {label}
-                            </label>
-                        )}
-
-                        <input
-                            className={clsx("input")}
-                            ref={inputRef}
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyDown={onKeyDown}
-                            onFocus={handleFocus}
-                            onBlur={handleBlur}
-                            placeholder={placeholder}
-                            maxLength={maxLength}
-                            autoFocus={autoFocus}
-                            disabled={disabled}
-                        />
-                    </div>
-                </div>
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    onKeyDown={onKeyDown}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                    placeholder={placeholder}
+                    maxLength={maxLength}
+                    autoFocus={autoFocus}
+                    disabled={disabled}
+                />
             );
         }
     )

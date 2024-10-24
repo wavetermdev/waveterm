@@ -10,6 +10,7 @@ import {
     ExpandableMenuItemLeftElement,
     ExpandableMenuItemRightElement,
 } from "@/element/expandablemenu";
+import { Input } from "@/element/input";
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
@@ -82,6 +83,7 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
 const ColorAndIconSelector = memo(() => {
     return (
         <div className="color-icon-selector">
+            <Input />
             <ColorSelector
                 colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
                 onSelect={(color) => console.log("Selected color:", color)}
@@ -176,7 +178,7 @@ const WorkspaceSwitcher = () => {
             </PopoverButton>
             <PopoverContent className="workspace-switcher-content">
                 <div className="title">Switch workspace</div>
-                <ExpandableMenu>{renderExpandableMenu(dummyData)}</ExpandableMenu>
+                <ExpandableMenu noIndent>{renderExpandableMenu(dummyData)}</ExpandableMenu>
             </PopoverContent>
         </Popover>
     );
