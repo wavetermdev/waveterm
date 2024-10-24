@@ -188,7 +188,7 @@ export class VDomModel {
         return blockData?.meta?.["vdom:route"];
     }
 
-    globalKeydownHandler(e: WaveKeyboardEvent): boolean {
+    keyDownHandler(e: WaveKeyboardEvent): boolean {
         if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
             dlog("closeonctrlc");
             this.shouldDispose = true;

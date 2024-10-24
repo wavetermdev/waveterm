@@ -199,7 +199,7 @@ class TermViewModel {
         const blockData = globalStore.get(this.blockAtom);
         if (blockData.meta?.["term:mode"] == "vdom") {
             const vdomModel = this.getVDomModel();
-            return vdomModel?.globalKeydownHandler(waveEvent);
+            return vdomModel?.keyDownHandler(waveEvent);
         }
         return false;
     }
