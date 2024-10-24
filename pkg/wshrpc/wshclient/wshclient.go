@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
+	"github.com/wavetermdev/waveterm/pkg/workspace"
 )
 
 // command "authenticate", wshserver.AuthenticateCommand
@@ -282,6 +283,12 @@ func VDomRenderCommand(w *wshutil.WshRpc, data vdom.VDomFrontendUpdate, opts *ws
 // command "webselector", wshserver.WebSelectorCommand
 func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "webselector", data, opts)
+	return resp, err
+}
+
+// command "workspacelist", wshserver.WorkspaceListCommand
+func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (workspace.WorkspaceList, error) {
+	resp, err := sendRpcRequestCallHelper[workspace.WorkspaceList](w, "workspacelist", nil, opts)
 	return resp, err
 }
 

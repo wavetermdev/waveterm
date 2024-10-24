@@ -175,3 +175,9 @@ class WindowServiceType {
 
 export const WindowService = new WindowServiceType();
 
+// workspaceservice.WorkspaceService (workspace)
+class WorkspaceServiceType {
+}
+
+export const WorkspaceService = new WorkspaceServiceType();
+

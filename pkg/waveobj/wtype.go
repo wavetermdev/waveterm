@@ -143,11 +143,14 @@ func (*Window) GetOType() string {
 }
 
 type Workspace struct {
-	OID     string      `json:"oid"`
-	Version int         `json:"version"`
-	Name    string      `json:"name"`
-	TabIds  []string    `json:"tabids"`
-	Meta    MetaMapType `json:"meta"`
+	OID        string            `json:"oid"`
+	Version    int               `json:"version"`
+	Name       string            `json:"name"`
+	TabIds     []string          `json:"tabids"`
+	Meta       MetaMapType       `json:"meta"`
+	Icon       string            `json:"icon"`
+	Color      string            `json:"color"`
+	ActiveTabs map[string]string `json:"activetabs"`
 }
 
 func (*Workspace) GetOType() string {

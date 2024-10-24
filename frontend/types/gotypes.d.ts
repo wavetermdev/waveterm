@@ -873,6 +873,14 @@ declare global {
     type Workspace = WaveObj & {
         name: string;
         tabids: string[];
+        icon: string;
+        color: string;
+    };
+
+    // workspace.WorkspaceListEntry
+    type WorkspaceListEntry = {
+        workspaceid: string;
+        windowid: string;
     };
 
     // wshrpc.WshServerCommandMeta

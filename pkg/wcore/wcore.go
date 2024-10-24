@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -64,7 +65,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 		}
 	}
 	// now delete tab (also deletes layout)
-	err = wstore.DeleteTab(ctx, workspaceId, tabId)
+	err = workspace.DeleteTab(ctx, workspaceId, tabId)
 	if err != nil {
 		return fmt.Errorf("error deleting tab: %w", err)
 	}
@@ -85,7 +86,7 @@ func CreateTab(ctx context.Context, windowId string, tabName string, activateTab
 		}
 		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
 	}
-	tab, err := wstore.CreateTab(ctx, windowData.WorkspaceId, tabName)
+	tab, err := workspace.CreateTab(ctx, windowData.WorkspaceId, tabName)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}

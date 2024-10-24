@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
@@ -67,6 +68,8 @@ const (
 	Command_ConnConnect      = "connconnect"
 	Command_ConnDisconnect   = "conndisconnect"
 	Command_ConnList         = "connlist"
+
+	Command_WorkspaceList = "workspacelist"
 
 	Command_WebSelector = "webselector"
 	Command_Notify      = "notify"
@@ -134,6 +137,8 @@ type WshRpcInterface interface {
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+
+	WorkspaceListCommand(ctx context.Context) (workspace.WorkspaceList, error)
 
 	// terminal
 	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) error

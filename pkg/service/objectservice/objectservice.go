@@ -13,6 +13,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -109,7 +110,7 @@ func (svc *ObjectService) UpdateWorkspaceTabIds(uiContext waveobj.UIContext, wor
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wstore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
+	err := workspace.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
 	if err != nil {
 		return nil, fmt.Errorf("error updating workspace tab ids: %w", err)
 	}

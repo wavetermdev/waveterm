@@ -946,3 +946,12 @@ func GetLineColFromOffset(barr []byte, offset int) (int, int) {
 	}
 	return line, col
 }
+
+func FindStringInSlice(slice []string, val string) int {
+	for idx, v := range slice {
+		if v == val {
+			return idx
+		}
+	}
+	return -1
+}

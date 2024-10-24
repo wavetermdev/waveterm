@@ -165,6 +165,42 @@ func DBSelectORefs(ctx context.Context, orefs []waveobj.ORef) ([]waveobj.WaveObj
 	})
 }
 
+func DBGetAllOIDsByType(ctx context.Context, otype string) ([]string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]string, error) {
+		rtn := make([]string, 0)
+		table := tableNameFromOType(otype)
+		log.Printf("DBGetAllOIDsByType table: %s\n", table)
+		query := fmt.Sprintf("SELECT oid FROM %s", table)
+		var rows []idDataType
+		tx.Select(&rows, query)
+		for _, row := range rows {
+			rtn = append(rtn, row.OId)
+		}
+		return rtn, nil
+	})
+}
+
+func DBGetAllObjsByType[T waveobj.WaveObj](ctx context.Context, otype string) ([]T, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]T, error) {
+		rtn := make([]T, 0)
+		table := tableNameFromOType(otype)
+		log.Printf("DBGetAllObjsByType table: %s\n", table)
+		query := fmt.Sprintf("SELECT oid, version, data FROM %s", table)
+		var rows []idDataType
+		tx.Select(&rows, query)
+		for _, row := range rows {
+			waveObj, err := waveobj.FromJson(row.Data)
+			if err != nil {
+				return nil, err
+			}
+			waveobj.SetVersion(waveObj, row.Version)
+
+			rtn = append(rtn, waveObj.(T))
+		}
+		return rtn, nil
+	})
+}
+
 func DBResolveEasyOID(ctx context.Context, oid string) (*waveobj.ORef, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.ORef, error) {
 		for _, rtype := range waveobj.AllWaveObjTypes() {

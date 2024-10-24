@@ -237,6 +237,11 @@ class RpcApiType {
         return client.wshRpcCall("webselector", data, opts);
     }
 
+    // command "workspacelist" [call]
+    WorkspaceListCommand(client: WshClient, opts?: RpcOpts): Promise<WorkspaceListEntry[]> {
+        return client.wshRpcCall("workspacelist", null, opts);
+    }
+
 }
 
 export const RpcApi = new RpcApiType();
