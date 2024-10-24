@@ -29,6 +29,18 @@ Also available as a Homebrew Cask for macOS:
 brew install --cask wave
 ```
 
+Also available as a [Snap](https://snapcraft.io/waveterm) on Linux:
+
+```bash
+sudo snap install waveterm --classic
+```
+
+Also available via the Windows Package Manager:
+
+```Powershell
+winget install CommandLine.Wave
+```
+
 ### Minimum requirements
 
 Wave Terminal and WSH run on the following platforms:
