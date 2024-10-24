@@ -236,6 +236,7 @@ tasks:
             UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
             CHANNEL: '{{if contains .UP_VERSION "beta"}}beta{{else}}beta,stable{{end}}'
         cmd: |
+            echo "{{.CHANNEL}}"
             snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_arm64.snap
             snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_amd64.snap
 
