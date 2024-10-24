@@ -26,7 +26,6 @@ import {
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
-import * as services from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -60,17 +59,17 @@ function handleHeaderContextMenu(
                 onMagnifyToggle();
             },
         },
-        {
-            label: "Move to New Window",
-            click: () => {
-                const currentTabId = globalStore.get(atoms.staticTabId);
-                try {
-                    services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
-                } catch (e) {
-                    console.error("error moving block to new window", e);
-                }
-            },
-        },
+        // {
+        //     label: "Move to New Window",
+        //     click: () => {
+        //         const currentTabId = globalStore.get(atoms.staticTabId);
+        //         try {
+        //             services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
+        //         } catch (e) {
+        //             console.error("error moving block to new window", e);
+        //         }
+        //     },
+        // },
         { type: "separator" },
         {
             label: "Copy BlockId",
