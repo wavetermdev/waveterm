@@ -19,6 +19,7 @@ import {
 import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank } from "@/util/util";
+import { Chat, ChatModel, makeChatModel } from "@/view/chat/chat";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
 import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
@@ -59,6 +60,12 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
     }
     if (blockView === "help") {
         return makeHelpViewModel(blockId, nodeModel);
+    }
+    if (blockView === "chat") {
+        return makeChatModel(blockId);
+    }
+    if (blockView === "chat") {
+        return makeChatModel(blockId);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -105,6 +112,9 @@ function getViewElem(
     }
     if (blockView == "tips") {
         return <QuickTipsView key={blockId} model={viewModel as QuickTipsViewModel} />;
+    }
+    if (blockView == "chat") {
+        return <Chat key={blockId} model={viewModel as ChatModel} />;
     }
     if (blockView == "vdom") {
         return <VDomView key={blockId} blockId={blockId} model={viewModel as VDomModel} />;

@@ -1,0 +1,24 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.multiline-input {
+    flex-grow: 1;
+    box-shadow: none;
+    box-sizing: border-box;
+    background-color: transparent;
+    resize: none;
+    overflow-y: auto;
+    line-height: 1.5;
+    color: var(--form-element-text-color);
+    vertical-align: top;
+    height: auto;
+    padding: 0;
+    border: 1px solid var(--form-element-border-color);
+    padding: 5px;
+    border-radius: 4px;
+    min-height: 26px;
+
+    &:focus-visible {
+        outline: none;
+    }
+}

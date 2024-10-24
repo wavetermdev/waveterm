@@ -1,0 +1,40 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.emoji-palette-content {
+    padding: 10px;
+    max-height: 350px;
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(35px, 1fr));
+    gap: 10px;
+    padding: 10px 0;
+    width: 100%;
+    height: 300px;
+    overflow-y: auto;
+}
+
+.emoji-button {
+    font-size: 24px;
+    padding: 5px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 5px;
+    }
+}
+
+.no-emojis {
+    font-size: 14px;
+    color: #888;
+    text-align: center;
+}

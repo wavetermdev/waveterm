@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.input {
+.input-wrapper {
     display: flex;
     align-items: center;
     border-radius: 6px;
@@ -13,12 +13,9 @@
     border: 2px solid var(--form-element-border-color);
     background: var(--form-element-bg-color);
 
+    /* Focus style for individual Input */
     &:hover {
         cursor: text;
-    }
-
-    &.focused {
-        border-color: var(--form-element-primary-color);
     }
 
     &.disabled {
@@ -29,58 +26,123 @@
         border-color: var(--form-element-error-color);
     }
 
-    &-inner {
+    .input-inner {
         display: flex;
         flex-direction: column;
         position: relative;
         flex-grow: 1;
         --inner-padding: 5px 0 5px 16px;
 
-        &-label {
+        .input-inner-label {
             padding: var(--inner-padding);
-            margin-bottom: -10px;
             font-size: 12.5px;
             transition: all 0.3s;
             color: var(--form-element-label-color);
             line-height: 10px;
             user-select: none;
-
-            &.float {
-                font-size: 10px;
-                top: 5px;
-            }
-
-            &.offset-left {
-                left: 0;
-            }
         }
 
-        &-input {
+        .input-inner-input {
             width: 100%;
             height: 100%;
             border: none;
-            padding: var(--inner-padding);
             font-size: 12px;
+            padding: 0;
             outline: none;
             background-color: transparent;
             color: var(--form-element-text-color);
-            line-height: 20px;
+            line-height: 24;
+            padding: 5px 7px;
 
-            &.offset-left {
-                padding: 5px 16px 5px 0;
-            }
-
-            &:placeholder-shown {
-                user-select: none;
+            &:focus {
+                border-color: var(--form-element-primary-color);
             }
         }
     }
+}
 
-    &.no-label {
-        height: 34px;
+/* Styles when an InputGroup is present */
+.input-group {
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    position: relative;
+    width: 100%;
+    border: 2px solid var(--form-element-border-color);
+    background: var(--form-element-bg-color);
 
-        input {
-            height: 32px;
+    /* Focus style for InputGroup */
+    &.focused {
+        border-color: var(--form-element-primary-color);
+    }
+
+    /* Error state for InputGroup */
+    &.error {
+        border-color: var(--form-element-error-color);
+    }
+
+    /* Disabled state for InputGroup */
+    &.disabled {
+        opacity: 0.75;
+    }
+
+    &:hover {
+        cursor: text;
+    }
+
+    .input-left-element,
+    .input-right-element {
+        padding: 0 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Ensure the input elements inside the group behave correctly */
+    .input-wrapper {
+        border: none;
+        flex-grow: 1;
+        margin: 0;
+        box-shadow: none;
+
+        &.focused {
+            border-color: transparent;
+        }
+
+        &.error {
+            border-color: transparent;
+        }
+
+        .input-wrapper-inner {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            flex-grow: 1;
+
+            .label {
+                padding: var(--inner-padding);
+                font-size: 12.5px;
+                transition: all 0.3s;
+                color: var(--form-element-label-color);
+                line-height: 10px;
+                user-select: none;
+            }
+
+            .input {
+                width: 100%;
+                height: 100%;
+                border: none;
+                font-size: 12px;
+                outline: none;
+                background-color: transparent;
+                color: var(--form-element-text-color);
+                line-height: 24;
+                padding: 0 7px;
+            }
+
+            .input {
+                background-color: transparent;
+            }
         }
     }
 }

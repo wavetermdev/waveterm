@@ -139,7 +139,6 @@ const MenuComponent = memo(
                 >
                     {children}
                 </div>
-
                 {isOpen && (
                     <div
                         className={clsx("menu", className)}

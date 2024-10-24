@@ -243,6 +243,7 @@ declare global {
 
     type MenuItem = {
         label: string;
+        icon?: string | React.ReactNode;
         subItems?: MenuItem[];
         onClick?: (e: React.MouseEvent<any>) => void;
     };
