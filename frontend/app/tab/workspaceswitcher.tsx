@@ -151,13 +151,20 @@ const workspaceData: WorkspaceDataType[] = [
         color: "#e91e63",
         isActive: true,
     },
+    {
+        id: "596e76eb-d87d-425e-9f6e-1519069ee448",
+        icon: "paw-simple",
+        label: "Bear Space",
+        color: "#ffc107",
+        isActive: false,
+    },
 ];
 
 const WorkspaceSwitcher = () => {
     const [menuData, setMenuData] = useState<WorkspaceDataType[]>(workspaceData);
 
     const handleTitleChange = (id: string, newTitle: string) => {
-        // This is should be just a to service
+        // This is should be call a to service
         setMenuData((prevMenuData) =>
             prevMenuData.map((item) => {
                 if (item.id === id) {
@@ -172,7 +179,7 @@ const WorkspaceSwitcher = () => {
     };
 
     const handleColorChange = (id: string, newColor: string) => {
-        // This is should be just a to service
+        // This is should be call a to service
         setMenuData((prevMenuData) =>
             prevMenuData.map((item) => {
                 if (item.id === id) {
@@ -187,7 +194,7 @@ const WorkspaceSwitcher = () => {
     };
 
     const handleIconChange = (id: string, newIcon: string) => {
-        // This is should be just a to service
+        // This is should be call a to service
         setMenuData((prevMenuData) =>
             prevMenuData.map((item) => {
                 if (item.id === id) {
@@ -197,6 +204,24 @@ const WorkspaceSwitcher = () => {
                     };
                 }
                 return item;
+            })
+        );
+    };
+
+    const setActiveWorkspace = (id: string) => {
+        // This should be a call to service
+        setMenuData((prevMenuData) =>
+            prevMenuData.map((item) => {
+                if (item.id === id) {
+                    return {
+                        ...item,
+                        isActive: true,
+                    };
+                }
+                return {
+                    ...item,
+                    isActive: false,
+                };
             })
         );
     };
@@ -250,7 +275,7 @@ const WorkspaceSwitcher = () => {
             } else if (item.type === "group") {
                 return (
                     <ExpandableMenuItemGroup key={item.id} defaultExpanded={item.defaultExpanded}>
-                        <ExpandableMenuItemGroupTitle>
+                        <ExpandableMenuItemGroupTitle onClick={() => setActiveWorkspace(item.id)}>
                             {item.title.leftElement && (
                                 <ExpandableMenuItemLeftElement>{item.title.leftElement}</ExpandableMenuItemLeftElement>
                             )}

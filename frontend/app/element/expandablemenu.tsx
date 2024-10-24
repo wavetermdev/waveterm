@@ -92,7 +92,12 @@ const ExpandableMenuItemGroup = ({ children, className, defaultExpanded = false 
         if (child.type === ExpandableMenuItemGroupTitle) {
             return cloneElement(child as any, {
                 ...child.props,
-                onClick: toggleOpen,
+                onClick: () => {
+                    if (child.props.onClick) {
+                        child.props.onClick();
+                    }
+                    toggleOpen();
+                },
             });
         } else {
             return <div className={clsx("expandable-menu-item-group-content", { expanded: isOpen })}>{child}</div>;
