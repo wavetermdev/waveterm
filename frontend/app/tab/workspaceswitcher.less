@@ -62,60 +62,72 @@
         }
     }
 
-    .color-selector {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(15px, 15px)); // Ensures each color circle has a fixed 14px size
-        grid-gap: 19px; // Space between items
-        justify-content: center;
-        align-items: center;
-        margin-top: 5px;
+    .color-icon-selector {
+        .input {
+            margin-bottom: 10px;
+        }
 
-        .color-circle {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            cursor: pointer;
-            position: relative;
+        .color-selector {
+            display: grid;
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(15px, 15px)
+            ); // Ensures each color circle has a fixed 14px size
+            grid-gap: 19px; // Space between items
+            justify-content: center;
+            align-items: center;
+            margin-top: 5px;
 
-            // Border offset outward
-            &:before {
-                content: "";
-                position: absolute;
-                top: -3px;
-                left: -3px;
-                right: -3px;
-                bottom: -3px;
+            .color-circle {
+                width: 15px;
+                height: 15px;
                 border-radius: 50%;
-                border: 1px solid transparent;
-            }
+                cursor: pointer;
+                position: relative;
 
-            &.selected:before {
-                border-color: white; // Highlight for the selected circle
+                // Border offset outward
+                &:before {
+                    content: "";
+                    position: absolute;
+                    top: -3px;
+                    left: -3px;
+                    right: -3px;
+                    bottom: -3px;
+                    border-radius: 50%;
+                    border: 1px solid transparent;
+                }
+
+                &.selected:before {
+                    border-color: white; // Highlight for the selected circle
+                }
             }
         }
-    }
 
-    .icon-selector {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(16px, 16px)); // Ensures each color circle has a fixed 14px size
-        grid-column-gap: 18px; // Space between items
-        grid-row-gap: 13px; // Space between items
-        justify-content: center;
-        align-items: center;
-        margin-top: 15px;
+        .icon-selector {
+            display: grid;
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(16px, 16px)
+            ); // Ensures each color circle has a fixed 14px size
+            grid-column-gap: 18px; // Space between items
+            grid-row-gap: 13px; // Space between items
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
 
-        .icon-item {
-            font-size: 15px;
-            color: #666;
-            cursor: pointer;
-            transition: color 0.3s ease;
+            .icon-item {
+                font-size: 15px;
+                color: #666;
+                cursor: pointer;
+                transition: color 0.3s ease;
 
-            &.selected {
-                color: white;
-            }
+                &.selected {
+                    color: white;
+                }
 
-            &:hover {
-                color: #fff;
+                &:hover {
+                    color: #fff;
+                }
             }
         }
     }

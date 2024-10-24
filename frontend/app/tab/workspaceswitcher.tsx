@@ -83,7 +83,7 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
 const ColorAndIconSelector = memo(() => {
     return (
         <div className="color-icon-selector">
-            <Input />
+            <Input className="vertical-padding-3" />
             <ColorSelector
                 colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
                 onSelect={(color) => console.log("Selected color:", color)}
