@@ -168,7 +168,11 @@ class TermViewModel {
                 const blockData = get(this.blockAtom);
                 const fsSettingsAtom = getSettingsKeyAtom("term:fontsize");
                 const settingsFontSize = get(fsSettingsAtom);
-                return blockData?.meta?.["term:fontsize"] ?? settingsFontSize ?? 12;
+                const rtnFontSize = blockData?.meta?.["term:fontsize"] ?? settingsFontSize ?? 12;
+                if (typeof rtnFontSize != "number" || isNaN(rtnFontSize) || rtnFontSize < 4 || rtnFontSize > 64) {
+                    return 12;
+                }
+                return rtnFontSize;
             });
         });
         this.termThemeNameAtom = useBlockAtom(blockId, "termthemeatom", () => {
@@ -209,6 +213,9 @@ class TermViewModel {
         const termThemeKeys = Object.keys(termThemes);
         const curFontSize = globalStore.get(this.fontSizeAtom);
         const curThemeName = globalStore.get(this.termThemeNameAtom);
+        const defaultFontSize = globalStore.get(getSettingsKeyAtom("term:fontsize")) ?? 12;
+        const blockData = globalStore.get(this.blockAtom);
+        const overrideFontSize = blockData?.meta?.["term:fontsize"];
 
         termThemeKeys.sort((a, b) => {
             return termThemes[a]["display:order"] - termThemes[b]["display:order"];
@@ -222,18 +229,31 @@ class TermViewModel {
                 click: () => this.setTerminalTheme(themeName),
             };
         });
-        const fontSizeSubMenu: ContextMenuItem[] = [8, 9, 10, 11, 12, 13, 14, 15, 16].map((fontSize: number) => {
-            return {
-                label: fontSize.toString() + "px",
-                type: "checkbox",
-                checked: curFontSize == fontSize,
-                click: () => {
-                    RpcApi.SetMetaCommand(WindowRpcClient, {
-                        oref: WOS.makeORef("block", this.blockId),
-                        meta: { "term:fontsize": fontSize },
-                    });
-                },
-            };
+        const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
+            (fontSize: number) => {
+                return {
+                    label: fontSize.toString() + "px",
+                    type: "checkbox",
+                    checked: overrideFontSize == fontSize,
+                    click: () => {
+                        RpcApi.SetMetaCommand(WindowRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:fontsize": fontSize },
+                        });
+                    },
+                };
+            }
+        );
+        fontSizeSubMenu.unshift({
+            label: "Default (" + defaultFontSize + "px)",
+            type: "checkbox",
+            checked: overrideFontSize == null,
+            click: () => {
+                RpcApi.SetMetaCommand(WindowRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:fontsize": null },
+                });
+            },
         });
         fullMenu.push({
             label: "Themes",
