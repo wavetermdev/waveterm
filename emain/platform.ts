@@ -46,7 +46,7 @@ const WaveHomeVarName = "WAVETERM_HOME";
 function getWaveHomeDir(): string {
     let home = process.env[WaveHomeVarName];
     if (!home) {
-        const homeDir = process.env.HOME;
+        const homeDir = app.getPath("home");
         if (homeDir) {
             home = path.join(homeDir, `.${waveDirName}`);
         }
