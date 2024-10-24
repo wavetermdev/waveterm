@@ -345,7 +345,6 @@ declare global {
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
         "term:mode"?: string;
-        "term:vdomroute"?: string;
         "term:theme"?: string;
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];

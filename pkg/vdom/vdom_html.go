@@ -74,9 +74,9 @@ func finalizeStack(stack []*VDomElem) *VDomElem {
 }
 
 func attrVal(attr htmltoken.Attribute) (any, error) {
-	if !attr.IsJson {
-		return attr.Val, nil
-	}
+	// if !attr.IsJson {
+	// 	return attr.Val, nil
+	// }
 	var val any
 	err := json.Unmarshal([]byte(attr.Val), &val)
 	if err != nil {
@@ -134,7 +134,7 @@ func tokenToElem(token htmltoken.Token, params map[string]any) *VDomElem {
 		if attr.Key == "" || attr.Val == "" {
 			continue
 		}
-		propVal := attrToProp(attr.Val, attr.IsJson, params)
+		propVal := attrToProp(attr.Val, false, params)
 		elem.Props[attr.Key] = propVal
 	}
 	return elem
