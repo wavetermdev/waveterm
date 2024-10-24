@@ -252,11 +252,13 @@ type WinSize struct {
 
 type Block struct {
 	OID         string         `json:"oid"`
+	ParentORef  string         `json:"parentoref,omitempty"`
 	Version     int            `json:"version"`
 	BlockDef    *BlockDef      `json:"blockdef"`
 	RuntimeOpts *RuntimeOpts   `json:"runtimeopts,omitempty"`
 	Stickers    []*StickerType `json:"stickers,omitempty"`
 	Meta        MetaMapType    `json:"meta"`
+	SubBlockIds []string       `json:"subblockids,omitempty"`
 }
 
 func (*Block) GetOType() string {

@@ -13,7 +13,7 @@ import * as React from "react";
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms } from "@/store/global";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import "./sysinfo.less";
@@ -175,7 +175,7 @@ class SysinfoViewModel {
         this.incrementCount = jotai.atom(null, async (get, set) => {
             const meta = get(this.blockAtom).meta;
             const count = meta.count ?? 0;
-            await RpcApi.SetMetaCommand(WindowRpcClient, {
+            await RpcApi.SetMetaCommand(TabRpcClient, {
                 oref: WOS.makeORef("block", this.blockId),
                 meta: { count: count + 1 },
             });
@@ -203,7 +203,7 @@ class SysinfoViewModel {
         try {
             const numPoints = globalStore.get(this.numPoints);
             const connName = globalStore.get(this.connection);
-            const initialData = await RpcApi.EventReadHistoryCommand(WindowRpcClient, {
+            const initialData = await RpcApi.EventReadHistoryCommand(TabRpcClient, {
                 event: "sysinfo",
                 scope: connName,
                 maxitems: numPoints,
@@ -245,7 +245,7 @@ class SysinfoViewModel {
                     type: "radio",
                     checked: currentlySelected == plotType,
                     click: async () => {
-                        await RpcApi.SetMetaCommand(WindowRpcClient, {
+                        await RpcApi.SetMetaCommand(TabRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
                             meta: { "graph:metrics": dataTypes, "sysinfo:type": plotType },
                         });

@@ -67,9 +67,24 @@ class RpcApiType {
         return client.wshRpcCall("createblock", data, opts);
     }
 
+    // command "createsubblock" [call]
+    CreateSubBlockCommand(client: WshClient, data: CommandCreateSubBlockData, opts?: RpcOpts): Promise<ORef> {
+        return client.wshRpcCall("createsubblock", data, opts);
+    }
+
     // command "deleteblock" [call]
     DeleteBlockCommand(client: WshClient, data: CommandDeleteBlockData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("deleteblock", data, opts);
+    }
+
+    // command "deletesubblock" [call]
+    DeleteSubBlockCommand(client: WshClient, data: CommandDeleteBlockData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("deletesubblock", data, opts);
+    }
+
+    // command "dispose" [call]
+    DisposeCommand(client: WshClient, data: CommandDisposeData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("dispose", data, opts);
     }
 
     // command "eventpublish" [call]
@@ -217,9 +232,44 @@ class RpcApiType {
         return client.wshRpcCall("test", data, opts);
     }
 
+    // command "vdomasyncinitiation" [call]
+    VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("vdomasyncinitiation", data, opts);
+    }
+
+    // command "vdomcreatecontext" [call]
+    VDomCreateContextCommand(client: WshClient, data: VDomCreateContext, opts?: RpcOpts): Promise<ORef> {
+        return client.wshRpcCall("vdomcreatecontext", data, opts);
+    }
+
+    // command "vdomrender" [call]
+    VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): Promise<VDomBackendUpdate> {
+        return client.wshRpcCall("vdomrender", data, opts);
+    }
+
+    // command "waitforroute" [call]
+    WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
+        return client.wshRpcCall("waitforroute", data, opts);
+    }
+
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
+    }
+
+    // command "wsldefaultdistro" [call]
+    WslDefaultDistroCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("wsldefaultdistro", null, opts);
+    }
+
+    // command "wsllist" [call]
+    WslListCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
+        return client.wshRpcCall("wsllist", null, opts);
+    }
+
+    // command "wslstatus" [call]
+    WslStatusCommand(client: WshClient, opts?: RpcOpts): Promise<ConnStatus[]> {
+        return client.wshRpcCall("wslstatus", null, opts);
     }
 
 }

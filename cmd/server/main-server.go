@@ -159,11 +159,11 @@ func shutdownActivityUpdate() {
 
 func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
-	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc)
+	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
 	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{})
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh)
+	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
 }
 
 func main() {
@@ -182,7 +182,7 @@ func main() {
 		log.Printf("error validating service map: %v\n", err)
 		return
 	}
-	err = wavebase.EnsureWaveHomeDir()
+	err = wavebase.EnsureWaveDataDir()
 	if err != nil {
 		log.Printf("error ensuring wave home dir: %v\n", err)
 		return
@@ -197,6 +197,13 @@ func main() {
 		log.Printf("error ensuring wave config dir: %v\n", err)
 		return
 	}
+
+	// TODO: rather than ensure this dir exists, we should let the editor recursively create parent dirs on save
+	err = wavebase.EnsureWavePresetsDir()
+	if err != nil {
+		log.Printf("error ensuring wave presets dir: %v\n", err)
+		return
+	}
 	waveLock, err := wavebase.AcquireWaveLock()
 	if err != nil {
 		log.Printf("error acquiring wave lock (another instance of Wave is likely running): %v\n", err)
@@ -209,7 +216,8 @@ func main() {
 		}
 	}()
 	log.Printf("wave version: %s (%s)\n", WaveVersion, BuildTime)
-	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
+	log.Printf("wave data dir: %s\n", wavebase.GetWaveDataDir())
+	log.Printf("wave config dir: %s\n", wavebase.GetWaveConfigDir())
 	err = filestore.InitFilestore()
 	if err != nil {
 		log.Printf("error initializing filestore: %v\n", err)

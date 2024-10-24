@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { createBlock } from "@/store/global";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { stringToBase64 } from "@/util/util";
@@ -101,7 +101,7 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
             console.log("clickHandler", sticker.clickcmd, sticker.clickblockdef);
             if (sticker.clickcmd) {
                 const b64data = stringToBase64(sticker.clickcmd);
-                RpcApi.ControllerInputCommand(WindowRpcClient, { blockid: config.blockId, inputdata64: b64data });
+                RpcApi.ControllerInputCommand(TabRpcClient, { blockid: config.blockId, inputdata64: b64data });
             }
             if (sticker.clickblockdef) {
                 createBlock(sticker.clickblockdef);

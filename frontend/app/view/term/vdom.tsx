@@ -1,8 +1,29 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Markdown } from "@/app/element/markdown";
+import { VDomModel } from "@/app/view/term/vdom-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import debug from "debug";
+import * as jotai from "jotai";
 import * as React from "react";
+
+const TextTag = "#text";
+const FragmentTag = "#fragment";
+const WaveTextTag = "wave:text";
+const WaveNullTag = "wave:null";
+
+const VDomObjType_Ref = "ref";
+const VDomObjType_Binding = "binding";
+const VDomObjType_Func = "func";
+
+const dlog = debug("wave:vdom");
+
+type VDomReactTagType = (props: { elem: VDomElem; model: VDomModel }) => JSX.Element;
+
+const WaveTagMap: Record<string, VDomReactTagType> = {
+    "wave:markdown": WaveMarkdown,
+};
 
 const AllowedTags: { [tagName: string]: boolean } = {
     div: true,
@@ -30,38 +51,38 @@ const AllowedTags: { [tagName: string]: boolean } = {
     form: true,
 };
 
-function convertVDomFunc(fnDecl: VDomFuncType, compId: string, propName: string): (e: any) => void {
+function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
     return (e: any) => {
         if ((propName == "onKeyDown" || propName == "onKeyDownCapture") && fnDecl["#keys"]) {
             let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-            for (let keyDesc of fnDecl["#keys"]) {
+            for (let keyDesc of fnDecl.keys || []) {
                 if (checkKeyPressed(waveEvent, keyDesc)) {
                     e.preventDefault();
                     e.stopPropagation();
-                    callFunc(e, compId, propName);
+                    model.callVDomFunc(fnDecl, e, compId, propName);
                     return;
                 }
             }
             return;
         }
-        if (fnDecl["#preventDefault"]) {
+        if (fnDecl.preventdefault) {
             e.preventDefault();
         }
-        if (fnDecl["#stopPropagation"]) {
+        if (fnDecl.stoppropagation) {
             e.stopPropagation();
         }
-        callFunc(e, compId, propName);
+        model.callVDomFunc(fnDecl, e, compId, propName);
     };
 }
 
-function convertElemToTag(elem: VDomElem): JSX.Element | string {
+function convertElemToTag(elem: VDomElem, model: VDomModel): JSX.Element | string {
     if (elem == null) {
         return null;
     }
-    if (elem.tag == "#text") {
+    if (elem.tag == TextTag) {
         return elem.text;
     }
-    return React.createElement(VDomTag, { elem: elem, key: elem.id });
+    return React.createElement(VDomTag, { key: elem.waveid, elem, model });
 }
 
 function isObject(v: any): boolean {
@@ -72,19 +93,35 @@ function isArray(v: any): boolean {
     return Array.isArray(v);
 }
 
-function callFunc(e: any, compId: string, propName: string) {
-    console.log("callfunc", compId, propName);
-}
-
-function updateRefFunc(elem: any, ref: VDomRefType) {
-    console.log("updateref", ref["#ref"], elem);
-}
-
-function VDomTag({ elem }: { elem: VDomElem }) {
-    if (!AllowedTags[elem.tag]) {
-        return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
+function resolveBinding(binding: VDomBinding, model: VDomModel): [any, string[]] {
+    const bindName = binding.bind;
+    if (bindName == null || bindName == "") {
+        return [null, []];
     }
-    let props = {};
+    // for now we only recognize $.[atomname] bindings
+    if (!bindName.startsWith("$.")) {
+        return [null, []];
+    }
+    const atomName = bindName.substring(2);
+    if (atomName == "") {
+        return [null, []];
+    }
+    const atom = model.getAtomContainer(atomName);
+    if (atom == null) {
+        return [null, []];
+    }
+    return [atom.val, [atomName]];
+}
+
+type GenericPropsType = { [key: string]: any };
+
+// returns props, and a set of atom keys used in the props
+function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<string>] {
+    let props: GenericPropsType = {};
+    let atomKeys = new Set<string>();
+    if (elem.props == null) {
+        return [props, atomKeys];
+    }
     for (let key in elem.props) {
         let val = elem.props[key];
         if (val == null) {
@@ -94,36 +131,153 @@ function VDomTag({ elem }: { elem: VDomElem }) {
             if (val == null) {
                 continue;
             }
-            if (isObject(val) && "#ref" in val) {
-                props[key] = (elem: HTMLElement) => {
-                    updateRefFunc(elem, val);
-                };
+            if (isObject(val) && val.type == VDomObjType_Ref) {
+                const valRef = val as VDomRef;
+                const refContainer = model.getOrCreateRefContainer(valRef);
+                props[key] = refContainer.refFn;
             }
             continue;
         }
-        if (isObject(val) && "#func" in val) {
-            props[key] = convertVDomFunc(val, elem.id, key);
+        if (isObject(val) && val.type == VDomObjType_Func) {
+            const valFunc = val as VDomFunc;
+            props[key] = convertVDomFunc(model, valFunc, elem.waveid, key);
             continue;
         }
+        if (isObject(val) && val.type == VDomObjType_Binding) {
+            const [propVal, atomDeps] = resolveBinding(val as VDomBinding, model);
+            props[key] = propVal;
+            for (let atomDep of atomDeps) {
+                atomKeys.add(atomDep);
+            }
+            continue;
+        }
+        if (key == "style" && isObject(val)) {
+            // assuming the entire style prop wasn't bound, look through the individual keys and bind them
+            for (let styleKey in val) {
+                let styleVal = val[styleKey];
+                if (isObject(styleVal) && styleVal.type == VDomObjType_Binding) {
+                    const [stylePropVal, styleAtomDeps] = resolveBinding(styleVal as VDomBinding, model);
+                    val[styleKey] = stylePropVal;
+                    for (let styleAtomDep of styleAtomDeps) {
+                        atomKeys.add(styleAtomDep);
+                    }
+                }
+            }
+            // fallthrough to set props[key] = val
+        }
+        props[key] = val;
     }
+    return [props, atomKeys];
+}
+
+function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Element)[] {
     let childrenComps: (string | JSX.Element)[] = [];
-    if (elem.children) {
-        for (let child of elem.children) {
-            if (child == null) {
-                continue;
-            }
-            childrenComps.push(convertElemToTag(child));
-        }
-    }
-    if (elem.tag == "#fragment") {
+    if (elem.children == null) {
         return childrenComps;
     }
+    for (let child of elem.children) {
+        if (child == null) {
+            continue;
+        }
+        childrenComps.push(convertElemToTag(child, model));
+    }
+    return childrenComps;
+}
+
+function stringSetsEqual(set1: Set<string>, set2: Set<string>): boolean {
+    if (set1.size != set2.size) {
+        return false;
+    }
+    for (let elem of set1) {
+        if (!set2.has(elem)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function useVDom(model: VDomModel, elem: VDomElem): GenericPropsType {
+    const version = jotai.useAtomValue(model.getVDomNodeVersionAtom(elem));
+    const [oldAtomKeys, setOldAtomKeys] = React.useState<Set<string>>(new Set());
+    let [props, atomKeys] = convertProps(elem, model);
+    React.useEffect(() => {
+        if (stringSetsEqual(atomKeys, oldAtomKeys)) {
+            return;
+        }
+        model.tagUnuseAtoms(elem.waveid, oldAtomKeys);
+        model.tagUseAtoms(elem.waveid, atomKeys);
+        setOldAtomKeys(atomKeys);
+    }, [atomKeys]);
+    React.useEffect(() => {
+        return () => {
+            model.tagUnuseAtoms(elem.waveid, oldAtomKeys);
+        };
+    }, []);
+    return props;
+}
+
+function WaveMarkdown({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const props = useVDom(model, elem);
+    return (
+        <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
+    );
+}
+
+function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const props = useVDom(model, elem);
+    if (elem.tag == WaveNullTag) {
+        return null;
+    }
+    if (elem.tag == WaveTextTag) {
+        return props.text;
+    }
+    const waveTag = WaveTagMap[elem.tag];
+    if (waveTag) {
+        return waveTag({ elem, model });
+    }
+    if (!AllowedTags[elem.tag]) {
+        return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
+    }
+    let childrenComps = convertChildren(elem, model);
+    if (elem.tag == FragmentTag) {
+        return childrenComps;
+    }
+    props.key = "e-" + elem.waveid;
     return React.createElement(elem.tag, props, childrenComps);
 }
 
-function VDomView({ rootNode }: { rootNode: VDomElem }) {
-    let rtn = convertElemToTag(rootNode);
+function vdomText(text: string): VDomElem {
+    return {
+        tag: "#text",
+        text: text,
+    };
+}
+
+const testVDom: VDomElem = {
+    waveid: "testid1",
+    tag: "div",
+    children: [
+        {
+            waveid: "testh1",
+            tag: "h1",
+            children: [vdomText("Hello World")],
+        },
+        {
+            waveid: "testp",
+            tag: "p",
+            children: [vdomText("This is a paragraph (from VDOM)")],
+        },
+    ],
+};
+
+function VDomRoot({ model }: { model: VDomModel }) {
+    let rootNode = jotai.useAtomValue(model.vdomRoot);
+    if (model.viewRef.current == null || rootNode == null) {
+        return null;
+    }
+    dlog("render", rootNode);
+    let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }
 
-export { VDomView };
+export { VDomRoot };
