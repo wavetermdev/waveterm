@@ -211,7 +211,6 @@ class TermViewModel {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
         const termThemeKeys = Object.keys(termThemes);
-        const curFontSize = globalStore.get(this.fontSizeAtom);
         const curThemeName = globalStore.get(this.termThemeNameAtom);
         const defaultFontSize = globalStore.get(getSettingsKeyAtom("term:fontsize")) ?? 12;
         const blockData = globalStore.get(this.blockAtom);
