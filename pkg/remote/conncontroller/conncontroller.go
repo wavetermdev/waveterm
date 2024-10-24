@@ -422,7 +422,7 @@ func (conn *SSHConn) WithLock(fn func()) {
 }
 
 func (conn *SSHConn) connectInternal(ctx context.Context) error {
-	client, err := remote.ConnectToClient(ctx, conn.Opts, nil)
+	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0)
 	if err != nil {
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
 		return err

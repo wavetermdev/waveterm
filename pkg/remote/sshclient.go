@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"os"
 	"os/exec"
@@ -44,7 +45,7 @@ func (uice UserInputCancelError) Error() string {
 type ConnectionDebugInfo struct {
 	CurrentClient *ssh.Client
 	NextOpts      *SSHOpts
-	Warnings      error
+	JumpNum       uint32
 }
 
 type ConnectionError struct {
@@ -53,7 +54,10 @@ type ConnectionError struct {
 }
 
 func (ce ConnectionError) Error() string {
-	return fmt.Sprintf("Warnings: {%s}, Connecting from %v to %+#v, Error: %v", ce.Warnings, ce.CurrentClient, ce.NextOpts, ce.Err)
+	if ce.CurrentClient == nil {
+		return fmt.Sprintf("Connecting to %+#v, Error: %v", ce.NextOpts, ce.Err)
+	}
+	return fmt.Sprintf("Connecting from %v to %+#v (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
 }
 
 // This exists to trick the ssh library into continuing to try
@@ -525,8 +529,6 @@ func createClientConfig(connCtx context.Context, sshKeywords *SshKeywords, debug
 	conn, err := net.Dial("unix", sshKeywords.IdentityAgent)
 	if err != nil {
 		log.Printf("Failed to open Identity Agent Socket: %v", err)
-		//warningMsg := fmt.Errorf("failed to open identity agent socket: %v", err)
-		//debugInfo.Warnings = errors.Join(debugInfo.Warnings, warningMsg)
 	} else {
 		agentClient = agent.NewClient(conn)
 		authSockSigners, _ = agentClient.Signers()
@@ -599,39 +601,52 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client) (*ssh.Client, error) {
+func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum uint32) (*ssh.Client, uint32, error) {
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
 		NextOpts:      opts,
+		JumpNum:       jumpNum,
 	}
+	// todo print final warning if logging gets turned off
 	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
 	if err != nil {
-		return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 
 	}
 
 	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
 	if err != nil {
-		return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 
 	for _, proxyName := range sshKeywords.ProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
 		if err != nil {
-			return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
-		currentClient, err = ConnectToClient(connCtx, proxyOpts, currentClient)
+
+		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, debugInfo.JumpNum)
 		if err != nil {
 			// do not add a context on a recursive call
-			return nil, err
+			// (this can cause a recursive nested context that's arbitrarily deep)
+			return nil, jumpNum, err
 		}
 	}
 	clientConfig, err := createClientConfig(connCtx, sshKeywords, debugInfo)
 	if err != nil {
-		return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
-	return connectInternal(connCtx, networkAddr, clientConfig, currentClient)
+	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
+	if err != nil {
+		return client, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+	}
+
+	// ensure no overflow (this will likely never happen)
+	if jumpNum < math.MaxUint32 {
+		jumpNum += 1
+	}
+	return client, debugInfo.JumpNum, nil
 }
 
 type SshKeywords struct {
