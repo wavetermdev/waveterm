@@ -400,10 +400,10 @@ type CommandWebSelectorData struct {
 }
 
 type BlockInfoData struct {
-	BlockId  string              `json:"blockid"`
-	TabId    string              `json:"tabid"`
-	WindowId string              `json:"windowid"`
-	Meta     waveobj.MetaMapType `json:"meta"`
+	BlockId  string         `json:"blockid"`
+	TabId    string         `json:"tabid"`
+	WindowId string         `json:"windowid"`
+	Block    *waveobj.Block `json:"block"`
 }
 
 type WaveNotificationOptions struct {

@@ -71,6 +71,22 @@ func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func resolveBlockArg() (*waveobj.ORef, error) {
+	oref := blockArg
+	if oref == "" {
+		return nil, fmt.Errorf("blockid is required")
+	}
+	err := validateEasyORef(oref)
+	if err != nil {
+		return nil, err
+	}
+	fullORef, err := resolveSimpleId(oref)
+	if err != nil {
+		return nil, fmt.Errorf("resolving blockid: %w", err)
+	}
+	return fullORef, nil
+}
+
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
 func setupRpcClient(serverImpl wshutil.ServerImpl) error {
 	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)

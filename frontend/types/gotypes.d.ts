@@ -32,7 +32,7 @@ declare global {
         blockid: string;
         tabid: string;
         windowid: string;
-        meta: MetaType;
+        block: Block;
     };
 
     // webcmd.BlockInputWSCommand

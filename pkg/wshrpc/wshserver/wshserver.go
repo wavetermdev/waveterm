@@ -549,6 +549,6 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 		BlockId:  blockId,
 		TabId:    tabId,
 		WindowId: windowId,
-		Meta:     blockData.Meta,
+		Block:    blockData,
 	}, nil
 }
