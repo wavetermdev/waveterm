@@ -34,10 +34,11 @@ type ExpandableMenuItemData = ExpandableMenuItemType | ExpandableMenuItemGroupTy
 type ExpandableMenuProps = {
     children: React.ReactNode;
     className?: string;
+    noIndent?: boolean;
 };
 
-const ExpandableMenu = ({ children, className }: ExpandableMenuProps) => {
-    return <div className={clsx("expandable-menu", className)}>{children}</div>;
+const ExpandableMenu = ({ children, className, noIndent = false }: ExpandableMenuProps) => {
+    return <div className={clsx("expandable-menu", className, { "no-indent": noIndent === true })}>{children}</div>;
 };
 
 type ExpandableMenuItemProps = {
@@ -50,7 +51,9 @@ type ExpandableMenuItemProps = {
 const ExpandableMenuItem = ({ children, className, withHoverEffect = true, onClick }: ExpandableMenuItemProps) => {
     return (
         <div
-            className={clsx("expandable-menu-item", className, { "with-hover-effect": withHoverEffect === true })}
+            className={clsx("expandable-menu-item", className, {
+                "with-hover-effect": withHoverEffect === true,
+            })}
             onClick={onClick}
         >
             {children}

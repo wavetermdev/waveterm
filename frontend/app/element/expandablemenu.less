@@ -65,7 +65,9 @@
 
     &.expanded {
         max-height: 1000px; /* Ensure large enough max-height for expansion */
-        margin-left: 16px; /* Keep left indentation */
-        margin-right: 0; /* Remove right indentation */
     }
+}
+
+.no-indent .expandable-menu-item-group-content {
+    margin-left: 0; // Remove left indentation when noIndent is true
 }

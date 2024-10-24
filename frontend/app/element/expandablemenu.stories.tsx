@@ -386,3 +386,7 @@ const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
 export const DynamicNestedExpandableMenu: Story = {
     render: () => <ExpandableMenu>{renderExpandableMenu(menuData)}</ExpandableMenu>,
 };
+
+export const NoIndentExpandableMenu: Story = {
+    render: () => <ExpandableMenu noIndent>{renderExpandableMenu(menuData)}</ExpandableMenu>,
+};
