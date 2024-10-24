@@ -1,4 +1,5 @@
-// Copyright 2024, Command Line Inc.
+// WorkspaceSwitcher.tsx
+// Copyright 2024, Command Line
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/element/button";
@@ -19,7 +20,7 @@ import clsx from "clsx";
 import { atom, useAtom } from "jotai";
 import { memo } from "react";
 import ThunderSVG from "../asset/thunder.svg";
-import WorskpaceSVG from "../asset/workspace.svg";
+// Removed WorskpaceSVG import since it's no longer used
 
 import "./workspaceswitcher.less";
 
@@ -131,6 +132,7 @@ interface WorkspaceDataType {
     isActive: boolean;
 }
 
+// Define the global Jotai atom for menuData
 const workspaceData: WorkspaceDataType[] = [
     {
         id: "596e76eb-d87d-425e-9f6e-1519069ee447",
@@ -284,11 +286,19 @@ const WorkspaceSwitcher = () => {
         });
     };
 
+    // Get the active workspace
+    const activeWorkspace = menuData.find((workspace) => workspace.isActive);
+
     return (
         <Popover className="workspace-switcher-popover">
             <PopoverButton className="workspace-switcher-button grey" as="div">
-                <span className="icon-left">
-                    <WorskpaceSVG></WorskpaceSVG>
+                <span className="workspace-icon">
+                    {activeWorkspace && (
+                        <i
+                            className={makeIconClass(activeWorkspace.icon, false)}
+                            style={{ color: activeWorkspace.color }}
+                        ></i>
+                    )}
                 </span>
                 <span className="divider" />
                 <span className="icon-right">
