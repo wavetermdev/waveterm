@@ -36,7 +36,7 @@ type FullBlockProps = {
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel): ViewModel {
     if (blockView === "term") {
-        return makeTerminalModel(blockId);
+        return makeTerminalModel(blockId, nodeModel);
     }
     if (blockView === "preview") {
         return makePreviewModel(blockId, nodeModel);
