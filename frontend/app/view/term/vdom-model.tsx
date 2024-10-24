@@ -1,11 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore, WOS } from "@/app/store/global";
+import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
+import { waveEventSubscribe } from "@/app/store/wps";
+import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { TermWshClient } from "@/app/view/term/term-wsh";
+import { makeFeBlockRouteId } from "@/app/store/wshrouter";
+import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
@@ -61,22 +63,37 @@ function convertEvent(e: React.SyntheticEvent, fromProp: string): any {
     return { type: "unknown" };
 }
 
+class VDomWshClient extends WshClient {
+    model: VDomModel;
+
+    constructor(model: VDomModel) {
+        super(makeFeBlockRouteId(model.blockId));
+        this.model = model;
+    }
+
+    handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {
+        console.log("async-initiation", rh.getSource(), data);
+        this.model.queueUpdate(true);
+    }
+}
+
 export class VDomModel {
     blockId: string;
     nodeModel: NodeModel;
-    viewRef: React.RefObject<HTMLDivElement>;
+    viewType: string;
+    viewIcon: jotai.Atom<string>;
+    viewName: jotai.Atom<string>;
+    viewRef: React.RefObject<HTMLDivElement> = { current: null };
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
     batchedEvents: VDomEvent[] = [];
     messages: VDomMessage[] = [];
-    needsInitialization: boolean = true;
     needsResync: boolean = true;
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
     compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
     rootRefId: string = crypto.randomUUID();
-    termWshClient: TermWshClient;
-    backendRoute: string;
+    backendRoute: jotai.Atom<string>;
     backendOpts: VDomBackendOpts;
     shouldDispose: boolean;
     disposed: boolean;
@@ -86,18 +103,61 @@ export class VDomModel {
     needsImmediateUpdate: boolean;
     lastUpdateTs: number = 0;
     queuedUpdate: { timeoutId: any; ts: number; quick: boolean };
+    contextActive: jotai.PrimitiveAtom<boolean>;
+    wshClient: VDomWshClient;
+    persist: jotai.Atom<boolean>;
+    routeGoneUnsub: () => void;
+    routeConfirmed: boolean = false;
 
-    constructor(
-        blockId: string,
-        nodeModel: NodeModel,
-        viewRef: React.RefObject<HTMLDivElement>,
-        termWshClient: TermWshClient
-    ) {
+    constructor(blockId: string, nodeModel: NodeModel) {
+        this.viewType = "vdom";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
-        this.viewRef = viewRef;
-        this.termWshClient = termWshClient;
+        this.contextActive = jotai.atom(false);
         this.reset();
+        this.viewIcon = jotai.atom("bolt");
+        this.viewName = jotai.atom("Wave App");
+        this.backendRoute = jotai.atom((get) => {
+            const blockData = get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
+            return blockData?.meta?.["vdom:route"];
+        });
+        this.persist = getBlockMetaKeyAtom(this.blockId, "vdom:persist");
+        this.wshClient = new VDomWshClient(this);
+        DefaultRouter.registerRoute(this.wshClient.routeId, this.wshClient);
+        const curBackendRoute = globalStore.get(this.backendRoute);
+        if (curBackendRoute) {
+            this.queueUpdate(true);
+        }
+        this.routeGoneUnsub = waveEventSubscribe({
+            eventType: "route:gone",
+            scope: curBackendRoute,
+            handler: (event: WaveEvent) => {
+                this.disposed = true;
+                const shouldPersist = globalStore.get(this.persist);
+                if (!shouldPersist) {
+                    this.nodeModel?.onClose?.();
+                }
+            },
+        });
+        RpcApi.WaitForRouteCommand(TabRpcClient, { routeid: curBackendRoute, waitms: 4000 }, { timeout: 5000 }).then(
+            (routeOk: boolean) => {
+                if (routeOk) {
+                    this.routeConfirmed = true;
+                    this.queueUpdate(true);
+                } else {
+                    this.disposed = true;
+                    const shouldPersist = globalStore.get(this.persist);
+                    if (!shouldPersist) {
+                        this.nodeModel?.onClose?.();
+                    }
+                }
+            }
+        );
+    }
+
+    dispose() {
+        DefaultRouter.unregisterRoute(this.wshClient.routeId);
+        this.routeGoneUnsub?.();
     }
 
     reset() {
@@ -107,11 +167,9 @@ export class VDomModel {
         this.batchedEvents = [];
         this.messages = [];
         this.needsResync = true;
-        this.needsInitialization = true;
         this.vdomNodeVersion = new WeakMap();
         this.compoundAtoms.clear();
         this.rootRefId = crypto.randomUUID();
-        this.backendRoute = null;
         this.backendOpts = {};
         this.shouldDispose = false;
         this.disposed = false;
@@ -121,9 +179,15 @@ export class VDomModel {
         this.needsImmediateUpdate = false;
         this.lastUpdateTs = 0;
         this.queuedUpdate = null;
+        globalStore.set(this.contextActive, false);
     }
 
-    globalKeydownHandler(e: WaveKeyboardEvent): boolean {
+    getBackendRoute(): string {
+        const blockData = globalStore.get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
+        return blockData?.meta?.["vdom:route"];
+    }
+
+    keyDownHandler(e: WaveKeyboardEvent): boolean {
         if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
             this.shouldDispose = true;
             this.queueUpdate(true);
@@ -135,7 +199,7 @@ export class VDomModel {
             }
             this.batchedEvents.push({
                 waveid: null,
-                propname: "onKeyDown",
+                eventtype: "onKeyDown",
                 eventdata: e,
             });
             this.queueUpdate();
@@ -179,6 +243,9 @@ export class VDomModel {
     }
 
     queueUpdate(quick: boolean = false, delay: number = 10) {
+        if (this.disposed) {
+            return;
+        }
         this.needsUpdate = true;
         let nowTs = Date.now();
         if (delay > this.maxNormalUpdateIntervalMs) {
@@ -220,7 +287,7 @@ export class VDomModel {
 
     async _sendRenderRequest(force: boolean) {
         this.queuedUpdate = null;
-        if (this.disposed) {
+        if (this.disposed || !this.routeConfirmed) {
             return;
         }
         if (this.hasPendingRequest) {
@@ -232,7 +299,8 @@ export class VDomModel {
         if (!force && !this.needsUpdate) {
             return;
         }
-        if (this.backendRoute == null) {
+        const backendRoute = globalStore.get(this.backendRoute);
+        if (backendRoute == null) {
             console.log("vdom-model", "no backend route");
             return;
         }
@@ -241,7 +309,7 @@ export class VDomModel {
         try {
             const feUpdate = this.createFeUpdate();
             dlog("fe-update", feUpdate);
-            const beUpdate = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: this.backendRoute });
+            const beUpdate = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
             this.handleBackendUpdate(beUpdate);
         } finally {
             this.lastUpdateTs = Date.now();
@@ -454,6 +522,7 @@ export class VDomModel {
         if (update == null) {
             return;
         }
+        globalStore.set(this.contextActive, true);
         const idMap = new Map<string, VDomElem>();
         const vdomRoot = globalStore.get(this.vdomRoot);
         if (update.opts != null) {
@@ -478,14 +547,14 @@ export class VDomModel {
         if (fnDecl.globalevent) {
             const waveEvent: VDomEvent = {
                 waveid: null,
-                propname: fnDecl.globalevent,
+                eventtype: fnDecl.globalevent,
                 eventdata: eventData,
             };
             this.batchedEvents.push(waveEvent);
         } else {
             const vdomEvent: VDomEvent = {
                 waveid: compId,
-                propname: propName,
+                eventtype: propName,
                 eventdata: eventData,
             };
             this.batchedEvents.push(vdomEvent);
@@ -510,7 +579,6 @@ export class VDomModel {
             type: "frontendupdate",
             ts: Date.now(),
             blockid: this.blockId,
-            initialize: this.needsInitialization,
             rendercontext: renderContext,
             dispose: this.shouldDispose,
             resync: this.needsResync,
@@ -518,7 +586,6 @@ export class VDomModel {
             refupdates: this.getRefUpdates(),
         };
         this.needsResync = false;
-        this.needsInitialization = false;
         this.batchedEvents = [];
         if (this.shouldDispose) {
             this.disposed = true;

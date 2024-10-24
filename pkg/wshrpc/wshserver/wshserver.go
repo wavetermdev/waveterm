@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -30,6 +31,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -37,6 +39,7 @@ const SimpleId_This = "this"
 const SimpleId_Tab = "tab"
 
 var SimpleId_BlockNum_Regex = regexp.MustCompile(`^\d+$`)
+var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data"}
 
 type WshServer struct{}
 
@@ -248,6 +251,16 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
 }
 
+func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.CommandCreateSubBlockData) (*waveobj.ORef, error) {
+	parentBlockId := data.ParentBlockId
+	blockData, err := wcore.CreateSubBlock(ctx, parentBlockId, data.BlockDef)
+	if err != nil {
+		return nil, fmt.Errorf("error creating block: %w", err)
+	}
+	blockRef := &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}
+	return blockRef, nil
+}
+
 func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
 	log.Printf("SETVIEW: %s | %q\n", data.BlockId, data.View)
 	ctx = waveobj.ContextWithUpdates(ctx)
@@ -354,10 +367,10 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandF
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
-	if data.FileName == blockcontroller.BlockFile_Html && tryCreate {
+	if data.FileName == blockcontroller.BlockFile_VDom && tryCreate {
 		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
 		if err != nil && err != fs.ErrExist {
-			return fmt.Errorf("error creating blockfile[html]: %w", err)
+			return fmt.Errorf("error creating blockfile[vdom]: %w", err)
 		}
 	}
 	err := filestore.WFS.AppendIJson(ctx, data.ZoneId, data.FileName, data.Data)
@@ -377,6 +390,14 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 	return nil
 }
 
+func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	err := wcore.DeleteBlock(ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error deleting block: %w", err)
+	}
+	return nil
+}
+
 func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
@@ -393,7 +414,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if windowId == "" {
 		return fmt.Errorf("no window found for tab")
 	}
-	err = wcore.DeleteBlock(ctx, tabId, data.BlockId)
+	err = wcore.DeleteBlock(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
@@ -404,6 +425,13 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	wps.Broker.SendUpdateEvents(updates)
 	return nil
+}
+
+func (ws *WshServer) WaitForRouteCommand(ctx context.Context, data wshrpc.CommandWaitForRouteData) (bool, error) {
+	waitCtx, cancelFn := context.WithTimeout(ctx, time.Duration(data.WaitMs)*time.Millisecond)
+	defer cancelFn()
+	err := wshutil.DefaultRouter.WaitForRegister(waitCtx, data.RouteId)
+	return err == nil, nil
 }
 
 func (ws *WshServer) EventRecvCommand(ctx context.Context, data wps.WaveEvent) error {
@@ -464,11 +492,28 @@ func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus
 	return rtn, nil
 }
 
+func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
+	rtn := wsl.GetAllConnStatus()
+	return rtn, nil
+}
+
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
+		return wsl.EnsureConnection(ctx, distroName)
+	}
 	return conncontroller.EnsureConnection(ctx, connName)
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("distro not found: %s", connName)
+		}
+		return conn.Close()
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
@@ -481,6 +526,14 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("connection not found: %s", connName)
+		}
+		return conn.Connect(ctx)
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
@@ -493,6 +546,14 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) er
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
+		conn := wsl.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("connection not found: %s", connName)
+		}
+		return conn.CheckAndInstallWsh(ctx, connName, &wsl.WshInstallOpts{Force: true, NoUserPrompt: true})
+	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
@@ -506,6 +567,33 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
 	return conncontroller.GetConnectionsList()
+}
+
+func (ws *WshServer) WslListCommand(ctx context.Context) ([]string, error) {
+	distros, err := wsl.RegisteredDistros(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var distroNames []string
+	for _, distro := range distros {
+		distroName := distro.Name()
+		if utilfn.ContainsStr(InvalidWslDistroNames, distroName) {
+			continue
+		}
+		distroNames = append(distroNames, distroName)
+	}
+	return distroNames, nil
+}
+
+func (ws *WshServer) WslDefaultDistroCommand(ctx context.Context) (string, error) {
+	distro, ok, err := wsl.DefaultDistro(ctx)
+	if err != nil {
+		return "", fmt.Errorf("unable to determine default distro: %w", err)
+	}
+	if !ok {
+		return "", fmt.Errorf("unable to determine default distro")
+	}
+	return distro.Name(), nil
 }
 
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
@@ -525,7 +613,7 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 		BlockId:  blockId,
 		TabId:    tabId,
 		WindowId: windowId,
-		Meta:     blockData.Meta,
+		Block:    blockData,
 	}, nil
 }
 

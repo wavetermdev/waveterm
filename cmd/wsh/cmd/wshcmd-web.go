@@ -28,7 +28,7 @@ var webOpenCmd = &cobra.Command{
 }
 
 var webGetCmd = &cobra.Command{
-	Use:    "get [--inner] [--all] [--json] blockid css-selector",
+	Use:    "get [--inner] [--all] [--json] css-selector",
 	Short:  "get the html for a css selector",
 	Args:   cobra.ExactArgs(1),
 	Hidden: true,
@@ -67,7 +67,7 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("getting block info: %w", err)
 	}
-	if blockInfo.Meta.GetString(waveobj.MetaKey_View, "") != "web" {
+	if blockInfo.Block.Meta.GetString(waveobj.MetaKey_View, "") != "web" {
 		return fmt.Errorf("block %s is not a web block", fullORef.OID)
 	}
 	data := wshrpc.CommandWebSelectorData{

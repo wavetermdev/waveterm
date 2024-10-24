@@ -1,19 +1,28 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Block } from "@/app/block/block";
 import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
-import { VDomView } from "@/app/view/term/vdom";
 import { VDomModel } from "@/app/view/term/vdom-model";
 import { NodeModel } from "@/layout/index";
-import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import {
+    WOS,
+    atoms,
+    getBlockComponentModel,
+    getConnStatusAtom,
+    getSettingsKeyAtom,
+    globalStore,
+    useSettingsPrefixAtom,
+} from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import clsx from "clsx";
+import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
 import { TermStickers } from "./termsticker";
@@ -21,6 +30,8 @@ import { TermThemeUpdater } from "./termtheme";
 import { computeTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
 import "./xterm.css";
+
+const dlog = debug("wave:term");
 
 type InitialLoadDataType = {
     loaded: boolean;
@@ -37,12 +48,13 @@ class TermViewModel {
     blockId: string;
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
+    viewText: jotai.Atom<HeaderElem[]>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
     termWshClient: TermWshClient;
     shellProcStatusRef: React.MutableRefObject<string>;
-    vdomModel: VDomModel;
+    vdomBlockId: jotai.Atom<string>;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "term";
@@ -50,23 +62,70 @@ class TermViewModel {
         this.termWshClient = new TermWshClient(blockId, this);
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.termWshClient);
         this.nodeModel = nodeModel;
-        this.vdomModel = new VDomModel(blockId, nodeModel, null, this.termWshClient);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.vdomBlockId = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.["term:vdomblockid"];
+        });
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:mode"] ?? "term";
         });
         this.viewIcon = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "vdom") {
+                return "bolt";
+            }
             return "terminal";
         });
         this.viewName = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
+            const termMode = get(this.termMode);
+            if (termMode == "vdom") {
+                return "Wave App";
+            }
             if (blockData?.meta?.controller == "cmd") {
                 return "Command";
             }
             return "Terminal";
         });
-        this.manageConnection = jotai.atom(true);
+        this.viewText = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "vdom") {
+                return [
+                    {
+                        elemtype: "iconbutton",
+                        icon: "square-terminal",
+                        title: "Switch back to Terminal",
+                        click: () => {
+                            this.setTermMode("term");
+                        },
+                    },
+                ];
+            } else {
+                const vdomBlockId = get(this.vdomBlockId);
+                if (vdomBlockId) {
+                    return [
+                        {
+                            elemtype: "iconbutton",
+                            icon: "bolt",
+                            title: "Switch to Wave App",
+                            click: () => {
+                                this.setTermMode("vdom");
+                            },
+                        },
+                    ];
+                }
+            }
+            return null;
+        });
+        this.manageConnection = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "vdom") {
+                return false;
+            }
+            return true;
+        });
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
@@ -88,6 +147,28 @@ class TermViewModel {
         });
     }
 
+    setTermMode(mode: "term" | "vdom") {
+        if (mode == "term") {
+            mode = null;
+        }
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "term:mode": mode },
+        });
+    }
+
+    getVDomModel(): VDomModel {
+        const vdomBlockId = globalStore.get(this.vdomBlockId);
+        if (!vdomBlockId) {
+            return null;
+        }
+        const bcm = getBlockComponentModel(vdomBlockId);
+        if (!bcm) {
+            return null;
+        }
+        return bcm.viewModel as VDomModel;
+    }
+
     dispose() {
         DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
     }
@@ -107,16 +188,18 @@ class TermViewModel {
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
             const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${this.blockId}`);
             const blockData = globalStore.get(blockAtom);
-            const newTermMode = blockData?.meta?.["term:mode"] == "html" ? null : "html";
-            RpcApi.SetMetaCommand(TabRpcClient, {
-                oref: WOS.makeORef("block", this.blockId),
-                meta: { "term:mode": newTermMode },
-            });
+            const newTermMode = blockData?.meta?.["term:mode"] == "vdom" ? null : "vdom";
+            const vdomBlockId = globalStore.get(this.vdomBlockId);
+            if (newTermMode == "vdom" && !vdomBlockId) {
+                return;
+            }
+            this.setTermMode(newTermMode);
             return true;
         }
         const blockData = globalStore.get(this.blockAtom);
-        if (blockData.meta?.["term:mode"] == "html") {
-            return this.vdomModel?.globalKeydownHandler(waveEvent);
+        if (blockData.meta?.["term:mode"] == "vdom") {
+            const vdomModel = this.getVDomModel();
+            return vdomModel?.keyDownHandler(waveEvent);
         }
         return false;
     }
@@ -241,6 +324,52 @@ const TermResyncHandler = React.memo(({ blockId, model }: TerminalViewProps) => 
     return null;
 });
 
+const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps & { vdomBlockId: string }) => {
+    React.useEffect(() => {
+        const unsub = waveEventSubscribe({
+            eventType: "blockclose",
+            scope: WOS.makeORef("block", vdomBlockId),
+            handler: (event) => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", blockId),
+                    meta: {
+                        "term:mode": null,
+                        "term:vdomblockid": null,
+                    },
+                });
+            },
+        });
+        return () => {
+            unsub();
+        };
+    }, []);
+    const isFocusedAtom = jotai.atom((get) => {
+        return get(model.nodeModel.isFocused) && get(model.termMode) == "vdom";
+    });
+    let vdomNodeModel = {
+        blockId: vdomBlockId,
+        isFocused: isFocusedAtom,
+        onClose: () => {
+            if (vdomBlockId != null) {
+                RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
+            }
+        },
+    };
+    return (
+        <div key="htmlElem" className="term-htmlelem">
+            <Block key="vdom" isSubBlock={true} preview={false} nodeModel={vdomNodeModel} />
+        </div>
+    );
+};
+
+const TermVDomNode = ({ blockId, model }: TerminalViewProps) => {
+    const vdomBlockId = jotai.useAtomValue(model.vdomBlockId);
+    if (vdomBlockId == null) {
+        return null;
+    }
+    return <TermVDomNodeSingleId key={vdomBlockId} vdomBlockId={vdomBlockId} blockId={blockId} model={model} />;
+};
+
 const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
@@ -252,7 +381,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
     let termMode = blockData?.meta?.["term:mode"] ?? "term";
-    if (termMode != "term" && termMode != "html") {
+    if (termMode != "term" && termMode != "vdom") {
         termMode = "term";
     }
     const termModeRef = React.useRef(termMode);
@@ -307,7 +436,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     }, [blockId, termSettings]);
 
     React.useEffect(() => {
-        if (termModeRef.current == "html" && termMode == "term") {
+        if (termModeRef.current == "vdom" && termMode == "term") {
             // focus the terminal
             model.giveFocus();
         }
@@ -356,11 +485,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             <TermThemeUpdater blockId={blockId} termRef={termRef} />
             <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
-            <div key="htmlElem" className="term-htmlelem">
-                <div key="htmlElemContent" className="term-htmlelem-content">
-                    <VDomView blockId={blockId} nodeModel={model.nodeModel} viewRef={viewRef} model={model.vdomModel} />
-                </div>
-            </div>
+            <TermVDomNode key="vdom" blockId={blockId} model={model} />
         </div>
     );
 };

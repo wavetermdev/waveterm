@@ -30,9 +30,12 @@ const WaveDataHomeEnvVar = "WAVETERM_DATA_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
 const WaveLockFile = "wave.lock"
 const DomainSocketBaseName = "wave.sock"
+const RemoteDomainSocketBaseName = "wave-remote.sock"
 const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
+
+var RemoteWaveHome = ExpandHomeDirSafe("~/.waveterm")
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const AppPathBinDir = "bin"
@@ -99,6 +102,10 @@ func ReplaceHomeDir(pathStr string) string {
 
 func GetDomainSocketName() string {
 	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
+}
+
+func GetRemoteDomainSocketName() string {
+	return filepath.Join(RemoteWaveHome, RemoteDomainSocketBaseName)
 }
 
 func GetWaveDataDir() string {

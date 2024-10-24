@@ -34,11 +34,11 @@ type VDomElem struct {
 //// protocol messages
 
 type VDomCreateContext struct {
-	Type     string              `json:"type" tstype:"\"createcontext\""`
-	Ts       int64               `json:"ts"`
-	Meta     waveobj.MetaMapType `json:"meta,omitempty"`
-	NewBlock bool                `json:"newblock,omitempty"`
-	Persist  bool                `json:"persist,omitempty"`
+	Type    string              `json:"type" tstype:"\"createcontext\""`
+	Ts      int64               `json:"ts"`
+	Meta    waveobj.MetaMapType `json:"meta,omitempty"`
+	Target  *VDomTarget         `json:"target,omitempty"`
+	Persist bool                `json:"persist,omitempty"`
 }
 
 type VDomAsyncInitiationRequest struct {
@@ -60,9 +60,8 @@ type VDomFrontendUpdate struct {
 	Ts            int64             `json:"ts"`
 	BlockId       string            `json:"blockid"`
 	CorrelationId string            `json:"correlationid,omitempty"`
-	Initialize    bool              `json:"initialize,omitempty"` // initialize the app
-	Dispose       bool              `json:"dispose,omitempty"`    // the vdom context was closed
-	Resync        bool              `json:"resync,omitempty"`     // resync (send all backend data).  useful when the FE reloads
+	Dispose       bool              `json:"dispose,omitempty"` // the vdom context was closed
+	Resync        bool              `json:"resync,omitempty"`  // resync (send all backend data).  useful when the FE reloads
 	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
 	Events        []VDomEvent       `json:"events,omitempty"`
 	StateSync     []VDomStateSync   `json:"statesync,omitempty"`
@@ -129,8 +128,8 @@ type VDomRefPosition struct {
 ///// subbordinate protocol types
 
 type VDomEvent struct {
-	WaveId    string `json:"waveid"`
-	PropName  string `json:"propname"`
+	WaveId    string `json:"waveid"` // empty for global events
+	EventType string `json:"eventtype"`
 	EventData any    `json:"eventdata"`
 }
 
@@ -177,6 +176,13 @@ type VDomMessage struct {
 	Message     string `json:"message"`
 	StackTrace  string `json:"stacktrace,omitempty"`
 	Params      []any  `json:"params,omitempty"`
+}
+
+// target -- to support new targets in the future, like toolbars, partial blocks, splits, etc.
+// default is vdom context inside of a terminal block
+type VDomTarget struct {
+	NewBlock  bool `json:"newblock,omitempty"`
+	Magnified bool `json:"magnified,omitempty"`
 }
 
 // matches WaveKeyboardEvent
