@@ -310,6 +310,12 @@ func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, o
 	return resp, err
 }
 
+// command "workspacelist", wshserver.WorkspaceListCommand
+func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (workspace.WorkspaceList, error) {
+	resp, err := sendRpcRequestCallHelper[workspace.WorkspaceList](w, "workspacelist", nil, opts)
+	return resp, err
+}
+
 // command "wsldefaultdistro", wshserver.WslDefaultDistroCommand
 func WslDefaultDistroCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "wsldefaultdistro", nil, opts)
@@ -325,12 +331,6 @@ func WslListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
 // command "wslstatus", wshserver.WslStatusCommand
 func WslStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnStatus, error) {
 	resp, err := sendRpcRequestCallHelper[[]wshrpc.ConnStatus](w, "wslstatus", nil, opts)
-	return resp, err
-}
-
-// command "workspacelist", wshserver.WorkspaceListCommand
-func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (workspace.WorkspaceList, error) {
-	resp, err := sendRpcRequestCallHelper[workspace.WorkspaceList](w, "workspacelist", nil, opts)
 	return resp, err
 }
 

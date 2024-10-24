@@ -904,6 +904,7 @@ declare global {
         tabids: string[];
         icon: string;
         color: string;
+        activetabs: {[key: string]: string};
     };
 
     // workspace.WorkspaceListEntry
