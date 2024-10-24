@@ -61,6 +61,7 @@ const config = {
         target: ["zip", "deb", "rpm", "snap", "AppImage", "pacman"],
         synopsis: pkg.description,
         description: null,
+        icon: "build/icon.ico",
         desktop: {
             Name: pkg.productName,
             Comment: pkg.description,
