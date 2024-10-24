@@ -35,6 +35,19 @@ Arch:
 sudo pacman -S zip zig
 ```
 
+##### For packaging
+
+For packaging, the following additional packages are required:
+
+- `fpm` &mdash; If you're on x64 you can skip this. If you're on ARM64, install fpm via [Gem](https://rubygems.org/gems/fpm)
+- `rpm` &mdash; If you're not on Fedora, install RPM via your package manager.
+- `snapd` &mdash; If your distro doesn't already include it, [install `snapd`](https://snapcraft.io/docs/installing-snapd)
+- `lxd` &mdash; [Installation instructions](https://canonical.com/lxd/install)
+- `snapcraft` &mdash; Run `sudo snap install snapcraft --classic`
+- `libarchive-tools` &mdash; Install via your package manager
+- `libopenjp2-tools` &mdash; Install via your package manager
+- `squashfs-tools` &mdash; Install via your package manager
+
 #### Windows
 
 You will need the GNU build toolchain installed in order for Go to work on Windows. In most cases, this requires installing MinGW-w64.
@@ -116,6 +129,12 @@ Run the following command to generate a production build and package it. This le
 
 ```sh
 task package
+```
+
+If you're on Linux ARM64, run the following:
+
+```sh
+USE_SYSTEM_FPM=1 task package
 ```
 
 ## Debugging
