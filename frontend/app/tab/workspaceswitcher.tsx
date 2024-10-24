@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Button } from "@/element/button";
 import {
     ExpandableMenu,
     ExpandableMenuItem,
@@ -107,6 +108,9 @@ const ColorAndIconSelector = memo(() => {
                 ]}
                 onSelect={(icon) => console.log("Selected icon:", icon)}
             />
+            <div className="delete-ws-btn-wrapper">
+                <Button className="ghost grey">Delete workspace</Button>
+            </div>
         </div>
     );
 });
