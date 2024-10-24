@@ -355,7 +355,6 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
             }
         },
     };
-    dlog("rendering VDomBlock", vdomBlockId);
     return (
         <div key="htmlElem" className="term-htmlelem">
             <Block key="vdom" isSubBlock={true} preview={false} nodeModel={vdomNodeModel} />
@@ -365,7 +364,6 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
 
 const TermVDomNode = ({ blockId, model }: TerminalViewProps) => {
     const vdomBlockId = jotai.useAtomValue(model.vdomBlockId);
-    dlog("TermVDomNode", vdomBlockId);
     if (vdomBlockId == null) {
         return null;
     }

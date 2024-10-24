@@ -110,7 +110,6 @@ export class VDomModel {
     routeConfirmed: boolean = false;
 
     constructor(blockId: string, nodeModel: NodeModel) {
-        dlog("create vdom model", blockId);
         this.viewType = "vdom";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
@@ -190,7 +189,6 @@ export class VDomModel {
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {
         if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
-            dlog("closeonctrlc");
             this.shouldDispose = true;
             this.queueUpdate(true);
             return true;
