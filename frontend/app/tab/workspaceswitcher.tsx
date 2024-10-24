@@ -306,7 +306,9 @@ const WorkspaceSwitcher = () => {
             </PopoverButton>
             <PopoverContent className="workspace-switcher-content">
                 <div className="title">Switch workspace</div>
-                <ExpandableMenu noIndent>{renderExpandableMenu(data)}</ExpandableMenu>
+                <ExpandableMenu noIndent singleOpen>
+                    {renderExpandableMenu(data)}
+                </ExpandableMenu>
             </PopoverContent>
         </Popover>
     );
