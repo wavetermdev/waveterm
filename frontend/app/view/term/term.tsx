@@ -121,6 +121,8 @@ class TermViewModel {
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
+    fontSizeAtom: jotai.Atom<number>;
+    termThemeNameAtom: jotai.Atom<string>;
 
     constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "term";
@@ -161,6 +163,21 @@ class TermViewModel {
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
         });
+        this.fontSizeAtom = useBlockAtom(blockId, "fontsizeatom", () => {
+            return jotai.atom<number>((get) => {
+                const blockData = get(this.blockAtom);
+                const fsSettingsAtom = getSettingsKeyAtom("term:fontsize");
+                const settingsFontSize = get(fsSettingsAtom);
+                return blockData?.meta?.["term:fontsize"] ?? settingsFontSize ?? 12;
+            });
+        });
+        this.termThemeNameAtom = useBlockAtom(blockId, "termthemeatom", () => {
+            return jotai.atom<string>((get) => {
+                const blockData = get(this.blockAtom);
+                const settingsKeyAtom = getSettingsKeyAtom("term:theme");
+                return blockData?.meta?.["term:theme"] ?? get(settingsKeyAtom) ?? "default-dark";
+            });
+        });
     }
 
     giveFocus(): boolean {
@@ -190,6 +207,8 @@ class TermViewModel {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
         const termThemeKeys = Object.keys(termThemes);
+        const curFontSize = globalStore.get(this.fontSizeAtom);
+        const curThemeName = globalStore.get(this.termThemeNameAtom);
 
         termThemeKeys.sort((a, b) => {
             return termThemes[a]["display:order"] - termThemes[b]["display:order"];
@@ -198,12 +217,31 @@ class TermViewModel {
         const submenu: ContextMenuItem[] = termThemeKeys.map((themeName) => {
             return {
                 label: termThemes[themeName]["display:name"] ?? themeName,
+                type: "checkbox",
+                checked: curThemeName == themeName,
                 click: () => this.setTerminalTheme(themeName),
+            };
+        });
+        const fontSizeSubMenu: ContextMenuItem[] = [8, 9, 10, 11, 12, 13, 14, 15, 16].map((fontSize: number) => {
+            return {
+                label: fontSize.toString() + "px",
+                type: "checkbox",
+                checked: curFontSize == fontSize,
+                click: () => {
+                    RpcApi.SetMetaCommand(WindowRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:fontsize": fontSize },
+                    });
+                },
             };
         });
         fullMenu.push({
             label: "Themes",
             submenu: submenu,
+        });
+        fullMenu.push({
+            label: "Font Size",
+            submenu: fontSizeSubMenu,
         });
         fullMenu.push({ type: "separator" });
         fullMenu.push({
@@ -268,16 +306,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
-    const termFontSizeAtom = useBlockAtom(blockId, "fontsizeatom", () => {
-        return jotai.atom<number>((get) => {
-            const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-            const blockData = get(blockAtom);
-            const fsSettingsAtom = getSettingsKeyAtom("term:fontsize");
-            const settingsFontSize = get(fsSettingsAtom);
-            return blockData?.meta?.["term:fontsize"] ?? settingsFontSize ?? 12;
-        });
-    });
-    const termFontSize = jotai.useAtomValue(termFontSizeAtom);
+
+    const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
 
     React.useEffect(() => {
         function handleTerminalKeydown(event: KeyboardEvent): boolean {
