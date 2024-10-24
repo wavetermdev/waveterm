@@ -88,7 +88,7 @@ const config = {
         base: "core22",
         confinement: "classic",
         allowNativeWayland: true,
-        artifactName: "${productName}_${version}_${arch}.${ext}",
+        artifactName: "${name}_${version}_${arch}.${ext}",
     },
     publish: {
         provider: "generic",
