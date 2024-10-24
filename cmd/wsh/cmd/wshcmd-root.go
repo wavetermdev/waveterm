@@ -101,7 +101,7 @@ func setupRpcClient(serverImpl wshutil.ServerImpl) error {
 func setTermHtmlMode() {
 	wshutil.SetExtraShutdownFunc(extraShutdownFn)
 	cmd := &wshrpc.CommandSetMetaData{
-		Meta: map[string]any{"term:mode": "html"},
+		Meta: map[string]any{"term:mode": "vdom"},
 	}
 	err := RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd, nil)
 	if err != nil {

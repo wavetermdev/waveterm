@@ -13,7 +13,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
+var htmlCmdNewBlock bool
+
 func init() {
+	htmlCmd.Flags().BoolVarP(&htmlCmdNewBlock, "newblock", "n", false, "create a new block")
 	rootCmd.AddCommand(htmlCmd)
 }
 
@@ -61,7 +64,7 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	client.SetAtomVal("text", "initial text")
 	client.SetAtomVal("num", 0)
 	client.SetRootElem(MakeVDom())
-	err = client.CreateVDomContext()
+	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: htmlCmdNewBlock})
 	if err != nil {
 		return err
 	}
@@ -73,8 +76,12 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	log.Printf("created vdom context\n")
 	go func() {
 		time.Sleep(5 * time.Second)
+		log.Printf("updating text\n")
 		client.SetAtomVal("text", "updated text")
-		client.SendAsyncInitiation()
+		err := client.SendAsyncInitiation()
+		if err != nil {
+			log.Printf("error sending async initiation: %v\n", err)
+		}
 	}()
 	<-client.DoneCh
 	return nil

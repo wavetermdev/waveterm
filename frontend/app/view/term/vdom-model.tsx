@@ -1,11 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore, WOS } from "@/app/store/global";
+import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
 import { waveEventSubscribe } from "@/app/store/wps";
+import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { makeFeBlockRouteId } from "@/app/store/wshrouter";
+import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
@@ -61,22 +63,37 @@ function convertEvent(e: React.SyntheticEvent, fromProp: string): any {
     return { type: "unknown" };
 }
 
+class VDomWshClient extends WshClient {
+    model: VDomModel;
+
+    constructor(model: VDomModel) {
+        super(makeFeBlockRouteId(model.blockId));
+        this.model = model;
+    }
+
+    handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {
+        console.log("async-initiation", rh.getSource(), data);
+        this.model.queueUpdate(true);
+    }
+}
+
 export class VDomModel {
     blockId: string;
     nodeModel: NodeModel;
     viewType: string;
+    viewIcon: jotai.Atom<string>;
+    viewName: jotai.Atom<string>;
     viewRef: React.RefObject<HTMLDivElement> = { current: null };
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
     batchedEvents: VDomEvent[] = [];
     messages: VDomMessage[] = [];
-    needsInitialization: boolean = true;
     needsResync: boolean = true;
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
     compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
     rootRefId: string = crypto.randomUUID();
-    backendRoute: string;
+    backendRoute: jotai.Atom<string>;
     backendOpts: VDomBackendOpts;
     shouldDispose: boolean;
     disposed: boolean;
@@ -87,13 +104,45 @@ export class VDomModel {
     lastUpdateTs: number = 0;
     queuedUpdate: { timeoutId: any; ts: number; quick: boolean };
     contextActive: jotai.PrimitiveAtom<boolean>;
+    wshClient: VDomWshClient;
+    persist: jotai.Atom<boolean>;
+    routeGoneUnsub: () => void;
 
     constructor(blockId: string, nodeModel: NodeModel) {
+        dlog("create vdom model", blockId);
         this.viewType = "vdom";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.contextActive = jotai.atom(false);
         this.reset();
+        this.viewIcon = jotai.atom("bolt");
+        this.viewName = jotai.atom("Wave App");
+        this.backendRoute = jotai.atom((get) => {
+            const blockData = get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
+            return blockData?.meta?.["vdom:route"];
+        });
+        this.persist = getBlockMetaKeyAtom(this.blockId, "vdom:persist");
+        this.wshClient = new VDomWshClient(this);
+        DefaultRouter.registerRoute(this.wshClient.routeId, this.wshClient);
+        const curBackendRoute = globalStore.get(this.backendRoute);
+        if (curBackendRoute) {
+            this.queueUpdate(true);
+        }
+        this.routeGoneUnsub = waveEventSubscribe({
+            eventType: "route:gone",
+            scope: curBackendRoute,
+            handler: (event: WaveEvent) => {
+                const shouldPersist = globalStore.get(this.persist);
+                if (!shouldPersist) {
+                    this.nodeModel?.onClose?.();
+                }
+            },
+        });
+    }
+
+    dispose() {
+        DefaultRouter.unregisterRoute(this.wshClient.routeId);
+        this.routeGoneUnsub?.();
     }
 
     reset() {
@@ -103,11 +152,9 @@ export class VDomModel {
         this.batchedEvents = [];
         this.messages = [];
         this.needsResync = true;
-        this.needsInitialization = true;
         this.vdomNodeVersion = new WeakMap();
         this.compoundAtoms.clear();
         this.rootRefId = crypto.randomUUID();
-        this.backendRoute = null;
         this.backendOpts = {};
         this.shouldDispose = false;
         this.disposed = false;
@@ -120,25 +167,9 @@ export class VDomModel {
         globalStore.set(this.contextActive, false);
     }
 
-    resyncVDom(backendRoute: string) {
-        this.reset();
-        this.backendRoute = backendRoute;
-        this.needsResync = true;
-        this.needsInitialization = true;
-        const unsubFn = waveEventSubscribe({
-            eventType: "route:gone",
-            scope: backendRoute,
-            handler: () => {
-                dlog("route:gone", backendRoute);
-                globalStore.set(this.contextActive, false);
-                RpcApi.SetMetaCommand(TabRpcClient, {
-                    oref: WOS.makeORef("block", this.blockId),
-                    meta: { "term:mode": "term", "term:vdomroute": null },
-                });
-                unsubFn();
-            },
-        });
-        this.queueUpdate(true);
+    getBackendRoute(): string {
+        const blockData = globalStore.get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
+        return blockData?.meta?.["vdom:route"];
     }
 
     globalKeydownHandler(e: WaveKeyboardEvent): boolean {
@@ -250,7 +281,8 @@ export class VDomModel {
         if (!force && !this.needsUpdate) {
             return;
         }
-        if (this.backendRoute == null) {
+        const backendRoute = globalStore.get(this.backendRoute);
+        if (backendRoute == null) {
             console.log("vdom-model", "no backend route");
             return;
         }
@@ -259,7 +291,7 @@ export class VDomModel {
         try {
             const feUpdate = this.createFeUpdate();
             dlog("fe-update", feUpdate);
-            const beUpdate = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: this.backendRoute });
+            const beUpdate = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
             this.handleBackendUpdate(beUpdate);
         } finally {
             this.lastUpdateTs = Date.now();
@@ -529,7 +561,6 @@ export class VDomModel {
             type: "frontendupdate",
             ts: Date.now(),
             blockid: this.blockId,
-            initialize: this.needsInitialization,
             rendercontext: renderContext,
             dispose: this.shouldDispose,
             resync: this.needsResync,
@@ -537,7 +568,6 @@ export class VDomModel {
             refupdates: this.getRefUpdates(),
         };
         this.needsResync = false;
-        this.needsInitialization = false;
         this.batchedEvents = [];
         if (this.shouldDispose) {
             this.disposed = true;

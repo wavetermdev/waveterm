@@ -97,6 +97,12 @@ declare global {
         magnified?: boolean;
     };
 
+    // wshrpc.CommandCreateSubBlockData
+    type CommandCreateSubBlockData = {
+        parentblockid: string;
+        blockdef: BlockDef;
+    };
+
     // wshrpc.CommandDeleteBlockData
     type CommandDeleteBlockData = {
         blockid: string;
@@ -161,6 +167,12 @@ declare global {
     type CommandSetMetaData = {
         oref: ORef;
         meta: MetaType;
+    };
+
+    // wshrpc.CommandWaitForRouteData
+    type CommandWaitForRouteData = {
+        routeid: string;
+        waitms: number;
     };
 
     // wshrpc.CommandWebSelectorData
@@ -338,10 +350,12 @@ declare global {
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
+        "term:vdomblockid"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
         "vdom:route"?: string;
+        "vdom:persist"?: boolean;
         count?: number;
     };
 
@@ -755,6 +769,7 @@ declare global {
     // vdom.VDomTarget
     type VDomTarget = {
         newblock?: boolean;
+        magnified?: boolean;
     };
 
     type WSCommandType = {

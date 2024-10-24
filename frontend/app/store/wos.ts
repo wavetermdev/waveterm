@@ -316,6 +316,7 @@ export {
     makeORef,
     reloadWaveObject,
     setObjectValue,
+    splitORef,
     updateWaveObject,
     updateWaveObjects,
     useWaveObjectValue,

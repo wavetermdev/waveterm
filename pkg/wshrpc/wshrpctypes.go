@@ -97,7 +97,10 @@ type WshRpcInterface interface {
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
 	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (waveobj.ORef, error)
+	CreateSubBlockCommand(ctx context.Context, data CommandCreateSubBlockData) (waveobj.ORef, error)
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
+	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
+	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
 	FileWriteCommand(ctx context.Context, data CommandFileData) error
 	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
@@ -136,7 +139,7 @@ type WshRpcInterface interface {
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 
 	// terminal
-	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) error
+	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
 	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
 
 	// proc
@@ -233,6 +236,11 @@ type CommandCreateBlockData struct {
 	Magnified bool                 `json:"magnified,omitempty"`
 }
 
+type CommandCreateSubBlockData struct {
+	ParentBlockId string            `json:"parentblockid"`
+	BlockDef      *waveobj.BlockDef `json:"blockdef"`
+}
+
 type CommandBlockSetViewData struct {
 	BlockId string `json:"blockid" wshcontext:"BlockId"`
 	View    string `json:"view"`
@@ -262,6 +270,11 @@ type CommandAppendIJsonData struct {
 	ZoneId   string        `json:"zoneid" wshcontext:"BlockId"`
 	FileName string        `json:"filename"`
 	Data     ijson.Command `json:"data"`
+}
+
+type CommandWaitForRouteData struct {
+	RouteId string `json:"routeid"`
+	WaitMs  int    `json:"waitms"`
 }
 
 type CommandDeleteBlockData struct {
