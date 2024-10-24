@@ -1,12 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WOS } from "@/app/store/global";
-import { waveEventSubscribe } from "@/app/store/wps";
+import { atoms, globalStore } from "@/app/store/global";
+import { makeORef, splitORef } from "@/app/store/wos";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { TermViewModel } from "@/app/view/term/term";
+import { isBlank } from "@/util/util";
 import debug from "debug";
 
 const dlog = debug("wave:vdom");
@@ -21,32 +22,55 @@ export class TermWshClient extends WshClient {
         this.model = model;
     }
 
-    handle_vdomcreatecontext(rh: RpcResponseHelper, data: VDomCreateContext) {
-        console.log("vdom-create", rh.getSource(), data);
-        this.model.vdomModel.reset();
-        this.model.vdomModel.backendRoute = rh.getSource();
-        if (!data.persist) {
-            const unsubFn = waveEventSubscribe({
-                eventType: "route:gone",
-                scope: rh.getSource(),
-                handler: () => {
-                    RpcApi.SetMetaCommand(this, {
-                        oref: WOS.makeORef("block", this.blockId),
-                        meta: { "term:mode": null },
-                    });
-                    unsubFn();
+    async handle_vdomcreatecontext(rh: RpcResponseHelper, data: VDomCreateContext) {
+        const source = rh.getSource();
+        if (isBlank(source)) {
+            throw new Error("source cannot be blank");
+        }
+        console.log("vdom-create", source, data);
+        const tabId = globalStore.get(atoms.staticTabId);
+        if (data.target?.newblock) {
+            const oref = await RpcApi.CreateBlockCommand(this, {
+                tabid: tabId,
+                blockdef: {
+                    meta: {
+                        view: "vdom",
+                        "vdom:route": rh.getSource(),
+                    },
+                },
+                magnified: data.target?.magnified,
+            });
+            return oref;
+        } else {
+            // in the terminal
+            // check if there is a current active vdom block
+            const oldVDomBlockId = globalStore.get(this.model.vdomBlockId);
+            const oref = await RpcApi.CreateSubBlockCommand(this, {
+                parentblockid: this.blockId,
+                blockdef: {
+                    meta: {
+                        view: "vdom",
+                        "vdom:route": rh.getSource(),
+                    },
                 },
             });
+            const [_, newVDomBlockId] = splitORef(oref);
+            if (!isBlank(oldVDomBlockId)) {
+                // dispose of the old vdom block
+                setTimeout(() => {
+                    RpcApi.DeleteSubBlockCommand(this, { blockid: oldVDomBlockId });
+                }, 500);
+            }
+            setTimeout(() => {
+                RpcApi.SetMetaCommand(this, {
+                    oref: makeORef("block", this.model.blockId),
+                    meta: {
+                        "term:mode": "vdom",
+                        "term:vdomblockid": newVDomBlockId,
+                    },
+                });
+            }, 50);
+            return oref;
         }
-        RpcApi.SetMetaCommand(this, {
-            oref: WOS.makeORef("block", this.blockId),
-            meta: { "term:mode": "html" },
-        });
-        this.model.vdomModel.queueUpdate(true);
-    }
-
-    handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {
-        console.log("async-initiation", rh.getSource(), data);
-        this.model.vdomModel.queueUpdate(true);
     }
 }

@@ -250,6 +250,16 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
 }
 
+func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.CommandCreateSubBlockData) (*waveobj.ORef, error) {
+	parentBlockId := data.ParentBlockId
+	blockData, err := wcore.CreateSubBlock(ctx, parentBlockId, data.BlockDef)
+	if err != nil {
+		return nil, fmt.Errorf("error creating block: %w", err)
+	}
+	blockRef := &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}
+	return blockRef, nil
+}
+
 func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
 	log.Printf("SETVIEW: %s | %q\n", data.BlockId, data.View)
 	ctx = waveobj.ContextWithUpdates(ctx)
@@ -356,10 +366,10 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandF
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
-	if data.FileName == blockcontroller.BlockFile_Html && tryCreate {
+	if data.FileName == blockcontroller.BlockFile_VDom && tryCreate {
 		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
 		if err != nil && err != fs.ErrExist {
-			return fmt.Errorf("error creating blockfile[html]: %w", err)
+			return fmt.Errorf("error creating blockfile[vdom]: %w", err)
 		}
 	}
 	err := filestore.WFS.AppendIJson(ctx, data.ZoneId, data.FileName, data.Data)
@@ -379,6 +389,14 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 	return nil
 }
 
+func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	err := wcore.DeleteBlock(ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error deleting block: %w", err)
+	}
+	return nil
+}
+
 func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
@@ -395,7 +413,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if windowId == "" {
 		return fmt.Errorf("no window found for tab")
 	}
-	err = wcore.DeleteBlock(ctx, tabId, data.BlockId)
+	err = wcore.DeleteBlock(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
@@ -406,6 +424,13 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	wps.Broker.SendUpdateEvents(updates)
 	return nil
+}
+
+func (ws *WshServer) WaitForRouteCommand(ctx context.Context, data wshrpc.CommandWaitForRouteData) (bool, error) {
+	waitCtx, cancelFn := context.WithTimeout(ctx, time.Duration(data.WaitMs)*time.Millisecond)
+	defer cancelFn()
+	err := wshutil.DefaultRouter.WaitForRegister(waitCtx, data.RouteId)
+	return err == nil, nil
 }
 
 func (ws *WshServer) EventRecvCommand(ctx context.Context, data wps.WaveEvent) error {
@@ -587,6 +612,6 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 		BlockId:  blockId,
 		TabId:    tabId,
 		WindowId: windowId,
-		Meta:     blockData.Meta,
+		Block:    blockData,
 	}, nil
 }

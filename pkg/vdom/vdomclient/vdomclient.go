@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -21,6 +20,7 @@ import (
 )
 
 type Client struct {
+	Lock               *sync.Mutex
 	Root               *vdom.RootElem
 	RootElem           *vdom.VDomElem
 	RpcClient          *wshutil.WshRpc
@@ -28,8 +28,8 @@ type Client struct {
 	ServerImpl         *VDomServerImpl
 	IsDone             bool
 	RouteId            string
+	VDomContextBlockId string
 	DoneReason         string
-	DoneOnce           *sync.Once
 	DoneCh             chan struct{}
 	Opts               vdom.VDomBackendOpts
 	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
@@ -48,7 +48,7 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 		impl.Client.doShutdown("got dispose from frontend")
 		return nil, nil
 	}
-	if impl.Client.IsDone {
+	if impl.Client.GetIsDone() {
 		return nil, nil
 	}
 	// set atoms
@@ -62,21 +62,30 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 				impl.Client.GlobalEventHandler(impl.Client, event)
 			}
 		} else {
-			impl.Client.Root.Event(event.WaveId, event.PropName, event.EventData)
+			impl.Client.Root.Event(event.WaveId, event.EventType, event.EventData)
 		}
 	}
-	if feUpdate.Initialize || feUpdate.Resync {
+	if feUpdate.Resync {
 		return impl.Client.fullRender()
 	}
 	return impl.Client.incrementalRender()
 }
 
+func (c *Client) GetIsDone() bool {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	return c.IsDone
+}
+
 func (c *Client) doShutdown(reason string) {
-	c.DoneOnce.Do(func() {
-		c.DoneReason = reason
-		c.IsDone = true
-		close(c.DoneCh)
-	})
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	if c.IsDone {
+		return
+	}
+	c.DoneReason = reason
+	c.IsDone = true
+	close(c.DoneCh)
 }
 
 func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
@@ -85,9 +94,9 @@ func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.V
 
 func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
 	client := &Client{
-		Root:     vdom.MakeRoot(),
-		DoneCh:   make(chan struct{}),
-		DoneOnce: &sync.Once{},
+		Lock:   &sync.Mutex{},
+		Root:   vdom.MakeRoot(),
+		DoneCh: make(chan struct{}),
 	}
 	if opts != nil {
 		client.Opts = *opts
@@ -126,13 +135,29 @@ func (c *Client) SetRootElem(elem *vdom.VDomElem) {
 	c.RootElem = elem
 }
 
-func (c *Client) CreateVDomContext() error {
-	err := wshclient.VDomCreateContextCommand(c.RpcClient, vdom.VDomCreateContext{}, &wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(c.RpcContext.BlockId)})
+func (c *Client) CreateVDomContext(target *vdom.VDomTarget) error {
+	blockORef, err := wshclient.VDomCreateContextCommand(
+		c.RpcClient,
+		vdom.VDomCreateContext{Target: target},
+		&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(c.RpcContext.BlockId)},
+	)
 	if err != nil {
 		return err
 	}
-	wshclient.EventSubCommand(c.RpcClient, wps.SubscriptionRequest{Event: "blockclose", Scopes: []string{
-		waveobj.MakeORef("block", c.RpcContext.BlockId).String(),
+	c.VDomContextBlockId = blockORef.OID
+	log.Printf("created vdom context: %v\n", blockORef)
+	gotRoute, err := wshclient.WaitForRouteCommand(c.RpcClient, wshrpc.CommandWaitForRouteData{
+		RouteId: wshutil.MakeFeBlockRouteId(blockORef.OID),
+		WaitMs:  4000,
+	}, &wshrpc.RpcOpts{Timeout: 5000})
+	if err != nil {
+		return fmt.Errorf("error waiting for vdom context route: %v", err)
+	}
+	if !gotRoute {
+		return fmt.Errorf("vdom context route could not be established")
+	}
+	wshclient.EventSubCommand(c.RpcClient, wps.SubscriptionRequest{Event: wps.Event_BlockClose, Scopes: []string{
+		blockORef.String(),
 	}}, nil)
 	c.RpcClient.EventListener.On("blockclose", func(event *wps.WaveEvent) {
 		c.doShutdown("got blockclose event")
@@ -140,8 +165,18 @@ func (c *Client) CreateVDomContext() error {
 	return nil
 }
 
-func (c *Client) SendAsyncInitiation() {
-	wshclient.VDomAsyncInitiationCommand(c.RpcClient, vdom.MakeAsyncInitiationRequest(c.RpcContext.BlockId), &wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(c.RpcContext.BlockId)})
+func (c *Client) SendAsyncInitiation() error {
+	if c.VDomContextBlockId == "" {
+		return fmt.Errorf("no vdom context block id")
+	}
+	if c.GetIsDone() {
+		return fmt.Errorf("client is done")
+	}
+	return wshclient.VDomAsyncInitiationCommand(
+		c.RpcClient,
+		vdom.MakeAsyncInitiationRequest(c.RpcContext.BlockId),
+		&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(c.VDomContextBlockId)},
+	)
 }
 
 func (c *Client) SetAtomVals(m map[string]any) {

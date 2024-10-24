@@ -268,6 +268,9 @@ func (router *WshRouter) WaitForRegister(ctx context.Context, routeId string) er
 		if router.GetRpc(routeId) != nil {
 			return nil
 		}
+		if router.getAnnouncedRoute(routeId) != "" {
+			return nil
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

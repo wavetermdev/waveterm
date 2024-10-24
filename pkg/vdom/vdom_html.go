@@ -4,6 +4,7 @@
 package vdom
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -72,7 +73,20 @@ func finalizeStack(stack []*VDomElem) *VDomElem {
 	return rtnElem
 }
 
-func getAttr(token htmltoken.Token, key string) string {
+func attrVal(attr htmltoken.Attribute) (any, error) {
+	// if !attr.IsJson {
+	// 	return attr.Val, nil
+	// }
+	var val any
+	err := json.Unmarshal([]byte(attr.Val), &val)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing json attr %q: %v", attr.Key, err)
+	}
+	return val, nil
+}
+
+// returns value, isjson
+func getAttrString(token htmltoken.Token, key string) string {
 	for _, attr := range token.Attr {
 		if attr.Key == key {
 			return attr.Val
@@ -81,7 +95,7 @@ func getAttr(token htmltoken.Token, key string) string {
 	return ""
 }
 
-func attrToProp(attrVal string, params map[string]any) any {
+func attrToProp(attrVal string, isJson bool, params map[string]any) any {
 	if strings.HasPrefix(attrVal, Html_ParamPrefix) {
 		bindKey := attrVal[len(Html_ParamPrefix):]
 		bindVal, ok := params[bindKey]
@@ -120,7 +134,7 @@ func tokenToElem(token htmltoken.Token, params map[string]any) *VDomElem {
 		if attr.Key == "" || attr.Val == "" {
 			continue
 		}
-		propVal := attrToProp(attr.Val, params)
+		propVal := attrToProp(attr.Val, false, params)
 		elem.Props[attr.Key] = propVal
 	}
 	return elem
@@ -253,7 +267,7 @@ func convertStyleToReactStyles(styleMap map[string]string, params map[string]any
 	}
 	rtn := make(map[string]any)
 	for key, val := range styleMap {
-		rtn[toReactName(key)] = attrToProp(val, params)
+		rtn[toReactName(key)] = attrToProp(val, false, params)
 	}
 	return rtn
 }
@@ -330,7 +344,7 @@ outer:
 			elemStack = popElemStack(elemStack)
 		case htmltoken.SelfClosingTagToken:
 			if token.Data == Html_BindParamTagName {
-				keyAttr := getAttr(token, "key")
+				keyAttr := getAttrString(token, "key")
 				dataVal := params[keyAttr]
 				elemList := partToElems(dataVal)
 				for _, elem := range elemList {
@@ -339,7 +353,7 @@ outer:
 				continue
 			}
 			if token.Data == Html_BindTagName {
-				keyAttr := getAttr(token, "key")
+				keyAttr := getAttrString(token, "key")
 				binding := &VDomBinding{Type: ObjectType_Binding, Bind: keyAttr}
 				appendChildToStack(elemStack, &VDomElem{Tag: WaveTextTag, Props: map[string]any{"text": binding}})
 				continue

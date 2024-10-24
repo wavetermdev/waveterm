@@ -36,7 +36,7 @@ const (
 
 const (
 	BlockFile_Term = "term" // used for main pty output
-	BlockFile_Html = "html" // used for alt html layout
+	BlockFile_VDom = "vdom" // used for alt html layout
 )
 
 const (

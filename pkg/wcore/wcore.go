@@ -26,21 +26,35 @@ import (
 const DefaultTimeout = 2 * time.Second
 const DefaultActivateBlockTimeout = 60 * time.Second
 
-func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
-	err := wstore.DeleteBlock(ctx, tabId, blockId)
+func DeleteBlock(ctx context.Context, blockId string) error {
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+	if block == nil {
+		return nil
+	}
+	if len(block.SubBlockIds) > 0 {
+		for _, subBlockId := range block.SubBlockIds {
+			err := DeleteBlock(ctx, subBlockId)
+			if err != nil {
+				return fmt.Errorf("error deleting subblock %s: %w", subBlockId, err)
+			}
+		}
+	}
+	err = wstore.DeleteBlock(ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
 	go blockcontroller.StopBlockController(blockId)
-	sendBlockCloseEvent(tabId, blockId)
+	sendBlockCloseEvent(blockId)
 	return nil
 }
 
-func sendBlockCloseEvent(tabId string, blockId string) {
+func sendBlockCloseEvent(blockId string) {
 	waveEvent := wps.WaveEvent{
 		Event: wps.Event_BlockClose,
 		Scopes: []string{
-			waveobj.MakeORef(waveobj.OType_Tab, tabId).String(),
 			waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
 		},
 		Data: blockId,
@@ -58,7 +72,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 	}
 	// close blocks (sends events + stops block controllers)
 	for _, blockId := range tabData.BlockIds {
-		err := DeleteBlock(ctx, tabId, blockId)
+		err := DeleteBlock(ctx, blockId)
 		if err != nil {
 			return fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
@@ -203,6 +217,20 @@ func CreateClient(ctx context.Context) (*waveobj.Client, error) {
 		return nil, fmt.Errorf("error inserting client: %w", err)
 	}
 	return client, nil
+}
+
+func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {
+	if blockDef == nil {
+		return nil, fmt.Errorf("blockDef is nil")
+	}
+	if blockDef.Meta == nil || blockDef.Meta.GetString(waveobj.MetaKey_View, "") == "" {
+		return nil, fmt.Errorf("no view provided for new block")
+	}
+	blockData, err := wstore.CreateSubBlock(ctx, blockId, blockDef)
+	if err != nil {
+		return nil, fmt.Errorf("error creating sub block: %w", err)
+	}
+	return blockData, nil
 }
 
 func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {

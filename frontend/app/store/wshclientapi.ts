@@ -67,9 +67,19 @@ class RpcApiType {
         return client.wshRpcCall("createblock", data, opts);
     }
 
+    // command "createsubblock" [call]
+    CreateSubBlockCommand(client: WshClient, data: CommandCreateSubBlockData, opts?: RpcOpts): Promise<ORef> {
+        return client.wshRpcCall("createsubblock", data, opts);
+    }
+
     // command "deleteblock" [call]
     DeleteBlockCommand(client: WshClient, data: CommandDeleteBlockData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("deleteblock", data, opts);
+    }
+
+    // command "deletesubblock" [call]
+    DeleteSubBlockCommand(client: WshClient, data: CommandDeleteBlockData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("deletesubblock", data, opts);
     }
 
     // command "dispose" [call]
@@ -228,13 +238,18 @@ class RpcApiType {
     }
 
     // command "vdomcreatecontext" [call]
-    VDomCreateContextCommand(client: WshClient, data: VDomCreateContext, opts?: RpcOpts): Promise<void> {
+    VDomCreateContextCommand(client: WshClient, data: VDomCreateContext, opts?: RpcOpts): Promise<ORef> {
         return client.wshRpcCall("vdomcreatecontext", data, opts);
     }
 
     // command "vdomrender" [call]
     VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): Promise<VDomBackendUpdate> {
         return client.wshRpcCall("vdomrender", data, opts);
+    }
+
+    // command "waitforroute" [call]
+    WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
+        return client.wshRpcCall("waitforroute", data, opts);
     }
 
     // command "webselector" [call]

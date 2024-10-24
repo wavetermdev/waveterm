@@ -13,7 +13,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
+var htmlCmdNewBlock bool
+
 func init() {
+	htmlCmd.Flags().BoolVarP(&htmlCmdNewBlock, "newblock", "n", false, "create a new block")
 	rootCmd.AddCommand(htmlCmd)
 }
 
@@ -30,7 +33,10 @@ func MakeVDom() *vdom.VDomElem {
 	  <h1 style="color:red; background-color: #bind:$.bgcolor; border-radius: 4px; padding: 5px;">hello vdom world</h1>
 	  <div><bind key="$.text"/> | num[<bind key="$.num"/>]</div>
 	  <div>
-	    <button onClick="#globalevent:clickinc">increment</button>
+	    <button data-text="hello" onClick='#globalevent:clickinc'>increment</button>
+	  </div>
+	  <div>
+	      <wave:markdown text="*hello from markdown*"/>
 	  </div>
 	</div>
 	`
@@ -39,7 +45,7 @@ func MakeVDom() *vdom.VDomElem {
 }
 
 func GlobalEventHandler(client *vdomclient.Client, event vdom.VDomEvent) {
-	if event.PropName == "clickinc" {
+	if event.EventType == "clickinc" {
 		client.SetAtomVal("num", client.GetAtomVal("num").(int)+1)
 		return
 	}
@@ -58,7 +64,7 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	client.SetAtomVal("text", "initial text")
 	client.SetAtomVal("num", 0)
 	client.SetRootElem(MakeVDom())
-	err = client.CreateVDomContext()
+	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: htmlCmdNewBlock})
 	if err != nil {
 		return err
 	}
@@ -70,8 +76,12 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	log.Printf("created vdom context\n")
 	go func() {
 		time.Sleep(5 * time.Second)
+		log.Printf("updating text\n")
 		client.SetAtomVal("text", "updated text")
-		client.SendAsyncInitiation()
+		err := client.SendAsyncInitiation()
+		if err != nil {
+			log.Printf("error sending async initiation: %v\n", err)
+		}
 	}()
 	<-client.DoneCh
 	return nil
