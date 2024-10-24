@@ -230,6 +230,14 @@ tasks:
                     echo "https://$SUFFIX"
                 fi
             done
+    artifacts:publish:snap:*:
+        desc: Publishes the specified artifacts version to Snapcraft.
+        vars:
+            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+            CHANNEL: '{{if contains .UP_VERSION "beta"}}beta{{else}}beta,stable{{end}}'
+        cmd: |
+            snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_arm64.snap
+            snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_amd64.snap
 
     artifacts:publish:winget:*:
         desc: Submits a version bump request to WinGet for the latest release.
