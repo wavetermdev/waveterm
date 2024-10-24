@@ -28,6 +28,7 @@ const (
 
 const (
 	Command_Authenticate      = "authenticate"    // special
+	Command_Dispose           = "dispose"         // special (disposes of the route, for multiproxy only)
 	Command_RouteAnnounce     = "routeannounce"   // special (for routing)
 	Command_RouteUnannounce   = "routeunannounce" // special (for routing)
 	Command_Message           = "message"
@@ -62,11 +63,15 @@ const (
 	Command_RemoteFileDelete  = "remotefiledelete"
 	Command_RemoteFileJoiin   = "remotefilejoin"
 
+	Command_ConnStatus       = "connstatus"
+	Command_WslStatus        = "wslstatus"
 	Command_ConnEnsure       = "connensure"
 	Command_ConnReinstallWsh = "connreinstallwsh"
 	Command_ConnConnect      = "connconnect"
 	Command_ConnDisconnect   = "conndisconnect"
 	Command_ConnList         = "connlist"
+	Command_WslList          = "wsllist"
+	Command_WslDefaultDistro = "wsldefaultdistro"
 
 	Command_WebSelector = "webselector"
 	Command_Notify      = "notify"
@@ -83,6 +88,7 @@ type RespOrErrorUnion[T any] struct {
 
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
+	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
 
@@ -114,11 +120,14 @@ type WshRpcInterface interface {
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
+	WslStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	ConnEnsureCommand(ctx context.Context, connName string) error
 	ConnReinstallWshCommand(ctx context.Context, connName string) error
 	ConnConnectCommand(ctx context.Context, connName string) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
+	WslListCommand(ctx context.Context) ([]string, error)
+	WslDefaultDistroCommand(ctx context.Context) (string, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -200,7 +209,13 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 }
 
 type CommandAuthenticateRtnData struct {
+	RouteId   string `json:"routeid"`
+	AuthToken string `json:"authtoken,omitempty"`
+}
+
+type CommandDisposeData struct {
 	RouteId string `json:"routeid"`
+	// auth token travels in the packet directly
 }
 
 type CommandMessageData struct {

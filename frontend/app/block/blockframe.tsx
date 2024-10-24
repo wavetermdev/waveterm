@@ -521,6 +521,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusAtom = getConnStatusAtom(connection);
         const connStatus = jotai.useAtomValue(connStatusAtom);
         const [connList, setConnList] = React.useState<Array<string>>([]);
+        const [wslList, setWslList] = React.useState<Array<string>>([]);
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
@@ -540,6 +541,18 @@ const ChangeConnectionBlockModal = React.memo(
             prtn.then((newConnList) => {
                 setConnList(newConnList ?? []);
             }).catch((e) => console.log("unable to load conn list from backend. using blank list: ", e));
+            const p2rtn = RpcApi.WslListCommand(TabRpcClient, { timeout: 2000 });
+            p2rtn
+                .then((newWslList) => {
+                    console.log(newWslList);
+                    setWslList(newWslList ?? []);
+                })
+                .catch((e) => {
+                    // removing this log and failing silentyly since it will happen
+                    // if a system isn't using the wsl. and would happen every time the
+                    // typeahead was opened. good candidate for verbose log level.
+                    //console.log("unable to load wsl list from backend. using blank list: ", e)
+                });
         }, [changeConnModalOpen, setConnList]);
 
         const changeConnection = React.useCallback(
@@ -586,6 +599,15 @@ const ChangeConnectionBlockModal = React.memo(
             }
             if (conn.includes(connSelected)) {
                 filteredList.push(conn);
+            }
+        }
+        const filteredWslList: Array<string> = [];
+        for (const conn of wslList) {
+            if (conn === connSelected) {
+                createNew = false;
+            }
+            if (conn.includes(connSelected)) {
+                filteredWslList.push(conn);
             }
         }
         // priority handles special suggestions when necessary
@@ -635,6 +657,20 @@ const ChangeConnectionBlockModal = React.memo(
                 iconColor: "var(--grey-text-color)",
                 value: "",
                 label: localName,
+            });
+        }
+        for (const wslConn of filteredWslList) {
+            const connStatus = connStatusMap.get(wslConn);
+            const connColorNum = computeConnColorNum(connStatus);
+            localSuggestion.items.push({
+                status: "connected",
+                icon: "arrow-right-arrow-left",
+                iconColor:
+                    connStatus?.status == "connected"
+                        ? `var(--conn-icon-color-${connColorNum})`
+                        : "var(--grey-text-color)",
+                value: "wsl://" + wslConn,
+                label: "wsl://" + wslConn,
             });
         }
         const remoteItems = filteredList.map((connName) => {

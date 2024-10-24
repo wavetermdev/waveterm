@@ -12,11 +12,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const DefaultRoute = "wavesrv"
+const UpstreamRoute = "upstream"
 const SysRoute = "sys" // this route doesn't exist, just a placeholder for system messages
 const ElectronRoute = "electron"
 
@@ -36,12 +39,13 @@ type msgAndRoute struct {
 }
 
 type WshRouter struct {
-	Lock            *sync.Mutex
-	RouteMap        map[string]AbstractRpcClient // routeid => client
-	UpstreamClient  AbstractRpcClient            // upstream client (if we are not the terminal router)
-	AnnouncedRoutes map[string]string            // routeid => local routeid
-	RpcMap          map[string]*routeInfo        // rpcid => routeinfo
-	InputCh         chan msgAndRoute
+	Lock             *sync.Mutex
+	RouteMap         map[string]AbstractRpcClient // routeid => client
+	UpstreamClient   AbstractRpcClient            // upstream client (if we are not the terminal router)
+	AnnouncedRoutes  map[string]string            // routeid => local routeid
+	RpcMap           map[string]*routeInfo        // rpcid => routeinfo
+	SimpleRequestMap map[string]chan *RpcMessage  // simple reqid => response channel
+	InputCh          chan msgAndRoute
 }
 
 func MakeConnectionRouteId(connId string) string {
@@ -68,11 +72,12 @@ var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {
 	rtn := &WshRouter{
-		Lock:            &sync.Mutex{},
-		RouteMap:        make(map[string]AbstractRpcClient),
-		AnnouncedRoutes: make(map[string]string),
-		RpcMap:          make(map[string]*routeInfo),
-		InputCh:         make(chan msgAndRoute, DefaultInputChSize),
+		Lock:             &sync.Mutex{},
+		RouteMap:         make(map[string]AbstractRpcClient),
+		AnnouncedRoutes:  make(map[string]string),
+		RpcMap:           make(map[string]*routeInfo),
+		SimpleRequestMap: make(map[string]chan *RpcMessage),
+		InputCh:          make(chan msgAndRoute, DefaultInputChSize),
 	}
 	go rtn.runServer()
 	return rtn
@@ -237,6 +242,10 @@ func (router *WshRouter) runServer() {
 			router.sendRoutedMessage(msgBytes, routeInfo.DestRouteId)
 			continue
 		} else if msg.ResId != "" {
+			ok := router.trySimpleResponse(&msg)
+			if ok {
+				continue
+			}
 			routeInfo := router.getRouteInfo(msg.ResId)
 			if routeInfo == nil {
 				// no route info, nothing to do
@@ -269,10 +278,10 @@ func (router *WshRouter) WaitForRegister(ctx context.Context, routeId string) er
 }
 
 // this will also consume the output channel of the abstract client
-func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
-	if routeId == SysRoute {
+func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, shouldAnnounce bool) {
+	if routeId == SysRoute || routeId == UpstreamRoute {
 		// cannot register sys route
-		log.Printf("error: WshRouter cannot register sys route\n")
+		log.Printf("error: WshRouter cannot register %s route\n", routeId)
 		return
 	}
 	log.Printf("[router] registering wsh route %q\n", routeId)
@@ -285,7 +294,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient) {
 	router.RouteMap[routeId] = rpc
 	go func() {
 		// announce
-		if !alreadyExists && router.GetUpstreamClient() != nil {
+		if shouldAnnounce && !alreadyExists && router.GetUpstreamClient() != nil {
 			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
 			announceBytes, _ := json.Marshal(announceMsg)
 			router.GetUpstreamClient().SendRpcMessage(announceBytes)
@@ -351,4 +360,98 @@ func (router *WshRouter) GetUpstreamClient() AbstractRpcClient {
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
 	return router.UpstreamClient
+}
+
+func (router *WshRouter) InjectMessage(msgBytes []byte, fromRouteId string) {
+	router.InputCh <- msgAndRoute{msgBytes: msgBytes, fromRouteId: fromRouteId}
+}
+
+func (router *WshRouter) registerSimpleRequest(reqId string) chan *RpcMessage {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	rtn := make(chan *RpcMessage, 1)
+	router.SimpleRequestMap[reqId] = rtn
+	return rtn
+}
+
+func (router *WshRouter) trySimpleResponse(msg *RpcMessage) bool {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	respCh := router.SimpleRequestMap[msg.ResId]
+	if respCh == nil {
+		return false
+	}
+	respCh <- msg
+	delete(router.SimpleRequestMap, msg.ResId)
+	return true
+}
+
+func (router *WshRouter) clearSimpleRequest(reqId string) {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	delete(router.SimpleRequestMap, reqId)
+}
+
+func (router *WshRouter) RunSimpleRawCommand(ctx context.Context, msg RpcMessage, fromRouteId string) (*RpcMessage, error) {
+	if msg.Command == "" {
+		return nil, errors.New("no command")
+	}
+	msgBytes, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	var respCh chan *RpcMessage
+	if msg.ReqId != "" {
+		respCh = router.registerSimpleRequest(msg.ReqId)
+	}
+	router.InjectMessage(msgBytes, fromRouteId)
+	if respCh == nil {
+		return nil, nil
+	}
+	select {
+	case <-ctx.Done():
+		router.clearSimpleRequest(msg.ReqId)
+		return nil, ctx.Err()
+	case resp := <-respCh:
+		if resp.Error != "" {
+			return nil, errors.New(resp.Error)
+		}
+		return resp, nil
+	}
+}
+
+func (router *WshRouter) HandleProxyAuth(jwtTokenAny any) (*wshrpc.CommandAuthenticateRtnData, error) {
+	if jwtTokenAny == nil {
+		return nil, errors.New("no jwt token")
+	}
+	jwtToken, ok := jwtTokenAny.(string)
+	if !ok {
+		return nil, errors.New("jwt token not a string")
+	}
+	if jwtToken == "" {
+		return nil, errors.New("empty jwt token")
+	}
+	msg := RpcMessage{
+		Command: wshrpc.Command_Authenticate,
+		ReqId:   uuid.New().String(),
+		Data:    jwtToken,
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeoutMs*time.Millisecond)
+	defer cancelFn()
+	resp, err := router.RunSimpleRawCommand(ctx, msg, "")
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil || resp.Data == nil {
+		return nil, errors.New("no data in authenticate response")
+	}
+	var respData wshrpc.CommandAuthenticateRtnData
+	err = utilfn.ReUnmarshal(&respData, resp.Data)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling authenticate response: %v", err)
+	}
+	if respData.AuthToken == "" {
+		return nil, errors.New("no auth token in authenticate response")
+	}
+	return &respData, nil
 }

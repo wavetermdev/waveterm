@@ -72,6 +72,11 @@ class RpcApiType {
         return client.wshRpcCall("deleteblock", data, opts);
     }
 
+    // command "dispose" [call]
+    DisposeCommand(client: WshClient, data: CommandDisposeData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("dispose", data, opts);
+    }
+
     // command "eventpublish" [call]
     EventPublishCommand(client: WshClient, data: WaveEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("eventpublish", data, opts);
@@ -235,6 +240,21 @@ class RpcApiType {
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
+    }
+
+    // command "wsldefaultdistro" [call]
+    WslDefaultDistroCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("wsldefaultdistro", null, opts);
+    }
+
+    // command "wsllist" [call]
+    WslListCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
+        return client.wshRpcCall("wsllist", null, opts);
+    }
+
+    // command "wslstatus" [call]
+    WslStatusCommand(client: WshClient, opts?: RpcOpts): Promise<ConnStatus[]> {
+        return client.wshRpcCall("wslstatus", null, opts);
     }
 
 }
