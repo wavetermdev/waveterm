@@ -6,7 +6,16 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WindowRpcClient } from "@/app/store/wshrpcutil";
 import { VDomView } from "@/app/view/term/vdom";
-import { WOS, atoms, getConnStatusAtom, getSettingsKeyAtom, globalStore, useSettingsPrefixAtom } from "@/store/global";
+import { NodeModel } from "@/layout/index";
+import {
+    WOS,
+    atoms,
+    getConnStatusAtom,
+    getSettingsKeyAtom,
+    globalStore,
+    useBlockAtom,
+    useSettingsPrefixAtom,
+} from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -106,15 +115,17 @@ class TermViewModel {
     termMode: jotai.Atom<string>;
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
+    nodeModel: NodeModel;
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: NodeModel) {
         this.viewType = "term";
         this.blockId = blockId;
+        this.nodeModel = nodeModel;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -215,8 +226,8 @@ class TermViewModel {
     }
 }
 
-function makeTerminalModel(blockId: string): TermViewModel {
-    return new TermViewModel(blockId);
+function makeTerminalModel(blockId: string, nodeModel: NodeModel): TermViewModel {
+    return new TermViewModel(blockId, nodeModel);
 }
 
 interface TerminalViewProps {
@@ -257,6 +268,16 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
+    const termFontSizeAtom = useBlockAtom(blockId, "fontsizeatom", () => {
+        return jotai.atom<number>((get) => {
+            const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+            const blockData = get(blockAtom);
+            const fsSettingsAtom = getSettingsKeyAtom("term:fontsize");
+            const settingsFontSize = get(fsSettingsAtom);
+            return blockData?.meta?.["term:fontsize"] ?? settingsFontSize ?? 12;
+        });
+    });
+    const termFontSize = jotai.useAtomValue(termFontSizeAtom);
 
     React.useEffect(() => {
         function handleTerminalKeydown(event: KeyboardEvent): boolean {
@@ -321,12 +342,13 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         if (termScrollback > 10000) {
             termScrollback = 10000;
         }
+        const wasFocused = termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
             {
                 theme: themeCopy,
-                fontSize: termSettings?.["term:fontsize"] ?? 12,
+                fontSize: termFontSize,
                 fontFamily: termSettings?.["term:fontfamily"] ?? "Hack",
                 drawBoldTextInBrightColors: false,
                 fontWeight: "normal",
@@ -346,11 +368,16 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         });
         rszObs.observe(connectElemRef.current);
         termWrap.initTerminal();
+        if (wasFocused) {
+            setTimeout(() => {
+                model.giveFocus();
+            }, 10);
+        }
         return () => {
             termWrap.dispose();
             rszObs.disconnect();
         };
-    }, [blockId, termSettings]);
+    }, [blockId, termSettings, termFontSize]);
 
     const handleHtmlKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
