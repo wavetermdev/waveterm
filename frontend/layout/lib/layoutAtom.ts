@@ -39,6 +39,10 @@ export function withLayoutTreeStateAtomFromTab(tabAtom: Atom<Tab>): WritableLayo
                 const stateAtom = getLayoutStateAtomFromTab(tabAtom, get);
                 if (!stateAtom) return;
                 const waveObjVal = get(stateAtom);
+                if (waveObjVal == null) {
+                    console.log("in withLayoutTreeStateAtomFromTab, waveObjVal is null", value);
+                    return;
+                }
                 waveObjVal.rootnode = value.rootNode;
                 waveObjVal.magnifiednodeid = value.magnifiedNodeId;
                 waveObjVal.focusednodeid = value.focusedNodeId;

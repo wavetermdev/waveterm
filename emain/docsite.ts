@@ -1,6 +1,6 @@
-import { getWebServerEndpoint } from "@/util/endpoints";
-import { fetch } from "@/util/fetchutil";
 import { ipcMain } from "electron";
+import { getWebServerEndpoint } from "../frontend/util/endpoints";
+import { fetch } from "../frontend/util/fetchutil";
 
 const docsiteWebUrl = "https://docs.waveterm.dev/";
 let docsiteUrl: string;

@@ -3,6 +3,7 @@
 
 import { NodeModel } from "@/layout/index";
 export interface BlockProps {
+    isSubBlock?: boolean;
     preview: boolean;
     nodeModel: NodeModel;
 }

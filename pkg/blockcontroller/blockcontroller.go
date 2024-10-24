@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -34,7 +36,7 @@ const (
 
 const (
 	BlockFile_Term = "term" // used for main pty output
-	BlockFile_Html = "html" // used for alt html layout
+	BlockFile_VDom = "vdom" // used for alt html layout
 )
 
 const (
@@ -262,7 +264,30 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	if remoteName != "" {
+	if strings.HasPrefix(remoteName, "wsl://") {
+		wslName := strings.TrimPrefix(remoteName, "wsl://")
+		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFunc()
+
+		wslConn := wsl.GetWslConn(credentialCtx, wslName, false)
+		connStatus := wslConn.DeriveConnStatus()
+		if connStatus.Status != conncontroller.Status_Connected {
+			return fmt.Errorf("not connected, cannot start shellproc")
+		}
+
+		// create jwt
+		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}, wslConn.GetDomainSocketName())
+			if err != nil {
+				return fmt.Errorf("error making jwt token: %w", err)
+			}
+			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+		}
+		shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
+		if err != nil {
+			return err
+		}
+	} else if remoteName != "" {
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
 
@@ -325,7 +350,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	// we don't need to authenticate this wshProxy since it is coming direct
 	wshProxy := wshutil.MakeRpcProxy()
 	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeControllerRouteId(bc.BlockId), wshProxy)
+	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeControllerRouteId(bc.BlockId), wshProxy, true)
 	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
@@ -359,9 +384,6 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		}
 	}()
 	go func() {
-		defer func() {
-			log.Printf("[shellproc] shellInputCh loop done\n")
-		}()
 		// handles input from the shellInputCh, sent to pty
 		// use shellInputCh instead of bc.ShellInputCh (because we want to be attached to *this* ch.  bc.ShellInputCh can be updated)
 		for ic := range shellInputCh {
@@ -495,6 +517,15 @@ func CheckConnStatus(blockId string) error {
 	}
 	connName := bdata.Meta.GetString(waveobj.MetaKey_Connection, "")
 	if connName == "" {
+		return nil
+	}
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
+		conn := wsl.GetWslConn(context.Background(), distroName, false)
+		connStatus := conn.DeriveConnStatus()
+		if connStatus.Status != conncontroller.Status_Connected {
+			return fmt.Errorf("not connected: %s", connStatus.Status)
+		}
 		return nil
 	}
 	opts, err := remote.ParseOpts(connName)

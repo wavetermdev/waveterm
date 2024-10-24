@@ -3,20 +3,26 @@
 
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
+import { clearTabCache, getFocusedWaveWindow } from "./emain-viewmgr";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
 
 type AppMenuCallbacks = {
     createNewWaveWindow: () => Promise<void>;
     relaunchBrowserWindows: () => Promise<void>;
+    getLastFocusedWaveWindow: () => WaveBrowserWindow;
 };
 
 function getWindowWebContents(window: electron.BaseWindow): electron.WebContents {
     if (window == null) {
         return null;
     }
-    if (window instanceof electron.BrowserWindow) {
-        return window.webContents;
+    if (window instanceof electron.BaseWindow) {
+        const waveWin = window as WaveBrowserWindow;
+        if (waveWin.activeTabView) {
+            return waveWin.activeTabView.webContents;
+        }
+        return null;
     }
     return null;
 }
@@ -32,7 +38,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             role: "close",
             accelerator: "", // clear the accelerator
             click: () => {
-                electron.BrowserWindow.getFocusedWindow()?.close();
+                getFocusedWaveWindow()?.close();
             },
         },
     ];
@@ -112,9 +118,14 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
     ];
 
+    const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Meta+I";
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
-            role: "forceReload",
+            label: "Reload Tab",
+            accelerator: "Shift+CommandOrControl+R",
+            click: (_, window) => {
+                getWindowWebContents(window)?.reloadIgnoringCache();
+            },
         },
         {
             label: "Relaunch All Windows",
@@ -123,7 +134,18 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             },
         },
         {
-            role: "toggleDevTools",
+            label: "Clear Tab Cache",
+            click: () => {
+                clearTabCache();
+            },
+        },
+        {
+            label: "Toggle DevTools",
+            accelerator: devToolsAccel,
+            click: (_, window) => {
+                let wc = getWindowWebContents(window);
+                wc?.toggleDevTools();
+            },
         },
         {
             type: "separator",
@@ -143,6 +165,9 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 if (wc == null) {
                     return;
                 }
+                if (wc.getZoomFactor() >= 5) {
+                    return;
+                }
                 wc.setZoomFactor(wc.getZoomFactor() + 0.2);
             },
         },
@@ -152,6 +177,9 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             click: (_, window) => {
                 const wc = getWindowWebContents(window);
                 if (wc == null) {
+                    return;
+                }
+                if (wc.getZoomFactor() >= 5) {
                     return;
                 }
                 wc.setZoomFactor(wc.getZoomFactor() + 0.2);
@@ -167,8 +195,27 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 if (wc == null) {
                     return;
                 }
+                if (wc.getZoomFactor() <= 0.2) {
+                    return;
+                }
                 wc.setZoomFactor(wc.getZoomFactor() - 0.2);
             },
+        },
+        {
+            label: "Zoom Out (hidden)",
+            accelerator: "CommandOrControl+Shift+-",
+            click: (_, window) => {
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                if (wc.getZoomFactor() <= 0.2) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
+            },
+            visible: false,
+            acceleratorWorksWhenHidden: true,
         },
         {
             type: "separator",

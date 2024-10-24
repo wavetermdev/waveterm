@@ -5,8 +5,8 @@ import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, fetchWaveFile, globalStore, WOS } from "@/store/global";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
@@ -182,26 +182,41 @@ export class WaveAiModel implements ViewModel {
                     });
                 }
             }
-
+            const dropdownItems = Object.entries(presets)
+                .sort((a, b) => (a[1]["display:order"] > b[1]["display:order"] ? 1 : -1))
+                .map(
+                    (preset) =>
+                        ({
+                            label: preset[1]["display:name"],
+                            onClick: () =>
+                                fireAndForget(async () => {
+                                    await ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
+                                        ...preset[1],
+                                        "ai:preset": preset[0],
+                                    });
+                                }),
+                        }) as MenuItem
+                );
+            dropdownItems.push({
+                label: "Add AI preset...",
+                onClick: () => {
+                    fireAndForget(async () => {
+                        const path = `${getApi().getConfigDir()}/presets/ai.json`;
+                        const blockDef: BlockDef = {
+                            meta: {
+                                view: "preview",
+                                file: path,
+                            },
+                        };
+                        await createBlock(blockDef, true);
+                    });
+                },
+            });
             viewTextChildren.push({
                 elemtype: "menubutton",
                 text: presetName,
                 title: "Select AI Configuration",
-                items: Object.entries(presets)
-                    .sort((a, b) => (a[1]["display:order"] > b[1]["display:order"] ? 1 : -1))
-                    .map(
-                        (preset) =>
-                            ({
-                                label: preset[1]["display:name"],
-                                onClick: () =>
-                                    fireAndForget(async () => {
-                                        await ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
-                                            ...preset[1],
-                                            "ai:preset": preset[0],
-                                        });
-                                    }),
-                            }) as MenuItem
-                    ),
+                items: dropdownItems,
             });
             return viewTextChildren;
         });
@@ -274,7 +289,7 @@ export class WaveAiModel implements ViewModel {
                 };
                 let fullMsg = "";
                 try {
-                    const aiGen = RpcApi.StreamWaveAiCommand(WindowRpcClient, beMsg, { timeout: opts.timeoutms });
+                    const aiGen = RpcApi.StreamWaveAiCommand(TabRpcClient, beMsg, { timeout: opts.timeoutms });
                     for await (const msg of aiGen) {
                         fullMsg += msg.text ?? "";
                         globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
