@@ -154,6 +154,19 @@ jobs:
                   AWS_ACCESS_KEY_ID: "${{ secrets.ARTIFACTS_KEY_ID }}"
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.ARTIFACTS_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ matrix.runner }}
+                  path: make
+    create-release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Download artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: make
+                  merge-multiple: true
             - name: Create draft release
               if: github.event_name != 'workflow_dispatch'
               uses: softprops/action-gh-release@v2
@@ -173,9 +186,3 @@ jobs:
                       make/*.snap
                       make/*.flatpak
                       make/*.AppImage
-            - name: Upload build artifacts to workflow (manual runs only)
-              if: github.event_name == 'workflow_dispatch'
-              uses: actions/upload-artifact@v4
-              with:
-                  name: ${{matrix.runner}}
-                  path: make
