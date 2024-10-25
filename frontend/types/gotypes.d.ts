@@ -47,6 +47,7 @@ declare global {
         windowids: string[];
         tosagreed?: number;
         hasoldhistory?: boolean;
+        nexttabid?: number;
     };
 
     // windowservice.CloseTabRtnType

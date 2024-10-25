@@ -863,9 +863,9 @@ func AtomicRenameCopy(dstPath string, srcPath string, perms os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer dstFd.Close()
 	_, err = io.Copy(dstFd, srcFd)
 	if err != nil {
+		dstFd.Close()
 		return err
 	}
 	err = dstFd.Close()
