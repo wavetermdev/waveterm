@@ -457,9 +457,19 @@ function getBlockComponentModel(blockId: string): BlockComponentModel {
     return blockComponentModelMap.get(blockId);
 }
 
+function getFocusedBlockId(): string {
+    const layoutModel = getLayoutModelForStaticTab();
+    const focusedLayoutNode = globalStore.get(layoutModel.focusedNode);
+    return focusedLayoutNode?.data?.blockId;
+}
+
+// pass null to refocus the currently focused block
 function refocusNode(blockId: string) {
     if (blockId == null) {
-        return;
+        blockId = getFocusedBlockId();
+        if (blockId == null) {
+            return;
+        }
     }
     const layoutModel = getLayoutModelForStaticTab();
     const layoutNodeId = layoutModel.getNodeByBlockId(blockId);

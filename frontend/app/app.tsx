@@ -68,6 +68,9 @@ async function getClipboardURL(): Promise<URL> {
             return null;
         }
         const url = new URL(clipboardText);
+        if (!url.protocol.startsWith("http")) {
+            return null;
+        }
         return url;
     } catch (e) {
         return null;
