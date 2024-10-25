@@ -161,7 +161,6 @@ export const menuDataAtom = atom<WorkspaceDataType[]>(workspaceData);
 
 const WorkspaceSwitcher = () => {
     const [menuData, setMenuData] = useAtom(menuDataAtom);
-    const activeWorkspace = menuData.find((workspace) => workspace.isActive);
 
     const handleTitleChange = (id: string, newTitle: string) => {
         // This should call a service
@@ -226,6 +225,8 @@ const WorkspaceSwitcher = () => {
         );
     };
 
+    const activeWorkspace = menuData.find((workspace) => workspace.isActive);
+
     const data = menuData.map((item): ExpandableMenuItemData => {
         const { id, icon, label, color, isActive } = item;
         const title: ExpandableMenuItemGroupTitleType = { label };
@@ -238,10 +239,12 @@ const WorkspaceSwitcher = () => {
         if (label === "Default") {
             return {
                 id,
-                type: "item",
-                leftElement: <WorkspaceSVG></WorkspaceSVG>,
-                content: "Default",
-                rightElement: isActive ? <i className="fa-sharp fa-solid fa-check"></i> : null,
+                type: "group",
+                title: {
+                    leftElement: <WorkspaceSVG></WorkspaceSVG>,
+                    label: "Default",
+                    rightElement: isActive ? <i className="fa-sharp fa-solid fa-check"></i> : null,
+                },
             };
         }
         return {

@@ -132,7 +132,7 @@ const ExpandableMenuItemGroup = ({
     };
 
     const renderChildren = Children.map(children, (child: ReactElement) => {
-        if (child.type === ExpandableMenuItemGroupTitle) {
+        if (child && child.type === ExpandableMenuItemGroupTitle) {
             return cloneElement(child as any, {
                 ...child.props,
                 onClick: () => {
