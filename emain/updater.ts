@@ -53,6 +53,10 @@ export class Updater {
         this.autoCheckInterval = null;
         this.availableUpdateReleaseName = null;
 
+        if (!this.autoCheckEnabled) {
+            return;
+        }
+
         autoUpdater.autoInstallOnAppQuit = settings["autoupdate:installonquit"];
         console.log("Install update on quit:", settings["autoupdate:installonquit"]);
 
