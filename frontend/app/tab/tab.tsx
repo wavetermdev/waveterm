@@ -69,8 +69,8 @@ const Tab = React.memo(
                 };
             }, []);
 
-            const handleDoubleClick = (event) => {
-                event.stopPropagation();
+            const handleRenameTab = (event) => {
+                event?.stopPropagation();
                 setIsEditable(true);
                 editableTimeoutRef.current = setTimeout(() => {
                     if (editableRef.current) {
@@ -114,7 +114,7 @@ const Tab = React.memo(
                     editableRef.current.blur();
                     event.preventDefault();
                     event.stopPropagation();
-                } else if (curLen >= 10 && !["Backspace", "Delete", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+                } else if (curLen >= 14 && !["Backspace", "Delete", "ArrowLeft", "ArrowRight"].includes(event.key)) {
                     event.preventDefault();
                     event.stopPropagation();
                 }
@@ -155,6 +155,7 @@ const Tab = React.memo(
                     const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
                     return aOrder - bOrder;
                 });
+                menu.push({ label: "Rename Tab", click: () => handleRenameTab(null) });
                 menu.push({ label: "Copy TabId", click: () => navigator.clipboard.writeText(id) });
                 menu.push({ type: "separator" });
                 if (bgPresets.length > 0) {
@@ -198,7 +199,7 @@ const Tab = React.memo(
                             ref={editableRef}
                             className={clsx("name", { focused: isEditable })}
                             contentEditable={isEditable}
-                            onDoubleClick={handleDoubleClick}
+                            onDoubleClick={handleRenameTab}
                             onBlur={handleBlur}
                             onKeyDown={handleKeyDown}
                             suppressContentEditableWarning={true}

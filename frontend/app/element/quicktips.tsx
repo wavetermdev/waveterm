@@ -145,6 +145,16 @@ const QuickTips = () => {
                     </div>
                 </div>
 
+                <div className="tip-section-header">wsh commands</div>
+                <div className="tip">
+                    <div>
+                        <code>wsh view [filename|url]</code>
+                        <div style={{ marginTop: 5 }}>
+                            Run this command in the terminal to preview a file, directory, or web URL.
+                        </div>
+                    </div>
+                </div>
+
                 <div className="tip-section-header">Need More Help?</div>
                 <div className="tip">
                     <div>
