@@ -106,10 +106,6 @@ type SettingsType struct {
 	WindowDisableHardwareAcceleration bool     `json:"window:disablehardwareacceleration,omitempty"`
 	WindowMaxTabCacheSize             int      `json:"window:maxtabcachesize,omitempty"`
 
-	SshClear               bool  `json:"ssh:*,omitempty"`
-	SshProxyJumpLogLimit   int32 `json:"ssh:proxyjumploglimit,omitempty"`
-	SshProxyJumpDepthLimit int32 `json:"ssh:proxyjumpdepthlimit,omitempty"`
-
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
 

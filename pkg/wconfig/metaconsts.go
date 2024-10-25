@@ -62,10 +62,6 @@ const (
 	ConfigKey_WindowDisableHardwareAcceleration = "window:disablehardwareacceleration"
 	ConfigKey_WindowMaxTabCacheSize          = "window:maxtabcachesize"
 
-	ConfigKey_SshClear                       = "ssh:*"
-	ConfigKey_SshProxyJumpLogLimit           = "ssh:proxyjumploglimit"
-	ConfigKey_SshProxyJumpDepthLimit         = "ssh:proxyjumpdepthlimit"
-
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
 
