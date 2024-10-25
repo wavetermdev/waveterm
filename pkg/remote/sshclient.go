@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	xknownhosts "golang.org/x/crypto/ssh/knownhosts"
@@ -45,7 +46,7 @@ func (uice UserInputCancelError) Error() string {
 type ConnectionDebugInfo struct {
 	CurrentClient *ssh.Client
 	NextOpts      *SSHOpts
-	JumpNum       uint32
+	JumpNum       int32
 }
 
 type ConnectionError struct {
@@ -58,6 +59,12 @@ func (ce ConnectionError) Error() string {
 		return fmt.Sprintf("Connecting to %+#v, Error: %v", ce.NextOpts, ce.Err)
 	}
 	return fmt.Sprintf("Connecting from %v to %+#v (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
+}
+
+func okayToPrintLogs(jumpNum int32) bool {
+	settings := wconfig.GetWatcher().GetFullConfig().Settings
+	// negative log numbers allow the check to be bypassed entirely
+	return settings.SshProxyJumpLogLimit < 0 || jumpNum <= settings.SshProxyJumpLogLimit
 }
 
 // This exists to trick the ssh library into continuing to try
@@ -128,7 +135,9 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 		*identityFilesPtr = (*identityFilesPtr)[1:]
 		privateKey, ok := existingKeys[identityFile]
 		if !ok {
-			log.Printf("error with existingKeys, this should never happen")
+			if okayToPrintLogs(debugInfo.JumpNum) {
+				log.Printf("error with existingKeys, this should never happen")
+			}
 			// skip this key and try with the next
 			return createDummySigner()
 		}
@@ -502,6 +511,8 @@ func createHostKeyCallback(sshKeywords *SshKeywords) (ssh.HostKeyCallback, HostK
 				"%s\n\n"+
 				"**Offending Keys**  \n"+
 				"%s", key.Type(), correctKeyFingerprint, strings.Join(bulletListKnownHosts, "  \n"), strings.Join(offendingKeysFmt, "  \n"))
+
+			// depth limit does not apply since this will cause a failure
 			log.Print(errorMsg)
 			//update := scbus.MakeUpdatePacket()
 			// create update into alert message
@@ -528,7 +539,9 @@ func createClientConfig(connCtx context.Context, sshKeywords *SshKeywords, debug
 	var agentClient agent.ExtendedAgent
 	conn, err := net.Dial("unix", sshKeywords.IdentityAgent)
 	if err != nil {
-		log.Printf("Failed to open Identity Agent Socket: %v", err)
+		if okayToPrintLogs(debugInfo.JumpNum) {
+			log.Printf("Failed to open Identity Agent Socket: %v", err)
+		}
 	} else {
 		agentClient = agent.NewClient(conn)
 		authSockSigners, _ = agentClient.Signers()
@@ -601,31 +614,42 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum uint32) (*ssh.Client, uint32, error) {
+func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32) (*ssh.Client, int32, error) {
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
 		NextOpts:      opts,
 		JumpNum:       jumpNum,
 	}
+	settings := wconfig.GetWatcher().GetFullConfig().Settings
+	if settings.SshProxyJumpDepthLimit >= 0 && jumpNum == settings.SshProxyJumpDepthLimit+1 {
+		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: fmt.Errorf("ProxyJump %d exceeds to configured max depth of %d", jumpNum, settings.SshProxyJumpDepthLimit)}
+	}
+	if settings.SshProxyJumpLogLimit >= 0 && jumpNum == settings.SshProxyJumpLogLimit+1 {
+		log.Printf("JumpProxy %d exceeds the configred max log depth of %d. Logs for the remainging jumps in this connection attempt will be disabled", jumpNum, settings.SshProxyJumpLogLimit)
+	}
 	// todo print final warning if logging gets turned off
-	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
+	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost, debugInfo)
 	if err != nil {
-		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
-
+		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 
 	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
 	if err != nil {
-		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 
 	for _, proxyName := range sshKeywords.ProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
 		if err != nil {
-			return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 
-		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, debugInfo.JumpNum)
+		// ensure no overflow (this will likely never happen)
+		if jumpNum < math.MaxInt32 {
+			jumpNum += 1
+		}
+
+		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum)
 		if err != nil {
 			// do not add a context on a recursive call
 			// (this can cause a recursive nested context that's arbitrarily deep)
@@ -634,17 +658,12 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	}
 	clientConfig, err := createClientConfig(connCtx, sshKeywords, debugInfo)
 	if err != nil {
-		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
 	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
 	if err != nil {
-		return client, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
-	}
-
-	// ensure no overflow (this will likely never happen)
-	if jumpNum < math.MaxUint32 {
-		jumpNum += 1
+		return client, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 	return client, debugInfo.JumpNum, nil
 }
@@ -718,7 +737,7 @@ func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeyword
 // note that a `var == "yes"` will default to false
 // but `var != "no"` will default to true
 // when given unexpected strings
-func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
+func findSshConfigKeywords(hostPattern string, debugInfo *ConnectionDebugInfo) (*SshKeywords, error) {
 	ssh_config.ReloadConfigs()
 	sshKeywords := &SshKeywords{}
 	var err error
@@ -800,7 +819,9 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 			}
 			sshKeywords.IdentityAgent = agentPath
 		} else {
-			log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
+			if okayToPrintLogs(debugInfo.JumpNum) {
+				log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
+			}
 		}
 	} else {
 		agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(identityAgentRaw))

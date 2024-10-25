@@ -517,6 +517,9 @@ declare global {
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
         "window:maxtabcachesize"?: number;
+        "ssh:*"?: boolean;
+        "ssh:proxyjumploglimit"?: number;
+        "ssh:proxyjumpdepthlimit"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
