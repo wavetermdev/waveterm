@@ -16,6 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -83,7 +84,7 @@ func (svc *WindowService) CloseTab(ctx context.Context, windowId string, tabId s
 		return nil, nil, fmt.Errorf("error closing tab: %w", err)
 	}
 	rtn := &CloseTabRtnType{}
-	if window.ActiveTabId == tabId && tabIndex != -1 {
+	if ws.ActiveTabId == tabId && tabIndex != -1 {
 		if len(ws.TabIds) == 1 {
 			rtn.CloseWindow = true
 			svc.CloseWindow(ctx, windowId, fromElectron)
@@ -96,11 +97,11 @@ func (svc *WindowService) CloseTab(ctx context.Context, windowId string, tabId s
 		} else {
 			if tabIndex < len(ws.TabIds)-1 {
 				newActiveTabId := ws.TabIds[tabIndex+1]
-				wstore.SetActiveTab(ctx, windowId, newActiveTabId)
+				workspace.SetActiveTab(ctx, ws.OID, newActiveTabId)
 				rtn.NewActiveTabId = newActiveTabId
 			} else {
 				newActiveTabId := ws.TabIds[tabIndex-1]
-				wstore.SetActiveTab(ctx, windowId, newActiveTabId)
+				workspace.SetActiveTab(ctx, ws.OID, newActiveTabId)
 				rtn.NewActiveTabId = newActiveTabId
 			}
 		}
@@ -137,11 +138,15 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	if !foundBlock {
 		return nil, fmt.Errorf("block not found in current tab")
 	}
-	newWindow, err := wcore.CreateWindow(ctx, nil)
+	newWindow, err := wcore.CreateWindow(ctx, nil, "")
 	if err != nil {
 		return nil, fmt.Errorf("error creating window: %w", err)
 	}
-	err = wstore.MoveBlockToTab(ctx, currentTabId, newWindow.ActiveTabId, blockId)
+	ws, err := workspace.GetWorkspace(ctx, newWindow.WorkspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting workspace: %w", err)
+	}
+	err = wstore.MoveBlockToTab(ctx, currentTabId, ws.ActiveTabId, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error moving block to tab: %w", err)
 	}
@@ -157,7 +162,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 		ActionType: wlayout.LayoutActionDataType_Remove,
 		BlockId:    blockId,
 	})
-	wlayout.QueueLayoutActionForTab(ctx, newWindow.ActiveTabId, waveobj.LayoutActionData{
+	wlayout.QueueLayoutActionForTab(ctx, ws.ActiveTabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
 		BlockId:    blockId,
 		Focused:    true,

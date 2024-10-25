@@ -153,8 +153,8 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 	return nil
 }
 
-func BootstrapNewWindowLayout(ctx context.Context, window *waveobj.Window) error {
-	tabId := window.ActiveTabId
+func BootstrapNewWorkspaceLayout(ctx context.Context, workspace *waveobj.Workspace) error {
+	tabId := workspace.ActiveTabId
 	newTabLayout := GetNewTabLayout()
 
 	err := ApplyPortableLayout(ctx, tabId, newTabLayout)
@@ -184,7 +184,12 @@ func BootstrapStarterLayout(ctx context.Context) error {
 		return fmt.Errorf("error getting window: %w", err)
 	}
 
-	tabId := window.ActiveTabId
+	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
+	if err != nil {
+		return fmt.Errorf("error getting workspace: %w", err)
+	}
+
+	tabId := workspace.ActiveTabId
 
 	starterLayout := GetStarterLayout()
 

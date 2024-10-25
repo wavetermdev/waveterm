@@ -350,6 +350,7 @@ declare global {
 
     type WaveBrowserWindow = Electron.BaseWindow & {
         waveWindowId: string;
+        workspaceId: string;
         waveReadyPromise: Promise<void>;
         allTabViews: Map<string, WaveTabView>;
         activeTabView: WaveTabView;

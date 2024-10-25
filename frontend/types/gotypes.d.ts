@@ -854,7 +854,6 @@ declare global {
     // waveobj.Window
     type WaveWindow = WaveObj & {
         workspaceid: string;
-        activetabid: string;
         isnew?: boolean;
         pos: Point;
         winsize: WinSize;
@@ -905,7 +904,7 @@ declare global {
         tabids: string[];
         icon: string;
         color: string;
-        activetabs: {[key: string]: string};
+        activetabid: string;
     };
 
     // workspace.WorkspaceListEntry

@@ -131,7 +131,6 @@ type Window struct {
 	OID         string      `json:"oid"`
 	Version     int         `json:"version"`
 	WorkspaceId string      `json:"workspaceid"`
-	ActiveTabId string      `json:"activetabid"`
 	IsNew       bool        `json:"isnew,omitempty"` // set when a window is created on the backend so the FE can size it properly.  cleared on first resize
 	Pos         Point       `json:"pos"`
 	WinSize     WinSize     `json:"winsize"`
@@ -144,14 +143,14 @@ func (*Window) GetOType() string {
 }
 
 type Workspace struct {
-	OID        string            `json:"oid"`
-	Version    int               `json:"version"`
-	Name       string            `json:"name"`
-	TabIds     []string          `json:"tabids"`
-	Meta       MetaMapType       `json:"meta"`
-	Icon       string            `json:"icon"`
-	Color      string            `json:"color"`
-	ActiveTabs map[string]string `json:"activetabs"`
+	OID         string      `json:"oid"`
+	Version     int         `json:"version"`
+	Name        string      `json:"name"`
+	TabIds      []string    `json:"tabids"`
+	Meta        MetaMapType `json:"meta"`
+	Icon        string      `json:"icon"`
+	Color       string      `json:"color"`
+	ActiveTabId string      `json:"activetabid"`
 }
 
 func (*Workspace) GetOType() string {

@@ -398,6 +398,7 @@ function createBaseWaveBrowserWindow(
     const bwin = new electron.BaseWindow(winOpts);
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     win.waveWindowId = waveWindow.oid;
+    win.workspaceId = waveWindow.workspaceid;
     win.alreadyClosed = false;
     win.allTabViews = new Map<string, WaveTabView>();
     win.on(
@@ -479,25 +480,26 @@ export function getLastFocusedWaveWindow(): WaveBrowserWindow {
 
 // note, this does not *show* the window.
 // to show, await win.readyPromise and then win.show()
-export function createBrowserWindow(
+export async function createBrowserWindow(
     clientId: string,
     waveWindow: WaveWindow,
     fullConfig: FullConfigType,
     opts: WindowOpts
-): WaveBrowserWindow {
+): Promise<WaveBrowserWindow> {
     const bwin = createBaseWaveBrowserWindow(waveWindow, fullConfig, opts);
-    // TODO fix null activetabid if it exists
-    if (waveWindow.activetabid != null) {
-        setActiveTab(bwin, waveWindow.activetabid);
+
+    const workspace = await ClientService.GetWorkspace(waveWindow.workspaceid);
+    if (!workspace.activetabid) {
+        await ObjectService.SetActiveTab(workspace.oid, workspace.tabids[0]);
     }
     return bwin;
 }
 
 export async function setActiveTab(waveWindow: WaveBrowserWindow, tabId: string) {
-    const windowId = waveWindow.waveWindowId;
-    await ObjectService.SetActiveTab(waveWindow.waveWindowId, tabId);
+    const workspace = await ClientService.GetWorkspace(waveWindow.workspaceId);
+    await ObjectService.SetActiveTab(workspace.oid, tabId);
     const fullConfig = await FileService.GetFullConfig();
-    const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, windowId, tabId);
+    const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, waveWindow.workspaceId, tabId);
     setTabViewIntoWindow(waveWindow, tabView, tabInitialized);
 }
 

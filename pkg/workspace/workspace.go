@@ -18,10 +18,18 @@ func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
 		TabIds: []string{},
 	}
 	wstore.DBInsert(ctx, ws)
+	_, err := CreateTab(ctx, ws.OID, "", true)
+	if err != nil {
+		return nil, fmt.Errorf("error inserting tab: %w", err)
+	}
 	return ws, nil
 }
 
-func CreateTab(ctx context.Context, workspaceId string, name string) (*waveobj.Tab, error) {
+func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) {
+	return wstore.DBMustGet[*waveobj.Workspace](ctx, wsID)
+}
+
+func createTabObj(ctx context.Context, workspaceId string, name string) (*waveobj.Tab, error) {
 	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*waveobj.Tab, error) {
 		ws, _ := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
 		if ws == nil {
@@ -43,6 +51,33 @@ func CreateTab(ctx context.Context, workspaceId string, name string) (*waveobj.T
 		wstore.DBUpdate(tx.Context(), ws)
 		return tab, nil
 	})
+}
+
+// returns tabid
+func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool) (string, error) {
+	if tabName == "" {
+		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		if err != nil {
+			return "", fmt.Errorf("error getting client: %w", err)
+		}
+		tabName = "T" + fmt.Sprint(client.NextTabId)
+		client.NextTabId++
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return "", fmt.Errorf("error updating client: %w", err)
+		}
+	}
+	tab, err := createTabObj(ctx, workspaceId, tabName)
+	if err != nil {
+		return "", fmt.Errorf("error creating tab: %w", err)
+	}
+	if activateTab {
+		err = SetActiveTab(ctx, workspaceId, tab.OID)
+		if err != nil {
+			return "", fmt.Errorf("error setting active tab: %w", err)
+		}
+	}
+	return tab.OID, nil
 }
 
 // must delete all blocks individually first
@@ -68,6 +103,24 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 		wstore.DBUpdate(tx.Context(), ws)
 		wstore.DBDelete(tx.Context(), waveobj.OType_Tab, tabId)
 		wstore.DBDelete(tx.Context(), waveobj.OType_LayoutState, tab.LayoutState)
+		return nil
+	})
+}
+
+func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		workspace, _ := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
+		if workspace == nil {
+			return fmt.Errorf("workspace not found: %q", workspaceId)
+		}
+		if tabId != "" {
+			tab, _ := wstore.DBGet[*waveobj.Tab](tx.Context(), tabId)
+			if tab == nil {
+				return fmt.Errorf("tab not found: %q", tabId)
+			}
+		}
+		workspace.ActiveTabId = tabId
+		wstore.DBUpdate(tx.Context(), workspace)
 		return nil
 	})
 }

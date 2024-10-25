@@ -117,7 +117,7 @@ async function handleWSEvent(evtMsg: WSEventType) {
         }
         const clientData = await services.ClientService.GetClientData();
         const fullConfig = await services.FileService.GetFullConfig();
-        const newWin = createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
+        const newWin = await createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
         await newWin.waveReadyPromise;
         newWin.show();
     } else if (evtMsg.eventtype == "electron:closewindow") {
@@ -412,7 +412,7 @@ async function createNewWaveWindow(): Promise<void> {
         const existingWindowId = clientData.windowids[0];
         const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
-            const win = createBrowserWindow(clientData.oid, existingWindowData, fullConfig, { unamePlatform });
+            const win = await createBrowserWindow(clientData.oid, existingWindowData, fullConfig, { unamePlatform });
             await win.waveReadyPromise;
             win.show();
             recreatedWindow = true;
@@ -422,7 +422,7 @@ async function createNewWaveWindow(): Promise<void> {
         return;
     }
     const newWindow = await services.ClientService.MakeWindow();
-    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig, { unamePlatform });
+    const newBrowserWindow = await createBrowserWindow(clientData.oid, newWindow, fullConfig, { unamePlatform });
     await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
 }
@@ -656,7 +656,7 @@ async function relaunchBrowserWindows(): Promise<void> {
             });
             continue;
         }
-        const win = createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
+        const win = await createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
         wins.push(win);
     }
     for (const win of wins) {

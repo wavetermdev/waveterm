@@ -81,11 +81,11 @@ func (svc *ObjectService) AddTabToWorkspace_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) AddTabToWorkspace(windowId string, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
+func (svc *ObjectService) AddTabToWorkspace(workspaceId string, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := wcore.CreateTab(ctx, windowId, tabName, activateTab)
+	tabId, err := workspace.CreateTab(ctx, workspaceId, tabName, activateTab)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}
@@ -123,11 +123,11 @@ func (svc *ObjectService) SetActiveTab_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) SetActiveTab(windowId string, tabId string) (waveobj.UpdatesRtnType, error) {
+func (svc *ObjectService) SetActiveTab(workspaceId string, tabId string) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wstore.SetActiveTab(ctx, windowId, tabId)
+	err := workspace.SetActiveTab(ctx, workspaceId, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}

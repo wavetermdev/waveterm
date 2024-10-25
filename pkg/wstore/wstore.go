@@ -18,24 +18,6 @@ func init() {
 	}
 }
 
-func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		window, _ := DBGet[*waveobj.Window](tx.Context(), windowId)
-		if window == nil {
-			return fmt.Errorf("window not found: %q", windowId)
-		}
-		if tabId != "" {
-			tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
-			if tab == nil {
-				return fmt.Errorf("tab not found: %q", tabId)
-			}
-		}
-		window.ActiveTabId = tabId
-		DBUpdate(tx.Context(), window)
-		return nil
-	})
-}
-
 func UpdateTabName(ctx context.Context, tabId, name string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)

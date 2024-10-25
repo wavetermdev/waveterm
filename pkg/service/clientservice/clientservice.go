@@ -16,6 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -66,11 +67,15 @@ func (cs *ClientService) GetWindow(windowId string) (*waveobj.Window, error) {
 }
 
 func (cs *ClientService) MakeWindow(ctx context.Context) (*waveobj.Window, error) {
-	window, err := wcore.CreateWindow(ctx, nil)
+	window, err := wcore.CreateWindow(ctx, nil, "")
 	if err != nil {
 		return nil, err
 	}
-	err = wlayout.BootstrapNewWindowLayout(ctx, window)
+	ws, err := workspace.GetWorkspace(ctx, window.WorkspaceId)
+	if err != nil {
+		return nil, err
+	}
+	err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
 	if err != nil {
 		return window, err
 	}
