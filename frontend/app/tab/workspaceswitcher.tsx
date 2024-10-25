@@ -291,7 +291,11 @@ const WorkspaceSwitcher = () => {
                 );
             } else if (item.type === "group") {
                 return (
-                    <ExpandableMenuItemGroup key={item.id} defaultExpanded={item.defaultExpanded}>
+                    <ExpandableMenuItemGroup
+                        key={item.id}
+                        defaultExpanded={item.defaultExpanded}
+                        className={clsx({ "is-active": item.id === activeWorkspace.id })}
+                    >
                         <ExpandableMenuItemGroupTitle onClick={() => setActiveWorkspace(item.id)}>
                             <div
                                 className="menu-group-title-wrapper"

@@ -80,13 +80,12 @@ const ExpandableMenuItem = ({ children, className, withHoverEffect = true, onCli
 type ExpandableMenuItemGroupTitleProps = {
     children: ReactNode;
     className?: string;
-    style?: { [key: string]: string };
     onClick?: () => void;
 };
 
-const ExpandableMenuItemGroupTitle = ({ children, className, style, onClick }: ExpandableMenuItemGroupTitleProps) => {
+const ExpandableMenuItemGroupTitle = ({ children, className, onClick }: ExpandableMenuItemGroupTitleProps) => {
     return (
-        <div className={clsx("expandable-menu-item-group-title", className)} onClick={() => onClick?.()} style={style}>
+        <div className={clsx("expandable-menu-item-group-title", className)} onClick={() => onClick?.()}>
             {children}
         </div>
     );
