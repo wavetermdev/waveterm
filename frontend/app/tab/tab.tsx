@@ -9,7 +9,7 @@ import { clsx } from "clsx";
 import * as React from "react";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
-import { atoms, globalStore } from "@/app/store/global";
+import { atoms, globalStore, refocusNode } from "@/app/store/global";
 import "./tab.less";
 
 interface TabProps {
@@ -86,6 +86,7 @@ const Tab = React.memo(
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
                 services.ObjectService.UpdateTabName(id, newText);
+                setTimeout(() => refocusNode(null), 10);
             };
 
             const handleKeyDown = (event) => {
