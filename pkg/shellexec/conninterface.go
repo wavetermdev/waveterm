@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/creack/pty"
@@ -43,7 +45,11 @@ func (cw CmdWrap) KillGraceful(timeout time.Duration) {
 	if cw.Cmd.ProcessState != nil && cw.Cmd.ProcessState.Exited() {
 		return
 	}
-	cw.Cmd.Process.Signal(os.Interrupt)
+	if runtime.GOOS == "windows" {
+		cw.Cmd.Process.Signal(os.Interrupt)
+	} else {
+		cw.Cmd.Process.Signal(syscall.SIGTERM)
+	}
 	go func() {
 		time.Sleep(timeout)
 		if cw.Cmd.ProcessState == nil || !cw.Cmd.ProcessState.Exited() {
