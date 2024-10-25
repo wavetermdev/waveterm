@@ -34,51 +34,51 @@ var htmlCmd = &cobra.Command{
 
 func StyleTag(ctx context.Context, props map[string]any) any {
 	return vdom.Bind(`
-	<style>
-	.root {
-	    padding: 10px;
-	}
+    <style>
+    .root {
+        padding: 10px;
+    }
 
-	.background {
-	    display: flex;
-    	align-items: center;
-	    width: 100%;
+    .background {
+        display: flex;
+        align-items: center;
+        width: 100%;
 
-	    .background-inner {
-    	    max-width: 300px;
+        .background-inner {
+            max-width: 300px;
 
-        	.bg-item {
-	            cursor: pointer;
-    	        padding: 8px 12px;
-        	    border-radius: 4px;
-            	display: flex;
-	            flex-direction: row;
-    	        align-items: flex-start;
-        	    justify-content: flex-start;
+            .bg-item {
+                cursor: pointer;
+                padding: 8px 12px;
+                border-radius: 4px;
+                display: flex;
+                flex-direction: row;
+                align-items: flex-start;
+                justify-content: flex-start;
 
-	            &:hover {
-    	            background-color: var(--button-grey-hover-bg);
-        	    }
+                &:hover {
+                    background-color: var(--button-grey-hover-bg);
+                }
 
-            	.bg-preview {
-	                width: 20px;
-    	            height: 20px;
-        	        margin-right: 10px;
-            	    border-radius: 50%;
-					border: 1px solid #777;
-	            }
+                .bg-preview {
+                    width: 20px;
+                    height: 20px;
+                    margin-right: 10px;
+                    border-radius: 50%;
+                    border: 1px solid #777;
+                }
 
-    	        .bg-label {
-				    display: block;
-				    white-space: nowrap;
-				    overflow: hidden;
-				    text-overflow: ellipsis;	            
-				}
-    	    }
-	    }
-	}
-	</style>
-	`, nil)
+                .bg-label {
+                    display: block;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;	            
+                }
+            }
+        }
+    }
+    </style>
+    `, nil)
 }
 
 func BgItemTag(ctx context.Context, props map[string]any) any {
@@ -124,27 +124,27 @@ func AllBgItemsTag(ctx context.Context, props map[string]any) any {
 		bgElems = append(bgElems, elem)
 	}
 	return vdom.Bind(`
-	<div className="background">
-		<div className="background-inner">
-			<bindparam key="bgElems"/>
-		</div>
-	</div>
-	`, map[string]any{"bgElems": bgElems})
+    <div className="background">
+        <div className="background-inner">
+            <bindparam key="bgElems"/>
+        </div>
+    </div>
+    `, map[string]any{"bgElems": bgElems})
 }
 
 func MakeVDom() *vdom.VDomElem {
 	vdomStr := `
-	<div className="root">
-	  <StyleTag/>
-	  <h1>Set Background</h1>
-	  <div>
-	      <wave:markdown text="*quick vdom application to set background colors*"/>
-	  </div>
-	  <div>
-	      <AllBgItemsTag/>
-	  </div>
-	</div>
-	`
+    <div className="root">
+        <StyleTag/>
+        <h1>Set Background</h1>
+        <div>
+            <wave:markdown text="*quick vdom application to set background colors*"/>
+        </div>
+        <div>
+          <AllBgItemsTag/>
+        </div>
+    </div>
+    `
 	elem := vdom.Bind(vdomStr, nil)
 	return elem
 }
@@ -166,9 +166,6 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	GlobalVDomClient = client
 	client.SetGlobalEventHandler(GlobalEventHandler)
 	log.Printf("created client: %v\n", client)
-	client.SetAtomVal("bgcolor", "#0000ff77")
-	client.SetAtomVal("text", "initial text")
-	client.SetAtomVal("num", 0)
 	client.RegisterComponent("StyleTag", StyleTag)
 	client.RegisterComponent("BgItemTag", BgItemTag)
 	client.RegisterComponent("AllBgItemsTag", AllBgItemsTag)
