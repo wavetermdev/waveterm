@@ -181,7 +181,7 @@ const QuickTips = () => {
                     </div>
                     <div>
                         <a target="_blank" href="https://docs.waveterm.dev/config" rel="noopener">
-                            More Configuration Options
+                            Configuration Options
                         </a>
                     </div>
                 </div>
