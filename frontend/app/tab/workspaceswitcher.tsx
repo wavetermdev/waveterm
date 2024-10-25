@@ -19,8 +19,7 @@ import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { atom, useAtom } from "jotai";
 import { memo } from "react";
-import ThunderSVG from "../asset/thunder.svg";
-// Removed WorskpaceSVG import since it's no longer used
+import WorkspaceSVG from "../asset/workspace.svg";
 
 import "./workspaceswitcher.less";
 
@@ -135,6 +134,13 @@ interface WorkspaceDataType {
 // Define the global Jotai atom for menuData
 const workspaceData: WorkspaceDataType[] = [
     {
+        id: "596e76eb-d87d-425e-9f6e-1519069ee446",
+        icon: "",
+        label: "Default",
+        color: "",
+        isActive: false,
+    },
+    {
         id: "596e76eb-d87d-425e-9f6e-1519069ee447",
         icon: "shield-cat",
         label: "Cat Space",
@@ -227,6 +233,15 @@ const WorkspaceSwitcher = () => {
         title.leftElement = leftElement;
         title.rightElement = isActive ? <i className="fa-sharp fa-solid fa-check" style={{ color: color }}></i> : null;
 
+        if (label === "Default") {
+            return {
+                id,
+                type: "item",
+                leftElement: <WorkspaceSVG></WorkspaceSVG>,
+                content: "Default",
+                rightElement: isActive ? <i className="fa-sharp fa-solid fa-check"></i> : null,
+            };
+        }
         return {
             id,
             type: "group",
@@ -251,10 +266,16 @@ const WorkspaceSwitcher = () => {
     });
 
     const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
-        return menuItems.map((item) => {
+        return menuItems.map((item, index) => {
             if (item.type === "item") {
                 return (
-                    <ExpandableMenuItem key={item.id} withHoverEffect={typeof item.content === "string"}>
+                    <ExpandableMenuItem
+                        key={item.id ?? index}
+                        withHoverEffect={typeof item.content === "string"}
+                        onClick={() => {
+                            item.id && setActiveWorkspace(item.id);
+                        }}
+                    >
                         {item.leftElement && (
                             <ExpandableMenuItemLeftElement>{item.leftElement}</ExpandableMenuItemLeftElement>
                         )}
@@ -278,7 +299,7 @@ const WorkspaceSwitcher = () => {
                                 </ExpandableMenuItemRightElement>
                             )}
                         </ExpandableMenuItemGroupTitle>
-                        {item.children && renderExpandableMenu(item.children)}
+                        {item.children && item.children.length > 0 && renderExpandableMenu(item.children)}
                     </ExpandableMenuItemGroup>
                 );
             }
@@ -288,22 +309,21 @@ const WorkspaceSwitcher = () => {
 
     // Get the active workspace
     const activeWorkspace = menuData.find((workspace) => workspace.isActive);
+    let workspaceIcon = (
+        <i className={makeIconClass(activeWorkspace.icon, false)} style={{ color: activeWorkspace.color }}></i>
+    );
+    if (activeWorkspace.label == "Default") {
+        workspaceIcon = <WorkspaceSVG></WorkspaceSVG>;
+    }
 
     return (
         <Popover className="workspace-switcher-popover">
             <PopoverButton className="workspace-switcher-button grey" as="div">
-                <span className="workspace-icon">
-                    {activeWorkspace && (
-                        <i
-                            className={makeIconClass(activeWorkspace.icon, false)}
-                            style={{ color: activeWorkspace.color }}
-                        ></i>
-                    )}
-                </span>
-                <span className="divider" />
+                <span className="workspace-icon">{workspaceIcon}</span>
+                {/* <span className="divider" />
                 <span className="icon-right">
                     <ThunderSVG></ThunderSVG>
-                </span>
+                </span> */}
             </PopoverButton>
             <PopoverContent className="workspace-switcher-content">
                 <div className="title">Switch workspace</div>
