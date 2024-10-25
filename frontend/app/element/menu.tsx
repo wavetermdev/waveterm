@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { type Placement, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
+import { FloatingPortal, type Placement, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import clsx from "clsx";
 import { createRef, Fragment, memo, ReactNode, useRef, useState } from "react";
 import ReactDOM from "react-dom";
@@ -141,53 +141,55 @@ const MenuComponent = memo(
                 </div>
 
                 {isOpen && (
-                    <div
-                        className={clsx("menu", className)}
-                        ref={refs.setFloating}
-                        style={floatingStyles}
-                        {...getFloatingProps()}
-                    >
-                        {items.map((item, index) => {
-                            const key = `${index}`;
-                            const isActive = hoveredItems.includes(key);
+                    <FloatingPortal>
+                        <div
+                            className={clsx("menu", className)}
+                            ref={refs.setFloating}
+                            style={floatingStyles}
+                            {...getFloatingProps()}
+                        >
+                            {items.map((item, index) => {
+                                const key = `${index}`;
+                                const isActive = hoveredItems.includes(key);
 
-                            const menuItemProps = {
-                                className: clsx("menu-item", { active: isActive }),
-                                onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
-                                    handleMouseEnterItem(event, null, index, item),
-                                onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
-                            };
+                                const menuItemProps = {
+                                    className: clsx("menu-item", { active: isActive }),
+                                    onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                                        handleMouseEnterItem(event, null, index, item),
+                                    onClick: (e: React.MouseEvent<HTMLDivElement>) => handleOnClick(e, item),
+                                };
 
-                            const renderedItem = renderMenuItem ? (
-                                renderMenuItem(item, menuItemProps)
-                            ) : (
-                                <div key={key} {...menuItemProps}>
-                                    <span className="label">{item.label}</span>
-                                    {item.subItems && <i className="fa-sharp fa-solid fa-chevron-right"></i>}
-                                </div>
-                            );
+                                const renderedItem = renderMenuItem ? (
+                                    renderMenuItem(item, menuItemProps)
+                                ) : (
+                                    <div key={key} {...menuItemProps}>
+                                        <span className="label">{item.label}</span>
+                                        {item.subItems && <i className="fa-sharp fa-solid fa-chevron-right"></i>}
+                                    </div>
+                                );
 
-                            return (
-                                <Fragment key={key}>
-                                    {renderedItem}
-                                    {visibleSubMenus[key]?.visible && item.subItems && (
-                                        <SubMenu
-                                            subItems={item.subItems}
-                                            parentKey={key}
-                                            subMenuPosition={subMenuPosition}
-                                            visibleSubMenus={visibleSubMenus}
-                                            hoveredItems={hoveredItems}
-                                            handleMouseEnterItem={handleMouseEnterItem}
-                                            handleOnClick={handleOnClick}
-                                            subMenuRefs={subMenuRefs}
-                                            renderMenu={renderMenu}
-                                            renderMenuItem={renderMenuItem}
-                                        />
-                                    )}
-                                </Fragment>
-                            );
-                        })}
-                    </div>
+                                return (
+                                    <Fragment key={key}>
+                                        {renderedItem}
+                                        {visibleSubMenus[key]?.visible && item.subItems && (
+                                            <SubMenu
+                                                subItems={item.subItems}
+                                                parentKey={key}
+                                                subMenuPosition={subMenuPosition}
+                                                visibleSubMenus={visibleSubMenus}
+                                                hoveredItems={hoveredItems}
+                                                handleMouseEnterItem={handleMouseEnterItem}
+                                                handleOnClick={handleOnClick}
+                                                subMenuRefs={subMenuRefs}
+                                                renderMenu={renderMenu}
+                                                renderMenuItem={renderMenuItem}
+                                            />
+                                        )}
+                                    </Fragment>
+                                );
+                            })}
+                        </div>
+                    </FloatingPortal>
                 )}
             </>
         );
