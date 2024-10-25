@@ -2,16 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Markdown } from "@/app/element/markdown";
-import { VDomModel } from "@/app/view/term/vdom-model";
+import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
+
+import { convertVDomId, getTextChildren, validateAndWrapCss } from "@/app/view/vdom/vdom-utils";
+import { NodeModel } from "@/layout/index";
+import "./vdom.less";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
 const WaveTextTag = "wave:text";
 const WaveNullTag = "wave:null";
+const StyleTagName = "style";
 
 const VDomObjType_Ref = "ref";
 const VDomObjType_Binding = "binding";
@@ -25,7 +31,7 @@ const WaveTagMap: Record<string, VDomReactTagType> = {
     "wave:markdown": WaveMarkdown,
 };
 
-const AllowedTags: { [tagName: string]: boolean } = {
+const AllowedSimpleTags: { [tagName: string]: boolean } = {
     div: true,
     b: true,
     i: true,
@@ -49,6 +55,30 @@ const AllowedTags: { [tagName: string]: boolean } = {
     select: true,
     option: true,
     form: true,
+    label: true,
+    table: true,
+    thead: true,
+    tbody: true,
+    tr: true,
+    th: true,
+    td: true,
+    hr: true,
+    br: true,
+    pre: true,
+    code: true,
+};
+
+const IdAttributes = {
+    id: true,
+    for: true,
+    "aria-labelledby": true,
+    "aria-describedby": true,
+    "aria-controls": true,
+    "aria-owns": true,
+    form: true,
+    headers: true,
+    usemap: true,
+    list: true,
 };
 
 function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
@@ -165,6 +195,10 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             }
             // fallthrough to set props[key] = val
         }
+        if (IdAttributes[key]) {
+            props[key] = convertVDomId(model, val);
+            continue;
+        }
         props[key] = val;
     }
     return [props, atomKeys];
@@ -223,6 +257,20 @@ function WaveMarkdown({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     );
 }
 
+function StyleTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const styleText = getTextChildren(elem);
+    if (styleText == null) {
+        return null;
+    }
+    const wrapperClassName = "vdom-" + model.blockId;
+    // TODO handle errors
+    const sanitizedCss = validateAndWrapCss(model, styleText, wrapperClassName);
+    if (sanitizedCss == null) {
+        return null;
+    }
+    return <style>{sanitizedCss}</style>;
+}
+
 function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     const props = useVDom(model, elem);
     if (elem.tag == WaveNullTag) {
@@ -235,7 +283,10 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     if (waveTag) {
         return waveTag({ elem, model });
     }
-    if (!AllowedTags[elem.tag]) {
+    if (elem.tag == StyleTagName) {
+        return <StyleTag elem={elem} model={model} />;
+    }
+    if (!AllowedSimpleTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
     }
     let childrenComps = convertChildren(elem, model);
@@ -280,4 +331,24 @@ function VDomRoot({ model }: { model: VDomModel }) {
     return <div className="vdom">{rtn}</div>;
 }
 
-export { VDomRoot };
+function makeVDomModel(blockId: string, nodeModel: NodeModel): VDomModel {
+    return new VDomModel(blockId, nodeModel);
+}
+
+type VDomViewProps = {
+    model: VDomModel;
+    blockId: string;
+};
+
+function VDomView({ blockId, model }: VDomViewProps) {
+    let viewRef = React.useRef(null);
+    model.viewRef = viewRef;
+    const vdomClass = "vdom-" + blockId;
+    return (
+        <div className={clsx("vdom-view", vdomClass)} ref={viewRef}>
+            <VDomRoot model={model} />
+        </div>
+    );
+}
+
+export { makeVDomModel, VDomView };
