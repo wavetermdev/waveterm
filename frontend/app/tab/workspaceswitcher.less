@@ -41,12 +41,12 @@
     min-height: auto;
     display: flex;
     width: 256px;
-    padding: 6px 8px;
+    padding: 0;
     flex-direction: column;
     align-items: center;
     border-radius: 8px;
     border: 0.5px solid rgba(255, 255, 255, 0.1);
-    background: #232323;
+    background-color: rgb(35, 35, 35);
     box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.8);
 
     .title {
@@ -56,6 +56,46 @@
         font-weight: 600;
         margin-bottom: 5px;
         width: 100%;
+        padding: 6px 8px 0px;
+    }
+
+    .expandable-menu-item {
+        margin: 3px 8px;
+    }
+
+    .expandable-menu-item-group {
+        margin: 0 8px;
+
+        &:last-child {
+            margin-bottom: 6px;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        .expandable-menu-item {
+            margin: 0;
+        }
+    }
+
+    .expandable-menu-item-group {
+        border: 1px solid transparent;
+        border-radius: 6px;
+
+        .menu-group-title-wrapper {
+            display: flex;
+            width: 100%;
+            padding: 5px 8px;
+            border-radius: 5px;
+        }
+
+        &.open {
+            background-color: rgb(30, 30, 30);
+            border: 1px solid rgb(41, 41, 41);
+
+            .expandable-menu-item-group-title:hover {
+                background-color: transparent;
+            }
+        }
     }
 
     .expandable-menu-item,
@@ -72,6 +112,7 @@
 
     .expandable-menu-item-group-title {
         height: 29px;
+        padding: 0;
 
         .left-icon {
             font-size: 14px;
@@ -89,7 +130,7 @@
                 auto-fit,
                 minmax(15px, 15px)
             ); // Ensures each color circle has a fixed 14px size
-            grid-gap: 19px; // Space between items
+            grid-gap: 18.5px; // Space between items
             justify-content: center;
             align-items: center;
             margin-top: 5px;

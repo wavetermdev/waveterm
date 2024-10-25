@@ -17,6 +17,7 @@ import { Input } from "@/element/input";
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
+import { colord } from "colord";
 import { atom, useAtom } from "jotai";
 import { memo } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
@@ -160,6 +161,7 @@ export const menuDataAtom = atom<WorkspaceDataType[]>(workspaceData);
 
 const WorkspaceSwitcher = () => {
     const [menuData, setMenuData] = useAtom(menuDataAtom);
+    const activeWorkspace = menuData.find((workspace) => workspace.isActive);
 
     const handleTitleChange = (id: string, newTitle: string) => {
         // This should call a service
@@ -265,6 +267,8 @@ const WorkspaceSwitcher = () => {
         };
     });
 
+    const modWorkspaceColor = colord(activeWorkspace.color).alpha(0.1).toRgbString();
+
     const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
         return menuItems.map((item, index) => {
             if (item.type === "item") {
@@ -289,15 +293,24 @@ const WorkspaceSwitcher = () => {
                 return (
                     <ExpandableMenuItemGroup key={item.id} defaultExpanded={item.defaultExpanded}>
                         <ExpandableMenuItemGroupTitle onClick={() => setActiveWorkspace(item.id)}>
-                            {item.title.leftElement && (
-                                <ExpandableMenuItemLeftElement>{item.title.leftElement}</ExpandableMenuItemLeftElement>
-                            )}
-                            <div className="label">{item.title.label}</div>
-                            {item.title.rightElement && (
-                                <ExpandableMenuItemRightElement>
-                                    {item.title.rightElement}
-                                </ExpandableMenuItemRightElement>
-                            )}
+                            <div
+                                className="menu-group-title-wrapper"
+                                style={{
+                                    backgroundColor: item.id === activeWorkspace.id ? modWorkspaceColor : "transparent",
+                                }}
+                            >
+                                {item.title.leftElement && (
+                                    <ExpandableMenuItemLeftElement>
+                                        {item.title.leftElement}
+                                    </ExpandableMenuItemLeftElement>
+                                )}
+                                <div className="label">{item.title.label}</div>
+                                {item.title.rightElement && (
+                                    <ExpandableMenuItemRightElement>
+                                        {item.title.rightElement}
+                                    </ExpandableMenuItemRightElement>
+                                )}
+                            </div>
                         </ExpandableMenuItemGroupTitle>
                         {item.children && item.children.length > 0 && renderExpandableMenu(item.children)}
                     </ExpandableMenuItemGroup>
@@ -307,8 +320,6 @@ const WorkspaceSwitcher = () => {
         });
     };
 
-    // Get the active workspace
-    const activeWorkspace = menuData.find((workspace) => workspace.isActive);
     let workspaceIcon = (
         <i className={makeIconClass(activeWorkspace.icon, false)} style={{ color: activeWorkspace.color }}></i>
     );
