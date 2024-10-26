@@ -1,5 +1,5 @@
 import { Button } from "@/element/button";
-import { useDismiss, useFloating, useInteractions, type Placement } from "@floating-ui/react";
+import { FloatingPortal, useDismiss, useFloating, useInteractions, type Placement } from "@floating-ui/react";
 import clsx from "clsx";
 import {
     Children,
@@ -110,15 +110,17 @@ interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement> {
 const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
     ({ children, className, getFloatingProps, style, ...props }, ref) => {
         return (
-            <div
-                ref={ref}
-                className={clsx("popover-content", className)}
-                style={style}
-                {...getFloatingProps?.()}
-                {...props}
-            >
-                {children}
-            </div>
+            <FloatingPortal>
+                <div
+                    ref={ref}
+                    className={clsx("popover-content", className)}
+                    style={style}
+                    {...getFloatingProps?.()}
+                    {...props}
+                >
+                    {children}
+                </div>
+            </FloatingPortal>
         );
     }
 );
