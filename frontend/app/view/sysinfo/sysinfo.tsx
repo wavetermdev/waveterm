@@ -101,7 +101,8 @@ class SysinfoViewModel {
     viewText: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
     dataAtom: jotai.PrimitiveAtom<Array<DataItem>>;
-    addDataAtom: jotai.WritableAtom<unknown, [DataItem[]], void>;
+    addInitialDataAtom: jotai.WritableAtom<unknown, [DataItem[]], void>;
+    addContinuousDataAtom: jotai.WritableAtom<unknown, [DataItem], void>;
     incrementCount: jotai.WritableAtom<unknown, [], Promise<void>>;
     loadingAtom: jotai.PrimitiveAtom<boolean>;
     numPoints: jotai.Atom<number>;
@@ -117,11 +118,10 @@ class SysinfoViewModel {
         this.viewType = viewType;
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-        this.addDataAtom = jotai.atom(null, (get, set, points) => {
-            const targetLen = get(this.numPoints);
-            let data = get(this.dataAtom);
+        this.addInitialDataAtom = jotai.atom(null, (get, set, points) => {
+            const targetLen = get(this.numPoints) + 1;
             try {
-                const newDataRaw = [...data, ...points];
+                const newDataRaw = [...points];
                 if (newDataRaw.length == 0) {
                     return;
                 }
@@ -157,6 +157,19 @@ class SysinfoViewModel {
                     newDataWithGaps.push(curIdxItem);
                 }
                 set(this.dataAtom, newDataWithGaps);
+            } catch (e) {
+                console.log("Error adding data to sysinfo", e);
+            }
+        });
+        this.addContinuousDataAtom = jotai.atom(null, (get, set, newPoint) => {
+            const targetLen = get(this.numPoints) + 1;
+            let data = get(this.dataAtom);
+            try {
+                const latestItemTs = newPoint?.ts ?? 0;
+                const cutoffTs = latestItemTs - 1000 * targetLen;
+                data.push(newPoint);
+                const newData = data.filter((dataItem) => dataItem.ts >= cutoffTs);
+                set(this.dataAtom, newData);
             } catch (e) {
                 console.log("Error adding data to sysinfo", e);
             }
@@ -242,7 +255,7 @@ class SysinfoViewModel {
             const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
             // splice the initial data into the default data (replacing the newest points)
             //newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
-            globalStore.set(this.addDataAtom, initialDataItems);
+            globalStore.set(this.addInitialDataAtom, initialDataItems);
         } catch (e) {
             console.log("Error loading initial data for sysinfo", e);
         } finally {
@@ -328,7 +341,7 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
     const connName = jotai.useAtomValue(model.connection);
     const lastConnName = React.useRef(connName);
     const connStatus = jotai.useAtomValue(model.connStatus);
-    const addPlotData = jotai.useSetAtom(model.addDataAtom);
+    const addContinuousData = jotai.useSetAtom(model.addContinuousDataAtom);
     const loading = jotai.useAtomValue(model.loadingAtom);
 
     React.useEffect(() => {
@@ -350,7 +363,13 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
                     return;
                 }
                 const dataItem = convertWaveEventToDataItem(event);
-                addPlotData([dataItem]);
+                const prevData = globalStore.get(model.dataAtom);
+                const prevLastTs = prevData[prevData.length - 1]?.ts ?? 0;
+                if (dataItem.ts - prevLastTs > 2000) {
+                    model.loadInitialData();
+                } else {
+                    addContinuousData(dataItem);
+                }
             },
         });
         console.log("subscribe to sysinfo", connName);
@@ -375,6 +394,7 @@ type SingleLinePlotProps = {
     defaultColor: string;
     title?: boolean;
     sparkline?: boolean;
+    targetLen: number;
 };
 
 function SingleLinePlot({
@@ -385,6 +405,7 @@ function SingleLinePlot({
     defaultColor,
     title = false,
     sparkline = false,
+    targetLen,
 }: SingleLinePlotProps) {
     const containerRef = React.useRef<HTMLInputElement>();
     const domRect = useDimensionsWithExistingRef(containerRef, 300);
@@ -467,12 +488,15 @@ function SingleLinePlot({
     );
     let maxY = resolveDomainBound(yvalMeta?.maxy, plotData[plotData.length - 1]) ?? 100;
     let minY = resolveDomainBound(yvalMeta?.miny, plotData[plotData.length - 1]) ?? 0;
+    let maxX = plotData[plotData.length - 1].ts;
+    let minX = maxX - targetLen * 1000;
     const plot = Plot.plot({
         axis: !sparkline,
         x: {
             grid: true,
             label: "time",
             tickFormat: (d) => `${dayjs.unix(d / 1000).format("HH:mm:ss")}`,
+            domain: [minX, maxX],
         },
         y: { label: labelY, domain: [minY, maxY] },
         width: plotWidth,
@@ -496,6 +520,7 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
     const yvals = jotai.useAtomValue(model.metrics);
     const plotMeta = jotai.useAtomValue(model.plotMetaAtom);
     const osRef = React.useRef<OverlayScrollbarsComponentRef>();
+    const targetLen = jotai.useAtomValue(model.numPoints) + 1;
     let title = false;
     let cols2 = false;
     if (yvals.length > 1) {
@@ -518,6 +543,7 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
                             blockId={model.blockId}
                             defaultColor={"var(--accent-color)"}
                             title={title}
+                            targetLen={targetLen}
                         />
                     );
                 })}
