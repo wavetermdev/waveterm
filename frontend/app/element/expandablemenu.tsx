@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// ExpandableMenu.tsx
 // SPDX-License-Identifier: Apache-2.0
 
 import { clsx } from "clsx";
@@ -31,7 +31,7 @@ interface ExpandableMenuItemGroupTitleType {
 interface ExpandableMenuItemGroupType extends BaseExpandableMenuItem {
     type: "group";
     title: ExpandableMenuItemGroupTitleType;
-    defaultExpanded?: boolean;
+    isOpen?: boolean;
     children?: ExpandableMenuItemData[];
 }
 
@@ -46,7 +46,7 @@ type ExpandableMenuProps = {
 
 const ExpandableMenu = ({ children, className, noIndent = false, singleOpen = false }: ExpandableMenuProps) => {
     return (
-        <div className={clsx("expandable-menu", className, { "no-indent": noIndent === true })}>
+        <div className={clsx("expandable-menu", className, { "no-indent": noIndent })}>
             {Children.map(children, (child) => {
                 if (isValidElement(child) && child.type === ExpandableMenuItemGroup) {
                     return cloneElement(child as any, { singleOpen });
@@ -68,7 +68,7 @@ const ExpandableMenuItem = ({ children, className, withHoverEffect = true, onCli
     return (
         <div
             className={clsx("expandable-menu-item", className, {
-                "with-hover-effect": withHoverEffect === true,
+                "with-hover-effect": withHoverEffect,
             })}
             onClick={onClick}
         >
@@ -85,7 +85,7 @@ type ExpandableMenuItemGroupTitleProps = {
 
 const ExpandableMenuItemGroupTitle = ({ children, className, onClick }: ExpandableMenuItemGroupTitleProps) => {
     return (
-        <div className={clsx("expandable-menu-item-group-title", className)} onClick={() => onClick?.()}>
+        <div className={clsx("expandable-menu-item-group-title", className)} onClick={onClick}>
             {children}
         </div>
     );
@@ -94,14 +94,16 @@ const ExpandableMenuItemGroupTitle = ({ children, className, onClick }: Expandab
 type ExpandableMenuItemGroupProps = {
     children: React.ReactNode;
     className?: string;
-    defaultExpanded?: boolean;
+    isOpen?: boolean;
+    onToggle?: (isOpen: boolean) => void;
     singleOpen?: boolean;
 };
 
 const ExpandableMenuItemGroup = ({
     children,
     className,
-    defaultExpanded = false,
+    isOpen,
+    onToggle,
     singleOpen = false,
 }: ExpandableMenuItemGroupProps) => {
     const [openGroups, setOpenGroups] = useAtom(openGroupsAtom);
@@ -116,38 +118,49 @@ const ExpandableMenuItemGroup = ({
 
     const id = idRef.current;
 
-    const isOpen = openGroups[id] !== undefined ? openGroups[id] : defaultExpanded;
+    // Determine if the component is controlled or uncontrolled
+    const isControlled = isOpen !== undefined;
+
+    // Get the open state from global atom in uncontrolled mode
+    const actualIsOpen = isControlled ? isOpen : (openGroups[id] ?? false);
 
     const toggleOpen = () => {
-        setOpenGroups((prevOpenGroups) => {
-            if (singleOpen) {
-                // Close all other groups and open this one
-                const newOpenGroups: { [key: string]: boolean } = { [id]: !isOpen };
-                return newOpenGroups;
-            } else {
-                // Toggle this group
-                return { ...prevOpenGroups, [id]: !isOpen };
-            }
-        });
+        const newIsOpen = !actualIsOpen;
+
+        if (isControlled) {
+            // If controlled, call the onToggle callback
+            onToggle?.(newIsOpen);
+        } else {
+            // If uncontrolled, update global atom
+            setOpenGroups((prevOpenGroups) => {
+                if (singleOpen) {
+                    // Close all other groups and open this one
+                    return { [id]: newIsOpen };
+                } else {
+                    // Toggle this group
+                    return { ...prevOpenGroups, [id]: newIsOpen };
+                }
+            });
+        }
     };
 
     const renderChildren = Children.map(children, (child: ReactElement) => {
         if (child && child.type === ExpandableMenuItemGroupTitle) {
-            return cloneElement(child as any, {
+            return cloneElement(child, {
                 ...child.props,
                 onClick: () => {
-                    if (child.props.onClick) {
-                        child.props.onClick();
-                    }
+                    child.props.onClick?.();
                     toggleOpen();
                 },
             });
         } else {
-            return <div className={clsx("expandable-menu-item-group-content", { expanded: isOpen })}>{child}</div>;
+            return <div className={clsx("expandable-menu-item-group-content", { open: actualIsOpen })}>{child}</div>;
         }
     });
 
-    return <div className={clsx("expandable-menu-item-group", className, { open: isOpen })}>{renderChildren}</div>;
+    return (
+        <div className={clsx("expandable-menu-item-group", className, { open: actualIsOpen })}>{renderChildren}</div>
+    );
 };
 
 type ExpandableMenuItemLeftElementProps = {
@@ -157,7 +170,7 @@ type ExpandableMenuItemLeftElementProps = {
 
 const ExpandableMenuItemLeftElement = ({ children, onClick }: ExpandableMenuItemLeftElementProps) => {
     return (
-        <div className="expandable-menu-item-left" onClick={() => onClick?.()}>
+        <div className="expandable-menu-item-left" onClick={onClick}>
             {children}
         </div>
     );
@@ -170,7 +183,7 @@ type ExpandableMenuItemRightElementProps = {
 
 const ExpandableMenuItemRightElement = ({ children, onClick }: ExpandableMenuItemRightElementProps) => {
     return (
-        <div className="expandable-menu-item-right" onClick={() => onClick?.()}>
+        <div className="expandable-menu-item-right" onClick={onClick}>
             {children}
         </div>
     );

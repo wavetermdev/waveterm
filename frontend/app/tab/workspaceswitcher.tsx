@@ -251,7 +251,7 @@ const WorkspaceSwitcher = () => {
             id,
             type: "group",
             title,
-            defaultExpanded: isActive,
+            isOpen: isActive,
             children: [
                 {
                     type: "item",
@@ -270,19 +270,16 @@ const WorkspaceSwitcher = () => {
         };
     });
 
-    const modWorkspaceColor = colord(activeWorkspace.color).alpha(0.1).toRgbString();
+    const modWorkspaceColor =
+        activeWorkspace.label === "Default"
+            ? "rgba(0, 0, 0, .2)"
+            : colord(activeWorkspace.color).alpha(0.1).toRgbString();
 
     const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
         return menuItems.map((item, index) => {
             if (item.type === "item") {
                 return (
-                    <ExpandableMenuItem
-                        key={item.id ?? index}
-                        withHoverEffect={typeof item.content === "string"}
-                        onClick={() => {
-                            item.id && setActiveWorkspace(item.id);
-                        }}
-                    >
+                    <ExpandableMenuItem key={item.id ?? index} withHoverEffect={false}>
                         {item.leftElement && (
                             <ExpandableMenuItemLeftElement>{item.leftElement}</ExpandableMenuItemLeftElement>
                         )}
@@ -296,7 +293,7 @@ const WorkspaceSwitcher = () => {
                 return (
                     <ExpandableMenuItemGroup
                         key={item.id}
-                        defaultExpanded={item.defaultExpanded}
+                        isOpen={item.isOpen}
                         className={clsx({ "is-active": item.id === activeWorkspace.id })}
                     >
                         <ExpandableMenuItemGroupTitle onClick={() => setActiveWorkspace(item.id)}>
