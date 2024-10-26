@@ -1,5 +1,12 @@
 import { Button } from "@/element/button";
-import { FloatingPortal, useDismiss, useFloating, useInteractions, type Placement } from "@floating-ui/react";
+import {
+    FloatingPortal,
+    offset as offsetMiddleware,
+    useDismiss,
+    useFloating,
+    useInteractions,
+    type Placement,
+} from "@floating-ui/react";
 import clsx from "clsx";
 import {
     Children,
@@ -19,6 +26,7 @@ interface PopoverProps {
     children: ReactNode;
     className?: string;
     placement?: Placement;
+    offset?: number;
     onOpenChange?: (isOpen: boolean) => void;
 }
 
@@ -34,7 +42,7 @@ const isPopoverContent = (
     return element.type === PopoverContent;
 };
 
-const Popover = memo(({ children, className, placement = "bottom-start", onOpenChange }: PopoverProps) => {
+const Popover = memo(({ children, className, placement = "bottom-start", offset = 3, onOpenChange }: PopoverProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleOpen = () => {
@@ -46,6 +54,7 @@ const Popover = memo(({ children, className, placement = "bottom-start", onOpenC
         placement,
         open: isOpen,
         onOpenChange: setIsOpen,
+        middleware: [offsetMiddleware(offset)],
     });
 
     const dismiss = useDismiss(context);
@@ -75,7 +84,7 @@ const Popover = memo(({ children, className, placement = "bottom-start", onOpenC
         return child;
     });
 
-    return <>{renderChildren}</>;
+    return <div className={clsx("popover", className)}>{renderChildren}</div>;
 });
 
 interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

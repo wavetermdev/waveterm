@@ -1,4 +1,3 @@
-// WorkspaceSwitcher.tsx
 // Copyright 2024, Command Line
 // SPDX-License-Identifier: Apache-2.0
 

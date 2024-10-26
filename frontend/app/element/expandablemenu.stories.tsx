@@ -66,7 +66,7 @@ export const NestedExpandableMenu: Story = {
                 <ExpandableMenuItemLeftElement>🏠</ExpandableMenuItemLeftElement>
                 <div>Home</div>
             </ExpandableMenuItem>
-            <ExpandableMenuItemGroup defaultExpanded={true}>
+            <ExpandableMenuItemGroup isOpen={true}>
                 <ExpandableMenuItemGroupTitle>
                     <ExpandableMenuItemLeftElement>📁</ExpandableMenuItemLeftElement>
                     <div>Categories</div>
@@ -159,7 +159,7 @@ const menuData: ExpandableMenuItemData[] = [
             label: "Categories",
             rightElement: <i className="fa-sharp fa-solid fa-chevron-right"></i>,
         },
-        defaultExpanded: true,
+        isOpen: true,
         id: "4564f119-645e-448c-80b7-2f40f887e670",
         children: [
             {
@@ -352,13 +352,12 @@ const menuData: ExpandableMenuItemData[] = [
 const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
     return menuItems.map((item) => {
         if (item.type === "item") {
-            console.log("typeof item.content", typeof item.content === "string");
             return (
                 <ExpandableMenuItem key={item.id} withHoverEffect={typeof item.content === "string"}>
                     {item.leftElement && (
                         <ExpandableMenuItemLeftElement>{item.leftElement}</ExpandableMenuItemLeftElement>
                     )}
-                    <div className="content">{item.content}</div>
+                    <div className="content">{item.content as any}</div>
                     {item.rightElement && (
                         <ExpandableMenuItemRightElement>{item.rightElement}</ExpandableMenuItemRightElement>
                     )}
@@ -366,7 +365,7 @@ const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
             );
         } else if (item.type === "group") {
             return (
-                <ExpandableMenuItemGroup key={item.id} defaultExpanded={item.defaultExpanded}>
+                <ExpandableMenuItemGroup key={item.id} isOpen={item.isOpen}>
                     <ExpandableMenuItemGroupTitle>
                         {item.title.leftElement && (
                             <ExpandableMenuItemLeftElement>{item.title.leftElement}</ExpandableMenuItemLeftElement>
