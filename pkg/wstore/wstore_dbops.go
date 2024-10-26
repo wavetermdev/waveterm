@@ -270,10 +270,39 @@ func DBFindWindowForTabId(ctx context.Context, tabId string) (string, error) {
 
 func DBFindTabForBlockId(ctx context.Context, blockId string) (string, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		iterNum := 1
+		for {
+			if iterNum > 5 {
+				return "", fmt.Errorf("too many iterations looking for tab in block parents")
+			}
+			query := `
+			SELECT json_extract(b.data, '$.parentoref') AS parentoref
+			FROM db_block b
+			WHERE b.oid = ?;`
+			parentORef := tx.GetString(query, blockId)
+			oref, err := waveobj.ParseORef(parentORef)
+			if err != nil {
+				return "", fmt.Errorf("bad block parent oref: %v", err)
+			}
+			if oref.OType == "tab" {
+				return oref.OID, nil
+			}
+			if oref.OType == "block" {
+				blockId = oref.OID
+				iterNum++
+				continue
+			}
+			return "", fmt.Errorf("bad parent oref type: %v", oref.OType)
+		}
+	})
+}
+
+func DBFindWorkspaceForTabId(ctx context.Context, tabId string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
 		query := `
-			SELECT t.oid 
-			FROM db_tab t, json_each(data->'blockids') je 
-			WHERE je.value = ?;`
-		return tx.GetString(query, blockId), nil
+			SELECT w.oid
+			FROM db_workspace w, json_each(data->'tabids') je
+			WHERE je.value = ?`
+		return tx.GetString(query, tabId), nil
 	})
 }

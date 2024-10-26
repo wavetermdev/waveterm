@@ -5329,6 +5329,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"env-paths@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "env-paths@npm:3.0.0"
+  checksum: 10c0/76dec878cee47f841103bacd7fae03283af16f0702dad65102ef0a556f310b98a377885e0f32943831eb08b5ab37842a323d02529f3dfd5d0a40ca71b01b435f
+  languageName: node
+  linkType: hard
+
 "err-code@npm:^2.0.2":
   version: 2.0.3
   resolution: "err-code@npm:2.0.3"
@@ -11717,6 +11724,7 @@ __metadata:
     electron-builder: "npm:^25.1.8"
     electron-updater: "npm:6.3.9"
     electron-vite: "npm:^2.3.0"
+    env-paths: "npm:^3.0.0"
     eslint: "npm:^9.13.0"
     eslint-config-prettier: "npm:^9.1.0"
     fast-average-color: "npm:^9.4.0"

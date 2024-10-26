@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { getWebServerEndpoint } from "@/util/endpoints";
 import * as util from "@/util/util";
 import useResizeObserver from "@react-hook/resize-observer";
@@ -72,7 +75,7 @@ function processBackgroundUrls(cssText: string): string {
 
 export function AppBackground() {
     const bgRef = useRef<HTMLDivElement>(null);
-    const tabId = useAtomValue(atoms.activeTabId);
+    const tabId = useAtomValue(atoms.staticTabId);
     const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
     const bgAttr = tabData?.meta?.bg;
     const style: CSSProperties = {};

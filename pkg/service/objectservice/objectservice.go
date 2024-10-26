@@ -13,6 +13,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -74,25 +75,28 @@ func (svc *ObjectService) GetObjects(orefStrArr []string) ([]waveobj.WaveObj, er
 
 func (svc *ObjectService) AddTabToWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames:   []string{"uiContext", "tabName", "activateTab"},
+		ArgNames:   []string{"windowId", "tabName", "activateTab"},
 		ReturnDesc: "tabId",
 	}
 }
 
-func (svc *ObjectService) AddTabToWorkspace(uiContext waveobj.UIContext, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
+func (svc *ObjectService) AddTabToWorkspace(windowId string, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := wcore.CreateTab(ctx, uiContext.WindowId, tabName, activateTab)
+	tabId, err := wcore.CreateTab(ctx, windowId, tabName, activateTab)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}
-
 	err = wlayout.ApplyPortableLayout(ctx, tabId, wlayout.GetNewTabLayout())
 	if err != nil {
 		return "", nil, fmt.Errorf("error applying new tab layout: %w", err)
 	}
-	return tabId, waveobj.ContextGetUpdatesRtn(ctx), nil
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return tabId, updates, nil
 }
 
 func (svc *ObjectService) UpdateWorkspaceTabIds_Meta() tsgenmeta.MethodMeta {
@@ -118,11 +122,11 @@ func (svc *ObjectService) SetActiveTab_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) SetActiveTab(uiContext waveobj.UIContext, tabId string) (waveobj.UpdatesRtnType, error) {
+func (svc *ObjectService) SetActiveTab(windowId string, tabId string) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wstore.SetActiveTab(ctx, uiContext.WindowId, tabId)
+	err := wstore.SetActiveTab(ctx, windowId, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}
@@ -137,9 +141,14 @@ func (svc *ObjectService) SetActiveTab(uiContext waveobj.UIContext, tabId string
 		return nil, fmt.Errorf("error getting tab blocks: %w", err)
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	updates = append(updates, waveobj.MakeUpdate(tab))
-	updates = append(updates, waveobj.MakeUpdates(blocks)...)
-	return updates, nil
+	go func() {
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	var extraUpdates waveobj.UpdatesRtnType
+	extraUpdates = append(extraUpdates, updates...)
+	extraUpdates = append(extraUpdates, waveobj.MakeUpdate(tab))
+	extraUpdates = append(extraUpdates, waveobj.MakeUpdates(blocks)...)
+	return extraUpdates, nil
 }
 
 func (svc *ObjectService) UpdateTabName_Meta() tsgenmeta.MethodMeta {
@@ -192,7 +201,7 @@ func (svc *ObjectService) DeleteBlock(uiContext waveobj.UIContext, blockId strin
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wcore.DeleteBlock(ctx, uiContext.ActiveTabId, blockId)
+	err := wcore.DeleteBlock(ctx, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting block: %w", err)
 	}
