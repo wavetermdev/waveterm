@@ -233,7 +233,6 @@ export class WaveAiModel implements ViewModel {
             return [];
         }
         const history: Array<OpenAIPromptMessageType> = JSON.parse(new TextDecoder().decode(data));
-        return history;
     }
 
     giveFocus(): boolean {
@@ -312,7 +311,6 @@ export class WaveAiModel implements ViewModel {
                             content: fullMsg,
                         };
                         updatedHist.push(responsePrompt);
-                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
                     }
                     const errMsg: string = (error as Error).message;
                     const errorMessage: ChatMessageType = {
@@ -328,6 +326,14 @@ export class WaveAiModel implements ViewModel {
                     };
                     updatedHist.push(errorPrompt);
                     await BlockService.SaveWaveAiData(blockId, updatedHist);
+                } finally {
+                    if (fullMsg != "") {
+                        const responsePrompt: OpenAIPromptMessageType = {
+                            role: "assistant",
+                            content: fullMsg,
+                        };
+                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
+                    }
                 }
                 setLocked(false);
                 this.cancel = false;
