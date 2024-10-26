@@ -13,8 +13,8 @@ const MenuButtonComponent = ({ items, className, text, title }: MenuButtonProps)
                     style={{ borderColor: isOpen ? "var(--accent-color)" : "transparent" }}
                     title={title}
                 >
-                    {text}
-                    <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
+                    <div>{text}</div>
+                    <i className="fa-sharp fa-solid fa-angle-down"></i>
                 </Button>
             </FlyoutMenu>
         </div>

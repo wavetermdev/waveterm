@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/remote"
@@ -25,17 +26,24 @@ func init() {
 }
 
 func connStatus() error {
-	resp, err := wshclient.ConnStatusCommand(RpcClient, nil)
+	var allResp []wshrpc.ConnStatus
+	sshResp, err := wshclient.ConnStatusCommand(RpcClient, nil)
 	if err != nil {
-		return fmt.Errorf("getting connection status: %w", err)
+		return fmt.Errorf("getting ssh connection status: %w", err)
 	}
-	if len(resp) == 0 {
+	allResp = append(allResp, sshResp...)
+	wslResp, err := wshclient.WslStatusCommand(RpcClient, nil)
+	if err != nil {
+		return fmt.Errorf("getting wsl connection status: %w", err)
+	}
+	allResp = append(allResp, wslResp...)
+	if len(allResp) == 0 {
 		WriteStdout("no connections\n")
 		return nil
 	}
 	WriteStdout("%-30s %-12s\n", "connection", "status")
 	WriteStdout("----------------------------------------------\n")
-	for _, conn := range resp {
+	for _, conn := range allResp {
 		str := fmt.Sprintf("%-30s %-12s", conn.Connection, conn.Status)
 		if conn.Error != "" {
 			str += fmt.Sprintf(" (%s)", conn.Error)
@@ -110,7 +118,7 @@ func connRun(cmd *cobra.Command, args []string) error {
 		}
 		connName = args[1]
 		_, err := remote.ParseOpts(connName)
-		if err != nil {
+		if err != nil && !strings.HasPrefix(connName, "wsl://") {
 			return fmt.Errorf("cannot parse connection name: %w", err)
 		}
 	}

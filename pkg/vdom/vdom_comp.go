@@ -13,10 +13,10 @@ type ChildKey struct {
 }
 
 type Component struct {
-	Id      string
+	WaveId  string
 	Tag     string
 	Key     string
-	Elem    *Elem
+	Elem    *VDomElem
 	Mounted bool
 
 	// hooks

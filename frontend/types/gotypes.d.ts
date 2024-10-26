@@ -7,9 +7,11 @@ declare global {
 
     // waveobj.Block
     type Block = WaveObj & {
+        parentoref?: string;
         blockdef: BlockDef;
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
+        subblockids?: string[];
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
@@ -30,7 +32,7 @@ declare global {
         blockid: string;
         tabid: string;
         windowid: string;
-        meta: MetaType;
+        block: Block;
     };
 
     // webcmd.BlockInputWSCommand
@@ -45,6 +47,13 @@ declare global {
         windowids: string[];
         tosagreed?: number;
         hasoldhistory?: boolean;
+        nexttabid?: number;
+    };
+
+    // windowservice.CloseTabRtnType
+    type CloseTabRtnType = {
+        closewindow?: boolean;
+        newactivetabid?: string;
     };
 
     // wshrpc.CommandAppendIJsonData
@@ -57,6 +66,7 @@ declare global {
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
         routeid: string;
+        authtoken?: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -89,9 +99,20 @@ declare global {
         magnified?: boolean;
     };
 
+    // wshrpc.CommandCreateSubBlockData
+    type CommandCreateSubBlockData = {
+        parentblockid: string;
+        blockdef: BlockDef;
+    };
+
     // wshrpc.CommandDeleteBlockData
     type CommandDeleteBlockData = {
         blockid: string;
+    };
+
+    // wshrpc.CommandDisposeData
+    type CommandDisposeData = {
+        routeid: string;
     };
 
     // wshrpc.CommandEventReadHistoryData
@@ -155,6 +176,12 @@ declare global {
         meta: MetaType;
     };
 
+    // wshrpc.CommandWaitForRouteData
+    type CommandWaitForRouteData = {
+        routeid: string;
+        waitms: number;
+    };
+
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
         windowid: string;
@@ -184,6 +211,16 @@ declare global {
     type CpuDataRequest = {
         id: string;
         count: number;
+    };
+
+    // vdom.DomRect
+    type DomRect = {
+        top: number;
+        left: number;
+        right: number;
+        bottom: number;
+        width: number;
+        height: number;
     };
 
     // waveobj.FileDef
@@ -319,6 +356,12 @@ declare global {
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
+        "term:vdomblockid"?: string;
+        "vdom:*"?: boolean;
+        "vdom:initialized"?: boolean;
+        "vdom:correlationid"?: string;
+        "vdom:route"?: string;
+        "vdom:persist"?: boolean;
         count?: number;
     };
 
@@ -397,6 +440,7 @@ declare global {
         resid?: string;
         timeout?: number;
         route?: string;
+        authtoken?: string;
         source?: string;
         cont?: boolean;
         cancel?: boolean;
@@ -473,6 +517,7 @@ declare global {
         "window:showmenubar"?: boolean;
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
+        "window:maxtabcachesize"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
@@ -582,27 +627,155 @@ declare global {
         checkboxstat?: boolean;
     };
 
-    // vdom.Elem
+    // vdom.VDomAsyncInitiationRequest
+    type VDomAsyncInitiationRequest = {
+        type: "asyncinitiationrequest";
+        ts: number;
+        blockid?: string;
+    };
+
+    // vdom.VDomBackendOpts
+    type VDomBackendOpts = {
+        closeonctrlc?: boolean;
+        globalkeyboardevents?: boolean;
+    };
+
+    // vdom.VDomBackendUpdate
+    type VDomBackendUpdate = {
+        type: "backendupdate";
+        ts: number;
+        blockid: string;
+        opts?: VDomBackendOpts;
+        renderupdates?: VDomRenderUpdate[];
+        statesync?: VDomStateSync[];
+        refoperations?: VDomRefOperation[];
+        messages?: VDomMessage[];
+    };
+
+    // vdom.VDomBinding
+    type VDomBinding = {
+        type: "binding";
+        bind: string;
+    };
+
+    // vdom.VDomCreateContext
+    type VDomCreateContext = {
+        type: "createcontext";
+        ts: number;
+        meta?: MetaType;
+        target?: VDomTarget;
+        persist?: boolean;
+    };
+
+    // vdom.VDomElem
     type VDomElem = {
-        id?: string;
+        waveid?: string;
         tag: string;
         props?: {[key: string]: any};
         children?: VDomElem[];
         text?: string;
     };
 
-    // vdom.VDomFuncType
-    type VDomFuncType = {
-        #func: string;
-        #stopPropagation?: boolean;
-        #preventDefault?: boolean;
-        #keys?: string[];
+    // vdom.VDomEvent
+    type VDomEvent = {
+        waveid: string;
+        eventtype: string;
+        eventdata: any;
     };
 
-    // vdom.VDomRefType
-    type VDomRefType = {
-        #ref: string;
-        current: any;
+    // vdom.VDomFrontendUpdate
+    type VDomFrontendUpdate = {
+        type: "frontendupdate";
+        ts: number;
+        blockid: string;
+        correlationid?: string;
+        dispose?: boolean;
+        resync?: boolean;
+        rendercontext?: VDomRenderContext;
+        events?: VDomEvent[];
+        statesync?: VDomStateSync[];
+        refupdates?: VDomRefUpdate[];
+        messages?: VDomMessage[];
+    };
+
+    // vdom.VDomFunc
+    type VDomFunc = {
+        type: "func";
+        stoppropagation?: boolean;
+        preventdefault?: boolean;
+        globalevent?: string;
+        keys?: string[];
+    };
+
+    // vdom.VDomMessage
+    type VDomMessage = {
+        messagetype: string;
+        message: string;
+        stacktrace?: string;
+        params?: any[];
+    };
+
+    // vdom.VDomRef
+    type VDomRef = {
+        type: "ref";
+        refid: string;
+        trackposition?: boolean;
+        position?: VDomRefPosition;
+        hascurrent?: boolean;
+    };
+
+    // vdom.VDomRefOperation
+    type VDomRefOperation = {
+        refid: string;
+        op: string;
+        params?: any[];
+    };
+
+    // vdom.VDomRefPosition
+    type VDomRefPosition = {
+        offsetheight: number;
+        offsetwidth: number;
+        scrollheight: number;
+        scrollwidth: number;
+        scrolltop: number;
+        boundingclientrect: DomRect;
+    };
+
+    // vdom.VDomRefUpdate
+    type VDomRefUpdate = {
+        refid: string;
+        hascurrent: boolean;
+        position?: VDomRefPosition;
+    };
+
+    // vdom.VDomRenderContext
+    type VDomRenderContext = {
+        blockid: string;
+        focused: boolean;
+        width: number;
+        height: number;
+        rootrefid: string;
+        background?: boolean;
+    };
+
+    // vdom.VDomRenderUpdate
+    type VDomRenderUpdate = {
+        updatetype: "root"|"append"|"replace"|"remove"|"insert";
+        waveid?: string;
+        vdom: VDomElem;
+        index?: number;
+    };
+
+    // vdom.VDomStateSync
+    type VDomStateSync = {
+        atom: string;
+        value: any;
+    };
+
+    // vdom.VDomTarget
+    type VDomTarget = {
+        newblock?: boolean;
+        magnified?: boolean;
     };
 
     type WSCommandType = {

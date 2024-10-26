@@ -1,13 +1,22 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BlockComponentModel2, BlockProps } from "@/app/block/blocktypes";
+import {
+    BlockComponentModel2,
+    BlockNodeModel,
+    BlockProps,
+    FullBlockProps,
+    FullSubBlockProps,
+    SubBlockProps,
+} from "@/app/block/blocktypes";
 import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { SysinfoView, SysinfoViewModel, makeSysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
+import { VDomView, makeVDomModel } from "@/app/view/vdom/vdom";
+import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
-import { NodeModel, useDebouncedNodeInnerRect } from "@/layout/index";
+import { useDebouncedNodeInnerRect } from "@/layout/index";
 import {
     counterInc,
     getBlockComponentModel,
@@ -17,7 +26,6 @@ import {
 import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank } from "@/util/util";
-import { Chat, ChatModel, makeChatModel } from "@/view/chat/chat";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
 import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
@@ -29,15 +37,9 @@ import "./block.less";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 
-type FullBlockProps = {
-    preview: boolean;
-    nodeModel: NodeModel;
-    viewModel: ViewModel;
-};
-
-function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel): ViewModel {
+function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel): ViewModel {
     if (blockView === "term") {
-        return makeTerminalModel(blockId);
+        return makeTerminalModel(blockId, nodeModel);
     }
     if (blockView === "preview") {
         return makePreviewModel(blockId, nodeModel);
@@ -52,14 +54,11 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: NodeModel)
         // "cpuplot" is for backwards compatibility with already-opened widgets
         return makeSysinfoViewModel(blockId, blockView);
     }
+    if (blockView == "vdom") {
+        return makeVDomModel(blockId, nodeModel);
+    }
     if (blockView === "help") {
         return makeHelpViewModel(blockId, nodeModel);
-    }
-    if (blockView === "chat") {
-        return makeChatModel(blockId);
-    }
-    if (blockView === "chat") {
-        return makeChatModel(blockId);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -107,8 +106,8 @@ function getViewElem(
     if (blockView == "tips") {
         return <QuickTipsView key={blockId} model={viewModel as QuickTipsViewModel} />;
     }
-    if (blockView == "chat") {
-        return <Chat key={blockId} model={viewModel as ChatModel} />;
+    if (blockView == "vdom") {
+        return <VDomView key={blockId} blockId={blockId} model={viewModel as VDomModel} />;
     }
     return <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
 }
@@ -144,6 +143,26 @@ const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
             blockModel={null}
             viewModel={viewModel}
         />
+    );
+});
+
+const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
+    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const blockRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const viewElem = useMemo(
+        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
+        [nodeModel.blockId, blockData?.meta?.view, viewModel]
+    );
+    if (!blockData) {
+        return null;
+    }
+    return (
+        <div key="content" className="block-content" ref={contentRef}>
+            <ErrorBoundary>
+                <Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</Suspense>
+            </ErrorBoundary>
+        </div>
     );
 });
 
@@ -265,7 +284,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
 
 const Block = memo((props: BlockProps) => {
     counterInc("render-Block");
-    counterInc("render-Block-" + props.nodeModel.blockId.substring(0, 8));
+    counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
@@ -276,6 +295,7 @@ const Block = memo((props: BlockProps) => {
     useEffect(() => {
         return () => {
             unregisterBlockComponentModel(props.nodeModel.blockId);
+            viewModel?.dispose?.();
         };
     }, []);
     if (loading || isBlank(props.nodeModel.blockId) || blockData == null) {
@@ -287,4 +307,26 @@ const Block = memo((props: BlockProps) => {
     return <BlockFull {...props} viewModel={viewModel} />;
 });
 
-export { Block };
+const SubBlock = memo((props: SubBlockProps) => {
+    counterInc("render-Block");
+    counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
+    const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
+    const bcm = getBlockComponentModel(props.nodeModel.blockId);
+    let viewModel = bcm?.viewModel;
+    if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
+        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel);
+        registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
+    }
+    useEffect(() => {
+        return () => {
+            unregisterBlockComponentModel(props.nodeModel.blockId);
+            viewModel?.dispose?.();
+        };
+    }, []);
+    if (loading || isBlank(props.nodeModel.blockId) || blockData == null) {
+        return null;
+    }
+    return <BlockSubBlock {...props} viewModel={viewModel} />;
+});
+
+export { Block, SubBlock };

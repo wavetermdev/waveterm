@@ -11,6 +11,7 @@ const (
 	Event_BlockFile        = "blockfile"
 	Event_Config           = "config"
 	Event_UserInput        = "userinput"
+	Event_RouteGone        = "route:gone"
 )
 
 type WaveEvent struct {

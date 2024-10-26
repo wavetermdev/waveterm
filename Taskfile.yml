@@ -13,6 +13,7 @@ vars:
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
     RELEASES_BUCKET: dl.waveterm.dev/releases-w2
+    WINGET_PACKAGE: CommandLine.Wave
 
 tasks:
     electron:dev:
@@ -158,7 +159,7 @@ tasks:
               vars:
                   GOOS: darwin
                   GOARCH: arm64
-            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/.waveterm-dev/bin/wsh
+            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
 
     build:wsh:internal:
         vars:
@@ -184,8 +185,8 @@ tasks:
     generate:
         desc: Generate Typescript bindings for the Go backend.
         cmds:
-            - go run cmd/generatets/main-generatets.go
-            - go run cmd/generatego/main-generatego.go
+            - NO_PANIC=1 go run cmd/generatets/main-generatets.go
+            - NO_PANIC=1 go run cmd/generatego/main-generatego.go
         sources:
             - "cmd/generatego/*.go"
             - "cmd/generatets/*.go"
@@ -229,6 +230,25 @@ tasks:
                     echo "https://$SUFFIX"
                 fi
             done
+    artifacts:snap:publish:*:
+        desc: Publishes the specified artifacts version to Snapcraft.
+        vars:
+            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+            CHANNEL: '{{if contains "beta" .UP_VERSION}}beta{{else}}beta,stable{{end}}'
+        cmd: |
+            echo "Releasing to channels: [{{.CHANNEL}}]"
+            snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_arm64.snap
+            snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_amd64.snap
+
+    artifacts:winget:publish:*:
+        desc: Submits a version bump request to WinGet for the latest release.
+        status:
+            - exit {{if contains "beta" .UP_VERSION}}0{{else}}1{{end}}
+        vars:
+            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
+        cmd: |
+            Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+            .\wingetcreate.exe update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t $env:GITHUB_TOKEN
 
     yarn:
         desc: Runs `yarn`

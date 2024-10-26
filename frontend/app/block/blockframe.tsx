@@ -26,9 +26,8 @@ import {
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
-import * as services from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
@@ -60,17 +59,17 @@ function handleHeaderContextMenu(
                 onMagnifyToggle();
             },
         },
-        {
-            label: "Move to New Window",
-            click: () => {
-                const currentTabId = globalStore.get(atoms.activeTabId);
-                try {
-                    services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
-                } catch (e) {
-                    console.error("error moving block to new window", e);
-                }
-            },
-        },
+        // {
+        //     label: "Move to New Window",
+        //     click: () => {
+        //         const currentTabId = globalStore.get(atoms.staticTabId);
+        //         try {
+        //             services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
+        //         } catch (e) {
+        //             console.error("error moving block to new window", e);
+        //         }
+        //     },
+        // },
         { type: "separator" },
         {
             label: "Copy BlockId",
@@ -321,7 +320,7 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(WindowRpcClient, connName, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, connName, { timeout: 60000 });
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -437,7 +436,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         const connName = blockData?.meta?.connection;
         if (!util.isBlank(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
-            RpcApi.ConnEnsureCommand(WindowRpcClient, connName, { timeout: 60000 }).catch((e) => {
+            RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 }).catch((e) => {
                 console.log("error ensuring connection", nodeModel.blockId, connName, e);
             });
         }
@@ -521,6 +520,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusAtom = getConnStatusAtom(connection);
         const connStatus = jotai.useAtomValue(connStatusAtom);
         const [connList, setConnList] = React.useState<Array<string>>([]);
+        const [wslList, setWslList] = React.useState<Array<string>>([]);
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
@@ -536,10 +536,22 @@ const ChangeConnectionBlockModal = React.memo(
                 setConnList([]);
                 return;
             }
-            const prtn = RpcApi.ConnListCommand(WindowRpcClient, { timeout: 2000 });
+            const prtn = RpcApi.ConnListCommand(TabRpcClient, { timeout: 2000 });
             prtn.then((newConnList) => {
                 setConnList(newConnList ?? []);
             }).catch((e) => console.log("unable to load conn list from backend. using blank list: ", e));
+            const p2rtn = RpcApi.WslListCommand(TabRpcClient, { timeout: 2000 });
+            p2rtn
+                .then((newWslList) => {
+                    console.log(newWslList);
+                    setWslList(newWslList ?? []);
+                })
+                .catch((e) => {
+                    // removing this log and failing silentyly since it will happen
+                    // if a system isn't using the wsl. and would happen every time the
+                    // typeahead was opened. good candidate for verbose log level.
+                    //console.log("unable to load wsl list from backend. using blank list: ", e)
+                });
         }, [changeConnModalOpen, setConnList]);
 
         const changeConnection = React.useCallback(
@@ -557,12 +569,12 @@ const ChangeConnectionBlockModal = React.memo(
                 } else {
                     newCwd = "~";
                 }
-                await RpcApi.SetMetaCommand(WindowRpcClient, {
+                await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newCwd },
                 });
                 try {
-                    await RpcApi.ConnEnsureCommand(WindowRpcClient, connName, { timeout: 60000 });
+                    await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
                 } catch (e) {
                     console.log("error connecting", blockId, connName, e);
                 }
@@ -588,6 +600,15 @@ const ChangeConnectionBlockModal = React.memo(
                 filteredList.push(conn);
             }
         }
+        const filteredWslList: Array<string> = [];
+        for (const conn of wslList) {
+            if (conn === connSelected) {
+                createNew = false;
+            }
+            if (conn.includes(connSelected)) {
+                filteredWslList.push(conn);
+            }
+        }
         // priority handles special suggestions when necessary
         // for instance, when reconnecting
         const newConnectionSuggestion: SuggestionConnectionItem = {
@@ -608,7 +629,7 @@ const ChangeConnectionBlockModal = React.memo(
             label: `Reconnect to ${connStatus.connection}`,
             value: "",
             onSelect: async (_: string) => {
-                const prtn = RpcApi.ConnConnectCommand(WindowRpcClient, connStatus.connection, { timeout: 60000 });
+                const prtn = RpcApi.ConnConnectCommand(TabRpcClient, connStatus.connection, { timeout: 60000 });
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };
@@ -635,6 +656,20 @@ const ChangeConnectionBlockModal = React.memo(
                 iconColor: "var(--grey-text-color)",
                 value: "",
                 label: localName,
+            });
+        }
+        for (const wslConn of filteredWslList) {
+            const connStatus = connStatusMap.get(wslConn);
+            const connColorNum = computeConnColorNum(connStatus);
+            localSuggestion.items.push({
+                status: "connected",
+                icon: "arrow-right-arrow-left",
+                iconColor:
+                    connStatus?.status == "connected"
+                        ? `var(--conn-icon-color-${connColorNum})`
+                        : "var(--grey-text-color)",
+                value: "wsl://" + wslConn,
+                label: "wsl://" + wslConn,
             });
         }
         const remoteItems = filteredList.map((connName) => {

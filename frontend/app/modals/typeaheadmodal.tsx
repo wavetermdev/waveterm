@@ -103,12 +103,12 @@ const TypeAheadModal = ({
     const height = domRect?.height ?? 0;
     const modalRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const realInputRef = useRef<HTMLInputElement>(null);
+    const inputGroupRef = useRef<HTMLDivElement>(null);
     const suggestionsWrapperRef = useRef<HTMLDivElement>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
-        if (!modalRef.current || !inputRef.current || !suggestionsRef.current || !suggestionsWrapperRef.current) {
+        if (!modalRef.current || !inputGroupRef.current || !suggestionsRef.current || !suggestionsWrapperRef.current) {
             return;
         }
 
@@ -123,7 +123,7 @@ const TypeAheadModal = ({
         const suggestionsWrapperStyles = window.getComputedStyle(suggestionsWrapperRef.current);
         const suggestionsWrapperMarginTop = parseFloat(suggestionsWrapperStyles.marginTop) || 0;
 
-        const inputHeight = inputRef.current.getBoundingClientRect().height;
+        const inputHeight = inputGroupRef.current.getBoundingClientRect().height;
         let suggestionsTotalHeight = 0;
 
         const suggestionItems = suggestionsRef.current.children;
@@ -176,7 +176,7 @@ const TypeAheadModal = ({
     useLayoutEffect(() => {
         if (giveFocusRef) {
             giveFocusRef.current = () => {
-                realInputRef.current?.focus();
+                inputRef.current?.focus();
                 return true;
             };
         }
@@ -215,10 +215,9 @@ const TypeAheadModal = ({
                 ref={modalRef}
                 className={clsx("type-ahead-modal", className, { "has-suggestions": suggestions?.length > 0 })}
             >
-                <InputGroup>
+                <InputGroup ref={inputGroupRef}>
                     <Input
                         ref={inputRef}
-                        inputRef={realInputRef}
                         onChange={handleChange}
                         value={value}
                         autoFocus={autoFocus}

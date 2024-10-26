@@ -1,19 +1,19 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getApi, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
-import { NodeModel } from "@/layout/index";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue } from "jotai";
-import React, { memo, useEffect, useState } from "react";
+import { Fragment, createRef, memo, useEffect, useRef, useState } from "react";
 import "./webview.less";
 
 let webviewPreloadUrl = null;
@@ -44,12 +44,12 @@ export class WebViewModel implements ViewModel {
     refreshIcon: PrimitiveAtom<string>;
     webviewRef: React.RefObject<WebviewTag>;
     urlInputRef: React.RefObject<HTMLInputElement>;
-    nodeModel: NodeModel;
+    nodeModel: BlockNodeModel;
     endIconButtons?: Atom<IconButtonDecl[]>;
     mediaPlaying: PrimitiveAtom<boolean>;
     mediaMuted: PrimitiveAtom<boolean>;
 
-    constructor(blockId: string, nodeModel: NodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
         this.viewType = "web";
         this.blockId = blockId;
@@ -68,8 +68,8 @@ export class WebViewModel implements ViewModel {
         this.refreshIcon = atom("rotate-right");
         this.viewIcon = atom("globe");
         this.viewName = atom("Web");
-        this.urlInputRef = React.createRef<HTMLInputElement>();
-        this.webviewRef = React.createRef<WebviewTag>();
+        this.urlInputRef = createRef<HTMLInputElement>();
+        this.webviewRef = createRef<WebviewTag>();
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -369,17 +369,17 @@ export class WebViewModel implements ViewModel {
         if (url != null && url != "") {
             switch (scope) {
                 case "block":
-                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                    await RpcApi.SetMetaCommand(TabRpcClient, {
                         oref: WOS.makeORef("block", this.blockId),
                         meta: { pinnedurl: url },
                     });
                     break;
                 case "global":
-                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                    await RpcApi.SetMetaCommand(TabRpcClient, {
                         oref: WOS.makeORef("block", this.blockId),
                         meta: { pinnedurl: "" },
                     });
-                    await RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                    await RpcApi.SetConfigCommand(TabRpcClient, { "web:defaulturl": url });
                     break;
             }
         }
@@ -459,7 +459,7 @@ export class WebViewModel implements ViewModel {
     }
 }
 
-function makeWebViewModel(blockId: string, nodeModel: NodeModel): WebViewModel {
+function makeWebViewModel(blockId: string, nodeModel: BlockNodeModel): WebViewModel {
     const webviewModel = new WebViewModel(blockId, nodeModel);
     return webviewModel;
 }
@@ -477,13 +477,15 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const defaultSearch = useAtomValue(defaultSearchAtom);
     let metaUrl = blockData?.meta?.url || defaultUrl;
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
-    const metaUrlRef = React.useRef(metaUrl);
+    const metaUrlRef = useRef(metaUrl);
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(metaUrl);
 
     const [webContentsId, setWebContentsId] = useState(null);
     const [domReady, setDomReady] = useState(false);
+
+    const [errorText, setErrorText] = useState("");
 
     function setBgColor() {
         const webview = model.webviewRef.current;
@@ -532,6 +534,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             return;
         }
         const navigateListener = (e: any) => {
+            setErrorText("");
             model.handleNavigate(e.url);
         };
         const newWindowHandler = (e: any) => {
@@ -554,7 +557,9 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             if (e.errorCode === -3) {
                 console.warn("Suppressed ERR_ABORTED error", e);
             } else {
-                console.error(`Failed to load ${e.validatedURL}: ${e.errorDescription}`);
+                const errorMessage = `Failed to load ${e.validatedURL}: ${e.errorDescription}`;
+                console.error(errorMessage);
+                setErrorText(errorMessage);
                 if (onFailLoad) {
                     const curUrl = model.webviewRef?.current.getURL();
                     onFailLoad(curUrl);
@@ -608,17 +613,24 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     }, []);
 
     return (
-        <webview
-            id="webview"
-            className="webview"
-            ref={model.webviewRef}
-            src={metaUrlInitial}
-            data-blockid={model.blockId}
-            data-webcontentsid={webContentsId} // needed for emain
-            preload={getWebviewPreloadUrl()}
-            // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
-            allowpopups="true"
-        ></webview>
+        <Fragment>
+            <webview
+                id="webview"
+                className="webview"
+                ref={model.webviewRef}
+                src={metaUrlInitial}
+                data-blockid={model.blockId}
+                data-webcontentsid={webContentsId} // needed for emain
+                preload={getWebviewPreloadUrl()}
+                // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
+                allowpopups="true"
+            />
+            {errorText && (
+                <div className="webview-error">
+                    <div>{errorText}</div>
+                </div>
+            )}
+        </Fragment>
     );
 });
 
