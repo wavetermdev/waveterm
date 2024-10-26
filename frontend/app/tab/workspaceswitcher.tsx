@@ -361,6 +361,14 @@ const WorkspaceSwitcher = () => {
                 <ExpandableMenu noIndent singleOpen>
                     {renderExpandableMenu(data)}
                 </ExpandableMenu>
+                <div className="actions">
+                    <ExpandableMenuItem>
+                        <ExpandableMenuItemLeftElement>
+                            <i className="fa-sharp fa-solid fa-plus"></i>
+                        </ExpandableMenuItemLeftElement>
+                        <div className="content">New workspace</div>
+                    </ExpandableMenuItem>
+                </div>
             </PopoverContent>
         </Popover>
     );
