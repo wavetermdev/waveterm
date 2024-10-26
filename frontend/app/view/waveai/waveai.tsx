@@ -300,13 +300,6 @@ export class WaveAiModel implements ViewModel {
                             break;
                         }
                         globalStore.set(this.updateLastMessageAtom, "", false);
-                        if (fullMsg != "") {
-                            const responsePrompt: OpenAIPromptMessageType = {
-                                role: "assistant",
-                                content: fullMsg,
-                            };
-                            await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
-                        }
                     }
                 } catch (error) {
                     const updatedHist = [...history, newPrompt];
@@ -319,6 +312,7 @@ export class WaveAiModel implements ViewModel {
                             content: fullMsg,
                         };
                         updatedHist.push(responsePrompt);
+                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
                     }
                     const errMsg: string = (error as Error).message;
                     const errorMessage: ChatMessageType = {
