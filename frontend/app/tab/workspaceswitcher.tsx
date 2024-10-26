@@ -234,6 +234,27 @@ const WorkspaceSwitcher = () => {
         );
     };
 
+    const addNewWorkspace = () => {
+        // This should call a service
+        const id = `group-${Math.random().toString(36).substr(2, 9)}`;
+        setMenuData((prevMenuData) => {
+            const updatedMenuData = prevMenuData.map((item) => ({
+                ...item,
+                isActive: false,
+            }));
+
+            const newWorkspace = {
+                id,
+                icon: "circle",
+                label: "New Workspace",
+                color: "#8bc34a",
+                isActive: true,
+            };
+
+            return [...updatedMenuData, newWorkspace];
+        });
+    };
+
     const activeWorkspace = menuData.find((workspace) => workspace.isActive);
 
     const data = menuData.map((item): ExpandableMenuItemData => {
@@ -362,7 +383,7 @@ const WorkspaceSwitcher = () => {
                     {renderExpandableMenu(data)}
                 </ExpandableMenu>
                 <div className="actions">
-                    <ExpandableMenuItem>
+                    <ExpandableMenuItem onClick={() => addNewWorkspace()}>
                         <ExpandableMenuItemLeftElement>
                             <i className="fa-sharp fa-solid fa-plus"></i>
                         </ExpandableMenuItemLeftElement>
