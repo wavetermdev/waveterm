@@ -1,7 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block } from "@/app/block/block";
+import { Block, SubBlock } from "@/app/block/block";
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -9,7 +10,6 @@ import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
-import { NodeModel } from "@/layout/index";
 import {
     WOS,
     atoms,
@@ -41,7 +41,7 @@ type InitialLoadDataType = {
 
 class TermViewModel {
     viewType: string;
-    nodeModel: NodeModel;
+    nodeModel: BlockNodeModel;
     connected: boolean;
     termRef: React.RefObject<TermWrap>;
     blockAtom: jotai.Atom<Block>;
@@ -59,7 +59,7 @@ class TermViewModel {
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
 
-    constructor(blockId: string, nodeModel: NodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
         this.blockId = blockId;
         this.termWshClient = new TermWshClient(blockId, this);
@@ -351,7 +351,7 @@ class TermViewModel {
     }
 }
 
-function makeTerminalModel(blockId: string, nodeModel: NodeModel): TermViewModel {
+function makeTerminalModel(blockId: string, nodeModel: BlockNodeModel): TermViewModel {
     return new TermViewModel(blockId, nodeModel);
 }
 
@@ -407,6 +407,9 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
     let vdomNodeModel = {
         blockId: vdomBlockId,
         isFocused: isFocusedAtom,
+        focusNode: () => {
+            model.nodeModel.focusNode();
+        },
         onClose: () => {
             if (vdomBlockId != null) {
                 RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
@@ -415,7 +418,7 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
     };
     return (
         <div key="htmlElem" className="term-htmlelem">
-            <Block key="vdom" isSubBlock={true} preview={false} nodeModel={vdomNodeModel} />
+            <SubBlock key="vdom" nodeModel={vdomNodeModel} />
         </div>
     );
 };

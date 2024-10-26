@@ -9,8 +9,8 @@ import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { convertVDomId, getTextChildren, validateAndWrapCss } from "@/app/view/vdom/vdom-utils";
-import { NodeModel } from "@/layout/index";
 import "./vdom.less";
 
 const TextTag = "#text";
@@ -331,7 +331,7 @@ function VDomRoot({ model }: { model: VDomModel }) {
     return <div className="vdom">{rtn}</div>;
 }
 
-function makeVDomModel(blockId: string, nodeModel: NodeModel): VDomModel {
+function makeVDomModel(blockId: string, nodeModel: BlockNodeModel): VDomModel {
     return new VDomModel(blockId, nodeModel);
 }
 

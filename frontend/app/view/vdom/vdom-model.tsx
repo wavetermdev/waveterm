@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -8,7 +9,6 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { NodeModel } from "@/layout/index";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -79,7 +79,7 @@ class VDomWshClient extends WshClient {
 
 export class VDomModel {
     blockId: string;
-    nodeModel: NodeModel;
+    nodeModel: BlockNodeModel;
     viewType: string;
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
@@ -109,7 +109,7 @@ export class VDomModel {
     routeGoneUnsub: () => void;
     routeConfirmed: boolean = false;
 
-    constructor(blockId: string, nodeModel: NodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "vdom";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
