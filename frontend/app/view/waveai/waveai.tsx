@@ -24,6 +24,7 @@ interface ChatMessageType {
 }
 
 const outline = "2px solid var(--accent-color)";
+const slidingWindowSize = 30;
 
 interface ChatItemProps {
     chatItem: ChatMessageType;
@@ -233,6 +234,7 @@ export class WaveAiModel implements ViewModel {
             return [];
         }
         const history: Array<OpenAIPromptMessageType> = JSON.parse(new TextDecoder().decode(data));
+        return history.slice(Math.max(history.length - slidingWindowSize, 0));
     }
 
     giveFocus(): boolean {
