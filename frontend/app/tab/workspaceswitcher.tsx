@@ -86,9 +86,19 @@ interface ColorAndIconSelectorProps {
     onTitleChange: (newTitle: string) => void;
     onColorChange: (newColor: string) => void;
     onIconChange: (newIcon: string) => void;
+    onDeleteWorkspace: () => void;
 }
 const ColorAndIconSelector = memo(
-    ({ title, icon, color, focusInput, onTitleChange, onColorChange, onIconChange }: ColorAndIconSelectorProps) => {
+    ({
+        title,
+        icon,
+        color,
+        focusInput,
+        onTitleChange,
+        onColorChange,
+        onIconChange,
+        onDeleteWorkspace,
+    }: ColorAndIconSelectorProps) => {
         const inputRef = useRef<HTMLInputElement>(null);
 
         useEffect(() => {
@@ -126,7 +136,9 @@ const ColorAndIconSelector = memo(
                     onSelect={onIconChange}
                 />
                 <div className="delete-ws-btn-wrapper">
-                    <Button className="ghost grey font-size-12">Delete workspace</Button>
+                    <Button className="ghost grey font-size-12" onClick={onDeleteWorkspace}>
+                        Delete workspace
+                    </Button>
                 </div>
             </div>
         );
@@ -234,7 +246,7 @@ const WorkspaceSwitcher = () => {
         );
     };
 
-    const addNewWorkspace = () => {
+    const handleAddNewWorkspace = () => {
         // This should call a service
         const id = `group-${Math.random().toString(36).substr(2, 9)}`;
         setMenuData((prevMenuData) => {
@@ -252,6 +264,23 @@ const WorkspaceSwitcher = () => {
             };
 
             return [...updatedMenuData, newWorkspace];
+        });
+    };
+
+    const handleDeleteWorkspace = (id: string) => {
+        console.log("got here!!!");
+        // This should call a service
+        setMenuData((prevMenuData) => {
+            const updatedMenuData = prevMenuData.filter((item) => item.id !== id);
+            console.log("updatedMenuData", updatedMenuData);
+
+            const isAnyActive = updatedMenuData.some((item) => item.isActive);
+
+            if (!isAnyActive && updatedMenuData.length > 0) {
+                updatedMenuData[0] = { ...updatedMenuData[0], isActive: true };
+            }
+
+            return updatedMenuData;
         });
     };
 
@@ -294,6 +323,7 @@ const WorkspaceSwitcher = () => {
                             onTitleChange={(title) => handleTitleChange(id, title)}
                             onColorChange={(color) => handleColorChange(id, color)}
                             onIconChange={(icon) => handleIconChange(id, icon)}
+                            onDeleteWorkspace={() => handleDeleteWorkspace(id)}
                         />
                     ),
                 },
@@ -383,7 +413,7 @@ const WorkspaceSwitcher = () => {
                     {renderExpandableMenu(data)}
                 </ExpandableMenu>
                 <div className="actions">
-                    <ExpandableMenuItem onClick={() => addNewWorkspace()}>
+                    <ExpandableMenuItem onClick={() => handleAddNewWorkspace()}>
                         <ExpandableMenuItemLeftElement>
                             <i className="fa-sharp fa-solid fa-plus"></i>
                         </ExpandableMenuItemLeftElement>
