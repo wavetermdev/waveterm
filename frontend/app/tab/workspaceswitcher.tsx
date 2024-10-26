@@ -19,7 +19,7 @@ import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { colord } from "colord";
 import { atom, useAtom } from "jotai";
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 
 import "./workspaceswitcher.less";
@@ -82,15 +82,24 @@ interface ColorAndIconSelectorProps {
     title: string;
     icon: string;
     color: string;
+    focusInput: boolean;
     onTitleChange: (newTitle: string) => void;
     onColorChange: (newColor: string) => void;
     onIconChange: (newIcon: string) => void;
 }
 const ColorAndIconSelector = memo(
-    ({ title, icon, color, onTitleChange, onColorChange, onIconChange }: ColorAndIconSelectorProps) => {
+    ({ title, icon, color, focusInput, onTitleChange, onColorChange, onIconChange }: ColorAndIconSelectorProps) => {
+        const inputRef = useRef<HTMLInputElement>(null);
+
+        useEffect(() => {
+            if (focusInput && inputRef.current) {
+                inputRef.current.focus();
+            }
+        }, [focusInput]);
+
         return (
             <div className="color-icon-selector">
-                <Input className="vertical-padding-3" onChange={onTitleChange} value={title} autoFocus />
+                <Input ref={inputRef} className="vertical-padding-3" onChange={onTitleChange} value={title} autoFocus />
                 <ColorSelector
                     selectedColor={color}
                     colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
@@ -255,11 +264,12 @@ const WorkspaceSwitcher = () => {
             children: [
                 {
                     type: "item",
-                    content: (
+                    content: ({ isOpen }: { isOpen: boolean }) => (
                         <ColorAndIconSelector
                             title={label}
                             icon={icon}
                             color={color}
+                            focusInput={isOpen}
                             onTitleChange={(title) => handleTitleChange(id, title)}
                             onColorChange={(color) => handleColorChange(id, color)}
                             onIconChange={(icon) => handleIconChange(id, icon)}
@@ -275,15 +285,21 @@ const WorkspaceSwitcher = () => {
             ? "rgba(0, 0, 0, .2)"
             : colord(activeWorkspace.color).alpha(0.1).toRgbString();
 
-    const renderExpandableMenu = (menuItems: ExpandableMenuItemData[]) => {
+    const renderExpandableMenu = (menuItems: ExpandableMenuItemData[], parentIsOpen?: boolean) => {
         return menuItems.map((item, index) => {
             if (item.type === "item") {
+                let contentElement;
+                if (typeof item.content === "function") {
+                    contentElement = item.content({ isOpen: parentIsOpen });
+                } else {
+                    contentElement = item.content;
+                }
                 return (
                     <ExpandableMenuItem key={item.id ?? index} withHoverEffect={false}>
                         {item.leftElement && (
                             <ExpandableMenuItemLeftElement>{item.leftElement}</ExpandableMenuItemLeftElement>
                         )}
-                        <div className="content">{item.content}</div>
+                        <div className="content">{contentElement}</div>
                         {item.rightElement && (
                             <ExpandableMenuItemRightElement>{item.rightElement}</ExpandableMenuItemRightElement>
                         )}
@@ -316,7 +332,7 @@ const WorkspaceSwitcher = () => {
                                 )}
                             </div>
                         </ExpandableMenuItemGroupTitle>
-                        {item.children && item.children.length > 0 && renderExpandableMenu(item.children)}
+                        {item.children && item.children.length > 0 && renderExpandableMenu(item.children, item.isOpen)}
                     </ExpandableMenuItemGroup>
                 );
             }

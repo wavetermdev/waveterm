@@ -19,7 +19,7 @@ interface ExpandableMenuItemType extends BaseExpandableMenuItem {
     type: "item";
     leftElement?: string | ReactNode;
     rightElement?: string | ReactNode;
-    content?: React.ReactNode;
+    content?: React.ReactNode | ((props: any) => React.ReactNode);
 }
 
 interface ExpandableMenuItemGroupTitleType {
