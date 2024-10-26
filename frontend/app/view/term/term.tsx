@@ -1,15 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block } from "@/app/block/block";
+import { Block, SubBlock } from "@/app/block/block";
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
-import { VDomModel } from "@/app/view/term/vdom-model";
-import { NodeModel } from "@/layout/index";
+import { VDomModel } from "@/app/view/vdom/vdom-model";
 import {
     WOS,
     atoms,
@@ -17,6 +17,7 @@ import {
     getConnStatusAtom,
     getSettingsKeyAtom,
     globalStore,
+    useBlockAtom,
     useSettingsPrefixAtom,
 } from "@/store/global";
 import * as services from "@/store/services";
@@ -40,7 +41,7 @@ type InitialLoadDataType = {
 
 class TermViewModel {
     viewType: string;
-    nodeModel: NodeModel;
+    nodeModel: BlockNodeModel;
     connected: boolean;
     termRef: React.RefObject<TermWrap>;
     blockAtom: jotai.Atom<Block>;
@@ -55,8 +56,10 @@ class TermViewModel {
     termWshClient: TermWshClient;
     shellProcStatusRef: React.MutableRefObject<string>;
     vdomBlockId: jotai.Atom<string>;
+    fontSizeAtom: jotai.Atom<number>;
+    termThemeNameAtom: jotai.Atom<string>;
 
-    constructor(blockId: string, nodeModel: NodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
         this.blockId = blockId;
         this.termWshClient = new TermWshClient(blockId, this);
@@ -144,6 +147,25 @@ class TermViewModel {
             const connName = blockData?.meta?.connection;
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
+        });
+        this.fontSizeAtom = useBlockAtom(blockId, "fontsizeatom", () => {
+            return jotai.atom<number>((get) => {
+                const blockData = get(this.blockAtom);
+                const fsSettingsAtom = getSettingsKeyAtom("term:fontsize");
+                const settingsFontSize = get(fsSettingsAtom);
+                const rtnFontSize = blockData?.meta?.["term:fontsize"] ?? settingsFontSize ?? 12;
+                if (typeof rtnFontSize != "number" || isNaN(rtnFontSize) || rtnFontSize < 4 || rtnFontSize > 64) {
+                    return 12;
+                }
+                return rtnFontSize;
+            });
+        });
+        this.termThemeNameAtom = useBlockAtom(blockId, "termthemeatom", () => {
+            return jotai.atom<string>((get) => {
+                const blockData = get(this.blockAtom);
+                const settingsKeyAtom = getSettingsKeyAtom("term:theme");
+                return blockData?.meta?.["term:theme"] ?? get(settingsKeyAtom) ?? "default-dark";
+            });
         });
     }
 
@@ -257,6 +279,10 @@ class TermViewModel {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
         const termThemeKeys = Object.keys(termThemes);
+        const curThemeName = globalStore.get(this.termThemeNameAtom);
+        const defaultFontSize = globalStore.get(getSettingsKeyAtom("term:fontsize")) ?? 12;
+        const blockData = globalStore.get(this.blockAtom);
+        const overrideFontSize = blockData?.meta?.["term:fontsize"];
 
         termThemeKeys.sort((a, b) => {
             return termThemes[a]["display:order"] - termThemes[b]["display:order"];
@@ -265,12 +291,44 @@ class TermViewModel {
         const submenu: ContextMenuItem[] = termThemeKeys.map((themeName) => {
             return {
                 label: termThemes[themeName]["display:name"] ?? themeName,
+                type: "checkbox",
+                checked: curThemeName == themeName,
                 click: () => this.setTerminalTheme(themeName),
             };
+        });
+        const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
+            (fontSize: number) => {
+                return {
+                    label: fontSize.toString() + "px",
+                    type: "checkbox",
+                    checked: overrideFontSize == fontSize,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:fontsize": fontSize },
+                        });
+                    },
+                };
+            }
+        );
+        fontSizeSubMenu.unshift({
+            label: "Default (" + defaultFontSize + "px)",
+            type: "checkbox",
+            checked: overrideFontSize == null,
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:fontsize": null },
+                });
+            },
         });
         fullMenu.push({
             label: "Themes",
             submenu: submenu,
+        });
+        fullMenu.push({
+            label: "Font Size",
+            submenu: fontSizeSubMenu,
         });
         fullMenu.push({ type: "separator" });
         fullMenu.push({
@@ -293,7 +351,7 @@ class TermViewModel {
     }
 }
 
-function makeTerminalModel(blockId: string, nodeModel: NodeModel): TermViewModel {
+function makeTerminalModel(blockId: string, nodeModel: BlockNodeModel): TermViewModel {
     return new TermViewModel(blockId, nodeModel);
 }
 
@@ -349,6 +407,9 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
     let vdomNodeModel = {
         blockId: vdomBlockId,
         isFocused: isFocusedAtom,
+        focusNode: () => {
+            model.nodeModel.focusNode();
+        },
         onClose: () => {
             if (vdomBlockId != null) {
                 RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
@@ -357,7 +418,7 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
     };
     return (
         <div key="htmlElem" className="term-htmlelem">
-            <Block key="vdom" isSubBlock={true} preview={false} nodeModel={vdomNodeModel} />
+            <SubBlock key="vdom" nodeModel={vdomNodeModel} />
         </div>
     );
 };
@@ -386,6 +447,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     }
     const termModeRef = React.useRef(termMode);
 
+    const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
+
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termTheme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
@@ -404,12 +467,13 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         if (termScrollback > 10000) {
             termScrollback = 10000;
         }
+        const wasFocused = termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
             {
                 theme: themeCopy,
-                fontSize: termSettings?.["term:fontsize"] ?? 12,
+                fontSize: termFontSize,
                 fontFamily: termSettings?.["term:fontfamily"] ?? "Hack",
                 drawBoldTextInBrightColors: false,
                 fontWeight: "normal",
@@ -429,11 +493,16 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         });
         rszObs.observe(connectElemRef.current);
         termWrap.initTerminal();
+        if (wasFocused) {
+            setTimeout(() => {
+                model.giveFocus();
+            }, 10);
+        }
         return () => {
             termWrap.dispose();
             rszObs.disconnect();
         };
-    }, [blockId, termSettings]);
+    }, [blockId, termSettings, termFontSize]);
 
     React.useEffect(() => {
         if (termModeRef.current == "vdom" && termMode == "term") {

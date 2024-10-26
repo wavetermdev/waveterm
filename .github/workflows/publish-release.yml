@@ -17,7 +17,8 @@ jobs:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
             - name: Install Snapcraft
-              uses: samuelmeuli/action-snapcraft@v2
+              run: sudo snap install snapcraft --classic
+              shell: bash
             - name: Publish from staging
               run: "task artifacts:publish:${{ github.ref_name }}"
               env:
@@ -26,16 +27,15 @@ jobs:
                   AWS_DEFAULT_REGION: us-west-2
               shell: bash
             - name: Download Snap from Release
-              uses: i3h/download-release-asset@v1
+              uses: robinraju/release-downloader@v1
               with:
-                  owner: wavetermdev
-                  repo: waveterm
                   tag: ${{github.ref_name}}
-                  file: /*.snap/
+                  fileName: "*.snap"
             - name: Publish to Snapcraft
-              run: "task artifacts:publish:snap:${{ github.ref_name }}"
+              run: "task artifacts:snap:publish:${{ github.ref_name }}"
               env:
                   SNAPCRAFT_STORE_CREDENTIALS: "${{secrets.SNAPCRAFT_LOGIN_CREDS}}"
+              shell: bash
     bump-winget:
         if: ${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, 'beta') }}
         runs-on: windows-latest
@@ -46,8 +46,8 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - name: Submit Winget version bump
-              run: "task artifacts:publish:winget:${{ github.ref_name }}"
+            - name: Submit WinGet version bump
+              run: "task artifacts:winget:publish:${{ github.ref_name }}"
               env:
                   GITHUB_TOKEN: ${{ secrets.WINGET_BUMP_PAT }}
               shell: pwsh
