@@ -3,12 +3,12 @@
 
 import { wpsReconnectHandler } from "@/app/store/wps";
 import { WshClient } from "@/app/store/wshclient";
-import { makeWindowRouteId, WshRouter } from "@/app/store/wshrouter";
+import { makeTabRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
 import { addWSReconnectHandler, ElectronOverrideOpts, globalWS, initGlobalWS, WSControl } from "./ws";
 
 let DefaultRouter: WshRouter;
-let WindowRpcClient: WshClient;
+let TabRpcClient: WshClient;
 
 async function* rpcResponseGenerator(
     openRpcs: Map<string, ClientRpcEntry>,
@@ -126,15 +126,15 @@ function shutdownWshrpc() {
     globalWS?.shutdown();
 }
 
-function initWshrpc(windowId: string): WSControl {
+function initWshrpc(tabId: string): WSControl {
     DefaultRouter = new WshRouter(new UpstreamWshRpcProxy());
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
     };
-    initGlobalWS(getWSServerEndpoint(), windowId, handleFn);
+    initGlobalWS(getWSServerEndpoint(), tabId, handleFn);
     globalWS.connectNow("connectWshrpc");
-    WindowRpcClient = new WshClient(makeWindowRouteId(windowId));
-    DefaultRouter.registerRoute(WindowRpcClient.routeId, WindowRpcClient);
+    TabRpcClient = new WshClient(makeTabRouteId(tabId));
+    DefaultRouter.registerRoute(TabRpcClient.routeId, TabRpcClient);
     addWSReconnectHandler(() => {
         DefaultRouter.reannounceRoutes();
     });
@@ -149,12 +149,4 @@ class UpstreamWshRpcProxy implements AbstractWshClient {
     }
 }
 
-export {
-    DefaultRouter,
-    initElectronWshrpc,
-    initWshrpc,
-    sendRpcCommand,
-    sendRpcResponse,
-    shutdownWshrpc,
-    WindowRpcClient,
-};
+export { DefaultRouter, initElectronWshrpc, initWshrpc, sendRpcCommand, sendRpcResponse, shutdownWshrpc, TabRpcClient };

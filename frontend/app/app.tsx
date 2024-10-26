@@ -23,7 +23,10 @@ import { CenteredDiv } from "./element/quickelems";
 const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
 
-const App = () => {
+const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
+    useEffect(() => {
+        onFirstRender();
+    }, []);
     return (
         <Provider store={globalStore}>
             <AppInner />
@@ -65,6 +68,9 @@ async function getClipboardURL(): Promise<URL> {
             return null;
         }
         const url = new URL(clipboardText);
+        if (!url.protocol.startsWith("http")) {
+            return null;
+        }
         return url;
     } catch (e) {
         return null;
@@ -115,18 +121,20 @@ function AppSettingsUpdater() {
             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
         const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
         let baseBgColor = windowSettings?.["window:bgcolor"];
+        let mainDiv = document.getElementById("main");
+        // console.log("window settings", windowSettings, isTransparentOrBlur, opacity, baseBgColor, mainDiv);
         if (isTransparentOrBlur) {
-            document.body.classList.add("is-transparent");
+            mainDiv.classList.add("is-transparent");
             const rootStyles = getComputedStyle(document.documentElement);
             if (baseBgColor == null) {
                 baseBgColor = rootStyles.getPropertyValue("--main-bg-color").trim();
             }
             const color = new Color(baseBgColor);
             const rgbaColor = color.alpha(opacity).string();
-            document.body.style.backgroundColor = rgbaColor;
+            mainDiv.style.backgroundColor = rgbaColor;
         } else {
-            document.body.classList.remove("is-transparent");
-            document.body.style.opacity = null;
+            mainDiv.classList.remove("is-transparent");
+            mainDiv.style.opacity = null;
         }
     }, [windowSettings]);
     return null;

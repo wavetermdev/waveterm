@@ -1,15 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
-import { NodeModel } from "@/layout/index";
 import { atoms, createBlock, getConnStatusAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
@@ -98,7 +98,7 @@ function isStreamingType(mimeType: string): boolean {
 export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
-    nodeModel: NodeModel;
+    nodeModel: BlockNodeModel;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
@@ -141,7 +141,7 @@ export class PreviewModel implements ViewModel {
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
-    constructor(blockId: string, nodeModel: NodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "preview";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
@@ -496,7 +496,7 @@ export class PreviewModel implements ViewModel {
     async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
         const conn = globalStore.get(this.connection);
         try {
-            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
+            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
             return parentFileInfo;
@@ -517,7 +517,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
             if (newFileInfo.path != "" && newFileInfo.notfound) {
@@ -600,7 +600,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, filePath], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, filePath], {
                 route: makeConnRoute(conn),
             });
             this.updateOpenFileModalAndError(false);
@@ -733,7 +733,7 @@ export class PreviewModel implements ViewModel {
     }
 }
 
-function makePreviewModel(blockId: string, nodeModel: NodeModel): PreviewModel {
+function makePreviewModel(blockId: string, nodeModel: BlockNodeModel): PreviewModel {
     const previewModel = new PreviewModel(blockId, nodeModel);
     return previewModel;
 }

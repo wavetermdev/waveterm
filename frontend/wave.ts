@@ -8,11 +8,11 @@ import {
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
-import { FileService, ObjectService } from "@/app/store/services";
+import { FileService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { initWshrpc, WindowRpcClient } from "@/app/store/wshrpcutil";
+import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
-import { getLayoutModelForActiveTab } from "@/layout/index";
+import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
     atoms,
     countersClear,
@@ -32,18 +32,9 @@ import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
 const platform = getApi().getPlatform();
-const urlParams = new URLSearchParams(window.location.search);
-const windowId = urlParams.get("windowid");
-const clientId = urlParams.get("clientid");
+document.title = `Wave Terminal`;
+let savedInitOpts: WaveInitOpts = null;
 
-console.log("Wave Starting");
-console.log("clientid", clientId, "windowid", windowId);
-
-initGlobal({ clientId, windowId, platform, environment: "renderer" });
-
-setKeyUtilPlatform(platform);
-
-loadFonts();
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
 (window as any).globalAtoms = atoms;
@@ -51,29 +42,109 @@ loadFonts();
 (window as any).isFullScreen = false;
 (window as any).countersPrint = countersPrint;
 (window as any).countersClear = countersClear;
-(window as any).getLayoutModelForActiveTab = getLayoutModelForActiveTab;
+(window as any).getLayoutModelForStaticTab = getLayoutModelForStaticTab;
 (window as any).pushFlashError = pushFlashError;
 (window as any).modalsModel = modalsModel;
 
-document.title = `Wave (${windowId.substring(0, 8)})`;
+async function initBare() {
+    getApi().sendLog("Init Bare");
+    document.body.style.visibility = "hidden";
+    document.body.style.opacity = "0";
+    document.body.classList.add("is-transparent");
+    getApi().onWaveInit(initWaveWrap);
+    setKeyUtilPlatform(platform);
+    loadFonts();
+    document.fonts.ready.then(() => {
+        console.log("Init Bare Done");
+        getApi().setWindowInitStatus("ready");
+    });
+}
 
-document.addEventListener("DOMContentLoaded", async () => {
-    console.log("DOMContentLoaded");
+document.addEventListener("DOMContentLoaded", initBare);
+
+async function initWaveWrap(initOpts: WaveInitOpts) {
+    try {
+        if (savedInitOpts) {
+            await reinitWave();
+            return;
+        }
+        savedInitOpts = initOpts;
+        await initWave(initOpts);
+    } catch (e) {
+        getApi().sendLog("Error in initWave " + e.message);
+        console.error("Error in initWave", e);
+    } finally {
+        document.body.style.visibility = null;
+        document.body.style.opacity = null;
+        document.body.classList.remove("is-transparent");
+    }
+}
+
+async function reinitWave() {
+    console.log("Reinit Wave");
+    getApi().sendLog("Reinit Wave");
+    const client = await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedInitOpts.clientId));
+    const waveWindow = await WOS.reloadWaveObject<WaveWindow>(WOS.makeORef("window", savedInitOpts.windowId));
+    await WOS.reloadWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
+    const initialTab = await WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", savedInitOpts.tabId));
+    await WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
+    document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
+    getApi().setWindowInitStatus("wave-ready");
+}
+
+function loadAllWorkspaceTabs(ws: Workspace) {
+    if (ws == null || ws.tabids == null) {
+        return;
+    }
+    ws.tabids.forEach((tabid) => {
+        WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabid));
+    });
+}
+
+async function initWave(initOpts: WaveInitOpts) {
+    getApi().sendLog("Init Wave " + JSON.stringify(initOpts));
+    console.log(
+        "Wave Init",
+        "tabid",
+        initOpts.tabId,
+        "clientid",
+        initOpts.clientId,
+        "windowid",
+        initOpts.windowId,
+        "platform",
+        platform
+    );
+    initGlobal({
+        tabId: initOpts.tabId,
+        clientId: initOpts.clientId,
+        windowId: initOpts.windowId,
+        platform,
+        environment: "renderer",
+    });
+    (window as any).globalAtoms = atoms;
 
     // Init WPS event handlers
-    const globalWS = initWshrpc(windowId);
+    const globalWS = initWshrpc(initOpts.tabId);
     (window as any).globalWS = globalWS;
-    (window as any).WindowRpcClient = WindowRpcClient;
+    (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
     initGlobalWaveEventSubs();
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
-    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", clientId));
-    const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
-    await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
-    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", waveWindow.activetabid));
-    await WOS.loadAndPinWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
+    const [client, waveWindow, initialTab] = await Promise.all([
+        WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
+        WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
+        WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
+    ]);
+    const [ws, layoutState] = await Promise.all([
+        WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
+        WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
+    ]);
+    loadAllWorkspaceTabs(ws);
+    WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
+
+    document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
 
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();
@@ -82,15 +153,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fullConfig = await FileService.GetFullConfig();
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
-    const prtn = ObjectService.SetActiveTab(waveWindow.activetabid); // no need to wait
-    prtn.catch((e) => {
-        console.log("error on initial SetActiveTab", e);
+    console.log("Wave First Render");
+    let firstRenderResolveFn: () => void = null;
+    let firstRenderPromise = new Promise<void>((resolve) => {
+        firstRenderResolveFn = resolve;
     });
-    const reactElem = createElement(App, null, null);
+    const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn }, null);
     const elem = document.getElementById("main");
     const root = createRoot(elem);
-    document.fonts.ready.then(() => {
-        console.log("Wave First Render");
-        root.render(reactElem);
-    });
-});
+    root.render(reactElem);
+    await firstRenderPromise;
+    console.log("Wave First Render Done");
+    getApi().setWindowInitStatus("wave-ready");
+}

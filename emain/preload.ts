@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("api", {
     getCursorPoint: () => ipcRenderer.sendSync("get-cursor-point"),
     getUserName: () => ipcRenderer.sendSync("get-user-name"),
     getHostName: () => ipcRenderer.sendSync("get-host-name"),
+    getDataDir: () => ipcRenderer.sendSync("get-data-dir"),
+    getConfigDir: () => ipcRenderer.sendSync("get-config-dir"),
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
     getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
@@ -38,6 +40,12 @@ contextBridge.exposeInMainWorld("api", {
     registerGlobalWebviewKeys: (keys) => ipcRenderer.send("register-global-webview-keys", keys),
     onControlShiftStateUpdate: (callback) =>
         ipcRenderer.on("control-shift-state-update", (_event, state) => callback(state)),
+    setActiveTab: (tabId) => ipcRenderer.send("set-active-tab", tabId),
+    createTab: () => ipcRenderer.send("create-tab"),
+    closeTab: (tabId) => ipcRenderer.send("close-tab", tabId),
+    setWindowInitStatus: (status) => ipcRenderer.send("set-window-init-status", status),
+    onWaveInit: (callback) => ipcRenderer.on("wave-init", (_event, initOpts) => callback(initOpts)),
+    sendLog: (log) => ipcRenderer.send("fe-log", log),
     onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
 });
 

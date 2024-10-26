@@ -5,7 +5,7 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, getApi, isDev, PLATFORM } from "@/store/global";
+import { atoms, createTab, getApi, isDev, PLATFORM } from "@/store/global";
 import * as services from "@/store/services";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -134,10 +134,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
-
-    const windowData = useAtomValue(atoms.waveWindow);
-    const { activetabid } = windowData;
-
+    const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     const settings = useAtomValue(atoms.settingsAtom);
@@ -483,17 +480,12 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
-            services.ObjectService.SetActiveTab(tabId);
+            getApi().setActiveTab(tabId);
         }
     };
 
     const handleAddTab = () => {
-        const newTabName = `T${tabIds.length + 1}`;
-        services.ObjectService.AddTabToWorkspace(newTabName, true).then((tabId) => {
-            setTabIds([...tabIds, tabId]);
-            setNewTabId(tabId);
-        });
-        services.ObjectService.GetObject;
+        createTab();
         tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
@@ -509,7 +501,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        services.WindowService.CloseTab(tabId);
+        getApi().closeTab(tabId);
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutModelForTab(tabId);
     };
@@ -525,7 +517,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     }, []);
 
     const isBeforeActive = (tabId: string) => {
-        return tabIds.indexOf(tabId) === tabIds.indexOf(activetabid) - 1;
+        return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
     };
 
     function onEllipsisClick() {
@@ -560,7 +552,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                                 id={tabId}
                                 isFirst={index === 0}
                                 onSelect={() => handleSelectTab(tabId)}
-                                active={activetabid === tabId}
+                                active={activeTabId === tabId}
                                 onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}

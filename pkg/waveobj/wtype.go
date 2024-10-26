@@ -118,6 +118,7 @@ type Client struct {
 	Meta          MetaMapType `json:"meta"`
 	TosAgreed     int64       `json:"tosagreed,omitempty"`
 	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
+	NextTabId     int         `json:"nexttabid,omitempty"`
 }
 
 func (*Client) GetOType() string {
@@ -252,11 +253,13 @@ type WinSize struct {
 
 type Block struct {
 	OID         string         `json:"oid"`
+	ParentORef  string         `json:"parentoref,omitempty"`
 	Version     int            `json:"version"`
 	BlockDef    *BlockDef      `json:"blockdef"`
 	RuntimeOpts *RuntimeOpts   `json:"runtimeopts,omitempty"`
 	Stickers    []*StickerType `json:"stickers,omitempty"`
 	Meta        MetaMapType    `json:"meta"`
+	SubBlockIds []string       `json:"subblockids,omitempty"`
 }
 
 func (*Block) GetOType() string {

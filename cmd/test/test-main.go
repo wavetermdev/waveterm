@@ -14,7 +14,7 @@ import (
 
 func Page(ctx context.Context, props map[string]any) any {
 	clicked, setClicked := vdom.UseState(ctx, false)
-	var clickedDiv *vdom.Elem
+	var clickedDiv *vdom.VDomElem
 	if clicked {
 		clickedDiv = vdom.Bind(`<div>clicked</div>`, nil)
 	}
@@ -35,7 +35,7 @@ func Page(ctx context.Context, props map[string]any) any {
 }
 
 func Button(ctx context.Context, props map[string]any) any {
-	ref := vdom.UseRef(ctx, nil)
+	ref := vdom.UseVDomRef(ctx)
 	clName, setClName := vdom.UseState(ctx, "button")
 	vdom.UseEffect(ctx, func() func() {
 		fmt.Printf("Button useEffect\n")
