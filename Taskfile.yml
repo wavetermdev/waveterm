@@ -185,8 +185,8 @@ tasks:
     generate:
         desc: Generate Typescript bindings for the Go backend.
         cmds:
-            - NO_PANIC=1 go run cmd/generatets/main-generatets.go
-            - NO_PANIC=1 go run cmd/generatego/main-generatego.go
+            - go run cmd/generatets/main-generatets.go
+            - go run cmd/generatego/main-generatego.go
         sources:
             - "cmd/generatego/*.go"
             - "cmd/generatets/*.go"
