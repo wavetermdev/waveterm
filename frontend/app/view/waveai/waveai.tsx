@@ -24,6 +24,7 @@ interface ChatMessageType {
 }
 
 const outline = "2px solid var(--accent-color)";
+const slidingWindowSize = 30;
 
 interface ChatItemProps {
     chatItem: ChatMessageType;
@@ -233,7 +234,7 @@ export class WaveAiModel implements ViewModel {
             return [];
         }
         const history: Array<OpenAIPromptMessageType> = JSON.parse(new TextDecoder().decode(data));
-        return history;
+        return history.slice(Math.max(history.length - slidingWindowSize, 0));
     }
 
     giveFocus(): boolean {
@@ -294,19 +295,23 @@ export class WaveAiModel implements ViewModel {
                         fullMsg += msg.text ?? "";
                         globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
                         if (this.cancel) {
-                            if (fullMsg == "") {
-                                globalStore.set(this.removeLastMessageAtom);
-                            }
                             break;
                         }
+                    }
+                    if (fullMsg == "") {
+                        // remove a message if empty
+                        globalStore.set(this.removeLastMessageAtom);
+                        // only save the author's prompt
+                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt]);
+                    } else {
+                        const responsePrompt: OpenAIPromptMessageType = {
+                            role: "assistant",
+                            content: fullMsg,
+                        };
+                        //mark message as complete
                         globalStore.set(this.updateLastMessageAtom, "", false);
-                        if (fullMsg != "") {
-                            const responsePrompt: OpenAIPromptMessageType = {
-                                role: "assistant",
-                                content: fullMsg,
-                            };
-                            await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
-                        }
+                        // save a complete message prompt and response
+                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
                     }
                 } catch (error) {
                     const updatedHist = [...history, newPrompt];
