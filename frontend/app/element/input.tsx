@@ -1,176 +1,150 @@
-import { clsx } from "clsx";
-import React, { forwardRef, useEffect, useRef, useState } from "react";
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+import clsx from "clsx";
+import React, { forwardRef, memo, useImperativeHandle, useRef, useState } from "react";
 
 import "./input.less";
 
-interface InputDecorationProps {
-    startDecoration?: React.ReactNode;
-    endDecoration?: React.ReactNode;
+interface InputGroupProps {
+    children: React.ReactNode;
+    className?: string;
 }
 
+const InputGroup = memo(
+    forwardRef<HTMLDivElement, InputGroupProps>(({ children, className }: InputGroupProps, ref) => {
+        const [isFocused, setIsFocused] = useState(false);
+
+        const manageFocus = (focused: boolean) => {
+            setIsFocused(focused);
+        };
+
+        return (
+            <div
+                ref={ref}
+                className={clsx("input-group", className, {
+                    focused: isFocused,
+                })}
+            >
+                {React.Children.map(children, (child) => {
+                    if (React.isValidElement(child)) {
+                        return React.cloneElement(child as any, { manageFocus });
+                    }
+                    return child;
+                })}
+            </div>
+        );
+    })
+);
+
+interface InputLeftElementProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+const InputLeftElement = memo(({ children, className }: InputLeftElementProps) => {
+    return <div className={clsx("input-left-element", className)}>{children}</div>;
+});
+
+interface InputRightElementProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+const InputRightElement = memo(({ children, className }: InputRightElementProps) => {
+    return <div className={clsx("input-right-element", className)}>{children}</div>;
+});
+
 interface InputProps {
-    label?: string;
     value?: string;
     className?: string;
     onChange?: (value: string) => void;
-    onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+    onKeyDown?: (event: React.KeyboardEvent<any>) => void;
     onFocus?: () => void;
     onBlur?: () => void;
     placeholder?: string;
     defaultValue?: string;
-    decoration?: InputDecorationProps;
     required?: boolean;
     maxLength?: number;
     autoFocus?: boolean;
     disabled?: boolean;
     isNumber?: boolean;
-    inputRef?: React.MutableRefObject<HTMLInputElement>;
+    inputRef?: React.MutableRefObject<any>;
+    manageFocus?: (isFocused: boolean) => void;
 }
 
-const Input = forwardRef<HTMLDivElement, InputProps>(
-    (
-        {
-            label,
-            value,
-            className,
-            onChange,
-            onKeyDown,
-            onFocus,
-            onBlur,
-            placeholder,
-            defaultValue = "",
-            decoration,
-            required,
-            maxLength,
-            autoFocus,
-            disabled,
-            isNumber,
-            inputRef,
-        }: InputProps,
-        ref
-    ) => {
-        const [focused, setFocused] = useState(false);
-        const [internalValue, setInternalValue] = useState(defaultValue);
-        const [error, setError] = useState(false);
-        const [hasContent, setHasContent] = useState(Boolean(value || defaultValue));
-        const internalInputRef = useRef<HTMLInputElement>(null);
+const Input = memo(
+    forwardRef<HTMLInputElement, InputProps>(
+        (
+            {
+                value,
+                className,
+                onChange,
+                onKeyDown,
+                onFocus,
+                onBlur,
+                placeholder,
+                defaultValue = "",
+                required,
+                maxLength,
+                autoFocus,
+                disabled,
+                isNumber,
+                manageFocus,
+            }: InputProps,
+            ref
+        ) => {
+            const [internalValue, setInternalValue] = useState(defaultValue);
+            const inputRef = useRef<HTMLInputElement>(null);
 
-        useEffect(() => {
-            if (value !== undefined) {
-                setFocused(Boolean(value));
-            }
-        }, [value]);
+            useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
-        const handleComponentFocus = () => {
-            if (internalInputRef.current && !internalInputRef.current.contains(document.activeElement)) {
-                internalInputRef.current.focus();
-            }
-        };
+            const handleInputChange = (e: React.ChangeEvent<any>) => {
+                const inputValue = e.target.value;
 
-        const handleComponentBlur = () => {
-            if (internalInputRef.current?.contains(document.activeElement)) {
-                internalInputRef.current.blur();
-            }
-        };
-
-        const handleSetInputRef = (elem: HTMLInputElement) => {
-            if (inputRef) {
-                inputRef.current = elem;
-            }
-            internalInputRef.current = elem;
-        };
-
-        const handleFocus = () => {
-            setFocused(true);
-            onFocus && onFocus();
-        };
-
-        const handleBlur = () => {
-            if (internalInputRef.current) {
-                const inputValue = internalInputRef.current.value;
-                if (required && !inputValue) {
-                    setError(true);
-                    setFocused(false);
-                } else {
-                    setError(false);
-                    setFocused(false);
+                if (isNumber && inputValue !== "" && !/^\d*$/.test(inputValue)) {
+                    return;
                 }
-            }
-            onBlur && onBlur();
-        };
 
-        const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const inputValue = e.target.value;
+                if (value === undefined) {
+                    setInternalValue(inputValue);
+                }
 
-            if (isNumber && inputValue !== "" && !/^\d*$/.test(inputValue)) {
-                return;
-            }
+                onChange && onChange(inputValue);
+            };
 
-            if (required && !inputValue) {
-                setError(true);
-                setHasContent(false);
-            } else {
-                setError(false);
-                setHasContent(Boolean(inputValue));
-            }
+            const handleFocus = () => {
+                manageFocus?.(true);
+                onFocus?.();
+            };
 
-            if (value === undefined) {
-                setInternalValue(inputValue);
-            }
+            const handleBlur = () => {
+                manageFocus?.(false);
+                onBlur?.();
+            };
 
-            onChange && onChange(inputValue);
-        };
+            const inputValue = value ?? internalValue;
 
-        const inputValue = value ?? internalValue;
-
-        return (
-            <div
-                ref={ref}
-                className={clsx("input", className, {
-                    focused: focused,
-                    error: error,
-                    disabled: disabled,
-                    "no-label": !label,
-                })}
-                onFocus={handleComponentFocus}
-                onBlur={handleComponentBlur}
-                tabIndex={-1}
-            >
-                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
-                <div className="input-inner">
-                    {label && (
-                        <label
-                            className={clsx("input-inner-label", {
-                                float: hasContent || focused || placeholder,
-                                "offset-left": decoration?.startDecoration,
-                            })}
-                            htmlFor={label}
-                        >
-                            {label}
-                        </label>
-                    )}
-                    <input
-                        className={clsx("input-inner-input", {
-                            "offset-left": decoration?.startDecoration,
-                        })}
-                        ref={handleSetInputRef}
-                        id={label}
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        onKeyDown={onKeyDown}
-                        placeholder={placeholder}
-                        maxLength={maxLength}
-                        autoFocus={autoFocus}
-                        disabled={disabled}
-                    />
-                </div>
-                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
-            </div>
-        );
-    }
+            return (
+                <input
+                    className={clsx("input", className, {
+                        disabled: disabled,
+                    })}
+                    ref={inputRef}
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    onKeyDown={onKeyDown}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                    placeholder={placeholder}
+                    maxLength={maxLength}
+                    autoFocus={autoFocus}
+                    disabled={disabled}
+                />
+            );
+        }
+    )
 );
 
-export { Input };
-export type { InputDecorationProps, InputProps };
+export { Input, InputGroup, InputLeftElement, InputRightElement };
+export type { InputGroupProps, InputLeftElementProps, InputProps, InputRightElementProps };

@@ -4302,6 +4302,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"colord@npm:^2.9.3":
+  version: 2.9.3
+  resolution: "colord@npm:2.9.3"
+  checksum: 10c0/9699e956894d8996b28c686afe8988720785f476f59335c80ce852ded76ab3ebe252703aec53d9bef54f6219aea6b960fb3d9a8300058a1d0c0d4026460cd110
+  languageName: node
+  linkType: hard
+
 "colorspace@npm:1.1.x":
   version: 1.1.4
   resolution: "colorspace@npm:1.1.4"
@@ -11717,6 +11724,7 @@ __metadata:
     base64-js: "npm:^1.5.1"
     clsx: "npm:^2.1.1"
     color: "npm:^4.2.3"
+    colord: "npm:^2.9.3"
     css-tree: "npm:^3.0.0"
     dayjs: "npm:^1.11.13"
     debug: "npm:^4.3.7"

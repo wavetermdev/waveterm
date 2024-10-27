@@ -162,6 +162,9 @@ jobs:
                   path: make
     create-release:
         runs-on: ubuntu-latest
+        needs: runbuild
+        permissions:
+            contents: write
         if: ${{ github.event_name != 'workflow_dispatch' }}
         steps:
             - name: Download artifacts
