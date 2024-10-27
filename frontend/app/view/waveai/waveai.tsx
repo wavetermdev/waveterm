@@ -295,12 +295,23 @@ export class WaveAiModel implements ViewModel {
                         fullMsg += msg.text ?? "";
                         globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
                         if (this.cancel) {
-                            if (fullMsg == "") {
-                                globalStore.set(this.removeLastMessageAtom);
-                            }
                             break;
                         }
+                    }
+                    if (fullMsg == "") {
+                        // remove a message if empty
+                        globalStore.set(this.removeLastMessageAtom);
+                        // only save the author's prompt
+                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt]);
+                    } else {
+                        const responsePrompt: OpenAIPromptMessageType = {
+                            role: "assistant",
+                            content: fullMsg,
+                        };
+                        //mark message as complete
                         globalStore.set(this.updateLastMessageAtom, "", false);
+                        // save a complete message prompt and response
+                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
                     }
                 } catch (error) {
                     const updatedHist = [...history, newPrompt];
@@ -328,14 +339,6 @@ export class WaveAiModel implements ViewModel {
                     };
                     updatedHist.push(errorPrompt);
                     await BlockService.SaveWaveAiData(blockId, updatedHist);
-                } finally {
-                    if (fullMsg != "") {
-                        const responsePrompt: OpenAIPromptMessageType = {
-                            role: "assistant",
-                            content: fullMsg,
-                        };
-                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
-                    }
                 }
                 setLocked(false);
                 this.cancel = false;
