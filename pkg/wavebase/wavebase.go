@@ -17,17 +17,25 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/wavetermdev/waveterm/pkg/util/panic"
 )
 
 // set by main-server.go
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
-const WaveConfigHomeEnvVar = "WAVETERM_CONFIG_HOME"
-const WaveDataHomeEnvVar = "WAVETERM_DATA_HOME"
-const WaveDevVarName = "WAVETERM_DEV"
+const (
+	WaveConfigHomeEnvVar = "WAVETERM_CONFIG_HOME"
+	WaveDataHomeEnvVar   = "WAVETERM_DATA_HOME"
+	WaveAppPathVarName   = "WAVETERM_APP_PATH"
+	WaveDevVarName       = "WAVETERM_DEV"
+	WaveDevViteVarName   = "WAVETERM_DEV_VITE"
+)
+
+var ConfigHome_VarCache string // caches WAVETERM_CONFIG_HOME
+var DataHome_VarCache string   // caches WAVETERM_DATA_HOME
+var AppPath_VarCache string    // caches WAVETERM_APP_PATH
+var Dev_VarCache string        // caches WAVETERM_DEV
+
 const WaveLockFile = "wave.lock"
 const DomainSocketBaseName = "wave.sock"
 const RemoteDomainSocketBaseName = "wave-remote.sock"
@@ -37,7 +45,6 @@ const ConfigDir = "config"
 
 var RemoteWaveHome = ExpandHomeDirSafe("~/.waveterm")
 
-const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const AppPathBinDir = "bin"
 
 var baseLock = &sync.Mutex{}
@@ -47,13 +54,39 @@ type FDLock interface {
 	Close() error
 }
 
+func CacheAndRemoveEnvVars() error {
+	ConfigHome_VarCache = os.Getenv(WaveConfigHomeEnvVar)
+	if ConfigHome_VarCache == "" {
+		return fmt.Errorf(WaveConfigHomeEnvVar + " not set")
+	}
+	os.Unsetenv(WaveConfigHomeEnvVar)
+	DataHome_VarCache = os.Getenv(WaveDataHomeEnvVar)
+	if DataHome_VarCache == "" {
+		return fmt.Errorf("%s not set", WaveDataHomeEnvVar)
+	}
+	os.Unsetenv(WaveDataHomeEnvVar)
+	AppPath_VarCache = os.Getenv(WaveAppPathVarName)
+	os.Unsetenv(WaveAppPathVarName)
+	Dev_VarCache = os.Getenv(WaveDevVarName)
+	os.Unsetenv(WaveDevVarName)
+	os.Unsetenv(WaveDevViteVarName)
+	return nil
+}
+
 func IsDevMode() bool {
-	pdev := os.Getenv(WaveDevVarName)
-	return pdev != ""
+	return Dev_VarCache != ""
 }
 
 func GetWaveAppPath() string {
-	return os.Getenv(WaveAppPathVarName)
+	return AppPath_VarCache
+}
+
+func GetWaveDataDir() string {
+	return DataHome_VarCache
+}
+
+func GetWaveConfigDir() string {
+	return ConfigHome_VarCache
 }
 
 func GetWaveAppBinPath() string {
@@ -106,22 +139,6 @@ func GetDomainSocketName() string {
 
 func GetRemoteDomainSocketName() string {
 	return filepath.Join(RemoteWaveHome, RemoteDomainSocketBaseName)
-}
-
-func GetWaveDataDir() string {
-	retVal, found := os.LookupEnv(WaveDataHomeEnvVar)
-	if !found {
-		panic.Panic(WaveDataHomeEnvVar + " not set")
-	}
-	return retVal
-}
-
-func GetWaveConfigDir() string {
-	retVal, found := os.LookupEnv(WaveConfigHomeEnvVar)
-	if !found {
-		panic.Panic(WaveConfigHomeEnvVar + " not set")
-	}
-	return retVal
 }
 
 func EnsureWaveDataDir() error {

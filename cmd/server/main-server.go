@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
-	"strconv"
 
 	"runtime"
 	"sync"
@@ -45,8 +44,6 @@ var BuildTime = "0"
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
 const TelemetryInterval = 4 * time.Hour
-
-const ReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID"
 
 var shutdownOnce sync.Once
 
@@ -166,15 +163,31 @@ func createMainWshClient() {
 	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
 }
 
+func grabAndRemoveEnvVars() error {
+	err := authkey.SetAuthKeyFromEnv()
+	if err != nil {
+		return fmt.Errorf("setting auth key: %v", err)
+	}
+	err = wavebase.CacheAndRemoveEnvVars()
+	if err != nil {
+		return err
+	}
+	err = wcloud.CacheAndRemoveEnvVars()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 
-	err := authkey.SetAuthKeyFromEnv()
+	err := grabAndRemoveEnvVars()
 	if err != nil {
-		log.Printf("error setting auth key: %v\n", err)
+		log.Printf("[error] %v\n", err)
 		return
 	}
 	err = service.ValidateServiceMap()
@@ -279,17 +292,11 @@ func main() {
 		return
 	}
 	go func() {
-		pidStr := os.Getenv(ReadySignalPidVarName)
-		if pidStr != "" {
-			_, err := strconv.Atoi(pidStr)
-			if err == nil {
-				if BuildTime == "" {
-					BuildTime = "0"
-				}
-				// use fmt instead of log here to make sure it goes directly to stderr
-				fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime)
-			}
+		if BuildTime == "" {
+			BuildTime = "0"
 		}
+		// use fmt instead of log here to make sure it goes directly to stderr
+		fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime)
 	}()
 	go wshutil.RunWshRpcOverListener(unixListener)
 	web.RunWebServer(webListener) // blocking
