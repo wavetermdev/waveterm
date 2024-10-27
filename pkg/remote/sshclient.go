@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kevinburke/ssh_config"
@@ -33,6 +34,17 @@ import (
 )
 
 const SshProxyJumpMaxDepth = 10
+
+var waveSshConfigUserSettingsInternal *ssh_config.UserSettings
+var configUserSettingsOnce = &sync.Once{}
+
+func WaveSshConfigUserSettings() *ssh_config.UserSettings {
+	configUserSettingsOnce.Do(func() {
+		waveSshConfigUserSettingsInternal = ssh_config.DefaultUserSettings
+		waveSshConfigUserSettingsInternal.IgnoreMatchDirective = true
+	})
+	return waveSshConfigUserSettingsInternal
+}
 
 type UserInputCancelError struct {
 	Err error
@@ -724,54 +736,54 @@ func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeyword
 // but `var != "no"` will default to true
 // when given unexpected strings
 func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
-	ssh_config.ReloadConfigs()
+	WaveSshConfigUserSettings().ReloadConfigs()
 	sshKeywords := &SshKeywords{}
 	var err error
 
-	userRaw, err := ssh_config.GetStrict(hostPattern, "User")
+	userRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "User")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.User = trimquotes.TryTrimQuotes(userRaw)
 
-	hostNameRaw, err := ssh_config.GetStrict(hostPattern, "HostName")
+	hostNameRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "HostName")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.HostName = trimquotes.TryTrimQuotes(hostNameRaw)
 
-	portRaw, err := ssh_config.GetStrict(hostPattern, "Port")
+	portRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "Port")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.Port = trimquotes.TryTrimQuotes(portRaw)
 
-	identityFileRaw := ssh_config.GetAll(hostPattern, "IdentityFile")
+	identityFileRaw := WaveSshConfigUserSettings().GetAll(hostPattern, "IdentityFile")
 	for i := 0; i < len(identityFileRaw); i++ {
 		identityFileRaw[i] = trimquotes.TryTrimQuotes(identityFileRaw[i])
 	}
 	sshKeywords.IdentityFile = identityFileRaw
 
-	batchModeRaw, err := ssh_config.GetStrict(hostPattern, "BatchMode")
+	batchModeRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "BatchMode")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.BatchMode = (strings.ToLower(trimquotes.TryTrimQuotes(batchModeRaw)) == "yes")
 
 	// we currently do not support host-bound or unbound but will use yes when they are selected
-	pubkeyAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "PubkeyAuthentication")
+	pubkeyAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PubkeyAuthentication")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.PubkeyAuthentication = (strings.ToLower(trimquotes.TryTrimQuotes(pubkeyAuthenticationRaw)) != "no")
 
-	passwordAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "PasswordAuthentication")
+	passwordAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PasswordAuthentication")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.PasswordAuthentication = (strings.ToLower(trimquotes.TryTrimQuotes(passwordAuthenticationRaw)) != "no")
 
-	kbdInteractiveAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "KbdInteractiveAuthentication")
+	kbdInteractiveAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "KbdInteractiveAuthentication")
 	if err != nil {
 		return nil, err
 	}
@@ -779,18 +791,18 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 
 	// these are parsed as a single string and must be separated
 	// these are case sensitive in openssh so they are here too
-	preferredAuthenticationsRaw, err := ssh_config.GetStrict(hostPattern, "PreferredAuthentications")
+	preferredAuthenticationsRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PreferredAuthentications")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.PreferredAuthentications = strings.Split(trimquotes.TryTrimQuotes(preferredAuthenticationsRaw), ",")
-	addKeysToAgentRaw, err := ssh_config.GetStrict(hostPattern, "AddKeysToAgent")
+	addKeysToAgentRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "AddKeysToAgent")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.AddKeysToAgent = (strings.ToLower(trimquotes.TryTrimQuotes(addKeysToAgentRaw)) == "yes")
 
-	identityAgentRaw, err := ssh_config.GetStrict(hostPattern, "IdentityAgent")
+	identityAgentRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentityAgent")
 	if err != nil {
 		return nil, err
 	}
@@ -815,7 +827,7 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 		sshKeywords.IdentityAgent = agentPath
 	}
 
-	proxyJumpRaw, err := ssh_config.GetStrict(hostPattern, "ProxyJump")
+	proxyJumpRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "ProxyJump")
 	if err != nil {
 		return nil, err
 	}
@@ -827,9 +839,9 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 		}
 		sshKeywords.ProxyJump = append(sshKeywords.ProxyJump, proxyJumpName)
 	}
-	rawUserKnownHostsFile, _ := ssh_config.GetStrict(hostPattern, "UserKnownHostsFile")
+	rawUserKnownHostsFile, _ := WaveSshConfigUserSettings().GetStrict(hostPattern, "UserKnownHostsFile")
 	sshKeywords.UserKnownHostsFile = strings.Fields(rawUserKnownHostsFile) // TODO - smarter splitting escaped spaces and quotes
-	rawGlobalKnownHostsFile, _ := ssh_config.GetStrict(hostPattern, "GlobalKnownHostsFile")
+	rawGlobalKnownHostsFile, _ := WaveSshConfigUserSettings().GetStrict(hostPattern, "GlobalKnownHostsFile")
 	sshKeywords.GlobalKnownHostsFile = strings.Fields(rawGlobalKnownHostsFile) // TODO - smarter splitting escaped spaces and quotes
 
 	return sshKeywords, nil
