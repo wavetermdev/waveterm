@@ -163,15 +163,31 @@ func createMainWshClient() {
 	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
 }
 
+func grabAndRemoveEnvVars() error {
+	err := authkey.SetAuthKeyFromEnv()
+	if err != nil {
+		return fmt.Errorf("setting auth key: %v", err)
+	}
+	err = wavebase.CacheAndRemoveEnvVars()
+	if err != nil {
+		return err
+	}
+	err = wcloud.CacheAndRemoveEnvVars()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 
-	err := authkey.SetAuthKeyFromEnv()
+	err := grabAndRemoveEnvVars()
 	if err != nil {
-		log.Printf("error setting auth key: %v\n", err)
+		log.Printf("[error] %v\n", err)
 		return
 	}
 	err = service.ValidateServiceMap()
