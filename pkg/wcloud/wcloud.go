@@ -54,7 +54,7 @@ func CacheAndRemoveEnvVars() error {
 	}
 	os.Unsetenv(WCloudEndpointVarName)
 	WCloudWSEndpoint_VarCache = os.Getenv(WCloudWSEndpointVarName)
-	err = checkEndpointVar(WCloudWSEndpoint_VarCache, "wcloud ws endpoint", WCloudWSEndpointVarName)
+	err = checkWSEndpointVar(WCloudWSEndpoint_VarCache, "wcloud ws endpoint", WCloudWSEndpointVarName)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,18 @@ func checkEndpointVar(endpoint string, debugName string, varName string) error {
 		return nil
 	}
 	if endpoint == "" || !strings.HasPrefix(endpoint, "https://") {
-		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, WCloudEndpointVarName)
+		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
+	}
+	return nil
+}
+
+func checkWSEndpointVar(endpoint string, debugName string, varName string) error {
+	if !wavebase.IsDevMode() {
+		return nil
+	}
+	log.Printf("checking endpoint %q\n", endpoint)
+	if endpoint == "" || !strings.HasPrefix(endpoint, "wss://") {
+		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
 	}
 	return nil
 }

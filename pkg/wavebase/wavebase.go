@@ -28,6 +28,7 @@ const (
 	WaveDataHomeEnvVar   = "WAVETERM_DATA_HOME"
 	WaveAppPathVarName   = "WAVETERM_APP_PATH"
 	WaveDevVarName       = "WAVETERM_DEV"
+	WaveDevViteVarName   = "WAVETERM_DEV_VITE"
 )
 
 var ConfigHome_VarCache string // caches WAVETERM_CONFIG_HOME
@@ -68,6 +69,7 @@ func CacheAndRemoveEnvVars() error {
 	os.Unsetenv(WaveAppPathVarName)
 	Dev_VarCache = os.Getenv(WaveDevVarName)
 	os.Unsetenv(WaveDevVarName)
+	os.Unsetenv(WaveDevViteVarName)
 	return nil
 }
 
