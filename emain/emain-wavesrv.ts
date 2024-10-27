@@ -5,7 +5,7 @@ import * as electron from "electron";
 import * as child_process from "node:child_process";
 import * as readline from "readline";
 import { WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
-import { AuthKey, AuthKeyEnv } from "./authkey";
+import { AuthKey, WaveAuthKeyEnv } from "./authkey";
 import { setForceQuit } from "./emain-activity";
 import { WaveAppPathVarName } from "./emain-util";
 import {
@@ -54,7 +54,7 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
     });
     const envCopy = { ...process.env };
     envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
-    envCopy[AuthKeyEnv] = AuthKey;
+    envCopy[WaveAuthKeyEnv] = AuthKey;
     envCopy[WaveDataHomeVarName] = getWaveDataDir();
     envCopy[WaveConfigHomeVarName] = getWaveConfigDir();
     const waveSrvCmd = getWaveSrvPath();
