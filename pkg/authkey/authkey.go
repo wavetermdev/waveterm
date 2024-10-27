@@ -11,7 +11,7 @@ import (
 
 var authkey string
 
-const AuthKeyEnv = "AUTH_KEY"
+const AuthKeyEnv = "WAVETERM_AUTH_KEY"
 const AuthKeyHeader = "X-AuthKey"
 
 func ValidateIncomingRequest(r *http.Request) error {
