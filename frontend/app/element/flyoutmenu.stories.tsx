@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useRef } from "react";
 import { Button } from "./button";
-import { Menu } from "./menu";
+import { FlyoutMenu } from "./flyoutmenu";
 
 const items = [
     { label: "Fruit", onClick: (e) => console.log("Clicked Option 1") },
@@ -53,8 +53,8 @@ const items = [
 ];
 
 const meta = {
-    title: "Elements/Menu",
-    component: Menu,
+    title: "Elements/FlyoutMenu",
+    component: FlyoutMenu,
     args: {
         items: [],
         children: null,
@@ -70,7 +70,7 @@ const meta = {
             description: "The contents of the menu anchor element",
         },
     },
-} satisfies Meta<typeof Menu>;
+} satisfies Meta<typeof FlyoutMenu>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -100,12 +100,12 @@ export const DefaultRendererLeftPositioned: Story = {
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
                 <div style={{ position: "absolute", top: 0, left: 0 }}>
-                    <Menu {...modifiedArgs}>
+                    <FlyoutMenu {...modifiedArgs}>
                         <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </Menu>
+                    </FlyoutMenu>
                 </div>
             </div>
         );
@@ -140,12 +140,12 @@ export const DefaultRendererRightPositioned: Story = {
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
                 <div style={{ position: "absolute", top: 0, right: 0 }}>
-                    <Menu {...modifiedArgs}>
+                    <FlyoutMenu {...modifiedArgs}>
                         <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </Menu>
+                    </FlyoutMenu>
                 </div>
             </div>
         );
@@ -180,12 +180,12 @@ export const DefaultRendererBottomRightPositioned: Story = {
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
                 <div style={{ position: "absolute", bottom: 0, left: 0 }}>
-                    <Menu {...modifiedArgs} placement="top-end">
+                    <FlyoutMenu {...modifiedArgs} placement="top-end">
                         <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </Menu>
+                    </FlyoutMenu>
                 </div>
             </div>
         );
@@ -224,7 +224,7 @@ export const DefaultRendererBottomLeftPositioned: Story = {
                 style={{ padding: "20px", height: "300px", border: "2px solid black", position: "relative" }}
             >
                 <div style={{ position: "absolute", bottom: 0, right: 0 }}>
-                    <Menu {...modifiedArgs} placement="top-end">
+                    <FlyoutMenu {...modifiedArgs} placement="top-end">
                         <Button
                             ref={anchorRef}
                             className="grey border-radius-3 vertical-padding-6 horizontal-padding-8"
@@ -232,7 +232,7 @@ export const DefaultRendererBottomLeftPositioned: Story = {
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </Menu>
+                    </FlyoutMenu>
                 </div>
             </div>
         );
@@ -273,12 +273,12 @@ export const CustomRenderer: Story = {
         return (
             <div className="boundary" style={{ padding: "20px", height: "300px", border: "2px solid black" }}>
                 <div style={{ height: "400px" }}>
-                    <Menu {...modifiedArgs} renderMenu={renderMenu} renderMenuItem={renderMenuItem}>
+                    <FlyoutMenu {...modifiedArgs} renderMenu={renderMenu} renderMenuItem={renderMenuItem}>
                         <Button className="grey border-radius-3 vertical-padding-6 horizontal-padding-8">
                             Anchor Element
                             <i className="fa-sharp fa-solid fa-angle-down" style={{ marginLeft: 4 }}></i>
                         </Button>
-                    </Menu>
+                    </FlyoutMenu>
                 </div>
             </div>
         );
@@ -287,60 +287,3 @@ export const CustomRenderer: Story = {
         items: items,
     },
 };
-
-// export const ContextMenu: Story = {
-//     render: (args) => {
-//         const scopeRef = useRef<HTMLDivElement>(null);
-//         const [isMenuVisible, setIsMenuVisible] = useState(false);
-//         const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-
-//         const handleBlockRightClick = (e: MouseEvent) => {
-//             e.preventDefault(); // Prevent the default context menu
-//             setMenuPosition({ top: e.clientY, left: e.clientX });
-//             setIsMenuVisible(true);
-//         };
-
-//         useEffect(() => {
-//             const blockElement = scopeRef.current;
-//             if (blockElement) {
-//                 blockElement.addEventListener("contextmenu", handleBlockRightClick);
-//             }
-
-//             return () => {
-//                 if (blockElement) {
-//                     blockElement.removeEventListener("contextmenu", handleBlockRightClick);
-//                 }
-//             };
-//         }, []);
-
-//         const mapItemsWithClick = (items: any[]) => {
-//             return items.map((item) => ({
-//                 ...item,
-//                 onClick: () => {
-//                     if (item.onClick) {
-//                         item.onClick();
-//                     }
-//                 },
-//                 subItems: item.subItems ? mapItemsWithClick(item.subItems) : undefined,
-//             }));
-//         };
-
-//         const modifiedArgs = {
-//             ...args,
-//             items: mapItemsWithClick(args.items),
-//         };
-
-//         return (
-//             <div
-//                 ref={scopeRef}
-//                 className="boundary"
-//                 style={{ padding: "20px", height: "300px", border: "2px solid black" }}
-//             >
-//                 {isMenuVisible && <Menu {...modifiedArgs} />}
-//             </div>
-//         );
-//     },
-//     args: {
-//         items: items,
-//     },
-// };

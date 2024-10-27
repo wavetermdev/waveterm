@@ -1,8 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Input } from "@/app/element/input";
-import { InputDecoration } from "@/app/element/inputdecoration";
+import { Input, InputGroup, InputRightElement } from "@/app/element/input";
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
@@ -103,13 +102,13 @@ const TypeAheadModal = ({
     const width = domRect?.width ?? 0;
     const height = domRect?.height ?? 0;
     const modalRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLDivElement>(null);
-    const realInputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const inputGroupRef = useRef<HTMLDivElement>(null);
     const suggestionsWrapperRef = useRef<HTMLDivElement>(null);
     const suggestionsRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
-        if (!modalRef.current || !inputRef.current || !suggestionsRef.current || !suggestionsWrapperRef.current) {
+        if (!modalRef.current || !inputGroupRef.current || !suggestionsRef.current || !suggestionsWrapperRef.current) {
             return;
         }
 
@@ -124,7 +123,7 @@ const TypeAheadModal = ({
         const suggestionsWrapperStyles = window.getComputedStyle(suggestionsWrapperRef.current);
         const suggestionsWrapperMarginTop = parseFloat(suggestionsWrapperStyles.marginTop) || 0;
 
-        const inputHeight = inputRef.current.getBoundingClientRect().height;
+        const inputHeight = inputGroupRef.current.getBoundingClientRect().height;
         let suggestionsTotalHeight = 0;
 
         const suggestionItems = suggestionsRef.current.children;
@@ -177,7 +176,7 @@ const TypeAheadModal = ({
     useLayoutEffect(() => {
         if (giveFocusRef) {
             giveFocusRef.current = () => {
-                realInputRef.current?.focus();
+                inputRef.current?.focus();
                 return true;
             };
         }
@@ -216,21 +215,18 @@ const TypeAheadModal = ({
                 ref={modalRef}
                 className={clsx("type-ahead-modal", className, { "has-suggestions": suggestions?.length > 0 })}
             >
-                <Input
-                    ref={inputRef}
-                    inputRef={realInputRef}
-                    onChange={handleChange}
-                    value={value}
-                    autoFocus={autoFocus}
-                    placeholder={label}
-                    decoration={{
-                        endDecoration: (
-                            <InputDecoration>
-                                <i className="fa-regular fa-magnifying-glass"></i>
-                            </InputDecoration>
-                        ),
-                    }}
-                />
+                <InputGroup ref={inputGroupRef}>
+                    <Input
+                        ref={inputRef}
+                        onChange={handleChange}
+                        value={value}
+                        autoFocus={autoFocus}
+                        placeholder={label}
+                    />
+                    <InputRightElement>
+                        <i className="fa-regular fa-magnifying-glass"></i>
+                    </InputRightElement>
+                </InputGroup>
                 <div
                     ref={suggestionsWrapperRef}
                     className="suggestions-wrapper"

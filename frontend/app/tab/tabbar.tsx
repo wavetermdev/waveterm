@@ -14,6 +14,7 @@ import { debounce } from "throttle-debounce";
 import { Tab } from "./tab";
 import "./tabbar.less";
 import { UpdateStatusBanner } from "./updatebanner";
+import { WorkspaceSwitcher } from "./workspaceswitcher";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
@@ -536,12 +537,12 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
-
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
+            {isDev ? <WorkspaceSwitcher></WorkspaceSwitcher> : null}
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {

@@ -5,7 +5,8 @@ import { FloatingPortal, type Placement, useDismiss, useFloating, useInteraction
 import clsx from "clsx";
 import { createRef, Fragment, memo, ReactNode, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import "./menu.less";
+
+import "./flyoutmenu.less";
 
 type MenuProps = {
     items: MenuItem[];
@@ -17,7 +18,7 @@ type MenuProps = {
     renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
 };
 
-const MenuComponent = memo(
+const FlyoutMenuComponent = memo(
     ({ items, children, className, placement, onOpenChange, renderMenu, renderMenuItem }: MenuProps) => {
         const [visibleSubMenus, setVisibleSubMenus] = useState<{ [key: string]: any }>({});
         const [hoveredItems, setHoveredItems] = useState<string[]>([]);
@@ -139,7 +140,6 @@ const MenuComponent = memo(
                 >
                     {children}
                 </div>
-
                 {isOpen && (
                     <FloatingPortal>
                         <div
@@ -196,7 +196,7 @@ const MenuComponent = memo(
     }
 );
 
-const Menu = memo(MenuComponent) as typeof MenuComponent;
+const FlyoutMenu = memo(FlyoutMenuComponent) as typeof FlyoutMenuComponent;
 
 type SubMenuProps = {
     subItems: MenuItem[];
@@ -300,4 +300,4 @@ const SubMenu = memo(
     }
 );
 
-export { Menu };
+export { FlyoutMenu };

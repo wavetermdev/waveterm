@@ -1,0 +1,73 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+@import "../mixins.less";
+
+.expandable-menu {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: visible;
+}
+
+.expandable-menu-item,
+.expandable-menu-item-group-title {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px; /* Left and right padding, we'll adjust this for the right side */
+    cursor: pointer;
+    box-sizing: border-box;
+    border-radius: 4px;
+
+    .label {
+        .ellipsis();
+    }
+}
+
+.expandable-menu-item-group-title {
+    &:hover {
+        background-color: var(--button-grey-hover-bg);
+    }
+}
+
+.expandable-menu-item {
+    &.with-hover-effect {
+        &:hover {
+            background-color: var(--button-grey-hover-bg);
+        }
+    }
+}
+
+.expandable-menu-item-left,
+.expandable-menu-item-right {
+    display: flex;
+    align-items: center;
+}
+
+.expandable-menu-item-left {
+    margin-right: 8px; /* Space for the left element */
+}
+
+.expandable-menu-item-right {
+    margin-left: auto; /* This keeps the right element (if any) on the far right */
+    white-space: nowrap;
+}
+
+.expandable-menu-item-content {
+    flex-grow: 1; /* Ensures the content grows to fill available space between left and right elements */
+}
+
+.expandable-menu-item-group-content {
+    max-height: 0;
+    overflow: hidden;
+    margin-left: 16px; /* Retaining left indentation */
+    margin-right: 0; /* Removing right padding */
+
+    &.open {
+        max-height: 1000px; /* Ensure large enough max-height for expansion */
+    }
+}
+
+.no-indent .expandable-menu-item-group-content {
+    margin-left: 0; // Remove left indentation when noIndent is true
+}
