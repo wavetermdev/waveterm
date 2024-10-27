@@ -30,7 +30,7 @@ func SetAuthKeyFromEnv() error {
 	if authkey == "" {
 		return fmt.Errorf("no auth key found in environment variables")
 	}
-	os.Setenv(AuthKeyEnv, "")
+	os.Unsetenv(AuthKeyEnv)
 	return nil
 }
 

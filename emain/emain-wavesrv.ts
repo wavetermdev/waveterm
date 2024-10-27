@@ -19,8 +19,6 @@ import {
 } from "./platform";
 import { updater } from "./updater";
 
-export const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
-
 let isWaveSrvDead = false;
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 let WaveVersion = "unknown"; // set by WAVESRV-ESTART
@@ -56,7 +54,6 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
     });
     const envCopy = { ...process.env };
     envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
-    envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
     envCopy[AuthKeyEnv] = AuthKey;
     envCopy[WaveDataHomeVarName] = getWaveDataDir();
     envCopy[WaveConfigHomeVarName] = getWaveConfigDir();
