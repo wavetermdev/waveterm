@@ -18,6 +18,7 @@ import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { colord } from "colord";
 import { atom, useAtom } from "jotai";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { memo, useEffect, useRef } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 
@@ -408,9 +409,12 @@ const WorkspaceSwitcher = () => {
             </PopoverButton>
             <PopoverContent className="workspace-switcher-content">
                 <div className="title">Switch workspace</div>
-                <ExpandableMenu noIndent singleOpen>
-                    {renderExpandableMenu(data)}
-                </ExpandableMenu>
+                <OverlayScrollbarsComponent className={"scrollable"} options={{ scrollbars: { autoHide: "leave" } }}>
+                    <ExpandableMenu noIndent singleOpen>
+                        {renderExpandableMenu(data)}
+                    </ExpandableMenu>
+                </OverlayScrollbarsComponent>
+
                 <div className="actions">
                     <ExpandableMenuItem onClick={() => handleAddNewWorkspace()}>
                         <ExpandableMenuItemLeftElement>
