@@ -64,6 +64,8 @@ declare global {
         getEnv: (varName: string) => string;
         getUserName: () => string;
         getHostName: () => string;
+        getDataDir: () => string;
+        getConfigDir: () => string;
         getWebviewPreload: () => string;
         getAboutModalDetails: () => AboutModalDetails;
         getDocsiteUrl: () => string;
@@ -241,6 +243,7 @@ declare global {
 
     type MenuItem = {
         label: string;
+        icon?: string | React.ReactNode;
         subItems?: MenuItem[];
         onClick?: (e: React.MouseEvent<any>) => void;
     };

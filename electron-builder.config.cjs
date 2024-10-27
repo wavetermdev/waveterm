@@ -58,7 +58,7 @@ const config = {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
         executableName: pkg.name,
-        target: ["zip", "deb", "rpm", "AppImage", "pacman"],
+        target: ["zip", "deb", "rpm", "snap", "AppImage", "pacman"],
         synopsis: pkg.description,
         description: null,
         desktop: {
@@ -83,6 +83,12 @@ const config = {
     },
     appImage: {
         license: "LICENSE",
+    },
+    snap: {
+        base: "core22",
+        confinement: "classic",
+        allowNativeWayland: true,
+        artifactName: "${name}_${version}_${arch}.${ext}",
     },
     publish: {
         provider: "generic",

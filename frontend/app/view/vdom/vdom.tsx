@@ -1,18 +1,23 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { VDomModel } from "@/app/view/term/vdom-model";
-import { NodeModel } from "@/layout/index";
+import { Markdown } from "@/app/element/markdown";
+import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { useAtomValueSafe } from "@/util/util";
+import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
+
+import { BlockNodeModel } from "@/app/block/blocktypes";
+import { convertVDomId, getTextChildren, validateAndWrapCss } from "@/app/view/vdom/vdom-utils";
+import "./vdom.less";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
 const WaveTextTag = "wave:text";
 const WaveNullTag = "wave:null";
+const StyleTagName = "style";
 
 const VDomObjType_Ref = "ref";
 const VDomObjType_Binding = "binding";
@@ -20,7 +25,13 @@ const VDomObjType_Func = "func";
 
 const dlog = debug("wave:vdom");
 
-const AllowedTags: { [tagName: string]: boolean } = {
+type VDomReactTagType = (props: { elem: VDomElem; model: VDomModel }) => JSX.Element;
+
+const WaveTagMap: Record<string, VDomReactTagType> = {
+    "wave:markdown": WaveMarkdown,
+};
+
+const AllowedSimpleTags: { [tagName: string]: boolean } = {
     div: true,
     b: true,
     i: true,
@@ -44,6 +55,30 @@ const AllowedTags: { [tagName: string]: boolean } = {
     select: true,
     option: true,
     form: true,
+    label: true,
+    table: true,
+    thead: true,
+    tbody: true,
+    tr: true,
+    th: true,
+    td: true,
+    hr: true,
+    br: true,
+    pre: true,
+    code: true,
+};
+
+const IdAttributes = {
+    id: true,
+    for: true,
+    "aria-labelledby": true,
+    "aria-describedby": true,
+    "aria-controls": true,
+    "aria-owns": true,
+    form: true,
+    headers: true,
+    usemap: true,
+    list: true,
 };
 
 function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
@@ -160,6 +195,10 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             }
             // fallthrough to set props[key] = val
         }
+        if (IdAttributes[key]) {
+            props[key] = convertVDomId(model, val);
+            continue;
+        }
         props[key] = val;
     }
     return [props, atomKeys];
@@ -191,7 +230,7 @@ function stringSetsEqual(set1: Set<string>, set2: Set<string>): boolean {
     return true;
 }
 
-function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+function useVDom(model: VDomModel, elem: VDomElem): GenericPropsType {
     const version = jotai.useAtomValue(model.getVDomNodeVersionAtom(elem));
     const [oldAtomKeys, setOldAtomKeys] = React.useState<Set<string>>(new Set());
     let [props, atomKeys] = convertProps(elem, model);
@@ -208,18 +247,49 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
             model.tagUnuseAtoms(elem.waveid, oldAtomKeys);
         };
     }, []);
+    return props;
+}
 
+function WaveMarkdown({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const props = useVDom(model, elem);
+    return (
+        <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
+    );
+}
+
+function StyleTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const styleText = getTextChildren(elem);
+    if (styleText == null) {
+        return null;
+    }
+    const wrapperClassName = "vdom-" + model.blockId;
+    // TODO handle errors
+    const sanitizedCss = validateAndWrapCss(model, styleText, wrapperClassName);
+    if (sanitizedCss == null) {
+        return null;
+    }
+    return <style>{sanitizedCss}</style>;
+}
+
+function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
+    const props = useVDom(model, elem);
     if (elem.tag == WaveNullTag) {
         return null;
     }
     if (elem.tag == WaveTextTag) {
         return props.text;
     }
-    if (!AllowedTags[elem.tag]) {
+    const waveTag = WaveTagMap[elem.tag];
+    if (waveTag) {
+        return waveTag({ elem, model });
+    }
+    if (elem.tag == StyleTagName) {
+        return <StyleTag elem={elem} model={model} />;
+    }
+    if (!AllowedSimpleTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
     }
     let childrenComps = convertChildren(elem, model);
-    dlog("children", childrenComps);
     if (elem.tag == FragmentTag) {
         return childrenComps;
     }
@@ -251,25 +321,34 @@ const testVDom: VDomElem = {
     ],
 };
 
-function VDomView({
-    blockId,
-    nodeModel,
-    viewRef,
-    model,
-}: {
-    blockId: string;
-    nodeModel: NodeModel;
-    viewRef: React.RefObject<HTMLDivElement>;
-    model: VDomModel;
-}) {
-    let rootNode = useAtomValueSafe(model?.vdomRoot);
-    if (!model || viewRef.current == null || rootNode == null) {
+function VDomRoot({ model }: { model: VDomModel }) {
+    let rootNode = jotai.useAtomValue(model.vdomRoot);
+    if (model.viewRef.current == null || rootNode == null) {
         return null;
     }
     dlog("render", rootNode);
-    model.viewRef = viewRef;
     let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }
 
-export { VDomView };
+function makeVDomModel(blockId: string, nodeModel: BlockNodeModel): VDomModel {
+    return new VDomModel(blockId, nodeModel);
+}
+
+type VDomViewProps = {
+    model: VDomModel;
+    blockId: string;
+};
+
+function VDomView({ blockId, model }: VDomViewProps) {
+    let viewRef = React.useRef(null);
+    model.viewRef = viewRef;
+    const vdomClass = "vdom-" + blockId;
+    return (
+        <div className={clsx("vdom-view", vdomClass)} ref={viewRef}>
+            <VDomRoot model={model} />
+        </div>
+    );
+}
+
+export { makeVDomModel, VDomView };

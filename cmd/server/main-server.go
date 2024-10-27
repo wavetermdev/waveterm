@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
-	"strconv"
 
 	"runtime"
 	"sync"
@@ -45,8 +44,6 @@ var BuildTime = "0"
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
 const TelemetryInterval = 4 * time.Hour
-
-const ReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID"
 
 var shutdownOnce sync.Once
 
@@ -159,11 +156,27 @@ func shutdownActivityUpdate() {
 
 func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
-	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc)
+	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
 	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{})
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh)
+	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
+}
+
+func grabAndRemoveEnvVars() error {
+	err := authkey.SetAuthKeyFromEnv()
+	if err != nil {
+		return fmt.Errorf("setting auth key: %v", err)
+	}
+	err = wavebase.CacheAndRemoveEnvVars()
+	if err != nil {
+		return err
+	}
+	err = wcloud.CacheAndRemoveEnvVars()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {
@@ -172,9 +185,9 @@ func main() {
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 
-	err := authkey.SetAuthKeyFromEnv()
+	err := grabAndRemoveEnvVars()
 	if err != nil {
-		log.Printf("error setting auth key: %v\n", err)
+		log.Printf("[error] %v\n", err)
 		return
 	}
 	err = service.ValidateServiceMap()
@@ -182,7 +195,7 @@ func main() {
 		log.Printf("error validating service map: %v\n", err)
 		return
 	}
-	err = wavebase.EnsureWaveHomeDir()
+	err = wavebase.EnsureWaveDataDir()
 	if err != nil {
 		log.Printf("error ensuring wave home dir: %v\n", err)
 		return
@@ -197,6 +210,13 @@ func main() {
 		log.Printf("error ensuring wave config dir: %v\n", err)
 		return
 	}
+
+	// TODO: rather than ensure this dir exists, we should let the editor recursively create parent dirs on save
+	err = wavebase.EnsureWavePresetsDir()
+	if err != nil {
+		log.Printf("error ensuring wave presets dir: %v\n", err)
+		return
+	}
 	waveLock, err := wavebase.AcquireWaveLock()
 	if err != nil {
 		log.Printf("error acquiring wave lock (another instance of Wave is likely running): %v\n", err)
@@ -209,7 +229,8 @@ func main() {
 		}
 	}()
 	log.Printf("wave version: %s (%s)\n", WaveVersion, BuildTime)
-	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
+	log.Printf("wave data dir: %s\n", wavebase.GetWaveDataDir())
+	log.Printf("wave config dir: %s\n", wavebase.GetWaveConfigDir())
 	err = filestore.InitFilestore()
 	if err != nil {
 		log.Printf("error initializing filestore: %v\n", err)
@@ -271,17 +292,11 @@ func main() {
 		return
 	}
 	go func() {
-		pidStr := os.Getenv(ReadySignalPidVarName)
-		if pidStr != "" {
-			_, err := strconv.Atoi(pidStr)
-			if err == nil {
-				if BuildTime == "" {
-					BuildTime = "0"
-				}
-				// use fmt instead of log here to make sure it goes directly to stderr
-				fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime)
-			}
+		if BuildTime == "" {
+			BuildTime = "0"
 		}
+		// use fmt instead of log here to make sure it goes directly to stderr
+		fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s version:%s buildtime:%s\n", wsListener.Addr(), webListener.Addr(), WaveVersion, BuildTime)
 	}()
 	go wshutil.RunWshRpcOverListener(unixListener)
 	web.RunWebServer(webListener) // blocking

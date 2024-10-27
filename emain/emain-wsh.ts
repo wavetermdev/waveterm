@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Notification } from "electron";
-import { getWaveWindowById } from "emain/emain-viewmgr";
 import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
+import { getWaveWindowById } from "./emain-viewmgr";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 
 export class ElectronWshClientType extends WshClient {

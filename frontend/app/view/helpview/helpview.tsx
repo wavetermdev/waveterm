@@ -1,16 +1,16 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getApi } from "@/app/store/global";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
-import { NodeModel } from "@/layout/index";
 import { fireAndForget } from "@/util/util";
 import { atom, useAtomValue } from "jotai";
 import { useCallback } from "react";
 import "./helpview.less";
 
 class HelpViewModel extends WebViewModel {
-    constructor(blockId: string, nodeModel: NodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
         this.getSettingsMenuItems = undefined;
         this.viewText = atom((get) => {
@@ -44,7 +44,7 @@ class HelpViewModel extends WebViewModel {
     }
 }
 
-function makeHelpViewModel(blockId: string, nodeModel: NodeModel) {
+function makeHelpViewModel(blockId: string, nodeModel: BlockNodeModel) {
     return new HelpViewModel(blockId, nodeModel);
 }
 

@@ -7,9 +7,11 @@ declare global {
 
     // waveobj.Block
     type Block = WaveObj & {
+        parentoref?: string;
         blockdef: BlockDef;
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
+        subblockids?: string[];
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
@@ -30,7 +32,7 @@ declare global {
         blockid: string;
         tabid: string;
         windowid: string;
-        meta: MetaType;
+        block: Block;
     };
 
     // webcmd.BlockInputWSCommand
@@ -45,6 +47,7 @@ declare global {
         windowids: string[];
         tosagreed?: number;
         hasoldhistory?: boolean;
+        nexttabid?: number;
     };
 
     // windowservice.CloseTabRtnType
@@ -63,6 +66,7 @@ declare global {
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
         routeid: string;
+        authtoken?: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -95,9 +99,20 @@ declare global {
         magnified?: boolean;
     };
 
+    // wshrpc.CommandCreateSubBlockData
+    type CommandCreateSubBlockData = {
+        parentblockid: string;
+        blockdef: BlockDef;
+    };
+
     // wshrpc.CommandDeleteBlockData
     type CommandDeleteBlockData = {
         blockid: string;
+    };
+
+    // wshrpc.CommandDisposeData
+    type CommandDisposeData = {
+        routeid: string;
     };
 
     // wshrpc.CommandEventReadHistoryData
@@ -159,6 +174,12 @@ declare global {
     type CommandSetMetaData = {
         oref: ORef;
         meta: MetaType;
+    };
+
+    // wshrpc.CommandWaitForRouteData
+    type CommandWaitForRouteData = {
+        routeid: string;
+        waitms: number;
     };
 
     // wshrpc.CommandWebSelectorData
@@ -335,9 +356,12 @@ declare global {
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
+        "term:vdomblockid"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
+        "vdom:route"?: string;
+        "vdom:persist"?: boolean;
         count?: number;
     };
 
@@ -416,6 +440,7 @@ declare global {
         resid?: string;
         timeout?: number;
         route?: string;
+        authtoken?: string;
         source?: string;
         cont?: boolean;
         cancel?: boolean;
@@ -638,7 +663,7 @@ declare global {
         type: "createcontext";
         ts: number;
         meta?: MetaType;
-        newblock?: boolean;
+        target?: VDomTarget;
         persist?: boolean;
     };
 
@@ -654,7 +679,7 @@ declare global {
     // vdom.VDomEvent
     type VDomEvent = {
         waveid: string;
-        propname: string;
+        eventtype: string;
         eventdata: any;
     };
 
@@ -664,7 +689,6 @@ declare global {
         ts: number;
         blockid: string;
         correlationid?: string;
-        initialize?: boolean;
         dispose?: boolean;
         resync?: boolean;
         rendercontext?: VDomRenderContext;
@@ -746,6 +770,12 @@ declare global {
     type VDomStateSync = {
         atom: string;
         value: any;
+    };
+
+    // vdom.VDomTarget
+    type VDomTarget = {
+        newblock?: boolean;
+        magnified?: boolean;
     };
 
     type WSCommandType = {

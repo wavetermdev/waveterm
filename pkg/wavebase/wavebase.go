@@ -23,17 +23,28 @@ import (
 var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
-const DefaultWaveHome = "~/.waveterm"
-const DevWaveHome = "~/.waveterm-dev"
-const WaveHomeVarName = "WAVETERM_HOME"
-const WaveDevVarName = "WAVETERM_DEV"
+const (
+	WaveConfigHomeEnvVar = "WAVETERM_CONFIG_HOME"
+	WaveDataHomeEnvVar   = "WAVETERM_DATA_HOME"
+	WaveAppPathVarName   = "WAVETERM_APP_PATH"
+	WaveDevVarName       = "WAVETERM_DEV"
+	WaveDevViteVarName   = "WAVETERM_DEV_VITE"
+)
+
+var ConfigHome_VarCache string // caches WAVETERM_CONFIG_HOME
+var DataHome_VarCache string   // caches WAVETERM_DATA_HOME
+var AppPath_VarCache string    // caches WAVETERM_APP_PATH
+var Dev_VarCache string        // caches WAVETERM_DEV
+
 const WaveLockFile = "wave.lock"
 const DomainSocketBaseName = "wave.sock"
+const RemoteDomainSocketBaseName = "wave-remote.sock"
 const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
 
-const WaveAppPathVarName = "WAVETERM_APP_PATH"
+var RemoteWaveHome = ExpandHomeDirSafe("~/.waveterm")
+
 const AppPathBinDir = "bin"
 
 var baseLock = &sync.Mutex{}
@@ -43,13 +54,39 @@ type FDLock interface {
 	Close() error
 }
 
+func CacheAndRemoveEnvVars() error {
+	ConfigHome_VarCache = os.Getenv(WaveConfigHomeEnvVar)
+	if ConfigHome_VarCache == "" {
+		return fmt.Errorf(WaveConfigHomeEnvVar + " not set")
+	}
+	os.Unsetenv(WaveConfigHomeEnvVar)
+	DataHome_VarCache = os.Getenv(WaveDataHomeEnvVar)
+	if DataHome_VarCache == "" {
+		return fmt.Errorf("%s not set", WaveDataHomeEnvVar)
+	}
+	os.Unsetenv(WaveDataHomeEnvVar)
+	AppPath_VarCache = os.Getenv(WaveAppPathVarName)
+	os.Unsetenv(WaveAppPathVarName)
+	Dev_VarCache = os.Getenv(WaveDevVarName)
+	os.Unsetenv(WaveDevVarName)
+	os.Unsetenv(WaveDevViteVarName)
+	return nil
+}
+
 func IsDevMode() bool {
-	pdev := os.Getenv(WaveDevVarName)
-	return pdev != ""
+	return Dev_VarCache != ""
 }
 
 func GetWaveAppPath() string {
-	return os.Getenv(WaveAppPathVarName)
+	return AppPath_VarCache
+}
+
+func GetWaveDataDir() string {
+	return DataHome_VarCache
+}
+
+func GetWaveConfigDir() string {
+	return ConfigHome_VarCache
 }
 
 func GetWaveAppBinPath() string {
@@ -97,30 +134,27 @@ func ReplaceHomeDir(pathStr string) string {
 }
 
 func GetDomainSocketName() string {
-	return filepath.Join(GetWaveHomeDir(), DomainSocketBaseName)
+	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
 }
 
-func GetWaveHomeDir() string {
-	homeVar := os.Getenv(WaveHomeVarName)
-	if homeVar != "" {
-		return ExpandHomeDirSafe(homeVar)
-	}
-	if IsDevMode() {
-		return ExpandHomeDirSafe(DevWaveHome)
-	}
-	return ExpandHomeDirSafe(DefaultWaveHome)
+func GetRemoteDomainSocketName() string {
+	return filepath.Join(RemoteWaveHome, RemoteDomainSocketBaseName)
 }
 
-func EnsureWaveHomeDir() error {
-	return CacheEnsureDir(GetWaveHomeDir(), "wavehome", 0700, "wave home directory")
+func EnsureWaveDataDir() error {
+	return CacheEnsureDir(GetWaveDataDir(), "wavehome", 0700, "wave home directory")
 }
 
 func EnsureWaveDBDir() error {
-	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), WaveDBDir), "wavedb", 0700, "wave db directory")
+	return CacheEnsureDir(filepath.Join(GetWaveDataDir(), WaveDBDir), "wavedb", 0700, "wave db directory")
 }
 
 func EnsureWaveConfigDir() error {
-	return CacheEnsureDir(filepath.Join(GetWaveHomeDir(), ConfigDir), "waveconfig", 0700, "wave config directory")
+	return CacheEnsureDir(GetWaveConfigDir(), "waveconfig", 0700, "wave config directory")
+}
+
+func EnsureWavePresetsDir() error {
+	return CacheEnsureDir(filepath.Join(GetWaveConfigDir(), "presets"), "wavepresets", 0700, "wave presets directory")
 }
 
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {
