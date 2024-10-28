@@ -42,6 +42,9 @@ const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(
                         renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
                     {item.label}
                 </div>
+                {"current" in item && item.current && (
+                    <i className={clsx(makeIconClass("check", false), "typeahead-current-checkbox")} />
+                )}
             </div>
         );
 

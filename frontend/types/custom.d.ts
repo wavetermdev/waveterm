@@ -316,6 +316,7 @@ declare global {
         status: ConnStatusType;
         iconColor: string;
         onSelect?: (_: string) => void;
+        current?: boolean;
     }
 
     interface SuggestionConnectionScope {
