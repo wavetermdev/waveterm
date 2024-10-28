@@ -76,6 +76,9 @@ class FileServiceType {
     ReadFile(connection: string, path: string): Promise<FullFile> {
         return WOS.callBackendService("file", "ReadFile", Array.from(arguments))
     }
+    Rename(arg1: string, arg2: string, arg3: string): Promise<void> {
+        return WOS.callBackendService("file", "Rename", Array.from(arguments))
+    }
 
     // save file
     SaveFile(connection: string, path: string, data64: string): Promise<void> {

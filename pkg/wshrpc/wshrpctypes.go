@@ -141,6 +141,7 @@ type WshRpcInterface interface {
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[CommandRemoteStreamFileRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
+	RemoteFileRenameCommand(ctx context.Context, pathTuple [2]string) error
 	RemoteFileDeleteCommand(ctx context.Context, path string) error
 	RemoteWriteFileCommand(ctx context.Context, data CommandRemoteWriteFileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)

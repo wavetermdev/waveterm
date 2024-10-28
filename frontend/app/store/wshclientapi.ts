@@ -167,6 +167,11 @@ class RpcApiType {
         return client.wshRpcCall("remotefilejoin", data, opts);
     }
 
+    // command "remotefilerename" [call]
+    RemoteFileRenameCommand(client: WshClient, data: string[], opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotefilerename", data, opts);
+    }
+
     // command "remotefiletouch" [call]
     RemoteFileTouchCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefiletouch", data, opts);

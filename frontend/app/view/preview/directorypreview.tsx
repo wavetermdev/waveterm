@@ -3,12 +3,12 @@
 
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { PLATFORM, atoms, createBlock, getApi } from "@/app/store/global";
+import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { FileService } from "@/app/store/services";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { base64ToString, isBlank } from "@/util/util";
-import { offset, useFloating } from "@floating-ui/react";
+import { base64ToString, fireAndForget, isBlank } from "@/util/util";
+import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
     Row,
@@ -22,7 +22,7 @@ import {
 } from "@tanstack/react-table";
 import clsx from "clsx";
 import dayjs from "dayjs";
-import { useAtom, useAtomValue } from "jotai";
+import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
@@ -46,6 +46,7 @@ interface DirectoryTableProps {
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
     setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
+    entryManagerOverlayPropsAtom: PrimitiveAtom<EntryManagerOverlayProps>;
 }
 
 const columnHelper = createColumnHelper<FileInfo>();
@@ -144,15 +145,28 @@ type EntryManagerOverlayProps = {
     startingValue?: string;
     onSave: (newValue: string) => void;
     style?: React.CSSProperties;
+    getReferenceProps?: () => any;
 };
 
 const EntryManagerOverlay = memo(
-    ({ entryManagerType, startingValue, onSave, forwardRef, style }: EntryManagerOverlayProps) => {
+    ({ entryManagerType, startingValue, onSave, forwardRef, style, getReferenceProps }: EntryManagerOverlayProps) => {
+        const [value, setValue] = useState(startingValue);
         return (
-            <div className="entry-manager-overlay" ref={forwardRef} style={style}>
+            <div className="entry-manager-overlay" ref={forwardRef} style={style} {...getReferenceProps()}>
                 <div className="entry-manager-type">{entryManagerType}</div>
                 <div className="entry-manager-input">
-                    <Input defaultValue={startingValue} onChange={onSave}></Input>
+                    <Input
+                        value={value}
+                        onChange={setValue}
+                        autoFocus={true}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onSave(value);
+                            }
+                        }}
+                    ></Input>
                 </div>
             </div>
         );
@@ -168,6 +182,7 @@ function DirectoryTable({
     setSearch,
     setSelectedPath,
     setRefreshVersion,
+    entryManagerOverlayPropsAtom,
 }: DirectoryTableProps) {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const getIconFromMimeType = useCallback(
@@ -243,13 +258,8 @@ function DirectoryTable({
         [fullConfig]
     );
 
-    const [entryManagerProps, setEntryManagerProps] = useState<EntryManagerOverlayProps>(null);
-
-    const { refs, floatingStyles } = useFloating({
-        open: !!entryManagerProps,
-        onOpenChange: () => setEntryManagerProps(undefined),
-        middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
-    });
+    const setEntryManagerProps = useSetAtom(entryManagerOverlayPropsAtom);
+    const dirPath = useAtomValue(model.metaFilePath);
 
     const updateName = useCallback((path: string) => {
         const fileName = path.split("/").at(-1);
@@ -257,10 +267,15 @@ function DirectoryTable({
             entryManagerType: EntryManagerType.EditName,
             startingValue: fileName,
             onSave: (newName: string) => {
+                let newPath: string;
                 if (newName !== fileName) {
-                    path = path.replace(fileName, newName);
+                    newPath = path.replace(fileName, newName);
+                    console.log(`replacing ${fileName} with ${newName}: ${path}`);
+                    fireAndForget(async () => {
+                        await FileService.Rename(globalStore.get(model.connection), path, newPath);
+                        model.refreshCallback();
+                    });
                 }
-                console.log(`replacing ${fileName} with ${newName}: ${path}`);
                 setEntryManagerProps(undefined);
             },
         });
@@ -270,19 +285,27 @@ function DirectoryTable({
             entryManagerType: EntryManagerType.NewFile,
             onSave: (newName: string) => {
                 console.log(`newFile: ${newName}`);
+                fireAndForget(async () => {
+                    await FileService.TouchFile(globalStore.get(model.connection), `${dirPath}/${newName}`);
+                    model.refreshCallback();
+                });
                 setEntryManagerProps(undefined);
             },
         });
-    }, []);
+    }, [dirPath]);
     const newDirectory = useCallback(() => {
         setEntryManagerProps({
             entryManagerType: EntryManagerType.NewDirectory,
             onSave: (newName: string) => {
                 console.log(`newDirectory: ${newName}`);
+                fireAndForget(async () => {
+                    await FileService.Mkdir(globalStore.get(model.connection), `${dirPath}/${newName}`);
+                    model.refreshCallback();
+                });
                 setEntryManagerProps(undefined);
             },
         });
-    }, []);
+    }, [dirPath]);
 
     const table = useReactTable({
         data,
@@ -346,84 +369,78 @@ function DirectoryTable({
     const onScroll = useCallback(
         debounce(2, () => {
             setScrollHeight(osRef.current.osInstance().elements().viewport.scrollTop);
-            refs.setReference(osRef.current.osInstance().elements().viewport);
         }),
         []
     );
     return (
-        <Fragment>
-            <OverlayScrollbarsComponent
-                options={{ scrollbars: { autoHide: "leave" } }}
-                events={{ scroll: onScroll }}
-                className="dir-table"
-                style={{ ...columnSizeVars }}
-                ref={osRef}
-                data-scroll-height={scrollHeight}
-            >
-                <div className="dir-table-head">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                        <div className="dir-table-head-row" key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
+        <OverlayScrollbarsComponent
+            options={{ scrollbars: { autoHide: "leave" } }}
+            events={{ scroll: onScroll }}
+            className="dir-table"
+            style={{ ...columnSizeVars }}
+            ref={osRef}
+            data-scroll-height={scrollHeight}
+        >
+            <div className="dir-table-head">
+                {table.getHeaderGroups().map((headerGroup) => (
+                    <div className="dir-table-head-row" key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                            <div
+                                className="dir-table-head-cell"
+                                key={header.id}
+                                style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
+                            >
                                 <div
-                                    className="dir-table-head-cell"
-                                    key={header.id}
-                                    style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
+                                    className="dir-table-head-cell-content"
+                                    onClick={() => header.column.toggleSorting()}
                                 >
-                                    <div
-                                        className="dir-table-head-cell-content"
-                                        onClick={() => header.column.toggleSorting()}
-                                    >
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(header.column.columnDef.header, header.getContext())}
-                                        {getSortIcon(header.column.getIsSorted())}
-                                    </div>
-                                    <div className="dir-table-head-resize-box">
-                                        <div
-                                            className="dir-table-head-resize"
-                                            onMouseDown={header.getResizeHandler()}
-                                            onTouchStart={header.getResizeHandler()}
-                                        />
-                                    </div>
+                                    {header.isPlaceholder
+                                        ? null
+                                        : flexRender(header.column.columnDef.header, header.getContext())}
+                                    {getSortIcon(header.column.getIsSorted())}
                                 </div>
-                            ))}
-                        </div>
-                    ))}
-                </div>
-                {table.getState().columnSizingInfo.isResizingColumn ? (
-                    <MemoizedTableBody
-                        bodyRef={bodyRef}
-                        model={model}
-                        data={data}
-                        table={table}
-                        search={search}
-                        focusIndex={focusIndex}
-                        setFocusIndex={setFocusIndex}
-                        setSearch={setSearch}
-                        setSelectedPath={setSelectedPath}
-                        setRefreshVersion={setRefreshVersion}
-                        osRef={osRef.current}
-                    />
-                ) : (
-                    <TableBody
-                        bodyRef={bodyRef}
-                        model={model}
-                        data={data}
-                        table={table}
-                        search={search}
-                        focusIndex={focusIndex}
-                        setFocusIndex={setFocusIndex}
-                        setSearch={setSearch}
-                        setSelectedPath={setSelectedPath}
-                        setRefreshVersion={setRefreshVersion}
-                        osRef={osRef.current}
-                    />
-                )}
-            </OverlayScrollbarsComponent>
-            {entryManagerProps && (
-                <EntryManagerOverlay {...entryManagerProps} forwardRef={refs.setFloating} style={floatingStyles} />
+                                <div className="dir-table-head-resize-box">
+                                    <div
+                                        className="dir-table-head-resize"
+                                        onMouseDown={header.getResizeHandler()}
+                                        onTouchStart={header.getResizeHandler()}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </div>
+            {table.getState().columnSizingInfo.isResizingColumn ? (
+                <MemoizedTableBody
+                    bodyRef={bodyRef}
+                    model={model}
+                    data={data}
+                    table={table}
+                    search={search}
+                    focusIndex={focusIndex}
+                    setFocusIndex={setFocusIndex}
+                    setSearch={setSearch}
+                    setSelectedPath={setSelectedPath}
+                    setRefreshVersion={setRefreshVersion}
+                    osRef={osRef.current}
+                />
+            ) : (
+                <TableBody
+                    bodyRef={bodyRef}
+                    model={model}
+                    data={data}
+                    table={table}
+                    search={search}
+                    focusIndex={focusIndex}
+                    setFocusIndex={setFocusIndex}
+                    setSearch={setSearch}
+                    setSelectedPath={setSelectedPath}
+                    setRefreshVersion={setRefreshVersion}
+                    osRef={osRef.current}
+                />
             )}
-        </Fragment>
+        </OverlayScrollbarsComponent>
     );
 }
 
@@ -734,26 +751,54 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         }
     }, [filteredData]);
 
+    const entryManagerPropsAtom = useState(
+        atom<EntryManagerOverlayProps>(null) as PrimitiveAtom<EntryManagerOverlayProps>
+    )[0];
+    const [entryManagerProps, setEntryManagerProps] = useAtom(entryManagerPropsAtom);
+
+    const { refs, floatingStyles, context } = useFloating({
+        open: !!entryManagerProps,
+        onOpenChange: () => setEntryManagerProps(undefined),
+        middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
+    });
+
+    const dismiss = useDismiss(context);
+    const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
+
     return (
-        <div
-            className="dir-table-container"
-            onChangeCapture={(e) => {
-                const event = e as React.ChangeEvent<HTMLInputElement>;
-                setSearchText(event.target.value.toLowerCase());
-            }}
-            // onFocusCapture={() => document.getSelection().collapseToEnd()}
-        >
-            <DirectoryTable
-                model={model}
-                data={filteredData}
-                search={searchText}
-                focusIndex={focusIndex}
-                setFocusIndex={setFocusIndex}
-                setSearch={setSearchText}
-                setSelectedPath={setSelectedPath}
-                setRefreshVersion={setRefreshVersion}
-            />
-        </div>
+        <Fragment>
+            <div
+                ref={refs.setReference}
+                className="dir-table-container"
+                onChangeCapture={(e) => {
+                    const event = e as React.ChangeEvent<HTMLInputElement>;
+                    if (!entryManagerProps) {
+                        setSearchText(event.target.value.toLowerCase());
+                    }
+                }}
+                {...getReferenceProps()}
+            >
+                <DirectoryTable
+                    model={model}
+                    data={filteredData}
+                    search={searchText}
+                    focusIndex={focusIndex}
+                    setFocusIndex={setFocusIndex}
+                    setSearch={setSearchText}
+                    setSelectedPath={setSelectedPath}
+                    setRefreshVersion={setRefreshVersion}
+                    entryManagerOverlayPropsAtom={entryManagerPropsAtom}
+                />
+            </div>
+            {entryManagerProps && (
+                <EntryManagerOverlay
+                    {...entryManagerProps}
+                    forwardRef={refs.setFloating}
+                    style={floatingStyles}
+                    getReferenceProps={getFloatingProps}
+                />
+            )}
+        </Fragment>
     );
 }
 

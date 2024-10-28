@@ -79,6 +79,15 @@ func (fs *FileService) TouchFile(connection string, path string) error {
 	return wshclient.RemoteFileTouchCommand(client, path, &wshrpc.RpcOpts{Route: connRoute})
 }
 
+func (fs *FileService) Rename(connection string, path string, newPath string) error {
+	if connection == "" {
+		connection = wshrpc.LocalConnName
+	}
+	connRoute := wshutil.MakeConnectionRouteId(connection)
+	client := wshserver.GetMainRpcClient()
+	return wshclient.RemoteFileRenameCommand(client, [2]string{path, newPath}, &wshrpc.RpcOpts{Route: connRoute})
+}
+
 func (fs *FileService) ReadFile_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "read file",

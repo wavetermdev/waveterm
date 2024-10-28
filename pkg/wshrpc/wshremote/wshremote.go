@@ -321,6 +321,20 @@ func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string)
 	return nil
 }
 
+func (impl *ServerImpl) RemoteFileRenameCommand(ctx context.Context, pathTuple [2]string) error {
+	path := pathTuple[0]
+	newPath := pathTuple[1]
+	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	cleanedNewPath := filepath.Clean(wavebase.ExpandHomeDirSafe(newPath))
+	if _, err := os.Stat(cleanedNewPath); err == nil {
+		return fmt.Errorf("destination file path %q already exists", path)
+	}
+	if err := os.Rename(cleanedPath, cleanedNewPath); err != nil {
+		return fmt.Errorf("cannot rename file %q to %q: %w", cleanedPath, cleanedNewPath, err)
+	}
+	return nil
+}
+
 func (impl *ServerImpl) RemoteMkdirCommand(ctx context.Context, path string) error {
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
 	if stat, err := os.Stat(cleanedPath); err == nil {
