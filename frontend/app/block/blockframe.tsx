@@ -738,14 +738,16 @@ const ChangeConnectionBlockModal = React.memo(
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
-                    setRowIndex((idx) => Math.min(idx + 1, filteredList.length));
+                    setRowIndex((idx) => Math.min(idx + 1, selectionList.flat().length - 1));
                     return true;
                 }
             },
             [changeConnModalAtom, viewModel, blockId, connSelected, selectionList]
         );
         React.useEffect(() => {
-            setRowIndex((idx) => Math.min(idx, filteredList.length));
+            // this is specifically for the case when the list shrinks due
+            // to a search filter
+            setRowIndex((idx) => Math.min(idx, selectionList.flat().length - 1));
         }, [selectionList, setRowIndex]);
         // this check was also moved to BlockFrame to prevent all the above code from running unnecessarily
         if (!changeConnModalOpen) {
