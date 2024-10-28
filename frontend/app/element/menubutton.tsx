@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { memo, useState } from "react";
 import { Button } from "./button";
 import { FlyoutMenu } from "./flyoutmenu";
+import "./menubutton.less";
 
 const MenuButtonComponent = ({ items, className, text, title }: MenuButtonProps) => {
     const [isOpen, setIsOpen] = useState(false);
