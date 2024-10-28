@@ -140,6 +140,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return connStatuses;
     });
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
+    const reinitVersion = atom(0);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         clientId: clientIdAtom,
@@ -159,6 +160,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
+        reinitVersion,
     };
 }
 
