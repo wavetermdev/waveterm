@@ -575,7 +575,13 @@ function makeAppMenu() {
 }
 
 function hideWindowWithCatch(window: WaveBrowserWindow) {
+    if (window == null) {
+        return;
+    }
     try {
+        if (window.isDestroyed()) {
+            return;
+        }
         window.hide();
     } catch (e) {
         console.log("error hiding window", e);
