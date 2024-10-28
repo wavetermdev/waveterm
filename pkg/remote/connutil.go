@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kevinburke/ssh_config"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -339,14 +338,14 @@ func IsPowershell(shellPath string) bool {
 }
 
 func NormalizeConfigPattern(pattern string) string {
-	userName, err := ssh_config.GetStrict(pattern, "User")
+	userName, err := WaveSshConfigUserSettings().GetStrict(pattern, "User")
 	if err != nil {
 		localUser, err := user.Current()
 		if err == nil {
 			userName = localUser.Username
 		}
 	}
-	port, err := ssh_config.GetStrict(pattern, "Port")
+	port, err := WaveSshConfigUserSettings().GetStrict(pattern, "Port")
 	if err != nil {
 		port = "22"
 	}

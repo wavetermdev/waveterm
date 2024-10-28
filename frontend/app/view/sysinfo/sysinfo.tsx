@@ -531,8 +531,12 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
     }
 
     return (
-        <OverlayScrollbarsComponent ref={osRef} className="scrollable" options={{ scrollbars: { autoHide: "leave" } }}>
-            <div className={clsx("sysinfo-view", { "two-columns": cols2 })}>
+        <OverlayScrollbarsComponent
+            ref={osRef}
+            className="sysinfo-view"
+            options={{ scrollbars: { autoHide: "leave" } }}
+        >
+            <div className={clsx("sysinfo-inner", { "two-columns": cols2 })}>
                 {yvals.map((yval, idx) => {
                     return (
                         <SingleLinePlot

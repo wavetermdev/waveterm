@@ -24,6 +24,7 @@ declare global {
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
         flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
+        reinitVersion: jotai.PrimitiveAtom<number>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -316,6 +317,7 @@ declare global {
         status: ConnStatusType;
         iconColor: string;
         onSelect?: (_: string) => void;
+        current?: boolean;
     }
 
     interface SuggestionConnectionScope {

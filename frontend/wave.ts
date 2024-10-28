@@ -85,11 +85,22 @@ async function reinitWave() {
     getApi().sendLog("Reinit Wave");
     const client = await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedInitOpts.clientId));
     const waveWindow = await WOS.reloadWaveObject<WaveWindow>(WOS.makeORef("window", savedInitOpts.windowId));
-    await WOS.reloadWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
+    const ws = await WOS.reloadWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
     const initialTab = await WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", savedInitOpts.tabId));
     await WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
+    reloadAllWorkspaceTabs(ws);
     document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
     getApi().setWindowInitStatus("wave-ready");
+    globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
+}
+
+function reloadAllWorkspaceTabs(ws: Workspace) {
+    if (ws == null || ws.tabids == null) {
+        return;
+    }
+    ws.tabids.forEach((tabid) => {
+        WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", tabid));
+    });
 }
 
 function loadAllWorkspaceTabs(ws: Workspace) {
