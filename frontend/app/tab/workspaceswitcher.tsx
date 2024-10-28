@@ -399,7 +399,7 @@ const WorkspaceSwitcher = () => {
     }
 
     return (
-        <Popover className="workspace-switcher-popover">
+        <Popover className="workspace-switcher-popover" placement="bottom-start">
             <PopoverButton className="workspace-switcher-button grey" as="div">
                 <span className="workspace-icon">{workspaceIcon}</span>
                 {/* <span className="divider" />

@@ -1,6 +1,7 @@
 import { Button } from "@/element/button";
 import {
     FloatingPortal,
+    Middleware,
     offset as offsetMiddleware,
     useDismiss,
     useFloating,
@@ -28,6 +29,7 @@ interface PopoverProps {
     placement?: Placement;
     offset?: number;
     onOpenChange?: (isOpen: boolean) => void;
+    middleware?: Middleware[];
 }
 
 const isPopoverButton = (
@@ -42,7 +44,7 @@ const isPopoverContent = (
     return element.type === PopoverContent;
 };
 
-const Popover = memo(({ children, className, placement = "bottom-start", offset = 3, onOpenChange }: PopoverProps) => {
+const Popover = memo(({ children, className, placement, offset, onOpenChange, middleware }: PopoverProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleOpen = () => {
@@ -50,11 +52,18 @@ const Popover = memo(({ children, className, placement = "bottom-start", offset 
         onOpenChange?.(!isOpen);
     };
 
+    if (offset === undefined) {
+        offset = 3;
+    }
+
+    middleware ??= [];
+    middleware.push(offsetMiddleware({ mainAxis: offset, crossAxis: offset }));
+
     const { refs, floatingStyles, context } = useFloating({
         placement,
         open: isOpen,
         onOpenChange: setIsOpen,
-        middleware: [offsetMiddleware(offset)],
+        middleware: middleware,
     });
 
     const dismiss = useDismiss(context);

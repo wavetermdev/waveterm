@@ -1,12 +1,14 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi } from "@/app/store/global";
 import { FileService } from "@/app/store/services";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { base64ToString, isBlank } from "@/util/util";
+import { offset, useFloating } from "@floating-ui/react";
 import {
     Column,
     Row,
@@ -22,16 +24,16 @@ import clsx from "clsx";
 import dayjs from "dayjs";
 import { useAtom, useAtomValue } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.less";
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
-        updateName: (rowIndex: number, value: string) => void;
+        updateName: (path: string) => void;
         newFile: () => void;
-        newFolder: () => void;
+        newDirectory: () => void;
     }
 }
 
@@ -130,6 +132,33 @@ function cleanMimetype(input: string): string {
     return truncated.trim();
 }
 
+enum EntryManagerType {
+    NewFile = "New File",
+    NewDirectory = "New Folder",
+    EditName = "Rename",
+}
+
+type EntryManagerOverlayProps = {
+    forwardRef?: React.Ref<HTMLDivElement>;
+    entryManagerType: EntryManagerType;
+    startingValue?: string;
+    onSave: (newValue: string) => void;
+    style?: React.CSSProperties;
+};
+
+const EntryManagerOverlay = memo(
+    ({ entryManagerType, startingValue, onSave, forwardRef, style }: EntryManagerOverlayProps) => {
+        return (
+            <div className="entry-manager-overlay" ref={forwardRef} style={style}>
+                <div className="entry-manager-type">{entryManagerType}</div>
+                <div className="entry-manager-input">
+                    <Input defaultValue={startingValue} onChange={onSave}></Input>
+                </div>
+            </div>
+        );
+    }
+);
+
 function DirectoryTable({
     model,
     data,
@@ -214,6 +243,47 @@ function DirectoryTable({
         [fullConfig]
     );
 
+    const [entryManagerProps, setEntryManagerProps] = useState<EntryManagerOverlayProps>(null);
+
+    const { refs, floatingStyles } = useFloating({
+        open: !!entryManagerProps,
+        onOpenChange: () => setEntryManagerProps(undefined),
+        middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
+    });
+
+    const updateName = useCallback((path: string) => {
+        const fileName = path.split("/").at(-1);
+        setEntryManagerProps({
+            entryManagerType: EntryManagerType.EditName,
+            startingValue: fileName,
+            onSave: (newName: string) => {
+                if (newName !== fileName) {
+                    path = path.replace(fileName, newName);
+                }
+                console.log(`replacing ${fileName} with ${newName}: ${path}`);
+                setEntryManagerProps(undefined);
+            },
+        });
+    }, []);
+    const newFile = useCallback(() => {
+        setEntryManagerProps({
+            entryManagerType: EntryManagerType.NewFile,
+            onSave: (newName: string) => {
+                console.log(`newFile: ${newName}`);
+                setEntryManagerProps(undefined);
+            },
+        });
+    }, []);
+    const newDirectory = useCallback(() => {
+        setEntryManagerProps({
+            entryManagerType: EntryManagerType.NewDirectory,
+            onSave: (newName: string) => {
+                console.log(`newDirectory: ${newName}`);
+                setEntryManagerProps(undefined);
+            },
+        });
+    }, []);
+
     const table = useReactTable({
         data,
         columns,
@@ -238,6 +308,11 @@ function DirectoryTable({
         },
         enableMultiSort: false,
         enableSortingRemoval: false,
+        meta: {
+            updateName,
+            newFile,
+            newDirectory,
+        },
     });
 
     useEffect(() => {
@@ -271,78 +346,84 @@ function DirectoryTable({
     const onScroll = useCallback(
         debounce(2, () => {
             setScrollHeight(osRef.current.osInstance().elements().viewport.scrollTop);
+            refs.setReference(osRef.current.osInstance().elements().viewport);
         }),
         []
     );
     return (
-        <OverlayScrollbarsComponent
-            options={{ scrollbars: { autoHide: "leave" } }}
-            events={{ scroll: onScroll }}
-            className="dir-table"
-            style={{ ...columnSizeVars }}
-            ref={osRef}
-            data-scroll-height={scrollHeight}
-        >
-            <div className="dir-table-head">
-                {table.getHeaderGroups().map((headerGroup) => (
-                    <div className="dir-table-head-row" key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                            <div
-                                className="dir-table-head-cell"
-                                key={header.id}
-                                style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
-                            >
+        <Fragment>
+            <OverlayScrollbarsComponent
+                options={{ scrollbars: { autoHide: "leave" } }}
+                events={{ scroll: onScroll }}
+                className="dir-table"
+                style={{ ...columnSizeVars }}
+                ref={osRef}
+                data-scroll-height={scrollHeight}
+            >
+                <div className="dir-table-head">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                        <div className="dir-table-head-row" key={headerGroup.id}>
+                            {headerGroup.headers.map((header) => (
                                 <div
-                                    className="dir-table-head-cell-content"
-                                    onClick={() => header.column.toggleSorting()}
+                                    className="dir-table-head-cell"
+                                    key={header.id}
+                                    style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
                                 >
-                                    {header.isPlaceholder
-                                        ? null
-                                        : flexRender(header.column.columnDef.header, header.getContext())}
-                                    {getSortIcon(header.column.getIsSorted())}
-                                </div>
-                                <div className="dir-table-head-resize-box">
                                     <div
-                                        className="dir-table-head-resize"
-                                        onMouseDown={header.getResizeHandler()}
-                                        onTouchStart={header.getResizeHandler()}
-                                    />
+                                        className="dir-table-head-cell-content"
+                                        onClick={() => header.column.toggleSorting()}
+                                    >
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(header.column.columnDef.header, header.getContext())}
+                                        {getSortIcon(header.column.getIsSorted())}
+                                    </div>
+                                    <div className="dir-table-head-resize-box">
+                                        <div
+                                            className="dir-table-head-resize"
+                                            onMouseDown={header.getResizeHandler()}
+                                            onTouchStart={header.getResizeHandler()}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                ))}
-            </div>
-            {table.getState().columnSizingInfo.isResizingColumn ? (
-                <MemoizedTableBody
-                    bodyRef={bodyRef}
-                    model={model}
-                    data={data}
-                    table={table}
-                    search={search}
-                    focusIndex={focusIndex}
-                    setFocusIndex={setFocusIndex}
-                    setSearch={setSearch}
-                    setSelectedPath={setSelectedPath}
-                    setRefreshVersion={setRefreshVersion}
-                    osRef={osRef.current}
-                />
-            ) : (
-                <TableBody
-                    bodyRef={bodyRef}
-                    model={model}
-                    data={data}
-                    table={table}
-                    search={search}
-                    focusIndex={focusIndex}
-                    setFocusIndex={setFocusIndex}
-                    setSearch={setSearch}
-                    setSelectedPath={setSelectedPath}
-                    setRefreshVersion={setRefreshVersion}
-                    osRef={osRef.current}
-                />
+                            ))}
+                        </div>
+                    ))}
+                </div>
+                {table.getState().columnSizingInfo.isResizingColumn ? (
+                    <MemoizedTableBody
+                        bodyRef={bodyRef}
+                        model={model}
+                        data={data}
+                        table={table}
+                        search={search}
+                        focusIndex={focusIndex}
+                        setFocusIndex={setFocusIndex}
+                        setSearch={setSearch}
+                        setSelectedPath={setSelectedPath}
+                        setRefreshVersion={setRefreshVersion}
+                        osRef={osRef.current}
+                    />
+                ) : (
+                    <TableBody
+                        bodyRef={bodyRef}
+                        model={model}
+                        data={data}
+                        table={table}
+                        search={search}
+                        focusIndex={focusIndex}
+                        setFocusIndex={setFocusIndex}
+                        setSearch={setSearch}
+                        setSelectedPath={setSelectedPath}
+                        setRefreshVersion={setRefreshVersion}
+                        osRef={osRef.current}
+                    />
+                )}
+            </OverlayScrollbarsComponent>
+            {entryManagerProps && (
+                <EntryManagerOverlay {...entryManagerProps} forwardRef={refs.setFloating} style={floatingStyles} />
             )}
-        </OverlayScrollbarsComponent>
+        </Fragment>
     );
 }
 
@@ -377,7 +458,6 @@ function TableBody({
     const warningBoxRef = useRef<HTMLDivElement>();
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const conn = useAtomValue(model.connection);
-    const [createOperation, setCreateOperation] = useState<CreateOperation>(null);
 
     useEffect(() => {
         if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osRef) {
@@ -411,13 +491,19 @@ function TableBody({
                 {
                     label: "New File",
                     click: () => {
-                        setCreateOperation("file");
+                        table.options.meta.newFile();
                     },
                 },
                 {
                     label: "New Folder",
                     click: () => {
-                        setCreateOperation("folder");
+                        table.options.meta.newDirectory();
+                    },
+                },
+                {
+                    label: "Rename",
+                    click: () => {
+                        table.options.meta.updateName(path);
                     },
                 },
                 {
