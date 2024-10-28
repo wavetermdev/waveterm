@@ -554,7 +554,7 @@ func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
 			continue
 		}
 
-		cfg, _ := ssh_config.Decode(fd)
+		cfg, _ := ssh_config.Decode(fd, true)
 		for _, host := range cfg.Hosts {
 			// for each host, find the first good alias
 			for _, hostPattern := range host.Patterns {
@@ -620,7 +620,7 @@ func GetConnectionsFromConfig() ([]string, error) {
 	localConfig := filepath.Join(home, ".ssh", "config")
 	systemConfig := filepath.Join("/etc", "ssh", "config")
 	sshConfigFiles := []string{localConfig, systemConfig}
-	ssh_config.ReloadConfigs()
+	remote.WaveSshConfigUserSettings().ReloadConfigs()
 
 	return resolveSshConfigPatterns(sshConfigFiles)
 }
