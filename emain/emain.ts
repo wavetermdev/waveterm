@@ -574,6 +574,20 @@ function makeAppMenu() {
     electron.Menu.setApplicationMenu(menu);
 }
 
+function hideWindowWithCatch(window: WaveBrowserWindow) {
+    if (window == null) {
+        return;
+    }
+    try {
+        if (window.isDestroyed()) {
+            return;
+        }
+        window.hide();
+    } catch (e) {
+        console.log("error hiding window", e);
+    }
+}
+
 electronApp.on("window-all-closed", () => {
     if (getGlobalIsRelaunching()) {
         return;
@@ -598,7 +612,7 @@ electronApp.on("before-quit", (e) => {
     e.preventDefault();
     const allWindows = getAllWaveWindows();
     for (const window of allWindows) {
-        window.hide();
+        hideWindowWithCatch(window);
     }
     if (getIsWaveSrvDead()) {
         console.log("wavesrv is dead, quitting immediately");
