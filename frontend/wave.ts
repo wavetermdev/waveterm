@@ -91,6 +91,7 @@ async function reinitWave() {
     reloadAllWorkspaceTabs(ws);
     document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
     getApi().setWindowInitStatus("wave-ready");
+    globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
 }
 
 function reloadAllWorkspaceTabs(ws: Workspace) {

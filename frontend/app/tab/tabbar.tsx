@@ -249,6 +249,13 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         debounce(100, () => saveTabsPosition())();
     }, [tabIds, newTabId, isFullScreen]);
 
+    const reinitVersion = useAtomValue(atoms.reinitVersion);
+    useEffect(() => {
+        if (reinitVersion > 0) {
+            setSizeAndPosition();
+        }
+    }, [reinitVersion]);
+
     useEffect(() => {
         window.addEventListener("resize", () => handleResizeTabs());
         return () => {
