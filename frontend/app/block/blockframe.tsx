@@ -583,12 +583,10 @@ const ChangeConnectionBlockModal = React.memo(
         );
 
         let createNew: boolean = true;
-        let showLocal: boolean = true;
         let showReconnect: boolean = true;
         if (connSelected == "") {
             createNew = false;
         } else {
-            showLocal = false;
             showReconnect = false;
         }
         const filteredList: Array<string> = [];
@@ -649,15 +647,14 @@ const ChangeConnectionBlockModal = React.memo(
             headerText: "Local",
             items: [],
         };
-        if (showLocal) {
-            localSuggestion.items.push({
-                status: "connected",
-                icon: "laptop",
-                iconColor: "var(--grey-text-color)",
-                value: "",
-                label: localName,
-            });
-        }
+        localSuggestion.items.push({
+            status: "connected",
+            icon: "laptop",
+            iconColor: "var(--grey-text-color)",
+            value: "",
+            label: localName,
+            current: connection == null,
+        });
         for (const wslConn of filteredWslList) {
             const connStatus = connStatusMap.get(wslConn);
             const connColorNum = computeConnColorNum(connStatus);
@@ -670,6 +667,7 @@ const ChangeConnectionBlockModal = React.memo(
                         : "var(--grey-text-color)",
                 value: "wsl://" + wslConn,
                 label: "wsl://" + wslConn,
+                current: "wsl://" + wslConn == connection,
             });
         }
         const remoteItems = filteredList.map((connName) => {
@@ -684,6 +682,7 @@ const ChangeConnectionBlockModal = React.memo(
                         : "var(--grey-text-color)",
                 value: connName,
                 label: connName,
+                current: connName == connection,
             };
             return item;
         });
@@ -739,14 +738,16 @@ const ChangeConnectionBlockModal = React.memo(
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
-                    setRowIndex((idx) => Math.min(idx + 1, filteredList.length));
+                    setRowIndex((idx) => Math.min(idx + 1, selectionList.flat().length - 1));
                     return true;
                 }
             },
             [changeConnModalAtom, viewModel, blockId, connSelected, selectionList]
         );
         React.useEffect(() => {
-            setRowIndex((idx) => Math.min(idx, filteredList.length));
+            // this is specifically for the case when the list shrinks due
+            // to a search filter
+            setRowIndex((idx) => Math.min(idx, selectionList.flat().length - 1));
         }, [selectionList, setRowIndex]);
         // this check was also moved to BlockFrame to prevent all the above code from running unnecessarily
         if (!changeConnModalOpen) {
