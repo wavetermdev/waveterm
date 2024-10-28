@@ -524,6 +524,13 @@ function TableBody({
                     },
                 },
                 {
+                    label: "Delete",
+                    click: async () => {
+                        await FileService.DeleteFile(conn, path).catch((e) => console.log(e));
+                        setRefreshVersion((current) => current + 1);
+                    },
+                },
+                {
                     type: "separator",
                 },
                 {
@@ -582,14 +589,6 @@ function TableBody({
                     },
                 });
             }
-            menu.push({ type: "separator" });
-            menu.push({
-                label: "Delete File",
-                click: async () => {
-                    await FileService.DeleteFile(conn, path).catch((e) => console.log(e));
-                    setRefreshVersion((current) => current + 1);
-                },
-            });
             ContextMenuModel.showContextMenu(menu, e);
         },
         [setRefreshVersion, conn]
