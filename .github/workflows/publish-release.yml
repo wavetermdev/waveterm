@@ -46,6 +46,9 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Install wingetcreate
+              run: winget install wingetcreate
+              shell: pwsh
             - name: Submit WinGet version bump
               run: "task artifacts:winget:publish:${{ github.ref_name }}"
               env:

@@ -247,8 +247,7 @@ tasks:
         vars:
             UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
         cmd: |
-            Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-            .\wingetcreate.exe update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t $env:GITHUB_TOKEN
+            wingetcreate update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t $env:GITHUB_TOKEN
 
     yarn:
         desc: Runs `yarn`
