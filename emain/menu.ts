@@ -118,6 +118,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
     ];
 
+    const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Super+I";
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "Reload Tab",
@@ -140,6 +141,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
         {
             label: "Toggle DevTools",
+            accelerator: devToolsAccel,
             click: (_, window) => {
                 let wc = getWindowWebContents(window);
                 wc?.toggleDevTools();
@@ -182,6 +184,12 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 }
                 wc.setZoomFactor(wc.getZoomFactor() - 0.2);
             },
+        },
+        {
+            type: "separator",
+        },
+        {
+            role: "togglefullscreen",
         },
     ];
     const windowMenu: Electron.MenuItemConstructorOptions[] = [
