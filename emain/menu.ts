@@ -3,7 +3,7 @@
 
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
-import { getFocusedWaveWindow } from "./emain-viewmgr";
+import { clearTabCache, getFocusedWaveWindow } from "./emain-viewmgr";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
 
@@ -119,7 +119,65 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
     ];
 
     const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Meta+I";
-    const viewMenu: Electron.MenuItemConstructorOptions[] = [];
+    const viewMenu: Electron.MenuItemConstructorOptions[] = [
+        {
+            label: "Reload Tab",
+            accelerator: "Shift+CommandOrControl+R",
+            click: (_, window) => {
+                getWindowWebContents(window)?.reloadIgnoringCache();
+            },
+        },
+        {
+            label: "Relaunch All Windows",
+            click: () => {
+                callbacks.relaunchBrowserWindows();
+            },
+        },
+        {
+            label: "Clear Tab Cache",
+            click: () => {
+                clearTabCache();
+            },
+        },
+        {
+            type: "separator",
+        },
+        {
+            label: "Actual Size",
+            accelerator: "CommandOrControl+0",
+            click: (_, window) => {
+                getWindowWebContents(window)?.setZoomFactor(1);
+            },
+        },
+        {
+            label: "Zoom In",
+            accelerator: "CommandOrControl+=",
+            click: (_, window) => {
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                if (wc.getZoomFactor() >= 5) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() + 0.2);
+            },
+        },
+        {
+            label: "Zoom Out",
+            accelerator: "CommandOrControl+-",
+            click: (_, window) => {
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                if (wc.getZoomFactor() <= 0.2) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
+            },
+        },
+    ];
     const windowMenu: Electron.MenuItemConstructorOptions[] = [
         { role: "minimize", accelerator: "" },
         { role: "zoom" },
