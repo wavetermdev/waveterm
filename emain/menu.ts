@@ -118,6 +118,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
     ];
 
+    const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Shift+I";
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "Reload Tab",
@@ -140,7 +141,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
         {
             label: "Toggle DevTools",
-            accelerator: unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Shift+I",
+            accelerator: devToolsAccel,
             click: (_, window) => {
                 let wc = getWindowWebContents(window);
                 wc?.toggleDevTools();
@@ -171,6 +172,22 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             },
         },
         {
+            label: "Zoom In (hidden)",
+            accelerator: "CommandOrControl+Shift+=",
+            click: (_, window) => {
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                if (wc.getZoomFactor() >= 5) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() + 0.2);
+            },
+            visible: false,
+            acceleratorWorksWhenHidden: true,
+        },
+        {
             label: "Zoom Out",
             accelerator: "CommandOrControl+-",
             click: (_, window) => {
@@ -183,6 +200,22 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 }
                 wc.setZoomFactor(wc.getZoomFactor() - 0.2);
             },
+        },
+        {
+            label: "Zoom Out (hidden)",
+            accelerator: "CommandOrControl+Shift+-",
+            click: (_, window) => {
+                const wc = getWindowWebContents(window);
+                if (wc == null) {
+                    return;
+                }
+                if (wc.getZoomFactor() <= 0.2) {
+                    return;
+                }
+                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
+            },
+            visible: false,
+            acceleratorWorksWhenHidden: true,
         },
         {
             type: "separator",
