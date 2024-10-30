@@ -140,7 +140,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
         {
             label: "Toggle DevTools",
-            accelerator: unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Super+I",
+            accelerator: unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Shift+I",
             click: (_, window) => {
                 let wc = getWindowWebContents(window);
                 wc?.toggleDevTools();
