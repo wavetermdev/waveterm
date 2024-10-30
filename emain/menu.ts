@@ -147,44 +147,6 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 wc?.toggleDevTools();
             },
         },
-        {
-            type: "separator",
-        },
-        {
-            label: "Actual Size",
-            accelerator: "CommandOrControl+0",
-            click: (_, window) => {
-                getWindowWebContents(window)?.setZoomFactor(1);
-            },
-        },
-        {
-            label: "Zoom In",
-            accelerator: "CommandOrControl+=",
-            click: (_, window) => {
-                const wc = getWindowWebContents(window);
-                if (wc == null) {
-                    return;
-                }
-                if (wc.getZoomFactor() >= 5) {
-                    return;
-                }
-                wc.setZoomFactor(wc.getZoomFactor() + 0.2);
-            },
-        },
-        {
-            label: "Zoom Out",
-            accelerator: "CommandOrControl+-",
-            click: (_, window) => {
-                const wc = getWindowWebContents(window);
-                if (wc == null) {
-                    return;
-                }
-                if (wc.getZoomFactor() <= 0.2) {
-                    return;
-                }
-                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
-            },
-        },
     ];
     const windowMenu: Electron.MenuItemConstructorOptions[] = [
         { role: "minimize", accelerator: "" },
