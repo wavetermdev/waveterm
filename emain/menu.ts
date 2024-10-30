@@ -119,16 +119,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
     ];
 
     const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Meta+I";
-    const viewMenu: Electron.MenuItemConstructorOptions[] = [
-        {
-            label: "Toggle DevTools",
-            accelerator: devToolsAccel,
-            click: (_, window) => {
-                let wc = getWindowWebContents(window);
-                wc?.toggleDevTools();
-            },
-        },
-    ];
+    const viewMenu: Electron.MenuItemConstructorOptions[] = [];
     const windowMenu: Electron.MenuItemConstructorOptions[] = [
         { role: "minimize", accelerator: "" },
         { role: "zoom" },
@@ -149,6 +140,10 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         {
             role: "editMenu",
             submenu: editMenu,
+        },
+        {
+            role: "viewMenu",
+            submenu: viewMenu,
         },
         {
             role: "windowMenu",
