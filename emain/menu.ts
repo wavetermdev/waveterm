@@ -172,22 +172,6 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             },
         },
         {
-            label: "Zoom In (hidden)",
-            accelerator: "CommandOrControl+Shift+=",
-            click: (_, window) => {
-                const wc = getWindowWebContents(window);
-                if (wc == null) {
-                    return;
-                }
-                if (wc.getZoomFactor() >= 5) {
-                    return;
-                }
-                wc.setZoomFactor(wc.getZoomFactor() + 0.2);
-            },
-            visible: false,
-            acceleratorWorksWhenHidden: true,
-        },
-        {
             label: "Zoom Out",
             accelerator: "CommandOrControl+-",
             click: (_, window) => {
@@ -200,22 +184,6 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 }
                 wc.setZoomFactor(wc.getZoomFactor() - 0.2);
             },
-        },
-        {
-            label: "Zoom Out (hidden)",
-            accelerator: "CommandOrControl+Shift+-",
-            click: (_, window) => {
-                const wc = getWindowWebContents(window);
-                if (wc == null) {
-                    return;
-                }
-                if (wc.getZoomFactor() <= 0.2) {
-                    return;
-                }
-                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
-            },
-            visible: false,
-            acceleratorWorksWhenHidden: true,
         },
         {
             type: "separator",
