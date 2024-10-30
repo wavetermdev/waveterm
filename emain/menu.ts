@@ -118,7 +118,6 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
     ];
 
-    const devToolsAccel: string = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Super+I";
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "Reload Tab",
@@ -141,7 +140,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
         {
             label: "Toggle DevTools",
-            accelerator: devToolsAccel,
+            accelerator: unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Super+I",
             click: (_, window) => {
                 let wc = getWindowWebContents(window);
                 wc?.toggleDevTools();
