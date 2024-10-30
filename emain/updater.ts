@@ -66,7 +66,7 @@ export class Updater {
         autoUpdater.on("error", (err) => {
             console.log("updater error");
             console.log(err);
-            if (!err.message.includes("net::ERR_INTERNET_DISCONNECTED")) this.status = "error";
+            if (!err.toString()?.includes("net::ERR_INTERNET_DISCONNECTED")) this.status = "error";
         });
 
         autoUpdater.on("checking-for-update", () => {
