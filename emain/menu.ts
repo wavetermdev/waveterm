@@ -185,12 +185,6 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
                 wc.setZoomFactor(wc.getZoomFactor() - 0.2);
             },
         },
-        {
-            type: "separator",
-        },
-        {
-            role: "togglefullscreen",
-        },
     ];
     const windowMenu: Electron.MenuItemConstructorOptions[] = [
         { role: "minimize", accelerator: "" },
