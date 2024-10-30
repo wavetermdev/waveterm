@@ -151,10 +151,6 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             submenu: editMenu,
         },
         {
-            role: "viewMenu",
-            submenu: viewMenu,
-        },
-        {
             role: "windowMenu",
             submenu: windowMenu,
         },
