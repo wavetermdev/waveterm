@@ -140,7 +140,6 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
         {
             label: "Toggle DevTools",
-            accelerator: "Alt+Meta+I",
             click: (_, window) => {
                 let wc = getWindowWebContents(window);
                 wc?.toggleDevTools();
