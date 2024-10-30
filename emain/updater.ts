@@ -10,6 +10,7 @@ import { FileService } from "../frontend/app/store/services";
 import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { isDev } from "../frontend/util/isdev";
 import { fireAndForget } from "../frontend/util/util";
+import { delay } from "./emain-util";
 import { getAllWaveWindows, getFocusedWaveWindow } from "./emain-viewmgr";
 import { ElectronWshClient } from "./emain-wsh";
 
@@ -65,7 +66,7 @@ export class Updater {
         autoUpdater.on("error", (err) => {
             console.log("updater error");
             console.log(err);
-            this.status = "error";
+            if (!err.message.includes("net::ERR_INTERNET_DISCONNECTED")) this.status = "error";
         });
 
         autoUpdater.on("checking-for-update", () => {
@@ -188,7 +189,7 @@ export class Updater {
             const focusedWindow = getFocusedWaveWindow();
             await dialog.showMessageBox(focusedWindow ?? allWindows[0], dialogOpts).then(({ response }) => {
                 if (response === 0) {
-                    this.installUpdate();
+                    fireAndForget(async () => this.installUpdate());
                 }
             });
         }
@@ -197,9 +198,10 @@ export class Updater {
     /**
      * Restarts the app and installs an update if it is available.
      */
-    installUpdate() {
+    async installUpdate() {
         if (this.status == "ready") {
             this.status = "installing";
+            await delay(1000);
             autoUpdater.quitAndInstall();
         }
     }
