@@ -205,15 +205,18 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
 }
 
 function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Element)[] {
-    let childrenComps: (string | JSX.Element)[] = [];
-    if (elem.children == null) {
-        return childrenComps;
+    if (elem.children == null || elem.children.length == 0) {
+        return null;
     }
+    let childrenComps: (string | JSX.Element)[] = [];
     for (let child of elem.children) {
         if (child == null) {
             continue;
         }
         childrenComps.push(convertElemToTag(child, model));
+    }
+    if (childrenComps.length == 0) {
+        return null;
     }
     return childrenComps;
 }
