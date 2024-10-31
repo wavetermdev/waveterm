@@ -46,6 +46,21 @@ export function validateAndWrapCss(model: VDomModel, cssText: string, wrapperCla
                 if (node.type === "IdSelector") {
                     node.name = convertVDomId(model, node.name);
                 }
+
+                // Transform url(#id) references in filter and mask properties (svg)
+                if (node.type === "Declaration" && ["filter", "mask"].includes(node.property)) {
+                    if (node.value && node.value.type === "Value" && "children" in node.value) {
+                        const urlNode = node.value.children
+                            .toArray()
+                            .find(
+                                (child: CssNode): child is CssNode & { value: string } =>
+                                    child && child.type === "Url" && typeof (child as any).value === "string"
+                            );
+                        if (urlNode && urlNode.value && urlNode.value.startsWith("#")) {
+                            urlNode.value = "#" + convertVDomId(model, urlNode.value.substring(1));
+                        }
+                    }
+                }
             },
         });
         const sanitizedCss = csstree.generate(ast);
