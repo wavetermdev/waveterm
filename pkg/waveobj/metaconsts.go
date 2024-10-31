@@ -32,7 +32,7 @@ const (
 	MetaKey_FrameClear                       = "frame:*"
 	MetaKey_Frame                            = "frame"
 	MetaKey_FrameBorderColor                 = "frame:bordercolor"
-	MetaKey_FrameBorderColor_Focused         = "frame:bordercolor:focused"
+	MetaKey_FrameActiveBorderColor           = "frame:activebordercolor"
 	MetaKey_FrameTitle                       = "frame:title"
 	MetaKey_FrameIcon                        = "frame:icon"
 	MetaKey_FrameText                        = "frame:text"
@@ -73,6 +73,8 @@ const (
 	MetaKey_Bg                               = "bg"
 	MetaKey_BgOpacity                        = "bg:opacity"
 	MetaKey_BgBlendMode                      = "bg:blendmode"
+	MetaKey_BgBorderColor                    = "bg:bordercolor"
+	MetaKey_BgActiveBorderColor              = "bg:activebordercolor"
 
 	MetaKey_TermClear                        = "term:*"
 	MetaKey_TermFontSize                     = "term:fontsize"

@@ -315,7 +315,7 @@ declare global {
         "frame:*"?: boolean;
         frame?: boolean;
         "frame:bordercolor"?: string;
-        "frame:bordercolor:focused"?: string;
+        "frame:activebordercolor"?: string;
         "frame:title"?: string;
         "frame:icon"?: string;
         "frame:text"?: string;
@@ -350,6 +350,8 @@ declare global {
         bg?: string;
         "bg:opacity"?: number;
         "bg:blendmode"?: string;
+        "bg:bordercolor"?: string;
+        "bg:activebordercolor"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
