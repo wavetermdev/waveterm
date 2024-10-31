@@ -824,7 +824,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
             model.setEditMode(false);
             return true;
         }
-        if (checkKeyPressed(e, "Cmd:s")) {
+        if (checkKeyPressed(e, "Cmd:s") || checkKeyPressed(e, "Ctrl:s")) {
             model.handleFileSave();
             return true;
         }
