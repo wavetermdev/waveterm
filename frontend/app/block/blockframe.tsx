@@ -375,12 +375,24 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const style: React.CSSProperties = {};
     let showBlockMask = false;
-
-    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
-        style.borderColor = blockData.meta["frame:bordercolor"];
-    }
-    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
-        style.borderColor = blockData.meta["frame:bordercolor:focused"];
+    if (isFocused) {
+        const tabData = jotai.useAtomValue(atoms.tabAtom);
+        const tabActiveBorderColor = tabData?.meta?.["bg:activebordercolor"];
+        if (tabActiveBorderColor) {
+            style.borderColor = tabActiveBorderColor;
+        }
+        if (blockData?.meta?.["frame:activebordercolor"]) {
+            style.borderColor = blockData.meta["frame:activebordercolor"];
+        }
+    } else {
+        const tabData = jotai.useAtomValue(atoms.tabAtom);
+        const tabBorderColor = tabData?.meta?.["bg:bordercolor"];
+        if (tabBorderColor) {
+            style.borderColor = tabBorderColor;
+        }
+        if (blockData?.meta?.["frame:bordercolor"]) {
+            style.borderColor = blockData.meta["frame:bordercolor"];
+        }
     }
     let innerElem = null;
     if (isLayoutMode) {

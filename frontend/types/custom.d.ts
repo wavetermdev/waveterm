@@ -94,6 +94,7 @@ declare global {
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
         sendLog: (log: string) => void;
         onQuicklook: (filePath: string) => void;
+        openNativePath(filePath: string): void;
     };
 
     type ElectronContextMenuItem = {

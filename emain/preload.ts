@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld("api", {
     onWaveInit: (callback) => ipcRenderer.on("wave-init", (_event, initOpts) => callback(initOpts)),
     sendLog: (log) => ipcRenderer.send("fe-log", log),
     onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
+    openNativePath: (filePath: string) => ipcRenderer.send("open-native-path", filePath),
 });
 
 // Custom event for "new-window"
@@ -59,4 +60,16 @@ ipcRenderer.on("webcontentsid-from-blockid", (e, blockId, responseCh) => {
     const webviewElem: WebviewTag = document.querySelector("div[data-blockid='" + blockId + "'] webview");
     const wcId = webviewElem?.dataset?.webcontentsid;
     ipcRenderer.send(responseCh, wcId);
+});
+
+ipcRenderer.on("request-audio-access", (e) => {
+    ipcRenderer.send("fe-log", "Requesting audio access");
+    navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then(() => {
+            ipcRenderer.send("fe-log", "Audio access granted");
+        })
+        .catch((err) => {
+            ipcRenderer.send("fe-log", "Audio access denied: " + err);
+        });
 });

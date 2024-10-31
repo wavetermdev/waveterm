@@ -132,7 +132,7 @@ class TermViewModel {
         this.blockBg = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
-            let themeName: string = globalStore.get(getSettingsKeyAtom("term:theme"));
+            let themeName: string = get(getSettingsKeyAtom("term:theme"));
             if (blockData?.meta?.["term:theme"]) {
                 themeName = blockData.meta["term:theme"];
             }
