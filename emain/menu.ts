@@ -79,6 +79,17 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         );
     }
     appMenu.push({
+        label: "Permissions",
+        submenu: [
+            {
+                label: "Request Audio Access",
+                click: (_, window) => {
+                    getWindowWebContents(window)?.send("request-audio-access");
+                },
+            },
+        ],
+    });
+    appMenu.push({
         role: "quit",
     });
     const editMenu: Electron.MenuItemConstructorOptions[] = [
