@@ -402,6 +402,13 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
     }
 });
 
+electron.ipcMain.on("open-native-path", (event, filePath: string) => {
+    console.log("open-native-path", filePath);
+    electron.shell.openPath(filePath).catch((err) => {
+        console.error(`Failed to open path ${filePath}:`, err);
+    });
+});
+
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();

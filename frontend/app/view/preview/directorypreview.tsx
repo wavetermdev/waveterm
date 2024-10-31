@@ -337,6 +337,13 @@ function DirectoryTable({
     );
 }
 
+function getNormFilePath(finfo: FileInfo): string {
+    if (finfo.isdir) {
+        return finfo.dir;
+    }
+    return finfo.dir + "/" + finfo.name;
+}
+
 interface TableBodyProps {
     bodyRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
@@ -391,10 +398,16 @@ function TableBody({
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
-        (e: any, path: string, mimetype: string) => {
+        (e: any, path: string, normPath: string, mimetype: string) => {
             e.preventDefault();
             e.stopPropagation();
             const fileName = path.split("/").pop();
+            let openNativeLabel = "Open in File Manager";
+            if (PLATFORM == "darwin") {
+                openNativeLabel = "Open in Finder";
+            } else if (PLATFORM == "win32") {
+                openNativeLabel = "Open in Explorer";
+            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "Copy File Name",
@@ -419,6 +432,15 @@ function TableBody({
                     label: "Download File",
                     click: async () => {
                         getApi().downloadFile(path);
+                    },
+                },
+                {
+                    type: "separator",
+                },
+                {
+                    label: openNativeLabel,
+                    click: async () => {
+                        getApi().openNativePath(normPath);
                     },
                 },
                 {
@@ -477,7 +499,14 @@ function TableBody({
                     setSearch("");
                 }}
                 onClick={() => setFocusIndex(idx)}
-                onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path"), row.getValue("mimetype"))}
+                onContextMenu={(e) =>
+                    handleFileContextMenu(
+                        e,
+                        row.getValue("path"),
+                        getNormFilePath(row.original),
+                        row.getValue("mimetype")
+                    )
+                }
             >
                 {row.getVisibleCells().map((cell) => (
                     <div
