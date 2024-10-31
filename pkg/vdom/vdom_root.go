@@ -112,6 +112,36 @@ func (r *RootElem) SetOuterCtx(ctx context.Context) {
 	r.OuterCtx = ctx
 }
 
+func validateCFunc(cfunc any) error {
+	if cfunc == nil {
+		return fmt.Errorf("Component function cannot b nil")
+	}
+	rval := reflect.ValueOf(cfunc)
+	if rval.Kind() != reflect.Func {
+		return fmt.Errorf("Component function must be a function")
+	}
+	rtype := rval.Type()
+	if rtype.NumIn() != 2 {
+		return fmt.Errorf("Component function must take exactly 2 arguments")
+	}
+	if rtype.NumOut() != 1 {
+		return fmt.Errorf("Component function must return exactly 1 value")
+	}
+	// first arg must be context.Context
+	if rtype.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
+		return fmt.Errorf("Component function first argument must be context.Context")
+	}
+	// second can a map, or a struct, or ptr to struct (we'll reflect the value into it)
+	arg2Type := rtype.In(1)
+	if arg2Type.Kind() == reflect.Ptr {
+		arg2Type = arg2Type.Elem()
+	}
+	if arg2Type.Kind() != reflect.Map && arg2Type.Kind() != reflect.Struct {
+		return fmt.Errorf("Component function second argument must be a map or a struct")
+	}
+	return nil
+}
+
 func (r *RootElem) RegisterComponent(name string, cfunc CFunc) {
 	r.CFuncs[name] = cfunc
 }
