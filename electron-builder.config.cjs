@@ -53,9 +53,9 @@ const config = {
         minimumSystemVersion: "10.15.0",
         mergeASARs: true,
         singleArchFiles: "dist/bin/wavesrv.*",
-        plist: {
+        extendInfo: {
             NSMicrophoneUsageDescription:
-                "This app requires microphone access to enable audio input for terminal applications.",
+                "This app requires microphone access if you'd like to enable audio input for terminal applications.",
         },
     },
     linux: {
