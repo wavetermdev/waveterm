@@ -60,6 +60,9 @@ type MetaTSType struct {
 	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
 
+	EditorClear    bool `json:"editor:*,omitempty"`
+	EditorWordWrap bool `json:"editor:wordwrap,omitempty"`
+
 	GraphClear     bool     `json:"graph:*,omitempty"`
 	GraphNumPoints int      `json:"graph:numpoints,omitempty"`
 	GraphMetrics   []string `json:"graph:metrics,omitempty"`

@@ -60,6 +60,9 @@ const (
 	MetaKey_AiMaxTokens                      = "ai:maxtokens"
 	MetaKey_AiTimeoutMs                      = "ai:timeoutms"
 
+	MetaKey_EditorClear                      = "editor:*"
+	MetaKey_EditorWordWrap                   = "editor:wordwrap"
+
 	MetaKey_GraphClear                       = "graph:*"
 	MetaKey_GraphNumPoints                   = "graph:numpoints"
 	MetaKey_GraphMetrics                     = "graph:metrics"

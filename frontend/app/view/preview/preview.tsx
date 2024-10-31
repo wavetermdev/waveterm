@@ -620,6 +620,7 @@ export class PreviewModel implements ViewModel {
 
     getSettingsMenuItems(): ContextMenuItem[] {
         const menuItems: ContextMenuItem[] = [];
+        const blockData = globalStore.get(this.blockAtom);
         menuItems.push({
             label: "Copy Full Path",
             click: async () => {
@@ -671,6 +672,18 @@ export class PreviewModel implements ViewModel {
                         click: this.handleFileRevert.bind(this),
                     });
                 }
+                menuItems.push({ type: "separator" });
+                menuItems.push({
+                    label: "Word Wrap",
+                    type: "checkbox",
+                    checked: blockData?.meta?.["editor:wordwrap"] ?? false,
+                    click: () => {
+                        const blockOref = WOS.makeORef("block", this.blockId);
+                        services.ObjectService.UpdateObjectMeta(blockOref, {
+                            "editor:wordwrap": !blockData?.meta?.["editor:wordwrap"],
+                        });
+                    },
+                });
             }
         }
         return menuItems;
@@ -804,6 +817,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileName = useAtomValue(model.statFilePath);
+    const blockMeta = useAtomValue(model.blockAtom)?.meta;
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {
@@ -853,6 +867,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         <CodeEditor
             text={fileContent}
             filename={fileName}
+            meta={blockMeta}
             onChange={(text) => setNewFileContent(text)}
             onMount={onMount}
         />

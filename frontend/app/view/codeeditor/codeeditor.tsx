@@ -111,6 +111,7 @@ interface CodeEditorProps {
     text: string;
     filename: string;
     language?: string;
+    meta?: MetaType;
     onChange?: (text: string) => void;
     onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
@@ -125,7 +126,7 @@ const stickyScrollEnabledAtom = atom((get) => {
     return settings["editor:stickyscrollenabled"] ?? false;
 });
 
-export function CodeEditor({ text, language, filename, onChange, onMount }: CodeEditorProps) {
+export function CodeEditor({ text, language, filename, meta, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
     const minimapEnabled = useAtomValue(minimapEnabledAtom);
@@ -157,8 +158,9 @@ export function CodeEditor({ text, language, filename, onChange, onMount }: Code
         const opts = defaultEditorOptions();
         opts.minimap.enabled = minimapEnabled;
         opts.stickyScroll.enabled = stickyScrollEnabled;
+        opts.wordWrap = meta?.["editor:wordwrap"] ? "on" : "off";
         return opts;
-    }, [minimapEnabled, stickyScrollEnabled]);
+    }, [minimapEnabled, stickyScrollEnabled, meta?.["editor:wordwrap"]]);
 
     return (
         <div className="code-editor-wrapper">
