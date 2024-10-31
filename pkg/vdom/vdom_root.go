@@ -32,7 +32,7 @@ type Atom struct {
 type RootElem struct {
 	OuterCtx        context.Context
 	Root            *Component
-	CFuncs          map[string]CFunc
+	CFuncs          map[string]any
 	CompMap         map[string]*Component // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
@@ -63,7 +63,7 @@ func (r *RootElem) AddEffectWork(id string, effectIndex int) {
 func MakeRoot() *RootElem {
 	return &RootElem{
 		Root:    nil,
-		CFuncs:  make(map[string]CFunc),
+		CFuncs:  make(map[string]any),
 		CompMap: make(map[string]*Component),
 		Atoms:   make(map[string]*Atom),
 	}
@@ -142,8 +142,12 @@ func validateCFunc(cfunc any) error {
 	return nil
 }
 
-func (r *RootElem) RegisterComponent(name string, cfunc CFunc) {
+func (r *RootElem) RegisterComponent(name string, cfunc any) error {
+	if err := validateCFunc(cfunc); err != nil {
+		return err
+	}
 	r.CFuncs[name] = cfunc
+	return nil
 }
 
 func (r *RootElem) Render(elem *VDomElem) {
@@ -351,7 +355,19 @@ func getRenderContext(ctx context.Context) *VDomContextVal {
 	return v.(*VDomContextVal)
 }
 
-func (r *RootElem) renderComponent(cfunc CFunc, elem *VDomElem, comp **Component) {
+func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
+	rval := reflect.ValueOf(cfunc)
+	arg2Type := rval.Type().In(1)
+	arg2Val := reflect.New(arg2Type)
+	utilfn.ReUnmarshal(arg2Val.Interface(), props)
+	rtnVal := rval.Call([]reflect.Value{reflect.ValueOf(ctx), arg2Val.Elem()})
+	if len(rtnVal) == 0 {
+		return nil
+	}
+	return rtnVal[0].Interface()
+}
+
+func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **Component) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
 			r.unmount(&child)
@@ -364,7 +380,7 @@ func (r *RootElem) renderComponent(cfunc CFunc, elem *VDomElem, comp **Component
 	}
 	props[ChildrenPropKey] = elem.Children
 	ctx := r.makeRenderContext(*comp)
-	renderedElem := cfunc(ctx, props)
+	renderedElem := callCFunc(cfunc, ctx, props)
 	rtnElemArr := partToElems(renderedElem)
 	if len(rtnElemArr) == 0 {
 		r.unmount(&(*comp).Comp)

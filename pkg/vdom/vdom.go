@@ -25,8 +25,6 @@ type Hook struct {
 	Deps      []any
 }
 
-type CFunc = func(ctx context.Context, props map[string]any) any
-
 func (e *VDomElem) Key() string {
 	keyVal, ok := e.Props[KeyPropKey]
 	if !ok {

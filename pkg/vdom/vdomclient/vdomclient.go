@@ -197,8 +197,8 @@ func makeNullVDom() *vdom.VDomElem {
 	return &vdom.VDomElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
 }
 
-func (c *Client) RegisterComponent(name string, cfunc vdom.CFunc) {
-	c.Root.RegisterComponent(name, cfunc)
+func (c *Client) RegisterComponent(name string, cfunc any) error {
+	return c.Root.RegisterComponent(name, cfunc)
 }
 
 func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
