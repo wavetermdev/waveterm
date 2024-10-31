@@ -553,8 +553,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
             type: menuDef.type,
             click: (_, window) => {
                 const ww = window as WaveBrowserWindow;
-                const tabView = ww.activeTabView;
-                tabView?.webContents?.send("contextmenu-click", menuDef.id);
+                ww?.activeTabView?.webContents?.send("contextmenu-click", menuDef.id);
             },
             checked: menuDef.checked,
         };
