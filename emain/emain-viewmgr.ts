@@ -483,6 +483,7 @@ function createBaseWaveBrowserWindow(
             return;
         }
         if (!win.alreadyClosed) {
+            console.log("win removing window from backend DB", win.waveWindowId);
             WindowService.CloseWindow(waveWindow.oid, true);
         }
         destroyWindow(win);
