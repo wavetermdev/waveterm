@@ -420,7 +420,7 @@ function VDomView({ blockId, model }: VDomViewProps) {
     model.viewRef = viewRef;
     const vdomClass = "vdom-" + blockId;
     return (
-        <div className={clsx("vdom-view", vdomClass)} ref={viewRef}>
+        <div className={clsx("view-vdom", vdomClass)} ref={viewRef}>
             <VDomRoot model={model} />
         </div>
     );
