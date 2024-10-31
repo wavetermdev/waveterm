@@ -62,6 +62,7 @@ const textApplicationMimetypes = [
     "application/x-latex",
     "application/x-sh",
     "application/x-python",
+    "application/x-awk",
 ];
 
 function isTextFile(mimeType: string): boolean {
