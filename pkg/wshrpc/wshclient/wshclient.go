@@ -176,6 +176,12 @@ func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wsh
 	return resp, err
 }
 
+// command "getupdatechannel", wshserver.GetUpdateChannelCommand
+func GetUpdateChannelCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "getupdatechannel", nil, opts)
+	return resp, err
+}
+
 // command "message", wshserver.MessageCommand
 func MessageCommand(w *wshutil.WshRpc, data wshrpc.CommandMessageData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "message", data, opts)
@@ -300,6 +306,12 @@ func VDomRenderCommand(w *wshutil.WshRpc, data vdom.VDomFrontendUpdate, opts *ws
 // command "waitforroute", wshserver.WaitForRouteCommand
 func WaitForRouteCommand(w *wshutil.WshRpc, data wshrpc.CommandWaitForRouteData, opts *wshrpc.RpcOpts) (bool, error) {
 	resp, err := sendRpcRequestCallHelper[bool](w, "waitforroute", data, opts)
+	return resp, err
+}
+
+// command "waveinfo", wshserver.WaveInfoCommand
+func WaveInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.WaveInfoData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.WaveInfoData](w, "waveinfo", nil, opts)
 	return resp, err
 }
 

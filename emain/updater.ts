@@ -207,12 +207,16 @@ export class Updater {
     }
 }
 
+export function getResolvedUpdateChannel(): string {
+    return isDev() ? "dev" : (autoUpdater.channel ?? "latest");
+}
+
 ipcMain.on("install-app-update", () => fireAndForget(() => updater?.promptToInstallUpdate()));
 ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = updater?.status;
 });
 ipcMain.on("get-updater-channel", (event) => {
-    event.returnValue = isDev() ? "dev" : (autoUpdater.channel ?? "latest");
+    event.returnValue = getResolvedUpdateChannel();
 });
 
 let autoUpdateLock = false;

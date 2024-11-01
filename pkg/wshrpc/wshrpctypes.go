@@ -61,7 +61,8 @@ const (
 	Command_RemoteFileInfo    = "remotefileinfo"
 	Command_RemoteWriteFile   = "remotewritefile"
 	Command_RemoteFileDelete  = "remotefiledelete"
-	Command_RemoteFileJoiin   = "remotefilejoin"
+	Command_RemoteFileJoin    = "remotefilejoin"
+	Command_WaveInfo          = "waveinfo"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -73,8 +74,9 @@ const (
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
 
-	Command_WebSelector = "webselector"
-	Command_Notify      = "notify"
+	Command_WebSelector      = "webselector"
+	Command_Notify           = "notify"
+	Command_GetUpdateChannel = "getupdatechannel"
 
 	Command_VDomCreateContext   = "vdomcreatecontext"
 	Command_VDomAsyncInitiation = "vdomasyncinitiation"
@@ -120,6 +122,7 @@ type WshRpcInterface interface {
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
+	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -146,6 +149,7 @@ type WshRpcInterface interface {
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
 	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
@@ -425,4 +429,11 @@ type WaveNotificationOptions struct {
 	Title  string `json:"title,omitempty"`
 	Body   string `json:"body,omitempty"`
 	Silent bool   `json:"silent,omitempty"`
+}
+
+type WaveInfoData struct {
+	Version   string `json:"version"`
+	BuildTime string `json:"buildtime"`
+	ConfigDir string `json:"configdir"`
+	DataDir   string `json:"datadir"`
 }

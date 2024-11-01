@@ -142,6 +142,11 @@ class RpcApiType {
         return client.wshRpcCall("getmeta", data, opts);
     }
 
+    // command "getupdatechannel" [call]
+    GetUpdateChannelCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("getupdatechannel", null, opts);
+    }
+
     // command "message" [call]
     MessageCommand(client: WshClient, data: CommandMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("message", data, opts);
@@ -250,6 +255,11 @@ class RpcApiType {
     // command "waitforroute" [call]
     WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
         return client.wshRpcCall("waitforroute", data, opts);
+    }
+
+    // command "waveinfo" [call]
+    WaveInfoCommand(client: WshClient, opts?: RpcOpts): Promise<WaveInfoData> {
+        return client.wshRpcCall("waveinfo", null, opts);
     }
 
     // command "webselector" [call]
