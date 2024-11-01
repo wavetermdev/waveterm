@@ -4,9 +4,9 @@
 package vdomclient
 
 import (
-	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -33,42 +33,7 @@ type Client struct {
 	DoneCh             chan struct{}
 	Opts               vdom.VDomBackendOpts
 	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
-}
-
-type VDomServerImpl struct {
-	Client  *Client
-	BlockId string
-}
-
-func (*VDomServerImpl) WshServerImpl() {}
-
-func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
-	if feUpdate.Dispose {
-		log.Printf("got dispose from frontend\n")
-		impl.Client.doShutdown("got dispose from frontend")
-		return nil, nil
-	}
-	if impl.Client.GetIsDone() {
-		return nil, nil
-	}
-	// set atoms
-	for _, ss := range feUpdate.StateSync {
-		impl.Client.Root.SetAtomVal(ss.Atom, ss.Value, false)
-	}
-	// run events
-	for _, event := range feUpdate.Events {
-		if event.WaveId == "" {
-			if impl.Client.GlobalEventHandler != nil {
-				impl.Client.GlobalEventHandler(impl.Client, event)
-			}
-		} else {
-			impl.Client.Root.Event(event.WaveId, event.EventType, event.EventData)
-		}
-	}
-	if feUpdate.Resync {
-		return impl.Client.fullRender()
-	}
-	return impl.Client.incrementalRender()
+	UrlHandler         http.Handler // New field for HTTP handler
 }
 
 func (c *Client) GetIsDone() bool {
@@ -90,6 +55,10 @@ func (c *Client) doShutdown(reason string) {
 
 func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
 	c.GlobalEventHandler = handler
+}
+
+func (c *Client) SetUrlHandler(handler http.Handler) {
+	c.UrlHandler = handler
 }
 
 func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {

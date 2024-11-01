@@ -79,6 +79,7 @@ const (
 	Command_VDomCreateContext   = "vdomcreatecontext"
 	Command_VDomAsyncInitiation = "vdomasyncinitiation"
 	Command_VDomRender          = "vdomrender"
+	Command_VDomUrlRequest      = "vdomurlrequest"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -153,6 +154,7 @@ type WshRpcInterface interface {
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error)
+	VDomUrlRequestCommand(ctx context.Context, data VDomUrlRequestData) chan RespOrErrorUnion[VDomUrlRequestResponse]
 }
 
 // for frontend
@@ -425,4 +427,17 @@ type WaveNotificationOptions struct {
 	Title  string `json:"title,omitempty"`
 	Body   string `json:"body,omitempty"`
 	Silent bool   `json:"silent,omitempty"`
+}
+
+type VDomUrlRequestData struct {
+	Method string            `json:"method"`
+	URL    string            `json:"url"`
+	Header map[string]string `json:"header"`
+	Body   []byte            `json:"body,omitempty"`
+}
+
+type VDomUrlRequestResponse struct {
+	StatusCode int               `json:"statuscode,omitempty"`
+	Header     map[string]string `json:"header,omitempty"`
+	Body       []byte            `json:"body,omitempty"`
 }
