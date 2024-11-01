@@ -467,6 +467,8 @@ function createBaseWaveBrowserWindow(
         });
         if (choice === 0) {
             e.preventDefault();
+        } else {
+            win.deleteAllowed = true;
         }
     });
     win.on("closed", () => {
@@ -482,7 +484,7 @@ function createBaseWaveBrowserWindow(
         if (numWindows == 0) {
             return;
         }
-        if (!win.alreadyClosed) {
+        if (!win.alreadyClosed && win.deleteAllowed) {
             console.log("win removing window from backend DB", win.waveWindowId);
             WindowService.CloseWindow(waveWindow.oid, true);
         }
