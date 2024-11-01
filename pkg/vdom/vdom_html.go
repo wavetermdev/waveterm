@@ -96,6 +96,19 @@ func getAttrString(token htmltoken.Token, key string) string {
 }
 
 func attrToProp(attrVal string, isJson bool, params map[string]any) any {
+	if isJson {
+		var val any
+		err := json.Unmarshal([]byte(attrVal), &val)
+		if err != nil {
+			return nil
+		}
+		unmStrVal, ok := val.(string)
+		if !ok {
+			return val
+		}
+		attrVal = unmStrVal
+		// fallthrough using the json str val
+	}
 	if strings.HasPrefix(attrVal, Html_ParamPrefix) {
 		bindKey := attrVal[len(Html_ParamPrefix):]
 		bindVal, ok := params[bindKey]
@@ -134,7 +147,7 @@ func tokenToElem(token htmltoken.Token, params map[string]any) *VDomElem {
 		if attr.Key == "" || attr.Val == "" {
 			continue
 		}
-		propVal := attrToProp(attr.Val, false, params)
+		propVal := attrToProp(attr.Val, attr.IsJson, params)
 		elem.Props[attr.Key] = propVal
 	}
 	return elem
