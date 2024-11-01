@@ -120,6 +120,7 @@ type WshRpcInterface interface {
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
+	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -425,4 +426,11 @@ type WaveNotificationOptions struct {
 	Title  string `json:"title,omitempty"`
 	Body   string `json:"body,omitempty"`
 	Silent bool   `json:"silent,omitempty"`
+}
+
+type WaveInfoData struct {
+	Version   string `json:"version"`
+	BuildTime string `json:"buildtime"`
+	ConfigDir string `json:"configdir"`
+	DataDir   string `json:"datadir"`
 }

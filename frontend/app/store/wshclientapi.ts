@@ -252,6 +252,11 @@ class RpcApiType {
         return client.wshRpcCall("waitforroute", data, opts);
     }
 
+    // command "waveinfo" [call]
+    WaveInfoCommand(client: WshClient, opts?: RpcOpts): Promise<WaveInfoData> {
+        return client.wshRpcCall("waveinfo", null, opts);
+    }
+
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);

@@ -832,6 +832,14 @@ declare global {
         meta: {[key: string]: any};
     };
 
+    // wshrpc.WaveInfoData
+    type WaveInfoData = {
+        version: string;
+        buildtime: string;
+        configdir: string;
+        datadir: string;
+    };
+
     // wshrpc.WaveNotificationOptions
     type WaveNotificationOptions = {
         title?: string;
