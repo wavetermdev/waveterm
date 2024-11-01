@@ -73,18 +73,6 @@ func finalizeStack(stack []*VDomElem) *VDomElem {
 	return rtnElem
 }
 
-func attrVal(attr htmltoken.Attribute) (any, error) {
-	if !attr.IsJson {
-		return attr.Val, nil
-	}
-	var val any
-	err := json.Unmarshal([]byte(attr.Val), &val)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing json attr %q: %v", attr.Key, err)
-	}
-	return val, nil
-}
-
 // returns value, isjson
 func getAttrString(token htmltoken.Token, key string) string {
 	for _, attr := range token.Attr {

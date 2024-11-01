@@ -10,7 +10,12 @@ import * as jotai from "jotai";
 import * as React from "react";
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { convertVDomId, getTextChildren, validateAndWrapCss } from "@/app/view/vdom/vdom-utils";
+import {
+    convertVDomId,
+    getTextChildren,
+    validateAndWrapCss,
+    validateAndWrapReactStyle,
+} from "@/app/view/vdom/vdom-utils";
 import "./vdom.less";
 
 const TextTag = "#text";
@@ -249,7 +254,9 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
                     }
                 }
             }
-            // fallthrough to set props[key] = val
+            val = validateAndWrapReactStyle(model, val);
+            props[key] = val;
+            continue;
         }
         if (IdAttributes[key]) {
             props[key] = convertVDomId(model, val);
@@ -270,6 +277,14 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
                 props[key] = "url(#" + convertVDomId(model, val.substring(4, val.length - 1)) + ")";
                 continue;
             }
+        }
+        if (key == "src" && val != null && val.startsWith("vdom://")) {
+            // we're going to convert vdom:///foo.jpg to vdom://blockid/foo.jpg.  if it doesn't start with "/" it is not valid
+            const vdomUrl = val.substring(7);
+            if (!vdomUrl.startsWith("/")) {
+                continue;
+            }
+            props[key] = "vdom://" + model.blockId + vdomUrl;
         }
         props[key] = val;
     }

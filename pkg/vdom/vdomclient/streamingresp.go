@@ -55,7 +55,7 @@ func (w *StreamingResponseWriter) WriteHeader(statusCode int) {
 	w.respChan <- wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse]{
 		Response: wshrpc.VDomUrlRequestResponse{
 			StatusCode: w.statusCode,
-			Header:     headers,
+			Headers:    headers,
 		},
 	}
 }

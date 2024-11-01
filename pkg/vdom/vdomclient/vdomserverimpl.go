@@ -51,6 +51,7 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 }
 
 func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshrpc.VDomUrlRequestData) chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse] {
+	log.Printf("VDomUrlRequestCommand: url=%q\n", data.URL)
 	respChan := make(chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse])
 	writer := NewStreamingResponseWriter(respChan)
 
@@ -85,7 +86,7 @@ func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshr
 			return
 		}
 
-		for key, value := range data.Header {
+		for key, value := range data.Headers {
 			httpReq.Header.Set(key, value)
 		}
 

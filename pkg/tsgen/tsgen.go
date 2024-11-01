@@ -130,6 +130,10 @@ func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, [
 	case reflect.Bool:
 		return "boolean", nil
 	case reflect.Slice, reflect.Array:
+		// special case for byte slice, marshals to base64 encoded string
+		if t.Elem().Kind() == reflect.Uint8 {
+			return "string", nil
+		}
 		elemType, subTypes := TypeToTSType(t.Elem(), tsTypesMap)
 		if elemType == "" {
 			return "", nil

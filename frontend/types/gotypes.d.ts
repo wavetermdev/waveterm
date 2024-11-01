@@ -786,15 +786,15 @@ declare global {
     type VDomUrlRequestData = {
         method: string;
         url: string;
-        header: {[key: string]: string};
-        body?: number[];
+        headers: {[key: string]: string};
+        body?: string;
     };
 
     // wshrpc.VDomUrlRequestResponse
     type VDomUrlRequestResponse = {
         statuscode?: number;
-        header?: {[key: string]: string};
-        body?: number[];
+        headers?: {[key: string]: string};
+        body?: string;
     };
 
     type WSCommandType = {
