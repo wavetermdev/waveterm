@@ -61,15 +61,3 @@ ipcRenderer.on("webcontentsid-from-blockid", (e, blockId, responseCh) => {
     const wcId = webviewElem?.dataset?.webcontentsid;
     ipcRenderer.send(responseCh, wcId);
 });
-
-ipcRenderer.on("request-audio-access", (e) => {
-    ipcRenderer.send("fe-log", "Requesting audio access");
-    navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then(() => {
-            ipcRenderer.send("fe-log", "Audio access granted");
-        })
-        .catch((err) => {
-            ipcRenderer.send("fe-log", "Audio access denied: " + err);
-        });
-});
