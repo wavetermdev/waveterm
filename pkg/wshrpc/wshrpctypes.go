@@ -61,7 +61,8 @@ const (
 	Command_RemoteFileInfo    = "remotefileinfo"
 	Command_RemoteWriteFile   = "remotewritefile"
 	Command_RemoteFileDelete  = "remotefiledelete"
-	Command_RemoteFileJoiin   = "remotefilejoin"
+	Command_RemoteFileJoin    = "remotefilejoin"
+	Command_WaveInfo          = "waveinfo"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -73,8 +74,9 @@ const (
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
 
-	Command_WebSelector = "webselector"
-	Command_Notify      = "notify"
+	Command_WebSelector      = "webselector"
+	Command_Notify           = "notify"
+	Command_GetUpdateChannel = "getupdatechannel"
 
 	Command_VDomCreateContext   = "vdomcreatecontext"
 	Command_VDomAsyncInitiation = "vdomasyncinitiation"
@@ -147,6 +149,7 @@ type WshRpcInterface interface {
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
 	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
