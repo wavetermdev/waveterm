@@ -430,12 +430,14 @@ function createBaseWaveBrowserWindow(
         if (tabView) {
             tabView.webContents.send("fullscreen-change", true);
         }
+        positionTabOnScreen(win.activeTabView, win.getContentBounds());
     });
     win.on("leave-full-screen", async () => {
         const tabView = win.activeTabView;
         if (tabView) {
             tabView.webContents.send("fullscreen-change", false);
         }
+        positionTabOnScreen(win.activeTabView, win.getContentBounds());
     });
     win.on("focus", () => {
         if (getGlobalIsRelaunching()) {
