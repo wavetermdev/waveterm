@@ -101,7 +101,7 @@ func connDisconnect(connName string) error {
 }
 
 func connConnect(connName string) error {
-	err := wshclient.ConnConnectCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 60000})
+	err := wshclient.ConnConnectCommand(RpcClient, &wshrpc.SshKeywords{HostName: connName}, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("connecting connection: %w", err)
 	}

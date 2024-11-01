@@ -129,7 +129,7 @@ type WshRpcInterface interface {
 	WslStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	ConnEnsureCommand(ctx context.Context, connName string) error
 	ConnReinstallWshCommand(ctx context.Context, connName string) error
-	ConnConnectCommand(ctx context.Context, connName string) error
+	ConnConnectCommand(ctx context.Context, connFlags *SshKeywords) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
 	WslListCommand(ctx context.Context) ([]string, error)
@@ -385,6 +385,23 @@ type CommandRemoteWriteFileData struct {
 	Path       string      `json:"path"`
 	Data64     string      `json:"data64"`
 	CreateMode os.FileMode `json:"createmode,omitempty"`
+}
+
+type SshKeywords struct {
+	User                         string
+	HostName                     string
+	Port                         string
+	IdentityFile                 []string
+	BatchMode                    bool
+	PubkeyAuthentication         bool
+	PasswordAuthentication       bool
+	KbdInteractiveAuthentication bool
+	PreferredAuthentications     []string
+	AddKeysToAgent               bool
+	IdentityAgent                string
+	ProxyJump                    []string
+	UserKnownHostsFile           []string
+	GlobalKnownHostsFile         []string
 }
 
 const (

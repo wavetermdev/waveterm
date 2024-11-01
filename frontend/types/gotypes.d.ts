@@ -528,6 +528,24 @@ declare global {
         "conn:askbeforewshinstall"?: boolean;
     };
 
+    // wshrpc.SshKeywords
+    type SshKeywords = {
+        User: string;
+        HostName: string;
+        Port: string;
+        IdentityFile: string[];
+        BatchMode: boolean;
+        PubkeyAuthentication: boolean;
+        PasswordAuthentication: boolean;
+        KbdInteractiveAuthentication: boolean;
+        PreferredAuthentications: string[];
+        AddKeysToAgent: boolean;
+        IdentityAgent: string;
+        ProxyJump: string[];
+        UserKnownHostsFile: string[];
+        GlobalKnownHostsFile: string[];
+    };
+
     // waveobj.StickerClickOptsType
     type StickerClickOptsType = {
         sendinput?: string;

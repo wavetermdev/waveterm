@@ -17,7 +17,6 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	xknownhosts "golang.org/x/crypto/ssh/knownhosts"
@@ -101,7 +101,7 @@ func createDummySigner() ([]ssh.Signer, error) {
 // they were successes. An error in this function prevents any other
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
-func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, authSockSignersExt []ssh.Signer, agentClient agent.ExtendedAgent, debugInfo *ConnectionDebugInfo) func() ([]ssh.Signer, error) {
+func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.SshKeywords, authSockSignersExt []ssh.Signer, agentClient agent.ExtendedAgent, debugInfo *ConnectionDebugInfo) func() ([]ssh.Signer, error) {
 	var identityFiles []string
 	existingKeys := make(map[string][]byte)
 
@@ -370,7 +370,7 @@ func lineContainsMatch(line []byte, matches [][]byte) bool {
 	return false
 }
 
-func createHostKeyCallback(sshKeywords *SshKeywords) (ssh.HostKeyCallback, HostKeyAlgorithms, error) {
+func createHostKeyCallback(sshKeywords *wshrpc.SshKeywords) (ssh.HostKeyCallback, HostKeyAlgorithms, error) {
 	globalKnownHostsFiles := sshKeywords.GlobalKnownHostsFile
 	userKnownHostsFiles := sshKeywords.UserKnownHostsFile
 
@@ -536,7 +536,7 @@ func createHostKeyCallback(sshKeywords *SshKeywords) (ssh.HostKeyCallback, HostK
 	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
-func createClientConfig(connCtx context.Context, sshKeywords *SshKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
+func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.SshKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
 	remoteName := sshKeywords.User + "@" + xknownhosts.Normalize(sshKeywords.HostName+":"+sshKeywords.Port)
 
 	var authSockSigners []ssh.Signer
@@ -616,7 +616,7 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32) (*ssh.Client, int32, error) {
+func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wshrpc.SshKeywords) (*ssh.Client, int32, error) {
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
 		NextOpts:      opts,
@@ -631,10 +631,16 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 
-	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
+	log.Printf("intermediate connFlags %#+v", connFlags)
+	connFlags.User = opts.SSHUser
+	connFlags.HostName = opts.SSHHost
+	connFlags.Port = fmt.Sprintf("%d", opts.SSHPort)
+
+	sshKeywords, err := combineSshKeywords(connFlags, sshConfigKeywords)
 	if err != nil {
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
+	log.Printf("intermediate connFlags2 %#+v", sshKeywords)
 
 	for _, proxyName := range sshKeywords.ProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
@@ -647,7 +653,8 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 			jumpNum += 1
 		}
 
-		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum)
+		// do not apply supplied keywords to proxies - ssh config must be used for that
+		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wshrpc.SshKeywords{})
 		if err != nil {
 			// do not add a context on a recursive call
 			// (this can cause a recursive nested context that's arbitrarily deep)
@@ -666,28 +673,11 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	return client, debugInfo.JumpNum, nil
 }
 
-type SshKeywords struct {
-	User                         string
-	HostName                     string
-	Port                         string
-	IdentityFile                 []string
-	BatchMode                    bool
-	PubkeyAuthentication         bool
-	PasswordAuthentication       bool
-	KbdInteractiveAuthentication bool
-	PreferredAuthentications     []string
-	AddKeysToAgent               bool
-	IdentityAgent                string
-	ProxyJump                    []string
-	UserKnownHostsFile           []string
-	GlobalKnownHostsFile         []string
-}
+func combineSshKeywords(userProvidedOpts *wshrpc.SshKeywords, configKeywords *wshrpc.SshKeywords) (*wshrpc.SshKeywords, error) {
+	sshKeywords := &wshrpc.SshKeywords{}
 
-func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeywords, error) {
-	sshKeywords := &SshKeywords{}
-
-	if opts.SSHUser != "" {
-		sshKeywords.User = opts.SSHUser
+	if userProvidedOpts.User != "" {
+		sshKeywords.User = userProvidedOpts.User
 	} else if configKeywords.User != "" {
 		sshKeywords.User = configKeywords.User
 	} else {
@@ -703,18 +693,18 @@ func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeyword
 	if configKeywords.HostName != "" {
 		sshKeywords.HostName = configKeywords.HostName
 	} else {
-		sshKeywords.HostName = opts.SSHHost
+		sshKeywords.HostName = userProvidedOpts.HostName
 	}
 
-	if opts.SSHPort != 0 && opts.SSHPort != 22 {
-		sshKeywords.Port = strconv.Itoa(opts.SSHPort)
+	if userProvidedOpts.Port != "0" && userProvidedOpts.Port != "22" {
+		sshKeywords.Port = userProvidedOpts.Port
 	} else if configKeywords.Port != "" && configKeywords.Port != "22" {
 		sshKeywords.Port = configKeywords.Port
 	} else {
 		sshKeywords.Port = "22"
 	}
 
-	sshKeywords.IdentityFile = configKeywords.IdentityFile
+	sshKeywords.IdentityFile = append(userProvidedOpts.IdentityFile, configKeywords.IdentityFile...)
 
 	// these are not officially supported in the waveterm frontend but can be configured
 	// in ssh config files
@@ -735,9 +725,9 @@ func combineSshKeywords(opts *SSHOpts, configKeywords *SshKeywords) (*SshKeyword
 // note that a `var == "yes"` will default to false
 // but `var != "no"` will default to true
 // when given unexpected strings
-func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
+func findSshConfigKeywords(hostPattern string) (*wshrpc.SshKeywords, error) {
 	WaveSshConfigUserSettings().ReloadConfigs()
-	sshKeywords := &SshKeywords{}
+	sshKeywords := &wshrpc.SshKeywords{}
 	var err error
 
 	userRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "User")
