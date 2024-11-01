@@ -852,9 +852,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/react@npm:^0.26.25":
-  version: 0.26.25
-  resolution: "@floating-ui/react@npm:0.26.25"
+"@floating-ui/react@npm:^0.26.27":
+  version: 0.26.27
+  resolution: "@floating-ui/react@npm:0.26.27"
   dependencies:
     "@floating-ui/react-dom": "npm:^2.1.2"
     "@floating-ui/utils": "npm:^0.2.8"
@@ -862,7 +862,7 @@ __metadata:
   peerDependencies:
     react: ">=16.8.0"
     react-dom: ">=16.8.0"
-  checksum: 10c0/5206b06a5963e795af2f0b0a6ac39230012263ffa38dd60158e0f0b82d43a24e6a1c005fc8556ee5fe26e6353546ffb72e54716f6bd584fdab516dc128a78995
+  checksum: 10c0/6a27fadeb04862ecdb192f8e5428185ab0217b0c084e5464b2c218697f317a437dbfa47a7fb44332d505f047c17721e00f3705cb20e61b406117fea1ba2995b2
   languageName: node
   linkType: hard
 
@@ -9834,12 +9834,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"remark-github-blockquote-alert@npm:^1.2.1":
-  version: 1.2.1
-  resolution: "remark-github-blockquote-alert@npm:1.2.1"
+"remark-github-blockquote-alert@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "remark-github-blockquote-alert@npm:1.3.0"
   dependencies:
     unist-util-visit: "npm:^5.0.0"
-  checksum: 10c0/48f70a56347ba6d2649ec647f9b126fe2e22ee4efcbc4962e1645967ac0994859a930a1af3a8b75c2989d55ed5b7ce2df6fc86a4b0f2c0aa39d5ed2162c857ca
+  checksum: 10c0/5582834300dadf71ad083c2c27f3f3c37c5487aa42cf73a4dc235d3d55d1edc8608c3d37b88032dc3335b5c7980580c97c2668129c89c21c4f477ebacd4ecd85
   languageName: node
   linkType: hard
 
@@ -11681,7 +11681,7 @@ __metadata:
   dependencies:
     "@chromatic-com/storybook": "npm:^3.1.0"
     "@eslint/js": "npm:^9.13.0"
-    "@floating-ui/react": "npm:^0.26.25"
+    "@floating-ui/react": "npm:^0.26.27"
     "@monaco-editor/loader": "npm:^1.4.0"
     "@monaco-editor/react": "npm:^4.6.0"
     "@observablehq/plot": "npm:^0.6.16"
@@ -11763,7 +11763,7 @@ __metadata:
     rehype-slug: "npm:^6.0.0"
     remark-flexible-toc: "npm:^1.1.1"
     remark-gfm: "npm:^4.0.0"
-    remark-github-blockquote-alert: "npm:^1.2.1"
+    remark-github-blockquote-alert: "npm:^1.3.0"
     rollup-plugin-flow: "npm:^1.1.1"
     rxjs: "npm:^7.8.1"
     semver: "npm:^7.6.3"
