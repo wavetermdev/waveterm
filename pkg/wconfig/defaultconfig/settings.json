@@ -12,6 +12,7 @@
     "web:defaultsearch": "https://www.google.com/search?q={query}",
     "window:tilegapsize": 3,
     "window:maxtabcachesize": 10,
+    "window:nativetitlebar": true,
     "telemetry:enabled": true,
     "term:copyonselect": true
 }
