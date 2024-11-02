@@ -23,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
@@ -613,5 +614,14 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 		TabId:    tabId,
 		WindowId: windowId,
 		Block:    blockData,
+	}, nil
+}
+
+func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData, error) {
+	return &wshrpc.WaveInfoData{
+		Version:   wavebase.WaveVersion,
+		BuildTime: wavebase.BuildTime,
+		ConfigDir: wavebase.GetWaveConfigDir(),
+		DataDir:   wavebase.GetWaveDataDir(),
 	}, nil
 }

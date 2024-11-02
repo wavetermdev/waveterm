@@ -7,7 +7,13 @@ import { debounce } from "throttle-debounce";
 import { ClientService, FileService, ObjectService, WindowService } from "../frontend/app/store/services";
 import * as keyutil from "../frontend/util/keyutil";
 import { configureAuthKeyRequestInjection } from "./authkey";
-import { getGlobalIsQuitting, getGlobalIsStarting, setWasActive, setWasInFg } from "./emain-activity";
+import {
+    getGlobalIsQuitting,
+    getGlobalIsRelaunching,
+    getGlobalIsStarting,
+    setWasActive,
+    setWasInFg,
+} from "./emain-activity";
 import {
     delay,
     ensureBoundsAreVisible,
@@ -157,6 +163,7 @@ export function destroyWindow(waveWindow: WaveBrowserWindow) {
     if (waveWindow == null) {
         return;
     }
+    console.log("destroy win", waveWindow.waveWindowId);
     for (const tabView of waveWindow.allTabViews.values()) {
         destroyTab(tabView);
     }
@@ -167,6 +174,7 @@ export function destroyTab(tabView: WaveTabView) {
     if (tabView == null) {
         return;
     }
+    console.log("destroy tab", tabView.waveTabId);
     tabView.webContents.close();
     wcIdToWaveTabMap.delete(tabView.webContents.id);
     removeWaveTabView(tabView.waveWindowId, tabView.waveTabId);
@@ -326,6 +334,7 @@ function createBaseWaveBrowserWindow(
     fullConfig: FullConfigType,
     opts: WindowOpts
 ): WaveBrowserWindow {
+    console.log("create win", waveWindow.oid);
     let winWidth = waveWindow?.winsize?.width;
     let winHeight = waveWindow?.winsize?.height;
     let winPosX = waveWindow.pos.x;
@@ -421,14 +430,19 @@ function createBaseWaveBrowserWindow(
         if (tabView) {
             tabView.webContents.send("fullscreen-change", true);
         }
+        positionTabOnScreen(win.activeTabView, win.getContentBounds());
     });
     win.on("leave-full-screen", async () => {
         const tabView = win.activeTabView;
         if (tabView) {
             tabView.webContents.send("fullscreen-change", false);
         }
+        positionTabOnScreen(win.activeTabView, win.getContentBounds());
     });
     win.on("focus", () => {
+        if (getGlobalIsRelaunching()) {
+            return;
+        }
         focusedWaveWindow = win;
         console.log("focus win", win.waveWindowId);
         ClientService.FocusWindow(win.waveWindowId);
@@ -439,7 +453,8 @@ function createBaseWaveBrowserWindow(
         }
     });
     win.on("close", (e) => {
-        if (getGlobalIsQuitting() || updater?.status == "installing") {
+        console.log("win 'close' handler fired", win.waveWindowId);
+        if (getGlobalIsQuitting() || updater?.status == "installing" || getGlobalIsRelaunching()) {
             return;
         }
         const numWindows = waveWindowMap.size;
@@ -454,17 +469,25 @@ function createBaseWaveBrowserWindow(
         });
         if (choice === 0) {
             e.preventDefault();
+        } else {
+            win.deleteAllowed = true;
         }
     });
     win.on("closed", () => {
+        console.log("win 'closed' handler fired", win.waveWindowId);
         if (getGlobalIsQuitting() || updater?.status == "installing") {
+            return;
+        }
+        if (getGlobalIsRelaunching()) {
+            destroyWindow(win);
             return;
         }
         const numWindows = waveWindowMap.size;
         if (numWindows == 0) {
             return;
         }
-        if (!win.alreadyClosed) {
+        if (!win.alreadyClosed && win.deleteAllowed) {
+            console.log("win removing window from backend DB", win.waveWindowId);
             WindowService.CloseWindow(waveWindow.oid, true);
         }
         destroyWindow(win);

@@ -660,7 +660,7 @@ async function relaunchBrowserWindows(): Promise<void> {
     setGlobalIsRelaunching(true);
     const windows = getAllWaveWindows();
     for (const window of windows) {
-        window.removeAllListeners();
+        console.log("relaunch -- closing window", window.waveWindowId);
         window.close();
     }
     setGlobalIsRelaunching(false);

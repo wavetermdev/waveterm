@@ -358,6 +358,7 @@ declare global {
         allTabViews: Map<string, WaveTabView>;
         activeTabView: WaveTabView;
         alreadyClosed: boolean;
+        deleteAllowed: boolean;
     };
 
     type WaveTabView = Electron.WebContentsView & {
