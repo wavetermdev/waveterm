@@ -2540,12 +2540,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/electron@npm:^1.6.10":
-  version: 1.6.10
-  resolution: "@types/electron@npm:1.6.10"
+"@types/electron@npm:^1.6.12":
+  version: 1.6.12
+  resolution: "@types/electron@npm:1.6.12"
   dependencies:
     electron: "npm:*"
-  checksum: 10c0/d9d7facf29280dbfcecca287c453c5dc51f3d10cbfd63ea7e78670d37acf51aabc6e5e2ef1fe5f48d67e7862fa9f590bb6ef703901eb62599837a14b4278b0e1
+  checksum: 10c0/0cc0a2d3cf31afd3d0a6db0f35d37c44532db2211813540c6888d389db113f044b4f923ef7d0624f105b0d937b715b59c92ad53fcffa83b3070d79e07f73101b
   languageName: node
   linkType: hard
 
@@ -11701,7 +11701,7 @@ __metadata:
     "@types/color": "npm:^4.2.0"
     "@types/css-tree": "npm:^2"
     "@types/debug": "npm:^4"
-    "@types/electron": "npm:^1.6.10"
+    "@types/electron": "npm:^1.6.12"
     "@types/node": "npm:^22.8.0"
     "@types/papaparse": "npm:^5"
     "@types/pngjs": "npm:^6.0.5"
