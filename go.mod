@@ -22,7 +22,7 @@ require (
 	github.com/skeema/knownhosts v1.3.0
 	github.com/spf13/cobra v1.8.1
 	github.com/ubuntu/gowsl v0.0.0-20240906163211-049fd49bd93b
-	github.com/wavetermdev/htmltoken v0.1.0
+	github.com/wavetermdev/htmltoken v0.2.0
 	golang.org/x/crypto v0.28.0
 	golang.org/x/sys v0.26.0
 	golang.org/x/term v0.25.0
@@ -50,5 +50,3 @@ require (
 replace github.com/kevinburke/ssh_config => github.com/wavetermdev/ssh_config v0.0.0-20241027232332-ed124367682d
 
 replace github.com/creack/pty => github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b
-
-replace github.com/wavetermdev/htmltoken => ../htmltoken
