@@ -146,7 +146,10 @@ func MakeVDom() *vdom.VDomElem {
             <wave:markdown text="*quick vdom application to set background colors*"/>
         </div>
         <div>
-          <AllBgItemsTag/>
+            <AllBgItemsTag/>
+        </div>
+        <div>
+            <img style="width: 100%; height: 100%; max-width: 300px; max-height: 300px; object-fit: contain;" src="vdom:///test.png"/>
         </div>
     </div>
     `
@@ -174,6 +177,7 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	client.RegisterComponent("StyleTag", StyleTag)
 	client.RegisterComponent("BgItemTag", BgItemTag)
 	client.RegisterComponent("AllBgItemsTag", AllBgItemsTag)
+	client.RegisterFileHandler("/test.png", "~/Downloads/IMG_1939.png")
 	client.SetRootElem(MakeVDom())
 	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: htmlCmdNewBlock})
 	if err != nil {

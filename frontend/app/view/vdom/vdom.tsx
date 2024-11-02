@@ -284,7 +284,12 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             if (!vdomUrl.startsWith("/")) {
                 continue;
             }
-            props[key] = "vdom://" + model.blockId + vdomUrl;
+            const backendRouteId = model.getBackendRouteId();
+            if (backendRouteId == null) {
+                continue;
+            }
+            props[key] = "vdom://" + backendRouteId + vdomUrl;
+            continue;
         }
         props[key] = val;
     }

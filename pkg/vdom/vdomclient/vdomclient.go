@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -207,4 +208,15 @@ func (c *Client) incrementalRender() (*vdom.VDomBackendUpdate, error) {
 		},
 		StateSync: c.Root.GetStateSync(false),
 	}, nil
+}
+
+func (c *Client) RegisterUrlPathHandler(path string, handler http.Handler) {
+	c.UrlHandlerMux.Handle(path, handler)
+}
+
+func (c *Client) RegisterFileHandler(path string, fileName string) {
+	fileName = wavebase.ExpandHomeDirSafe(fileName)
+	c.UrlHandlerMux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, fileName)
+	})
 }
