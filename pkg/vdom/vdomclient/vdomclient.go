@@ -4,15 +4,17 @@
 package vdomclient
 
 import (
-	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -33,42 +35,8 @@ type Client struct {
 	DoneCh             chan struct{}
 	Opts               vdom.VDomBackendOpts
 	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
-}
-
-type VDomServerImpl struct {
-	Client  *Client
-	BlockId string
-}
-
-func (*VDomServerImpl) WshServerImpl() {}
-
-func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
-	if feUpdate.Dispose {
-		log.Printf("got dispose from frontend\n")
-		impl.Client.doShutdown("got dispose from frontend")
-		return nil, nil
-	}
-	if impl.Client.GetIsDone() {
-		return nil, nil
-	}
-	// set atoms
-	for _, ss := range feUpdate.StateSync {
-		impl.Client.Root.SetAtomVal(ss.Atom, ss.Value, false)
-	}
-	// run events
-	for _, event := range feUpdate.Events {
-		if event.WaveId == "" {
-			if impl.Client.GlobalEventHandler != nil {
-				impl.Client.GlobalEventHandler(impl.Client, event)
-			}
-		} else {
-			impl.Client.Root.Event(event.WaveId, event.EventType, event.EventData)
-		}
-	}
-	if feUpdate.Resync {
-		return impl.Client.fullRender()
-	}
-	return impl.Client.incrementalRender()
+	UrlHandlerMux      *mux.Router
+	OverrideUrlHandler http.Handler
 }
 
 func (c *Client) GetIsDone() bool {
@@ -92,11 +60,16 @@ func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.V
 	c.GlobalEventHandler = handler
 }
 
+func (c *Client) SetOverrideUrlHandler(handler http.Handler) {
+	c.OverrideUrlHandler = handler
+}
+
 func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
 	client := &Client{
-		Lock:   &sync.Mutex{},
-		Root:   vdom.MakeRoot(),
-		DoneCh: make(chan struct{}),
+		Lock:          &sync.Mutex{},
+		Root:          vdom.MakeRoot(),
+		DoneCh:        make(chan struct{}),
+		UrlHandlerMux: mux.NewRouter(),
 	}
 	if opts != nil {
 		client.Opts = *opts
@@ -197,8 +170,8 @@ func makeNullVDom() *vdom.VDomElem {
 	return &vdom.VDomElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
 }
 
-func (c *Client) RegisterComponent(name string, cfunc vdom.CFunc) {
-	c.Root.RegisterComponent(name, cfunc)
+func (c *Client) RegisterComponent(name string, cfunc any) error {
+	return c.Root.RegisterComponent(name, cfunc)
 }
 
 func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
@@ -235,4 +208,15 @@ func (c *Client) incrementalRender() (*vdom.VDomBackendUpdate, error) {
 		},
 		StateSync: c.Root.GetStateSync(false),
 	}, nil
+}
+
+func (c *Client) RegisterUrlPathHandler(path string, handler http.Handler) {
+	c.UrlHandlerMux.Handle(path, handler)
+}
+
+func (c *Client) RegisterFileHandler(path string, fileName string) {
+	fileName = wavebase.ExpandHomeDirSafe(fileName)
+	c.UrlHandlerMux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, fileName)
+	})
 }

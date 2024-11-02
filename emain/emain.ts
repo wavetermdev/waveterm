@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
+import { setupVdomUrlHandler } from "emain/emain-vdomhandler";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -708,6 +709,7 @@ async function appMain() {
     const ready = await getWaveSrvReady();
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
+    setupVdomUrlHandler();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     const fullConfig = await services.FileService.GetFullConfig();
     ensureHotSpareTab(fullConfig);
@@ -721,7 +723,6 @@ async function appMain() {
         console.log("error initializing wshrpc", e);
     }
     await configureAutoUpdater();
-
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);

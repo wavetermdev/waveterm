@@ -592,4 +592,12 @@ export class VDomModel {
         }
         return feUpdate;
     }
+
+    getBackendRouteId(): string {
+        const fullRoute = globalStore.get(this.backendRoute);
+        if (fullRoute == null || !fullRoute.startsWith("proc:")) {
+            return null;
+        }
+        return fullRoute?.split(":")[1];
+    }
 }

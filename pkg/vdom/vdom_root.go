@@ -32,7 +32,7 @@ type Atom struct {
 type RootElem struct {
 	OuterCtx        context.Context
 	Root            *Component
-	CFuncs          map[string]CFunc
+	CFuncs          map[string]any
 	CompMap         map[string]*Component // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
@@ -63,7 +63,7 @@ func (r *RootElem) AddEffectWork(id string, effectIndex int) {
 func MakeRoot() *RootElem {
 	return &RootElem{
 		Root:    nil,
-		CFuncs:  make(map[string]CFunc),
+		CFuncs:  make(map[string]any),
 		CompMap: make(map[string]*Component),
 		Atoms:   make(map[string]*Atom),
 	}
@@ -112,8 +112,42 @@ func (r *RootElem) SetOuterCtx(ctx context.Context) {
 	r.OuterCtx = ctx
 }
 
-func (r *RootElem) RegisterComponent(name string, cfunc CFunc) {
+func validateCFunc(cfunc any) error {
+	if cfunc == nil {
+		return fmt.Errorf("Component function cannot b nil")
+	}
+	rval := reflect.ValueOf(cfunc)
+	if rval.Kind() != reflect.Func {
+		return fmt.Errorf("Component function must be a function")
+	}
+	rtype := rval.Type()
+	if rtype.NumIn() != 2 {
+		return fmt.Errorf("Component function must take exactly 2 arguments")
+	}
+	if rtype.NumOut() != 1 {
+		return fmt.Errorf("Component function must return exactly 1 value")
+	}
+	// first arg must be context.Context
+	if rtype.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
+		return fmt.Errorf("Component function first argument must be context.Context")
+	}
+	// second can a map, or a struct, or ptr to struct (we'll reflect the value into it)
+	arg2Type := rtype.In(1)
+	if arg2Type.Kind() == reflect.Ptr {
+		arg2Type = arg2Type.Elem()
+	}
+	if arg2Type.Kind() != reflect.Map && arg2Type.Kind() != reflect.Struct {
+		return fmt.Errorf("Component function second argument must be a map or a struct")
+	}
+	return nil
+}
+
+func (r *RootElem) RegisterComponent(name string, cfunc any) error {
+	if err := validateCFunc(cfunc); err != nil {
+		return err
+	}
 	r.CFuncs[name] = cfunc
+	return nil
 }
 
 func (r *RootElem) Render(elem *VDomElem) {
@@ -321,7 +355,19 @@ func getRenderContext(ctx context.Context) *VDomContextVal {
 	return v.(*VDomContextVal)
 }
 
-func (r *RootElem) renderComponent(cfunc CFunc, elem *VDomElem, comp **Component) {
+func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
+	rval := reflect.ValueOf(cfunc)
+	arg2Type := rval.Type().In(1)
+	arg2Val := reflect.New(arg2Type)
+	utilfn.ReUnmarshal(arg2Val.Interface(), props)
+	rtnVal := rval.Call([]reflect.Value{reflect.ValueOf(ctx), arg2Val.Elem()})
+	if len(rtnVal) == 0 {
+		return nil
+	}
+	return rtnVal[0].Interface()
+}
+
+func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **Component) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
 			r.unmount(&child)
@@ -334,7 +380,7 @@ func (r *RootElem) renderComponent(cfunc CFunc, elem *VDomElem, comp **Component
 	}
 	props[ChildrenPropKey] = elem.Children
 	ctx := r.makeRenderContext(*comp)
-	renderedElem := cfunc(ctx, props)
+	renderedElem := callCFunc(cfunc, ctx, props)
 	rtnElemArr := partToElems(renderedElem)
 	if len(rtnElemArr) == 0 {
 		r.unmount(&(*comp).Comp)

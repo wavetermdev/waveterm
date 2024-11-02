@@ -782,6 +782,21 @@ declare global {
         magnified?: boolean;
     };
 
+    // wshrpc.VDomUrlRequestData
+    type VDomUrlRequestData = {
+        method: string;
+        url: string;
+        headers: {[key: string]: string};
+        body?: string;
+    };
+
+    // wshrpc.VDomUrlRequestResponse
+    type VDomUrlRequestResponse = {
+        statuscode?: number;
+        headers?: {[key: string]: string};
+        body?: string;
+    };
+
     type WSCommandType = {
         wscommand: string;
     } & ( SetBlockTermSizeWSCommand | BlockInputWSCommand | WSRpcCommand );

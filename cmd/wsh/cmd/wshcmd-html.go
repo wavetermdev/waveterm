@@ -81,9 +81,14 @@ func StyleTag(ctx context.Context, props map[string]any) any {
     `, nil)
 }
 
-func BgItemTag(ctx context.Context, props map[string]any) any {
+type BgItemProps struct {
+	Bg    string
+	Label string
+}
+
+func BgItemTag(ctx context.Context, props BgItemProps) any {
 	clickFn := func() {
-		log.Printf("bg item clicked %q\n", props["bg"])
+		log.Printf("bg item clicked %q\n", props.Bg)
 		blockInfo, err := wshclient.BlockInfoCommand(GlobalVDomClient.RpcClient, GlobalVDomClient.RpcContext.BlockId, nil)
 		if err != nil {
 			log.Printf("error getting block info: %v\n", err)
@@ -92,7 +97,7 @@ func BgItemTag(ctx context.Context, props map[string]any) any {
 		log.Printf("block info: tabid=%q\n", blockInfo.TabId)
 		err = wshclient.SetMetaCommand(GlobalVDomClient.RpcClient, wshrpc.CommandSetMetaData{
 			ORef: waveobj.ORef{OType: "tab", OID: blockInfo.TabId},
-			Meta: map[string]any{"bg": props["bg"]},
+			Meta: map[string]any{"bg": props.Bg},
 		}, nil)
 		if err != nil {
 			log.Printf("error setting meta: %v\n", err)
@@ -100,8 +105,8 @@ func BgItemTag(ctx context.Context, props map[string]any) any {
 		// wshclient.SetMetaCommand(GlobalVDomClient.RpcClient)
 	}
 	params := map[string]any{
-		"bg":           props["bg"],
-		"label":        props["label"],
+		"bg":           props.Bg,
+		"label":        props.Label,
 		"clickHandler": clickFn,
 	}
 	return vdom.Bind(`
@@ -141,7 +146,10 @@ func MakeVDom() *vdom.VDomElem {
             <wave:markdown text="*quick vdom application to set background colors*"/>
         </div>
         <div>
-          <AllBgItemsTag/>
+            <AllBgItemsTag/>
+        </div>
+        <div>
+            <img style="width: 100%; height: 100%; max-width: 300px; max-height: 300px; object-fit: contain;" src="vdom:///test.png"/>
         </div>
     </div>
     `
@@ -169,6 +177,7 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	client.RegisterComponent("StyleTag", StyleTag)
 	client.RegisterComponent("BgItemTag", BgItemTag)
 	client.RegisterComponent("AllBgItemsTag", AllBgItemsTag)
+	client.RegisterFileHandler("/test.png", "~/Downloads/IMG_1939.png")
 	client.SetRootElem(MakeVDom())
 	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: htmlCmdNewBlock})
 	if err != nil {

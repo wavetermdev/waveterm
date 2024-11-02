@@ -73,18 +73,6 @@ func finalizeStack(stack []*VDomElem) *VDomElem {
 	return rtnElem
 }
 
-func attrVal(attr htmltoken.Attribute) (any, error) {
-	// if !attr.IsJson {
-	// 	return attr.Val, nil
-	// }
-	var val any
-	err := json.Unmarshal([]byte(attr.Val), &val)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing json attr %q: %v", attr.Key, err)
-	}
-	return val, nil
-}
-
 // returns value, isjson
 func getAttrString(token htmltoken.Token, key string) string {
 	for _, attr := range token.Attr {
@@ -96,6 +84,19 @@ func getAttrString(token htmltoken.Token, key string) string {
 }
 
 func attrToProp(attrVal string, isJson bool, params map[string]any) any {
+	if isJson {
+		var val any
+		err := json.Unmarshal([]byte(attrVal), &val)
+		if err != nil {
+			return nil
+		}
+		unmStrVal, ok := val.(string)
+		if !ok {
+			return val
+		}
+		attrVal = unmStrVal
+		// fallthrough using the json str val
+	}
 	if strings.HasPrefix(attrVal, Html_ParamPrefix) {
 		bindKey := attrVal[len(Html_ParamPrefix):]
 		bindVal, ok := params[bindKey]
@@ -134,7 +135,7 @@ func tokenToElem(token htmltoken.Token, params map[string]any) *VDomElem {
 		if attr.Key == "" || attr.Val == "" {
 			continue
 		}
-		propVal := attrToProp(attr.Val, false, params)
+		propVal := attrToProp(attr.Val, attr.IsJson, params)
 		elem.Props[attr.Key] = propVal
 	}
 	return elem

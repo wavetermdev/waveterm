@@ -252,6 +252,11 @@ class RpcApiType {
         return client.wshRpcCall("vdomrender", data, opts);
     }
 
+    // command "vdomurlrequest" [responsestream]
+	VDomUrlRequestCommand(client: WshClient, data: VDomUrlRequestData, opts?: RpcOpts): AsyncGenerator<VDomUrlRequestResponse, void, boolean> {
+        return client.wshRpcStream("vdomurlrequest", data, opts);
+    }
+
     // command "waitforroute" [call]
     WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
         return client.wshRpcCall("waitforroute", data, opts);

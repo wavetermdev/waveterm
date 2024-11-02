@@ -10,7 +10,12 @@ import * as jotai from "jotai";
 import * as React from "react";
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { convertVDomId, getTextChildren, validateAndWrapCss } from "@/app/view/vdom/vdom-utils";
+import {
+    convertVDomId,
+    getTextChildren,
+    validateAndWrapCss,
+    validateAndWrapReactStyle,
+} from "@/app/view/vdom/vdom-utils";
 import "./vdom.less";
 
 const TextTag = "#text";
@@ -68,6 +73,50 @@ const AllowedSimpleTags: { [tagName: string]: boolean } = {
     code: true,
 };
 
+const AllowedSvgTags = {
+    // SVG tags
+    svg: true,
+    circle: true,
+    ellipse: true,
+    line: true,
+    path: true,
+    polygon: true,
+    polyline: true,
+    rect: true,
+    g: true,
+    text: true,
+    tspan: true,
+    textPath: true,
+    use: true,
+    defs: true,
+    linearGradient: true,
+    radialGradient: true,
+    stop: true,
+    clipPath: true,
+    mask: true,
+    pattern: true,
+    image: true,
+    marker: true,
+    symbol: true,
+    filter: true,
+    feBlend: true,
+    feColorMatrix: true,
+    feComponentTransfer: true,
+    feComposite: true,
+    feConvolveMatrix: true,
+    feDiffuseLighting: true,
+    feDisplacementMap: true,
+    feFlood: true,
+    feGaussianBlur: true,
+    feImage: true,
+    feMerge: true,
+    feMorphology: true,
+    feOffset: true,
+    feSpecularLighting: true,
+    feTile: true,
+    feTurbulence: true,
+};
+
 const IdAttributes = {
     id: true,
     for: true,
@@ -79,6 +128,18 @@ const IdAttributes = {
     headers: true,
     usemap: true,
     list: true,
+};
+
+const SvgUrlIdAttributes = {
+    "clip-path": true,
+    mask: true,
+    filter: true,
+    fill: true,
+    stroke: true,
+    "marker-start": true,
+    "marker-mid": true,
+    "marker-end": true,
+    "text-decoration": true,
 };
 
 function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
@@ -193,10 +254,41 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
                     }
                 }
             }
-            // fallthrough to set props[key] = val
+            val = validateAndWrapReactStyle(model, val);
+            props[key] = val;
+            continue;
         }
         if (IdAttributes[key]) {
             props[key] = convertVDomId(model, val);
+            continue;
+        }
+        if (AllowedSvgTags[elem.tag]) {
+            if ((elem.tag == "use" && key == "href") || (elem.tag == "textPath" && key == "href")) {
+                if (val == null || !val.startsWith("#")) {
+                    continue;
+                }
+                props[key] = convertVDomId(model, "#" + val.substring(1));
+                continue;
+            }
+            if (SvgUrlIdAttributes[key]) {
+                if (val == null || !val.startsWith("url(#") || !val.endsWith(")")) {
+                    continue;
+                }
+                props[key] = "url(#" + convertVDomId(model, val.substring(4, val.length - 1)) + ")";
+                continue;
+            }
+        }
+        if (key == "src" && val != null && val.startsWith("vdom://")) {
+            // we're going to convert vdom:///foo.jpg to vdom://blockid/foo.jpg.  if it doesn't start with "/" it is not valid
+            const vdomUrl = val.substring(7);
+            if (!vdomUrl.startsWith("/")) {
+                continue;
+            }
+            const backendRouteId = model.getBackendRouteId();
+            if (backendRouteId == null) {
+                continue;
+            }
+            props[key] = "vdom://" + backendRouteId + vdomUrl;
             continue;
         }
         props[key] = val;
@@ -205,15 +297,18 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
 }
 
 function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Element)[] {
-    let childrenComps: (string | JSX.Element)[] = [];
-    if (elem.children == null) {
-        return childrenComps;
+    if (elem.children == null || elem.children.length == 0) {
+        return null;
     }
+    let childrenComps: (string | JSX.Element)[] = [];
     for (let child of elem.children) {
         if (child == null) {
             continue;
         }
         childrenComps.push(convertElemToTag(child, model));
+    }
+    if (childrenComps.length == 0) {
+        return null;
     }
     return childrenComps;
 }
@@ -286,7 +381,7 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     if (elem.tag == StyleTagName) {
         return <StyleTag elem={elem} model={model} />;
     }
-    if (!AllowedSimpleTags[elem.tag]) {
+    if (!AllowedSimpleTags[elem.tag] && !AllowedSvgTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
     }
     let childrenComps = convertChildren(elem, model);
@@ -345,7 +440,7 @@ function VDomView({ blockId, model }: VDomViewProps) {
     model.viewRef = viewRef;
     const vdomClass = "vdom-" + blockId;
     return (
-        <div className={clsx("vdom-view", vdomClass)} ref={viewRef}>
+        <div className={clsx("view-vdom", vdomClass)} ref={viewRef}>
             <VDomRoot model={model} />
         </div>
     );
