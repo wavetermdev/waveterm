@@ -65,12 +65,6 @@ func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshr
 			close(respChan)
 		}()
 
-		if impl.Client.UrlHandler == nil {
-			writer.WriteHeader(http.StatusInternalServerError)
-			writer.Write([]byte("UrlHandler is not set"))
-			return
-		}
-
 		// Create an HTTP request from the RPC request data
 		var bodyReader *bytes.Reader
 		if data.Body != nil {
@@ -90,7 +84,11 @@ func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshr
 			httpReq.Header.Set(key, value)
 		}
 
-		impl.Client.UrlHandler.ServeHTTP(writer, httpReq)
+		if impl.Client.OverrideUrlHandler != nil {
+			impl.Client.OverrideUrlHandler.ServeHTTP(writer, httpReq)
+			return
+		}
+		impl.Client.UrlHandlerMux.ServeHTTP(writer, httpReq)
 	}()
 
 	return respChan

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -33,7 +34,8 @@ type Client struct {
 	DoneCh             chan struct{}
 	Opts               vdom.VDomBackendOpts
 	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
-	UrlHandler         http.Handler // New field for HTTP handler
+	UrlHandlerMux      *mux.Router
+	OverrideUrlHandler http.Handler
 }
 
 func (c *Client) GetIsDone() bool {
@@ -57,15 +59,16 @@ func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.V
 	c.GlobalEventHandler = handler
 }
 
-func (c *Client) SetUrlHandler(handler http.Handler) {
-	c.UrlHandler = handler
+func (c *Client) SetOverrideUrlHandler(handler http.Handler) {
+	c.OverrideUrlHandler = handler
 }
 
 func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
 	client := &Client{
-		Lock:   &sync.Mutex{},
-		Root:   vdom.MakeRoot(),
-		DoneCh: make(chan struct{}),
+		Lock:          &sync.Mutex{},
+		Root:          vdom.MakeRoot(),
+		DoneCh:        make(chan struct{}),
+		UrlHandlerMux: mux.NewRouter(),
 	}
 	if opts != nil {
 		client.Opts = *opts
