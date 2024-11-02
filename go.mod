@@ -16,7 +16,7 @@ require (
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/sashabaranov/go-openai v1.32.3
+	github.com/sashabaranov/go-openai v1.32.5
 	github.com/sawka/txwrap v0.2.0
 	github.com/shirou/gopsutil/v4 v4.24.10
 	github.com/skeema/knownhosts v1.3.0
