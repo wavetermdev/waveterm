@@ -6,7 +6,6 @@ package vdom
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 
 	"github.com/google/uuid"
@@ -151,11 +150,10 @@ func (r *RootElem) RegisterComponent(name string, cfunc any) error {
 }
 
 func (r *RootElem) Render(elem *VDomElem) {
-	log.Printf("Render %s\n", elem.Tag)
 	r.render(elem, &r.Root)
 }
 
-func (vdf *VDomFunc) CallFn() {
+func (vdf *VDomFunc) CallFn(event VDomEvent) {
 	if vdf.Fn == nil {
 		return
 	}
@@ -163,10 +161,18 @@ func (vdf *VDomFunc) CallFn() {
 	if rval.Kind() != reflect.Func {
 		return
 	}
-	rval.Call(nil)
+	rtype := rval.Type()
+	if rtype.NumIn() == 0 {
+		rval.Call(nil)
+	}
+	if rtype.NumIn() == 1 {
+		if rtype.In(0) == reflect.TypeOf((*VDomEvent)(nil)).Elem() {
+			rval.Call([]reflect.Value{reflect.ValueOf(event)})
+		}
+	}
 }
 
-func callVDomFn(fnVal any, data any) {
+func callVDomFn(fnVal any, data VDomEvent) {
 	if fnVal == nil {
 		return
 	}
@@ -192,13 +198,13 @@ func callVDomFn(fnVal any, data any) {
 	}
 }
 
-func (r *RootElem) Event(id string, propName string, data any) {
+func (r *RootElem) Event(id string, propName string, event VDomEvent) {
 	comp := r.CompMap[id]
 	if comp == nil || comp.Elem == nil {
 		return
 	}
 	fnVal := comp.Elem.Props[propName]
-	callVDomFn(fnVal, data)
+	callVDomFn(fnVal, event)
 }
 
 // this will be called by the frontend to say the DOM has been mounted

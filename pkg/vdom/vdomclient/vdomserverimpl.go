@@ -36,12 +36,12 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 	}
 	// run events
 	for _, event := range feUpdate.Events {
-		if event.WaveId == "" {
+		if event.GlobalEventType != "" {
 			if impl.Client.GlobalEventHandler != nil {
 				impl.Client.GlobalEventHandler(impl.Client, event)
 			}
 		} else {
-			impl.Client.Root.Event(event.WaveId, event.EventType, event.EventData)
+			impl.Client.Root.Event(event.WaveId, event.EventType, event)
 		}
 	}
 	if feUpdate.Resync {

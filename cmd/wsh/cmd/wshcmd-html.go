@@ -138,6 +138,10 @@ func AllBgItemsTag(ctx context.Context, props map[string]any) any {
 }
 
 func MakeVDom() *vdom.VDomElem {
+	changeHandler := func(event vdom.VDomEvent) {
+		log.Printf("changeHandler: %v %q\n", event, event.TargetValue)
+		GlobalVDomClient.SetAtomVal("inputval", event.TargetValue)
+	}
 	vdomStr := `
     <div className="root">
         <StyleTag/>
@@ -151,9 +155,13 @@ func MakeVDom() *vdom.VDomElem {
         <div>
             <img style="width: 100%; height: 100%; max-width: 300px; max-height: 300px; object-fit: contain;" src="vdom:///test.png"/>
         </div>
+		<div>
+		    <input type="text" value="#bind:$.inputval" onChange="#param:changeHandler"/>
+			<div>text <bind key="$.inputval"/></div>
+		</div>
     </div>
     `
-	elem := vdom.Bind(vdomStr, nil)
+	elem := vdom.Bind(vdomStr, map[string]any{"changeHandler": changeHandler})
 	return elem
 }
 
@@ -178,6 +186,7 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	client.RegisterComponent("BgItemTag", BgItemTag)
 	client.RegisterComponent("AllBgItemsTag", AllBgItemsTag)
 	client.RegisterFileHandler("/test.png", "~/Downloads/IMG_1939.png")
+	client.SetAtomVal("inputval", "start")
 	client.SetRootElem(MakeVDom())
 	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: htmlCmdNewBlock})
 	if err != nil {
