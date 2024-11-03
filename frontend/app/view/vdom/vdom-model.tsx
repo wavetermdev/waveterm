@@ -573,7 +573,7 @@ export class VDomModel {
         }
         annotateEvent(vdomEvent, propName, e);
         this.batchedEvents.push(vdomEvent);
-        this.queueUpdate();
+        this.queueUpdate(true);
     }
 
     createFeUpdate(): VDomFrontendUpdate {
