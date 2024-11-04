@@ -365,7 +365,10 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	rval := reflect.ValueOf(cfunc)
 	arg2Type := rval.Type().In(1)
 	arg2Val := reflect.New(arg2Type)
-	utilfn.ReUnmarshal(arg2Val.Interface(), props)
+	err := utilfn.MapToStruct(props, arg2Val.Interface())
+	if err != nil {
+		fmt.Printf("error unmarshalling props: %v\n", err)
+	}
 	rtnVal := rval.Call([]reflect.Value{reflect.ValueOf(ctx), arg2Val.Elem()})
 	if len(rtnVal) == 0 {
 		return nil
