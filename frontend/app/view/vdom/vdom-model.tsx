@@ -561,6 +561,9 @@ export class VDomModel {
                 }
             }
         }
+        if (update.haswork) {
+            this.queueUpdate(true);
+        }
     }
 
     callVDomFunc(fnDecl: VDomFunc, e: React.SyntheticEvent, compId: string, propName: string) {

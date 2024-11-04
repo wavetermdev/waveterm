@@ -136,3 +136,49 @@ export function validateAndWrapReactStyle(model: VDomModel, style: Record<string
     }
     return sanitizedStyle;
 }
+
+type VDomTransferElem = {
+    root?: boolean;
+    waveid?: string;
+    tag: string;
+    props?: { [key: string]: any };
+    children?: string[]; // References to child WaveIds
+    text?: string;
+};
+
+export function UnmarshalTransferElems(transferElems: VDomTransferElem[]): VDomElem[] {
+    const elemMap: { [id: string]: VDomElem } = {};
+    const roots: VDomElem[] = [];
+
+    // Initialize each VDomTransferElem in the map without children, as we'll link them after
+    transferElems.forEach((transferElem) => {
+        if (!transferElem.waveid) {
+            return; // Skip elements without waveid
+        }
+        const elem: VDomElem = {
+            waveid: transferElem.tag !== "#text" ? transferElem.waveid : undefined,
+            tag: transferElem.tag,
+            props: transferElem.props,
+            text: transferElem.text,
+            children: [], // Placeholder to be populated later
+        };
+        elemMap[transferElem.waveid] = elem;
+
+        // Collect root elements
+        if (transferElem.root) {
+            roots.push(elem);
+        }
+    });
+
+    // Now populate children for each element
+    transferElems.forEach((transferElem) => {
+        if (!transferElem.waveid || !transferElem.children) return;
+
+        const currentElem = elemMap[transferElem.waveid];
+        currentElem.children = transferElem.children
+            .map((childId) => elemMap[childId])
+            .filter((child) => child !== undefined); // Filter out any undefined children
+    });
+
+    return roots;
+}

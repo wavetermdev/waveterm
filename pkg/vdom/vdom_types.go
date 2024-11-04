@@ -31,6 +31,16 @@ type VDomElem struct {
 	Text     string         `json:"text,omitempty"`
 }
 
+// the over the wire format for a vdom element
+type VDomTransferElem struct {
+	Root     bool           `json:"root,omitempty"`
+	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
+	Tag      string         `json:"tag"`
+	Props    map[string]any `json:"props,omitempty"`
+	Children []string       `json:"children,omitempty"`
+	Text     string         `json:"text,omitempty"`
+}
+
 //// protocol messages
 
 type VDomCreateContext struct {
@@ -74,6 +84,7 @@ type VDomBackendUpdate struct {
 	Ts            int64              `json:"ts"`
 	BlockId       string             `json:"blockid"`
 	Opts          *VDomBackendOpts   `json:"opts,omitempty"`
+	HasWork       bool               `json:"haswork,omitempty"`
 	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
 	StateSync     []VDomStateSync    `json:"statesync,omitempty"`
 	RefOperations []VDomRefOperation `json:"refoperations,omitempty"`

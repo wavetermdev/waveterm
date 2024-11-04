@@ -650,6 +650,7 @@ declare global {
         ts: number;
         blockid: string;
         opts?: VDomBackendOpts;
+        haswork?: boolean;
         renderupdates?: VDomRenderUpdate[];
         statesync?: VDomStateSync[];
         refoperations?: VDomRefOperation[];

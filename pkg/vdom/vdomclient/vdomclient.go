@@ -204,6 +204,7 @@ func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
 		Type:    "backendupdate",
 		Ts:      time.Now().UnixMilli(),
 		BlockId: c.RpcContext.BlockId,
+		HasWork: len(c.Root.EffectWorkQueue) > 0,
 		Opts:    &c.Opts,
 		RenderUpdates: []vdom.VDomRenderUpdate{
 			{UpdateType: "root", VDom: *renderedVDom},

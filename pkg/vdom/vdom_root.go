@@ -464,3 +464,53 @@ func (r *RootElem) makeVDom(comp *ComponentImpl) *VDomElem {
 func (r *RootElem) MakeVDom() *VDomElem {
 	return r.makeVDom(r.Root)
 }
+
+func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
+	var transferElems []VDomTransferElem
+	textCounter := 0 // Counter for generating unique IDs for #text nodes
+
+	// Helper function to recursively process each VDomElem in preorder
+	var processElem func(elem VDomElem, isRoot bool) string
+	processElem = func(elem VDomElem, isRoot bool) string {
+		// Handle #text nodes by generating a unique placeholder ID
+		if elem.Tag == "#text" {
+			textId := fmt.Sprintf("text-%d", textCounter)
+			textCounter++
+			transferElems = append(transferElems, VDomTransferElem{
+				Root:     isRoot,
+				WaveId:   textId,
+				Tag:      elem.Tag,
+				Text:     elem.Text,
+				Props:    nil,
+				Children: nil,
+			})
+			return textId
+		}
+
+		// Convert children to WaveId references, handling potential #text nodes
+		childrenIds := make([]string, len(elem.Children))
+		for i, child := range elem.Children {
+			childrenIds[i] = processElem(child, false) // Children are not roots
+		}
+
+		// Create the VDomTransferElem for the current element
+		transferElem := VDomTransferElem{
+			Root:     isRoot,
+			WaveId:   elem.WaveId,
+			Tag:      elem.Tag,
+			Props:    elem.Props,
+			Children: childrenIds,
+			Text:     elem.Text,
+		}
+		transferElems = append(transferElems, transferElem)
+
+		return elem.WaveId
+	}
+
+	// Start processing each top-level element, marking them as roots
+	for _, elem := range elems {
+		processElem(elem, true)
+	}
+
+	return transferElems
+}
