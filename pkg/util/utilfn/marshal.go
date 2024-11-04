@@ -69,6 +69,38 @@ func MapToStruct(in map[string]any, out any) error {
 	return nil
 }
 
+func StructToMap(in any) (map[string]any, error) {
+	// Get value and handle pointer
+	val := reflect.ValueOf(in)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+
+	// Check that we have a struct
+	if val.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("input must be a struct or pointer to struct, got %v", val.Kind())
+	}
+
+	// Get type information
+	typ := val.Type()
+	out := make(map[string]any)
+
+	// For each field in the struct
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		// Skip unexported fields
+		if !field.IsExported() {
+			continue
+		}
+
+		name := getJSONName(field)
+		out[name] = val.Field(i).Interface()
+	}
+
+	return out, nil
+}
+
 // getJSONName returns the field name to use for JSON mapping
 func getJSONName(field reflect.StructField) string {
 	tag := field.Tag.Get("json")

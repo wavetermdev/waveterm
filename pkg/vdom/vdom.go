@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 // ReactNode types = nil | string | Elem
@@ -69,6 +71,14 @@ func E(tag string, parts ...any) *VDomElem {
 		rtn.Children = append(rtn.Children, elems...)
 	}
 	return rtn
+}
+
+func Props(props any) map[string]any {
+	m, err := utilfn.StructToMap(props)
+	if err != nil {
+		return nil
+	}
+	return m
 }
 
 func P(propName string, propVal any) map[string]any {
