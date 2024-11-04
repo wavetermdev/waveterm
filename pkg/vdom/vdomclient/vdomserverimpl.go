@@ -56,13 +56,14 @@ func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshr
 	writer := NewStreamingResponseWriter(respChan)
 
 	go func() {
+		defer close(respChan) // Declared first, so it executes last
+		defer writer.Close()  // Ensures writer is closed before the channel is closed
+
 		defer func() {
 			if r := recover(); r != nil {
-				// On panic, send 500 status code
 				writer.WriteHeader(http.StatusInternalServerError)
 				writer.Write([]byte(fmt.Sprintf("internal server error: %v", r)))
 			}
-			close(respChan)
 		}()
 
 		// Create an HTTP request from the RPC request data
