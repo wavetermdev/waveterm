@@ -95,7 +95,7 @@ type VDomFunc struct {
 	StopPropagation bool     `json:"stoppropagation,omitempty"`
 	PreventDefault  bool     `json:"preventdefault,omitempty"`
 	GlobalEvent     string   `json:"globalevent,omitempty"`
-	Keys            []string `json:"keys,omitempty"` // special for keyDown events a list of keys to "capture"
+	Keys            []string `json:"#keys,omitempty"` // special for keyDown events a list of keys to "capture"
 }
 
 // used in props

@@ -145,8 +145,9 @@ const SvgUrlIdAttributes = {
 function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
     return (e: any) => {
         if ((propName == "onKeyDown" || propName == "onKeyDownCapture") && fnDecl["#keys"]) {
+            dlog("key event", fnDecl, e);
             let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-            for (let keyDesc of fnDecl.keys || []) {
+            for (let keyDesc of fnDecl["#keys"] || []) {
                 if (checkKeyPressed(waveEvent, keyDesc)) {
                     e.preventDefault();
                     e.stopPropagation();

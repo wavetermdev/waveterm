@@ -714,7 +714,7 @@ declare global {
         stoppropagation?: boolean;
         preventdefault?: boolean;
         globalevent?: string;
-        keys?: string[];
+        #keys?: string[];
     };
 
     // vdom.VDomMessage
