@@ -3,6 +3,18 @@ import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { base64ToArray } from "../frontend/util/util";
 import { ElectronWshClient } from "./emain-wsh";
 
+export function registerVDomProtocol() {
+    protocol.registerSchemesAsPrivileged([
+        {
+            scheme: "vdom",
+            privileges: {
+                standard: true,
+                supportFetchAPI: true,
+            },
+        },
+    ]);
+}
+
 export function setupVdomUrlHandler() {
     protocol.handle("vdom", async (request) => {
         // Only handle GET requests for now
