@@ -175,7 +175,8 @@ func GlobalEventHandler(client *vdomclient.Client, event vdom.VDomEvent) {
 func htmlRun(cmd *cobra.Command, args []string) error {
 	WriteStderr("running wsh html %q\n", RpcContext.BlockId)
 
-	client, err := vdomclient.MakeClient(&vdom.VDomBackendOpts{CloseOnCtrlC: true})
+	client := vdomclient.MakeClient(&vdom.VDomBackendOpts{CloseOnCtrlC: true})
+	err := client.Connect()
 	if err != nil {
 		return err
 	}

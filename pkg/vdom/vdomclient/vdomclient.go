@@ -66,7 +66,7 @@ func (c *Client) SetOverrideUrlHandler(handler http.Handler) {
 	c.OverrideUrlHandler = handler
 }
 
-func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
+func MakeClient(opts *vdom.VDomBackendOpts) *Client {
 	client := &Client{
 		Lock:          &sync.Mutex{},
 		Root:          vdom.MakeRoot(),
@@ -76,34 +76,38 @@ func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
 	if opts != nil {
 		client.Opts = *opts
 	}
+	return client
+}
+
+func (client *Client) Connect() error {
 	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
 	if jwtToken == "" {
-		return nil, fmt.Errorf("no %s env var set", wshutil.WaveJwtTokenVarName)
+		return fmt.Errorf("no %s env var set", wshutil.WaveJwtTokenVarName)
 	}
 	rpcCtx, err := wshutil.ExtractUnverifiedRpcContext(jwtToken)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)
+		return fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)
 	}
 	client.RpcContext = rpcCtx
 	if client.RpcContext == nil || client.RpcContext.BlockId == "" {
-		return nil, fmt.Errorf("no block id in rpc context")
+		return fmt.Errorf("no block id in rpc context")
 	}
 	client.ServerImpl = &VDomServerImpl{BlockId: client.RpcContext.BlockId, Client: client}
 	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
+		return fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
 	}
 	rpcClient, err := wshutil.SetupDomainSocketRpcClient(sockName, client.ServerImpl)
 	if err != nil {
-		return nil, fmt.Errorf("error setting up domain socket rpc client: %v", err)
+		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
 	client.RpcClient = rpcClient
 	authRtn, err := wshclient.AuthenticateCommand(client.RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true})
 	if err != nil {
-		return nil, fmt.Errorf("error authenticating rpc connection: %v", err)
+		return fmt.Errorf("error authenticating rpc connection: %v", err)
 	}
 	client.RouteId = authRtn.RouteId
-	return client, nil
+	return nil
 }
 
 func (c *Client) SetRootElem(elem *vdom.VDomElem) {
