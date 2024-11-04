@@ -273,17 +273,25 @@ func convertStyleToReactStyles(styleMap map[string]string, params map[string]any
 	return rtn
 }
 
+func styleAttrStrToStyleMap(styleText string, params map[string]any) (map[string]any, error) {
+	parser := cssparser.MakeParser(styleText)
+	m, err := parser.Parse()
+	if err != nil {
+		return nil, err
+	}
+	return convertStyleToReactStyles(m, params), nil
+}
+
 func fixStyleAttribute(elem *VDomElem, params map[string]any, elemPath []string) error {
 	styleText, ok := elem.Props["style"].(string)
 	if !ok {
 		return nil
 	}
-	parser := cssparser.MakeParser(styleText)
-	m, err := parser.Parse()
+	styleMap, err := styleAttrStrToStyleMap(styleText, params)
 	if err != nil {
 		return fmt.Errorf("%v (at %s)", err, makePathStr(elemPath))
 	}
-	elem.Props["style"] = convertStyleToReactStyles(m, params)
+	elem.Props["style"] = styleMap
 	return nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -28,6 +29,15 @@ type Hook struct {
 }
 
 type Component[P any] func(props P) *VDomElem
+
+type styleAttrWrapper struct {
+	StyleAttr string
+	Val       any
+}
+
+type styleAttrMapWrapper struct {
+	StyleAttrMap map[string]any
+}
 
 func (e *VDomElem) Key() string {
 	keyVal, ok := e.Props[KeyPropKey]
@@ -58,6 +68,20 @@ func mergeProps(props *map[string]any, newProps map[string]any) {
 	}
 }
 
+func mergeStyleAttr(props *map[string]any, styleAttr styleAttrWrapper) {
+	if *props == nil {
+		*props = make(map[string]any)
+	}
+	if (*props)["style"] == nil {
+		(*props)["style"] = make(map[string]any)
+	}
+	styleMap, ok := (*props)["style"].(map[string]any)
+	if !ok {
+		return
+	}
+	styleMap[styleAttr.StyleAttr] = styleAttr.Val
+}
+
 func E(tag string, parts ...any) *VDomElem {
 	rtn := &VDomElem{Tag: tag}
 	for _, part := range parts {
@@ -67,6 +91,16 @@ func E(tag string, parts ...any) *VDomElem {
 		props, ok := part.(map[string]any)
 		if ok {
 			mergeProps(&rtn.Props, props)
+			continue
+		}
+		if styleAttr, ok := part.(styleAttrWrapper); ok {
+			mergeStyleAttr(&rtn.Props, styleAttr)
+			continue
+		}
+		if styleAttrMap, ok := part.(styleAttrMapWrapper); ok {
+			for k, v := range styleAttrMap.StyleAttrMap {
+				mergeStyleAttr(&rtn.Props, styleAttrWrapper{StyleAttr: k, Val: v})
+			}
 			continue
 		}
 		elems := partToElems(part)
@@ -83,7 +117,25 @@ func Props(props any) map[string]any {
 	return m
 }
 
-func P(propName string, propVal any) map[string]any {
+func PStyle(styleAttr string, propVal any) any {
+	return styleAttrWrapper{StyleAttr: styleAttr, Val: propVal}
+}
+
+func P(propName string, propVal any) any {
+	if propVal == nil {
+		return map[string]any{propName: nil}
+	}
+	if propName == "style" {
+		strVal, ok := propVal.(string)
+		if ok {
+			styleMap, err := styleAttrStrToStyleMap(strVal, nil)
+			if err == nil {
+				return styleAttrMapWrapper{StyleAttrMap: styleMap}
+			}
+			log.Printf("Error parsing style attribute: %v\n", err)
+			return nil
+		}
+	}
 	return map[string]any{propName: propVal}
 }
 
