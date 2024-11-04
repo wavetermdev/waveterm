@@ -4,12 +4,14 @@
 package vdomclient
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -168,6 +170,19 @@ func (c *Client) GetAtomVal(name string) any {
 
 func makeNullVDom() *vdom.VDomElem {
 	return &vdom.VDomElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
+}
+
+func DefineComponent[P any](client *Client, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
+	if name == "" {
+		panic("Component name cannot be empty")
+	}
+	if !unicode.IsUpper(rune(name[0])) {
+		panic("Component name must start with an uppercase letter")
+	}
+	client.RegisterComponent(name, renderFn)
+	return func(props P) *vdom.VDomElem {
+		return vdom.E(name, vdom.Props(props))
+	}
 }
 
 func (c *Client) RegisterComponent(name string, cfunc any) error {

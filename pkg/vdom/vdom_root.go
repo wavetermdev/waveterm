@@ -18,7 +18,7 @@ var vdomContextKey = vdomContextKeyType{}
 
 type VDomContextVal struct {
 	Root    *RootElem
-	Comp    *Component
+	Comp    *ComponentImpl
 	HookIdx int
 }
 
@@ -30,9 +30,9 @@ type Atom struct {
 
 type RootElem struct {
 	OuterCtx        context.Context
-	Root            *Component
+	Root            *ComponentImpl
 	CFuncs          map[string]any
-	CompMap         map[string]*Component // component waveid -> component
+	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
 	Atoms           map[string]*Atom
@@ -63,7 +63,7 @@ func MakeRoot() *RootElem {
 	return &RootElem{
 		Root:    nil,
 		CFuncs:  make(map[string]any),
-		CompMap: make(map[string]*Component),
+		CompMap: make(map[string]*ComponentImpl),
 		Atoms:   make(map[string]*Atom),
 	}
 }
@@ -241,7 +241,7 @@ func (r *RootElem) RunWork() {
 	}
 }
 
-func (r *RootElem) render(elem *VDomElem, comp **Component) {
+func (r *RootElem) render(elem *VDomElem, comp **ComponentImpl) {
 	if elem == nil || elem.Tag == "" {
 		r.unmount(comp)
 		return
@@ -270,7 +270,7 @@ func (r *RootElem) render(elem *VDomElem, comp **Component) {
 	r.renderComponent(cfunc, elem, comp)
 }
 
-func (r *RootElem) unmount(comp **Component) {
+func (r *RootElem) unmount(comp **ComponentImpl) {
 	if *comp == nil {
 		return
 	}
@@ -293,21 +293,21 @@ func (r *RootElem) unmount(comp **Component) {
 	*comp = nil
 }
 
-func (r *RootElem) createComp(tag string, key string, comp **Component) {
-	*comp = &Component{WaveId: uuid.New().String(), Tag: tag, Key: key}
+func (r *RootElem) createComp(tag string, key string, comp **ComponentImpl) {
+	*comp = &ComponentImpl{WaveId: uuid.New().String(), Tag: tag, Key: key}
 	r.CompMap[(*comp).WaveId] = *comp
 }
 
-func (r *RootElem) renderText(text string, comp **Component) {
+func (r *RootElem) renderText(text string, comp **ComponentImpl) {
 	if (*comp).Text != text {
 		(*comp).Text = text
 	}
 }
 
-func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*Component) []*Component {
-	newChildren := make([]*Component, len(elems))
-	curCM := make(map[ChildKey]*Component)
-	usedMap := make(map[*Component]bool)
+func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*ComponentImpl) []*ComponentImpl {
+	newChildren := make([]*ComponentImpl, len(elems))
+	curCM := make(map[ChildKey]*ComponentImpl)
+	usedMap := make(map[*ComponentImpl]bool)
 	for idx, child := range curChildren {
 		if child.Key != "" {
 			curCM[ChildKey{Tag: child.Tag, Idx: 0, Key: child.Key}] = child
@@ -317,7 +317,7 @@ func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*Component) []
 	}
 	for idx, elem := range elems {
 		elemKey := elem.Key()
-		var curChild *Component
+		var curChild *ComponentImpl
 		if elemKey != "" {
 			curChild = curCM[ChildKey{Tag: elem.Tag, Idx: 0, Key: elemKey}]
 		} else {
@@ -335,14 +335,14 @@ func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*Component) []
 	return newChildren
 }
 
-func (r *RootElem) renderSimple(elem *VDomElem, comp **Component) {
+func (r *RootElem) renderSimple(elem *VDomElem, comp **ComponentImpl) {
 	if (*comp).Comp != nil {
 		r.unmount(&(*comp).Comp)
 	}
 	(*comp).Children = r.renderChildren(elem.Children, (*comp).Children)
 }
 
-func (r *RootElem) makeRenderContext(comp *Component) context.Context {
+func (r *RootElem) makeRenderContext(comp *ComponentImpl) context.Context {
 	var ctx context.Context
 	if r.OuterCtx != nil {
 		ctx = r.OuterCtx
@@ -365,9 +365,14 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	rval := reflect.ValueOf(cfunc)
 	arg2Type := rval.Type().In(1)
 	arg2Val := reflect.New(arg2Type)
-	err := utilfn.MapToStruct(props, arg2Val.Interface())
-	if err != nil {
-		fmt.Printf("error unmarshalling props: %v\n", err)
+	// if arg2 is a map, just pass props
+	if arg2Type.Kind() == reflect.Map {
+		arg2Val.Elem().Set(reflect.ValueOf(props))
+	} else {
+		err := utilfn.MapToStruct(props, arg2Val.Interface())
+		if err != nil {
+			fmt.Printf("error unmarshalling props: %v\n", err)
+		}
 	}
 	rtnVal := rval.Call([]reflect.Value{reflect.ValueOf(ctx), arg2Val.Elem()})
 	if len(rtnVal) == 0 {
@@ -376,7 +381,7 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	return rtnVal[0].Interface()
 }
 
-func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **Component) {
+func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **ComponentImpl) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
 			r.unmount(&child)
@@ -423,7 +428,7 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 	return vdomProps
 }
 
-func convertBaseToVDom(c *Component) *VDomElem {
+func convertBaseToVDom(c *ComponentImpl) *VDomElem {
 	elem := &VDomElem{WaveId: c.WaveId, Tag: c.Tag}
 	if c.Elem != nil {
 		elem.Props = convertPropsToVDom(c.Elem.Props)
@@ -437,7 +442,7 @@ func convertBaseToVDom(c *Component) *VDomElem {
 	return elem
 }
 
-func convertToVDom(c *Component) *VDomElem {
+func convertToVDom(c *ComponentImpl) *VDomElem {
 	if c == nil {
 		return nil
 	}
@@ -451,7 +456,7 @@ func convertToVDom(c *Component) *VDomElem {
 	}
 }
 
-func (r *RootElem) makeVDom(comp *Component) *VDomElem {
+func (r *RootElem) makeVDom(comp *ComponentImpl) *VDomElem {
 	vdomElem := convertToVDom(comp)
 	return vdomElem
 }

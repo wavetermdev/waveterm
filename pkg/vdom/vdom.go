@@ -27,6 +27,8 @@ type Hook struct {
 	Deps      []any
 }
 
+type Component[P any] func(props P) *VDomElem
+
 func (e *VDomElem) Key() string {
 	keyVal, ok := e.Props[KeyPropKey]
 	if !ok {
