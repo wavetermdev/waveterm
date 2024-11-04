@@ -209,7 +209,7 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 	client.SetRootElem(App(struct{}{}))
 
 	// Set up file handler
-	client.RegisterFileHandler("/test.png", "~/Downloads/IMG_1939.png")
+	client.RegisterFileHandler("/test.png", vdomclient.FileHandlerOption{FilePath: "~/Downloads/IMG_1939.png"})
 
 	// Create the VDOM context
 	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: htmlCmdNewBlock})
