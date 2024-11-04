@@ -1010,9 +1010,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/react@npm:^0.26.25":
-  version: 0.26.25
-  resolution: "@floating-ui/react@npm:0.26.25"
+"@floating-ui/react@npm:^0.26.27":
+  version: 0.26.27
+  resolution: "@floating-ui/react@npm:0.26.27"
   dependencies:
     "@floating-ui/react-dom": "npm:^2.1.2"
     "@floating-ui/utils": "npm:^0.2.8"
@@ -1020,7 +1020,7 @@ __metadata:
   peerDependencies:
     react: ">=16.8.0"
     react-dom: ">=16.8.0"
-  checksum: 10c0/5206b06a5963e795af2f0b0a6ac39230012263ffa38dd60158e0f0b82d43a24e6a1c005fc8556ee5fe26e6353546ffb72e54716f6bd584fdab516dc128a78995
+  checksum: 10c0/6a27fadeb04862ecdb192f8e5428185ab0217b0c084e5464b2c218697f317a437dbfa47a7fb44332d505f047c17721e00f3705cb20e61b406117fea1ba2995b2
   languageName: node
   linkType: hard
 
@@ -4337,13 +4337,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"css-tree@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "css-tree@npm:3.0.0"
+"css-tree@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "css-tree@npm:3.0.1"
   dependencies:
-    mdn-data: "npm:2.10.0"
+    mdn-data: "npm:2.12.1"
     source-map-js: "npm:^1.0.1"
-  checksum: 10c0/43d44fdf7004ae91d73d486f17894fef77efa33747a6752b9241cf0f5fb47fabc16ec34a96a993651d9014dfdeee803d7c5fcd3548214252ee19f4e5c98999b2
+  checksum: 10c0/9f117f3067e68e9edb0b3db0134f420db1a62bede3e84d8835767ecfaa6f8ced5e87989cf39b65ffe65d788c134c8ea9abd7393d7c35838a9da84326adf57a9b
   languageName: node
   linkType: hard
 
@@ -7708,10 +7708,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mdn-data@npm:2.10.0":
-  version: 2.10.0
-  resolution: "mdn-data@npm:2.10.0"
-  checksum: 10c0/f6f1a6a6eb092bab250d06f6f6c7cb1733a77a17e7119aac829ad67d4322bbf6a30df3c6d88686e71942e66bd49274b2ddfede22a1d3df0d6c49a56fbd09eb7c
+"mdn-data@npm:2.12.1":
+  version: 2.12.1
+  resolution: "mdn-data@npm:2.12.1"
+  checksum: 10c0/1a09f441bdd423f2b0ab712665a1a3329fe7b15e9a2dad8c1c10c521ddb204ed186e7ac91052fd53a5ae0a07ac6eae53b5bcbb59ba8a1fb654268611297eea4a
   languageName: node
   linkType: hard
 
@@ -8335,9 +8335,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"monaco-yaml@npm:^5.2.2":
-  version: 5.2.2
-  resolution: "monaco-yaml@npm:5.2.2"
+"monaco-yaml@npm:^5.2.3":
+  version: 5.2.3
+  resolution: "monaco-yaml@npm:5.2.3"
   dependencies:
     jsonc-parser: "npm:^3.0.0"
     monaco-languageserver-types: "npm:^0.4.0"
@@ -8352,7 +8352,7 @@ __metadata:
     yaml: "npm:^2.0.0"
   peerDependencies:
     monaco-editor: ">=0.36"
-  checksum: 10c0/77f7b5e6fe235fe8007d163d40073eb05eafe1f54b92670cd5bbb8f65f5c2e52aea5b566b5cfe28d829a122dbf404dbcf0a5c8b607912f31163b49718d8b1951
+  checksum: 10c0/b3b69d2b9fec8b05839266794b836f03203be2924477c1c64a3ed810ab271869d3c15dc679e15c5a9f7f9ef831b293c810a0123256ac9fecb2712e084a2b4fe6
   languageName: node
   linkType: hard
 
@@ -9337,12 +9337,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"remark-github-blockquote-alert@npm:^1.2.1":
-  version: 1.2.1
-  resolution: "remark-github-blockquote-alert@npm:1.2.1"
+"remark-github-blockquote-alert@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "remark-github-blockquote-alert@npm:1.3.0"
   dependencies:
     unist-util-visit: "npm:^5.0.0"
-  checksum: 10c0/48f70a56347ba6d2649ec647f9b126fe2e22ee4efcbc4962e1645967ac0994859a930a1af3a8b75c2989d55ed5b7ce2df6fc86a4b0f2c0aa39d5ed2162c857ca
+  checksum: 10c0/5582834300dadf71ad083c2c27f3f3c37c5487aa42cf73a4dc235d3d55d1edc8608c3d37b88032dc3335b5c7980580c97c2668129c89c21c4f477ebacd4ecd85
   languageName: node
   linkType: hard
 
@@ -11083,7 +11083,7 @@ __metadata:
   dependencies:
     "@chromatic-com/storybook": "npm:^3.2.2"
     "@eslint/js": "npm:^9.13.0"
-    "@floating-ui/react": "npm:^0.26.25"
+    "@floating-ui/react": "npm:^0.26.27"
     "@monaco-editor/loader": "npm:^1.4.0"
     "@monaco-editor/react": "npm:^4.6.0"
     "@observablehq/plot": "npm:^0.6.16"
@@ -11128,7 +11128,7 @@ __metadata:
     clsx: "npm:^2.1.1"
     color: "npm:^4.2.3"
     colord: "npm:^2.9.3"
-    css-tree: "npm:^3.0.0"
+    css-tree: "npm:^3.0.1"
     dayjs: "npm:^1.11.13"
     debug: "npm:^4.3.7"
     electron: "npm:^33.0.2"
@@ -11145,7 +11145,7 @@ __metadata:
     jotai: "npm:2.9.3"
     less: "npm:^4.2.0"
     monaco-editor: "npm:^0.52.0"
-    monaco-yaml: "npm:^5.2.2"
+    monaco-yaml: "npm:^5.2.3"
     overlayscrollbars: "npm:^2.10.0"
     overlayscrollbars-react: "npm:^0.5.6"
     papaparse: "npm:^5.4.1"
@@ -11167,7 +11167,7 @@ __metadata:
     rehype-slug: "npm:^6.0.0"
     remark-flexible-toc: "npm:^1.1.1"
     remark-gfm: "npm:^4.0.0"
-    remark-github-blockquote-alert: "npm:^1.2.1"
+    remark-github-blockquote-alert: "npm:^1.3.0"
     rollup-plugin-flow: "npm:^1.1.1"
     rxjs: "npm:^7.8.1"
     semver: "npm:^7.6.3"
@@ -11190,7 +11190,7 @@ __metadata:
     vite-plugin-svgr: "npm:^4.2.0"
     vite-tsconfig-paths: "npm:^5.0.1"
     vitest: "npm:^2.1.3"
-    winston: "npm:^3.15.0"
+    winston: "npm:^3.16.0"
     ws: "npm:^8.18.0"
     yaml: "npm:^2.6.0"
   languageName: unknown
@@ -11293,9 +11293,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"winston@npm:^3.15.0":
-  version: 3.15.0
-  resolution: "winston@npm:3.15.0"
+"winston@npm:^3.16.0":
+  version: 3.16.0
+  resolution: "winston@npm:3.16.0"
   dependencies:
     "@colors/colors": "npm:^1.6.0"
     "@dabh/diagnostics": "npm:^2.0.2"
@@ -11308,7 +11308,7 @@ __metadata:
     stack-trace: "npm:0.0.x"
     triple-beam: "npm:^1.3.0"
     winston-transport: "npm:^4.7.0"
-  checksum: 10c0/ed987e48fdfdd3f27974107f96e5a84688747d9a2be341e6838c5be4c76ebba1a11cc20320b8def4d907981b7268ebccaa6326b1ed75c50f549ee81c211e1b4d
+  checksum: 10c0/306e971da56c8162d5ad0b619da2c48a6c1a331f739f87c2dba37810430c00b99d466262f16490bcca65aa37f3f4339e581ef9ac110a2b4f5223edcb2f5d67b9
   languageName: node
   linkType: hard
 
