@@ -23,6 +23,7 @@ const FragmentTag = "#fragment";
 const WaveTextTag = "wave:text";
 const WaveNullTag = "wave:null";
 const StyleTagName = "style";
+const WaveStyleTagName = "wave:style";
 
 const VDomObjType_Ref = "ref";
 const VDomObjType_Binding = "binding";
@@ -367,6 +368,36 @@ function StyleTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     return <style>{sanitizedCss}</style>;
 }
 
+function WaveStyle({ src, model }: { src: string; model: VDomModel }) {
+    const [styleContent, setStyleContent] = React.useState<string | null>(null);
+    React.useEffect(() => {
+        async function fetchAndSanitizeCss() {
+            try {
+                const response = await fetch(src);
+                if (!response.ok) {
+                    console.error(`Failed to load CSS from ${src}`);
+                    return;
+                }
+                const cssText = await response.text();
+                const wrapperClassName = "vdom-" + model.blockId;
+                const sanitizedCss = validateAndWrapCss(model, cssText, wrapperClassName);
+                if (sanitizedCss) {
+                    setStyleContent(sanitizedCss);
+                } else {
+                    console.error("Failed to sanitize CSS");
+                }
+            } catch (error) {
+                console.error("Error fetching CSS:", error);
+            }
+        }
+        fetchAndSanitizeCss();
+    }, [src, model]);
+    if (!styleContent) {
+        return null;
+    }
+    return <style>{styleContent}</style>;
+}
+
 function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     const props = useVDom(model, elem);
     if (elem.tag == WaveNullTag) {
@@ -381,6 +412,9 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     }
     if (elem.tag == StyleTagName) {
         return <StyleTag elem={elem} model={model} />;
+    }
+    if (elem.tag == WaveStyleTagName) {
+        return <WaveStyle src={props.src} model={model} />;
     }
     if (!AllowedSimpleTags[elem.tag] && !AllowedSvgTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
