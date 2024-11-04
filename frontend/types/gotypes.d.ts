@@ -650,6 +650,7 @@ declare global {
         ts: number;
         blockid: string;
         opts?: VDomBackendOpts;
+        haswork?: boolean;
         renderupdates?: VDomRenderUpdate[];
         statesync?: VDomStateSync[];
         refoperations?: VDomRefOperation[];
@@ -684,7 +685,13 @@ declare global {
     type VDomEvent = {
         waveid: string;
         eventtype: string;
-        eventdata: any;
+        globaleventtype?: string;
+        targetvalue?: string;
+        targetchecked?: boolean;
+        targetname?: string;
+        targetid?: string;
+        keydata?: WaveKeyboardEvent;
+        mousedata?: WavePointerData;
     };
 
     // vdom.VDomFrontendUpdate
@@ -708,7 +715,7 @@ declare global {
         stoppropagation?: boolean;
         preventdefault?: boolean;
         globalevent?: string;
-        keys?: string[];
+        #keys?: string[];
     };
 
     // vdom.VDomMessage
@@ -855,6 +862,21 @@ declare global {
         datadir: string;
     };
 
+    // vdom.WaveKeyboardEvent
+    type WaveKeyboardEvent = {
+        type: "keydown"|"keyup"|"keypress"|"unknown";
+        key: string;
+        code: string;
+        repeat?: boolean;
+        location?: number;
+        shift?: boolean;
+        control?: boolean;
+        alt?: boolean;
+        meta?: boolean;
+        cmd?: boolean;
+        option?: boolean;
+    };
+
     // wshrpc.WaveNotificationOptions
     type WaveNotificationOptions = {
         title?: string;
@@ -876,6 +898,26 @@ declare global {
         otype: string;
         oid: string;
         obj?: WaveObj;
+    };
+
+    // vdom.WavePointerData
+    type WavePointerData = {
+        button: number;
+        buttons: number;
+        clientx?: number;
+        clienty?: number;
+        pagex?: number;
+        pagey?: number;
+        screenx?: number;
+        screeny?: number;
+        movementx?: number;
+        movementy?: number;
+        shift?: boolean;
+        control?: boolean;
+        alt?: boolean;
+        meta?: boolean;
+        cmd?: boolean;
+        option?: boolean;
     };
 
     // waveobj.Window

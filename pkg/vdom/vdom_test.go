@@ -90,7 +90,7 @@ func Test1(t *testing.T) {
 	printVDom(root)
 	root.RunWork()
 	printVDom(root)
-	root.Event(testContext.ButtonId, "onClick", nil)
+	root.Event(testContext.ButtonId, "onClick", VDomEvent{EventType: "onClick"})
 	root.RunWork()
 	printVDom(root)
 }

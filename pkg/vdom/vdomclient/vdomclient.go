@@ -4,12 +4,14 @@
 package vdomclient
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -64,7 +66,7 @@ func (c *Client) SetOverrideUrlHandler(handler http.Handler) {
 	c.OverrideUrlHandler = handler
 }
 
-func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
+func MakeClient(opts *vdom.VDomBackendOpts) *Client {
 	client := &Client{
 		Lock:          &sync.Mutex{},
 		Root:          vdom.MakeRoot(),
@@ -74,34 +76,38 @@ func MakeClient(opts *vdom.VDomBackendOpts) (*Client, error) {
 	if opts != nil {
 		client.Opts = *opts
 	}
+	return client
+}
+
+func (client *Client) Connect() error {
 	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
 	if jwtToken == "" {
-		return nil, fmt.Errorf("no %s env var set", wshutil.WaveJwtTokenVarName)
+		return fmt.Errorf("no %s env var set", wshutil.WaveJwtTokenVarName)
 	}
 	rpcCtx, err := wshutil.ExtractUnverifiedRpcContext(jwtToken)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)
+		return fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)
 	}
 	client.RpcContext = rpcCtx
 	if client.RpcContext == nil || client.RpcContext.BlockId == "" {
-		return nil, fmt.Errorf("no block id in rpc context")
+		return fmt.Errorf("no block id in rpc context")
 	}
 	client.ServerImpl = &VDomServerImpl{BlockId: client.RpcContext.BlockId, Client: client}
 	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
+		return fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
 	}
 	rpcClient, err := wshutil.SetupDomainSocketRpcClient(sockName, client.ServerImpl)
 	if err != nil {
-		return nil, fmt.Errorf("error setting up domain socket rpc client: %v", err)
+		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
 	client.RpcClient = rpcClient
 	authRtn, err := wshclient.AuthenticateCommand(client.RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true})
 	if err != nil {
-		return nil, fmt.Errorf("error authenticating rpc connection: %v", err)
+		return fmt.Errorf("error authenticating rpc connection: %v", err)
 	}
 	client.RouteId = authRtn.RouteId
-	return client, nil
+	return nil
 }
 
 func (c *Client) SetRootElem(elem *vdom.VDomElem) {
@@ -170,6 +176,19 @@ func makeNullVDom() *vdom.VDomElem {
 	return &vdom.VDomElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
 }
 
+func DefineComponent[P any](client *Client, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
+	if name == "" {
+		panic("Component name cannot be empty")
+	}
+	if !unicode.IsUpper(rune(name[0])) {
+		panic("Component name must start with an uppercase letter")
+	}
+	client.RegisterComponent(name, renderFn)
+	return func(props P) *vdom.VDomElem {
+		return vdom.E(name, vdom.Props(props))
+	}
+}
+
 func (c *Client) RegisterComponent(name string, cfunc any) error {
 	return c.Root.RegisterComponent(name, cfunc)
 }
@@ -185,6 +204,7 @@ func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
 		Type:    "backendupdate",
 		Ts:      time.Now().UnixMilli(),
 		BlockId: c.RpcContext.BlockId,
+		HasWork: len(c.Root.EffectWorkQueue) > 0,
 		Opts:    &c.Opts,
 		RenderUpdates: []vdom.VDomRenderUpdate{
 			{UpdateType: "root", VDom: *renderedVDom},

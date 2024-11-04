@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
+import { getBlockMetaKeyAtom, globalStore, PLATFORM, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
@@ -43,24 +43,45 @@ function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
     }
 }
 
-function convertEvent(e: React.SyntheticEvent, fromProp: string): any {
-    if (e == null) {
-        return null;
+function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.SyntheticEvent) {
+    if (reactEvent == null) {
+        return;
     }
-    if (fromProp == "onClick") {
-        return { type: "click" };
+    if (propName == "onChange") {
+        const changeEvent = reactEvent as React.ChangeEvent<any>;
+        event.targetvalue = changeEvent.target?.value;
+        event.targetchecked = changeEvent.target?.checked;
     }
-    if (fromProp == "onKeyDown") {
-        const waveKeyEvent = adaptFromReactOrNativeKeyEvent(e as React.KeyboardEvent);
-        return waveKeyEvent;
+    if (propName == "onClick" || propName == "onMouseDown") {
+        const mouseEvent = reactEvent as React.MouseEvent<any>;
+        event.mousedata = {
+            button: mouseEvent.button,
+            buttons: mouseEvent.buttons,
+            alt: mouseEvent.altKey,
+            control: mouseEvent.ctrlKey,
+            shift: mouseEvent.shiftKey,
+            meta: mouseEvent.metaKey,
+            clientx: mouseEvent.clientX,
+            clienty: mouseEvent.clientY,
+            pagex: mouseEvent.pageX,
+            pagey: mouseEvent.pageY,
+            screenx: mouseEvent.screenX,
+            screeny: mouseEvent.screenY,
+            movementx: mouseEvent.movementX,
+            movementy: mouseEvent.movementY,
+        };
+        if (PLATFORM == "darwin") {
+            event.mousedata.cmd = event.mousedata.meta;
+            event.mousedata.option = event.mousedata.alt;
+        } else {
+            event.mousedata.cmd = event.mousedata.alt;
+            event.mousedata.option = event.mousedata.meta;
+        }
     }
-    if (fromProp == "onFocus") {
-        return { type: "focus" };
+    if (propName == "onKeyDown") {
+        const waveKeyEvent = adaptFromReactOrNativeKeyEvent(reactEvent as React.KeyboardEvent);
+        event.keydata = waveKeyEvent;
     }
-    if (fromProp == "onBlur") {
-        return { type: "blur" };
-    }
-    return { type: "unknown" };
 }
 
 class VDomWshClient extends WshClient {
@@ -200,7 +221,7 @@ export class VDomModel {
             this.batchedEvents.push({
                 waveid: null,
                 eventtype: "onKeyDown",
-                eventdata: e,
+                keydata: e,
             });
             this.queueUpdate();
             return true;
@@ -540,26 +561,22 @@ export class VDomModel {
                 }
             }
         }
+        if (update.haswork) {
+            this.queueUpdate(true);
+        }
     }
 
-    callVDomFunc(fnDecl: VDomFunc, e: any, compId: string, propName: string) {
-        const eventData = convertEvent(e, propName);
+    callVDomFunc(fnDecl: VDomFunc, e: React.SyntheticEvent, compId: string, propName: string) {
+        const vdomEvent: VDomEvent = {
+            waveid: compId,
+            eventtype: propName,
+        };
         if (fnDecl.globalevent) {
-            const waveEvent: VDomEvent = {
-                waveid: null,
-                eventtype: fnDecl.globalevent,
-                eventdata: eventData,
-            };
-            this.batchedEvents.push(waveEvent);
-        } else {
-            const vdomEvent: VDomEvent = {
-                waveid: compId,
-                eventtype: propName,
-                eventdata: eventData,
-            };
-            this.batchedEvents.push(vdomEvent);
+            vdomEvent.globaleventtype = fnDecl.globalevent;
         }
-        this.queueUpdate();
+        annotateEvent(vdomEvent, propName, e);
+        this.batchedEvents.push(vdomEvent);
+        this.queueUpdate(true);
     }
 
     createFeUpdate(): VDomFrontendUpdate {

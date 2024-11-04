@@ -6,7 +6,6 @@ package vdom
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 
 	"github.com/google/uuid"
@@ -19,7 +18,7 @@ var vdomContextKey = vdomContextKeyType{}
 
 type VDomContextVal struct {
 	Root    *RootElem
-	Comp    *Component
+	Comp    *ComponentImpl
 	HookIdx int
 }
 
@@ -31,9 +30,9 @@ type Atom struct {
 
 type RootElem struct {
 	OuterCtx        context.Context
-	Root            *Component
+	Root            *ComponentImpl
 	CFuncs          map[string]any
-	CompMap         map[string]*Component // component waveid -> component
+	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
 	Atoms           map[string]*Atom
@@ -64,7 +63,7 @@ func MakeRoot() *RootElem {
 	return &RootElem{
 		Root:    nil,
 		CFuncs:  make(map[string]any),
-		CompMap: make(map[string]*Component),
+		CompMap: make(map[string]*ComponentImpl),
 		Atoms:   make(map[string]*Atom),
 	}
 }
@@ -151,11 +150,10 @@ func (r *RootElem) RegisterComponent(name string, cfunc any) error {
 }
 
 func (r *RootElem) Render(elem *VDomElem) {
-	log.Printf("Render %s\n", elem.Tag)
 	r.render(elem, &r.Root)
 }
 
-func (vdf *VDomFunc) CallFn() {
+func (vdf *VDomFunc) CallFn(event VDomEvent) {
 	if vdf.Fn == nil {
 		return
 	}
@@ -163,10 +161,18 @@ func (vdf *VDomFunc) CallFn() {
 	if rval.Kind() != reflect.Func {
 		return
 	}
-	rval.Call(nil)
+	rtype := rval.Type()
+	if rtype.NumIn() == 0 {
+		rval.Call(nil)
+	}
+	if rtype.NumIn() == 1 {
+		if rtype.In(0) == reflect.TypeOf((*VDomEvent)(nil)).Elem() {
+			rval.Call([]reflect.Value{reflect.ValueOf(event)})
+		}
+	}
 }
 
-func callVDomFn(fnVal any, data any) {
+func callVDomFn(fnVal any, data VDomEvent) {
 	if fnVal == nil {
 		return
 	}
@@ -192,13 +198,13 @@ func callVDomFn(fnVal any, data any) {
 	}
 }
 
-func (r *RootElem) Event(id string, propName string, data any) {
+func (r *RootElem) Event(id string, propName string, event VDomEvent) {
 	comp := r.CompMap[id]
 	if comp == nil || comp.Elem == nil {
 		return
 	}
 	fnVal := comp.Elem.Props[propName]
-	callVDomFn(fnVal, data)
+	callVDomFn(fnVal, event)
 }
 
 // this will be called by the frontend to say the DOM has been mounted
@@ -235,7 +241,7 @@ func (r *RootElem) RunWork() {
 	}
 }
 
-func (r *RootElem) render(elem *VDomElem, comp **Component) {
+func (r *RootElem) render(elem *VDomElem, comp **ComponentImpl) {
 	if elem == nil || elem.Tag == "" {
 		r.unmount(comp)
 		return
@@ -264,7 +270,7 @@ func (r *RootElem) render(elem *VDomElem, comp **Component) {
 	r.renderComponent(cfunc, elem, comp)
 }
 
-func (r *RootElem) unmount(comp **Component) {
+func (r *RootElem) unmount(comp **ComponentImpl) {
 	if *comp == nil {
 		return
 	}
@@ -287,21 +293,21 @@ func (r *RootElem) unmount(comp **Component) {
 	*comp = nil
 }
 
-func (r *RootElem) createComp(tag string, key string, comp **Component) {
-	*comp = &Component{WaveId: uuid.New().String(), Tag: tag, Key: key}
+func (r *RootElem) createComp(tag string, key string, comp **ComponentImpl) {
+	*comp = &ComponentImpl{WaveId: uuid.New().String(), Tag: tag, Key: key}
 	r.CompMap[(*comp).WaveId] = *comp
 }
 
-func (r *RootElem) renderText(text string, comp **Component) {
+func (r *RootElem) renderText(text string, comp **ComponentImpl) {
 	if (*comp).Text != text {
 		(*comp).Text = text
 	}
 }
 
-func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*Component) []*Component {
-	newChildren := make([]*Component, len(elems))
-	curCM := make(map[ChildKey]*Component)
-	usedMap := make(map[*Component]bool)
+func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*ComponentImpl) []*ComponentImpl {
+	newChildren := make([]*ComponentImpl, len(elems))
+	curCM := make(map[ChildKey]*ComponentImpl)
+	usedMap := make(map[*ComponentImpl]bool)
 	for idx, child := range curChildren {
 		if child.Key != "" {
 			curCM[ChildKey{Tag: child.Tag, Idx: 0, Key: child.Key}] = child
@@ -311,7 +317,7 @@ func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*Component) []
 	}
 	for idx, elem := range elems {
 		elemKey := elem.Key()
-		var curChild *Component
+		var curChild *ComponentImpl
 		if elemKey != "" {
 			curChild = curCM[ChildKey{Tag: elem.Tag, Idx: 0, Key: elemKey}]
 		} else {
@@ -329,14 +335,14 @@ func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*Component) []
 	return newChildren
 }
 
-func (r *RootElem) renderSimple(elem *VDomElem, comp **Component) {
+func (r *RootElem) renderSimple(elem *VDomElem, comp **ComponentImpl) {
 	if (*comp).Comp != nil {
 		r.unmount(&(*comp).Comp)
 	}
 	(*comp).Children = r.renderChildren(elem.Children, (*comp).Children)
 }
 
-func (r *RootElem) makeRenderContext(comp *Component) context.Context {
+func (r *RootElem) makeRenderContext(comp *ComponentImpl) context.Context {
 	var ctx context.Context
 	if r.OuterCtx != nil {
 		ctx = r.OuterCtx
@@ -359,7 +365,15 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	rval := reflect.ValueOf(cfunc)
 	arg2Type := rval.Type().In(1)
 	arg2Val := reflect.New(arg2Type)
-	utilfn.ReUnmarshal(arg2Val.Interface(), props)
+	// if arg2 is a map, just pass props
+	if arg2Type.Kind() == reflect.Map {
+		arg2Val.Elem().Set(reflect.ValueOf(props))
+	} else {
+		err := utilfn.MapToStruct(props, arg2Val.Interface())
+		if err != nil {
+			fmt.Printf("error unmarshalling props: %v\n", err)
+		}
+	}
 	rtnVal := rval.Call([]reflect.Value{reflect.ValueOf(ctx), arg2Val.Elem()})
 	if len(rtnVal) == 0 {
 		return nil
@@ -367,7 +381,7 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	return rtnVal[0].Interface()
 }
 
-func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **Component) {
+func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **ComponentImpl) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
 			r.unmount(&child)
@@ -414,7 +428,7 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 	return vdomProps
 }
 
-func convertBaseToVDom(c *Component) *VDomElem {
+func convertBaseToVDom(c *ComponentImpl) *VDomElem {
 	elem := &VDomElem{WaveId: c.WaveId, Tag: c.Tag}
 	if c.Elem != nil {
 		elem.Props = convertPropsToVDom(c.Elem.Props)
@@ -428,7 +442,7 @@ func convertBaseToVDom(c *Component) *VDomElem {
 	return elem
 }
 
-func convertToVDom(c *Component) *VDomElem {
+func convertToVDom(c *ComponentImpl) *VDomElem {
 	if c == nil {
 		return nil
 	}
@@ -442,11 +456,61 @@ func convertToVDom(c *Component) *VDomElem {
 	}
 }
 
-func (r *RootElem) makeVDom(comp *Component) *VDomElem {
+func (r *RootElem) makeVDom(comp *ComponentImpl) *VDomElem {
 	vdomElem := convertToVDom(comp)
 	return vdomElem
 }
 
 func (r *RootElem) MakeVDom() *VDomElem {
 	return r.makeVDom(r.Root)
+}
+
+func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
+	var transferElems []VDomTransferElem
+	textCounter := 0 // Counter for generating unique IDs for #text nodes
+
+	// Helper function to recursively process each VDomElem in preorder
+	var processElem func(elem VDomElem, isRoot bool) string
+	processElem = func(elem VDomElem, isRoot bool) string {
+		// Handle #text nodes by generating a unique placeholder ID
+		if elem.Tag == "#text" {
+			textId := fmt.Sprintf("text-%d", textCounter)
+			textCounter++
+			transferElems = append(transferElems, VDomTransferElem{
+				Root:     isRoot,
+				WaveId:   textId,
+				Tag:      elem.Tag,
+				Text:     elem.Text,
+				Props:    nil,
+				Children: nil,
+			})
+			return textId
+		}
+
+		// Convert children to WaveId references, handling potential #text nodes
+		childrenIds := make([]string, len(elem.Children))
+		for i, child := range elem.Children {
+			childrenIds[i] = processElem(child, false) // Children are not roots
+		}
+
+		// Create the VDomTransferElem for the current element
+		transferElem := VDomTransferElem{
+			Root:     isRoot,
+			WaveId:   elem.WaveId,
+			Tag:      elem.Tag,
+			Props:    elem.Props,
+			Children: childrenIds,
+			Text:     elem.Text,
+		}
+		transferElems = append(transferElems, transferElem)
+
+		return elem.WaveId
+	}
+
+	// Start processing each top-level element, marking them as roots
+	for _, elem := range elems {
+		processElem(elem, true)
+	}
+
+	return transferElems
 }
