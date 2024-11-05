@@ -110,7 +110,7 @@ jobs:
               shell: cmd
 
             - name: Build embedded docsite
-              run: yarn build-embedded -- --output-path ../${{env.STATIC_DOCSITE_PATH}}
+              run: yarn build-embedded -- . --output-path ../${{env.STATIC_DOCSITE_PATH}}
               working-directory: docs/
 
             # Build and upload packages
