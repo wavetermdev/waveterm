@@ -1,7 +1,7 @@
 version: 2
 updates:
     - package-ecosystem: "npm"
-      directory: "dev/"
+      directory: "docs/"
       schedule:
           interval: "weekly"
           day: "friday"
