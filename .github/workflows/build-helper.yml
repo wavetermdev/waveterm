@@ -25,6 +25,7 @@ jobs:
               run: |
                   corepack enable
                   yarn install
+              working-directory: docs/
             - name: Build embedded docsite
               run: yarn build-embedded
               working-directory: docs/
@@ -33,7 +34,7 @@ jobs:
               with:
                   name: docsite
                   path: docs/build
-    runbuild:
+    build-app:
         needs: build-docsite
         outputs:
             version: ${{ steps.set-version.outputs.WAVETERM_VERSION }}
@@ -176,7 +177,7 @@ jobs:
                   path: make
     create-release:
         runs-on: ubuntu-latest
-        needs: runbuild
+        needs: build-app
         permissions:
             contents: write
         if: ${{ github.event_name != 'workflow_dispatch' }}
