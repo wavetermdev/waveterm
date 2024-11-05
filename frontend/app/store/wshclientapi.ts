@@ -247,9 +247,9 @@ class RpcApiType {
         return client.wshRpcCall("vdomcreatecontext", data, opts);
     }
 
-    // command "vdomrender" [call]
-    VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): Promise<VDomBackendUpdate> {
-        return client.wshRpcCall("vdomrender", data, opts);
+    // command "vdomrender" [responsestream]
+	VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): AsyncGenerator<VDomBackendUpdate, void, boolean> {
+        return client.wshRpcStream("vdomrender", data, opts);
     }
 
     // command "vdomurlrequest" [responsestream]

@@ -21,15 +21,31 @@ type VDomServerImpl struct {
 
 func (*VDomServerImpl) WshServerImpl() {}
 
-func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
+func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
+	respChan := make(chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate], 5)
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in VDomRenderCommand: %v\n", r)
+			respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+				Error: fmt.Errorf("internal error: %v", r),
+			}
+			close(respChan)
+		}
+	}()
+
 	if feUpdate.Dispose {
+		defer close(respChan)
 		log.Printf("got dispose from frontend\n")
 		impl.Client.doShutdown("got dispose from frontend")
-		return nil, nil
+		return respChan
 	}
+
 	if impl.Client.GetIsDone() {
-		return nil, nil
+		close(respChan)
+		return respChan
 	}
+
 	// set atoms
 	for _, ss := range feUpdate.StateSync {
 		impl.Client.Root.SetAtomVal(ss.Atom, ss.Value, false)
@@ -44,10 +60,33 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 			impl.Client.Root.Event(event.WaveId, event.EventType, event)
 		}
 	}
+
+	var update *vdom.VDomBackendUpdate
+	var err error
+
 	if feUpdate.Resync || true {
-		return impl.Client.fullRender()
+		update, err = impl.Client.fullRender()
+	} else {
+		update, err = impl.Client.incrementalRender()
 	}
-	return impl.Client.incrementalRender()
+	update.CreateTransferElems()
+
+	if err != nil {
+		respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+			Error: err,
+		}
+		close(respChan)
+		return respChan
+	}
+
+	go func() {
+		defer close(respChan)
+		respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+			Response: update,
+		}
+	}()
+
+	return respChan
 }
 
 func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshrpc.VDomUrlRequestData) chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse] {

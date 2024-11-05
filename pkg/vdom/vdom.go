@@ -212,6 +212,19 @@ func UseVDomRef(ctx context.Context) *VDomRef {
 	return refVal
 }
 
+func UseRef[T any](ctx context.Context, val T) *VDomSimpleRef[T] {
+	_, hookVal := getHookFromCtx(ctx)
+	if !hookVal.Init {
+		hookVal.Init = true
+		hookVal.Val = &VDomSimpleRef[T]{Current: val}
+	}
+	refVal, ok := hookVal.Val.(*VDomSimpleRef[T])
+	if !ok {
+		panic("UseRef hook value is not a ref (possible out of order or conditional hooks)")
+	}
+	return refVal
+}
+
 func UseId(ctx context.Context) string {
 	vc := getRenderContext(ctx)
 	if vc == nil {

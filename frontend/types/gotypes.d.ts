@@ -652,6 +652,7 @@ declare global {
         opts?: VDomBackendOpts;
         haswork?: boolean;
         renderupdates?: VDomRenderUpdate[];
+        transferelems?: VDomTransferElem[];
         statesync?: VDomStateSync[];
         refoperations?: VDomRefOperation[];
         messages?: VDomMessage[];
@@ -773,7 +774,8 @@ declare global {
     type VDomRenderUpdate = {
         updatetype: "root"|"append"|"replace"|"remove"|"insert";
         waveid?: string;
-        vdom: VDomElem;
+        vdomwaveid?: string;
+        vdom?: VDomElem;
         index?: number;
     };
 
@@ -787,6 +789,15 @@ declare global {
     type VDomTarget = {
         newblock?: boolean;
         magnified?: boolean;
+    };
+
+    // vdom.VDomTransferElem
+    type VDomTransferElem = {
+        waveid?: string;
+        tag: string;
+        props?: {[key: string]: any};
+        children?: string[];
+        text?: string;
     };
 
     // wshrpc.VDomUrlRequestData

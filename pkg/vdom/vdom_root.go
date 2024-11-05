@@ -470,14 +470,13 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 	textCounter := 0 // Counter for generating unique IDs for #text nodes
 
 	// Helper function to recursively process each VDomElem in preorder
-	var processElem func(elem VDomElem, isRoot bool) string
-	processElem = func(elem VDomElem, isRoot bool) string {
+	var processElem func(elem VDomElem) string
+	processElem = func(elem VDomElem) string {
 		// Handle #text nodes by generating a unique placeholder ID
 		if elem.Tag == "#text" {
 			textId := fmt.Sprintf("text-%d", textCounter)
 			textCounter++
 			transferElems = append(transferElems, VDomTransferElem{
-				Root:     isRoot,
 				WaveId:   textId,
 				Tag:      elem.Tag,
 				Text:     elem.Text,
@@ -490,12 +489,11 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 		// Convert children to WaveId references, handling potential #text nodes
 		childrenIds := make([]string, len(elem.Children))
 		for i, child := range elem.Children {
-			childrenIds[i] = processElem(child, false) // Children are not roots
+			childrenIds[i] = processElem(child) // Children are not roots
 		}
 
 		// Create the VDomTransferElem for the current element
 		transferElem := VDomTransferElem{
-			Root:     isRoot,
 			WaveId:   elem.WaveId,
 			Tag:      elem.Tag,
 			Props:    elem.Props,
@@ -509,8 +507,41 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 
 	// Start processing each top-level element, marking them as roots
 	for _, elem := range elems {
-		processElem(elem, true)
+		processElem(elem)
 	}
 
 	return transferElems
+}
+
+func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {
+	seen := make(map[string]int) // maps WaveId to its index in the result slice
+	var result []VDomTransferElem
+
+	for _, elem := range elems {
+		if idx, exists := seen[elem.WaveId]; exists {
+			// Overwrite the previous element with the latest one
+			result[idx] = elem
+		} else {
+			// Add new element and store its index
+			seen[elem.WaveId] = len(result)
+			result = append(result, elem)
+		}
+	}
+
+	return result
+}
+
+func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
+	var vdomElems []VDomElem
+	for idx, reUpdate := range beUpdate.RenderUpdates {
+		if reUpdate.VDom == nil {
+			continue
+		}
+		vdomElems = append(vdomElems, *reUpdate.VDom)
+		beUpdate.RenderUpdates[idx].VDomWaveId = reUpdate.VDom.WaveId
+		beUpdate.RenderUpdates[idx].VDom = nil
+	}
+	transferElems := ConvertElemsToTransferElems(vdomElems)
+	transferElems = DedupTransferElems(transferElems)
+	beUpdate.TransferElems = transferElems
 }

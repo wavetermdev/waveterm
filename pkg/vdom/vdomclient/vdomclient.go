@@ -209,7 +209,7 @@ func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
 		HasWork: len(c.Root.EffectWorkQueue) > 0,
 		Opts:    &c.Opts,
 		RenderUpdates: []vdom.VDomRenderUpdate{
-			{UpdateType: "root", VDom: *renderedVDom},
+			{UpdateType: "root", VDom: renderedVDom},
 		},
 		StateSync: c.Root.GetStateSync(true),
 	}, nil
@@ -226,7 +226,7 @@ func (c *Client) incrementalRender() (*vdom.VDomBackendUpdate, error) {
 		Ts:      time.Now().UnixMilli(),
 		BlockId: c.RpcContext.BlockId,
 		RenderUpdates: []vdom.VDomRenderUpdate{
-			{UpdateType: "root", VDom: *renderedVDom},
+			{UpdateType: "root", VDom: renderedVDom},
 		},
 		StateSync: c.Root.GetStateSync(false),
 	}, nil
