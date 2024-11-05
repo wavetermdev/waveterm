@@ -14,9 +14,27 @@ env:
     NODE_VERSION: "20"
     STATIC_DOCSITE_PATH: docsite
 jobs:
+    build-docsite:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{env.NODE_VERSION}}
+            - name: Install Yarn
+              run: |
+                  corepack enable
+                  yarn install
+            - name: Build embedded docsite
+              run: yarn build-embedded
+              working-directory: docs/
+            - name: Upload Build Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: docsite
+                  path: docs/build
     runbuild:
-        permissions:
-            contents: write
+        needs: build-docsite
         outputs:
             version: ${{ steps.set-version.outputs.WAVETERM_VERSION }}
         strategy:
@@ -109,9 +127,10 @@ jobs:
                   smctl windows certsync
               shell: cmd
 
-            - name: Build embedded docsite
-              run: yarn build-embedded -- . --output-path ../${{env.STATIC_DOCSITE_PATH}}
-              working-directory: docs/
+            - name: Download embedded docsite
+              uses: actions/download-artifact@v4
+              with:
+                  name: docsite
 
             # Build and upload packages
             - name: Build (Linux)
