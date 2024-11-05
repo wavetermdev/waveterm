@@ -1,0 +1,150 @@
+---
+sidebar_position: 3
+id: "config"
+title: "Configuration"
+---
+
+Wave's configuration files are located at `~/.config/waveterm/`.
+
+The main configuration file is `settings.json` (`~/.config/waveterm/settings.json`).
+
+The file is structured as a mostly flat JSON file.  Instead of using sub-objects we prefer to
+use ":" as level separators.
+
+:::info
+
+If you installed Wave pre-v0.9.0 your configuration file will be located at
+`~/.waveterm/config/settings.json`.  This includes all of the other configuration
+files as well: `termthemes.json`, `presets.json`, and `widgets.json`.
+
+:::
+
+| Key Name | Type | Function |
+|----------|------|----------|
+| ai:preset | string | the default AI preset to use |
+| ai:baseurl | string | Set the AI Base Url (must be OpenAI compatible) |
+| ai:apitoken | string | your AI api token |
+| ai:apitype | string | defaults to "open_ai", but can also set to "azure" for special Azure AI handling |
+| ai:name | string | string to display in the Wave AI block header |
+| ai:model | string | model name to pass to API |
+| ai:apiversion | string | for Azure AI only (when apitype is "azure", this will default to "2023-05-15") |
+| ai:orgid | string ||
+| ai:maxtokens | int | max tokens to pass to API |
+| ai:timeoutms | int | timeout (in milliseconds) for AI calls |
+| conn:askbeforewshinstall | bool | set to false to disable popup asking if you want to install wsh extensions on new machines |
+| term:fontsize | float | the fontsize for the terminal block |
+| term:fontfamily | string | font family to use for terminal block |
+| term:disablewebgl | bool | set to false to disable WebGL acceleration in terminal |
+| term:localshellpath | string | set to override the default shell path for local terminals |
+| term:localshellopts | string[] | set to pass additional parameters to the term:localshellpath |
+| term:copyonselect | bool | set to false to disable terminal copy-on-select |
+| editor:minimapenabled | bool | set to false to disable editor minimap |
+| editor:stickscrollenabled | bool | |
+| web:openlinksinternally | bool | set to false to open web links in external browser |
+| web:defaulturl | string | default web page to open in the web widget when no url is provided (homepage) |
+| web:defaultsearch | string | search template for web searches.  e.g. `https://www.google.com/search?q={query}`.  "\{query}" gets replaced by search term |
+| blockheader:showblockids | bool | show first 8 chars of blockid in the header |
+| autoupdate:enabled | bool | enable/disable checking for updates (requires app restart) |
+| autoupdate:intervalms | float64 | time in milliseconds to wait between update checks (requires app restart) |
+| autoupdate:installonquit | bool | whether to automatically install updates on quit (requires app restart) |
+| autoupdate:channel | string | the auto update channel "latest" (stable builds), or "beta" (updated more frequently) (requires app restart) |
+| widget:showhelp | bool | whether to show help/tips widgets in right sidebar |
+| window:transparent | bool | set to true to enable window transparency (cannot be combined with `window:blur`) (macOS and Windows only, requires app restart, see [note on Windows compatibility](https://www.electronjs.org/docs/latest/tutorial/window-customization#limitations)) |
+| window:blur | bool | set to enable window background blurring (cannot be combined with `window:transparent`) (macOS and Windows only, requires app restart, see [note on Windows compatibility](https://www.electronjs.org/docs/latest/tutorial/window-customization#limitations)) |
+| window:opacity | float64 | 0-1, window opacity when `window:transparent` or `window:blur` are set |
+| window:bgcolor | string | set the window background color (should be hex: #xxxxxx) |
+| window:reducedmotion | bool | set to true to disable most animations |
+| window:tilegapsize | int | set to change override default gap between blocks |
+| window:showmenubar | bool | set to use the OS-native menu bar (Windows and Linux only, requires app restart) |
+| window:nativetitlebar | bool | set to use the OS-native title bar, rather than the overlay (Windows and Linux only, requires app restart) |
+| window:disablehardwareacceleration | bool | set to disable Chromium hardware acceleration to resolve graphical bugs (requires app restart) |
+| telemetry:enabled | bool | set to enable/disable telemetry |
+
+For reference this is the current default configuration (v0.8.8):
+
+```json
+{
+    "ai:preset": "ai@global",
+    "ai:model": "gpt-4o-mini",
+    "ai:maxtokens": 2048,
+    "ai:timeoutms": 60000,
+    "autoupdate:enabled": true,
+    "autoupdate:installonquit": true,
+    "autoupdate:intervalms": 3600000,
+    "conn:askbeforewshinstall": true,
+    "editor:minimapenabled": true,
+    "web:defaulturl": "https://github.com/wavetermdev/waveterm",
+    "web:defaultsearch": "https://www.google.com/search?q={query}",
+    "window:tilegapsize": 3,
+    "telemetry:enabled": true,
+    "term:copyonselect": true
+}
+```
+
+### Terminal Theming
+
+User-defined terminal themes are located in `~/.config/waveterm/termthemes.json`.  This JSON file is structured as an object, with each sub-key defining a theme.
+Themes are applied by right-clicking on the terminal's header bar and selecting an entry from the "Themes" sub-menu.  Alternatively they can be applied to
+the block's metadata key `term:theme`.  This uses the JSON key value as the identifier.  Note, for best consistency all colors should be of the format "#rrggbb" or "#rrggbbaa" (aa = alpha channel for transparency).
+
+`wsh setmeta this term:theme="default-dark"`
+
+Here is an example of defining a full terminal theme.  All of the built-in themes are defined here: https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/termthemes.json (if you'd like to add a popular terminal theme, please submit a PR!)
+
+```json
+{
+    "default-dark": {
+        "display:name": "Default Dark",
+        "display:order": 1,
+        "black": "#757575",
+        "red": "#cc685c",
+        "green": "#76c266",
+        "yellow": "#cbca9b",
+        "blue": "#85aacb",
+        "magenta": "#cc72ca",
+        "cyan": "#74a7cb",
+        "white": "#c1c1c1",
+        "brightBlack": "#727272",
+        "brightRed": "#cc9d97",
+        "brightGreen": "#a3dd97",
+        "brightYellow": "#cbcaaa",
+        "brightBlue": "#9ab6cb",
+        "brightMagenta": "#cc8ecb",
+        "brightCyan": "#b7b8cb",
+        "brightWhite": "#f0f0f0",
+        "gray": "#8b918a",
+        "cmdtext": "#f0f0f0",
+        "foreground": "#c1c1c1",
+        "selectionBackground": "",
+        "background": "#00000077",
+        "cursorAccent": ""
+    }
+}
+```
+
+| Key Name | Type | ANSI FG# | ANSI BG# | Function |
+|----------|------|----------|----------|----------|
+| display:name | string ||| the name as it will appear in the UI context menu |
+| display:order | float ||| entries in the context menu are sorted by display:order |
+| black   | CSS color | 30 | 40 | color for black |
+| red     | CSS color | 31 | 41 | color for red |
+| green   | CSS color | 32 | 42 | color for green |
+| yellow  | CSS color | 33 | 43 | color for yellow |
+| blue    | CSS color | 34 | 44 | color for blue |
+| magenta | CSS color | 35 | 45 | color for magenta |
+| cyan    | CSS color | 36 | 46 | color for cyan |
+| white   | CSS color | 37 | 47 | color for white |
+| brightBlack   | CSS color | 90 | 100 | color for bright black |
+| brightRed     | CSS color | 91 | 101 | color for bright red |
+| brightGreen   | CSS color | 92 | 102 | color for bright green |
+| brightYellow  | CSS color | 93 | 103 | color for bright yellow |
+| brightBlue    | CSS color | 94 | 104 | color for bright blue |
+| brightMagenta | CSS color | 95 | 105 | color for bright magenta |
+| brightCyan    | CSS color | 96 | 106 | color for bright cyan |
+| brightWhite   | CSS color | 97 | 107 | color for bright white |
+| gray          | CSS color ||| currently unused |
+| cmdtext       | CSS color ||| currently unused |
+| foreground    | CSS color ||| foreground color (default when no color code is applied) |
+| background    | CSS color ||| background color (default when no color code is applied), must have alpha channel (#rrggbbaa) if you want the terminal to be transparent |
+| cursorAccent  | CSS color ||| color for cursor |
+| selectionBackground | CSS color ||| background color for selected text |

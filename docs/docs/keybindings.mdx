@@ -1,0 +1,55 @@
+---
+sidebar_position: 2
+id: "keybindings"
+title: "Key Bindings"
+---
+
+Here's the set of default keybindings available in Wave.  It is split into sections.
+Some keybindings are always active.  Others are only active for certain types of blocks.
+
+Note that these are the MacOS keybindings (they use "Cmd").  For Windows and Linux
+replace "Cmd" with "Alt" (note that "Ctrl" is "Ctrl" on both Mac, Windows, and Linux).
+
+## Global Keybindings
+
+| Key | Function |
+|-----|----------|
+| Cmd:t | Open a new tab |
+| Cmd:n | Open a new terminal block (defaults to the same connection and working directory) |
+| Cmd:w | Close the current block |
+| Cmd:m | Magnify / Un-Magnify the current block |
+| Cmd:g | Open the "connection" switcher |
+| Cmd:i | Refocus the current block (useful if the block has lost input focus) |
+| Ctrl:Shift | Show block numbers |
+| Ctrl:Shift:[number] | Switch to block number |
+| Ctrl:Shift:Arrows | Move left, right, up, down between blocks |
+| Cmd:[number] | Switch to tab number |
+| Cmd:[ | Switch tab left |
+| Cmd:] | Siwtch tab right |
+| Cmd:Shift:r | Refresh the UI |
+
+## File Preview Keybindings
+
+| Key | Function |
+|-----|----------|
+| [any character] | any regular character (e.g. "a", "b") will filter the file list |
+| Escape | will clear the filter |
+| Up/Down Arrow | change file selection up/down |
+| Enter | Open the currently selected file/directory |
+| Cmd:ArrowUp | move "up" a directory (parent directory) |
+| Cmd:ArrowLeft | back, move to the previously selected file/directory |
+| Cmd:ArrowRight | forward (opposite of back) |
+| Cmd:o | Open a new file (accepts relative paths to the current directory) |
+| Cmd:s | When file editor is open, save file |
+| Cmd:e | For files that can be previewed or edited (markdown, CSVs), switches between preview and edit mode |
+| Cmd:r | When file editor is open, revert changes |
+
+## Web Keybindings
+
+| Key | Function |
+|-----|----------|
+| Cmd:l | focus the URL input bar |
+| Escape | when the URL input bar is focused, will focus the web content |
+| Cmd:r | reload webpage |
+| Cmd:ArrowLeft | back |
+| Cmd:ArrowRight | forward |

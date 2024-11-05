@@ -109,14 +109,9 @@ jobs:
                   smctl windows certsync
               shell: cmd
 
-            - name: Download waveterm-docs static site
-              uses: dawidd6/action-download-artifact@v6
-              with:
-                  github_token: ${{secrets.GITHUB_TOKEN}}
-                  workflow: build-embedded.yml
-                  repo: wavetermdev/waveterm-docs
-                  name: static-site
-                  path: ${{env.STATIC_DOCSITE_PATH}}
+            - name: Build embedded docsite
+              run: yarn build-embedded && cp -r build ../${{env.STATIC_DOCSITE_PATH}}
+              working-directory: docs/
 
             # Build and upload packages
             - name: Build (Linux)

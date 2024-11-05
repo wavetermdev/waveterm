@@ -1,0 +1,194 @@
+---
+sidebar_position: 4
+id: "wsh"
+title: "wsh command"
+---
+# wsh command
+
+The `wsh` command is always available from Wave blocks.  It is a powerful tool for interacting with Wave blocks and can bridge data between your CLI and the widget GUIs.
+
+---
+
+## view
+You can open a preview block with the contents of any file or directory by running:
+
+```
+wsh view [path]
+```
+
+You can use this command to easily preview images, markdown files, and directories.  For code/text files this will open
+a codeedit block which you can use to quickly edit the file using Wave's embedded graphical editor.
+
+---
+
+## edit
+
+```
+wsh edit [path]
+```
+
+This will open up codeedit for the specified file.  This is useful for quickly editing files on a local or remote machine in our graphical editor.  This command will wait until the file is closed before exiting (unlike \`view\`) so you can set your \`$EDITOR\` to \`wsh editor\` for a seamless experience.  You can combine this with a \`-m\` flag to open the editor in magnified mode.
+
+---
+
+## getmeta
+
+You can view the metadata of any block by running:
+
+```
+wsh getmeta -b [blockid]
+```
+
+This is especially useful for preview and web blocks as you can see the file or url that they are pointing to and use that in your CLI scripts.
+
+blockid format:
+
+* this -- the current block (this is also the default)
+* tab -- the id of the current tab
+* d6ff4966-231a-4074-b78a-20acc7226b41 -- a full blockid is a UUID
+* a67f55a3 -- blockids may be truncated to the first 8 characters
+* 5 -- if a number less than 100 is given, it is a block number.  blocks are numbered sequentially in the current tab from the top-left to bottom-right.  holding Ctrl:Shift will show a block number overlay.
+
+---
+
+## setmeta
+
+You can update any metadata key value pair for blocks (and tabs) by using the setmeta command:
+
+```
+wsh setmeta -b [blockid] [key]=[value]
+wsh setmeta -b [blockid] file=~/myfile.txt
+wsh setmeta -b [blockid] url=https://waveterm.dev/
+```
+
+You can get block and tab ids by right clicking on the appropriate block and selecting "Copy BlockId" (or use the block number via Ctrl:Shift).  When you
+update the metadata for a preview or web block you'll see the changes reflected instantly in the block.
+
+Other useful metadata values to override block titles, icons, colors, themes, etc.
+
+---
+
+## deleteblock
+
+```
+wsh deleteblock -b [blockid]
+```
+
+This will delete the block with the specified id.
+
+---
+
+## ssh
+
+```
+wsh ssh [user@host]
+```
+
+This will use Wave's internal ssh implementation to connect to the specified remote machine.
+
+---
+
+## wsl
+
+```
+wsh wsl [-d <distribution name>]
+```
+
+This will connect to a WSL distribution on the local machine. It will use the default if no distribution is provided.
+
+---
+
+## web
+
+You can search for a given url using:
+
+```
+wsh web <url>
+```
+
+Alternatively, you can search with the configured search engine using:
+
+```
+wsh web <search query>
+```
+
+Both of these commands will open a new web block with the desired page.
+
+---
+
+## conn
+
+This has several subcommands which all perform various features related to connections.
+
+### status
+
+```
+wsh conn status
+```
+This command gives the status of all connections made since waveterm started.
+
+### reinstall
+
+For ssh connections,
+```
+wsh conn reinstall [user@host]
+```
+
+For wsl connections,
+```
+wsh conn reinstall [wsl://<distribution name>]
+```
+
+This command reinstalls the Wave Shell Extensions on the specified connection.
+
+### disconnect
+
+For ssh connections,
+```
+wsh conn disconnect [user@host]
+```
+
+For wsl connections,
+```
+wsh conn disconnect [wsl://<distribution name>]
+```
+
+This command completely disconnects the specified connection. This will apply to all blocks where the connection is being used
+
+### connect
+
+For ssh connections,
+```
+wsh conn connect [user@host]
+```
+
+For wsl connections,
+```
+wsh conn connect [wsl://<distribution name>]
+```
+
+This command connects to the specified connection but does not create a block for it.
+
+### ensure
+
+For ssh connections,
+```
+wsh conn ensure [user@host]
+```
+
+For wsl connections,
+```
+wsh conn ensure [wsl://<distribution name>]
+```
+
+This command connects to the specified connection if it isn't already connected.
+
+---
+
+### setconfig
+
+```
+wsh setconfig [config name]=[config value]
+```
+
+This allows setting various options in the `config/settings.json` file. It will check to be sure a valid config option was provided.

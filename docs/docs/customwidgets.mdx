@@ -1,0 +1,108 @@
+---
+sidebar_position: 6
+id: "customwidgets"
+title: "Custom Widgets"
+---
+
+# Custom Widgets
+
+Wave allows users to create their own widgets to uniquely customize their experience for what works for them. While we plan on greatly expanding on this in the future, it is already possible to make terminal/cli widgets that you can access at the press of a button.
+
+# Terminal and CLI Widgets
+
+A terminal widget, or CLI widget, is a widget that simply opens a terminal and runs a CLI command.
+These widgets are managed in the `~/.config/waveterm/widgets.json` file.
+
+## Designing a Widget
+
+Each widget is a key-value pair of a json object where the key is the name of the widget, and the value is an object responsible for configuring the widget. As a whole, it looks like:
+```json
+{
+    <... other widgets go here ...>,
+    "<widget name>": {
+        "icon": "<fontawesome icon name>",
+        "label": "<the text label of the widget>",
+        "color": "<the color of the label>",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "cmd"
+                "cmd": "<the actual cli command>"
+            }
+        }
+    },
+    <... other widgets go here ...>
+}
+```
+In essence, there are two places that require customization. The first is the outer `WidgetConfigType` which is directly in the object that corresponds with the widget name. In the example above, it contains `"icon"`, `"label"`, and `"color"`. Valid options for this type include:
+| Key | Description |
+|-----|-------------|
+|"display:order"| (optional) Overrides the order of widgets with a number in case you want the widget to be different than the order provided in the `widgets.json` file. Defaults to 0. |
+|"icon"| (optional) The name of a fontawesome icon. Defaults to `"browser"`.|
+|"color"| (optional) A string representing a color as would be used in CSS. Hex codes and custom CSS properties are included. This defaults to `"var(--secondary-text-color)"` which is a color wave uses for text that should be differentiated from other text. Out of the box, it is `"#c3c8c2"`.|
+|"label"| (optional) A string representing the label that appears underneath the widget. It will also act as a tooltip on hover if the `"description"` key isn't filled out. It is null by default.|
+|"description"| (optional) A description of what the widget does. If it is specified, this serves as a tooltip on hover. It is null by default.|
+|"blockdef"| This is where the the non-visual portion of the widget is defined. Note that all further definition takes place inside a meta object inside this one.|
+
+
+The other part to configure is the `MetaTSType` associated with the widget. The topic of the `MetaTSType` is vast and deserves it's own documentation, but here is a subset that is relevant to creating terminal widgets.
+| Key | Description |
+|-----|-------------|
+| "view" | A string that specifies the general type of widget. In the case of custom terminal widgets, this must be set to `"term"`.|
+| "controller" | A string that specifies the type of command being used. For more persistent shell sessions, set it to "shell". For one off commands, set it to "cmd". Note that it is often possible to achieve the same result through each depending on the command being used.|
+| "cmd" | (optional) When the `"controller"` is set to `"cmd"`, this option provides the actual command to be run. Note that because it is run as a command, there is no shell session unless you are launching a command that contains a shell session itself. Defaults to an empty string. |
+| "cmd:interactive" | (optional) When the `"controller"` is set to `"term", this boolean adds the interactive flag to the launched terminal. Defaults to false.|
+| "cmd:login" | (optional) When the `"controller"` is set to `"term"`, this boolean adds the login flag to the term command. Defaults to false.|
+| "cmd:runonstart" | (optional) The command will rerun when the app is started. Without it, you must manually run the command. Defaults to true.|
+| "cmd:clearonstart" | (optional) When the cmd starts, the contents of the block are cleared out. Defaults to false. |
+| "cmd:clearonrestart" | (optional) When the app restarts, the contents of the block are cleared out. Defaults to false. |
+| "cmd:env" | (optional) A key-value object represting environment variables to be run with the command. Currently only works locally. Defaults to an empty object. |
+| "cmd:cwd" | (optional) A string representing the current working directory to be run with the command. Currently only works locally. Defaults to the home directory. |
+| "cmd:nowsh" | (optional) A boolean that will turn off wsh integration for the command. Defaults to false. |
+| "term:localshellpath" | (optional) Sets the shell used for running your widget command. Only works locally. If left blank, wave will determine your system default instead. |
+| "term:localshellopts" | (optional) Sets the shell options meant to be used with `"term:localshellpath"`. This is useful if you are using a nonstandard shell and need to provide a specific option that we do not cover. Only works locally. Defaults to an empty string. |
+
+
+
+## Example Widgets
+
+Here are a few simple widgets to serve as examples.
+
+Suppose I want a widget that will run speedtest-go when opened. Then, I can define a widget as
+```json
+{
+    <... other widgets go here ...>,
+    "speedtest" : {
+        "icon": "gauge-high",
+        "label": "speed",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "cmd",
+                "cmd": "speedtest-go --unix",
+                "cmd:clearonstart"
+            }
+        }
+    },
+    <... other widgets go here ...>
+}
+```
+Using `"cmd"` for the `"controller"` is the simplest way to accomplish this. `"cmd:clearonstart"` isn't necessary, but it makes it so every time the command is run (which can be done by right clicking the header and selecting `Force Controller Restart`), the previous contents are cleared out.
+
+Now suppose I wanted to run a TUI app, for instance, `dua`. Well, it turns out that you can more or less do the same thing:
+```json
+    <... other widgets go here ...>,
+    "dua" : {
+    "icon": "brands@linux",
+    "label": "dua",
+    "blockdef": {
+        "meta": {
+            "view": "term",
+            "controller": "cmd",
+            "cmd": "dua"
+            }
+        }
+    },
+    <... other widgets go here ...>
+```
+Because this is a TUI app that does not return anything when closed, the `"cmd:clearonstart"` option doesn't change the behavior, so it has been excluded.
