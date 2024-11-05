@@ -261,6 +261,31 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T)) {
 	return rtnVal, setVal
 }
 
+func UseStateWithFn[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T)) {
+	vc, hookVal := getHookFromCtx(ctx)
+	if !hookVal.Init {
+		hookVal.Init = true
+		hookVal.Val = initialVal
+	}
+	var rtnVal T
+	rtnVal, ok := hookVal.Val.(T)
+	if !ok {
+		panic("UseState hook value is not a state (possible out of order or conditional hooks)")
+	}
+
+	setVal := func(newVal T) {
+		hookVal.Val = newVal
+		vc.Root.AddRenderWork(vc.Comp.WaveId)
+	}
+
+	setFuncVal := func(updateFunc func(T) T) {
+		hookVal.Val = updateFunc(hookVal.Val.(T))
+		vc.Root.AddRenderWork(vc.Comp.WaveId)
+	}
+
+	return rtnVal, setVal, setFuncVal
+}
+
 func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
 	vc, hookVal := getHookFromCtx(ctx)
 	if !hookVal.Init {
