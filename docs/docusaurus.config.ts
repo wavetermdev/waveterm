@@ -92,6 +92,12 @@ const config: Config = {
                 !process.env.EMBEDDED
                     ? [
                           {
+                              type: "doc",
+                              position: "left",
+                              href: "/storybook",
+                              label: "Storybook",
+                          },
+                          {
                               href: "https://discord.gg/zUeP2aAjaP",
                               position: "right",
                               className: "header-link-custom custom-icon-discord",
