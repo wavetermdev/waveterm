@@ -173,3 +173,27 @@ export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
         }
     });
 }
+
+export function mergeBackendUpdates(baseUpdate: VDomBackendUpdate, nextUpdate: VDomBackendUpdate) {
+    // Verify the updates are from the same block/sequence
+    if (baseUpdate.blockid !== nextUpdate.blockid || baseUpdate.ts !== nextUpdate.ts) {
+        console.error("Attempted to merge updates from different blocks or timestamps");
+        return;
+    }
+
+    // Merge TransferElems
+    if (nextUpdate.transferelems?.length > 0) {
+        if (!baseUpdate.transferelems) {
+            baseUpdate.transferelems = [];
+        }
+        baseUpdate.transferelems.push(...nextUpdate.transferelems);
+    }
+
+    // Merge StateSync
+    if (nextUpdate.statesync?.length > 0) {
+        if (!baseUpdate.statesync) {
+            baseUpdate.statesync = [];
+        }
+        baseUpdate.statesync.push(...nextUpdate.statesync);
+    }
+}

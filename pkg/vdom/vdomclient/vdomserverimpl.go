@@ -79,10 +79,14 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 		return respChan
 	}
 
+	// Split the update into chunks and send them sequentially
+	updates := vdom.SplitBackendUpdate(update)
 	go func() {
 		defer close(respChan)
-		respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
-			Response: update,
+		for _, splitUpdate := range updates {
+			respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+				Response: splitUpdate,
+			}
 		}
 	}()
 

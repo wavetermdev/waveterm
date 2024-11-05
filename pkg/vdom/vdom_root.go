@@ -12,6 +12,11 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
+const (
+	BackendUpdate_InitialChunkSize = 50  // Size for initial chunks that contain both TransferElems and StateSync
+	BackendUpdate_ChunkSize        = 100 // Size for subsequent chunks
+)
+
 type vdomContextKeyType struct{}
 
 var vdomContextKey = vdomContextKeyType{}
@@ -544,4 +549,62 @@ func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
 	transferElems := ConvertElemsToTransferElems(vdomElems)
 	transferElems = DedupTransferElems(transferElems)
 	beUpdate.TransferElems = transferElems
+}
+
+// SplitBackendUpdate splits a large VDomBackendUpdate into multiple smaller updates
+// The first update contains all the core fields, while subsequent updates only contain
+// array elements that need to be appended
+func SplitBackendUpdate(update *VDomBackendUpdate) []*VDomBackendUpdate {
+	// If the update is small enough, return it as is
+	if len(update.TransferElems) <= BackendUpdate_InitialChunkSize && len(update.StateSync) <= BackendUpdate_InitialChunkSize {
+		return []*VDomBackendUpdate{update}
+	}
+
+	var updates []*VDomBackendUpdate
+
+	// First update contains core fields and initial chunks
+	firstUpdate := &VDomBackendUpdate{
+		Type:          update.Type,
+		Ts:            update.Ts,
+		BlockId:       update.BlockId,
+		Opts:          update.Opts,
+		HasWork:       update.HasWork,
+		RenderUpdates: update.RenderUpdates,
+		RefOperations: update.RefOperations,
+		Messages:      update.Messages,
+	}
+
+	// Add initial chunks of arrays
+	if len(update.TransferElems) > 0 {
+		firstUpdate.TransferElems = update.TransferElems[:min(BackendUpdate_InitialChunkSize, len(update.TransferElems))]
+	}
+	if len(update.StateSync) > 0 {
+		firstUpdate.StateSync = update.StateSync[:min(BackendUpdate_InitialChunkSize, len(update.StateSync))]
+	}
+
+	updates = append(updates, firstUpdate)
+
+	// Create subsequent updates for remaining TransferElems
+	for i := BackendUpdate_InitialChunkSize; i < len(update.TransferElems); i += BackendUpdate_ChunkSize {
+		end := min(i+BackendUpdate_ChunkSize, len(update.TransferElems))
+		updates = append(updates, &VDomBackendUpdate{
+			Type:          update.Type,
+			Ts:            update.Ts,
+			BlockId:       update.BlockId,
+			TransferElems: update.TransferElems[i:end],
+		})
+	}
+
+	// Create subsequent updates for remaining StateSync
+	for i := BackendUpdate_InitialChunkSize; i < len(update.StateSync); i += BackendUpdate_ChunkSize {
+		end := min(i+BackendUpdate_ChunkSize, len(update.StateSync))
+		updates = append(updates, &VDomBackendUpdate{
+			Type:      update.Type,
+			Ts:        update.Ts,
+			BlockId:   update.BlockId,
+			StateSync: update.StateSync[i:end],
+		})
+	}
+
+	return updates
 }
