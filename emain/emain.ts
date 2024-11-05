@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
-import { setupVdomUrlHandler } from "emain/emain-vdomhandler";
+import { registerVDomProtocol, setupVdomUrlHandler } from "emain/emain-vdomhandler";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -700,6 +700,7 @@ async function appMain() {
         electronApp.quit();
         return;
     }
+    registerVDomProtocol();
     makeAppMenu();
     try {
         await runWaveSrv(handleWSEvent);

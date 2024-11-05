@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	_ "embed"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
+
+//go:embed htmlstyle.css
+var htmlStyleCSS []byte
 
 var htmlCmdNewBlock bool
 var HtmlVDomClient *vdomclient.Client = vdomclient.MakeClient(&vdom.VDomBackendOpts{CloseOnCtrlC: true})
@@ -50,66 +54,25 @@ type BgItem struct {
 // Components
 var Style = vdomclient.DefineComponent[struct{}](HtmlVDomClient, "Style",
 	func(ctx context.Context, _ struct{}) any {
-		return vdom.E("style", nil, `
-			.root {
-				padding: 10px;
-			}
-
-			.background {
-				display: flex;
-				align-items: center;
-				width: 100%;
-			}
-
-			.background-inner {
-				max-width: 300px;
-			}
-
-			.bg-item {
-				cursor: pointer;
-				padding: 8px 12px;
-				border-radius: 4px;
-				display: flex;
-				flex-direction: row;
-				align-items: flex-start;
-				justify-content: flex-start;
-			}
-
-			.bg-item:hover {
-				background-color: var(--button-grey-hover-bg);
-			}
-
-			.bg-preview {
-				width: 20px;
-				height: 20px;
-				margin-right: 10px;
-				border-radius: 50%;
-				border: 1px solid #777;
-			}
-
-			.bg-label {
-				display: block;
-				white-space: nowrap;
-				overflow: hidden;
-				text-overflow: ellipsis;
-			}
-		`)
+		return vdom.E("wave:style",
+			vdom.P("src", "vdom:///style.css"),
+		)
 	},
 )
 
 var BgItemTag = vdomclient.DefineComponent[BgItemProps](HtmlVDomClient, "BgItem",
 	func(ctx context.Context, props BgItemProps) any {
 		return vdom.E("div",
-			vdom.P("className", "bg-item"),
-			vdom.P("onClick", props.OnClick),
+			vdom.Class("bg-item"),
 			vdom.E("div",
-				vdom.P("className", "bg-preview"),
+				vdom.Class("bg-preview"),
 				vdom.PStyle("background", props.Bg),
 			),
 			vdom.E("div",
-				vdom.P("className", "bg-label"),
+				vdom.Class("bg-label"),
 				props.Label,
 			),
+			vdom.P("onClick", props.OnClick),
 		)
 	},
 )
@@ -133,20 +96,17 @@ var BgList = vdomclient.DefineComponent[BgListProps](HtmlVDomClient, "BgList",
 			}
 		}
 
-		items := make([]*vdom.VDomElem, 0, len(props.Items))
-		for _, item := range props.Items {
-			items = append(items, BgItemTag(BgItemProps{
-				Bg:      item.Bg,
-				Label:   item.Label,
-				OnClick: setBackground(item.Bg),
-			}))
-		}
-
 		return vdom.E("div",
-			vdom.P("className", "background"),
+			vdom.Class("background"),
 			vdom.E("div",
-				vdom.P("className", "background-inner"),
-				items,
+				vdom.Class("background-inner"),
+				vdom.ForEach(props.Items, func(item BgItem) any {
+					return BgItemTag(BgItemProps{
+						Bg:      item.Bg,
+						Label:   item.Label,
+						OnClick: setBackground(item.Bg),
+					})
+				}),
 			),
 		)
 	},
@@ -164,7 +124,7 @@ var App = vdomclient.DefineComponent[struct{}](HtmlVDomClient, "App",
 		}
 
 		return vdom.E("div",
-			vdom.P("className", "root"),
+			vdom.Class("root"),
 			Style(struct{}{}),
 			vdom.E("h1", nil, "Set Background"),
 			vdom.E("div", nil,
@@ -177,7 +137,11 @@ var App = vdomclient.DefineComponent[struct{}](HtmlVDomClient, "App",
 			),
 			vdom.E("div", nil,
 				vdom.E("img",
-					vdom.P("style", "width: 100%; height: 100%; max-width: 300px; max-height: 300px; object-fit: contain;"),
+					vdom.PStyle("width", "100%"),
+					vdom.PStyle("height", "100%"),
+					vdom.PStyle("maxWidth", "300px"),
+					vdom.PStyle("maxHeight", "300px"),
+					vdom.PStyle("objectFit", "contain"),
 					vdom.P("src", "vdom:///test.png"),
 				),
 			),
@@ -189,9 +153,7 @@ var App = vdomclient.DefineComponent[struct{}](HtmlVDomClient, "App",
 						setInputText(e.TargetValue)
 					}),
 				),
-				vdom.E("div", nil,
-					"text ", inputText,
-				),
+				vdom.E("div", nil, "text ", inputText),
 			),
 		)
 	},
@@ -205,19 +167,20 @@ func htmlRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Set up the root component
 	client.SetRootElem(App(struct{}{}))
+	client.RegisterFileHandler("/style.css", vdomclient.FileHandlerOption{
+		Data:     htmlStyleCSS,
+		MimeType: "text/css",
+	})
+	client.RegisterFileHandler("/test.png", vdomclient.FileHandlerOption{
+		FilePath: "~/Downloads/IMG_1939.png",
+	})
 
-	// Set up file handler
-	client.RegisterFileHandler("/test.png", "~/Downloads/IMG_1939.png")
-
-	// Create the VDOM context
 	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: htmlCmdNewBlock})
 	if err != nil {
 		return err
 	}
 
-	// Handle shutdown
 	go func() {
 		<-client.DoneCh
 		wshutil.DoShutdown("vdom closed by FE", 0, true)

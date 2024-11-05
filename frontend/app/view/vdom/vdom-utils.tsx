@@ -137,48 +137,63 @@ export function validateAndWrapReactStyle(model: VDomModel, style: Record<string
     return sanitizedStyle;
 }
 
-type VDomTransferElem = {
-    root?: boolean;
-    waveid?: string;
-    tag: string;
-    props?: { [key: string]: any };
-    children?: string[]; // References to child WaveIds
-    text?: string;
-};
+export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
+    if (!backendUpdate.transferelems || !backendUpdate.renderupdates) {
+        return;
+    }
 
-export function UnmarshalTransferElems(transferElems: VDomTransferElem[]): VDomElem[] {
-    const elemMap: { [id: string]: VDomElem } = {};
-    const roots: VDomElem[] = [];
-
-    // Initialize each VDomTransferElem in the map without children, as we'll link them after
-    transferElems.forEach((transferElem) => {
+    // Step 1: Map of waveid to VDomElem, skipping any without a waveid
+    const elemMap = new Map<string, VDomElem>();
+    backendUpdate.transferelems.forEach((transferElem) => {
         if (!transferElem.waveid) {
-            return; // Skip elements without waveid
+            return;
         }
-        const elem: VDomElem = {
-            waveid: transferElem.tag !== "#text" ? transferElem.waveid : undefined,
+        elemMap.set(transferElem.waveid, {
+            waveid: transferElem.waveid,
             tag: transferElem.tag,
             props: transferElem.props,
+            children: [], // Will populate children later
             text: transferElem.text,
-            children: [], // Placeholder to be populated later
-        };
-        elemMap[transferElem.waveid] = elem;
+        });
+    });
 
-        // Collect root elements
-        if (transferElem.root) {
-            roots.push(elem);
+    // Step 2: Build VDomElem trees by linking children
+    backendUpdate.transferelems.forEach((transferElem) => {
+        const parent = elemMap.get(transferElem.waveid);
+        if (!parent || !transferElem.children || transferElem.children.length === 0) {
+            return;
+        }
+        parent.children = transferElem.children.map((childId) => elemMap.get(childId)).filter((child) => child != null); // Explicit null check
+    });
+
+    // Step 3: Update renderupdates with rebuilt VDomElem trees
+    backendUpdate.renderupdates.forEach((update) => {
+        if (update.vdomwaveid) {
+            update.vdom = elemMap.get(update.vdomwaveid);
         }
     });
+}
 
-    // Now populate children for each element
-    transferElems.forEach((transferElem) => {
-        if (!transferElem.waveid || !transferElem.children) return;
+export function mergeBackendUpdates(baseUpdate: VDomBackendUpdate, nextUpdate: VDomBackendUpdate) {
+    // Verify the updates are from the same block/sequence
+    if (baseUpdate.blockid !== nextUpdate.blockid || baseUpdate.ts !== nextUpdate.ts) {
+        console.error("Attempted to merge updates from different blocks or timestamps");
+        return;
+    }
 
-        const currentElem = elemMap[transferElem.waveid];
-        currentElem.children = transferElem.children
-            .map((childId) => elemMap[childId])
-            .filter((child) => child !== undefined); // Filter out any undefined children
-    });
+    // Merge TransferElems
+    if (nextUpdate.transferelems?.length > 0) {
+        if (!baseUpdate.transferelems) {
+            baseUpdate.transferelems = [];
+        }
+        baseUpdate.transferelems.push(...nextUpdate.transferelems);
+    }
 
-    return roots;
+    // Merge StateSync
+    if (nextUpdate.statesync?.length > 0) {
+        if (!baseUpdate.statesync) {
+            baseUpdate.statesync = [];
+        }
+        baseUpdate.statesync.push(...nextUpdate.statesync);
+    }
 }

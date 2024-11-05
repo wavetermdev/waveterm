@@ -12,6 +12,11 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
+const (
+	BackendUpdate_InitialChunkSize = 50  // Size for initial chunks that contain both TransferElems and StateSync
+	BackendUpdate_ChunkSize        = 100 // Size for subsequent chunks
+)
+
 type vdomContextKeyType struct{}
 
 var vdomContextKey = vdomContextKeyType{}
@@ -470,14 +475,13 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 	textCounter := 0 // Counter for generating unique IDs for #text nodes
 
 	// Helper function to recursively process each VDomElem in preorder
-	var processElem func(elem VDomElem, isRoot bool) string
-	processElem = func(elem VDomElem, isRoot bool) string {
+	var processElem func(elem VDomElem) string
+	processElem = func(elem VDomElem) string {
 		// Handle #text nodes by generating a unique placeholder ID
 		if elem.Tag == "#text" {
 			textId := fmt.Sprintf("text-%d", textCounter)
 			textCounter++
 			transferElems = append(transferElems, VDomTransferElem{
-				Root:     isRoot,
 				WaveId:   textId,
 				Tag:      elem.Tag,
 				Text:     elem.Text,
@@ -490,12 +494,11 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 		// Convert children to WaveId references, handling potential #text nodes
 		childrenIds := make([]string, len(elem.Children))
 		for i, child := range elem.Children {
-			childrenIds[i] = processElem(child, false) // Children are not roots
+			childrenIds[i] = processElem(child) // Children are not roots
 		}
 
 		// Create the VDomTransferElem for the current element
 		transferElem := VDomTransferElem{
-			Root:     isRoot,
 			WaveId:   elem.WaveId,
 			Tag:      elem.Tag,
 			Props:    elem.Props,
@@ -509,8 +512,99 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 
 	// Start processing each top-level element, marking them as roots
 	for _, elem := range elems {
-		processElem(elem, true)
+		processElem(elem)
 	}
 
 	return transferElems
+}
+
+func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {
+	seen := make(map[string]int) // maps WaveId to its index in the result slice
+	var result []VDomTransferElem
+
+	for _, elem := range elems {
+		if idx, exists := seen[elem.WaveId]; exists {
+			// Overwrite the previous element with the latest one
+			result[idx] = elem
+		} else {
+			// Add new element and store its index
+			seen[elem.WaveId] = len(result)
+			result = append(result, elem)
+		}
+	}
+
+	return result
+}
+
+func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
+	var vdomElems []VDomElem
+	for idx, reUpdate := range beUpdate.RenderUpdates {
+		if reUpdate.VDom == nil {
+			continue
+		}
+		vdomElems = append(vdomElems, *reUpdate.VDom)
+		beUpdate.RenderUpdates[idx].VDomWaveId = reUpdate.VDom.WaveId
+		beUpdate.RenderUpdates[idx].VDom = nil
+	}
+	transferElems := ConvertElemsToTransferElems(vdomElems)
+	transferElems = DedupTransferElems(transferElems)
+	beUpdate.TransferElems = transferElems
+}
+
+// SplitBackendUpdate splits a large VDomBackendUpdate into multiple smaller updates
+// The first update contains all the core fields, while subsequent updates only contain
+// array elements that need to be appended
+func SplitBackendUpdate(update *VDomBackendUpdate) []*VDomBackendUpdate {
+	// If the update is small enough, return it as is
+	if len(update.TransferElems) <= BackendUpdate_InitialChunkSize && len(update.StateSync) <= BackendUpdate_InitialChunkSize {
+		return []*VDomBackendUpdate{update}
+	}
+
+	var updates []*VDomBackendUpdate
+
+	// First update contains core fields and initial chunks
+	firstUpdate := &VDomBackendUpdate{
+		Type:          update.Type,
+		Ts:            update.Ts,
+		BlockId:       update.BlockId,
+		Opts:          update.Opts,
+		HasWork:       update.HasWork,
+		RenderUpdates: update.RenderUpdates,
+		RefOperations: update.RefOperations,
+		Messages:      update.Messages,
+	}
+
+	// Add initial chunks of arrays
+	if len(update.TransferElems) > 0 {
+		firstUpdate.TransferElems = update.TransferElems[:min(BackendUpdate_InitialChunkSize, len(update.TransferElems))]
+	}
+	if len(update.StateSync) > 0 {
+		firstUpdate.StateSync = update.StateSync[:min(BackendUpdate_InitialChunkSize, len(update.StateSync))]
+	}
+
+	updates = append(updates, firstUpdate)
+
+	// Create subsequent updates for remaining TransferElems
+	for i := BackendUpdate_InitialChunkSize; i < len(update.TransferElems); i += BackendUpdate_ChunkSize {
+		end := min(i+BackendUpdate_ChunkSize, len(update.TransferElems))
+		updates = append(updates, &VDomBackendUpdate{
+			Type:          update.Type,
+			Ts:            update.Ts,
+			BlockId:       update.BlockId,
+			TransferElems: update.TransferElems[i:end],
+		})
+	}
+
+	// Create subsequent updates for remaining StateSync
+	for i := BackendUpdate_InitialChunkSize; i < len(update.StateSync); i += BackendUpdate_ChunkSize {
+		end := min(i+BackendUpdate_ChunkSize, len(update.StateSync))
+		updates = append(updates, &VDomBackendUpdate{
+			Type:      update.Type,
+			Ts:        update.Ts,
+			BlockId:   update.BlockId,
+			StateSync: update.StateSync[i:end],
+		})
+	}
+
+	return updates
 }

@@ -9,6 +9,7 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
+import { mergeBackendUpdates, restoreVDomElems } from "@/app/view/vdom/vdom-utils";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -330,8 +331,21 @@ export class VDomModel {
         try {
             const feUpdate = this.createFeUpdate();
             dlog("fe-update", feUpdate);
-            const beUpdate = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
-            this.handleBackendUpdate(beUpdate);
+            const beUpdateGen = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
+            let baseUpdate: VDomBackendUpdate = null;
+            for await (const beUpdate of beUpdateGen) {
+                if (baseUpdate === null) {
+                    baseUpdate = beUpdate;
+                } else {
+                    mergeBackendUpdates(baseUpdate, beUpdate);
+                }
+            }
+            if (baseUpdate !== null) {
+                restoreVDomElems(baseUpdate);
+                dlog("be-update", baseUpdate);
+                this.handleBackendUpdate(baseUpdate);
+            }
+            dlog("update cycle done");
         } finally {
             this.lastUpdateTs = Date.now();
             this.hasPendingRequest = false;

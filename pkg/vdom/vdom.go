@@ -35,6 +35,11 @@ type styleAttrWrapper struct {
 	Val       any
 }
 
+type classAttrWrapper struct {
+	ClassName string
+	Cond      bool
+}
+
 type styleAttrMapWrapper struct {
 	StyleAttrMap map[string]any
 }
@@ -82,6 +87,47 @@ func mergeStyleAttr(props *map[string]any, styleAttr styleAttrWrapper) {
 	styleMap[styleAttr.StyleAttr] = styleAttr.Val
 }
 
+func mergeClassAttr(props *map[string]any, classAttr classAttrWrapper) {
+	if *props == nil {
+		*props = make(map[string]any)
+	}
+	if classAttr.Cond {
+		if (*props)["className"] == nil {
+			(*props)["className"] = classAttr.ClassName
+			return
+		}
+		classVal, ok := (*props)["className"].(string)
+		if !ok {
+			return
+		}
+		// check if class already exists (must split, contains won't work)
+		splitArr := strings.Split(classVal, " ")
+		for _, class := range splitArr {
+			if class == classAttr.ClassName {
+				return
+			}
+		}
+		(*props)["className"] = classVal + " " + classAttr.ClassName
+	} else {
+		classVal, ok := (*props)["className"].(string)
+		if !ok {
+			return
+		}
+		splitArr := strings.Split(classVal, " ")
+		for i, class := range splitArr {
+			if class == classAttr.ClassName {
+				splitArr = append(splitArr[:i], splitArr[i+1:]...)
+				break
+			}
+		}
+		if len(splitArr) == 0 {
+			delete(*props, "className")
+		} else {
+			(*props)["className"] = strings.Join(splitArr, " ")
+		}
+	}
+}
+
 func E(tag string, parts ...any) *VDomElem {
 	rtn := &VDomElem{Tag: tag}
 	for _, part := range parts {
@@ -103,10 +149,52 @@ func E(tag string, parts ...any) *VDomElem {
 			}
 			continue
 		}
+		if classAttr, ok := part.(classAttrWrapper); ok {
+			mergeClassAttr(&rtn.Props, classAttr)
+			continue
+		}
 		elems := partToElems(part)
 		rtn.Children = append(rtn.Children, elems...)
 	}
 	return rtn
+}
+
+func Class(name string) classAttrWrapper {
+	return classAttrWrapper{ClassName: name, Cond: true}
+}
+
+func ClassIf(cond bool, name string) classAttrWrapper {
+	return classAttrWrapper{ClassName: name, Cond: cond}
+}
+
+func ClassIfElse(cond bool, name string, elseName string) classAttrWrapper {
+	if cond {
+		return classAttrWrapper{ClassName: name, Cond: true}
+	}
+	return classAttrWrapper{ClassName: elseName, Cond: true}
+}
+
+func If(cond bool, part any) any {
+	if cond {
+		return part
+	}
+	return nil
+}
+
+func IfElse(cond bool, part any, elsePart any) any {
+	if cond {
+		return part
+	}
+	return elsePart
+}
+
+func ForEach[T any](items []T, fn func(T) any) []any {
+	var elems []any
+	for _, item := range items {
+		fnResult := fn(item)
+		elems = append(elems, fnResult)
+	}
+	return elems
 }
 
 func Props(props any) map[string]any {
@@ -173,6 +261,31 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T)) {
 	return rtnVal, setVal
 }
 
+func UseStateWithFn[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T)) {
+	vc, hookVal := getHookFromCtx(ctx)
+	if !hookVal.Init {
+		hookVal.Init = true
+		hookVal.Val = initialVal
+	}
+	var rtnVal T
+	rtnVal, ok := hookVal.Val.(T)
+	if !ok {
+		panic("UseState hook value is not a state (possible out of order or conditional hooks)")
+	}
+
+	setVal := func(newVal T) {
+		hookVal.Val = newVal
+		vc.Root.AddRenderWork(vc.Comp.WaveId)
+	}
+
+	setFuncVal := func(updateFunc func(T) T) {
+		hookVal.Val = updateFunc(hookVal.Val.(T))
+		vc.Root.AddRenderWork(vc.Comp.WaveId)
+	}
+
+	return rtnVal, setVal, setFuncVal
+}
+
 func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
 	vc, hookVal := getHookFromCtx(ctx)
 	if !hookVal.Init {
@@ -206,6 +319,19 @@ func UseVDomRef(ctx context.Context) *VDomRef {
 		hookVal.Val = &VDomRef{Type: ObjectType_Ref, RefId: refId}
 	}
 	refVal, ok := hookVal.Val.(*VDomRef)
+	if !ok {
+		panic("UseRef hook value is not a ref (possible out of order or conditional hooks)")
+	}
+	return refVal
+}
+
+func UseRef[T any](ctx context.Context, val T) *VDomSimpleRef[T] {
+	_, hookVal := getHookFromCtx(ctx)
+	if !hookVal.Init {
+		hookVal.Init = true
+		hookVal.Val = &VDomSimpleRef[T]{Current: val}
+	}
+	refVal, ok := hookVal.Val.(*VDomSimpleRef[T])
 	if !ok {
 		panic("UseRef hook value is not a ref (possible out of order or conditional hooks)")
 	}

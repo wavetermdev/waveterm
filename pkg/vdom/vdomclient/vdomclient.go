@@ -6,6 +6,8 @@ package vdomclient
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -207,7 +209,7 @@ func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
 		HasWork: len(c.Root.EffectWorkQueue) > 0,
 		Opts:    &c.Opts,
 		RenderUpdates: []vdom.VDomRenderUpdate{
-			{UpdateType: "root", VDom: *renderedVDom},
+			{UpdateType: "root", VDom: renderedVDom},
 		},
 		StateSync: c.Root.GetStateSync(true),
 	}, nil
@@ -224,7 +226,7 @@ func (c *Client) incrementalRender() (*vdom.VDomBackendUpdate, error) {
 		Ts:      time.Now().UnixMilli(),
 		BlockId: c.RpcContext.BlockId,
 		RenderUpdates: []vdom.VDomRenderUpdate{
-			{UpdateType: "root", VDom: *renderedVDom},
+			{UpdateType: "root", VDom: renderedVDom},
 		},
 		StateSync: c.Root.GetStateSync(false),
 	}, nil
@@ -234,9 +236,111 @@ func (c *Client) RegisterUrlPathHandler(path string, handler http.Handler) {
 	c.UrlHandlerMux.Handle(path, handler)
 }
 
-func (c *Client) RegisterFileHandler(path string, fileName string) {
-	fileName = wavebase.ExpandHomeDirSafe(fileName)
+type FileHandlerOption struct {
+	FilePath string    // optional file path on disk
+	Data     []byte    // optional byte slice content
+	Reader   io.Reader // optional reader for content
+	File     fs.File   // optional embedded or opened file
+	MimeType string    // optional mime type
+}
+
+func determineMimeType(option FileHandlerOption) (string, []byte) {
+	// If MimeType is set, use it directly
+	if option.MimeType != "" {
+		return option.MimeType, nil
+	}
+
+	// Detect from Data if available, no need to buffer
+	if option.Data != nil {
+		return http.DetectContentType(option.Data), nil
+	}
+
+	// Detect from FilePath, no buffering necessary
+	if option.FilePath != "" {
+		filePath := wavebase.ExpandHomeDirSafe(option.FilePath)
+		file, err := os.Open(filePath)
+		if err != nil {
+			return "application/octet-stream", nil // Fallback on error
+		}
+		defer file.Close()
+
+		// Read first 512 bytes for MIME detection
+		buf := make([]byte, 512)
+		_, err = file.Read(buf)
+		if err != nil && err != io.EOF {
+			return "application/octet-stream", nil
+		}
+		return http.DetectContentType(buf), nil
+	}
+
+	// Buffer for File (fs.File), since it lacks Seek
+	if option.File != nil {
+		buf := make([]byte, 512)
+		n, err := option.File.Read(buf)
+		if err != nil && err != io.EOF {
+			return "application/octet-stream", nil
+		}
+		return http.DetectContentType(buf[:n]), buf[:n]
+	}
+
+	// Buffer for Reader (io.Reader), same as File
+	if option.Reader != nil {
+		buf := make([]byte, 512)
+		n, err := option.Reader.Read(buf)
+		if err != nil && err != io.EOF {
+			return "application/octet-stream", nil
+		}
+		return http.DetectContentType(buf[:n]), buf[:n]
+	}
+
+	// Default MIME type if none specified
+	return "application/octet-stream", nil
+}
+
+func (c *Client) RegisterFileHandler(path string, option FileHandlerOption) {
 	c.UrlHandlerMux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, fileName)
+		// Determine MIME type and get buffered data if needed
+		contentType, bufferedData := determineMimeType(option)
+		w.Header().Set("Content-Type", contentType)
+
+		if option.FilePath != "" {
+			// Serve file from path
+			filePath := wavebase.ExpandHomeDirSafe(option.FilePath)
+			http.ServeFile(w, r, filePath)
+		} else if option.Data != nil {
+			// Set content length and serve content from in-memory data
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(option.Data)))
+			w.WriteHeader(http.StatusOK) // Ensure headers are sent before writing body
+			if _, err := w.Write(option.Data); err != nil {
+				http.Error(w, "Failed to serve content", http.StatusInternalServerError)
+			}
+		} else if option.File != nil {
+			// Write buffered data if available, then continue with remaining File content
+			if bufferedData != nil {
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", len(bufferedData)))
+				if _, err := w.Write(bufferedData); err != nil {
+					http.Error(w, "Failed to serve content", http.StatusInternalServerError)
+					return
+				}
+			}
+			// Serve remaining content from File
+			if _, err := io.Copy(w, option.File); err != nil {
+				http.Error(w, "Failed to serve content", http.StatusInternalServerError)
+			}
+		} else if option.Reader != nil {
+			// Write buffered data if available, then continue with remaining Reader content
+			if bufferedData != nil {
+				if _, err := w.Write(bufferedData); err != nil {
+					http.Error(w, "Failed to serve content", http.StatusInternalServerError)
+					return
+				}
+			}
+			// Serve remaining content from Reader
+			if _, err := io.Copy(w, option.Reader); err != nil {
+				http.Error(w, "Failed to serve content", http.StatusInternalServerError)
+			}
+		} else {
+			http.Error(w, "No content available", http.StatusNotFound)
+		}
 	})
 }
