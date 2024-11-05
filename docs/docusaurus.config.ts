@@ -92,7 +92,6 @@ const config: Config = {
                 !process.env.EMBEDDED
                     ? [
                           {
-                              type: "doc",
                               position: "left",
                               href: "/storybook",
                               label: "Storybook",
