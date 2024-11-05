@@ -35,6 +35,11 @@ type styleAttrWrapper struct {
 	Val       any
 }
 
+type classAttrWrapper struct {
+	ClassName string
+	Cond      bool
+}
+
 type styleAttrMapWrapper struct {
 	StyleAttrMap map[string]any
 }
@@ -82,6 +87,43 @@ func mergeStyleAttr(props *map[string]any, styleAttr styleAttrWrapper) {
 	styleMap[styleAttr.StyleAttr] = styleAttr.Val
 }
 
+func mergeClassAttr(props *map[string]any, classAttr classAttrWrapper) {
+	if *props == nil {
+		*props = make(map[string]any)
+	}
+	if classAttr.Cond {
+		classVal, ok := (*props)["className"].(string)
+		if !ok {
+			return
+		}
+		// check if class already exists (must split, contains won't work)
+		splitArr := strings.Split(classVal, " ")
+		for _, class := range splitArr {
+			if class == classAttr.ClassName {
+				return
+			}
+		}
+		(*props)["className"] = classVal + " " + classAttr.ClassName
+	} else {
+		classVal, ok := (*props)["className"].(string)
+		if !ok {
+			return
+		}
+		splitArr := strings.Split(classVal, " ")
+		for i, class := range splitArr {
+			if class == classAttr.ClassName {
+				splitArr = append(splitArr[:i], splitArr[i+1:]...)
+				break
+			}
+		}
+		if len(splitArr) == 0 {
+			delete(*props, "className")
+		} else {
+			(*props)["className"] = strings.Join(splitArr, " ")
+		}
+	}
+}
+
 func E(tag string, parts ...any) *VDomElem {
 	rtn := &VDomElem{Tag: tag}
 	for _, part := range parts {
@@ -103,10 +145,29 @@ func E(tag string, parts ...any) *VDomElem {
 			}
 			continue
 		}
+		if classAttr, ok := part.(classAttrWrapper); ok {
+			mergeClassAttr(&rtn.Props, classAttr)
+			continue
+		}
 		elems := partToElems(part)
 		rtn.Children = append(rtn.Children, elems...)
 	}
 	return rtn
+}
+
+func Class(name string) classAttrWrapper {
+	return classAttrWrapper{ClassName: name, Cond: true}
+}
+
+func ClassIf(cond bool, name string) classAttrWrapper {
+	return classAttrWrapper{ClassName: name, Cond: cond}
+}
+
+func ClassIfElse(cond bool, name string, elseName string) classAttrWrapper {
+	if cond {
+		return classAttrWrapper{ClassName: name, Cond: true}
+	}
+	return classAttrWrapper{ClassName: elseName, Cond: true}
 }
 
 func If(cond bool, part any) any {
