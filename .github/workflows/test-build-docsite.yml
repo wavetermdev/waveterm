@@ -1,4 +1,4 @@
-name: Test docsite build
+name: Test Docsite and Storybook Build
 
 env:
     NODE_VERSION: 20
