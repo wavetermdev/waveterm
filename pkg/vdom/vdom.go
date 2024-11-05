@@ -92,6 +92,10 @@ func mergeClassAttr(props *map[string]any, classAttr classAttrWrapper) {
 		*props = make(map[string]any)
 	}
 	if classAttr.Cond {
+		if (*props)["className"] == nil {
+			(*props)["className"] = classAttr.ClassName
+			return
+		}
 		classVal, ok := (*props)["className"].(string)
 		if !ok {
 			return
