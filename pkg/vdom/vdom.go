@@ -109,6 +109,29 @@ func E(tag string, parts ...any) *VDomElem {
 	return rtn
 }
 
+func If(cond bool, part any) any {
+	if cond {
+		return part
+	}
+	return nil
+}
+
+func IfElse(cond bool, part any, elsePart any) any {
+	if cond {
+		return part
+	}
+	return elsePart
+}
+
+func ForEach[T any](items []T, fn func(T) any) []any {
+	var elems []any
+	for _, item := range items {
+		fnResult := fn(item)
+		elems = append(elems, fnResult)
+	}
+	return elems
+}
+
 func Props(props any) map[string]any {
 	m, err := utilfn.StructToMap(props)
 	if err != nil {

@@ -334,9 +334,6 @@ export class VDomModel {
             const beUpdateGen = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
             let baseUpdate: VDomBackendUpdate = null;
             for await (const beUpdate of beUpdateGen) {
-                dlog("be-update", beUpdate);
-                restoreVDomElems(beUpdate);
-
                 if (baseUpdate === null) {
                     baseUpdate = beUpdate;
                 } else {
@@ -344,6 +341,8 @@ export class VDomModel {
                 }
             }
             if (baseUpdate !== null) {
+                restoreVDomElems(baseUpdate);
+                dlog("be-update", baseUpdate);
                 this.handleBackendUpdate(baseUpdate);
             }
             dlog("update cycle done");
