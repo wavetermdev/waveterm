@@ -132,6 +132,7 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   name: docsite
+                  path: ${{env.STATIC_DOCSITE_PATH}}
 
             # Build and upload packages
             - name: Build (Linux)
