@@ -1,4 +1,4 @@
-name: Deploy Docsite and Storybook to GitHub Pages
+name: Deploy Docsite and Storybook
 
 env:
     NODE_VERSION: 20
