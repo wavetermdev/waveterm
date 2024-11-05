@@ -93,7 +93,7 @@ const config: Config = {
                     ? [
                           {
                               position: "left",
-                              href: "/storybook",
+                              href: "https://docs.waveterm.dev/storybook/",
                               label: "Storybook",
                           },
                           {
