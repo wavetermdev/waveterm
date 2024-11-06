@@ -211,7 +211,8 @@ func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
 		RenderUpdates: []vdom.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},
-		StateSync: c.Root.GetStateSync(true),
+		RefOperations: c.Root.GetRefOperations(),
+		StateSync:     c.Root.GetStateSync(true),
 	}, nil
 }
 
@@ -228,7 +229,8 @@ func (c *Client) incrementalRender() (*vdom.VDomBackendUpdate, error) {
 		RenderUpdates: []vdom.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},
-		StateSync: c.Root.GetStateSync(false),
+		RefOperations: c.Root.GetRefOperations(),
+		StateSync:     c.Root.GetStateSync(false),
 	}, nil
 }
 

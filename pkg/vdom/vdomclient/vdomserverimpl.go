@@ -60,6 +60,10 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 			impl.Client.Root.Event(event.WaveId, event.EventType, event)
 		}
 	}
+	// update refs
+	for _, ref := range feUpdate.RefUpdates {
+		impl.Client.Root.UpdateRef(ref)
+	}
 
 	var update *vdom.VDomBackendUpdate
 	var err error
