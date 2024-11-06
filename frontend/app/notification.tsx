@@ -48,7 +48,7 @@ const Notification = () => {
     };
 
     const removeAllNotifications = () => {
-        setNotifications([]);
+        setNotifications((prevNotifications) => prevNotifications.filter((n) => n.persistent));
     };
 
     const copyNotification = (id: string) => {
@@ -92,7 +92,7 @@ const Notification = () => {
                         className="ghost grey close-all-btn horizontal-padding-3 vertical-padding-3"
                         onClick={removeAllNotifications}
                     >
-                        Close All
+                        Clear All
                     </Button>
                 </div>
                 <OverlayScrollbarsComponent
@@ -111,16 +111,18 @@ const Notification = () => {
                                 onClick={() => copyNotification(notif.id)}
                                 title="Click to Copy Notification Message"
                             >
-                                <Button
-                                    className="close-btn ghost grey vertical-padding-10"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeNotification(notif.id);
-                                    }}
-                                    aria-label="Close"
-                                >
-                                    <i className={makeIconClass("close", false)}></i>
-                                </Button>
+                                {!notif.persistent && (
+                                    <Button
+                                        className="close-btn ghost grey vertical-padding-10"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeNotification(notif.id);
+                                        }}
+                                        aria-label="Close"
+                                    >
+                                        <i className={makeIconClass("close", false)}></i>
+                                    </Button>
+                                )}
                                 <div className="notification-inner">
                                     {notif.icon && (
                                         <div className="notification-icon">

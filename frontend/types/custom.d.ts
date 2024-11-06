@@ -314,9 +314,10 @@ declare global {
         title: string;
         message: string;
         timestamp: string;
+        color: "red" | "yellow" | "green";
         expiration?: number;
         actions?: NotificationAction[];
-        color: "red" | "yellow" | "green";
+        dismissible?: boolean;
     };
 
     interface AbstractWshClient {
