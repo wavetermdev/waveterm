@@ -197,3 +197,50 @@ export function mergeBackendUpdates(baseUpdate: VDomBackendUpdate, nextUpdate: V
         baseUpdate.statesync.push(...nextUpdate.statesync);
     }
 }
+
+export function applyCanvasOp(canvas: HTMLCanvasElement, canvasOp: VDomRefOperation, refStore: Map<string, any>) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+        console.error("Canvas 2D context not available.");
+        return;
+    }
+
+    let { op, params, outputref } = canvasOp;
+    if (params == null) {
+        params = [];
+    }
+    if (op == null || op == "") {
+        return;
+    }
+    // Resolve any reference parameters in params
+    const resolvedParams: any[] = [];
+    params.forEach((param) => {
+        if (typeof param === "string" && param.startsWith("#ref:")) {
+            const refId = param.slice(5); // Remove "#ref:" prefix
+            resolvedParams.push(refStore.get(refId));
+        } else if (typeof param === "string" && param.startsWith("#spreadRef:")) {
+            const refId = param.slice(11); // Remove "#spreadRef:" prefix
+            const arrayRef = refStore.get(refId);
+            if (Array.isArray(arrayRef)) {
+                resolvedParams.push(...arrayRef); // Spread array elements
+            } else {
+                console.error(`Reference ${refId} is not an array and cannot be spread.`);
+            }
+        } else {
+            resolvedParams.push(param);
+        }
+    });
+
+    // Apply the operation on the canvas context
+    if (op === "dropRef" && params.length > 0 && typeof params[0] === "string") {
+        refStore.delete(params[0]);
+    } else if (op === "addRef" && outputref) {
+        refStore.set(outputref, resolvedParams[0]);
+    } else if (typeof ctx[op as keyof CanvasRenderingContext2D] === "function") {
+        (ctx[op as keyof CanvasRenderingContext2D] as Function).apply(ctx, resolvedParams);
+    } else if (op in ctx) {
+        (ctx as any)[op] = resolvedParams[0];
+    } else {
+        console.error(`Unsupported canvas operation: ${op}`);
+    }
+}

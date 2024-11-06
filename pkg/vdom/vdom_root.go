@@ -6,7 +6,10 @@ package vdom
 import (
 	"context"
 	"fmt"
+	"log"
 	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -36,11 +39,13 @@ type Atom struct {
 type RootElem struct {
 	OuterCtx        context.Context
 	Root            *ComponentImpl
+	RenderTs        int64
 	CFuncs          map[string]any
 	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
 	Atoms           map[string]*Atom
+	RefOperations   []VDomRefOperation
 }
 
 const (
@@ -412,6 +417,49 @@ func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **ComponentIm
 		rtnElem = &VDomElem{Tag: FragmentTag, Children: rtnElemArr}
 	}
 	r.render(rtnElem, &(*comp).Comp)
+}
+
+func (r *RootElem) UpdateRef(updateRef VDomRefUpdate) {
+	refId := updateRef.RefId
+	split := strings.SplitN(refId, ":", 2)
+	if len(split) != 2 {
+		log.Printf("invalid ref id: %s\n", refId)
+		return
+	}
+	waveId := split[0]
+	hookIdx, err := strconv.Atoi(split[1])
+	if err != nil {
+		log.Printf("invalid ref id (bad hook idx): %s\n", refId)
+		return
+	}
+	comp := r.CompMap[waveId]
+	if comp == nil {
+		return
+	}
+	if hookIdx < 0 || hookIdx >= len(comp.Hooks) {
+		return
+	}
+	hook := comp.Hooks[hookIdx]
+	if hook == nil {
+		return
+	}
+	ref, ok := hook.Val.(*VDomRef)
+	if !ok {
+		return
+	}
+	ref.HasCurrent = updateRef.HasCurrent
+	ref.Position = updateRef.Position
+	r.AddRenderWork(waveId)
+}
+
+func (r *RootElem) QueueRefOp(op VDomRefOperation) {
+	r.RefOperations = append(r.RefOperations, op)
+}
+
+func (r *RootElem) GetRefOperations() []VDomRefOperation {
+	ops := r.RefOperations
+	r.RefOperations = nil
+	return ops
 }
 
 func convertPropsToVDom(props map[string]any) map[string]any {

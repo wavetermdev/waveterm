@@ -72,6 +72,7 @@ const AllowedSimpleTags: { [tagName: string]: boolean } = {
     br: true,
     pre: true,
     code: true,
+    canvas: true,
 };
 
 const AllowedSvgTags = {
@@ -350,7 +351,13 @@ function useVDom(model: VDomModel, elem: VDomElem): GenericPropsType {
 function WaveMarkdown({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     const props = useVDom(model, elem);
     return (
-        <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
+        <Markdown
+            text={props?.text}
+            style={props?.style}
+            className={props?.className}
+            scrollable={props?.scrollable}
+            rehype={props?.rehype}
+        />
     );
 }
 
@@ -452,11 +459,15 @@ const testVDom: VDomElem = {
 };
 
 function VDomRoot({ model }: { model: VDomModel }) {
+    let version = jotai.useAtomValue(model.globalVersion);
     let rootNode = jotai.useAtomValue(model.vdomRoot);
+    React.useEffect(() => {
+        model.renderDone(version);
+    }, [version]);
     if (model.viewRef.current == null || rootNode == null) {
         return null;
     }
-    dlog("render", rootNode);
+    dlog("render", version, rootNode);
     let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }
