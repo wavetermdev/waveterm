@@ -46,6 +46,25 @@ const Notification = () => {
         navigator.clipboard.writeText(text);
     };
 
+    const formatTimestamp = (timestamp: string): string => {
+        const notificationTime = new Date(timestamp).getTime();
+        const now = Date.now();
+        const diffInSeconds = Math.floor((now - notificationTime) / 1000);
+        const diffInMinutes = Math.floor(diffInSeconds / 60);
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        const diffInDays = Math.floor(diffInHours / 24);
+
+        if (diffInMinutes < 60) {
+            return `${diffInMinutes} mins ago`;
+        } else if (diffInHours < 24) {
+            return `${diffInHours} hrs ago`;
+        } else if (diffInDays < 7) {
+            return `${diffInDays} days ago`;
+        } else {
+            return new Date(timestamp).toLocaleString();
+        }
+    };
+
     return (
         <div className="notification-container">
             <div className="header">
@@ -69,7 +88,7 @@ const Notification = () => {
                         title="Click to Copy Notification Message"
                     >
                         <Button
-                            className="close-btn ghost grey"
+                            className="close-btn ghost grey vertical-padding-3"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 removeNotification(notif.id);
@@ -86,7 +105,9 @@ const Notification = () => {
                             )}
                             <div className="notification-text">
                                 {notif.title && <div className="notification-title">{notif.title}</div>}
-                                {notif.timestamp && <div className="notification-timestamp">{notif.timestamp}</div>}
+                                {notif.timestamp && (
+                                    <div className="notification-timestamp">{formatTimestamp(notif.timestamp)}</div>
+                                )}
                                 {notif.message && <div className="notification-message">{notif.message}</div>}
                                 <div className="notification-actions">
                                     {notif.actions?.map((action, index) => {
