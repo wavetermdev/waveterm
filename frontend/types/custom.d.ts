@@ -303,6 +303,7 @@ declare global {
     export type NotificationAction = {
         label: string;
         actionKey: string;
+        rightIcon?: string;
         color?: "green" | "grey";
         disabled?: boolean;
     };

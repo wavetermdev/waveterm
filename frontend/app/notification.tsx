@@ -134,6 +134,9 @@ const Notification = () => {
                                                     disabled={action.disabled}
                                                 >
                                                     {action.label}
+                                                    {action.rightIcon && (
+                                                        <i className={makeIconClass(action.rightIcon, false)}></i>
+                                                    )}
                                                 </Button>
                                             );
                                         })}
