@@ -16,6 +16,7 @@ import {
     validateAndWrapCss,
     validateAndWrapReactStyle,
 } from "@/app/view/vdom/vdom-utils";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import "./vdom.less";
 
 const TextTag = "#text";
@@ -291,7 +292,9 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             if (backendRouteId == null) {
                 continue;
             }
-            props[key] = "vdom://" + backendRouteId + vdomUrl;
+            const wsEndpoint = getWebServerEndpoint();
+            const fullUrl = wsEndpoint + "/vdom/" + backendRouteId + vdomUrl;
+            props[key] = fullUrl;
             continue;
         }
         props[key] = val;
