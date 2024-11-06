@@ -38,5 +38,17 @@ const config: StorybookConfig = {
     },
 
     staticDirs: [{ from: "../assets", to: "/assets" }],
+    managerHead: (head) => `
+        ${head}
+        <link rel="shortcut icon" href="/assets/waveterm-logo-with-bg.ico" />
+        <link rel="icon" type="image/png" href="/assets/waveterm-logo-with-bg.png" sizes="250x250" />
+        <style>
+        .sidebar-header img {
+            max-width: 150px !important;
+            max-height: 100px !important;
+        }
+        </style>
+        <base href="${process.env.IS_OFFICIAL ? "/storybook" : "/"}" />
+`,
 };
 export default config;
