@@ -32,8 +32,10 @@ jobs:
 
             - name: Build Storybook
               run: yarn build-storybook
+            # Copy the storybook static site into the docsite output and copy the assets from the main repo into the assets dir of the docsite output.
+            # It needs to be in assets/assets because assets/ gets served from the / root of the site and storybook expects to find assets in /assets/
             - name: Copy Storybook to docs
-              run: cp -r storybook-static docs/build/storybook && cp -r assets docs/build/assets
+              run: cp -r storybook-static docs/build/storybook && cp -r assets docs/build/assets/assets
             - name: Upload Build Artifact
               uses: actions/upload-pages-artifact@v3
               with:
