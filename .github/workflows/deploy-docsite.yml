@@ -33,7 +33,7 @@ jobs:
             - name: Build Storybook
               run: yarn build-storybook
             - name: Copy Storybook to docs
-              run: cp -r storybook-static docs/build/storybook && mv docs/build/storybook/assets/* docs/build/assets
+              run: cp -r storybook-static docs/build/storybook && cp -r assets docs/build/assets
             - name: Upload Build Artifact
               uses: actions/upload-pages-artifact@v3
               with:
