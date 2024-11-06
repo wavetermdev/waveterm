@@ -38,7 +38,7 @@ const config: Config = {
                 path: "docs",
                 routeBasePath: "/",
                 exclude: ["features/**"],
-                editUrl: !process.env.EMBEDDED ? "https://github.com/wavetermdev/waveterm-docs/edit/main/" : undefined,
+                editUrl: !process.env.EMBEDDED ? "https://github.com/wavetermdev/waveterm/edit/main/docs/" : undefined,
             } as import("@docusaurus/plugin-content-docs").Options,
         ],
         "ideal-image",
