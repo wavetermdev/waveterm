@@ -590,6 +590,12 @@ function removeFlashError(id: string) {
     });
 }
 
+function removeNotification(id: string) {
+    globalStore.set(atoms.notifications, (prev) => {
+        return prev.filter((notif) => notif.id !== id);
+    });
+}
+
 async function createTab(): Promise<void> {
     await getApi().createTab();
 }
@@ -623,6 +629,7 @@ export {
     refocusNode,
     registerBlockComponentModel,
     removeFlashError,
+    removeNotification,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,

@@ -7,7 +7,7 @@ import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { useAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import "./notification.less";
 
@@ -23,6 +23,20 @@ const notificationActions = {
 const Notification = () => {
     const [notifications, setNotifications] = useAtom(atoms.notifications);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const [ticker, setTicker] = useState<number>(0);
+
+    useEffect(() => {
+        if (notifications.length == 0 || hoveredId != null) {
+            return;
+        }
+        const now = Date.now();
+        for (let notif of notifications) {
+            if (notif.expiration && notif.expiration < now) {
+                removeNotification(notif.id);
+            }
+        }
+        setTimeout(() => setTicker(ticker + 1), 1000);
+    }, [notifications, ticker, hoveredId]);
 
     if (notifications.length === 0) {
         return null;
