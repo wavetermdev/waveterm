@@ -1931,24 +1931,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@docusaurus/module-type-aliases@npm:3.5.2":
-  version: 3.5.2
-  resolution: "@docusaurus/module-type-aliases@npm:3.5.2"
-  dependencies:
-    "@docusaurus/types": "npm:3.5.2"
-    "@types/history": "npm:^4.7.11"
-    "@types/react": "npm:*"
-    "@types/react-router-config": "npm:*"
-    "@types/react-router-dom": "npm:*"
-    react-helmet-async: "npm:*"
-    react-loadable: "npm:@docusaurus/react-loadable@6.0.0"
-  peerDependencies:
-    react: "*"
-    react-dom: "*"
-  checksum: 10c0/5174c8ad4a545b4ef8aa16bae6f6a2d501ab0d4ddd400cca83c55b6b35eac79b1d7cff52d6041da4f0f339a969d72be1f40e57d5ea73a50a61e0688505627e0c
-  languageName: node
-  linkType: hard
-
 "@docusaurus/module-type-aliases@npm:3.6.0, @docusaurus/module-type-aliases@npm:^3.4.0":
   version: 3.6.0
   resolution: "@docusaurus/module-type-aliases@npm:3.6.0"
@@ -2222,30 +2204,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@docusaurus/tsconfig@npm:3.5.2":
-  version: 3.5.2
-  resolution: "@docusaurus/tsconfig@npm:3.5.2"
-  checksum: 10c0/1cde5cfadfc94605ba9a1ec8484bc58700bcff99944fa20c6f6d93599126914dc33f15c3464ee3279cf6becafcea86909d1d25a20f8f97e95c8ddf6b1122eac8
-  languageName: node
-  linkType: hard
-
-"@docusaurus/types@npm:3.5.2":
-  version: 3.5.2
-  resolution: "@docusaurus/types@npm:3.5.2"
-  dependencies:
-    "@mdx-js/mdx": "npm:^3.0.0"
-    "@types/history": "npm:^4.7.11"
-    "@types/react": "npm:*"
-    commander: "npm:^5.1.0"
-    joi: "npm:^17.9.2"
-    react-helmet-async: "npm:^1.3.0"
-    utility-types: "npm:^3.10.0"
-    webpack: "npm:^5.88.1"
-    webpack-merge: "npm:^5.9.0"
-  peerDependencies:
-    react: ^18.0.0
-    react-dom: ^18.0.0
-  checksum: 10c0/a06607a8ed96871d9a2c1239e1d94e584acd5c638f7eb4071feb1f18221c25c9b78794b3f804884db201cfdfc67cecdf37a823efe854f435fb4f5a36b28237d4
+"@docusaurus/tsconfig@npm:3.6.0":
+  version: 3.6.0
+  resolution: "@docusaurus/tsconfig@npm:3.6.0"
+  checksum: 10c0/5ff75afa1c9a8bff6a1c4722517a05827bb87a689ad99e5d9ccc5c7eeef0c1fff7d8d71fea1d0b4c3eb6e7b1aeea618c109512dc5443736e8ba4dcdd5456e3c4
   languageName: node
   linkType: hard
 
@@ -20323,15 +20285,15 @@ __metadata:
   resolution: "waveterm-docs@workspace:docs"
   dependencies:
     "@docusaurus/core": "npm:^3.6.0"
-    "@docusaurus/module-type-aliases": "npm:3.5.2"
+    "@docusaurus/module-type-aliases": "npm:3.6.0"
     "@docusaurus/plugin-content-docs": "npm:^3.6.0"
     "@docusaurus/plugin-debug": "npm:^3.6.0"
     "@docusaurus/plugin-ideal-image": "npm:^3.6.0"
     "@docusaurus/plugin-sitemap": "npm:^3.5.2"
     "@docusaurus/theme-classic": "npm:^3.5.2"
     "@docusaurus/theme-search-algolia": "npm:^3.5.2"
-    "@docusaurus/tsconfig": "npm:3.5.2"
-    "@docusaurus/types": "npm:3.5.2"
+    "@docusaurus/tsconfig": "npm:3.6.0"
+    "@docusaurus/types": "npm:3.6.0"
     "@eslint/js": "npm:^9.13.0"
     "@mdx-js/react": "npm:^3.0.0"
     "@mdx-js/typescript-plugin": "npm:^0.0.6"

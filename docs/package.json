@@ -32,9 +32,9 @@
         "remark-typescript-code-import": "^1.0.1"
     },
     "devDependencies": {
-        "@docusaurus/module-type-aliases": "3.5.2",
-        "@docusaurus/tsconfig": "3.5.2",
-        "@docusaurus/types": "3.5.2",
+        "@docusaurus/module-type-aliases": "3.6.0",
+        "@docusaurus/tsconfig": "3.6.0",
+        "@docusaurus/types": "3.6.0",
         "@eslint/js": "^9.13.0",
         "@mdx-js/typescript-plugin": "^0.0.6",
         "@types/eslint": "^9.6.1",
