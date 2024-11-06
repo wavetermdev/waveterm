@@ -205,8 +205,13 @@ export function applyCanvasOp(canvas: HTMLCanvasElement, canvasOp: VDomRefOperat
         return;
     }
 
-    const { op, params, outputref } = canvasOp;
-
+    let { op, params, outputref } = canvasOp;
+    if (params == null) {
+        params = [];
+    }
+    if (op == null || op == "") {
+        return;
+    }
     // Resolve any reference parameters in params
     const resolvedParams: any[] = [];
     params.forEach((param) => {
