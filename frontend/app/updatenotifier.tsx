@@ -76,7 +76,7 @@ export function useUpdateNotifier() {
             case "error":
                 notification = {
                     id: "update-notification",
-                    icon: "close",
+                    icon: "circle-exclamation",
                     title: "Update Error",
                     message: "An error occurred during the update process.",
                     timestamp: new Date().toLocaleString(),
