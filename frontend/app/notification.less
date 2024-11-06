@@ -8,7 +8,7 @@
     z-index: var(--zindex-notification-container);
     display: flex;
     width: 446px;
-    padding: 8px;
+    padding: 8px 0;
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
@@ -22,7 +22,7 @@
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        padding: 0 8px;
+        padding: 0 8px 0 10px;
 
         span {
             color: var(--main-text-color);
@@ -44,37 +44,63 @@
         background: var(--background-color);
         color: var(--main-text-color);
         border-radius: 4px;
-        padding: 10px;
+        padding: 8px;
         display: flex;
         flex-direction: column;
         border: 1px solid transparent;
         max-height: 150px;
-        cursor: pointer;
         position: relative;
 
         .notification-inner {
             display: flex;
+            align-items: flex-start;
+            column-gap: 8px;
 
             .notification-icon {
                 font-size: 20px;
                 margin-right: 5px;
+                margin-top: -2px;
+
+                i {
+                    font-size: 16px;
+                }
+
+                i.green {
+                    color: var(--success-color);
+                }
+
+                i.red {
+                    color: var(--error-color);
+                }
+
+                i.yellow {
+                    color: var(--warning-color);
+                }
             }
 
             .notification-title {
-                font-weight: bold;
-                margin-bottom: 5px;
+                font-size: 13px;
+                font-style: normal;
+                font-weight: 500;
+                line-height: 18px;
+                margin-bottom: 3px;
             }
 
             .notification-timestamp {
                 font-size: 12px;
-                color: var(--secondary-text-color);
-                margin-bottom: 5px;
+                font-weight: 400;
+                line-height: 18px;
+                opacity: 0.5;
+                margin-bottom: 7px;
             }
 
             .notification-message {
+                font-size: 13px;
+                font-style: normal;
+                font-weight: 400;
+                line-height: 18px;
+                opacity: 0.7;
                 margin-bottom: 10px;
-                overflow-y: auto;
-                max-height: 80px;
             }
 
             .notification-actions {
@@ -83,6 +109,14 @@
                 flex-wrap: wrap;
             }
         }
+    }
+
+    .close-all-btn {
+        font-size: 13px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 16px;
+        color: rgba(255, 255, 255, 0.4);
     }
 
     .close-btn {

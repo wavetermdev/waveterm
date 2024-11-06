@@ -49,8 +49,11 @@ const Notification = () => {
     return (
         <div className="notification-container">
             <div className="header">
-                <span>Notification</span>
-                <Button className="ghost grey" onClick={removeAllNotifications}>
+                <span>Notifications</span>
+                <Button
+                    className="ghost grey close-all-btn horizontal-padding-3 vertical-padding-3"
+                    onClick={removeAllNotifications}
+                >
                     Close All
                 </Button>
             </div>
@@ -78,7 +81,7 @@ const Notification = () => {
                         <div className="notification-inner">
                             {notif.icon && (
                                 <div className="notification-icon">
-                                    <i className={makeIconClass(notif.icon, false)}></i>
+                                    <i className={clsx(makeIconClass(notif.icon, false), notif.color)}></i>
                                 </div>
                             )}
                             <div className="notification-text">
@@ -95,7 +98,10 @@ const Notification = () => {
                                                     e.stopPropagation();
                                                     if (actionFn) actionFn();
                                                 }}
-                                                className={action.color}
+                                                className={clsx(
+                                                    action.color,
+                                                    "vertical-padding-4 horizontal-padding-8 font-size-13 border-radius-4"
+                                                )}
                                                 disabled={action.disabled}
                                             >
                                                 {action.label}
