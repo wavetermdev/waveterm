@@ -54,7 +54,9 @@ const Notification = () => {
         const diffInHours = Math.floor(diffInMinutes / 60);
         const diffInDays = Math.floor(diffInHours / 24);
 
-        if (diffInMinutes < 60) {
+        if (diffInMinutes == 0) {
+            return `Just now`;
+        } else if (diffInMinutes < 60) {
             return `${diffInMinutes} mins ago`;
         } else if (diffInHours < 24) {
             return `${diffInHours} hrs ago`;
@@ -85,6 +87,7 @@ const Notification = () => {
                         })}
                         onMouseEnter={() => setHoveredId(notif.id)}
                         onMouseLeave={() => setHoveredId(null)}
+                        onClick={() => copyNotification(notif.id)}
                         title="Click to Copy Notification Message"
                     >
                         <Button
@@ -117,7 +120,7 @@ const Notification = () => {
                                                 key={index}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (actionFn) actionFn();
+                                                    actionFn?.();
                                                 }}
                                                 className={clsx(
                                                     action.color,
