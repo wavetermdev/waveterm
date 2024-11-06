@@ -4,7 +4,7 @@ We welcome and value contributions to Wave Terminal! Wave is an open source proj
 
 - Submit issues related to bugs or new feature requests
 - Fix outstanding [issues](https://github.com/wavetermdev/waveterm/issues) with the existing code
-- Contribute to [documentation](https://github.com/wavetermdev/waveterm-docs)
+- Contribute to [documentation](./docs)
 - Spread the word on social media (tag us on [LinkedIn](https://www.linkedin.com/company/wavetermdev), [Twitter/X](https://x.com/wavetermdev))
 - Or simply ⭐️ the repository to show your appreciation
 

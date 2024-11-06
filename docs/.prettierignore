@@ -1,0 +1,6 @@
+build
+.git
+node_modules
+*.min.*
+*.mdx
+CNAME

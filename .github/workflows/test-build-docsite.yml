@@ -1,0 +1,36 @@
+name: Test Docsite and Storybook Build
+
+env:
+    NODE_VERSION: 20
+
+on:
+    pull_request:
+        branches:
+            - main
+        # Review gh actions docs if you want to further define triggers, paths, etc
+        # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
+        paths:
+            - "docs/**"
+            - "storybook/**"
+            - "**/*.story.*"
+            - "**/*.stories.*"
+jobs:
+    test-deploy:
+        name: Test deployment
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{env.NODE_VERSION}}
+            - name: Install yarn
+              run: |
+                  corepack enable
+                  yarn install
+            - name: Test build website
+              run: yarn build
+              working-directory: docs/
+            - name: Test build storybook
+              run: yarn build-storybook
