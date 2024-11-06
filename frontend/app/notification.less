@@ -8,10 +8,10 @@
     z-index: var(--zindex-notification-container);
     display: flex;
     width: 380px;
-    padding: 8px 0;
+    padding: 10px 0;
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    column-gap: 8px;
     border-radius: 8px;
     border: 0.5px solid rgba(255, 255, 255, 0.12);
     background: #232323;
@@ -22,7 +22,8 @@
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        padding: 0 8px 0 10px;
+        padding: 0 10px 8px 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
         span {
             color: var(--main-text-color);
@@ -43,12 +44,14 @@
         width: 100%;
         background: var(--background-color);
         color: var(--main-text-color);
-        padding: 8px;
+        padding: 12px 10px;
         display: flex;
         flex-direction: column;
-        border: 1px solid transparent;
-        max-height: 150px;
         position: relative;
+
+        &.hovered {
+            background-color: rgba(255, 255, 255, 0.015);
+        }
 
         .notification-inner {
             display: flex;
