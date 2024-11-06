@@ -43,7 +43,7 @@ To build and run Wave locally, see instructions at [Building Wave Terminal](./BU
 
 We are working to document all our UI components in [Storybook](https://storybook.js.org/docs) for easy reference and testing. If you would like to help us with this, we would be very grateful!
 
-Our Storybook site is hosted [storybook.waveterm.dev](https://storybook.waveterm.dev).
+Our Storybook site is hosted [docs.waveterm.dev/storybook](https://docs.waveterm.dev/storybook).
 
 ### Create a Pull Request
 
