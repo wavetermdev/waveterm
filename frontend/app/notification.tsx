@@ -6,7 +6,7 @@ import { atoms, getApi } from "@/store/global";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { useAtom } from "jotai";
-import { Fragment, ReactNode, useState } from "react";
+import { Fragment, useState } from "react";
 
 import "./notification.less";
 
@@ -46,71 +46,68 @@ const Notification = () => {
         navigator.clipboard.writeText(text);
     };
 
-    const convertNewlinesToBreaks = (text: string): ReactNode => {
-        return text.split("\n").map((part, index) => (
-            <Fragment key={index}>
-                {part}
-                <br />
-            </Fragment>
-        ));
-    };
-
     return (
         <div className="notification-container">
-            <Button className="ghost grey" onClick={removeAllNotifications}>
-                Close All
-            </Button>
-            {notifications.map((notif) => (
-                <div
-                    key={notif.id}
-                    className={clsx("notification", notif.color, {
-                        hovered: hoveredId === notif.id,
-                    })}
-                    onMouseEnter={() => setHoveredId(notif.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    title="Click to Copy Notification Message"
-                >
-                    <Button
-                        className="close-btn"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            removeNotification(notif.id);
-                        }}
-                        aria-label="Close"
-                    >
-                        <i className={makeIconClass("close", false)}></i>
-                    </Button>
-                    <div className="notification-scroll" onClick={() => copyNotification(notif.id)}>
-                        {notif.icon && (
-                            <span className="notification-icon">
-                                <i className={makeIconClass(notif.icon, false)}></i>
-                            </span>
-                        )}
-                        {notif.title && <div className="notification-title">{notif.title}</div>}
-                        {notif.timestamp && <div className="notification-timestamp">{notif.timestamp}</div>}
-                        {notif.message && (
-                            <div className="notification-message">{convertNewlinesToBreaks(notif.message)}</div>
-                        )}
-                    </div>
-                    <div className="notification-actions">
-                        {notif.actions?.map((action, index) => {
-                            const actionFn = notificationActions[action.actionKey];
-                            return (
-                                <Button
-                                    key={index}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (actionFn) actionFn();
-                                    }}
-                                    className={action.color}
-                                    disabled={action.disabled}
-                                >
-                                    {action.label}
-                                </Button>
-                            );
+            <div className="header">
+                <span>Notification</span>
+                <Button className="ghost grey" onClick={removeAllNotifications}>
+                    Close All
+                </Button>
+            </div>
+            <div className="divider"></div>
+            {notifications.map((notif, index) => (
+                <Fragment key={notif.id}>
+                    <div
+                        className={clsx("notification", {
+                            hovered: hoveredId === notif.id,
                         })}
+                        onMouseEnter={() => setHoveredId(notif.id)}
+                        onMouseLeave={() => setHoveredId(null)}
+                        title="Click to Copy Notification Message"
+                    >
+                        <Button
+                            className="close-btn ghost grey"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                removeNotification(notif.id);
+                            }}
+                            aria-label="Close"
+                        >
+                            <i className={makeIconClass("close", false)}></i>
+                        </Button>
+                        <div className="notification-inner">
+                            {notif.icon && (
+                                <div className="notification-icon">
+                                    <i className={makeIconClass(notif.icon, false)}></i>
+                                </div>
+                            )}
+                            <div className="notification-text">
+                                {notif.title && <div className="notification-title">{notif.title}</div>}
+                                {notif.timestamp && <div className="notification-timestamp">{notif.timestamp}</div>}
+                                {notif.message && <div className="notification-message">{notif.message}</div>}
+                                <div className="notification-actions">
+                                    {notif.actions?.map((action, index) => {
+                                        const actionFn = notificationActions[action.actionKey];
+                                        return (
+                                            <Button
+                                                key={index}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (actionFn) actionFn();
+                                                }}
+                                                className={action.color}
+                                                disabled={action.disabled}
+                                            >
+                                                {action.label}
+                                            </Button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                    {index !== notifications.length - 1 && <div className="divider"></div>}
+                </Fragment>
             ))}
         </div>
     );
