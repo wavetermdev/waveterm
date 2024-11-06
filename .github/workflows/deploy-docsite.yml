@@ -32,7 +32,6 @@ jobs:
 
             - name: Build Storybook
               run: yarn build-storybook
-              working-directory: storybook/
             - name: Copy Storybook to docs
               run: cp -r storybook-static docs/build/storybook
             - name: Upload Build Artifact
