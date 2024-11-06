@@ -351,7 +351,13 @@ function useVDom(model: VDomModel, elem: VDomElem): GenericPropsType {
 function WaveMarkdown({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     const props = useVDom(model, elem);
     return (
-        <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
+        <Markdown
+            text={props?.text}
+            style={props?.style}
+            className={props?.className}
+            scrollable={props?.scrollable}
+            rehype={props?.rehype}
+        />
     );
 }
 

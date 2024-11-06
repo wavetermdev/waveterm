@@ -7,8 +7,6 @@ import (
 	"context"
 	_ "embed"
 	"log"
-	"math/rand"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
@@ -114,51 +112,9 @@ var BgList = vdomclient.DefineComponent[BgListProps](HtmlVDomClient, "BgList",
 	},
 )
 
-type CanvasUpdaterProps struct {
-	CanvasRef *vdom.VDomRef `json:"canvasRef"`
-}
-
-var CanvasUpdater = vdomclient.DefineComponent[CanvasUpdaterProps](HtmlVDomClient, "CanvasUpdater",
-	func(ctx context.Context, props CanvasUpdaterProps) any {
-		tickNum, _, setTickNum := vdom.UseStateWithFn(ctx, 0)
-		canvasRef := props.CanvasRef
-		vdom.UseEffect(ctx, func() func() {
-			if !canvasRef.HasCurrent {
-				return nil
-			}
-			x := rand.Intn(200)          // Random x position between 0 and 200
-			y := rand.Intn(200)          // Random y position between 0 and 200
-			width := rand.Intn(300 - x)  // Random width that fits within canvas width
-			height := rand.Intn(300 - y) // Random height that fits within canvas height
-			vdom.QueueRefOp(ctx, canvasRef, vdom.VDomRefOperation{
-				Op:     "fillStyle",
-				Params: []any{"#FF5733"},
-			})
-			vdom.QueueRefOp(ctx, canvasRef, vdom.VDomRefOperation{
-				Op:     "clearRect",
-				Params: []any{0, 0, 300, 300},
-			})
-			vdom.QueueRefOp(ctx, canvasRef, vdom.VDomRefOperation{
-				Op:     "fillRect",
-				Params: []any{x, y, width, height},
-			})
-			go func() {
-				time.Sleep(1 * time.Second)
-				setTickNum(func(prev int) int {
-					return prev + 1
-				})
-				HtmlVDomClient.SendAsyncInitiation()
-			}()
-			return nil
-		}, []any{tickNum})
-		return nil
-	},
-)
-
 var App = vdomclient.DefineComponent[struct{}](HtmlVDomClient, "App",
 	func(ctx context.Context, _ struct{}) any {
 		inputText, setInputText := vdom.UseState(ctx, "start")
-		canvasRef := vdom.UseVDomRef(ctx)
 
 		bgItems := []BgItem{
 			{Bg: "", Label: "default"},
@@ -170,11 +126,12 @@ var App = vdomclient.DefineComponent[struct{}](HtmlVDomClient, "App",
 		return vdom.E("div",
 			vdom.Class("root"),
 			Style(struct{}{}),
-			CanvasUpdater(CanvasUpdaterProps{CanvasRef: canvasRef}),
 			vdom.E("h1", nil, "Set Background"),
 			vdom.E("div", nil,
 				vdom.E("wave:markdown",
 					vdom.P("text", "*quick vdom application to set background colors*"),
+					vdom.P("scrollable", false),
+					vdom.P("rehype", false),
 				),
 			),
 			vdom.E("div", nil,
@@ -200,9 +157,6 @@ var App = vdomclient.DefineComponent[struct{}](HtmlVDomClient, "App",
 				),
 				vdom.E("div", nil, "text ", inputText),
 			),
-			vdom.E("canvas", vdom.P("ref", canvasRef),
-				vdom.P("width", "300"), vdom.P("height", "300"),
-				vdom.PStyle("width", 300), vdom.PStyle("height", 300)),
 		)
 	},
 )
