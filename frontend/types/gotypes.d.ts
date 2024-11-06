@@ -741,6 +741,7 @@ declare global {
         refid: string;
         op: string;
         params?: any[];
+        outputref?: string;
     };
 
     // vdom.VDomRefPosition

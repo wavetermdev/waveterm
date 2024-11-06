@@ -9,7 +9,7 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { mergeBackendUpdates, restoreVDomElems } from "@/app/view/vdom/vdom-utils";
+import { applyCanvasOp, mergeBackendUpdates, restoreVDomElems } from "@/app/view/vdom/vdom-utils";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -94,7 +94,7 @@ class VDomWshClient extends WshClient {
     }
 
     handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {
-        console.log("async-initiation", rh.getSource(), data);
+        dlog("async-initiation", rh.getSource(), data);
         this.model.queueUpdate(true);
     }
 }
@@ -130,6 +130,9 @@ export class VDomModel {
     persist: jotai.Atom<boolean>;
     routeGoneUnsub: () => void;
     routeConfirmed: boolean = false;
+    refOutputStore: Map<string, any> = new Map();
+    globalVersion: jotai.PrimitiveAtom<number> = jotai.atom(0);
+    hasBackendWork: boolean = false;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "vdom";
@@ -201,6 +204,9 @@ export class VDomModel {
         this.needsImmediateUpdate = false;
         this.lastUpdateTs = 0;
         this.queuedUpdate = null;
+        this.refOutputStore.clear();
+        this.globalVersion = jotai.atom(0);
+        this.hasBackendWork = false;
         globalStore.set(this.contextActive, false);
     }
 
@@ -537,6 +543,10 @@ export class VDomModel {
                 this.addErrorMessage(`Could not find ref with id ${refOp.refid}`);
                 continue;
             }
+            if (elem instanceof HTMLCanvasElement) {
+                applyCanvasOp(elem, refOp, this.refOutputStore);
+                continue;
+            }
             if (refOp.op == "focus") {
                 if (elem == null) {
                     this.addErrorMessage(`Could not focus ref with id ${refOp.refid}: elem is null`);
@@ -575,7 +585,17 @@ export class VDomModel {
                 }
             }
         }
+        globalStore.set(this.globalVersion, globalStore.get(this.globalVersion) + 1);
         if (update.haswork) {
+            this.hasBackendWork = true;
+        }
+    }
+
+    renderDone(version: number) {
+        // called when the render is done
+        dlog("renderDone", version);
+        if (this.hasRefUpdates() || this.hasBackendWork) {
+            this.hasBackendWork = false;
             this.queueUpdate(true);
         }
     }
