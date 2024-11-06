@@ -17,8 +17,11 @@ import { Fragment, useEffect, useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
-import "./app.less";
 import { CenteredDiv } from "./element/quickelems";
+import { Notification } from "./notification";
+import { useUpdateNotifier } from "./updatenotifier";
+
+import "./app.less";
 
 const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
@@ -262,6 +265,7 @@ const FlashError = () => {
 };
 
 const AppInner = () => {
+    useUpdateNotifier();
     const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
     const client = useAtomValue(atoms.client);
     const windowData = useAtomValue(atoms.waveWindow);
@@ -291,7 +295,8 @@ const AppInner = () => {
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
-            <FlashError />
+            {/* <FlashError /> */}
+            <Notification></Notification>
         </div>
     );
 };

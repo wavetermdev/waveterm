@@ -140,6 +140,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return connStatuses;
     });
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
+    const notificationsAtom = atom<NotificationType[]>([]);
     const reinitVersion = atom(0);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
@@ -160,6 +161,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
+        notifications: notificationsAtom,
         reinitVersion,
     };
 }
@@ -575,6 +577,13 @@ function pushFlashError(ferr: FlashErrorType) {
     });
 }
 
+function pushNotification(notif: NotificationType) {
+    notif.id = crypto.randomUUID();
+    globalStore.set(atoms.notifications, (prev) => {
+        return [...prev, notif];
+    });
+}
+
 function removeFlashError(id: string) {
     globalStore.set(atoms.flashErrors, (prev) => {
         return prev.filter((ferr) => ferr.id !== id);
@@ -610,6 +619,7 @@ export {
     openLink,
     PLATFORM,
     pushFlashError,
+    pushNotification,
     refocusNode,
     registerBlockComponentModel,
     removeFlashError,

@@ -1,0 +1,72 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.notification-container {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    z-index: var(--zindex-notification-container);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notification {
+    background: var(--background-color);
+    color: var(--main-text-color);
+    border-radius: 4px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    width: 280px;
+    border: 1px solid transparent;
+    max-height: 150px;
+    cursor: pointer;
+    position: relative;
+
+    &.red {
+        background-color: var(--error-color);
+    }
+
+    &.yellow {
+        background-color: var(--warning-color);
+    }
+
+    &.green {
+        background-color: var(--success-color);
+    }
+
+    .notification-icon {
+        font-size: 20px;
+        margin-right: 5px;
+    }
+
+    .notification-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .notification-timestamp {
+        font-size: 12px;
+        color: var(--secondary-text-color);
+        margin-bottom: 5px;
+    }
+
+    .notification-message {
+        margin-bottom: 10px;
+        overflow-y: auto;
+        max-height: 80px;
+    }
+
+    .notification-actions {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+}
+
+.close-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
