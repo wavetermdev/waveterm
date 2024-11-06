@@ -19,6 +19,7 @@ on:
             - "storybook/**"
             - "**/*.story.*"
             - "**/*.stories.*"
+            - ".github/workflows/deploy-docsite.yml"
 
 jobs:
     build:
