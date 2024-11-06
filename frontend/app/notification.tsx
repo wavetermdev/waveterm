@@ -4,6 +4,7 @@
 import { Button } from "@/element/button";
 import { atoms, getApi } from "@/store/global";
 import { makeIconClass } from "@/util/util";
+import { FloatingPortal } from "@floating-ui/react";
 import clsx from "clsx";
 import { useAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
@@ -83,86 +84,90 @@ const Notification = () => {
     };
 
     return (
-        <div className="notification-container">
-            <div className="header">
-                <span>Notifications</span>
-                <Button
-                    className="ghost grey close-all-btn horizontal-padding-3 vertical-padding-3"
-                    onClick={removeAllNotifications}
+        <FloatingPortal>
+            <div className="notification-container">
+                <div className="header">
+                    <span>Notifications</span>
+                    <Button
+                        className="ghost grey close-all-btn horizontal-padding-3 vertical-padding-3"
+                        onClick={removeAllNotifications}
+                    >
+                        Close All
+                    </Button>
+                </div>
+                <OverlayScrollbarsComponent
+                    className="scrollable"
+                    options={{ scrollbars: { autoHide: "leave" } }}
+                    style={{ maxHeight: window.innerHeight / 2 }}
                 >
-                    Close All
-                </Button>
-            </div>
-            <OverlayScrollbarsComponent
-                className="scrollable"
-                options={{ scrollbars: { autoHide: "leave" } }}
-                style={{ maxHeight: window.innerHeight / 2 }}
-            >
-                {notifications.map((notif, index) => (
-                    <Fragment key={notif.id}>
-                        <div
-                            className={clsx("notification", {
-                                hovered: hoveredId === notif.id,
-                            })}
-                            onMouseEnter={() => setHoveredId(notif.id)}
-                            onMouseLeave={() => setHoveredId(null)}
-                            onClick={() => copyNotification(notif.id)}
-                            title="Click to Copy Notification Message"
-                        >
-                            <Button
-                                className="close-btn ghost grey vertical-padding-10"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeNotification(notif.id);
-                                }}
-                                aria-label="Close"
+                    {notifications.map((notif, index) => (
+                        <Fragment key={notif.id}>
+                            <div
+                                className={clsx("notification", {
+                                    hovered: hoveredId === notif.id,
+                                })}
+                                onMouseEnter={() => setHoveredId(notif.id)}
+                                onMouseLeave={() => setHoveredId(null)}
+                                onClick={() => copyNotification(notif.id)}
+                                title="Click to Copy Notification Message"
                             >
-                                <i className={makeIconClass("close", false)}></i>
-                            </Button>
-                            <div className="notification-inner">
-                                {notif.icon && (
-                                    <div className="notification-icon">
-                                        <i className={clsx(makeIconClass(notif.icon, false), notif.color)}></i>
-                                    </div>
-                                )}
-                                <div className="notification-text">
-                                    {notif.title && <div className="notification-title">{notif.title}</div>}
-                                    {notif.timestamp && (
-                                        <div className="notification-timestamp">{formatTimestamp(notif.timestamp)}</div>
+                                <Button
+                                    className="close-btn ghost grey vertical-padding-10"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeNotification(notif.id);
+                                    }}
+                                    aria-label="Close"
+                                >
+                                    <i className={makeIconClass("close", false)}></i>
+                                </Button>
+                                <div className="notification-inner">
+                                    {notif.icon && (
+                                        <div className="notification-icon">
+                                            <i className={clsx(makeIconClass(notif.icon, false), notif.color)}></i>
+                                        </div>
                                     )}
-                                    {notif.message && <div className="notification-message">{notif.message}</div>}
-                                    <div className="notification-actions">
-                                        {notif.actions?.map((action, index) => {
-                                            const actionFn = notificationActions[action.actionKey];
-                                            return (
-                                                <Button
-                                                    key={index}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        actionFn?.();
-                                                    }}
-                                                    className={clsx(
-                                                        action.color,
-                                                        "vertical-padding-4 horizontal-padding-8 font-size-13 border-radius-4"
-                                                    )}
-                                                    disabled={action.disabled}
-                                                >
-                                                    {action.label}
-                                                    {action.rightIcon && (
-                                                        <i className={makeIconClass(action.rightIcon, false)}></i>
-                                                    )}
-                                                </Button>
-                                            );
-                                        })}
+                                    <div className="notification-text">
+                                        {notif.title && <div className="notification-title">{notif.title}</div>}
+                                        {notif.timestamp && (
+                                            <div className="notification-timestamp">
+                                                {formatTimestamp(notif.timestamp)}
+                                            </div>
+                                        )}
+                                        {notif.message && <div className="notification-message">{notif.message}</div>}
+                                        <div className="notification-actions">
+                                            {notif.actions?.map((action, index) => {
+                                                const actionFn = notificationActions[action.actionKey];
+                                                return (
+                                                    <Button
+                                                        key={index}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            actionFn?.();
+                                                        }}
+                                                        className={clsx(
+                                                            action.color,
+                                                            "vertical-padding-4 horizontal-padding-8 font-size-13 border-radius-4"
+                                                        )}
+                                                        disabled={action.disabled}
+                                                    >
+                                                        {action.label}
+                                                        {action.rightIcon && (
+                                                            <i className={makeIconClass(action.rightIcon, false)}></i>
+                                                        )}
+                                                    </Button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        {index !== notifications.length - 1 && <div className="divider"></div>}
-                    </Fragment>
-                ))}
-            </OverlayScrollbarsComponent>
-        </div>
+                            {index !== notifications.length - 1 && <div className="divider"></div>}
+                        </Fragment>
+                    ))}
+                </OverlayScrollbarsComponent>
+            </div>
+        </FloatingPortal>
     );
 };
 
