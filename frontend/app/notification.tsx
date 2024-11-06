@@ -62,6 +62,12 @@ const Notification = () => {
         navigator.clipboard.writeText(text);
     };
 
+    const handleActionClick = (e, actionFn, id) => {
+        e.stopPropagation();
+        actionFn?.();
+        removeNotification(id);
+    };
+
     const formatTimestamp = (timestamp: string): string => {
         const notificationTime = new Date(timestamp).getTime();
         const now = Date.now();
@@ -143,10 +149,7 @@ const Notification = () => {
                                                 return (
                                                     <Button
                                                         key={index}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            actionFn?.();
-                                                        }}
+                                                        onClick={(e) => handleActionClick(e, actionFn, notif.id)}
                                                         className={clsx(
                                                             action.color,
                                                             "vertical-padding-4 horizontal-padding-8 font-size-13 border-radius-4"

@@ -317,7 +317,7 @@ declare global {
         color: "red" | "yellow" | "green";
         expiration?: number;
         actions?: NotificationAction[];
-        dismissible?: boolean;
+        persistent?: boolean;
     };
 
     interface AbstractWshClient {
