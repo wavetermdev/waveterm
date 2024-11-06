@@ -39,6 +39,7 @@ type Atom struct {
 type RootElem struct {
 	OuterCtx        context.Context
 	Root            *ComponentImpl
+	RenderTs        int64
 	CFuncs          map[string]any
 	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem

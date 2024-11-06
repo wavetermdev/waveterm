@@ -346,6 +346,14 @@ func UseId(ctx context.Context) string {
 	return vc.Comp.WaveId
 }
 
+func UseRenderTs(ctx context.Context) int64 {
+	vc := getRenderContext(ctx)
+	if vc == nil {
+		panic("UseRenderTs must be called within a component (no context)")
+	}
+	return vc.Root.RenderTs
+}
+
 func QueueRefOp(ctx context.Context, ref *VDomRef, op VDomRefOperation) {
 	if ref == nil || !ref.HasCurrent {
 		return

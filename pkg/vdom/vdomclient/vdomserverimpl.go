@@ -46,6 +46,8 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 		return respChan
 	}
 
+	impl.Client.Root.RenderTs = feUpdate.Ts
+
 	// set atoms
 	for _, ss := range feUpdate.StateSync {
 		impl.Client.Root.SetAtomVal(ss.Atom, ss.Value, false)
