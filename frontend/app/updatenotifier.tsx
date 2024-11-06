@@ -18,8 +18,7 @@ export function useUpdateNotifier() {
                     id: "update-notification",
                     icon: "arrows-rotate",
                     title: "Update Available",
-                    message:
-                        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                    message: "A new update is available and ready to be installed.",
                     timestamp: new Date().toLocaleString(),
                     color: "green",
                     actions: [
@@ -38,8 +37,7 @@ export function useUpdateNotifier() {
                     id: "update-notification",
                     icon: "arrows-rotate",
                     title: "Downloading Update",
-                    message:
-                        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                    message: "The update is currently being downloaded.",
                     timestamp: new Date().toLocaleString(),
                     color: "yellow",
                     actions: [
@@ -58,8 +56,7 @@ export function useUpdateNotifier() {
                     id: "update-notification",
                     icon: "arrows-rotate",
                     title: "Installing Update",
-                    message:
-                        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                    message: "The update is currently being installed.",
                     timestamp: new Date().toLocaleString(),
                     color: "yellow",
                     actions: [
