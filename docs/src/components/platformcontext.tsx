@@ -1,3 +1,4 @@
+import BrowserOnly from "@docusaurus/BrowserOnly";
 import { createContext, ReactNode, useContext, useState } from "react";
 
 import "./platformcontext.css";
@@ -19,7 +20,7 @@ const detectPlatform = (): Platform => {
     return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? "mac" : "linux";
 };
 
-export const PlatformProvider = ({ children }: { children: ReactNode }) => {
+const PlatformProviderInternal = ({ children }: { children: ReactNode }) => {
     const [platform, setPlatform] = useState<Platform>(detectPlatform());
 
     const togglePlatform = () => {
@@ -31,6 +32,14 @@ export const PlatformProvider = ({ children }: { children: ReactNode }) => {
     return <PlatformContext.Provider value={{ platform, togglePlatform }}>{children}</PlatformContext.Provider>;
 };
 
+export const PlatformProvider: React.FC = ({ children }: { children: ReactNode }) => {
+    return (
+        <BrowserOnly fallback={<div />}>
+            {() => <PlatformProviderInternal>{children}</PlatformProviderInternal>}
+        </BrowserOnly>
+    );
+};
+
 export const usePlatform = (): PlatformContextProps => {
     const context = useContext(PlatformContext);
     if (!context) {
@@ -39,7 +48,7 @@ export const usePlatform = (): PlatformContextProps => {
     return context;
 };
 
-export const PlatformToggleButton: React.FC = () => {
+const PlatformToggleButtonInternal: React.FC = () => {
     const { platform, togglePlatform } = usePlatform();
 
     return (
@@ -58,4 +67,8 @@ export const PlatformToggleButton: React.FC = () => {
             </button>
         </div>
     );
+};
+
+export const PlatformToggleButton: React.FC = () => {
+    return <BrowserOnly fallback={<div />}>{() => <PlatformToggleButtonInternal />}</BrowserOnly>;
 };
