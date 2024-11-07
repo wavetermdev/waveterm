@@ -16,7 +16,6 @@ import {
     validateAndWrapCss,
     validateAndWrapReactStyle,
 } from "@/app/view/vdom/vdom-utils";
-import { getWebServerEndpoint } from "@/util/endpoints";
 import "./vdom.less";
 
 const TextTag = "#text";
@@ -283,18 +282,12 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             }
         }
         if (key == "src" && val != null && val.startsWith("vdom://")) {
-            // we're going to convert vdom:///foo.jpg to vdom://blockid/foo.jpg.  if it doesn't start with "/" it is not valid
-            const vdomUrl = val.substring(7);
-            if (!vdomUrl.startsWith("/")) {
+            // transform vdom:// urls
+            const newUrl = model.transformVDomUrl(val);
+            if (newUrl == null) {
                 continue;
             }
-            const backendRouteId = model.getBackendRouteId();
-            if (backendRouteId == null) {
-                continue;
-            }
-            const wsEndpoint = getWebServerEndpoint();
-            const fullUrl = wsEndpoint + "/vdom/" + backendRouteId + vdomUrl;
-            props[key] = fullUrl;
+            props[key] = newUrl;
             continue;
         }
         props[key] = val;

@@ -216,6 +216,17 @@ export class VDomModel {
         return blockData?.meta?.["vdom:route"];
     }
 
+    transformVDomUrl(url: string): string {
+        if (url == null || url == "") {
+            return null;
+        }
+        if (!url.startsWith("vdom://")) {
+            return url;
+        }
+        const absUrl = url.substring(7);
+        return this.makeVDomUrl(absUrl);
+    }
+
     makeVDomUrl(path: string): string {
         if (path == null || path == "") {
             return null;

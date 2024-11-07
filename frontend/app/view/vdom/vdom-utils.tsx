@@ -61,16 +61,13 @@ export function validateAndWrapCss(model: VDomModel, cssText: string, wrapperCla
                         }
                     }
                 }
-                // transform url(vdom:///foo.jpg) => url(vdom://blockId/foo.jpg)
-                if (node.type === "Url") {
-                    const url = node.value;
-                    if (url != null && url.startsWith("vdom://")) {
-                        const absUrl = url.substring(7);
-                        if (!absUrl.startsWith("/")) {
-                            list.remove(item);
-                        } else {
-                            node.value = "vdom://" + model.blockId + url.substring(7);
-                        }
+                // transform url(vdom:///foo.jpg)
+                if (node.type === "Url" && node.value != null && node.value.startsWith("vdom://")) {
+                    const newUrl = model.transformVDomUrl(node.value);
+                    if (newUrl == null) {
+                        list.remove(item);
+                    } else {
+                        node.value = newUrl;
                     }
                 }
             },
@@ -88,19 +85,20 @@ function cssTransformStyleValue(model: VDomModel, property: string, value: strin
     try {
         const ast = csstree.parse(value, { context: "value" });
         csstree.walk(ast, {
-            enter(node) {
+            enter(node: CssNode, item: ListItem<CssNode>, list: List<CssNode>) {
                 // Transform url(#id) in filter/mask properties
                 if (node.type === "Url" && (property === "filter" || property === "mask")) {
                     if (node.value.startsWith("#")) {
                         node.value = `#${convertVDomId(model, node.value.substring(1))}`;
                     }
                 }
-
-                // Transform vdom:/// URLs
-                if (node.type === "Url" && node.value.startsWith("vdom:///")) {
-                    const absUrl = node.value.substring(7);
-                    if (absUrl.startsWith("/")) {
-                        node.value = `vdom://${model.blockId}${absUrl}`;
+                // transform vdom:// urls
+                if (node.type === "Url" && node.value != null && node.value.startsWith("vdom://")) {
+                    const newUrl = model.transformVDomUrl(node.value);
+                    if (newUrl == null) {
+                        list.remove(item);
+                    } else {
+                        node.value = newUrl;
                     }
                 }
             },

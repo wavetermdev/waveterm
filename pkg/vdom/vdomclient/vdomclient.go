@@ -5,6 +5,7 @@ package vdomclient
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -28,16 +28,16 @@ import (
 )
 
 type ApplicationOpts struct {
-	Name                 string // application name
-	Description          string // short application description
 	CloseOnCtrlC         bool
 	GlobalKeyboardEvents bool
 	GlobalStyles         []byte
 	RootComponentName    string // defaults to "App"
+	NewBlockFlag         string // defaults to "n" (set to "-" to disable)
 }
 
 type Client struct {
 	Lock               *sync.Mutex
+	AppOpts            ApplicationOpts
 	Root               *vdom.RootElem
 	RootElem           *vdom.VDomElem
 	RpcClient          *wshutil.WshRpc
@@ -53,9 +53,7 @@ type Client struct {
 	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *mux.Router
 	OverrideUrlHandler http.Handler
-	Command            *cobra.Command
 	NewBlockFlag       bool
-	CommandArgs        []string
 	SetupFn            func()
 }
 
@@ -85,8 +83,15 @@ func (c *Client) SetOverrideUrlHandler(handler http.Handler) {
 }
 
 func MakeClient(appOpts ApplicationOpts) *Client {
+	if appOpts.RootComponentName == "" {
+		appOpts.RootComponentName = "App"
+	}
+	if appOpts.NewBlockFlag == "" {
+		appOpts.NewBlockFlag = "n"
+	}
 	client := &Client{
 		Lock:          &sync.Mutex{},
+		AppOpts:       appOpts,
 		Root:          vdom.MakeRoot(),
 		DoneCh:        make(chan struct{}),
 		UrlHandlerMux: mux.NewRouter(),
@@ -94,26 +99,16 @@ func MakeClient(appOpts ApplicationOpts) *Client {
 			CloseOnCtrlC:         appOpts.CloseOnCtrlC,
 			GlobalKeyboardEvents: appOpts.GlobalKeyboardEvents,
 		},
-		Command: &cobra.Command{
-			Use:   appOpts.Name,
-			Short: appOpts.Description,
-		},
 	}
-	client.Command.RunE = client.CobraRunE
 	if len(appOpts.GlobalStyles) > 0 {
 		client.Opts.GlobalStyles = true
 		client.GlobalStylesOption = &FileHandlerOption{Data: appOpts.GlobalStyles, MimeType: "text/css"}
-	}
-	client.Command.Flags().BoolVarP(&client.NewBlockFlag, "newblock", "n", false, "create a new block")
-	if appOpts.RootComponentName == "" {
-		appOpts.RootComponentName = "App"
 	}
 	client.SetRootElem(vdom.E(appOpts.RootComponentName))
 	return client
 }
 
-func (client *Client) CobraRunE(cmd *cobra.Command, args []string) error {
-	client.CommandArgs = args
+func (client *Client) runMainE() error {
 	if client.SetupFn != nil {
 		client.SetupFn()
 	}
@@ -133,8 +128,18 @@ func (client *Client) AddSetupFn(fn func()) {
 	client.SetupFn = fn
 }
 
+func (client *Client) RegisterDefaultFlags() {
+	if client.AppOpts.NewBlockFlag != "-" {
+		flag.BoolVar(&client.NewBlockFlag, client.AppOpts.NewBlockFlag, false, "new block")
+	}
+}
+
 func (client *Client) RunMain() {
-	err := client.Command.Execute()
+	if !flag.Parsed() {
+		client.RegisterDefaultFlags()
+		flag.Parse()
+	}
+	err := client.runMainE()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -245,7 +250,10 @@ func DefineComponent[P any](client *Client, name string, renderFn func(ctx conte
 	if !unicode.IsUpper(rune(name[0])) {
 		panic("Component name must start with an uppercase letter")
 	}
-	client.RegisterComponent(name, renderFn)
+	err := client.RegisterComponent(name, renderFn)
+	if err != nil {
+		panic(err)
+	}
 	return func(props P) *vdom.VDomElem {
 		return vdom.E(name, vdom.Props(props))
 	}
