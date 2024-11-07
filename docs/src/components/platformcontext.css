@@ -21,10 +21,29 @@
 }
 
 .pill-option.active {
-    background-color: #0073e6; /* Highlight color for active option */
-    color: #fff; /* White text on active side */
+    background-color: #0073e6;
+    color: #fff;
 }
 
 .pill-option:not(.active):hover {
-    background-color: #e0e0e0; /* Slight hover effect on inactive side */
+    background-color: #e0e0e0;
+}
+
+/* Docusaurus Dark Mode */
+html[data-theme="dark"] .pill-toggle {
+    border: 1px solid #555;
+    background-color: #333;
+}
+
+html[data-theme="dark"] .pill-option {
+    color: #ccc;
+}
+
+html[data-theme="dark"] .pill-option.active {
+    background-color: #005bb5; /* Darker blue for active state */
+    color: #fff;
+}
+
+html[data-theme="dark"] .pill-option:not(.active):hover {
+    background-color: #444; /* Darker hover effect */
 }
