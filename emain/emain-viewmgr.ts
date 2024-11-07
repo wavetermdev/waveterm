@@ -120,13 +120,6 @@ async function repositionTabsSlowly(waveWindow: WaveBrowserWindow, delayMs: numb
     await delay(delayMs);
     if (waveWindow.activeTabView != activeTabView) {
         // another tab view has been set, do not finalize this layout
-        console.log("[foo] wrong tab view, returning");
-        for (const tabView of waveWindow.allTabViews.values()) {
-            const tabPos = tabView.getBounds();
-            if (tabPos.x == 0 && tabPos.y == 0) {
-                console.log("[foo] currently positioned tab", tabView.waveTabId.substring(0, 8));
-            }
-        }
         return;
     }
     finalizePositioning(waveWindow);
@@ -141,7 +134,6 @@ function finalizePositioning(waveWindow: WaveBrowserWindow) {
     if (waveWindow.isDestroyed()) {
         return;
     }
-    console.log("[foo] finalizing positions", waveWindow.activeTabView?.waveTabId?.substring(0, 8));
     const curBounds = waveWindow.getBounds();
     positionTabOnScreen(waveWindow.activeTabView, curBounds);
     for (const tabView of waveWindow.allTabViews.values()) {
@@ -571,7 +563,34 @@ export async function setActiveTab(waveWindow: WaveBrowserWindow, tabId: string)
     await ObjectService.SetActiveTab(waveWindow.waveWindowId, tabId);
     const fullConfig = await FileService.GetFullConfig();
     const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, windowId, tabId);
-    setTabViewIntoWindow(waveWindow, tabView, tabInitialized);
+    queueTabSwitch(waveWindow, tabView, tabInitialized);
+}
+
+let tabSwitchQueue: { bwin: WaveBrowserWindow; tabView: WaveTabView; tabInitialized: boolean }[] = [];
+
+export function queueTabSwitch(bwin: WaveBrowserWindow, tabView: WaveTabView, tabInitialized: boolean) {
+    if (tabSwitchQueue.length == 2) {
+        tabSwitchQueue[1] = { bwin, tabView, tabInitialized };
+        return;
+    }
+    tabSwitchQueue.push({ bwin, tabView, tabInitialized });
+    if (tabSwitchQueue.length == 1) {
+        processTabSwitchQueue();
+    }
+}
+
+async function processTabSwitchQueue() {
+    if (tabSwitchQueue.length == 0) {
+        tabSwitchQueue = [];
+        return;
+    }
+    try {
+        const { bwin, tabView, tabInitialized } = tabSwitchQueue[0];
+        await setTabViewIntoWindow(bwin, tabView, tabInitialized);
+    } finally {
+        tabSwitchQueue.shift();
+        processTabSwitchQueue();
+    }
 }
 
 async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView, tabInitialized: boolean) {
@@ -586,7 +605,6 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
     }
     bwin.activeTabView = tabView;
     bwin.allTabViews.set(tabView.waveTabId, tabView);
-    console.log("[foo] switch to tab", tabView.waveTabId.substring(0, 8));
     if (!tabInitialized) {
         console.log("initializing a new tab");
         await tabView.initPromise;
@@ -606,11 +624,12 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
         // positionTabOnScreen(tabView, bwin.getContentBounds());
         console.log("wave-ready init time", Date.now() - startTime + "ms");
         // positionTabOffScreen(oldActiveView, bwin.getContentBounds());
-        repositionTabsSlowly(bwin, 100);
+        await repositionTabsSlowly(bwin, 100);
     } else {
         console.log("reusing an existing tab");
-        repositionTabsSlowly(bwin, 35);
-        tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
+        const p1 = repositionTabsSlowly(bwin, 35);
+        const p2 = tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
+        await Promise.all([p1, p2]);
     }
 
     // something is causing the new tab to lose focus so it requires manual refocusing
