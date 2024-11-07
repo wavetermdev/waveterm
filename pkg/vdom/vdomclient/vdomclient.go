@@ -40,6 +40,7 @@ type Client struct {
 	DoneCh             chan struct{}
 	Opts               vdom.VDomBackendOpts
 	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
+	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *mux.Router
 	OverrideUrlHandler http.Handler
 }
@@ -75,6 +76,9 @@ func MakeClient(opts *vdom.VDomBackendOpts) *Client {
 		Root:          vdom.MakeRoot(),
 		DoneCh:        make(chan struct{}),
 		UrlHandlerMux: mux.NewRouter(),
+	}
+	if opts == nil {
+		opts = &vdom.VDomBackendOpts{}
 	}
 	if opts != nil {
 		client.Opts = *opts
@@ -192,6 +196,11 @@ func DefineComponent[P any](client *Client, name string, renderFn func(ctx conte
 	}
 }
 
+func (c *Client) SetGlobalStyles(option FileHandlerOption) {
+	c.GlobalStylesOption = &option
+	c.Opts.GlobalStyles = true
+}
+
 func (c *Client) RegisterComponent(name string, cfunc any) error {
 	return c.Root.RegisterComponent(name, cfunc)
 }
@@ -245,7 +254,7 @@ type FileHandlerOption struct {
 	Reader   io.Reader // optional reader for content
 	File     fs.File   // optional embedded or opened file
 	MimeType string    // optional mime type
-	ETag     string    // optional ETag (if set, resource will be cached)
+	ETag     string    // optional ETag (if set, resource may be cached)
 }
 
 func determineMimeType(option FileHandlerOption) (string, []byte) {
