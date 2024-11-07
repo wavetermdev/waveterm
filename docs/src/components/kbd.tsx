@@ -1,3 +1,4 @@
+import BrowserOnly from "@docusaurus/BrowserOnly";
 import { useContext } from "react";
 import "./kbd.css";
 import type { Platform } from "./platformcontext";
@@ -39,7 +40,7 @@ function convertKey(platform: Platform, key: string): [any, string, boolean] {
 }
 
 // Custom KBD component
-export const Kbd = ({ k }) => {
+const KbdInternal = ({ k }: { k: string }) => {
     const { platform } = useContext(PlatformContext);
     const keys = k.split(":");
     const keyElems = keys.map((key, i) => {
@@ -51,9 +52,8 @@ export const Kbd = ({ k }) => {
         );
     });
     return <div className="kbd-group">{keyElems}</div>;
+};
 
-    // const { platform } = useContext(PlatformContext);
-    // const keyLabel = platform === "mac" && k === "Cmd" ? "Cmd" : k === "Cmd" ? "Alt" : k;
-
-    // return <kbd>{k}</kbd>;
+export const Kbd = ({ k }: { k: string }) => {
+    return <BrowserOnly fallback={<kbd>{k}</kbd>}>{() => <KbdInternal k={k} />}</BrowserOnly>;
 };
