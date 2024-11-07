@@ -4,7 +4,7 @@
 import { Button } from "@/element/button";
 import { atoms, getApi } from "@/store/global";
 import { makeIconClass } from "@/util/util";
-import { FloatingPortal } from "@floating-ui/react";
+import { FloatingPortal, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import clsx from "clsx";
 import { useAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
@@ -16,18 +16,36 @@ const notificationActions = {
     installUpdate: () => {
         getApi().installAppUpdate();
     },
-    retryUpdate: () => {
-        getApi().installAppUpdate();
-    },
 };
 
 const Notification = () => {
     const [notifications, setNotifications] = useAtom(atoms.notifications);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [ticker, setTicker] = useState<number>(0);
+    const [isOpen, setIsOpen] = useState(notifications.length > 0);
 
     useEffect(() => {
-        if (notifications.length == 0 || hoveredId != null) {
+        setIsOpen(notifications.length > 0);
+    }, [notifications.length]);
+
+    const { refs, strategy, context } = useFloating({
+        open: isOpen,
+        onOpenChange: setIsOpen,
+        strategy: "fixed",
+    });
+
+    const { getFloatingProps } = useInteractions([useDismiss(context)]);
+
+    const floatingStyles = {
+        position: strategy,
+        right: "10px",
+        bottom: "10px",
+        top: "auto",
+        left: "auto",
+    };
+
+    useEffect(() => {
+        if (notifications.length === 0 || hoveredId != null) {
             return;
         }
         const now = Date.now();
@@ -36,12 +54,9 @@ const Notification = () => {
                 removeNotification(notif.id);
             }
         }
-        setTimeout(() => setTicker(ticker + 1), 1000);
+        const timeout = setTimeout(() => setTicker(ticker + 1), 1000);
+        return () => clearTimeout(timeout);
     }, [notifications, ticker, hoveredId]);
-
-    if (notifications.length === 0) {
-        return null;
-    }
 
     const removeNotification = (id: string) => {
         setNotifications((prevNotifications) => prevNotifications.filter((n) => n.id !== id));
@@ -76,7 +91,7 @@ const Notification = () => {
         const diffInHours = Math.floor(diffInMinutes / 60);
         const diffInDays = Math.floor(diffInHours / 24);
 
-        if (diffInMinutes == 0) {
+        if (diffInMinutes === 0) {
             return `Just now`;
         } else if (diffInMinutes < 60) {
             return `${diffInMinutes} mins ago`;
@@ -89,14 +104,28 @@ const Notification = () => {
         }
     };
 
+    if (!isOpen) {
+        return null;
+    }
+
     return (
         <FloatingPortal>
-            <div className="notification-container">
+            <div
+                ref={refs.setFloating}
+                style={floatingStyles}
+                className="notification-container"
+                {...getFloatingProps({
+                    onClick: (e) => e.stopPropagation(),
+                })}
+            >
                 <div className="header">
                     <span>Notifications</span>
                     <Button
                         className="ghost grey close-all-btn horizontal-padding-3 vertical-padding-3"
-                        onClick={removeAllNotifications}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            removeAllNotifications();
+                        }}
                     >
                         Clear All
                     </Button>
