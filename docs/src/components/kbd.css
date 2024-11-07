@@ -1,0 +1,46 @@
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("/static/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("/static/fonts/JetBrainsMono-Bold.woff2") format("woff2");
+    font-weight: bold;
+    font-style: normal;
+}
+
+.kbd-group {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+}
+
+kbd {
+    background-color: #f4f4f4;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    padding: 2px 6px;
+    font-size: 0.8em; /* Base font size */
+    font-family: "JetBrains Mono", monospace;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    height: 24px; /* Consistent height */
+    line-height: 24px; /* Consistent line height */
+
+    .bold {
+        font-weight: bold;
+    }
+
+    .spaced {
+        letter-spacing: 0.1em;
+    }
+}
+
+.kbd-group kbd.symbol {
+    font-size: 0.8em; /* Slightly larger font size for symbols */
+    line-height: 24px; /* Same line height as base to keep alignment */
+}
