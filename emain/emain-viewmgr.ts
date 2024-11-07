@@ -32,6 +32,7 @@ const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> W
 let focusedWaveWindow = null; // on blur we do not set this to null (but on destroy we do)
 const wcvCache = new Map<string, WaveTabView>();
 const wcIdToWaveTabMap = new Map<number, WaveTabView>();
+let tabSwitchQueue: { bwin: WaveBrowserWindow; tabView: WaveTabView; tabInitialized: boolean }[] = [];
 
 export function setMaxTabCacheSize(size: number) {
     console.log("setMaxTabCacheSize", size);
@@ -134,7 +135,7 @@ function finalizePositioning(waveWindow: WaveBrowserWindow) {
     if (waveWindow.isDestroyed()) {
         return;
     }
-    const curBounds = waveWindow.getBounds();
+    const curBounds = waveWindow.getContentBounds();
     positionTabOnScreen(waveWindow.activeTabView, curBounds);
     for (const tabView of waveWindow.allTabViews.values()) {
         if (tabView == waveWindow.activeTabView) {
@@ -353,7 +354,7 @@ async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindo
             { width: bounds.width, height: bounds.height }
         );
     } catch (e) {
-        console.log("error resizing window", e);
+        console.log("error sending new window bounds to backend", e);
     }
 }
 
@@ -441,13 +442,15 @@ function createBaseWaveBrowserWindow(
     win.waveWindowId = waveWindow.oid;
     win.alreadyClosed = false;
     win.allTabViews = new Map<string, WaveTabView>();
-    const ivVal = setInterval(() => {
+    const winBoundsPoller = setInterval(() => {
         if (win.isDestroyed()) {
-            clearInterval(ivVal);
+            clearInterval(winBoundsPoller);
             return;
         }
-        const bounds = win.getBounds();
-        positionTabOnScreen(win.activeTabView, bounds);
+        if (tabSwitchQueue.length > 0) {
+            return;
+        }
+        finalizePositioning(win);
     }, 1000);
     win.on(
         // @ts-expect-error
@@ -455,7 +458,6 @@ function createBaseWaveBrowserWindow(
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
     win.on("resize", () => {
-        console.log("resize event", win.getContentBounds());
         if (win.isDestroyed()) {
             return;
         }
@@ -565,8 +567,6 @@ export async function setActiveTab(waveWindow: WaveBrowserWindow, tabId: string)
     const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, windowId, tabId);
     queueTabSwitch(waveWindow, tabView, tabInitialized);
 }
-
-let tabSwitchQueue: { bwin: WaveBrowserWindow; tabView: WaveTabView; tabInitialized: boolean }[] = [];
 
 export function queueTabSwitch(bwin: WaveBrowserWindow, tabView: WaveTabView, tabInitialized: boolean) {
     if (tabSwitchQueue.length == 2) {
