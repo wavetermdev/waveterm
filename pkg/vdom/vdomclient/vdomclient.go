@@ -27,7 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-type ApplicationOpts struct {
+type AppOpts struct {
 	CloseOnCtrlC         bool
 	GlobalKeyboardEvents bool
 	GlobalStyles         []byte
@@ -37,7 +37,7 @@ type ApplicationOpts struct {
 
 type Client struct {
 	Lock               *sync.Mutex
-	AppOpts            ApplicationOpts
+	AppOpts            AppOpts
 	Root               *vdom.RootElem
 	RootElem           *vdom.VDomElem
 	RpcClient          *wshutil.WshRpc
@@ -82,7 +82,7 @@ func (c *Client) SetOverrideUrlHandler(handler http.Handler) {
 	c.OverrideUrlHandler = handler
 }
 
-func MakeClient(appOpts ApplicationOpts) *Client {
+func MakeClient(appOpts AppOpts) *Client {
 	if appOpts.RootComponentName == "" {
 		appOpts.RootComponentName = "App"
 	}
