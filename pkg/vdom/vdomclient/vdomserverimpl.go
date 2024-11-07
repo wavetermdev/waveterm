@@ -100,7 +100,6 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 }
 
 func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshrpc.VDomUrlRequestData) chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse] {
-	log.Printf("VDomUrlRequestCommand: url=%q\n", data.URL)
 	respChan := make(chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse])
 	writer := NewStreamingResponseWriter(respChan)
 
@@ -133,7 +132,10 @@ func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshr
 		for key, value := range data.Headers {
 			httpReq.Header.Set(key, value)
 		}
-
+		if httpReq.URL.Path == "/wave/global.css" && impl.Client.GlobalStylesOption != nil {
+			ServeFileOption(writer, httpReq, *impl.Client.GlobalStylesOption)
+			return
+		}
 		if impl.Client.OverrideUrlHandler != nil {
 			impl.Client.OverrideUrlHandler.ServeHTTP(writer, httpReq)
 			return

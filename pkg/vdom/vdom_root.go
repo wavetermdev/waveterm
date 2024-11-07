@@ -140,13 +140,19 @@ func validateCFunc(cfunc any) error {
 	if rtype.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
 		return fmt.Errorf("Component function first argument must be context.Context")
 	}
-	// second can a map, or a struct, or ptr to struct (we'll reflect the value into it)
+	// second can a map[string]any, or a struct, or ptr to struct (we'll reflect the value into it)
 	arg2Type := rtype.In(1)
 	if arg2Type.Kind() == reflect.Ptr {
 		arg2Type = arg2Type.Elem()
 	}
-	if arg2Type.Kind() != reflect.Map && arg2Type.Kind() != reflect.Struct {
-		return fmt.Errorf("Component function second argument must be a map or a struct")
+	if arg2Type.Kind() == reflect.Map {
+		if arg2Type.Key().Kind() != reflect.String ||
+			!(arg2Type.Elem().Kind() == reflect.Interface && arg2Type.Elem().NumMethod() == 0) {
+			return fmt.Errorf("Map argument must be map[string]any")
+		}
+	} else if arg2Type.Kind() != reflect.Struct &&
+		!(arg2Type.Kind() == reflect.Interface && arg2Type.NumMethod() == 0) {
+		return fmt.Errorf("Component function second argument must be map[string]any, struct, or any")
 	}
 	return nil
 }
@@ -374,14 +380,21 @@ func getRenderContext(ctx context.Context) *VDomContextVal {
 func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	rval := reflect.ValueOf(cfunc)
 	arg2Type := rval.Type().In(1)
-	arg2Val := reflect.New(arg2Type)
-	// if arg2 is a map, just pass props
-	if arg2Type.Kind() == reflect.Map {
-		arg2Val.Elem().Set(reflect.ValueOf(props))
+
+	var arg2Val reflect.Value
+	if arg2Type.Kind() == reflect.Interface && arg2Type.NumMethod() == 0 {
+		// For any/interface{}, pass nil properly
+		arg2Val = reflect.New(arg2Type)
 	} else {
-		err := utilfn.MapToStruct(props, arg2Val.Interface())
-		if err != nil {
-			fmt.Printf("error unmarshalling props: %v\n", err)
+		arg2Val = reflect.New(arg2Type)
+		// if arg2 is a map, just pass props
+		if arg2Type.Kind() == reflect.Map {
+			arg2Val.Elem().Set(reflect.ValueOf(props))
+		} else {
+			err := utilfn.MapToStruct(props, arg2Val.Interface())
+			if err != nil {
+				fmt.Printf("error unmarshalling props: %v\n", err)
+			}
 		}
 	}
 	rtnVal := rval.Call([]reflect.Value{reflect.ValueOf(ctx), arg2Val.Elem()})

@@ -642,6 +642,7 @@ declare global {
     type VDomBackendOpts = {
         closeonctrlc?: boolean;
         globalkeyboardevents?: boolean;
+        globalstyles?: boolean;
     };
 
     // vdom.VDomBackendUpdate
