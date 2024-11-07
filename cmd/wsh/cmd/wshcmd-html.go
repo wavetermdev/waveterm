@@ -8,31 +8,32 @@ import (
 	_ "embed"
 	"log"
 
-	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/vdom/vdomclient"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 //go:embed htmlstyle.css
 var htmlStyleCSS []byte
 
-var htmlCmdNewBlock bool
-var HtmlVDomClient *vdomclient.Client = vdomclient.MakeClient(&vdom.VDomBackendOpts{CloseOnCtrlC: true})
+var HtmlVDomClient *vdomclient.Client = vdomclient.MakeClient(vdomclient.ApplicationOpts{
+	Name:         "html",
+	Description:  "launch demo vdom application",
+	CloseOnCtrlC: true,
+	GlobalStyles: htmlStyleCSS,
+})
 
 func init() {
-	htmlCmd.Flags().BoolVarP(&htmlCmdNewBlock, "newblock", "n", false, "create a new block")
-	rootCmd.AddCommand(htmlCmd)
-}
+	HtmlVDomClient.Command.Hidden = true
+	rootCmd.AddCommand(HtmlVDomClient.Command)
 
-var htmlCmd = &cobra.Command{
-	Use:    "html",
-	Hidden: true,
-	Short:  "launch demo vdom application",
-	RunE:   htmlRun,
+	HtmlVDomClient.AddSetupFn(func() {
+		HtmlVDomClient.RegisterFileHandler("/test.png", vdomclient.FileHandlerOption{
+			FilePath: "~/Downloads/IMG_1939.png",
+		})
+	})
 }
 
 // Prop Types
@@ -160,34 +161,3 @@ var App = vdomclient.DefineComponent[struct{}](HtmlVDomClient, "App",
 		)
 	},
 )
-
-func htmlRun(cmd *cobra.Command, args []string) error {
-	WriteStderr("running wsh html %q\n", RpcContext.BlockId)
-	client := HtmlVDomClient
-	err := client.Connect()
-	if err != nil {
-		return err
-	}
-
-	client.SetRootElem(App(struct{}{}))
-	client.RegisterFileHandler("/style.css", vdomclient.FileHandlerOption{
-		Data:     htmlStyleCSS,
-		MimeType: "text/css",
-	})
-	client.RegisterFileHandler("/test.png", vdomclient.FileHandlerOption{
-		FilePath: "~/Downloads/IMG_1939.png",
-	})
-
-	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: htmlCmdNewBlock})
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		<-client.DoneCh
-		wshutil.DoShutdown("vdom closed by FE", 0, true)
-	}()
-
-	<-client.DoneCh
-	return nil
-}
