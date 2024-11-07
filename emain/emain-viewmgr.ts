@@ -89,40 +89,80 @@ function positionTabOffScreen(tabView: WaveTabView, winBounds: Electron.Rectangl
         return;
     }
     tabView.setBounds({
-        x: -10000,
-        y: -10000,
+        x: -15000,
+        y: -15000,
         width: winBounds.width,
         height: winBounds.height,
     });
 }
 
-async function repositionTabsSlowly(
-    newTabView: WaveTabView,
-    oldTabView: WaveTabView,
-    delayMs: number,
-    winBounds: Electron.Rectangle
-) {
-    if (newTabView == null) {
+async function repositionTabsSlowly(waveWindow: WaveBrowserWindow, delayMs: number) {
+    const activeTabView = waveWindow.activeTabView;
+    const winBounds = waveWindow.getContentBounds();
+    if (activeTabView == null) {
         return;
     }
-    newTabView.setBounds({
-        x: winBounds.width - 10,
-        y: winBounds.height - 10,
-        width: winBounds.width,
-        height: winBounds.height,
-    });
+    if (isOnScreen(activeTabView)) {
+        activeTabView.setBounds({
+            x: 0,
+            y: 0,
+            width: winBounds.width,
+            height: winBounds.height,
+        });
+    } else {
+        activeTabView.setBounds({
+            x: winBounds.width - 10,
+            y: winBounds.height - 10,
+            width: winBounds.width,
+            height: winBounds.height,
+        });
+    }
     await delay(delayMs);
-    newTabView.setBounds({ x: 0, y: 0, width: winBounds.width, height: winBounds.height });
-    oldTabView?.setBounds({
-        x: -10000,
-        y: -10000,
-        width: winBounds.width,
-        height: winBounds.height,
-    });
+    if (waveWindow.activeTabView != activeTabView) {
+        // another tab view has been set, do not finalize this layout
+        console.log("[foo] wrong tab view, returning");
+        for (const tabView of waveWindow.allTabViews.values()) {
+            const tabPos = tabView.getBounds();
+            if (tabPos.x == 0 && tabPos.y == 0) {
+                console.log("[foo] currently positioned tab", tabView.waveTabId.substring(0, 8));
+            }
+        }
+        return;
+    }
+    finalizePositioning(waveWindow);
+}
+
+function isOnScreen(tabView: WaveTabView) {
+    const bounds = tabView.getBounds();
+    return bounds.x == 0 && bounds.y == 0;
+}
+
+function finalizePositioning(waveWindow: WaveBrowserWindow) {
+    if (waveWindow.isDestroyed()) {
+        return;
+    }
+    console.log("[foo] finalizing positions", waveWindow.activeTabView?.waveTabId?.substring(0, 8));
+    const curBounds = waveWindow.getBounds();
+    positionTabOnScreen(waveWindow.activeTabView, curBounds);
+    for (const tabView of waveWindow.allTabViews.values()) {
+        if (tabView == waveWindow.activeTabView) {
+            continue;
+        }
+        positionTabOffScreen(tabView, curBounds);
+    }
 }
 
 function positionTabOnScreen(tabView: WaveTabView, winBounds: Electron.Rectangle) {
     if (tabView == null) {
+        return;
+    }
+    const curBounds = tabView.getBounds();
+    if (
+        curBounds.width == winBounds.width &&
+        curBounds.height == winBounds.height &&
+        curBounds.x == 0 &&
+        curBounds.y == 0
+    ) {
         return;
     }
     tabView.setBounds({ x: 0, y: 0, width: winBounds.width, height: winBounds.height });
@@ -409,13 +449,22 @@ function createBaseWaveBrowserWindow(
     win.waveWindowId = waveWindow.oid;
     win.alreadyClosed = false;
     win.allTabViews = new Map<string, WaveTabView>();
+    const ivVal = setInterval(() => {
+        if (win.isDestroyed()) {
+            clearInterval(ivVal);
+            return;
+        }
+        const bounds = win.getBounds();
+        positionTabOnScreen(win.activeTabView, bounds);
+    }, 1000);
     win.on(
         // @ts-expect-error
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
     win.on("resize", () => {
-        if (win.isDestroyed() || win.fullScreen) {
+        console.log("resize event", win.getContentBounds());
+        if (win.isDestroyed()) {
             return;
         }
         positionTabOnScreen(win.activeTabView, win.getContentBounds());
@@ -426,6 +475,7 @@ function createBaseWaveBrowserWindow(
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
     win.on("enter-full-screen", async () => {
+        console.log("enter-full-screen event", win.getContentBounds());
         const tabView = win.activeTabView;
         if (tabView) {
             tabView.webContents.send("fullscreen-change", true);
@@ -525,11 +575,7 @@ export async function setActiveTab(waveWindow: WaveBrowserWindow, tabId: string)
 }
 
 async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView, tabInitialized: boolean) {
-    const curTabView: WaveTabView = bwin.getContentView() as any;
     const clientData = await ClientService.GetClientData();
-    if (curTabView != null) {
-        curTabView.isActiveTab = false;
-    }
     if (bwin.activeTabView == tabView) {
         return;
     }
@@ -540,6 +586,7 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
     }
     bwin.activeTabView = tabView;
     bwin.allTabViews.set(tabView.waveTabId, tabView);
+    console.log("[foo] switch to tab", tabView.waveTabId.substring(0, 8));
     if (!tabInitialized) {
         console.log("initializing a new tab");
         await tabView.initPromise;
@@ -559,10 +606,10 @@ async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabVie
         // positionTabOnScreen(tabView, bwin.getContentBounds());
         console.log("wave-ready init time", Date.now() - startTime + "ms");
         // positionTabOffScreen(oldActiveView, bwin.getContentBounds());
-        repositionTabsSlowly(tabView, oldActiveView, 100, bwin.getContentBounds());
+        repositionTabsSlowly(bwin, 100);
     } else {
         console.log("reusing an existing tab");
-        repositionTabsSlowly(tabView, oldActiveView, 35, bwin.getContentBounds());
+        repositionTabsSlowly(bwin, 35);
         tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
     }
 
