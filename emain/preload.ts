@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld("api", {
     onWaveInit: (callback) => ipcRenderer.on("wave-init", (_event, initOpts) => callback(initOpts)),
     sendLog: (log) => ipcRenderer.send("fe-log", log),
     onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
+    openNativePath: (filePath: string) => ipcRenderer.send("open-native-path", filePath),
 });
 
 // Custom event for "new-window"

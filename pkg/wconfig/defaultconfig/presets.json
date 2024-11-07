@@ -23,14 +23,16 @@
         "display:order": 1.1,
         "bg:*": true,
         "bg": "blue",
-        "bg:opacity": 0.3
+        "bg:opacity": 0.3,
+        "bg:activebordercolor": "rgba(0, 0, 255, 1.0)"
     },
     "bg@red": {
         "display:name": "Red",
         "display:order": 1.3,
         "bg:*": true,
         "bg": "red",
-        "bg:opacity": 0.3
+        "bg:opacity": 0.3,
+        "bg:activebordercolor": "rgba(255, 0, 0, 1.0)"
     },
     "bg@ocean-depths": {
         "display:name": "Ocean Depths",

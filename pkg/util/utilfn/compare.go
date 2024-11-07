@@ -58,6 +58,9 @@ func CompareAsFloat64(a, b any) bool {
 
 // Convert various numeric types to float64 for comparison
 func ToFloat64(val any) (float64, bool) {
+	if val == nil {
+		return 0, false
+	}
 	switch v := val.(type) {
 	case int:
 		return float64(v), true
@@ -85,5 +88,59 @@ func ToFloat64(val any) (float64, bool) {
 		return v, true
 	default:
 		return 0, false
+	}
+}
+
+func ToInt64(val any) (int64, bool) {
+	if val == nil {
+		return 0, false
+	}
+	switch v := val.(type) {
+	case int:
+		return int64(v), true
+	case int8:
+		return int64(v), true
+	case int16:
+		return int64(v), true
+	case int32:
+		return int64(v), true
+	case int64:
+		return v, true
+	case uint:
+		return int64(v), true
+	case uint8:
+		return int64(v), true
+	case uint16:
+		return int64(v), true
+	case uint32:
+		return int64(v), true
+	case uint64:
+		return int64(v), true
+	case float32:
+		return int64(v), true
+	case float64:
+		return int64(v), true
+	default:
+		return 0, false
+	}
+}
+
+func ToInt(val any) (int, bool) {
+	i, ok := ToInt64(val)
+	if !ok {
+		return 0, false
+	}
+	return int(i), true
+}
+
+func ToStr(val any) (string, bool) {
+	if val == nil {
+		return "", false
+	}
+	switch v := val.(type) {
+	case string:
+		return v, true
+	default:
+		return "", false
 	}
 }

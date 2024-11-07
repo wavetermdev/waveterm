@@ -28,13 +28,13 @@ type MetaTSType struct {
 	Icon      string `json:"icon,omitempty"`
 	IconColor string `json:"icon:color,omitempty"`
 
-	FrameClear               bool   `json:"frame:*,omitempty"`
-	Frame                    bool   `json:"frame,omitempty"`
-	FrameBorderColor         string `json:"frame:bordercolor,omitempty"`
-	FrameBorderColor_Focused string `json:"frame:bordercolor:focused,omitempty"`
-	FrameTitle               string `json:"frame:title,omitempty"`
-	FrameIcon                string `json:"frame:icon,omitempty"`
-	FrameText                string `json:"frame:text,omitempty"`
+	FrameClear             bool   `json:"frame:*,omitempty"`
+	Frame                  bool   `json:"frame,omitempty"`
+	FrameBorderColor       string `json:"frame:bordercolor,omitempty"`
+	FrameActiveBorderColor string `json:"frame:activebordercolor,omitempty"`
+	FrameTitle             string `json:"frame:title,omitempty"`
+	FrameIcon              string `json:"frame:icon,omitempty"`
+	FrameText              string `json:"frame:text,omitempty"`
 
 	CmdClear          bool              `json:"cmd:*,omitempty"`
 	Cmd               string            `json:"cmd,omitempty"`
@@ -60,6 +60,9 @@ type MetaTSType struct {
 	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
 
+	EditorClear    bool `json:"editor:*,omitempty"`
+	EditorWordWrap bool `json:"editor:wordwrap,omitempty"`
+
 	GraphClear     bool     `json:"graph:*,omitempty"`
 	GraphNumPoints int      `json:"graph:numpoints,omitempty"`
 	GraphMetrics   []string `json:"graph:metrics,omitempty"`
@@ -67,10 +70,12 @@ type MetaTSType struct {
 	SysinfoType string `json:"sysinfo:type,omitempty"`
 
 	// for tabs
-	BgClear     bool    `json:"bg:*,omitempty"`
-	Bg          string  `json:"bg,omitempty"`
-	BgOpacity   float64 `json:"bg:opacity,omitempty"`
-	BgBlendMode string  `json:"bg:blendmode,omitempty"`
+	BgClear             bool    `json:"bg:*,omitempty"`
+	Bg                  string  `json:"bg,omitempty"`
+	BgOpacity           float64 `json:"bg:opacity,omitempty"`
+	BgBlendMode         string  `json:"bg:blendmode,omitempty"`
+	BgBorderColor       string  `json:"bg:bordercolor,omitempty"`       // frame:bordercolor
+	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
 
 	TermClear          bool     `json:"term:*,omitempty"`
 	TermFontSize       int      `json:"term:fontsize,omitempty"`

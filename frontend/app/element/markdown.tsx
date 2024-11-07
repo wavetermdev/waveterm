@@ -180,6 +180,7 @@ type MarkdownProps = {
     onClickExecute?: (cmd: string) => void;
     resolveOpts?: MarkdownResolveOpts;
     scrollable?: boolean;
+    rehype?: boolean;
 };
 
 const Markdown = ({
@@ -190,6 +191,7 @@ const Markdown = ({
     className,
     resolveOpts,
     scrollable = true,
+    rehype = true,
     onClickExecute,
 }: MarkdownProps) => {
     const textAtomValue = useAtomValueSafe<string>(textAtom);
@@ -250,6 +252,29 @@ const Markdown = ({
     }, [showToc, tocRef]);
 
     text = textAtomValue ?? text;
+    let rehypePlugins = null;
+    if (rehype) {
+        rehypePlugins = [
+            rehypeRaw,
+            rehypeHighlight,
+            () =>
+                rehypeSanitize({
+                    ...defaultSchema,
+                    attributes: {
+                        ...defaultSchema.attributes,
+                        span: [
+                            ...(defaultSchema.attributes?.span || []),
+                            // Allow all class names starting with `hljs-`.
+                            ["className", /^hljs-./],
+                            // Alternatively, to allow only certain class names:
+                            // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
+                        ],
+                    },
+                    tagNames: [...(defaultSchema.tagNames || []), "span"],
+                }),
+            () => rehypeSlug({ prefix: idPrefix }),
+        ];
+    }
 
     const ScrollableMarkdown = () => {
         return (
@@ -260,26 +285,7 @@ const Markdown = ({
             >
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkAlert, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
-                    rehypePlugins={[
-                        rehypeRaw,
-                        rehypeHighlight,
-                        () =>
-                            rehypeSanitize({
-                                ...defaultSchema,
-                                attributes: {
-                                    ...defaultSchema.attributes,
-                                    span: [
-                                        ...(defaultSchema.attributes?.span || []),
-                                        // Allow all class names starting with `hljs-`.
-                                        ["className", /^hljs-./],
-                                        // Alternatively, to allow only certain class names:
-                                        // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
-                                    ],
-                                },
-                                tagNames: [...(defaultSchema.tagNames || []), "span"],
-                            }),
-                        () => rehypeSlug({ prefix: idPrefix }),
-                    ]}
+                    rehypePlugins={rehypePlugins}
                     components={markdownComponents}
                 >
                     {text}
@@ -293,26 +299,7 @@ const Markdown = ({
             <div className="content non-scrollable">
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
-                    rehypePlugins={[
-                        rehypeRaw,
-                        rehypeHighlight,
-                        () =>
-                            rehypeSanitize({
-                                ...defaultSchema,
-                                attributes: {
-                                    ...defaultSchema.attributes,
-                                    span: [
-                                        ...(defaultSchema.attributes?.span || []),
-                                        // Allow all class names starting with `hljs-`.
-                                        ["className", /^hljs-./],
-                                        // Alternatively, to allow only certain class names:
-                                        // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
-                                    ],
-                                },
-                                tagNames: [...(defaultSchema.tagNames || []), "span"],
-                            }),
-                        () => rehypeSlug({ prefix: idPrefix }),
-                    ]}
+                    rehypePlugins={rehypePlugins}
                     components={markdownComponents}
                 >
                     {text}

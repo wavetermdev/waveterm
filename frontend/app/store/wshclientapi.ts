@@ -142,6 +142,11 @@ class RpcApiType {
         return client.wshRpcCall("getmeta", data, opts);
     }
 
+    // command "getupdatechannel" [call]
+    GetUpdateChannelCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("getupdatechannel", null, opts);
+    }
+
     // command "message" [call]
     MessageCommand(client: WshClient, data: CommandMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("message", data, opts);
@@ -257,14 +262,24 @@ class RpcApiType {
         return client.wshRpcCall("vdomcreatecontext", data, opts);
     }
 
-    // command "vdomrender" [call]
-    VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): Promise<VDomBackendUpdate> {
-        return client.wshRpcCall("vdomrender", data, opts);
+    // command "vdomrender" [responsestream]
+	VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): AsyncGenerator<VDomBackendUpdate, void, boolean> {
+        return client.wshRpcStream("vdomrender", data, opts);
+    }
+
+    // command "vdomurlrequest" [responsestream]
+	VDomUrlRequestCommand(client: WshClient, data: VDomUrlRequestData, opts?: RpcOpts): AsyncGenerator<VDomUrlRequestResponse, void, boolean> {
+        return client.wshRpcStream("vdomurlrequest", data, opts);
     }
 
     // command "waitforroute" [call]
     WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
         return client.wshRpcCall("waitforroute", data, opts);
+    }
+
+    // command "waveinfo" [call]
+    WaveInfoCommand(client: WshClient, opts?: RpcOpts): Promise<WaveInfoData> {
+        return client.wshRpcCall("waveinfo", null, opts);
     }
 
     // command "webselector" [call]

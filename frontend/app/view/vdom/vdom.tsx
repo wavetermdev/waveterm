@@ -10,7 +10,12 @@ import * as jotai from "jotai";
 import * as React from "react";
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { convertVDomId, getTextChildren, validateAndWrapCss } from "@/app/view/vdom/vdom-utils";
+import {
+    convertVDomId,
+    getTextChildren,
+    validateAndWrapCss,
+    validateAndWrapReactStyle,
+} from "@/app/view/vdom/vdom-utils";
 import "./vdom.less";
 
 const TextTag = "#text";
@@ -18,6 +23,7 @@ const FragmentTag = "#fragment";
 const WaveTextTag = "wave:text";
 const WaveNullTag = "wave:null";
 const StyleTagName = "style";
+const WaveStyleTagName = "wave:style";
 
 const VDomObjType_Ref = "ref";
 const VDomObjType_Binding = "binding";
@@ -66,6 +72,51 @@ const AllowedSimpleTags: { [tagName: string]: boolean } = {
     br: true,
     pre: true,
     code: true,
+    canvas: true,
+};
+
+const AllowedSvgTags = {
+    // SVG tags
+    svg: true,
+    circle: true,
+    ellipse: true,
+    line: true,
+    path: true,
+    polygon: true,
+    polyline: true,
+    rect: true,
+    g: true,
+    text: true,
+    tspan: true,
+    textPath: true,
+    use: true,
+    defs: true,
+    linearGradient: true,
+    radialGradient: true,
+    stop: true,
+    clipPath: true,
+    mask: true,
+    pattern: true,
+    image: true,
+    marker: true,
+    symbol: true,
+    filter: true,
+    feBlend: true,
+    feColorMatrix: true,
+    feComponentTransfer: true,
+    feComposite: true,
+    feConvolveMatrix: true,
+    feDiffuseLighting: true,
+    feDisplacementMap: true,
+    feFlood: true,
+    feGaussianBlur: true,
+    feImage: true,
+    feMerge: true,
+    feMorphology: true,
+    feOffset: true,
+    feSpecularLighting: true,
+    feTile: true,
+    feTurbulence: true,
 };
 
 const IdAttributes = {
@@ -81,11 +132,24 @@ const IdAttributes = {
     list: true,
 };
 
+const SvgUrlIdAttributes = {
+    "clip-path": true,
+    mask: true,
+    filter: true,
+    fill: true,
+    stroke: true,
+    "marker-start": true,
+    "marker-mid": true,
+    "marker-end": true,
+    "text-decoration": true,
+};
+
 function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
     return (e: any) => {
         if ((propName == "onKeyDown" || propName == "onKeyDownCapture") && fnDecl["#keys"]) {
+            dlog("key event", fnDecl, e);
             let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-            for (let keyDesc of fnDecl.keys || []) {
+            for (let keyDesc of fnDecl["#keys"] || []) {
                 if (checkKeyPressed(waveEvent, keyDesc)) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -193,10 +257,37 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
                     }
                 }
             }
-            // fallthrough to set props[key] = val
+            val = validateAndWrapReactStyle(model, val);
+            props[key] = val;
+            continue;
         }
         if (IdAttributes[key]) {
             props[key] = convertVDomId(model, val);
+            continue;
+        }
+        if (AllowedSvgTags[elem.tag]) {
+            if ((elem.tag == "use" && key == "href") || (elem.tag == "textPath" && key == "href")) {
+                if (val == null || !val.startsWith("#")) {
+                    continue;
+                }
+                props[key] = convertVDomId(model, "#" + val.substring(1));
+                continue;
+            }
+            if (SvgUrlIdAttributes[key]) {
+                if (val == null || !val.startsWith("url(#") || !val.endsWith(")")) {
+                    continue;
+                }
+                props[key] = "url(#" + convertVDomId(model, val.substring(4, val.length - 1)) + ")";
+                continue;
+            }
+        }
+        if (key == "src" && val != null && val.startsWith("vdom://")) {
+            // transform vdom:// urls
+            const newUrl = model.transformVDomUrl(val);
+            if (newUrl == null) {
+                continue;
+            }
+            props[key] = newUrl;
             continue;
         }
         props[key] = val;
@@ -205,15 +296,18 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
 }
 
 function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Element)[] {
-    let childrenComps: (string | JSX.Element)[] = [];
-    if (elem.children == null) {
-        return childrenComps;
+    if (elem.children == null || elem.children.length == 0) {
+        return null;
     }
+    let childrenComps: (string | JSX.Element)[] = [];
     for (let child of elem.children) {
         if (child == null) {
             continue;
         }
         childrenComps.push(convertElemToTag(child, model));
+    }
+    if (childrenComps.length == 0) {
+        return null;
     }
     return childrenComps;
 }
@@ -253,7 +347,13 @@ function useVDom(model: VDomModel, elem: VDomElem): GenericPropsType {
 function WaveMarkdown({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     const props = useVDom(model, elem);
     return (
-        <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
+        <Markdown
+            text={props?.text}
+            style={props?.style}
+            className={props?.className}
+            scrollable={props?.scrollable}
+            rehype={props?.rehype}
+        />
     );
 }
 
@@ -271,6 +371,44 @@ function StyleTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     return <style>{sanitizedCss}</style>;
 }
 
+function WaveStyle({ src, model, onMount }: { src: string; model: VDomModel; onMount?: () => void }) {
+    const [styleContent, setStyleContent] = React.useState<string | null>(null);
+    React.useEffect(() => {
+        async function fetchAndSanitizeCss() {
+            try {
+                const response = await fetch(src);
+                if (!response.ok) {
+                    console.error(`Failed to load CSS from ${src}`);
+                    return;
+                }
+                const cssText = await response.text();
+                const wrapperClassName = "vdom-" + model.blockId;
+                const sanitizedCss = validateAndWrapCss(model, cssText, wrapperClassName);
+                if (sanitizedCss) {
+                    setStyleContent(sanitizedCss);
+                } else {
+                    onMount?.();
+                    console.error("Failed to sanitize CSS");
+                }
+            } catch (error) {
+                console.error("Error fetching CSS:", error);
+                onMount?.();
+            }
+        }
+        fetchAndSanitizeCss();
+    }, [src, model]);
+    // Trigger onMount after styleContent has been set and mounted
+    React.useEffect(() => {
+        if (styleContent) {
+            onMount?.();
+        }
+    }, [styleContent, onMount]);
+    if (!styleContent) {
+        return null;
+    }
+    return <style>{styleContent}</style>;
+}
+
 function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     const props = useVDom(model, elem);
     if (elem.tag == WaveNullTag) {
@@ -286,7 +424,10 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     if (elem.tag == StyleTagName) {
         return <StyleTag elem={elem} model={model} />;
     }
-    if (!AllowedSimpleTags[elem.tag]) {
+    if (elem.tag == WaveStyleTagName) {
+        return <WaveStyle src={props.src} model={model} />;
+    }
+    if (!AllowedSimpleTags[elem.tag] && !AllowedSvgTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
     }
     let childrenComps = convertChildren(elem, model);
@@ -322,11 +463,15 @@ const testVDom: VDomElem = {
 };
 
 function VDomRoot({ model }: { model: VDomModel }) {
+    let version = jotai.useAtomValue(model.globalVersion);
     let rootNode = jotai.useAtomValue(model.vdomRoot);
+    React.useEffect(() => {
+        model.renderDone(version);
+    }, [version]);
     if (model.viewRef.current == null || rootNode == null) {
         return null;
     }
-    dlog("render", rootNode);
+    dlog("render", version, rootNode);
     let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }
@@ -340,13 +485,29 @@ type VDomViewProps = {
     blockId: string;
 };
 
+function VDomInnerView({ blockId, model }: VDomViewProps) {
+    let [styleMounted, setStyleMounted] = React.useState(!model.backendOpts?.globalstyles);
+    const handleStylesMounted = () => {
+        setStyleMounted(true);
+    };
+    return (
+        <>
+            {model.backendOpts?.globalstyles ? (
+                <WaveStyle src={model.makeVDomUrl("/wave/global.css")} model={model} onMount={handleStylesMounted} />
+            ) : null}
+            {styleMounted ? <VDomRoot model={model} /> : null}
+        </>
+    );
+}
+
 function VDomView({ blockId, model }: VDomViewProps) {
     let viewRef = React.useRef(null);
+    let contextActive = jotai.useAtomValue(model.contextActive);
     model.viewRef = viewRef;
     const vdomClass = "vdom-" + blockId;
     return (
-        <div className={clsx("vdom-view", vdomClass)} ref={viewRef}>
-            <VDomRoot model={model} />
+        <div className={clsx("view-vdom", vdomClass)} ref={viewRef}>
+            {contextActive ? <VDomInnerView blockId={blockId} model={model} /> : null}
         </div>
     );
 }

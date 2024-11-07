@@ -4,7 +4,7 @@ We welcome and value contributions to Wave Terminal! Wave is an open source proj
 
 - Submit issues related to bugs or new feature requests
 - Fix outstanding [issues](https://github.com/wavetermdev/waveterm/issues) with the existing code
-- Contribute to [documentation](https://github.com/wavetermdev/waveterm-docs)
+- Contribute to [documentation](./docs)
 - Spread the word on social media (tag us on [LinkedIn](https://www.linkedin.com/company/wavetermdev), [Twitter/X](https://x.com/wavetermdev))
 - Or simply ⭐️ the repository to show your appreciation
 
@@ -43,7 +43,7 @@ To build and run Wave locally, see instructions at [Building Wave Terminal](./BU
 
 We are working to document all our UI components in [Storybook](https://storybook.js.org/docs) for easy reference and testing. If you would like to help us with this, we would be very grateful!
 
-Our Storybook site is hosted [storybook.waveterm.dev](https://storybook.waveterm.dev).
+Our Storybook site is hosted [docs.waveterm.dev/storybook](https://docs.waveterm.dev/storybook).
 
 ### Create a Pull Request
 

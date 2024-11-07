@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
+import { getBlockMetaKeyAtom, globalStore, PLATFORM, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
+import { applyCanvasOp, mergeBackendUpdates, restoreVDomElems } from "@/app/view/vdom/vdom-utils";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -43,24 +45,45 @@ function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
     }
 }
 
-function convertEvent(e: React.SyntheticEvent, fromProp: string): any {
-    if (e == null) {
-        return null;
+function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.SyntheticEvent) {
+    if (reactEvent == null) {
+        return;
     }
-    if (fromProp == "onClick") {
-        return { type: "click" };
+    if (propName == "onChange") {
+        const changeEvent = reactEvent as React.ChangeEvent<any>;
+        event.targetvalue = changeEvent.target?.value;
+        event.targetchecked = changeEvent.target?.checked;
     }
-    if (fromProp == "onKeyDown") {
-        const waveKeyEvent = adaptFromReactOrNativeKeyEvent(e as React.KeyboardEvent);
-        return waveKeyEvent;
+    if (propName == "onClick" || propName == "onMouseDown") {
+        const mouseEvent = reactEvent as React.MouseEvent<any>;
+        event.mousedata = {
+            button: mouseEvent.button,
+            buttons: mouseEvent.buttons,
+            alt: mouseEvent.altKey,
+            control: mouseEvent.ctrlKey,
+            shift: mouseEvent.shiftKey,
+            meta: mouseEvent.metaKey,
+            clientx: mouseEvent.clientX,
+            clienty: mouseEvent.clientY,
+            pagex: mouseEvent.pageX,
+            pagey: mouseEvent.pageY,
+            screenx: mouseEvent.screenX,
+            screeny: mouseEvent.screenY,
+            movementx: mouseEvent.movementX,
+            movementy: mouseEvent.movementY,
+        };
+        if (PLATFORM == "darwin") {
+            event.mousedata.cmd = event.mousedata.meta;
+            event.mousedata.option = event.mousedata.alt;
+        } else {
+            event.mousedata.cmd = event.mousedata.alt;
+            event.mousedata.option = event.mousedata.meta;
+        }
     }
-    if (fromProp == "onFocus") {
-        return { type: "focus" };
+    if (propName == "onKeyDown") {
+        const waveKeyEvent = adaptFromReactOrNativeKeyEvent(reactEvent as React.KeyboardEvent);
+        event.keydata = waveKeyEvent;
     }
-    if (fromProp == "onBlur") {
-        return { type: "blur" };
-    }
-    return { type: "unknown" };
 }
 
 class VDomWshClient extends WshClient {
@@ -72,7 +95,7 @@ class VDomWshClient extends WshClient {
     }
 
     handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {
-        console.log("async-initiation", rh.getSource(), data);
+        dlog("async-initiation", rh.getSource(), data);
         this.model.queueUpdate(true);
     }
 }
@@ -108,6 +131,9 @@ export class VDomModel {
     persist: jotai.Atom<boolean>;
     routeGoneUnsub: () => void;
     routeConfirmed: boolean = false;
+    refOutputStore: Map<string, any> = new Map();
+    globalVersion: jotai.PrimitiveAtom<number> = jotai.atom(0);
+    hasBackendWork: boolean = false;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "vdom";
@@ -179,12 +205,42 @@ export class VDomModel {
         this.needsImmediateUpdate = false;
         this.lastUpdateTs = 0;
         this.queuedUpdate = null;
+        this.refOutputStore.clear();
+        this.globalVersion = jotai.atom(0);
+        this.hasBackendWork = false;
         globalStore.set(this.contextActive, false);
     }
 
     getBackendRoute(): string {
         const blockData = globalStore.get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
         return blockData?.meta?.["vdom:route"];
+    }
+
+    transformVDomUrl(url: string): string {
+        if (url == null || url == "") {
+            return null;
+        }
+        if (!url.startsWith("vdom://")) {
+            return url;
+        }
+        const absUrl = url.substring(7);
+        return this.makeVDomUrl(absUrl);
+    }
+
+    makeVDomUrl(path: string): string {
+        if (path == null || path == "") {
+            return null;
+        }
+        if (!path.startsWith("/")) {
+            return null;
+        }
+        const backendRouteId = this.getBackendRouteId();
+        if (backendRouteId == null) {
+            return null;
+        }
+        const wsEndpoint = getWebServerEndpoint();
+        const fullUrl = wsEndpoint + "/vdom/" + backendRouteId + path;
+        return fullUrl;
     }
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {
@@ -200,7 +256,7 @@ export class VDomModel {
             this.batchedEvents.push({
                 waveid: null,
                 eventtype: "onKeyDown",
-                eventdata: e,
+                keydata: e,
             });
             this.queueUpdate();
             return true;
@@ -309,8 +365,21 @@ export class VDomModel {
         try {
             const feUpdate = this.createFeUpdate();
             dlog("fe-update", feUpdate);
-            const beUpdate = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
-            this.handleBackendUpdate(beUpdate);
+            const beUpdateGen = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
+            let baseUpdate: VDomBackendUpdate = null;
+            for await (const beUpdate of beUpdateGen) {
+                if (baseUpdate === null) {
+                    baseUpdate = beUpdate;
+                } else {
+                    mergeBackendUpdates(baseUpdate, beUpdate);
+                }
+            }
+            if (baseUpdate !== null) {
+                restoreVDomElems(baseUpdate);
+                dlog("be-update", baseUpdate);
+                this.handleBackendUpdate(baseUpdate);
+            }
+            dlog("update cycle done");
         } finally {
             this.lastUpdateTs = Date.now();
             this.hasPendingRequest = false;
@@ -502,6 +571,10 @@ export class VDomModel {
                 this.addErrorMessage(`Could not find ref with id ${refOp.refid}`);
                 continue;
             }
+            if (elem instanceof HTMLCanvasElement) {
+                applyCanvasOp(elem, refOp, this.refOutputStore);
+                continue;
+            }
             if (refOp.op == "focus") {
                 if (elem == null) {
                     this.addErrorMessage(`Could not focus ref with id ${refOp.refid}: elem is null`);
@@ -540,26 +613,32 @@ export class VDomModel {
                 }
             }
         }
+        globalStore.set(this.globalVersion, globalStore.get(this.globalVersion) + 1);
+        if (update.haswork) {
+            this.hasBackendWork = true;
+        }
     }
 
-    callVDomFunc(fnDecl: VDomFunc, e: any, compId: string, propName: string) {
-        const eventData = convertEvent(e, propName);
-        if (fnDecl.globalevent) {
-            const waveEvent: VDomEvent = {
-                waveid: null,
-                eventtype: fnDecl.globalevent,
-                eventdata: eventData,
-            };
-            this.batchedEvents.push(waveEvent);
-        } else {
-            const vdomEvent: VDomEvent = {
-                waveid: compId,
-                eventtype: propName,
-                eventdata: eventData,
-            };
-            this.batchedEvents.push(vdomEvent);
+    renderDone(version: number) {
+        // called when the render is done
+        dlog("renderDone", version);
+        if (this.hasRefUpdates() || this.hasBackendWork) {
+            this.hasBackendWork = false;
+            this.queueUpdate(true);
         }
-        this.queueUpdate();
+    }
+
+    callVDomFunc(fnDecl: VDomFunc, e: React.SyntheticEvent, compId: string, propName: string) {
+        const vdomEvent: VDomEvent = {
+            waveid: compId,
+            eventtype: propName,
+        };
+        if (fnDecl.globalevent) {
+            vdomEvent.globaleventtype = fnDecl.globalevent;
+        }
+        annotateEvent(vdomEvent, propName, e);
+        this.batchedEvents.push(vdomEvent);
+        this.queueUpdate(true);
     }
 
     createFeUpdate(): VDomFrontendUpdate {
@@ -591,5 +670,13 @@ export class VDomModel {
             this.disposed = true;
         }
         return feUpdate;
+    }
+
+    getBackendRouteId(): string {
+        const fullRoute = globalStore.get(this.backendRoute);
+        if (fullRoute == null || !fullRoute.startsWith("proc:")) {
+            return null;
+        }
+        return fullRoute?.split(":")[1];
     }
 }

@@ -95,7 +95,6 @@ console.log = log;
 console.log(
     sprintf(
         "waveterm-app starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s",
-        waveDataDir,
         waveConfigDir,
         getElectronAppBasePath(),
         getElectronAppUnpackedBasePath(),
@@ -402,6 +401,13 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
     }
 });
 
+electron.ipcMain.on("open-native-path", (event, filePath: string) => {
+    console.log("open-native-path", filePath);
+    electron.shell.openPath(filePath).catch((err) => {
+        console.error(`Failed to open path ${filePath}:`, err);
+    });
+});
+
 async function createNewWaveWindow(): Promise<void> {
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
@@ -547,8 +553,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
             type: menuDef.type,
             click: (_, window) => {
                 const ww = window as WaveBrowserWindow;
-                const tabView = ww.activeTabView;
-                tabView?.webContents?.send("contextmenu-click", menuDef.id);
+                ww?.activeTabView?.webContents?.send("contextmenu-click", menuDef.id);
             },
             checked: menuDef.checked,
         };
@@ -654,7 +659,7 @@ async function relaunchBrowserWindows(): Promise<void> {
     setGlobalIsRelaunching(true);
     const windows = getAllWaveWindows();
     for (const window of windows) {
-        window.removeAllListeners();
+        console.log("relaunch -- closing window", window.waveWindowId);
         window.close();
     }
     setGlobalIsRelaunching(false);
@@ -716,7 +721,6 @@ async function appMain() {
         console.log("error initializing wshrpc", e);
     }
     await configureAutoUpdater();
-
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);

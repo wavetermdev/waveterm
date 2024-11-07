@@ -94,6 +94,7 @@ declare global {
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
         sendLog: (log: string) => void;
         onQuicklook: (filePath: string) => void;
+        openNativePath(filePath: string): void;
     };
 
     type ElectronContextMenuItem = {
@@ -132,48 +133,6 @@ declare global {
         key: string;
         keyType: string;
     };
-
-    interface WaveKeyboardEvent {
-        type: "keydown" | "keyup" | "keypress" | "unknown";
-        /**
-         * Equivalent to KeyboardEvent.key.
-         */
-        key: string;
-        /**
-         * Equivalent to KeyboardEvent.code.
-         */
-        code: string;
-        /**
-         * Equivalent to KeyboardEvent.shiftKey.
-         */
-        shift: boolean;
-        /**
-         * Equivalent to KeyboardEvent.controlKey.
-         */
-        control: boolean;
-        /**
-         * Equivalent to KeyboardEvent.altKey.
-         */
-        alt: boolean;
-        /**
-         * Equivalent to KeyboardEvent.metaKey.
-         */
-        meta: boolean;
-        /**
-         * cmd is special, on mac it is meta, on windows it is alt
-         */
-        cmd: boolean;
-        /**
-         * option is special, on mac it is alt, on windows it is meta
-         */
-        option: boolean;
-
-        repeat: boolean;
-        /**
-         * Equivalent to KeyboardEvent.location.
-         */
-        location: number;
-    }
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
@@ -357,6 +316,7 @@ declare global {
         allTabViews: Map<string, WaveTabView>;
         activeTabView: WaveTabView;
         alreadyClosed: boolean;
+        deleteAllowed: boolean;
     };
 
     type WaveTabView = Electron.WebContentsView & {

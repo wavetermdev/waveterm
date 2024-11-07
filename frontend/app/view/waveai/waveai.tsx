@@ -722,7 +722,9 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
 
     return (
         <div ref={waveaiRef} className="waveai">
-            <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} msgWidths={msgWidths} />
+            <div className="waveai-chat">
+                <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} msgWidths={msgWidths} />
+            </div>
             <div className="waveai-controls">
                 <div className="waveai-input-wrapper">
                     <ChatInput

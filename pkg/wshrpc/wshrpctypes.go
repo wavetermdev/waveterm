@@ -62,7 +62,8 @@ const (
 	Command_RemoteFileTouch   = "remotefiletouch"
 	Command_RemoteWriteFile   = "remotewritefile"
 	Command_RemoteFileDelete  = "remotefiledelete"
-	Command_RemoteFileJoiin   = "remotefilejoin"
+	Command_RemoteFileJoin    = "remotefilejoin"
+	Command_WaveInfo          = "waveinfo"
 	Command_RemoteMkdir       = "remotemkdir"
 
 	Command_ConnStatus       = "connstatus"
@@ -75,12 +76,14 @@ const (
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
 
-	Command_WebSelector = "webselector"
-	Command_Notify      = "notify"
+	Command_WebSelector      = "webselector"
+	Command_Notify           = "notify"
+	Command_GetUpdateChannel = "getupdatechannel"
 
 	Command_VDomCreateContext   = "vdomcreatecontext"
 	Command_VDomAsyncInitiation = "vdomasyncinitiation"
 	Command_VDomRender          = "vdomrender"
+	Command_VDomUrlRequest      = "vdomurlrequest"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -122,6 +125,7 @@ type WshRpcInterface interface {
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
+	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -151,13 +155,15 @@ type WshRpcInterface interface {
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
 	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
 	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
 
 	// proc
-	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error)
+	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
+	VDomUrlRequestCommand(ctx context.Context, data VDomUrlRequestData) chan RespOrErrorUnion[VDomUrlRequestResponse]
 }
 
 // for frontend
@@ -430,4 +436,24 @@ type WaveNotificationOptions struct {
 	Title  string `json:"title,omitempty"`
 	Body   string `json:"body,omitempty"`
 	Silent bool   `json:"silent,omitempty"`
+}
+
+type VDomUrlRequestData struct {
+	Method  string            `json:"method"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Body    []byte            `json:"body,omitempty"`
+}
+
+type VDomUrlRequestResponse struct {
+	StatusCode int               `json:"statuscode,omitempty"`
+	Headers    map[string]string `json:"headers,omitempty"`
+	Body       []byte            `json:"body,omitempty"`
+}
+
+type WaveInfoData struct {
+	Version   string `json:"version"`
+	BuildTime string `json:"buildtime"`
+	ConfigDir string `json:"configdir"`
+	DataDir   string `json:"datadir"`
 }

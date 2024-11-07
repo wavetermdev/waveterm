@@ -444,6 +444,13 @@ function DirectoryTable({
     );
 }
 
+function getNormFilePath(finfo: FileInfo): string {
+    if (finfo.isdir) {
+        return finfo.dir;
+    }
+    return finfo.dir + "/" + finfo.name;
+}
+
 interface TableBodyProps {
     bodyRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
@@ -500,10 +507,25 @@ function TableBody({
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
-        (e: any, path: string, mimetype: string) => {
+        (e: any, finfo: FileInfo) => {
             e.preventDefault();
             e.stopPropagation();
-            const fileName = path.split("/").pop();
+            if (finfo == null) {
+                return;
+            }
+            const normPath = getNormFilePath(finfo);
+            const fileName = finfo.path.split("/").pop();
+            let openNativeLabel = "Open File";
+            if (finfo.isdir) {
+                openNativeLabel = "Open Directory in File Manager";
+                if (PLATFORM == "darwin") {
+                    openNativeLabel = "Open Directory in Finder";
+                } else if (PLATFORM == "win32") {
+                    openNativeLabel = "Open Directory in Explorer";
+                }
+            } else {
+                openNativeLabel = "Open File in Default Application";
+            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -520,13 +542,13 @@ function TableBody({
                 {
                     label: "Rename",
                     click: () => {
-                        table.options.meta.updateName(path);
+                        table.options.meta.updateName(finfo.path);
                     },
                 },
                 {
                     label: "Delete",
                     click: async () => {
-                        await FileService.DeleteFile(conn, path).catch((e) => console.log(e));
+                        await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
                         setRefreshVersion((current) => current + 1);
                     },
                 },
@@ -539,7 +561,7 @@ function TableBody({
                 },
                 {
                     label: "Copy Full File Name",
-                    click: () => navigator.clipboard.writeText(path),
+                    click: () => navigator.clipboard.writeText(finfo.path),
                 },
                 {
                     label: "Copy File Name (Shell Quoted)",
@@ -547,7 +569,7 @@ function TableBody({
                 },
                 {
                     label: "Copy Full File Name (Shell Quoted)",
-                    click: () => navigator.clipboard.writeText(shellQuote([path])),
+                    click: () => navigator.clipboard.writeText(shellQuote([finfo.path])),
                 },
                 {
                     type: "separator",
@@ -555,7 +577,16 @@ function TableBody({
                 {
                     label: "Download File",
                     click: async () => {
-                        getApi().downloadFile(path);
+                        getApi().downloadFile(normPath);
+                    },
+                },
+                {
+                    type: "separator",
+                },
+                {
+                    label: openNativeLabel,
+                    click: async () => {
+                        getApi().openNativePath(normPath);
                     },
                 },
                 {
@@ -567,14 +598,14 @@ function TableBody({
                         const blockDef: BlockDef = {
                             meta: {
                                 view: "preview",
-                                file: path,
+                                file: finfo.path,
                             },
                         };
                         await createBlock(blockDef);
                     },
                 },
             ];
-            if (mimetype == "directory") {
+            if (finfo.mimetype == "directory") {
                 menu.push({
                     label: "Open Terminal in New Block",
                     click: async () => {
@@ -582,7 +613,7 @@ function TableBody({
                             meta: {
                                 controller: "shell",
                                 view: "term",
-                                "cmd:cwd": path,
+                                "cmd:cwd": finfo.path,
                             },
                         };
                         await createBlock(termBlockDef);
@@ -606,7 +637,7 @@ function TableBody({
                     setSearch("");
                 }}
                 onClick={() => setFocusIndex(idx)}
-                onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path"), row.getValue("mimetype"))}
+                onContextMenu={(e) => handleFileContextMenu(e, row.original)}
             >
                 {row.getVisibleCells().map((cell) => (
                     <div
