@@ -23,24 +23,27 @@ kbd {
     border-radius: 4px;
     border: 1px solid #ccc;
     padding: 2px 6px;
-    font-size: 0.8em; /* Base font size */
+    font-size: 0.8em;
     font-family: "JetBrains Mono", monospace;
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    height: 24px; /* Consistent height */
-    line-height: 24px; /* Consistent line height */
-
-    .bold {
-        font-weight: bold;
-    }
+    height: 24px;
+    line-height: 24px;
 
     .spaced {
-        letter-spacing: 0.1em;
+        letter-spacing: 0.2em;
     }
 }
 
 .kbd-group kbd.symbol {
-    font-size: 0.8em; /* Slightly larger font size for symbols */
-    line-height: 24px; /* Same line height as base to keep alignment */
+    font-size: 0.8em;
+    line-height: 24px;
+}
+
+/* Docusaurus Dark Mode */
+html[data-theme="dark"] kbd {
+    background-color: #333; /* Dark background */
+    color: #fff; /* Light text */
+    border: 1px solid #666;
 }
