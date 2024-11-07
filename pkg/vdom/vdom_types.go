@@ -177,6 +177,7 @@ type VDomRefUpdate struct {
 type VDomBackendOpts struct {
 	CloseOnCtrlC         bool `json:"closeonctrlc,omitempty"`
 	GlobalKeyboardEvents bool `json:"globalkeyboardevents,omitempty"`
+	GlobalStyles         bool `json:"globalstyles,omitempty"`
 }
 
 type VDomRenderUpdate struct {

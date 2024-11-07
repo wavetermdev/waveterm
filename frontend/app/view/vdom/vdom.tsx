@@ -282,16 +282,12 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             }
         }
         if (key == "src" && val != null && val.startsWith("vdom://")) {
-            // we're going to convert vdom:///foo.jpg to vdom://blockid/foo.jpg.  if it doesn't start with "/" it is not valid
-            const vdomUrl = val.substring(7);
-            if (!vdomUrl.startsWith("/")) {
+            // transform vdom:// urls
+            const newUrl = model.transformVDomUrl(val);
+            if (newUrl == null) {
                 continue;
             }
-            const backendRouteId = model.getBackendRouteId();
-            if (backendRouteId == null) {
-                continue;
-            }
-            props[key] = "vdom://" + backendRouteId + vdomUrl;
+            props[key] = newUrl;
             continue;
         }
         props[key] = val;
@@ -375,7 +371,7 @@ function StyleTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     return <style>{sanitizedCss}</style>;
 }
 
-function WaveStyle({ src, model }: { src: string; model: VDomModel }) {
+function WaveStyle({ src, model, onMount }: { src: string; model: VDomModel; onMount?: () => void }) {
     const [styleContent, setStyleContent] = React.useState<string | null>(null);
     React.useEffect(() => {
         async function fetchAndSanitizeCss() {
@@ -391,14 +387,22 @@ function WaveStyle({ src, model }: { src: string; model: VDomModel }) {
                 if (sanitizedCss) {
                     setStyleContent(sanitizedCss);
                 } else {
+                    onMount?.();
                     console.error("Failed to sanitize CSS");
                 }
             } catch (error) {
                 console.error("Error fetching CSS:", error);
+                onMount?.();
             }
         }
         fetchAndSanitizeCss();
     }, [src, model]);
+    // Trigger onMount after styleContent has been set and mounted
+    React.useEffect(() => {
+        if (styleContent) {
+            onMount?.();
+        }
+    }, [styleContent, onMount]);
     if (!styleContent) {
         return null;
     }
@@ -481,13 +485,29 @@ type VDomViewProps = {
     blockId: string;
 };
 
+function VDomInnerView({ blockId, model }: VDomViewProps) {
+    let [styleMounted, setStyleMounted] = React.useState(!model.backendOpts?.globalstyles);
+    const handleStylesMounted = () => {
+        setStyleMounted(true);
+    };
+    return (
+        <>
+            {model.backendOpts?.globalstyles ? (
+                <WaveStyle src={model.makeVDomUrl("/wave/global.css")} model={model} onMount={handleStylesMounted} />
+            ) : null}
+            {styleMounted ? <VDomRoot model={model} /> : null}
+        </>
+    );
+}
+
 function VDomView({ blockId, model }: VDomViewProps) {
     let viewRef = React.useRef(null);
+    let contextActive = jotai.useAtomValue(model.contextActive);
     model.viewRef = viewRef;
     const vdomClass = "vdom-" + blockId;
     return (
         <div className={clsx("view-vdom", vdomClass)} ref={viewRef}>
-            <VDomRoot model={model} />
+            {contextActive ? <VDomInnerView blockId={blockId} model={model} /> : null}
         </div>
     );
 }

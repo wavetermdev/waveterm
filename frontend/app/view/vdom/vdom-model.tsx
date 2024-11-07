@@ -10,6 +10,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { applyCanvasOp, mergeBackendUpdates, restoreVDomElems } from "@/app/view/vdom/vdom-utils";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -213,6 +214,33 @@ export class VDomModel {
     getBackendRoute(): string {
         const blockData = globalStore.get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
         return blockData?.meta?.["vdom:route"];
+    }
+
+    transformVDomUrl(url: string): string {
+        if (url == null || url == "") {
+            return null;
+        }
+        if (!url.startsWith("vdom://")) {
+            return url;
+        }
+        const absUrl = url.substring(7);
+        return this.makeVDomUrl(absUrl);
+    }
+
+    makeVDomUrl(path: string): string {
+        if (path == null || path == "") {
+            return null;
+        }
+        if (!path.startsWith("/")) {
+            return null;
+        }
+        const backendRouteId = this.getBackendRouteId();
+        if (backendRouteId == null) {
+            return null;
+        }
+        const wsEndpoint = getWebServerEndpoint();
+        const fullUrl = wsEndpoint + "/vdom/" + backendRouteId + path;
+        return fullUrl;
     }
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {

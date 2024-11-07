@@ -197,6 +197,15 @@ func ForEach[T any](items []T, fn func(T) any) []any {
 	return elems
 }
 
+func ForEachIdx[T any](items []T, fn func(T, int) any) []any {
+	var elems []any
+	for idx, item := range items {
+		fnResult := fn(item, idx)
+		elems = append(elems, fnResult)
+	}
+	return elems
+}
+
 func Props(props any) map[string]any {
 	m, err := utilfn.StructToMap(props)
 	if err != nil {
@@ -207,6 +216,10 @@ func Props(props any) map[string]any {
 
 func PStyle(styleAttr string, propVal any) any {
 	return styleAttrWrapper{StyleAttr: styleAttr, Val: propVal}
+}
+
+func Fragment(parts ...any) any {
+	return parts
 }
 
 func P(propName string, propVal any) any {
