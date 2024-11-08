@@ -1,16 +1,16 @@
 .pill-toggle {
     display: inline-flex;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ifm-scrollbar-thumb-background-color);
     border-radius: 20px;
     overflow: hidden;
-    background-color: #f1f1f5;
+    background-color: var(--ifm-scrollbar-track-background-color);
 }
 
 .pill-option {
     padding: 8px 16px;
     font-size: 0.9em;
     font-weight: 500;
-    color: #555;
+    color: var(--ifm-color-secondary-contrast-foreground);
     background-color: transparent;
     border: none;
     cursor: pointer;
@@ -21,30 +21,11 @@
 }
 
 .pill-option.active {
-    background-color: rgb(88, 193, 66);
-    color: #fff;
+    background-color: var(--ifm-color-primary);
+    color: var(--ifm-color-secondary-lightest);
     font-weight: bold;
 }
 
 .pill-option:not(.active):hover {
-    background-color: #e0e0e0;
-}
-
-/* Docusaurus Dark Mode */
-html[data-theme="dark"] .pill-toggle {
-    border: 1px solid #555;
-    background-color: #333;
-}
-
-html[data-theme="dark"] .pill-option {
-    color: #ccc;
-}
-
-html[data-theme="dark"] .pill-option.active {
-    background-color: rgb(88, 193, 66); /* Darker blue for active state */
-    color: #fff;
-}
-
-html[data-theme="dark"] .pill-option:not(.active):hover {
-    background-color: #444; /* Darker hover effect */
+    background-color: var(--ifm-scrollbar-thumb-background-color);
 }
