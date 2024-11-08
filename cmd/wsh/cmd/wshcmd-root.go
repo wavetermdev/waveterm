@@ -9,11 +9,9 @@ import (
 	"os"
 	"regexp"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -76,10 +74,6 @@ func resolveBlockArg() (*waveobj.ORef, error) {
 	if oref == "" {
 		return nil, fmt.Errorf("blockid is required")
 	}
-	err := validateEasyORef(oref)
-	if err != nil {
-		return nil, err
-	}
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
 		return nil, fmt.Errorf("resolving blockid: %w", err)
@@ -127,33 +121,6 @@ func setTermHtmlMode() {
 }
 
 var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
-
-func validateEasyORef(oref string) error {
-	if oref == "this" || oref == "tab" {
-		return nil
-	}
-	if num, err := strconv.Atoi(oref); err == nil && num >= 1 {
-		return nil
-	}
-	if strings.Contains(oref, ":") {
-		_, err := waveobj.ParseORef(oref)
-		if err != nil {
-			return fmt.Errorf("invalid ORef: %v", err)
-		}
-		return nil
-	}
-	if len(oref) == 8 {
-		if !oidRe.MatchString(oref) {
-			return fmt.Errorf("invalid short OID format, must only use 0-9a-f: %q", oref)
-		}
-		return nil
-	}
-	_, err := uuid.Parse(oref)
-	if err != nil {
-		return fmt.Errorf("invalid object reference (must be UUID, or a positive integer): %v", err)
-	}
-	return nil
-}
 
 func isFullORef(orefStr string) bool {
 	_, err := waveobj.ParseORef(orefStr)
