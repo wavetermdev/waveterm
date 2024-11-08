@@ -18,7 +18,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
-import { Notification } from "./notification";
+import { NotificationList } from "./notification";
 import { useUpdateNotifier } from "./updatenotifier";
 
 import "./app.less";
@@ -295,8 +295,8 @@ const AppInner = () => {
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
-            {/* <FlashError /> */}
-            <Notification></Notification>
+            <FlashError />
+            <NotificationList></NotificationList>
         </div>
     );
 };

@@ -18,7 +18,7 @@ const notificationActions = {
     },
 };
 
-const Notification = () => {
+const NotificationList = () => {
     const [notifications, setNotifications] = useAtom(atoms.notifications);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [ticker, setTicker] = useState<number>(0);
@@ -205,6 +205,6 @@ const Notification = () => {
     );
 };
 
-Notification.displayName = "Notification";
+NotificationList.displayName = "NotificationList";
 
-export { Notification };
+export { NotificationList };

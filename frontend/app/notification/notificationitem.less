@@ -1,0 +1,98 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.notification-title {
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 18px;
+    margin-bottom: 3px;
+}
+
+.notification-message {
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 18px;
+    opacity: 0.7;
+    margin-bottom: 10px;
+}
+
+.notification-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    i {
+        margin-left: 3px;
+        font-size: 11px;
+    }
+}
+
+.close-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.notification {
+    width: 100%;
+    background: var(--background-color);
+    color: var(--main-text-color);
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+
+    .notification-inner {
+        display: flex;
+        align-items: flex-start;
+        column-gap: 6px;
+
+        .notification-icon {
+            font-size: 20px;
+            margin-right: 5px;
+            margin-top: -3px;
+
+            i {
+                font-size: 16px;
+            }
+
+            i.green {
+                color: var(--success-color);
+            }
+
+            i.red {
+                color: var(--error-color);
+            }
+
+            i.yellow {
+                color: var(--warning-color);
+            }
+        }
+
+        .notification-timestamp {
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 18px;
+            opacity: 0.5;
+            margin-bottom: 7px;
+        }
+    }
+}
+
+.notification-bubble {
+    display: flex;
+    width: 380px;
+    padding: 16px 24px 16px 16px;
+    align-items: flex-start;
+    gap: 12px;
+    border-radius: 8px;
+    border: 0.5px solid rgba(255, 255, 255, 0.12);
+    background: #232323;
+    box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
+}
+
+&.hovered {
+    background-color: rgba(255, 255, 255, 0.015);
+}
