@@ -1,0 +1,22 @@
+# This workflow is a dummy workflow that runs whenever `deploy-docsite.yml` doesn't run to trick the GitHub Actions system into seeing `Docsite and Storybook CI/CD` as a valid status check.
+# See https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+
+name: Docsite and Storybook CI/CD
+
+on:
+    pull_request:
+        branches:
+            - main
+        paths-ignore:
+            - "docs/**"
+            - "storybook/**"
+            - "**/*.story.*"
+            - "**/*.stories.*"
+            - ".github/workflows/deploy-docsite.yml"
+
+jobs:
+    build:
+        name: Build Docsite
+        runs-on: ubuntu-latest
+        steps:
+            - run: 'echo "No build required."'
