@@ -1,132 +1,130 @@
 ---
 id: "releasenotes"
 title: "Release Notes"
-sidebar_position: 8
+sidebar_position: 200
 ---
 
 # Release Notes
 
 ### v0.9.1 &mdash; Nov 1, 2024
 
-Minor bug fix release to follow-up on the v0.9.0 build.  Lots of issues fixed (especially for Windows).
+Minor bug fix release to follow-up on the v0.9.0 build. Lots of issues fixed (especially for Windows).
 
-* CLI applications that need microphone, camera, or location access will now work on MacOS.  You'll see a security popup in Wave to allow/deny [#1086](https://github.com/wavetermdev/waveterm/issues/1086)
-* Can now use `wsh version -v` to print out the new data/config directories
-* Restores the old T1, T2, T3, ... tab naming logic
-* Temporarily revert to using the "Title Bar" on windows to mitgate a bug where the window controls were overlaying on top of our tabs (working on a real fix for the next release)
-* There is a new setting in the editor to enable/disable word wrapping [#1038](https://github.com/wavetermdev/waveterm/issues/1038)
-* Ctrl-S will now save files in codeedit [#1081](https://github.com/wavetermdev/waveterm/issues/1081)
-* [#1020](https://github.com/wavetermdev/waveterm/issues/1020) there is now a preset config option to change the active border color in tab themes
-* [bugfix] Multiple fixes for [#1167](https://github.com/wavetermdev/waveterm/issues/1167) to try to address tab loss while updating
-* [bugfix] Windows app crashed on opening View menu because of a bad accelerator key
-* [bugfix] The auto-updater messages in the tab bar are now more consistent when switching tabs, and we don't show errors when the network is disconnected
-* [bugfix] Full-screen mode now actually shows tabs in full screen
-* [bugfix] [#1175](https://github.com/wavetermdev/waveterm/issues/1175) can now edit .awk files
-* [bugfix] [#1066](https://github.com/wavetermdev/waveterm/issues/1066) applying a default theme now updates the background appropriately without a refresh
-
+- CLI applications that need microphone, camera, or location access will now work on MacOS. You'll see a security popup in Wave to allow/deny [#1086](https://github.com/wavetermdev/waveterm/issues/1086)
+- Can now use `wsh version -v` to print out the new data/config directories
+- Restores the old T1, T2, T3, ... tab naming logic
+- Temporarily revert to using the "Title Bar" on windows to mitgate a bug where the window controls were overlaying on top of our tabs (working on a real fix for the next release)
+- There is a new setting in the editor to enable/disable word wrapping [#1038](https://github.com/wavetermdev/waveterm/issues/1038)
+- Ctrl-S will now save files in codeedit [#1081](https://github.com/wavetermdev/waveterm/issues/1081)
+- [#1020](https://github.com/wavetermdev/waveterm/issues/1020) there is now a preset config option to change the active border color in tab themes
+- [bugfix] Multiple fixes for [#1167](https://github.com/wavetermdev/waveterm/issues/1167) to try to address tab loss while updating
+- [bugfix] Windows app crashed on opening View menu because of a bad accelerator key
+- [bugfix] The auto-updater messages in the tab bar are now more consistent when switching tabs, and we don't show errors when the network is disconnected
+- [bugfix] Full-screen mode now actually shows tabs in full screen
+- [bugfix] [#1175](https://github.com/wavetermdev/waveterm/issues/1175) can now edit .awk files
+- [bugfix] [#1066](https://github.com/wavetermdev/waveterm/issues/1066) applying a default theme now updates the background appropriately without a refresh
 
 ### v0.9.0 &mdash; Oct 28, 2024
 
-New major Wave Terminal release!  Wave tabs are now cached.  Tab switching performance is
+New major Wave Terminal release! Wave tabs are now cached. Tab switching performance is
 now much faster and webview state, editor state, and scroll positions are now persisted
-across tab changes.  We also have native WSL2 support.  You can create native Wave connections
+across tab changes. We also have native WSL2 support. You can create native Wave connections
 to your Windows WSL2 distributions using the connection button.
 
 We've also laid the groundwork for some big features that will be released over the
 next couple of weeks, including Workspaces, AI improvments, and custom widgets.
 
-Lots of other smaller changes and bug fixes.  See full list of PRs at https://github.com/wavetermdev/waveterm/releases/tag/v0.9.0
+Lots of other smaller changes and bug fixes. See full list of PRs at https://github.com/wavetermdev/waveterm/releases/tag/v0.9.0
 
 ### v0.8.13 &mdash; Oct 24, 2024
 
-* Wave is now available as a Snap for Linux users! You can find it [in the Snap Store](https://snapcraft.io/waveterm).
-* Wave is now available via the Windows Package Manager! You can install it via `winget install CommandLine.Wave`
-* can now use "term:fontsize" to override an individual terminal block's font size (also in context menu)
-* we now allow mixed case hostnames for connections to be compatible with ssh config
-* The Linux app icon is now updated to match the Windows icon
-* [bugfix] fixed a bug that sometimes caused escape sequences to be printed when switching between tabs
-* [bugfix] fixed an issue where the preview block was not cleaning up temp files (Windows only)
-* [bugfix] fixed chrome sandbox permissions errors in linux
-* [bugfix] fixed shutdown logic on MacOS/Linux which sometimes allowed orphaned processes to survive
+- Wave is now available as a Snap for Linux users! You can find it [in the Snap Store](https://snapcraft.io/waveterm).
+- Wave is now available via the Windows Package Manager! You can install it via `winget install CommandLine.Wave`
+- can now use "term:fontsize" to override an individual terminal block's font size (also in context menu)
+- we now allow mixed case hostnames for connections to be compatible with ssh config
+- The Linux app icon is now updated to match the Windows icon
+- [bugfix] fixed a bug that sometimes caused escape sequences to be printed when switching between tabs
+- [bugfix] fixed an issue where the preview block was not cleaning up temp files (Windows only)
+- [bugfix] fixed chrome sandbox permissions errors in linux
+- [bugfix] fixed shutdown logic on MacOS/Linux which sometimes allowed orphaned processes to survive
 
 ### v0.8.12 &mdash; Oct 18, 2024
 
-* Added support for multiple AI configurations!  You can now run Open AI side-by-side with Ollama models.  Can create AI presets in presets.json, and can easily switch between them using a new dropdown in the AI widget
-* Fix WebSocket reconnection error. this sometimes caused the terminal to hang when waking up from sleep
-* Added memory graphs, and per-CPU graphs to the sysinfo widget (and renamed it from cpuplot)
-* Added a new huge red "Config Error" button when there are parse errors in the config JSON file
-* Preview/CodeEdit widget now shows errors (squiggly lines) when JSON or YAML files fail to parse
-* New app icon for Windows to better match Fluent UI standards
-* Added copy-on-select to the terminal (on by default, can disable using "term:copyonselect")
-* Added a button to mute audio in webviews
-* Added a right-click "Open Clipboard URL" to easily open a webview from an URL stored in your system clipboard
-* [bugfix] fixed blank "help" pages when waking from sleep or restarting the app
+- Added support for multiple AI configurations! You can now run Open AI side-by-side with Ollama models. Can create AI presets in presets.json, and can easily switch between them using a new dropdown in the AI widget
+- Fix WebSocket reconnection error. this sometimes caused the terminal to hang when waking up from sleep
+- Added memory graphs, and per-CPU graphs to the sysinfo widget (and renamed it from cpuplot)
+- Added a new huge red "Config Error" button when there are parse errors in the config JSON file
+- Preview/CodeEdit widget now shows errors (squiggly lines) when JSON or YAML files fail to parse
+- New app icon for Windows to better match Fluent UI standards
+- Added copy-on-select to the terminal (on by default, can disable using "term:copyonselect")
+- Added a button to mute audio in webviews
+- Added a right-click "Open Clipboard URL" to easily open a webview from an URL stored in your system clipboard
+- [bugfix] fixed blank "help" pages when waking from sleep or restarting the app
 
 ### v0.8.11 &mdash; Oct 10, 2024
 
 Hotfix release to address a couple of bugs introduced in v0.8.10
 
-* Fixes a regression in v0.8.10 which caused new tabs to sometimes come up blank and broken
-* Layout fixes to the AI widget spacing
-* Terminal scrollbar is now semi-transparent and overlays last column
-* Fixes initial window size (on first startup) for both smaller and larger screens
-* Added a "Don't Ask Again" checkbox for installing `wsh` on remote machines (sets a new config flag)
-* Prevent the app from downgrading when you install a beta build.  Installing a beta-build will now switch you to the beta-update channel.
+- Fixes a regression in v0.8.10 which caused new tabs to sometimes come up blank and broken
+- Layout fixes to the AI widget spacing
+- Terminal scrollbar is now semi-transparent and overlays last column
+- Fixes initial window size (on first startup) for both smaller and larger screens
+- Added a "Don't Ask Again" checkbox for installing `wsh` on remote machines (sets a new config flag)
+- Prevent the app from downgrading when you install a beta build. Installing a beta-build will now switch you to the beta-update channel.
 
 ### v0.8.10 &mdash; Oct 9, 2024
 
 Minor big fix release (but there are some new features).
 
-* added support for Azure AI [See FAQ](https://docs.waveterm.dev/faq#how-can-i-connect-to-azure-ai)
-* AI errors now appear in the chat
-* on MacOS, hitting "Space" in directorypreview will open selected file in Quick Look
-* [bugfix] fixed transparency settings
-* [bugfix] fixed issue with non-standard port numbers in connection dropdown
-* [bugfix] fixed issue with embedded docsite (returned 404 after refresh)
+- added support for Azure AI [See FAQ](https://docs.waveterm.dev/faq#how-can-i-connect-to-azure-ai)
+- AI errors now appear in the chat
+- on MacOS, hitting "Space" in directorypreview will open selected file in Quick Look
+- [bugfix] fixed transparency settings
+- [bugfix] fixed issue with non-standard port numbers in connection dropdown
+- [bugfix] fixed issue with embedded docsite (returned 404 after refresh)
 
 ### v0.8.9 &mdash; Oct 8, 2024
 
 Lots of bug fixes and new features!
 
-* New "help" view -- uses an embedded version of our doc site -- https://docs.waveterm.dev
-* [breaking] wsh getmeta, wsh setmeta, and wsh deleteblock now take a blockid using a `-b` parameter instead of as a positional parameter
-* allow metadata to override the block icon, header, and text (frame:title, frame:icon, and frame:text)
-* home button on web widget to return to the homepage, option to set a homepage default for the whole app or just for the given block
-* checkpoint the terminal less often to reduce frequency of output bug (still working on a full fix)
-* new terminal themes -- Warm Yellow, and One Dark Pro
-* we now support github flavored markdown alerts
-* `wsh notify` command to send a desktop notification
-* `wsh createblock` to create any block via the CLI
-* right click to "Save Image" in webview
-* `wsh edit` will now allow you to open new files (as long as the parent directly exists)
-* added 8 new fun tab background presets (right click on any tab and select "Backgrounds" to try them out)
-* [config] new config key "term:scrollback" to set the number of lines of scrollback for terminals.  Use "-1" to set 0, max is 10000.
-* [config] new config key "term:theme" to set the default terminal theme for all new terminals
-* [config] new config key "preview:showhiddenfiles" to set the default "show hidden files" setting for preview
-* [bugfix] fixed an formatting issue with `wsh getmeta`
-* [bugfix] fix for startup issue on Linux when home directory is an NFS mount
-* [bugfix] fix cursor color in terminal themes to work
-* [bugfix] fix some double scrollbars when showing markdown content
-* [bugfix] improved shutdown sequence to better capture wavesrv logs
-* [bugfix] fix Alt+G keyboard accelerator for Linux/Windows
-* other assorted bug fixes, cleanups, and security fixes
-
+- New "help" view -- uses an embedded version of our doc site -- https://docs.waveterm.dev
+- [breaking] wsh getmeta, wsh setmeta, and wsh deleteblock now take a blockid using a `-b` parameter instead of as a positional parameter
+- allow metadata to override the block icon, header, and text (frame:title, frame:icon, and frame:text)
+- home button on web widget to return to the homepage, option to set a homepage default for the whole app or just for the given block
+- checkpoint the terminal less often to reduce frequency of output bug (still working on a full fix)
+- new terminal themes -- Warm Yellow, and One Dark Pro
+- we now support github flavored markdown alerts
+- `wsh notify` command to send a desktop notification
+- `wsh createblock` to create any block via the CLI
+- right click to "Save Image" in webview
+- `wsh edit` will now allow you to open new files (as long as the parent directly exists)
+- added 8 new fun tab background presets (right click on any tab and select "Backgrounds" to try them out)
+- [config] new config key "term:scrollback" to set the number of lines of scrollback for terminals. Use "-1" to set 0, max is 10000.
+- [config] new config key "term:theme" to set the default terminal theme for all new terminals
+- [config] new config key "preview:showhiddenfiles" to set the default "show hidden files" setting for preview
+- [bugfix] fixed an formatting issue with `wsh getmeta`
+- [bugfix] fix for startup issue on Linux when home directory is an NFS mount
+- [bugfix] fix cursor color in terminal themes to work
+- [bugfix] fix some double scrollbars when showing markdown content
+- [bugfix] improved shutdown sequence to better capture wavesrv logs
+- [bugfix] fix Alt+G keyboard accelerator for Linux/Windows
+- other assorted bug fixes, cleanups, and security fixes
 
 ### v0.8.8 &mdash; Oct 1, 2024
 
-Quick patch release to fix Windows/Linux "Alt" keybindings.  Also brings a huge performance improvement to AI streaming speed.
+Quick patch release to fix Windows/Linux "Alt" keybindings. Also brings a huge performance improvement to AI streaming speed.
 
 ### v0.8.7 &mdash; Sep 30, 2024
 
 Quick patch release to fix bugs:
 
-* Fixes windows SSH connections (invalid path while trying to install wsh tools)
-* Fixes an issue resolving `~` in windows paths `~\` now works instead of just `~/`
-* Tries to fix background color for webpages.  Pulls meta tag for color-scheme, and sets a black background if dark detected (fixes issue rendering raw githubusercontent files)
-* Fixed our useDimensions hook to fire correctly. Fixes some sizing issues including allowing error messages to show consistently when SSH connections fail.
-* Allow "data:" urls in custom tab backgrounds
-* All the alias "tab" for the current tab's UUID when using wsh
-* [BUILD] conditional write generated files only if they are updated
+- Fixes windows SSH connections (invalid path while trying to install wsh tools)
+- Fixes an issue resolving `~` in windows paths `~\` now works instead of just `~/`
+- Tries to fix background color for webpages. Pulls meta tag for color-scheme, and sets a black background if dark detected (fixes issue rendering raw githubusercontent files)
+- Fixed our useDimensions hook to fire correctly. Fixes some sizing issues including allowing error messages to show consistently when SSH connections fail.
+- Allow "data:" urls in custom tab backgrounds
+- All the alias "tab" for the current tab's UUID when using wsh
+- [BUILD] conditional write generated files only if they are updated
 
 ### v0.8.6 &mdash; Sep 26, 2024
 
@@ -136,22 +134,21 @@ Also, as a bonus, we added fish shell support!
 
 ### v0.8.5 &mdash; Sep 25, 2024
 
-Hot fix, dowgrade `jotai` library.  Upgrading caused a major regression in codeedit which did not allow
+Hot fix, dowgrade `jotai` library. Upgrading caused a major regression in codeedit which did not allow
 users to edit files.
 
 ### v0.8.4 &mdash; Sep 25, 2024
 
-* Added a setting `window:disablehardwareacceleration` to disable native hardware acceleration
-* New startup model for legacy users given them the option to download the WaveLegacy
-* Use WAVETERM_HOME for the home directory consistently
+- Added a setting `window:disablehardwareacceleration` to disable native hardware acceleration
+- New startup model for legacy users given them the option to download the WaveLegacy
+- Use WAVETERM_HOME for the home directory consistently
 
 ### v0.8.3 &mdash; Sep 25, 2024
 
-More hotfixes for Linux users.  We now link against an older version of glibc and use
+More hotfixes for Linux users. We now link against an older version of glibc and use
 the zig compiler on linux (the newer version caused us not to run on older distros).  
-Also fixes a permissions issue when installing via .deb.  There is also a new config value
+Also fixes a permissions issue when installing via .deb. There is also a new config value
 `window:nativetitlebar` which restores the native titlebar on windows/linux.
-
 
 ### v0.8.2 &mdash; Sep 24, 2024
 
@@ -161,16 +158,15 @@ Hot fix, fixes a nasty crash on startup for Linux users (dynamic linking but wit
 
 Minor cleanup release.
 
-* fix number parsing for certain config file values
-* add link to docs site
-* add new back button for directory view
-* telemetry fixes
+- fix number parsing for certain config file values
+- add link to docs site
+- add new back button for directory view
+- telemetry fixes
 
 ### v0.8.0 &mdash; Sep 20, 2024
 
 **Major New Relase of Wave Terminal**
 
 The new build is a fresh start, and a clean break from the current version. As such, your history, settings, and configuration will not be carried over. If you'd like to continue to run the legacy version, you will need to download it separately.
-
 
 Release Artificats and source code diffs can be found on (Github)[https://github.com/wavetermdev/waveterm].

@@ -1,0 +1,66 @@
+---
+sidebar_position: 1.5
+id: "customization"
+title: "Customization"
+---
+
+## Tab Themes
+
+<img
+  title="Tab Context Menu"
+  style={{ float: "right", margin: "0 0 10px 10px" }}
+  src="/img/tab-context-menu.png"
+  width="300"
+/>
+
+Right click on any tab to bring up a menu which allows you to rename the tab and select different backgrounds.
+
+It is also possible to create your own themes using custom colors, gradients, images and more by editing your presets.json config file. To see how Wave's built in tab themes are defined, you can check out our [default presets file](https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/presets.json).
+
+<div style={{ clear: "both" }} />
+
+## Terminal Customization
+
+<img
+  title="Terminal Context Menu"
+  style={{ float: "right", margin: "0 0 10px 10px" }}
+  src="/img/terminal-context-menu.png"
+  width="300"
+/>
+
+#### Terminal Theme
+
+Right click in the header area of any terminal block to bring up a menu which allows you to set a terminal
+theme for that terminal.
+
+You can set the default theme for all terminals (which haven't had their theme manually overridden) by editing your settings.json file and adding the key `term:theme` and setting it to the appropriate key. The keys can be found
+in the [default termthemes.json file](https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/termthemes.json).
+
+If you add your own termthemes.json file in the config directory, you can also add your own custom terminal themes (just follow the same format).
+
+<div style={{ clear: "both" }} />
+
+#### Font Size
+
+From the same context menu you can also change the font-size of the terminal. To change the default font size across all of your (non-overridden) terminals, you can set the config key `term:fontsize` to the size you want. e.g. `{ "term:fontsize": 14}`.
+
+#### Font Family
+
+There is no UI to edit your default terminal font family. But, it _can_ be overridden. In your settings.json file you can add the key `term:fontfamily` and set it to a font that is _installed_ on your local system. If type a font that is not installed, or use a non-monospace font, your terminal will look terrible (don't do that 🙂), delete the key to return to using the default.
+
+## Widgets Sidebar
+
+<img
+  title="Terminal Context Menu"
+  style={{ float: "right", margin: "0 0 10px 10px" }}
+  src="/img/custom-widgets.png"
+  width="120"
+/>
+
+See [Custom Widgets](/customwidgets) for detailed documentation around changing what appears in your right widget sidebar.
+
+Using widgets.json (and defaultwidgets.json) you'll be able to remove any default widgets and add widgets of your own. You can fully customize the icons, colors, text, and defaults (like directories, webpages, AI model, remote connection, commands, etc.) of your custom widgets.
+
+You can also suppress the help widgets in the bottom right by setting the config key `widget:showhelp` to `false`.
+
+<div style={{ clear: "both" }} />
