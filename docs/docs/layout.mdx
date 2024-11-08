@@ -4,6 +4,12 @@ id: "layout"
 title: "Tab Layout System"
 ---
 
+import { PlatformProvider, PlatformToggleButton } from "@site/src/components/platformcontext.tsx";
+import { Kbd } from "@site/src/components/kbd.tsx";
+
+<PlatformProvider>
+<PlatformToggleButton/>
+
 ![screenshot showing a block being dragged over another block, with the placeholder depicting a out-of-line before outer drop](./img/drag-edge.png)
 
 ## Layout system under the hood
@@ -32,7 +38,7 @@ While we define a 5-child limit for each node in the tree when automatically pla
 
 ### Delete a block
 
-You can delete blocks by clicking the <i className="fa-sharp fa-xmark-large"/> button in the top-right corner of the block, by right-clicking on the block header and selecting "Close Block" from the context menu, or by running the [`wsh deleteblock` command](./wsh#deleteblock).
+You can delete blocks by clicking the <i className="fa-sharp fa-xmark-large"/> button in the top-right corner of the block, by right-clicking on the block header and selecting "Close Block" from the context menu, or by running the [`wsh deleteblock` command](./wsh#deleteblock). Alternatively, the currently focused block/widget can be closed by pressing <Kbd k="Cmd:w"/>
 
 When you delete a block, the layout tree will be automatically adjusted to minimize the tree depth.
 
@@ -59,3 +65,5 @@ All block movements except for Swap will cause the rest of the layout to shift t
 5. Out-of-line after inner: Segments the target block, creating a new node in the tree. Places the dropped block after the target block in the opposite tiling direction.
 6. Out-of-line after outer: Drops the block after the target block's parent node in the opposite tiling direction
 7. Swap: Swaps the position of the dropped block and the targeted block in the layout, preserving the rest of the layout
+
+</PlatformProvider>
