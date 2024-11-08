@@ -4,52 +4,62 @@ id: "keybindings"
 title: "Key Bindings"
 ---
 
-Here's the set of default keybindings available in Wave.  It is split into sections.
-Some keybindings are always active.  Others are only active for certain types of blocks.
+import { Kbd } from "@site/src/components/kbd.tsx";
+import { PlatformProvider, PlatformToggleButton } from "@site/src/components/platformcontext.tsx";
 
-Note that these are the MacOS keybindings (they use "Cmd").  For Windows and Linux
+<PlatformProvider>
+
+Here's the set of default keybindings available in Wave. It is split into sections.
+Some keybindings are always active. Others are only active for certain types of blocks.
+
+Note that these are the MacOS keybindings (they use "Cmd"). For Windows and Linux,
 replace "Cmd" with "Alt" (note that "Ctrl" is "Ctrl" on both Mac, Windows, and Linux).
 
 ## Global Keybindings
 
-| Key | Function |
-|-----|----------|
-| Cmd:t | Open a new tab |
-| Cmd:n | Open a new terminal block (defaults to the same connection and working directory) |
-| Cmd:w | Close the current block |
-| Cmd:m | Magnify / Un-Magnify the current block |
-| Cmd:g | Open the "connection" switcher |
-| Cmd:i | Refocus the current block (useful if the block has lost input focus) |
-| Ctrl:Shift | Show block numbers |
-| Ctrl:Shift:[number] | Switch to block number |
-| Ctrl:Shift:Arrows | Move left, right, up, down between blocks |
-| Cmd:[number] | Switch to tab number |
-| Cmd:[ | Switch tab left |
-| Cmd:] | Siwtch tab right |
-| Cmd:Shift:r | Refresh the UI |
+<PlatformToggleButton />
+<div style={{ marginBottom: 20 }}></div>
+
+| Key                          | Function                                                                          |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| <Kbd k="Cmd:t"/>             | Open a new tab                                                                    |
+| <Kbd k="Cmd:n"/>             | Open a new terminal block (defaults to the same connection and working directory) |
+| <Kbd k="Cmd:w"/>             | Close the current block                                                           |
+| <Kbd k="Cmd:m"/>             | Magnify / Un-Magnify the current block                                            |
+| <Kbd k="Cmd:g"/>             | Open the "connection" switcher                                                    |
+| <Kbd k="Cmd:i"/>             | Refocus the current block (useful if the block has lost input focus)              |
+| <Kbd k="Ctrl:Shift"/>        | Show block numbers                                                                |
+| <Kbd k="Ctrl:Shift:1-9"/>    | Switch to block number                                                            |
+| <Kbd k="Ctrl:Shift:Arrows"/> | Move left, right, up, down between blocks                                         |
+| <Kbd k="Cmd:1-9"/>           | Switch to tab number                                                              |
+| <Kbd k="Cmd:["/>             | Switch tab left                                                                   |
+| <Kbd k="Cmd:]"/>             | Switch tab right                                                                  |
+| <Kbd k="Cmd:Shift:r"/>       | Refresh the UI                                                                    |
 
 ## File Preview Keybindings
 
-| Key | Function |
-|-----|----------|
-| [any character] | any regular character (e.g. "a", "b") will filter the file list |
-| Escape | will clear the filter |
-| Up/Down Arrow | change file selection up/down |
-| Enter | Open the currently selected file/directory |
-| Cmd:ArrowUp | move "up" a directory (parent directory) |
-| Cmd:ArrowLeft | back, move to the previously selected file/directory |
-| Cmd:ArrowRight | forward (opposite of back) |
-| Cmd:o | Open a new file (accepts relative paths to the current directory) |
-| Cmd:s | When file editor is open, save file |
-| Cmd:e | For files that can be previewed or edited (markdown, CSVs), switches between preview and edit mode |
-| Cmd:r | When file editor is open, revert changes |
+| Key                                       | Function                                                                                           |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| <Kbd k="[text]"/>                         | Any regular character (e.g. "a", "b") will filter the file list                                    |
+| <Kbd k="Escape"/>                         | Clears the filter                                                                                  |
+| <Kbd k="ArrowUp"/> / <Kbd k="ArrowDown"/> | Change file selection up/down                                                                      |
+| <Kbd k="Enter"/>                          | Open the currently selected file/directory                                                         |
+| <Kbd k="Cmd:ArrowUp"/>                    | Move "up" a directory (parent directory)                                                           |
+| <Kbd k="Cmd:ArrowLeft"/>                  | Back, move to the previously selected file/directory                                               |
+| <Kbd k="Cmd:ArrowRight"/>                 | Forward (opposite of back)                                                                         |
+| <Kbd k="Cmd:o"/>                          | Open a new file (accepts relative paths to the current directory)                                  |
+| <Kbd k="Cmd:s"/>                          | When file editor is open, save file                                                                |
+| <Kbd k="Cmd:e"/>                          | For files that can be previewed or edited (markdown, CSVs), switches between preview and edit mode |
+| <Kbd k="Cmd:r"/>                          | When file editor is open, revert changes                                                           |
 
 ## Web Keybindings
 
-| Key | Function |
-|-----|----------|
-| Cmd:l | focus the URL input bar |
-| Escape | when the URL input bar is focused, will focus the web content |
-| Cmd:r | reload webpage |
-| Cmd:ArrowLeft | back |
-| Cmd:ArrowRight | forward |
+| Key                       | Function                                                      |
+| ------------------------- | ------------------------------------------------------------- |
+| <Kbd k="Cmd:l"/>          | Focus the URL input bar                                       |
+| <Kbd k="Escape"/>         | When the URL input bar is focused, will focus the web content |
+| <Kbd k="Cmd:r"/>          | Reload webpage                                                |
+| <Kbd k="Cmd:ArrowLeft"/>  | Back                                                          |
+| <Kbd k="Cmd:ArrowRight"/> | Forward                                                       |
+
+</PlatformProvider>

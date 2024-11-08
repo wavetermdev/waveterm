@@ -16,16 +16,16 @@ require (
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/sashabaranov/go-openai v1.32.5
+	github.com/sashabaranov/go-openai v1.35.6
 	github.com/sawka/txwrap v0.2.0
 	github.com/shirou/gopsutil/v4 v4.24.10
 	github.com/skeema/knownhosts v1.3.0
 	github.com/spf13/cobra v1.8.1
 	github.com/ubuntu/gowsl v0.0.0-20240906163211-049fd49bd93b
 	github.com/wavetermdev/htmltoken v0.2.0
-	golang.org/x/crypto v0.28.0
-	golang.org/x/sys v0.26.0
-	golang.org/x/term v0.25.0
+	golang.org/x/crypto v0.29.0
+	golang.org/x/sys v0.27.0
+	golang.org/x/term v0.26.0
 )
 
 require (
