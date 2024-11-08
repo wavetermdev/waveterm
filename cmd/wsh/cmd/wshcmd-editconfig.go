@@ -13,9 +13,10 @@ import (
 )
 
 var editConfigCmd = &cobra.Command{
-	Use:     "editconfig",
-	Short:   "edit Wave settings",
-	Args:    cobra.NoArgs,
+	Use:     "editconfig [configfile]",
+	Short:   "edit Wave configuration files",
+	Long:    "Edit Wave configuration files. Defaults to settings.json if no file specified. Common files: settings.json, presets.json, widgets.json",
+	Args:    cobra.MaximumNArgs(1),
 	Run:     editConfigRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -32,7 +33,12 @@ func editConfigRun(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	settingsFile := filepath.Join(resp.ConfigDir, "settings.json")
+	configFile := "settings.json" // default
+	if len(args) > 0 {
+		configFile = args[0]
+	}
+
+	settingsFile := filepath.Join(resp.ConfigDir, configFile)
 
 	wshCmd := &wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
@@ -46,7 +52,7 @@ func editConfigRun(cmd *cobra.Command, args []string) {
 
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
-		WriteStderr("[error] opening settings file: %v\n", err)
+		WriteStderr("[error] opening config file: %v\n", err)
 		return
 	}
 }
