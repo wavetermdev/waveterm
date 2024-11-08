@@ -13,9 +13,11 @@ use ":" as level separators.
 
 :::info
 
-If you installed Wave pre-v0.9.0 your configuration file will be located at
-`~/.waveterm/config/settings.json`. This includes all of the other configuration
-files as well: `termthemes.json`, `presets.json`, and `widgets.json`.
+The easiest way to edit your config files is to use the wsh editconfig command which will open your Wave config file in our built-in preview editor.
+
+```
+wsh editconfig
+```
 
 :::
 
@@ -81,13 +83,25 @@ For reference this is the current default configuration (v0.8.8):
 }
 ```
 
+:::warning
+
+If you installed Wave pre-v0.9.0 your configuration file will be located at
+`~/.waveterm/config/settings.json`. This includes all of the other configuration
+files as well: `termthemes.json`, `presets.json`, and `widgets.json`.
+
+:::
+
 ### Terminal Theming
 
-User-defined terminal themes are located in `~/.config/waveterm/termthemes.json`. This JSON file is structured as an object, with each sub-key defining a theme.
+User-defined terminal themes are located in `~/.config/waveterm/termthemes.json`.
+
+This JSON file is structured as an object, with each sub-key defining a theme.
 Themes are applied by right-clicking on the terminal's header bar and selecting an entry from the "Themes" sub-menu. Alternatively they can be applied to
 the block's metadata key `term:theme`. This uses the JSON key value as the identifier. Note, for best consistency all colors should be of the format "#rrggbb" or "#rrggbbaa" (aa = alpha channel for transparency).
 
-`wsh setmeta this term:theme="default-dark"`
+```
+wsh setmeta this term:theme="default-dark"
+```
 
 Here is an example of defining a full terminal theme. All of the built-in themes are defined here: https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/termthemes.json (if you'd like to add a popular terminal theme, please submit a PR!)
 
@@ -121,6 +135,16 @@ Here is an example of defining a full terminal theme. All of the built-in themes
   }
 }
 ```
+
+:::info
+
+You can easily open the termthemes.json config file by running:
+
+```
+wsh editconfig termthemes.json
+```
+
+:::
 
 | Key Name            | Type      | ANSI FG# | ANSI BG# | Function                                                                                                                                 |
 | ------------------- | --------- | -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
