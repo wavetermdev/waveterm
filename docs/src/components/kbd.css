@@ -19,9 +19,10 @@
 }
 
 kbd {
-    background-color: #f4f4f4;
+    background-color: var(--ifm-color-primary-contrast-background);
     border-radius: 4px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--ifm-color-secondary-darker);
+    color: var(--ifm-color-primary-contrast-foreground);
     padding: 2px 6px;
     font-size: 0.8em;
     font-family: "JetBrains Mono", monospace;
@@ -39,11 +40,4 @@ kbd {
 .kbd-group kbd.symbol {
     font-size: 0.8em;
     line-height: 24px;
-}
-
-/* Docusaurus Dark Mode */
-html[data-theme="dark"] kbd {
-    background-color: #333; /* Dark background */
-    color: #fff; /* Light text */
-    border: 1px solid #666;
 }
