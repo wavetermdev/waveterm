@@ -22,7 +22,7 @@
 
 .pill-option.active {
     background-color: var(--ifm-color-primary);
-    color: var(--ifm-color-secondary-lightest);
+    color: var(--ifm-color-secondary-contrast-background);
     font-weight: bold;
 }
 
