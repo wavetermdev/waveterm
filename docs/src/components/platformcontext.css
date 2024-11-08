@@ -21,8 +21,9 @@
 }
 
 .pill-option.active {
-    background-color: #0073e6;
+    background-color: rgb(88, 193, 66);
     color: #fff;
+    font-weight: bold;
 }
 
 .pill-option:not(.active):hover {
@@ -40,7 +41,7 @@ html[data-theme="dark"] .pill-option {
 }
 
 html[data-theme="dark"] .pill-option.active {
-    background-color: #005bb5; /* Darker blue for active state */
+    background-color: rgb(88, 193, 66); /* Darker blue for active state */
     color: #fff;
 }
 
