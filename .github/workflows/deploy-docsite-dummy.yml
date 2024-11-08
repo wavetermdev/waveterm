@@ -15,7 +15,8 @@ on:
             - ".github/workflows/deploy-docsite.yml"
 
 jobs:
-    deploy-docsite:
+    build:
+        name: Build Docsite
         runs-on: ubuntu-latest
         steps:
             - run: 'echo "No build required."'
