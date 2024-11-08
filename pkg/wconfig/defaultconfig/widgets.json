@@ -1,6 +1,6 @@
 {
     "defwidget@terminal": {
-        "display:order": -5
+        "display:order": -5,
         "icon": "square-terminal",
         "label": "terminal",
         "blockdef": {
