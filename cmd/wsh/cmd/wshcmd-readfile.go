@@ -29,14 +29,9 @@ func runReadFile(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] oref is required\n")
 		return
 	}
-	err := validateEasyORef(oref)
-	if err != nil {
-		WriteStderr("[error] %v\n", err)
-		return
-	}
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
-		WriteStderr("error resolving oref: %v\n", err)
+		WriteStderr("[error] %v\n", err)
 		return
 	}
 	resp64, err := wshclient.FileReadCommand(RpcClient, wshrpc.CommandFileData{ZoneId: fullORef.OID, FileName: args[1]}, &wshrpc.RpcOpts{Timeout: 5000})
