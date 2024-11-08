@@ -8,7 +8,8 @@ title: "FAQ"
 
 ### How do I set up my own LLM?
 
-You must manually edit the [config file](./config) located at `~/.config/waveterm/settings.json`.
+Open your [config file](./config) in Wave using `wsh editconfig` (the config file is normally located
+at `~/.config/waveterm/settings.json`).
 
 | Key Name     | Type   | Function                                        |
 | ------------ | ------ | ----------------------------------------------- |
@@ -36,7 +37,8 @@ Here are the ollma open AI compatibility docs: https://github.com/ollama/ollama/
 
 ### How can I connect to Azure AI
 
-You must manually edit the [config file](./config) located at `~/.config/waveterm/settings.json`.
+Open your [config file](./config) in Wave using `wsh editconfig` (the config file is normally located
+at `~/.config/waveterm/settings.json`).
 
 You'll need to set your `ai:baseurl` to your Azure AI Base URL (do not include query parameters or `api-version`).
 You'll also need to set `ai:apitype` to `azure`. You can then set the `ai:model`, and `ai:apitoken` appropriately
