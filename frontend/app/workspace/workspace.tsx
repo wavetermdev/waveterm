@@ -27,7 +27,7 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
     }
     const wlist = Object.values(wmap);
     wlist.sort((a, b) => {
-        return a["display:order"] - b["display:order"];
+        return (a["display:order"] ?? 0) - (b["display:order"] ?? 0);
     });
     return wlist;
 }
