@@ -21,18 +21,13 @@ func init() {
 
 func deleteBlockRun(cmd *cobra.Command, args []string) {
 	oref := blockArg
-	err := validateEasyORef(oref)
-	if err != nil {
-		WriteStderr("[error]%v\n", err)
-		return
-	}
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
-		WriteStderr("[error] resolving oref: %v\n", err)
+		WriteStderr("[error] %v\n", err)
 		return
 	}
 	if fullORef.OType != "block" {
-		WriteStderr("[error] oref is not a block\n")
+		WriteStderr("[error] object reference is not a block\n")
 		return
 	}
 	deleteBlockData := &wshrpc.CommandDeleteBlockData{

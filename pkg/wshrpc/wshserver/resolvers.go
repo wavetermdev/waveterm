@@ -1,0 +1,198 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package wshserver
+
+import (
+	"context"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
+)
+
+const SimpleId_This = "this"
+const SimpleId_Tab = "tab"
+
+var (
+	simpleTabNumRe          = regexp.MustCompile(`^tab:(\d{1,3})$`)
+	shortUUIDRe             = regexp.MustCompile(`^[0-9a-f]{8}$`)
+	SimpleId_BlockNum_Regex = regexp.MustCompile(`^\d+$`)
+)
+
+// Helper function to validate UUIDs or 8-char UUIDs format
+func isValidSimpleUUID(s string) bool {
+	// Try parsing as full UUID
+	_, err := uuid.Parse(s)
+	if err == nil {
+		return true
+	}
+
+	// Check if it's an 8-char hex prefix
+	shortUUIDPattern := regexp.MustCompile(`^[0-9a-f]{8}$`)
+	return shortUUIDPattern.MatchString(strings.ToLower(s))
+}
+
+// First function: detect/choose discriminator
+func parseSimpleId(simpleId string) (discriminator string, value string, err error) {
+	// Check for explicit discriminator with @
+	if parts := strings.SplitN(simpleId, "@", 2); len(parts) == 2 {
+		return parts[0], parts[1], nil
+	}
+
+	// Handle special keywords
+	if simpleId == SimpleId_This || simpleId == SimpleId_Tab {
+		return "this", simpleId, nil
+	}
+
+	// Check if it's a simple ORef (type:uuid)
+	if _, err := waveobj.ParseORef(simpleId); err == nil {
+		return "oref", simpleId, nil
+	}
+
+	// Check for tab:N format
+	if simpleTabNumRe.MatchString(simpleId) {
+		return "tabnum", simpleId, nil
+	}
+
+	// Check for plain number (block reference)
+	if _, err := strconv.Atoi(simpleId); err == nil {
+		return "blocknum", simpleId, nil
+	}
+
+	// Check for UUIDs
+	if _, err := uuid.Parse(simpleId); err == nil {
+		return "uuid", simpleId, nil
+	}
+	if shortUUIDRe.MatchString(strings.ToLower(simpleId)) {
+		return "uuid8", simpleId, nil
+	}
+
+	return "", "", fmt.Errorf("invalid simple id format: %s", simpleId)
+}
+
+// Individual resolvers
+func resolveThis(ctx context.Context, data wshrpc.CommandResolveIdsData, value string) (*waveobj.ORef, error) {
+	if data.BlockId == "" {
+		return nil, fmt.Errorf("no blockid in request")
+	}
+
+	if value == SimpleId_This {
+		return &waveobj.ORef{OType: waveobj.OType_Block, OID: data.BlockId}, nil
+	}
+	if value == SimpleId_Tab {
+		tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+		if err != nil {
+			return nil, fmt.Errorf("error finding tab: %v", err)
+		}
+		return &waveobj.ORef{OType: waveobj.OType_Tab, OID: tabId}, nil
+	}
+	return nil, fmt.Errorf("invalid value for 'this' resolver: %s", value)
+}
+
+func resolveORef(ctx context.Context, value string) (*waveobj.ORef, error) {
+	parsedORef, err := waveobj.ParseORef(value)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing oref: %v", err)
+	}
+	return &parsedORef, nil
+}
+
+func resolveTabNum(ctx context.Context, data wshrpc.CommandResolveIdsData, value string) (*waveobj.ORef, error) {
+	m := simpleTabNumRe.FindStringSubmatch(value)
+	if m == nil {
+		return nil, fmt.Errorf("error parsing simple tab id: %s", value)
+	}
+
+	tabNum, err := strconv.Atoi(m[1])
+	if err != nil {
+		return nil, fmt.Errorf("error parsing simple tab num: %v", err)
+	}
+
+	curTabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+	if err != nil {
+		return nil, fmt.Errorf("error finding tab for block: %v", err)
+	}
+
+	wsId, err := wstore.DBFindWorkspaceForTabId(ctx, curTabId)
+	if err != nil {
+		return nil, fmt.Errorf("error finding current workspace: %v", err)
+	}
+
+	ws, err := wstore.DBMustGet[*waveobj.Workspace](ctx, wsId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting workspace: %v", err)
+	}
+
+	if tabNum < 1 || tabNum > len(ws.TabIds) {
+		return nil, fmt.Errorf("tab num out of range, workspace has %d tabs", len(ws.TabIds))
+	}
+
+	resolvedTabId := ws.TabIds[tabNum-1]
+	return &waveobj.ORef{OType: waveobj.OType_Tab, OID: resolvedTabId}, nil
+}
+
+func resolveBlock(ctx context.Context, data wshrpc.CommandResolveIdsData, value string) (*waveobj.ORef, error) {
+	blockNum, err := strconv.Atoi(value)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing block number: %v", err)
+	}
+
+	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+	if err != nil {
+		return nil, fmt.Errorf("error finding tab for blockid %s: %w", data.BlockId, err)
+	}
+
+	tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving tab %s: %w", tabId, err)
+	}
+
+	layout, err := wstore.DBGet[*waveobj.LayoutState](ctx, tab.LayoutState)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving layout state %s: %w", tab.LayoutState, err)
+	}
+
+	if layout.LeafOrder == nil {
+		return nil, fmt.Errorf("could not resolve block num %v, leaf order is empty", blockNum)
+	}
+
+	leafIndex := blockNum - 1 // block nums are 1-indexed
+	if len(*layout.LeafOrder) <= leafIndex {
+		return nil, fmt.Errorf("could not find a node in the layout matching blockNum %v", blockNum)
+	}
+
+	leafEntry := (*layout.LeafOrder)[leafIndex]
+	return &waveobj.ORef{OType: waveobj.OType_Block, OID: leafEntry.BlockId}, nil
+}
+
+func resolveUUID(ctx context.Context, value string) (*waveobj.ORef, error) {
+	return wstore.DBResolveEasyOID(ctx, value)
+}
+
+// Main resolver function
+func resolveSimpleId(ctx context.Context, data wshrpc.CommandResolveIdsData, simpleId string) (*waveobj.ORef, error) {
+	discriminator, value, err := parseSimpleId(simpleId)
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "this":
+		return resolveThis(ctx, data, value)
+	case "oref":
+		return resolveORef(ctx, value)
+	case "tabnum":
+		return resolveTabNum(ctx, data, value)
+	case "blocknum":
+		return resolveBlock(ctx, data, value)
+	case "uuid", "uuid8":
+		return resolveUUID(ctx, value)
+	default:
+		return nil, fmt.Errorf("unknown discriminator: %s", discriminator)
+	}
+}

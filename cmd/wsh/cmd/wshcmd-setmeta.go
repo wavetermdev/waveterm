@@ -112,14 +112,9 @@ func setMetaRun(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] block (oref) is required\n")
 		return
 	}
-	err := validateEasyORef(blockArg)
-	if err != nil {
-		WriteStderr("[error] %v\n", err)
-		return
-	}
-
 	var jsonMeta map[string]interface{}
 	if setMetaJsonFilePath != "" {
+		var err error
 		jsonMeta, err = loadJSONFile(setMetaJsonFilePath)
 		if err != nil {
 			WriteStderr("[error] %v\n", err)
@@ -146,7 +141,7 @@ func setMetaRun(cmd *cobra.Command, args []string) {
 	}
 	fullORef, err := resolveSimpleId(blockArg)
 	if err != nil {
-		WriteStderr("[error] resolving oref: %v\n", err)
+		WriteStderr("[error] %v\n", err)
 		return
 	}
 
