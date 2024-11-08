@@ -53,15 +53,9 @@ const Widgets = memo(() => {
         },
     };
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
-    const showDivider = keyLen(fullConfig?.defaultwidgets) > 0 && keyLen(fullConfig?.widgets) > 0;
-    const defaultWidgets = sortByDisplayOrder(fullConfig?.defaultwidgets);
     const widgets = sortByDisplayOrder(fullConfig?.widgets);
     return (
         <div className="workspace-widgets">
-            {defaultWidgets.map((data, idx) => (
-                <Widget key={`defwidget-${idx}`} widget={data} />
-            ))}
-            {showDivider ? <div className="widget-divider" /> : null}
             {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} />)}
             {showHelp ? (
                 <>
