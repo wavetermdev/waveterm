@@ -66,4 +66,16 @@ All block movements except for Swap will cause the rest of the layout to shift t
 6. Out-of-line after outer: Drops the block after the target block's parent node in the opposite tiling direction
 7. Swap: Swaps the position of the dropped block and the targeted block in the layout, preserving the rest of the layout
 
+### Resize a block
+
+![screenshot showing the line that appears when the cursor hovers over the margin of a block, indicating which blocks will be resized by dragging the margin](./img/node-resize.png)
+
+You do not directly resize a block. Rather, you resize the nodes containing the blocks. If you hover your mouse over the margin of a block, you will see the cursor change to <i className="fa-sharp fa-arrows-left-right"/> or <i className="fa-sharp fa-arrows-up-down"/> to indicate the direction the node can be resized. You will also see a line appear after 500ms to show you how many blocks will be resized by moving that margin. Clicking and dragging on this margin will cause the block(s) to get resized.
+
+Node sizes are unitless values. The ratio of all node sizes at a given tree level determines the displacement of each node. If you move a block and its node is deleted, the other nodes at the given tree level will adjust their sizes to account for the new size ratio.
+
+## Change the gap size between blocks
+
+The gap between blocks defaults to 3px, but this value can be changed by modifying the `window:tilegapsize` configuration value. See [Configuration](./config) for more information on how to change configuration values.
+
 </PlatformProvider>
