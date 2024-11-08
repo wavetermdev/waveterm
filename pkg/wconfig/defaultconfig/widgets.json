@@ -1,6 +1,6 @@
 {
     "defwidget@terminal": {
-        "display:order": 1,
+        "display:order": -5
         "icon": "square-terminal",
         "label": "terminal",
         "blockdef": {
@@ -11,7 +11,7 @@
         }
     },
     "defwidget@files": {
-        "display:order": 2,
+        "display:order": -4,
         "icon": "folder",
         "label": "files",
         "blockdef": {
@@ -22,7 +22,7 @@
         }
     },
     "defwidget@web": {
-        "display:order": 3,
+        "display:order": -3,
         "icon": "globe",
         "label": "web",
         "blockdef": {
@@ -32,7 +32,7 @@
         }
     },
     "defwidget@ai": {
-        "display:order": 4,
+        "display:order": -2,
         "icon": "sparkles",
         "label": "ai",
         "blockdef": {
@@ -42,7 +42,7 @@
         }
     },
     "defwidget@sysinfo": {
-        "display:order": 5,
+        "display:order": -1,
         "icon": "chart-line",
         "label": "sysinfo",
         "blockdef": {
