@@ -618,8 +618,13 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 }
 
 func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData, error) {
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting client: %w", err)
+	}
 	return &wshrpc.WaveInfoData{
 		Version:   wavebase.WaveVersion,
+		ClientId:  client.OID,
 		BuildTime: wavebase.BuildTime,
 		ConfigDir: wavebase.GetWaveConfigDir(),
 		DataDir:   wavebase.GetWaveDataDir(),
