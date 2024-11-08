@@ -22,10 +22,12 @@ var getMetaCmd = &cobra.Command{
 }
 
 var getMetaRawOutput bool
+var getMetaClearPrefix bool
 
 func init() {
 	rootCmd.AddCommand(getMetaCmd)
 	getMetaCmd.Flags().BoolVar(&getMetaRawOutput, "raw", false, "output singleton string values without quotes")
+	getMetaCmd.Flags().BoolVar(&getMetaClearPrefix, "clear-prefix", false, "output the special clearing key for prefix queries")
 }
 
 func filterMetaKeys(meta map[string]interface{}, keys []string) map[string]interface{} {
@@ -37,6 +39,10 @@ func filterMetaKeys(meta map[string]interface{}, keys []string) map[string]inter
 			// Handle pattern matching
 			prefix := strings.TrimSuffix(key, "*")
 			baseKey := strings.TrimSuffix(prefix, ":")
+
+			if getMetaClearPrefix {
+				result[key] = true
+			}
 
 			// Include the base key without colon if it exists
 			if val, exists := meta[baseKey]; exists {
