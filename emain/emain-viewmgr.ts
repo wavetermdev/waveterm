@@ -7,13 +7,7 @@ import { debounce } from "throttle-debounce";
 import { ClientService, FileService, ObjectService, WindowService } from "../frontend/app/store/services";
 import * as keyutil from "../frontend/util/keyutil";
 import { configureAuthKeyRequestInjection } from "./authkey";
-import {
-    getGlobalIsQuitting,
-    getGlobalIsRelaunching,
-    getGlobalIsStarting,
-    setWasActive,
-    setWasInFg,
-} from "./emain-activity";
+import { getGlobalIsQuitting, getGlobalIsRelaunching, setWasActive, setWasInFg } from "./emain-activity";
 import {
     delay,
     ensureBoundsAreVisible,
@@ -328,13 +322,6 @@ function getOrCreateWebViewForTab(fullConfig: FullConfigType, windowId: string, 
         console.log("window-open denied", url);
         return { action: "deny" };
     });
-    tabView.webContents.on("focus", () => {
-        setWasInFg(true);
-        setWasActive(true);
-        if (getGlobalIsStarting()) {
-            return;
-        }
-    });
     tabView.webContents.on("blur", () => {
         handleCtrlShiftFocus(tabView.webContents, false);
     });
@@ -490,6 +477,8 @@ function createBaseWaveBrowserWindow(
         focusedWaveWindow = win;
         console.log("focus win", win.waveWindowId);
         ClientService.FocusWindow(win.waveWindowId);
+        setWasInFg(true);
+        setWasActive(true);
     });
     win.on("blur", () => {
         if (focusedWaveWindow == win) {
