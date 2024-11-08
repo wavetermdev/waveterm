@@ -298,9 +298,8 @@ func VDomCreateContextCommand(w *wshutil.WshRpc, data vdom.VDomCreateContext, op
 }
 
 // command "vdomrender", wshserver.VDomRenderCommand
-func VDomRenderCommand(w *wshutil.WshRpc, data vdom.VDomFrontendUpdate, opts *wshrpc.RpcOpts) (*vdom.VDomBackendUpdate, error) {
-	resp, err := sendRpcRequestCallHelper[*vdom.VDomBackendUpdate](w, "vdomrender", data, opts)
-	return resp, err
+func VDomRenderCommand(w *wshutil.WshRpc, data vdom.VDomFrontendUpdate, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
+	return sendRpcRequestResponseStreamHelper[*vdom.VDomBackendUpdate](w, "vdomrender", data, opts)
 }
 
 // command "vdomurlrequest", wshserver.VDomUrlRequestCommand

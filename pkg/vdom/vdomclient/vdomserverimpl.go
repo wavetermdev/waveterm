@@ -21,15 +21,33 @@ type VDomServerImpl struct {
 
 func (*VDomServerImpl) WshServerImpl() {}
 
-func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error) {
+func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
+	respChan := make(chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate], 5)
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in VDomRenderCommand: %v\n", r)
+			respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+				Error: fmt.Errorf("internal error: %v", r),
+			}
+			close(respChan)
+		}
+	}()
+
 	if feUpdate.Dispose {
+		defer close(respChan)
 		log.Printf("got dispose from frontend\n")
 		impl.Client.doShutdown("got dispose from frontend")
-		return nil, nil
+		return respChan
 	}
+
 	if impl.Client.GetIsDone() {
-		return nil, nil
+		close(respChan)
+		return respChan
 	}
+
+	impl.Client.Root.RenderTs = feUpdate.Ts
+
 	// set atoms
 	for _, ss := range feUpdate.StateSync {
 		impl.Client.Root.SetAtomVal(ss.Atom, ss.Value, false)
@@ -44,25 +62,56 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 			impl.Client.Root.Event(event.WaveId, event.EventType, event)
 		}
 	}
-	if feUpdate.Resync || true {
-		return impl.Client.fullRender()
+	// update refs
+	for _, ref := range feUpdate.RefUpdates {
+		impl.Client.Root.UpdateRef(ref)
 	}
-	return impl.Client.incrementalRender()
+
+	var update *vdom.VDomBackendUpdate
+	var err error
+
+	if feUpdate.Resync || true {
+		update, err = impl.Client.fullRender()
+	} else {
+		update, err = impl.Client.incrementalRender()
+	}
+	update.CreateTransferElems()
+
+	if err != nil {
+		respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+			Error: err,
+		}
+		close(respChan)
+		return respChan
+	}
+
+	// Split the update into chunks and send them sequentially
+	updates := vdom.SplitBackendUpdate(update)
+	go func() {
+		defer close(respChan)
+		for _, splitUpdate := range updates {
+			respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+				Response: splitUpdate,
+			}
+		}
+	}()
+
+	return respChan
 }
 
 func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshrpc.VDomUrlRequestData) chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse] {
-	log.Printf("VDomUrlRequestCommand: url=%q\n", data.URL)
 	respChan := make(chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse])
 	writer := NewStreamingResponseWriter(respChan)
 
 	go func() {
+		defer close(respChan) // Declared first, so it executes last
+		defer writer.Close()  // Ensures writer is closed before the channel is closed
+
 		defer func() {
 			if r := recover(); r != nil {
-				// On panic, send 500 status code
 				writer.WriteHeader(http.StatusInternalServerError)
 				writer.Write([]byte(fmt.Sprintf("internal server error: %v", r)))
 			}
-			close(respChan)
 		}()
 
 		// Create an HTTP request from the RPC request data
@@ -83,7 +132,10 @@ func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshr
 		for key, value := range data.Headers {
 			httpReq.Header.Set(key, value)
 		}
-
+		if httpReq.URL.Path == "/wave/global.css" && impl.Client.GlobalStylesOption != nil {
+			ServeFileOption(writer, httpReq, *impl.Client.GlobalStylesOption)
+			return
+		}
 		if impl.Client.OverrideUrlHandler != nil {
 			impl.Client.OverrideUrlHandler.ServeHTTP(writer, httpReq)
 			return

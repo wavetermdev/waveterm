@@ -37,6 +37,46 @@ const config: StorybookConfig = {
         return mergedConfig;
     },
 
-    staticDirs: [{ from: "../assets", to: "/assets" }],
+    staticDirs: [
+        { from: "../assets", to: "/assets" },
+        { from: "../public/fontawesome", to: "/fontawesome" },
+    ],
+    managerHead: (head) => `
+        ${head}
+        <link rel="shortcut icon" href="./assets/waveterm-logo-with-bg.ico" />
+        <link rel="icon" type="image/png" href="./assets/waveterm-logo-with-bg.png" sizes="250x250" />
+        <style>
+        .sidebar-header img {
+            max-width: 150px !important;
+            max-height: 100px !important;
+        }
+        </style>`,
+    previewHead: (head) => `
+        ${head}
+        <link rel="stylesheet" href="./fontawesome/css/fontawesome.min.css" />
+        <link rel="stylesheet" href="./fontawesome/css/brands.min.css" />
+        <link rel="stylesheet" href="./fontawesome/css/solid.min.css" />
+        <link rel="stylesheet" href="./fontawesome/css/sharp-solid.min.css" />
+        <link rel="stylesheet" href="./fontawesome/css/sharp-regular.min.css" />
+        <style>
+        #storybook-docs {
+            [id^="anchor--"],
+            #stories {
+            a {
+                margin-left: -24px !important;
+            }
+            }
+        }
+
+        body {
+            background-color: #ffffff !important;
+        }
+
+        html.dark {
+            body {
+            background-color: #222222 !important;
+            }
+        }
+        </style>`,
 };
 export default config;

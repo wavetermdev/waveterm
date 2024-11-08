@@ -33,7 +33,6 @@ type VDomElem struct {
 
 // the over the wire format for a vdom element
 type VDomTransferElem struct {
-	Root     bool           `json:"root,omitempty"`
 	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
 	Tag      string         `json:"tag"`
 	Props    map[string]any `json:"props,omitempty"`
@@ -86,6 +85,7 @@ type VDomBackendUpdate struct {
 	Opts          *VDomBackendOpts   `json:"opts,omitempty"`
 	HasWork       bool               `json:"haswork,omitempty"`
 	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
+	TransferElems []VDomTransferElem `json:"transferelems,omitempty"`
 	StateSync     []VDomStateSync    `json:"statesync,omitempty"`
 	RefOperations []VDomRefOperation `json:"refoperations,omitempty"`
 	Messages      []VDomMessage      `json:"messages,omitempty"`
@@ -116,6 +116,10 @@ type VDomRef struct {
 	TrackPosition bool             `json:"trackposition,omitempty"`
 	Position      *VDomRefPosition `json:"position,omitempty"`
 	HasCurrent    bool             `json:"hascurrent,omitempty"`
+}
+
+type VDomSimpleRef[T any] struct {
+	Current T `json:"current"`
 }
 
 type DomRect struct {
@@ -173,19 +177,22 @@ type VDomRefUpdate struct {
 type VDomBackendOpts struct {
 	CloseOnCtrlC         bool `json:"closeonctrlc,omitempty"`
 	GlobalKeyboardEvents bool `json:"globalkeyboardevents,omitempty"`
+	GlobalStyles         bool `json:"globalstyles,omitempty"`
 }
 
 type VDomRenderUpdate struct {
-	UpdateType string   `json:"updatetype" tstype:"\"root\"|\"append\"|\"replace\"|\"remove\"|\"insert\""`
-	WaveId     string   `json:"waveid,omitempty"`
-	VDom       VDomElem `json:"vdom"`
-	Index      *int     `json:"index,omitempty"`
+	UpdateType string    `json:"updatetype" tstype:"\"root\"|\"append\"|\"replace\"|\"remove\"|\"insert\""`
+	WaveId     string    `json:"waveid,omitempty"`
+	VDomWaveId string    `json:"vdomwaveid,omitempty"`
+	VDom       *VDomElem `json:"vdom,omitempty"` // these get removed for transfer (encoded to transferelems)
+	Index      *int      `json:"index,omitempty"`
 }
 
 type VDomRefOperation struct {
-	RefId  string `json:"refid"`
-	Op     string `json:"op" tsype:"\"focus\""`
-	Params []any  `json:"params,omitempty"`
+	RefId     string `json:"refid"`
+	Op        string `json:"op"`
+	Params    []any  `json:"params,omitempty"`
+	OutputRef string `json:"outputref,omitempty"`
 }
 
 type VDomMessage struct {

@@ -61,16 +61,13 @@ export function validateAndWrapCss(model: VDomModel, cssText: string, wrapperCla
                         }
                     }
                 }
-                // transform url(vdom:///foo.jpg) => url(vdom://blockId/foo.jpg)
-                if (node.type === "Url") {
-                    const url = node.value;
-                    if (url != null && url.startsWith("vdom://")) {
-                        const absUrl = url.substring(7);
-                        if (!absUrl.startsWith("/")) {
-                            list.remove(item);
-                        } else {
-                            node.value = "vdom://" + model.blockId + url.substring(7);
-                        }
+                // transform url(vdom:///foo.jpg)
+                if (node.type === "Url" && node.value != null && node.value.startsWith("vdom://")) {
+                    const newUrl = model.transformVDomUrl(node.value);
+                    if (newUrl == null) {
+                        list.remove(item);
+                    } else {
+                        node.value = newUrl;
                     }
                 }
             },
@@ -88,19 +85,20 @@ function cssTransformStyleValue(model: VDomModel, property: string, value: strin
     try {
         const ast = csstree.parse(value, { context: "value" });
         csstree.walk(ast, {
-            enter(node) {
+            enter(node: CssNode, item: ListItem<CssNode>, list: List<CssNode>) {
                 // Transform url(#id) in filter/mask properties
                 if (node.type === "Url" && (property === "filter" || property === "mask")) {
                     if (node.value.startsWith("#")) {
                         node.value = `#${convertVDomId(model, node.value.substring(1))}`;
                     }
                 }
-
-                // Transform vdom:/// URLs
-                if (node.type === "Url" && node.value.startsWith("vdom:///")) {
-                    const absUrl = node.value.substring(7);
-                    if (absUrl.startsWith("/")) {
-                        node.value = `vdom://${model.blockId}${absUrl}`;
+                // transform vdom:// urls
+                if (node.type === "Url" && node.value != null && node.value.startsWith("vdom://")) {
+                    const newUrl = model.transformVDomUrl(node.value);
+                    if (newUrl == null) {
+                        list.remove(item);
+                    } else {
+                        node.value = newUrl;
                     }
                 }
             },
@@ -137,48 +135,110 @@ export function validateAndWrapReactStyle(model: VDomModel, style: Record<string
     return sanitizedStyle;
 }
 
-type VDomTransferElem = {
-    root?: boolean;
-    waveid?: string;
-    tag: string;
-    props?: { [key: string]: any };
-    children?: string[]; // References to child WaveIds
-    text?: string;
-};
+export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
+    if (!backendUpdate.transferelems || !backendUpdate.renderupdates) {
+        return;
+    }
 
-export function UnmarshalTransferElems(transferElems: VDomTransferElem[]): VDomElem[] {
-    const elemMap: { [id: string]: VDomElem } = {};
-    const roots: VDomElem[] = [];
-
-    // Initialize each VDomTransferElem in the map without children, as we'll link them after
-    transferElems.forEach((transferElem) => {
+    // Step 1: Map of waveid to VDomElem, skipping any without a waveid
+    const elemMap = new Map<string, VDomElem>();
+    backendUpdate.transferelems.forEach((transferElem) => {
         if (!transferElem.waveid) {
-            return; // Skip elements without waveid
+            return;
         }
-        const elem: VDomElem = {
-            waveid: transferElem.tag !== "#text" ? transferElem.waveid : undefined,
+        elemMap.set(transferElem.waveid, {
+            waveid: transferElem.waveid,
             tag: transferElem.tag,
             props: transferElem.props,
+            children: [], // Will populate children later
             text: transferElem.text,
-            children: [], // Placeholder to be populated later
-        };
-        elemMap[transferElem.waveid] = elem;
+        });
+    });
 
-        // Collect root elements
-        if (transferElem.root) {
-            roots.push(elem);
+    // Step 2: Build VDomElem trees by linking children
+    backendUpdate.transferelems.forEach((transferElem) => {
+        const parent = elemMap.get(transferElem.waveid);
+        if (!parent || !transferElem.children || transferElem.children.length === 0) {
+            return;
+        }
+        parent.children = transferElem.children.map((childId) => elemMap.get(childId)).filter((child) => child != null); // Explicit null check
+    });
+
+    // Step 3: Update renderupdates with rebuilt VDomElem trees
+    backendUpdate.renderupdates.forEach((update) => {
+        if (update.vdomwaveid) {
+            update.vdom = elemMap.get(update.vdomwaveid);
+        }
+    });
+}
+
+export function mergeBackendUpdates(baseUpdate: VDomBackendUpdate, nextUpdate: VDomBackendUpdate) {
+    // Verify the updates are from the same block/sequence
+    if (baseUpdate.blockid !== nextUpdate.blockid || baseUpdate.ts !== nextUpdate.ts) {
+        console.error("Attempted to merge updates from different blocks or timestamps");
+        return;
+    }
+
+    // Merge TransferElems
+    if (nextUpdate.transferelems?.length > 0) {
+        if (!baseUpdate.transferelems) {
+            baseUpdate.transferelems = [];
+        }
+        baseUpdate.transferelems.push(...nextUpdate.transferelems);
+    }
+
+    // Merge StateSync
+    if (nextUpdate.statesync?.length > 0) {
+        if (!baseUpdate.statesync) {
+            baseUpdate.statesync = [];
+        }
+        baseUpdate.statesync.push(...nextUpdate.statesync);
+    }
+}
+
+export function applyCanvasOp(canvas: HTMLCanvasElement, canvasOp: VDomRefOperation, refStore: Map<string, any>) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+        console.error("Canvas 2D context not available.");
+        return;
+    }
+
+    let { op, params, outputref } = canvasOp;
+    if (params == null) {
+        params = [];
+    }
+    if (op == null || op == "") {
+        return;
+    }
+    // Resolve any reference parameters in params
+    const resolvedParams: any[] = [];
+    params.forEach((param) => {
+        if (typeof param === "string" && param.startsWith("#ref:")) {
+            const refId = param.slice(5); // Remove "#ref:" prefix
+            resolvedParams.push(refStore.get(refId));
+        } else if (typeof param === "string" && param.startsWith("#spreadRef:")) {
+            const refId = param.slice(11); // Remove "#spreadRef:" prefix
+            const arrayRef = refStore.get(refId);
+            if (Array.isArray(arrayRef)) {
+                resolvedParams.push(...arrayRef); // Spread array elements
+            } else {
+                console.error(`Reference ${refId} is not an array and cannot be spread.`);
+            }
+        } else {
+            resolvedParams.push(param);
         }
     });
 
-    // Now populate children for each element
-    transferElems.forEach((transferElem) => {
-        if (!transferElem.waveid || !transferElem.children) return;
-
-        const currentElem = elemMap[transferElem.waveid];
-        currentElem.children = transferElem.children
-            .map((childId) => elemMap[childId])
-            .filter((child) => child !== undefined); // Filter out any undefined children
-    });
-
-    return roots;
+    // Apply the operation on the canvas context
+    if (op === "dropRef" && params.length > 0 && typeof params[0] === "string") {
+        refStore.delete(params[0]);
+    } else if (op === "addRef" && outputref) {
+        refStore.set(outputref, resolvedParams[0]);
+    } else if (typeof ctx[op as keyof CanvasRenderingContext2D] === "function") {
+        (ctx[op as keyof CanvasRenderingContext2D] as Function).apply(ctx, resolvedParams);
+    } else if (op in ctx) {
+        (ctx as any)[op] = resolvedParams[0];
+    } else {
+        console.error(`Unsupported canvas operation: ${op}`);
+    }
 }
