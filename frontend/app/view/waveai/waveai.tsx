@@ -184,7 +184,7 @@ export class WaveAiModel implements ViewModel {
                 }
             }
             const dropdownItems = Object.entries(presets)
-                .sort((a, b) => (a[1]["display:order"] > b[1]["display:order"] ? 1 : -1))
+                .sort((a, b) => ((a[1]["display:order"] ?? 0) > (b[1]["display:order"] ?? 0) ? 1 : -1))
                 .map(
                     (preset) =>
                         ({
