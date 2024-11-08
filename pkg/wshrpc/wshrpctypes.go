@@ -448,6 +448,7 @@ type VDomUrlRequestResponse struct {
 
 type WaveInfoData struct {
 	Version   string `json:"version"`
+	ClientId  string `json:"clientid"`
 	BuildTime string `json:"buildtime"`
 	ConfigDir string `json:"configdir"`
 	DataDir   string `json:"datadir"`

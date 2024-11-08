@@ -54,6 +54,7 @@ func runVersionCmd(cmd *cobra.Command, args []string) error {
 	if versionJSON {
 		info := map[string]interface{}{
 			"version":       resp.Version,
+			"clientid":      resp.ClientId,
 			"buildtime":     resp.BuildTime,
 			"configdir":     resp.ConfigDir,
 			"datadir":       resp.DataDir,
@@ -69,6 +70,7 @@ func runVersionCmd(cmd *cobra.Command, args []string) error {
 
 	// Default verbose text output
 	fmt.Printf("v%s (%s)\n", resp.Version, resp.BuildTime)
+	fmt.Printf("clientid:  %s\n", resp.ClientId)
 	fmt.Printf("configdir: %s\n", resp.ConfigDir)
 	fmt.Printf("datadir:   %s\n", resp.DataDir)
 	fmt.Printf("update-channel: %s\n", updateChannel)

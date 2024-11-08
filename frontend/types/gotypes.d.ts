@@ -870,6 +870,7 @@ declare global {
     // wshrpc.WaveInfoData
     type WaveInfoData = {
         version: string;
+        clientid: string;
         buildtime: string;
         configdir: string;
         datadir: string;
