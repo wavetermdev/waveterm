@@ -285,7 +285,7 @@ class TermViewModel {
         const overrideFontSize = blockData?.meta?.["term:fontsize"];
 
         termThemeKeys.sort((a, b) => {
-            return termThemes[a]["display:order"] - termThemes[b]["display:order"];
+            return (termThemes[a]["display:order"] ?? 0) - (termThemes[b]["display:order"] ?? 0);
         });
         const fullMenu: ContextMenuItem[] = [];
         const submenu: ContextMenuItem[] = termThemeKeys.map((themeName) => {

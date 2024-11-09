@@ -14,6 +14,12 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 )
 
+// command "aisendmessage", wshserver.AiSendMessageCommand
+func AiSendMessageCommand(w *wshutil.WshRpc, data wshrpc.AiMessageData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "aisendmessage", data, opts)
+	return err
+}
+
 // command "authenticate", wshserver.AuthenticateCommand
 func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.CommandAuthenticateRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.CommandAuthenticateRtnData](w, "authenticate", data, opts)
@@ -298,9 +304,8 @@ func VDomCreateContextCommand(w *wshutil.WshRpc, data vdom.VDomCreateContext, op
 }
 
 // command "vdomrender", wshserver.VDomRenderCommand
-func VDomRenderCommand(w *wshutil.WshRpc, data vdom.VDomFrontendUpdate, opts *wshrpc.RpcOpts) (*vdom.VDomBackendUpdate, error) {
-	resp, err := sendRpcRequestCallHelper[*vdom.VDomBackendUpdate](w, "vdomrender", data, opts)
-	return resp, err
+func VDomRenderCommand(w *wshutil.WshRpc, data vdom.VDomFrontendUpdate, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
+	return sendRpcRequestResponseStreamHelper[*vdom.VDomBackendUpdate](w, "vdomrender", data, opts)
 }
 
 // command "vdomurlrequest", wshserver.VDomUrlRequestCommand

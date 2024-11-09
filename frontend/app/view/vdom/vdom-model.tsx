@@ -9,6 +9,8 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
+import { applyCanvasOp, mergeBackendUpdates, restoreVDomElems } from "@/app/view/vdom/vdom-utils";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -93,7 +95,7 @@ class VDomWshClient extends WshClient {
     }
 
     handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {
-        console.log("async-initiation", rh.getSource(), data);
+        dlog("async-initiation", rh.getSource(), data);
         this.model.queueUpdate(true);
     }
 }
@@ -129,6 +131,9 @@ export class VDomModel {
     persist: jotai.Atom<boolean>;
     routeGoneUnsub: () => void;
     routeConfirmed: boolean = false;
+    refOutputStore: Map<string, any> = new Map();
+    globalVersion: jotai.PrimitiveAtom<number> = jotai.atom(0);
+    hasBackendWork: boolean = false;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "vdom";
@@ -200,12 +205,42 @@ export class VDomModel {
         this.needsImmediateUpdate = false;
         this.lastUpdateTs = 0;
         this.queuedUpdate = null;
+        this.refOutputStore.clear();
+        this.globalVersion = jotai.atom(0);
+        this.hasBackendWork = false;
         globalStore.set(this.contextActive, false);
     }
 
     getBackendRoute(): string {
         const blockData = globalStore.get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
         return blockData?.meta?.["vdom:route"];
+    }
+
+    transformVDomUrl(url: string): string {
+        if (url == null || url == "") {
+            return null;
+        }
+        if (!url.startsWith("vdom://")) {
+            return url;
+        }
+        const absUrl = url.substring(7);
+        return this.makeVDomUrl(absUrl);
+    }
+
+    makeVDomUrl(path: string): string {
+        if (path == null || path == "") {
+            return null;
+        }
+        if (!path.startsWith("/")) {
+            return null;
+        }
+        const backendRouteId = this.getBackendRouteId();
+        if (backendRouteId == null) {
+            return null;
+        }
+        const wsEndpoint = getWebServerEndpoint();
+        const fullUrl = wsEndpoint + "/vdom/" + backendRouteId + path;
+        return fullUrl;
     }
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {
@@ -330,8 +365,21 @@ export class VDomModel {
         try {
             const feUpdate = this.createFeUpdate();
             dlog("fe-update", feUpdate);
-            const beUpdate = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
-            this.handleBackendUpdate(beUpdate);
+            const beUpdateGen = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
+            let baseUpdate: VDomBackendUpdate = null;
+            for await (const beUpdate of beUpdateGen) {
+                if (baseUpdate === null) {
+                    baseUpdate = beUpdate;
+                } else {
+                    mergeBackendUpdates(baseUpdate, beUpdate);
+                }
+            }
+            if (baseUpdate !== null) {
+                restoreVDomElems(baseUpdate);
+                dlog("be-update", baseUpdate);
+                this.handleBackendUpdate(baseUpdate);
+            }
+            dlog("update cycle done");
         } finally {
             this.lastUpdateTs = Date.now();
             this.hasPendingRequest = false;
@@ -523,6 +571,10 @@ export class VDomModel {
                 this.addErrorMessage(`Could not find ref with id ${refOp.refid}`);
                 continue;
             }
+            if (elem instanceof HTMLCanvasElement) {
+                applyCanvasOp(elem, refOp, this.refOutputStore);
+                continue;
+            }
             if (refOp.op == "focus") {
                 if (elem == null) {
                     this.addErrorMessage(`Could not focus ref with id ${refOp.refid}: elem is null`);
@@ -561,7 +613,17 @@ export class VDomModel {
                 }
             }
         }
+        globalStore.set(this.globalVersion, globalStore.get(this.globalVersion) + 1);
         if (update.haswork) {
+            this.hasBackendWork = true;
+        }
+    }
+
+    renderDone(version: number) {
+        // called when the render is done
+        dlog("renderDone", version);
+        if (this.hasRefUpdates() || this.hasBackendWork) {
+            this.hasBackendWork = false;
             this.queueUpdate(true);
         }
     }

@@ -23,6 +23,7 @@ const FragmentTag = "#fragment";
 const WaveTextTag = "wave:text";
 const WaveNullTag = "wave:null";
 const StyleTagName = "style";
+const WaveStyleTagName = "wave:style";
 
 const VDomObjType_Ref = "ref";
 const VDomObjType_Binding = "binding";
@@ -71,6 +72,7 @@ const AllowedSimpleTags: { [tagName: string]: boolean } = {
     br: true,
     pre: true,
     code: true,
+    canvas: true,
 };
 
 const AllowedSvgTags = {
@@ -280,16 +282,12 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
             }
         }
         if (key == "src" && val != null && val.startsWith("vdom://")) {
-            // we're going to convert vdom:///foo.jpg to vdom://blockid/foo.jpg.  if it doesn't start with "/" it is not valid
-            const vdomUrl = val.substring(7);
-            if (!vdomUrl.startsWith("/")) {
+            // transform vdom:// urls
+            const newUrl = model.transformVDomUrl(val);
+            if (newUrl == null) {
                 continue;
             }
-            const backendRouteId = model.getBackendRouteId();
-            if (backendRouteId == null) {
-                continue;
-            }
-            props[key] = "vdom://" + backendRouteId + vdomUrl;
+            props[key] = newUrl;
             continue;
         }
         props[key] = val;
@@ -349,7 +347,13 @@ function useVDom(model: VDomModel, elem: VDomElem): GenericPropsType {
 function WaveMarkdown({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     const props = useVDom(model, elem);
     return (
-        <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
+        <Markdown
+            text={props?.text}
+            style={props?.style}
+            className={props?.className}
+            scrollable={props?.scrollable}
+            rehype={props?.rehype}
+        />
     );
 }
 
@@ -367,6 +371,44 @@ function StyleTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     return <style>{sanitizedCss}</style>;
 }
 
+function WaveStyle({ src, model, onMount }: { src: string; model: VDomModel; onMount?: () => void }) {
+    const [styleContent, setStyleContent] = React.useState<string | null>(null);
+    React.useEffect(() => {
+        async function fetchAndSanitizeCss() {
+            try {
+                const response = await fetch(src);
+                if (!response.ok) {
+                    console.error(`Failed to load CSS from ${src}`);
+                    return;
+                }
+                const cssText = await response.text();
+                const wrapperClassName = "vdom-" + model.blockId;
+                const sanitizedCss = validateAndWrapCss(model, cssText, wrapperClassName);
+                if (sanitizedCss) {
+                    setStyleContent(sanitizedCss);
+                } else {
+                    onMount?.();
+                    console.error("Failed to sanitize CSS");
+                }
+            } catch (error) {
+                console.error("Error fetching CSS:", error);
+                onMount?.();
+            }
+        }
+        fetchAndSanitizeCss();
+    }, [src, model]);
+    // Trigger onMount after styleContent has been set and mounted
+    React.useEffect(() => {
+        if (styleContent) {
+            onMount?.();
+        }
+    }, [styleContent, onMount]);
+    if (!styleContent) {
+        return null;
+    }
+    return <style>{styleContent}</style>;
+}
+
 function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     const props = useVDom(model, elem);
     if (elem.tag == WaveNullTag) {
@@ -381,6 +423,9 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: VDomModel }) {
     }
     if (elem.tag == StyleTagName) {
         return <StyleTag elem={elem} model={model} />;
+    }
+    if (elem.tag == WaveStyleTagName) {
+        return <WaveStyle src={props.src} model={model} />;
     }
     if (!AllowedSimpleTags[elem.tag] && !AllowedSvgTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
@@ -418,11 +463,15 @@ const testVDom: VDomElem = {
 };
 
 function VDomRoot({ model }: { model: VDomModel }) {
+    let version = jotai.useAtomValue(model.globalVersion);
     let rootNode = jotai.useAtomValue(model.vdomRoot);
+    React.useEffect(() => {
+        model.renderDone(version);
+    }, [version]);
     if (model.viewRef.current == null || rootNode == null) {
         return null;
     }
-    dlog("render", rootNode);
+    dlog("render", version, rootNode);
     let rtn = convertElemToTag(rootNode, model);
     return <div className="vdom">{rtn}</div>;
 }
@@ -436,13 +485,29 @@ type VDomViewProps = {
     blockId: string;
 };
 
+function VDomInnerView({ blockId, model }: VDomViewProps) {
+    let [styleMounted, setStyleMounted] = React.useState(!model.backendOpts?.globalstyles);
+    const handleStylesMounted = () => {
+        setStyleMounted(true);
+    };
+    return (
+        <>
+            {model.backendOpts?.globalstyles ? (
+                <WaveStyle src={model.makeVDomUrl("/wave/global.css")} model={model} onMount={handleStylesMounted} />
+            ) : null}
+            {styleMounted ? <VDomRoot model={model} /> : null}
+        </>
+    );
+}
+
 function VDomView({ blockId, model }: VDomViewProps) {
     let viewRef = React.useRef(null);
+    let contextActive = jotai.useAtomValue(model.contextActive);
     model.viewRef = viewRef;
     const vdomClass = "vdom-" + blockId;
     return (
         <div className={clsx("view-vdom", vdomClass)} ref={viewRef}>
-            <VDomRoot model={model} />
+            {contextActive ? <VDomInnerView blockId={blockId} model={model} /> : null}
         </div>
     );
 }

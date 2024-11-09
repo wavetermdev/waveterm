@@ -5,6 +5,11 @@
 
 declare global {
 
+    // wshrpc.AiMessageData
+    type AiMessageData = {
+        message?: string;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
@@ -259,7 +264,6 @@ declare global {
     type FullConfigType = {
         settings: SettingsType;
         mimetypes: {[key: string]: MimeTypeConfigType};
-        defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
@@ -642,6 +646,7 @@ declare global {
     type VDomBackendOpts = {
         closeonctrlc?: boolean;
         globalkeyboardevents?: boolean;
+        globalstyles?: boolean;
     };
 
     // vdom.VDomBackendUpdate
@@ -652,6 +657,7 @@ declare global {
         opts?: VDomBackendOpts;
         haswork?: boolean;
         renderupdates?: VDomRenderUpdate[];
+        transferelems?: VDomTransferElem[];
         statesync?: VDomStateSync[];
         refoperations?: VDomRefOperation[];
         messages?: VDomMessage[];
@@ -740,6 +746,7 @@ declare global {
         refid: string;
         op: string;
         params?: any[];
+        outputref?: string;
     };
 
     // vdom.VDomRefPosition
@@ -773,7 +780,8 @@ declare global {
     type VDomRenderUpdate = {
         updatetype: "root"|"append"|"replace"|"remove"|"insert";
         waveid?: string;
-        vdom: VDomElem;
+        vdomwaveid?: string;
+        vdom?: VDomElem;
         index?: number;
     };
 
@@ -787,6 +795,15 @@ declare global {
     type VDomTarget = {
         newblock?: boolean;
         magnified?: boolean;
+    };
+
+    // vdom.VDomTransferElem
+    type VDomTransferElem = {
+        waveid?: string;
+        tag: string;
+        props?: {[key: string]: any};
+        children?: string[];
+        text?: string;
     };
 
     // wshrpc.VDomUrlRequestData
@@ -857,6 +874,7 @@ declare global {
     // wshrpc.WaveInfoData
     type WaveInfoData = {
         version: string;
+        clientid: string;
         buildtime: string;
         configdir: string;
         datadir: string;

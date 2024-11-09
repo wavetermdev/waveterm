@@ -46,6 +46,8 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Install winget
+              uses: Cyberboss/install-winget@v1
             - name: Install wingetcreate
               run: winget install wingetcreate
               shell: pwsh

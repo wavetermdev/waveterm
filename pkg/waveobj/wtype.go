@@ -30,6 +30,15 @@ const (
 	OType_Block       = "block"
 )
 
+var ValidOTypes = map[string]bool{
+	OType_Client:      true,
+	OType_Window:      true,
+	OType_Workspace:   true,
+	OType_Tab:         true,
+	OType_LayoutState: true,
+	OType_Block:       true,
+}
+
 type WaveObjUpdate struct {
 	UpdateType string  `json:"updatetype"`
 	OType      string  `json:"otype"`
