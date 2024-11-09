@@ -300,7 +300,7 @@ declare global {
         expiration: number;
     };
 
-    export type NotificationAction = {
+    export type NotificationActionType = {
         label: string;
         actionKey: string;
         rightIcon?: string;
@@ -316,7 +316,7 @@ declare global {
         timestamp: string;
         color: "red" | "yellow" | "green";
         expiration?: number;
-        actions?: NotificationAction[];
+        actions?: NotificationActionType[];
         persistent?: boolean;
     };
 
