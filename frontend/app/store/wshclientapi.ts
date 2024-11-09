@@ -7,6 +7,11 @@ import { WshClient } from "./wshclient";
 
 // WshServerCommandToDeclMap
 class RpcApiType {
+    // command "aisendmessage" [call]
+    AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("aisendmessage", data, opts);
+    }
+
     // command "authenticate" [call]
     AuthenticateCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
         return client.wshRpcCall("authenticate", data, opts);

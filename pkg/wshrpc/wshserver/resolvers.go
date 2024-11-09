@@ -20,9 +20,9 @@ const SimpleId_This = "this"
 const SimpleId_Tab = "tab"
 
 var (
-	simpleTabNumRe          = regexp.MustCompile(`^tab:(\d{1,3})$`)
-	shortUUIDRe             = regexp.MustCompile(`^[0-9a-f]{8}$`)
-	SimpleId_BlockNum_Regex = regexp.MustCompile(`^\d+$`)
+	simpleTabNumRe = regexp.MustCompile(`^tab:(\d{1,3})$`)
+	shortUUIDRe    = regexp.MustCompile(`^[0-9a-f]{8}$`)
+	viewBlockRe    = regexp.MustCompile(`^([a-z]+)(?::(\d+))?$`) // Matches "ai" or "ai:2"
 )
 
 // Helper function to validate UUIDs or 8-char UUIDs format
@@ -58,6 +58,11 @@ func parseSimpleId(simpleId string) (discriminator string, value string, err err
 	// Check for tab:N format
 	if simpleTabNumRe.MatchString(simpleId) {
 		return "tabnum", simpleId, nil
+	}
+
+	// check for [view]:N format
+	if viewBlockRe.MatchString(simpleId) {
+		return "view", simpleId, nil
 	}
 
 	// Check for plain number (block reference)
@@ -171,6 +176,59 @@ func resolveBlock(ctx context.Context, data wshrpc.CommandResolveIdsData, value 
 	return &waveobj.ORef{OType: waveobj.OType_Block, OID: leafEntry.BlockId}, nil
 }
 
+func resolveView(ctx context.Context, data wshrpc.CommandResolveIdsData, value string) (*waveobj.ORef, error) {
+	matches := viewBlockRe.FindStringSubmatch(value)
+	if matches == nil {
+		return nil, fmt.Errorf("invalid view format: %s", value)
+	}
+
+	// Default to first instance if no number specified
+	viewType := matches[1]
+	instanceNum := 1
+	if matches[2] != "" {
+		num, err := strconv.Atoi(matches[2])
+		if err != nil {
+			return nil, fmt.Errorf("invalid view instance number: %v", err)
+		}
+		instanceNum = num
+	}
+	if instanceNum < 1 {
+		return nil, fmt.Errorf("invalid view instance number: %d", instanceNum)
+	}
+	// Get current tab
+	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+	if err != nil {
+		return nil, fmt.Errorf("error finding tab: %v", err)
+	}
+	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving tab: %v", err)
+	}
+	layout, err := wstore.DBMustGet[*waveobj.LayoutState](ctx, tab.LayoutState)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving layout: %v", err)
+	}
+	if layout.LeafOrder == nil {
+		return nil, fmt.Errorf("no blocks in layout")
+	}
+	// Find nth instance of view type
+	count := 0
+	for _, leaf := range *layout.LeafOrder {
+		leafBlockId := leaf.BlockId
+		leafBlock, err := wstore.DBMustGet[*waveobj.Block](ctx, leafBlockId)
+		if err != nil {
+			continue
+		}
+		if leafBlock.Meta.GetString("view", "") == viewType {
+			count++
+			if count == instanceNum {
+				return &waveobj.ORef{OType: waveobj.OType_Block, OID: leaf.BlockId}, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("could not find block %d of type %s (found %d)", instanceNum, viewType, count)
+}
+
 func resolveUUID(ctx context.Context, value string) (*waveobj.ORef, error) {
 	return wstore.DBResolveEasyOID(ctx, value)
 }
@@ -190,6 +248,8 @@ func resolveSimpleId(ctx context.Context, data wshrpc.CommandResolveIdsData, sim
 		return resolveTabNum(ctx, data, value)
 	case "blocknum":
 		return resolveBlock(ctx, data, value)
+	case "view":
+		return resolveView(ctx, data, value)
 	case "uuid", "uuid8":
 		return resolveUUID(ctx, value)
 	default:

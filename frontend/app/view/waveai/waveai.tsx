@@ -4,13 +4,15 @@
 import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
+import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { makeFeBlockRouteId } from "@/app/store/wshrouter";
+import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
-import { atom, Atom, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
+import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -38,6 +40,24 @@ function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
     };
 }
 
+class AiWshClient extends WshClient {
+    blockId: string;
+    model: WaveAiModel;
+
+    constructor(blockId: string, model: WaveAiModel) {
+        super(makeFeBlockRouteId(blockId));
+        this.blockId = blockId;
+        this.model = model;
+    }
+
+    handle_aisendmessage(rh: RpcResponseHelper, data: AiMessageData) {
+        if (isBlank(data.message)) {
+            return;
+        }
+        this.model.sendMessage(data.message);
+    }
+}
+
 export class WaveAiModel implements ViewModel {
     viewType: string;
     blockId: string;
@@ -58,8 +78,11 @@ export class WaveAiModel implements ViewModel {
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
     locked: PrimitiveAtom<boolean>;
     cancel: boolean;
+    aiWshClient: AiWshClient;
 
     constructor(blockId: string) {
+        this.aiWshClient = new AiWshClient(blockId, this);
+        DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.aiWshClient);
         this.locked = atom(false);
         this.cancel = false;
         this.viewType = "waveai";
@@ -223,6 +246,10 @@ export class WaveAiModel implements ViewModel {
         });
     }
 
+    dispose() {
+        DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
+    }
+
     async populateMessages(): Promise<void> {
         const history = await this.fetchAiData();
         globalStore.set(this.messagesAtom, history.map(promptToMsg));
@@ -252,103 +279,104 @@ export class WaveAiModel implements ViewModel {
         return name;
     }
 
+    setLocked(locked: boolean) {
+        globalStore.set(this.locked, locked);
+    }
+
+    sendMessage(text: string, user: string = "user") {
+        const clientId = globalStore.get(atoms.clientId);
+        this.setLocked(true);
+
+        const newMessage: ChatMessageType = {
+            id: crypto.randomUUID(),
+            user,
+            text,
+        };
+        globalStore.set(this.addMessageAtom, newMessage);
+        // send message to backend and get response
+        const opts = globalStore.get(this.aiOpts);
+        const newPrompt: OpenAIPromptMessageType = {
+            role: "user",
+            content: text,
+        };
+        const handleAiStreamingResponse = async () => {
+            const typingMessage: ChatMessageType = {
+                id: crypto.randomUUID(),
+                user: "assistant",
+                text: "",
+            };
+
+            // Add a typing indicator
+            globalStore.set(this.addMessageAtom, typingMessage);
+            const history = await this.fetchAiData();
+            const beMsg: OpenAiStreamRequest = {
+                clientid: clientId,
+                opts: opts,
+                prompt: [...history, newPrompt],
+            };
+            let fullMsg = "";
+            try {
+                const aiGen = RpcApi.StreamWaveAiCommand(TabRpcClient, beMsg, { timeout: opts.timeoutms });
+                for await (const msg of aiGen) {
+                    fullMsg += msg.text ?? "";
+                    globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
+                    if (this.cancel) {
+                        break;
+                    }
+                }
+                if (fullMsg == "") {
+                    // remove a message if empty
+                    globalStore.set(this.removeLastMessageAtom);
+                    // only save the author's prompt
+                    await BlockService.SaveWaveAiData(this.blockId, [...history, newPrompt]);
+                } else {
+                    const responsePrompt: OpenAIPromptMessageType = {
+                        role: "assistant",
+                        content: fullMsg,
+                    };
+                    //mark message as complete
+                    globalStore.set(this.updateLastMessageAtom, "", false);
+                    // save a complete message prompt and response
+                    await BlockService.SaveWaveAiData(this.blockId, [...history, newPrompt, responsePrompt]);
+                }
+            } catch (error) {
+                const updatedHist = [...history, newPrompt];
+                if (fullMsg == "") {
+                    globalStore.set(this.removeLastMessageAtom);
+                } else {
+                    globalStore.set(this.updateLastMessageAtom, "", false);
+                    const responsePrompt: OpenAIPromptMessageType = {
+                        role: "assistant",
+                        content: fullMsg,
+                    };
+                    updatedHist.push(responsePrompt);
+                }
+                const errMsg: string = (error as Error).message;
+                const errorMessage: ChatMessageType = {
+                    id: crypto.randomUUID(),
+                    user: "error",
+                    text: errMsg,
+                };
+                globalStore.set(this.addMessageAtom, errorMessage);
+                globalStore.set(this.updateLastMessageAtom, "", false);
+                const errorPrompt: OpenAIPromptMessageType = {
+                    role: "error",
+                    content: errMsg,
+                };
+                updatedHist.push(errorPrompt);
+                await BlockService.SaveWaveAiData(this.blockId, updatedHist);
+            }
+            this.setLocked(false);
+            this.cancel = false;
+        };
+        handleAiStreamingResponse();
+    }
+
     useWaveAi() {
         const messages = useAtomValue(this.messagesAtom);
-        const addMessage = useSetAtom(this.addMessageAtom);
-        const clientId = useAtomValue(atoms.clientId);
-        const blockId = this.blockId;
-        const setLocked = useSetAtom(this.locked);
-
-        const sendMessage = (text: string, user: string = "user") => {
-            setLocked(true);
-            const newMessage: ChatMessageType = {
-                id: crypto.randomUUID(),
-                user,
-                text,
-            };
-            addMessage(newMessage);
-            // send message to backend and get response
-            const opts = globalStore.get(this.aiOpts);
-            const newPrompt: OpenAIPromptMessageType = {
-                role: "user",
-                content: text,
-            };
-            const temp = async () => {
-                const typingMessage: ChatMessageType = {
-                    id: crypto.randomUUID(),
-                    user: "assistant",
-                    text: "",
-                };
-
-                // Add a typing indicator
-                globalStore.set(this.addMessageAtom, typingMessage);
-                const history = await this.fetchAiData();
-                const beMsg: OpenAiStreamRequest = {
-                    clientid: clientId,
-                    opts: opts,
-                    prompt: [...history, newPrompt],
-                };
-                let fullMsg = "";
-                try {
-                    const aiGen = RpcApi.StreamWaveAiCommand(TabRpcClient, beMsg, { timeout: opts.timeoutms });
-                    for await (const msg of aiGen) {
-                        fullMsg += msg.text ?? "";
-                        globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
-                        if (this.cancel) {
-                            break;
-                        }
-                    }
-                    if (fullMsg == "") {
-                        // remove a message if empty
-                        globalStore.set(this.removeLastMessageAtom);
-                        // only save the author's prompt
-                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt]);
-                    } else {
-                        const responsePrompt: OpenAIPromptMessageType = {
-                            role: "assistant",
-                            content: fullMsg,
-                        };
-                        //mark message as complete
-                        globalStore.set(this.updateLastMessageAtom, "", false);
-                        // save a complete message prompt and response
-                        await BlockService.SaveWaveAiData(blockId, [...history, newPrompt, responsePrompt]);
-                    }
-                } catch (error) {
-                    const updatedHist = [...history, newPrompt];
-                    if (fullMsg == "") {
-                        globalStore.set(this.removeLastMessageAtom);
-                    } else {
-                        globalStore.set(this.updateLastMessageAtom, "", false);
-                        const responsePrompt: OpenAIPromptMessageType = {
-                            role: "assistant",
-                            content: fullMsg,
-                        };
-                        updatedHist.push(responsePrompt);
-                    }
-                    const errMsg: string = (error as Error).message;
-                    const errorMessage: ChatMessageType = {
-                        id: crypto.randomUUID(),
-                        user: "error",
-                        text: errMsg,
-                    };
-                    globalStore.set(this.addMessageAtom, errorMessage);
-                    globalStore.set(this.updateLastMessageAtom, "", false);
-                    const errorPrompt: OpenAIPromptMessageType = {
-                        role: "error",
-                        content: errMsg,
-                    };
-                    updatedHist.push(errorPrompt);
-                    await BlockService.SaveWaveAiData(blockId, updatedHist);
-                }
-                setLocked(false);
-                this.cancel = false;
-            };
-            temp();
-        };
-
         return {
             messages,
-            sendMessage,
+            sendMessage: this.sendMessage.bind(this),
         };
     }
 }

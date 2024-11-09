@@ -5,6 +5,11 @@
 
 declare global {
 
+    // wshrpc.AiMessageData
+    type AiMessageData = {
+        message?: string;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
