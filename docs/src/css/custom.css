@@ -32,6 +32,12 @@ body .markdown h2 {
     --ifm-h2-font-size: 1.75rem;
 }
 
+@media (min-width: 996px) {
+    .reference-links {
+        display: none;
+    }
+}
+
 /* Adds extra margin between last navbar item and the dark mode toggle. */
 .navbar__items--right .navbar__item:last-of-type {
     margin-right: 4px;
