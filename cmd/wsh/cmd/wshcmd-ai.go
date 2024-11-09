@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -24,11 +25,45 @@ var aiCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 }
 
+var aiFileFlags []string
+
 func init() {
 	rootCmd.AddCommand(aiCmd)
+	aiCmd.Flags().StringArrayVarP(&aiFileFlags, "file", "f", nil, "attach file content (use '-' for stdin)")
 }
 
 func aiRun(cmd *cobra.Command, args []string) {
+	// Then in aiRun, we'd need logic like:
+	var stdinUsed bool
+	var message strings.Builder
+
+	// Handle file attachments first
+	for _, file := range aiFileFlags {
+		if file == "-" {
+			if stdinUsed {
+				WriteStderr("[error] stdin (-) can only be used once\n")
+				return
+			}
+			stdinUsed = true
+			data, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				WriteStderr("[error] reading from stdin: %v\n", err)
+				return
+			}
+			message.WriteString("Content from stdin:\n")
+			message.Write(data)
+		} else {
+			data, err := os.ReadFile(file)
+			if err != nil {
+				WriteStderr("[error] reading file %s: %v\n", file, err)
+				return
+			}
+			message.WriteString(fmt.Sprintf("Content of %s:\n", file))
+			message.Write(data)
+		}
+		message.WriteString("\n\n---------\n\n")
+	}
+
 	// Default to "waveai" block
 	isDefaultBlock := blockArg == "" || blockArg == "this"
 	if isDefaultBlock {
@@ -73,21 +108,33 @@ func aiRun(cmd *cobra.Command, args []string) {
 	// Create the route for this block
 	route := wshutil.MakeFeBlockRouteId(fullORef.OID)
 
-	// Get message from args or stdin
-	var message string
+	// Then handle main message
 	if args[0] == "-" {
+		if stdinUsed {
+			WriteStderr("[error] stdin (-) can only be used once\n")
+			return
+		}
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			WriteStderr("[error] reading from stdin: %v\n", err)
 			return
 		}
-		message = string(data)
+		message.Write(data)
 	} else {
-		message = strings.Join(args, " ")
+		message.WriteString(strings.Join(args, " "))
+	}
+
+	if message.Len() == 0 {
+		WriteStderr("[error] message is empty\n")
+		return
+	}
+	if message.Len() > 10*1024 {
+		WriteStderr("[error] current max message size is 10k\n")
+		return
 	}
 
 	messageData := wshrpc.AiMessageData{
-		Message: message,
+		Message: message.String(),
 	}
 	err = wshclient.AiSendMessageCommand(RpcClient, messageData, &wshrpc.RpcOpts{
 		Route:   route,
