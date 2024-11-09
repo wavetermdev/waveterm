@@ -1,8 +1,9 @@
 import { FloatingPortal, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import { useEffect, useState } from "react";
-import "./notificationBubbles.less";
 import { NotificationItem } from "./notificationitem";
 import { useNotification } from "./usenotification";
+
+import "./notificationBubbles.less";
 
 const NotificationBubbles = () => {
     const { notifications, removeNotification, copyNotification, handleActionClick, formatTimestamp } =

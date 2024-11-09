@@ -1,6 +1,6 @@
 import { atoms, getApi } from "@/store/global";
 import { useAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const notificationActions: { [key: string]: () => void } = {
     installUpdate: () => {
@@ -12,47 +12,78 @@ const notificationActions: { [key: string]: () => void } = {
 export function useNotification() {
     const [notifications, setNotifications] = useAtom(atoms.notifications);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
-    const [ticker, setTicker] = useState<number>(0);
+    const hoveredIdRef = useRef<string | null>(hoveredId);
+
+    // Update the ref whenever hoveredId changes
+    useEffect(() => {
+        hoveredIdRef.current = hoveredId;
+    }, [hoveredId]);
+
+    const removeNotification = useCallback(
+        (id: string) => {
+            setNotifications((prevNotifications) => prevNotifications.filter((n) => n.id !== id));
+        },
+        [setNotifications]
+    );
+
+    const removeAllNotifications = useCallback(() => {
+        setNotifications((prevNotifications) => prevNotifications.filter((n) => n.persistent));
+    }, [setNotifications]);
+
+    const copyNotification = useCallback(
+        (id: string) => {
+            const notif = notifications.find((n) => n.id === id);
+            if (!notif) return;
+
+            let text = notif.title ?? "";
+            if (notif.message) {
+                text += text.length > 0 ? `\n${notif.message}` : notif.message;
+            }
+            navigator.clipboard
+                .writeText(text)
+                .then(() => {
+                    // Optionally notify the user that the text was copied
+                })
+                .catch((err) => {
+                    console.error("Failed to copy text: ", err);
+                });
+        },
+        [notifications]
+    );
+
+    const handleActionClick = useCallback(
+        (e: React.MouseEvent, action: NotificationActionType, id: string) => {
+            e.stopPropagation();
+            const actionFn = notificationActions[action.actionKey];
+            if (actionFn) {
+                actionFn();
+                removeNotification(id);
+            } else {
+                console.warn(`No action found for key: ${action.actionKey}`);
+            }
+        },
+        [removeNotification]
+    );
 
     useEffect(() => {
-        if (notifications.length === 0 || hoveredId != null) {
+        const hasExpiringNotifications = notifications.some((notif) => notif.expiration);
+        if (!hasExpiringNotifications) {
             return;
         }
-        const now = Date.now();
-        for (let notif of notifications) {
-            if (notif.expiration && notif.expiration < now) {
-                removeNotification(notif.id);
-            }
-        }
-        const timeout = setTimeout(() => setTicker(ticker + 1), 1000);
-        return () => clearTimeout(timeout);
-    }, [notifications, ticker, hoveredId]);
 
-    const removeNotification = (id: string) => {
-        setNotifications((prevNotifications) => prevNotifications.filter((n) => n.id !== id));
-    };
+        const intervalId = setInterval(() => {
+            const now = Date.now();
+            const currentHoveredId = hoveredIdRef.current;
 
-    const removeAllNotifications = () => {
-        setNotifications((prevNotifications) => prevNotifications.filter((n) => n.persistent));
-    };
+            setNotifications((prevNotifications) =>
+                prevNotifications.filter(
+                    (notif) => !notif.expiration || notif.expiration > now || notif.id === currentHoveredId
+                )
+            );
+        }, 1000);
 
-    const copyNotification = (id: string) => {
-        const notif = notifications.find((n) => n.id === id);
-        if (!notif) return;
-
-        let text = notif.title ?? "";
-        if (notif.message) {
-            text += text.length > 0 ? `\n${notif.message}` : notif.message;
-        }
-        navigator.clipboard.writeText(text);
-    };
-
-    const handleActionClick = (e: React.MouseEvent, action: NotificationActionType, id: string) => {
-        e.stopPropagation();
-        const actionFn = notificationActions[action.actionKey];
-        actionFn?.();
-        removeNotification(id);
-    };
+        return () => clearInterval(intervalId);
+    }, [notifications, setNotifications]);
 
     const formatTimestamp = (timestamp: string): string => {
         const notificationTime = new Date(timestamp).getTime();

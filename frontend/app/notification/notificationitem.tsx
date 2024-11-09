@@ -26,7 +26,7 @@ const NotificationItem = ({
     onMouseEnter,
     onMouseLeave,
 }: NotificationItemProps) => {
-    const { id, title, message, icon, color, timestamp, persistent, actions } = notification;
+    const { id, title, message, icon, color, timestamp, actions } = notification;
 
     return (
         <div
@@ -36,7 +36,7 @@ const NotificationItem = ({
             onClick={() => onCopy(id)}
             title="Click to Copy Notification Message"
         >
-            {!persistent && (
+            {isBubble && (
                 <Button
                     className="close-btn ghost grey vertical-padding-10"
                     onClick={(e) => {

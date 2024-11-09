@@ -42,42 +42,6 @@
     display: flex;
     flex-direction: column;
     position: relative;
-
-    .notification-inner {
-        display: flex;
-        align-items: flex-start;
-        column-gap: 6px;
-
-        .notification-icon {
-            font-size: 20px;
-            margin-right: 5px;
-            margin-top: -3px;
-
-            i {
-                font-size: 16px;
-            }
-
-            i.green {
-                color: var(--success-color);
-            }
-
-            i.red {
-                color: var(--error-color);
-            }
-
-            i.yellow {
-                color: var(--warning-color);
-            }
-        }
-
-        .notification-timestamp {
-            font-size: 12px;
-            font-weight: 400;
-            line-height: 18px;
-            opacity: 0.5;
-            margin-bottom: 7px;
-        }
-    }
 }
 
 .notification-bubble {
@@ -90,6 +54,42 @@
     border: 0.5px solid rgba(255, 255, 255, 0.12);
     background: #232323;
     box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
+}
+
+.notification-inner {
+    display: flex;
+    align-items: flex-start;
+    column-gap: 6px;
+
+    .notification-icon {
+        font-size: 20px;
+        margin-right: 5px;
+        margin-top: -4px;
+
+        i {
+            font-size: 16px;
+        }
+
+        i.green {
+            color: var(--success-color);
+        }
+
+        i.red {
+            color: var(--error-color);
+        }
+
+        i.yellow {
+            color: var(--warning-color);
+        }
+    }
+
+    .notification-timestamp {
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 18px;
+        opacity: 0.5;
+        margin-bottom: 7px;
+    }
 }
 
 &.hovered {
