@@ -1,6 +1,7 @@
 import { atoms, getApi } from "@/store/global";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { notificationModeAtom } from "./notification";
 
 const notificationActions: { [key: string]: () => void } = {
     installUpdate: () => {
@@ -10,6 +11,7 @@ const notificationActions: { [key: string]: () => void } = {
 };
 
 export function useNotification() {
+    const notificationMode = useAtomValue(notificationModeAtom);
     const [notifications, setNotifications] = useAtom(atoms.notifications);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const hoveredIdRef = useRef<string | null>(hoveredId);
@@ -66,6 +68,10 @@ export function useNotification() {
     );
 
     useEffect(() => {
+        if (notificationMode === "popover") {
+            return;
+        }
+
         const hasExpiringNotifications = notifications.some((notif) => notif.expiration);
         if (!hasExpiringNotifications) {
             return;
@@ -83,7 +89,7 @@ export function useNotification() {
         }, 1000);
 
         return () => clearInterval(intervalId);
-    }, [notifications, setNotifications]);
+    }, [notificationMode, notifications, setNotifications]);
 
     const formatTimestamp = (timestamp: string): string => {
         const notificationTime = new Date(timestamp).getTime();

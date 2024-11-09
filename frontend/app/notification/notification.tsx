@@ -4,7 +4,7 @@ import { NotificationPopover } from "./notificationpopover";
 
 import "./notification.less";
 
-const notificationModeAtom = atom<"popover">();
+const notificationModeAtom = atom<"popover" | "bubble">();
 
 const Notification = () => {
     const notificationMode = useAtomValue(notificationModeAtom);
