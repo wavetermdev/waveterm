@@ -2,8 +2,7 @@ import { Button } from "@/element/button";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 
-import "./notificationitem.less"; // Create a CSS file for NotificationItem styles
-
+import "./notificationitem.less";
 interface NotificationItemProps {
     notification: NotificationType;
     onRemove: (id: string) => void;

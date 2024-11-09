@@ -1,6 +1,4 @@
-// NotificationBubbles.tsx
-
-import "./notificationBubbles.less"; // Create a CSS file for NotificationBubbles styles
+import "./notificationBubbles.less";
 import { NotificationItem } from "./notificationitem";
 import { useNotification } from "./usenotification";
 
