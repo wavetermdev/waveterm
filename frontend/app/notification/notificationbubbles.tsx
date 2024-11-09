@@ -1,4 +1,4 @@
-import { FloatingPortal, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
+import { FloatingPortal, useFloating, useInteractions } from "@floating-ui/react";
 import { useEffect, useState } from "react";
 import { NotificationItem } from "./notificationitem";
 import { useNotification } from "./usenotification";
@@ -20,7 +20,7 @@ const NotificationBubbles = () => {
         strategy: "fixed",
     });
 
-    const { getFloatingProps } = useInteractions([useDismiss(context)]);
+    const { getFloatingProps } = useInteractions();
 
     const floatingStyles = {
         position: strategy,

@@ -29,6 +29,9 @@ const NotificationItem = ({
     const { id, title, message, icon, color, timestamp, persistent, actions } = notification;
     const closeable = isBubble || !persistent;
 
+    console.log(`Notification ID: ${id}, isBubble: ${isBubble}`);
+    console.log(`Notification ID: ${id}, persistent: ${persistent}`);
+
     return (
         <div
             className={clsx(isBubble ? "notification-bubble" : "notification", className)}
