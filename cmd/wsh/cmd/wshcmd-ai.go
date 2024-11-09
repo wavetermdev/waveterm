@@ -4,6 +4,10 @@
 package cmd
 
 import (
+	"io"
+	"os"
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -12,11 +16,12 @@ import (
 )
 
 var aiCmd = &cobra.Command{
-	Use:     "ai [message]",
-	Short:   "Send a message to an AI block",
-	Args:    cobra.ExactArgs(1),
-	Run:     aiRun,
-	PreRunE: preRunSetupRpcClient,
+	Use:                   "ai [-] [message...]",
+	Short:                 "Send a message to an AI block",
+	Args:                  cobra.MinimumNArgs(1),
+	Run:                   aiRun,
+	PreRunE:               preRunSetupRpcClient,
+	DisableFlagsInUseLine: true,
 }
 
 func init() {
@@ -68,8 +73,19 @@ func aiRun(cmd *cobra.Command, args []string) {
 	// Create the route for this block
 	route := wshutil.MakeFeBlockRouteId(fullORef.OID)
 
-	// Send the AI message
-	message := args[0]
+	// Get message from args or stdin
+	var message string
+	if args[0] == "-" {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			WriteStderr("[error] reading from stdin: %v\n", err)
+			return
+		}
+		message = string(data)
+	} else {
+		message = strings.Join(args, " ")
+	}
+
 	messageData := wshrpc.AiMessageData{
 		Message: message,
 	}
