@@ -50,7 +50,7 @@ class AiWshClient extends WshClient {
         this.model = model;
     }
 
-    handle_sendmessage(rh: RpcResponseHelper, data: AiMessageData) {
+    handle_aisendmessage(rh: RpcResponseHelper, data: AiMessageData) {
         if (isBlank(data.message)) {
             return;
         }
