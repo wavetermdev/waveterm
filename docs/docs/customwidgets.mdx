@@ -14,7 +14,7 @@ All widgets share a similar structure that roughly looks like the example below:
 
 ```json
 "<widget name>": {
-    "icon": "<fontawesome icon name>",
+    "icon": "<font awesome icon name>",
     "label": "<the text label of the widget>",
     "color": "<the color of the label>",
     "blockdef": {
@@ -29,20 +29,36 @@ All widgets share a similar structure that roughly looks like the example below:
 
 This consists of a couple different parts. First and foremost, each widget has a unique identifying name. The value associated with this name is the outer `WidgetConfigType`. It is outlined in red below:
 
+![An example of a widget with outer keys labeled as WidgetConfigType and inner keys labeled as MetaTSType. In the example, the outer keys are icon, label, color, and blockdef. The inner keys are view, controller, and cmd.](/img/widget-example.png)
+
 This `WidgetConfigType` is shared between all types of widgets. That is to say, all widgets&mdash;regardless of type&mdash; will use the same keys for this. The accepted keys are:
 
 | Key             | Description                                                                                                                                                                                                                                                                                |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | "display:order" | (optional) Overrides the order of widgets with a number in case you want the widget to be different than the order provided in the `widgets.json` file. Defaults to 0.                                                                                                                     |
-| "icon"          | (optional) The name of a fontawesome icon. Defaults to `"browser"`.                                                                                                                                                                                                                        |
+| "icon"          | (optional) The name of a [font awesome icon](#font-awesome-icons). Defaults to `"browser"`.                                                                                                                                                                                                |
 | "color"         | (optional) A string representing a color as would be used in CSS. Hex codes and custom CSS properties are included. This defaults to `"var(--secondary-text-color)"` which is a color wave uses for text that should be differentiated from other text. Out of the box, it is `"#c3c8c2"`. |
 | "label"         | (optional) A string representing the label that appears underneath the widget. It will also act as a tooltip on hover if the `"description"` key isn't filled out. It is null by default.                                                                                                  |
 | "description"   | (optional) A description of what the widget does. If it is specified, this serves as a tooltip on hover. It is null by default.                                                                                                                                                            |
 | "blockdef"      | This is where the the non-visual portion of the widget is defined. Note that all further definition takes place inside a meta object inside this one.                                                                                                                                      |
 
-The other options are part of the inner `MetaTSType`. This contains all of the details about how the widget actually works. The valid keys vary with each type of widget. They will be individually explored in more detail below.
+<a name="font-awesome-icons" />
+:::info
 
-![An example of a widget with outer keys labeled as WidgetConfigType and inner keys labeled as MetaTSType. In the example, the outer keys are icon, label, color, and blockdef. The inner keys are view, controller, and cmd.](/img/widget-example.png)
+**Font Awesome Icons**
+
+[Font Awesome](https://fontawesome.com/search) provides a ton of useful icons that you can use as a widget icon in your app. At it's simplest, you can just provide the icon name and it will be used. For example, the string `"house"`, will provide an icon containing a house. We also allow you to apply a few different styles to your icon by modifying the name as follows:
+
+| format                         | description                                                                                                                                                                                           |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| &lt;icon&nbsp;name&gt;         | The plain icon with no additional styles applied.                                                                                                                                                     |
+| solid@&lt;icon&nbsp;name&gt;   | Adds the `fa-solid` class to the icon to fill in the content with a fill color rather than leaving it a background.                                                                                   |
+| regular@&lt;icon&nbsp;name&gt; | Adds the `fa-regular` class to the icon to ensure the content will not have a fill color and will use a standard outline instead.                                                                     |
+| brands@&lt;icon&nbsp;name&gt;  | This is required to add the required `fa-brands` class to an icon associated with a brand. Without this, brand icons will not render properly. This will not work with icons that aren't brand icons. |
+
+:::
+
+The other options are part of the inner `MetaTSType` (outlined in blue in the image). This contains all of the details about how the widget actually works. The valid keys vary with each type of widget. They will be individually explored in more detail below.
 
 # Terminal and CLI Widgets
 
@@ -52,7 +68,7 @@ A terminal widget, or CLI widget, is a widget that simply opens a terminal and r
 {
     <... other widgets go here ...>,
     "<widget name>": {
-        "icon": "<fontawesome icon name>",
+        "icon": "<font awesome icon name>",
         "label": "<the text label of the widget>",
         "color": "<the color of the label>",
         "blockdef": {
@@ -140,7 +156,7 @@ Sometimes, it is desireable to open a page directly to a website. That can easil
 {
     <... other widgets go here ...>,
     "<widget name>": {
-        "icon": "<fontawesome icon name>",
+        "icon": "<font awesome icon name>",
         "label": "<the text label of the widget>",
         "color": "<the color of the label>",
         "blockdef": {
@@ -211,8 +227,8 @@ The Sysinfo Widget is intentionally kept to a very small subset of possible valu
         "blockdef": {
             "meta": {
                 "view": "sysinfo",
-				"graph:numpoints": <the max number of points in the graph>,
-				"sysinfo:type": <the name of the plot collection>,
+                "graph:numpoints": <the max number of points in the graph>,
+                "sysinfo:type": <the name of the plot collection>,
             }
         }
     },
@@ -238,8 +254,8 @@ Suppose you have a build process that lasts 3 minutes and you'd like to be able 
         "blockdef": {
             "meta": {
                 "view": "sysinfo",
-				"graph:numpoints": 180,
-				"sysinfo:type": "CPU + Mem"
+                "graph:numpoints": 180,
+                "sysinfo:type": "CPU + Mem"
             }
         }
     },
@@ -258,7 +274,7 @@ Now, suppose you are fine with the default 100 points (and 100 seconds) but woul
         "blockdef": {
             "meta": {
                 "view": "sysinfo",
-				"sysinfo:type": "All CPU"
+                "sysinfo:type": "All CPU"
             }
         }
     },
