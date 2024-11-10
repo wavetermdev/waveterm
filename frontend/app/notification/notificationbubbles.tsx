@@ -6,7 +6,7 @@ import { useNotification } from "./usenotification";
 import "./notificationBubbles.less";
 
 const NotificationBubbles = () => {
-    const { notifications, removeNotification, copyNotification, handleActionClick, formatTimestamp } =
+    const { notifications, removeNotification, copyNotification, handleActionClick, formatTimestamp, setHoveredId } =
         useNotification();
     const [isOpen, setIsOpen] = useState(notifications.length > 0);
 
@@ -52,6 +52,8 @@ const NotificationBubbles = () => {
                         onCopy={copyNotification}
                         onActionClick={handleActionClick}
                         formatTimestamp={formatTimestamp}
+                        onMouseEnter={setHoveredId}
+                        onMouseLeave={setHoveredId}
                         isBubble={true}
                     />
                 ))}

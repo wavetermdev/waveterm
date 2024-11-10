@@ -44,7 +44,7 @@ export function useNotification() {
             navigator.clipboard
                 .writeText(text)
                 .then(() => {
-                    // Optionally notify the user that the text was copied
+                    console.info("Text copied to clipboard");
                 })
                 .catch((err) => {
                     console.error("Failed to copy text: ", err);
@@ -79,17 +79,18 @@ export function useNotification() {
 
         const intervalId = setInterval(() => {
             const now = Date.now();
-            const currentHoveredId = hoveredIdRef.current;
 
             setNotifications((prevNotifications) =>
                 prevNotifications.filter(
-                    (notif) => !notif.expiration || notif.expiration > now || notif.id === currentHoveredId
+                    (notif) => !notif.expiration || notif.expiration > now || notif.id === hoveredId
                 )
             );
         }, 1000);
 
         return () => clearInterval(intervalId);
-    }, [notificationMode, notifications, setNotifications]);
+    }, [notificationMode, notifications, hoveredId, setNotifications]);
+
+    console.log("hoveredIdRef.current====", hoveredId);
 
     const formatTimestamp = (timestamp: string): string => {
         const notificationTime = new Date(timestamp).getTime();
