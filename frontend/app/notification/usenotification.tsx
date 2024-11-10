@@ -1,7 +1,6 @@
 import { atoms, getApi } from "@/store/global";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
-import { notificationModeAtom } from "./notification";
 
 const notificationActions: { [key: string]: () => void } = {
     installUpdate: () => {
@@ -11,9 +10,10 @@ const notificationActions: { [key: string]: () => void } = {
 };
 
 export function useNotification() {
-    const notificationMode = useAtomValue(notificationModeAtom);
+    const notificationMode = useAtomValue(atoms.notificationMode);
     const [notifications, setNotifications] = useAtom(atoms.notifications);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const [mode, setMode] = useState(notificationMode);
 
     const removeNotification = useCallback(
         (id: string) => {

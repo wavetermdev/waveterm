@@ -11,8 +11,8 @@ interface NotificationItemProps {
     formatTimestamp: (timestamp: string) => string;
     isBubble: boolean;
     className?: string;
-    onMouseEnter?: (id: string | null) => void;
-    onMouseLeave?: (id: string | null) => void;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
 }
 
 const NotificationItem = ({
@@ -32,8 +32,8 @@ const NotificationItem = ({
     return (
         <div
             className={clsx(isBubble ? "notification-bubble" : "notification", className)}
-            onMouseEnter={() => onMouseEnter(id)}
-            onMouseLeave={() => onMouseLeave(null)}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
             onClick={() => onCopy(id)}
             title="Click to Copy Notification Message"
         >

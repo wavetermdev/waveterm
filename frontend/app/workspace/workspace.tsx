@@ -10,6 +10,8 @@ import { atoms, createBlock } from "@/store/global";
 import { isBlank, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
+import { NotificationPopover } from "../notification/notificationpopover";
+
 import "./workspace.less";
 
 const iconRegex = /^[a-z0-9-]+$/;
@@ -62,6 +64,7 @@ const Widgets = memo(() => {
                     <div className="widget-spacer" />
                     <Widget key="tips" widget={tipsWidget} />
                     <Widget key="help" widget={helpWidget} />
+                    <NotificationPopover></NotificationPopover>
                 </>
             ) : null}
         </div>

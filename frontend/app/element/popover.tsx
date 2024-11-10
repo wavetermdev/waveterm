@@ -2,6 +2,7 @@ import { Button } from "@/element/button";
 import {
     FloatingPortal,
     offset as offsetMiddleware,
+    useClick,
     useDismiss,
     useFloating,
     useInteractions,
@@ -45,11 +46,6 @@ const isPopoverContent = (
 const Popover = memo(({ children, className, placement = "bottom-start", offset = 3, onOpenChange }: PopoverProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
-    const toggleOpen = () => {
-        setIsOpen((prev) => !prev);
-        onOpenChange?.(!isOpen);
-    };
-
     const { refs, floatingStyles, context } = useFloating({
         placement,
         open: isOpen,
@@ -57,8 +53,9 @@ const Popover = memo(({ children, className, placement = "bottom-start", offset 
         middleware: [offsetMiddleware(offset)],
     });
 
+    const click = useClick(context);
     const dismiss = useDismiss(context);
-    const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
+    const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss]);
 
     const renderChildren = Children.map(children, (child) => {
         if (isValidElement(child)) {
@@ -67,7 +64,7 @@ const Popover = memo(({ children, className, placement = "bottom-start", offset 
                     isActive: isOpen,
                     ref: refs.setReference,
                     getReferenceProps,
-                    onClick: toggleOpen,
+                    // Do not overwrite onClick
                 });
             }
 
@@ -90,20 +87,45 @@ const Popover = memo(({ children, className, placement = "bottom-start", offset 
 interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     isActive?: boolean;
     children: React.ReactNode;
-    onClick?: () => void;
     getReferenceProps?: () => any;
     as?: keyof JSX.IntrinsicElements | React.ComponentType<any>;
 }
 
 const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButtonProps>(
-    ({ isActive, children, onClick, getReferenceProps, className, as: Component = "button", ...props }, ref) => {
+    (
+        {
+            isActive,
+            children,
+            onClick: userOnClick, // Destructured from props
+            getReferenceProps,
+            className,
+            as: Component = "button",
+            ...props // The rest of the props, without onClick
+        },
+        ref
+    ) => {
+        const referenceProps = getReferenceProps?.() || {};
+        const popoverOnClick = referenceProps.onClick;
+
+        // Remove onClick from referenceProps to prevent it from overwriting our combinedOnClick
+        const { onClick: refOnClick, ...restReferenceProps } = referenceProps;
+
+        const combinedOnClick = (event: React.MouseEvent) => {
+            if (userOnClick) {
+                userOnClick(event as any); // Your custom onClick logic
+            }
+            if (popoverOnClick) {
+                popoverOnClick(event); // Popover's onClick logic
+            }
+        };
+
         return (
             <Button
                 ref={ref}
                 className={clsx("popover-button", className, { "is-active": isActive })}
-                onClick={onClick}
-                {...getReferenceProps?.()}
-                {...props}
+                {...props} // Spread the rest of your props
+                {...restReferenceProps} // Spread referenceProps without onClick
+                onClick={combinedOnClick} // Assign combined onClick after spreading
             >
                 {children}
             </Button>

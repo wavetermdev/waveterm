@@ -25,6 +25,7 @@ declare global {
         allConnStatus: jotai.Atom<ConnStatus[]>;
         flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
+        notificationMode: jotia.atom<string | null>;
         reinitVersion: jotai.PrimitiveAtom<number>;
     };
 
