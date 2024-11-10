@@ -77,15 +77,16 @@ type MetaTSType struct {
 	BgBorderColor       string  `json:"bg:bordercolor,omitempty"`       // frame:bordercolor
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
 
-	TermClear          bool     `json:"term:*,omitempty"`
-	TermFontSize       int      `json:"term:fontsize,omitempty"`
-	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
-	TermMode           string   `json:"term:mode,omitempty"`
-	TermTheme          string   `json:"term:theme,omitempty"`
-	TermLocalShellPath string   `json:"term:localshellpath,omitempty"` // matches settings
-	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"` // matches settings
-	TermScrollback     *int     `json:"term:scrollback,omitempty"`
-	TermVDomSubBlockId string   `json:"term:vdomblockid,omitempty"`
+	TermClear              bool     `json:"term:*,omitempty"`
+	TermFontSize           int      `json:"term:fontsize,omitempty"`
+	TermFontFamily         string   `json:"term:fontfamily,omitempty"`
+	TermMode               string   `json:"term:mode,omitempty"`
+	TermTheme              string   `json:"term:theme,omitempty"`
+	TermLocalShellPath     string   `json:"term:localshellpath,omitempty"` // matches settings
+	TermLocalShellOpts     []string `json:"term:localshellopts,omitempty"` // matches settings
+	TermScrollback         *int     `json:"term:scrollback,omitempty"`
+	TermVDomSubBlockId     string   `json:"term:vdomblockid,omitempty"`
+	TermVDomToolbarBlockId string   `json:"term:vdomtoolbarblockid,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`

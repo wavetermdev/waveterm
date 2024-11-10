@@ -205,8 +205,14 @@ type VDomMessage struct {
 // target -- to support new targets in the future, like toolbars, partial blocks, splits, etc.
 // default is vdom context inside of a terminal block
 type VDomTarget struct {
-	NewBlock  bool `json:"newblock,omitempty"`
-	Magnified bool `json:"magnified,omitempty"`
+	NewBlock  bool               `json:"newblock,omitempty"`
+	Magnified bool               `json:"magnified,omitempty"`
+	Toolbar   *VDomTargetToolbar `json:"toolbar,omitempty"`
+}
+
+type VDomTargetToolbar struct {
+	Toolbar bool   `json:"toolbar"`
+	Height  string `json:"height,omitempty"`
 }
 
 // matches WaveKeyboardEvent
