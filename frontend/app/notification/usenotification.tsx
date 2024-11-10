@@ -1,6 +1,6 @@
 import { atoms, getApi } from "@/store/global";
 import { useAtom, useAtomValue } from "jotai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { notificationModeAtom } from "./notification";
 
 const notificationActions: { [key: string]: () => void } = {
@@ -14,12 +14,6 @@ export function useNotification() {
     const notificationMode = useAtomValue(notificationModeAtom);
     const [notifications, setNotifications] = useAtom(atoms.notifications);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
-    const hoveredIdRef = useRef<string | null>(hoveredId);
-
-    // Update the ref whenever hoveredId changes
-    useEffect(() => {
-        hoveredIdRef.current = hoveredId;
-    }, [hoveredId]);
 
     const removeNotification = useCallback(
         (id: string) => {
@@ -89,8 +83,6 @@ export function useNotification() {
 
         return () => clearInterval(intervalId);
     }, [notificationMode, notifications, hoveredId, setNotifications]);
-
-    console.log("hoveredIdRef.current====", hoveredId);
 
     const formatTimestamp = (timestamp: string): string => {
         const notificationTime = new Date(timestamp).getTime();
