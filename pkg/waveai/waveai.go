@@ -264,10 +264,11 @@ func RunLocalCompletionStream(ctx context.Context, request wshrpc.OpenAiStreamRe
 		}
 		client := openaiapi.NewClientWithConfig(clientConfig)
 		req := openaiapi.ChatCompletionRequest{
-			Model:     request.Opts.Model,
-			Messages:  ConvertPrompt(request.Prompt),
-			MaxTokens: request.Opts.MaxTokens,
-			Stream:    true,
+			Model:               request.Opts.Model,
+			Messages:            ConvertPrompt(request.Prompt),
+			MaxTokens:           request.Opts.MaxTokens,
+			MaxCompletionTokens: request.Opts.MaxTokens,
+			Stream:              true,
 		}
 		if request.Opts.MaxChoices > 1 {
 			req.N = request.Opts.MaxChoices
