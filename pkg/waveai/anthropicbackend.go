@@ -10,7 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"runtime/debug"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -112,7 +114,20 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Ope
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
 
 	go func() {
-		defer close(rtn)
+		defer func() {
+			if r := recover(); r != nil {
+				// Convert panic to error and send it
+				log.Printf("panic: %v\n", r)
+				debug.PrintStack()
+				err, ok := r.(error)
+				if !ok {
+					err = fmt.Errorf("anthropic backend panic: %v", r)
+				}
+				rtn <- makeAIError(err)
+			}
+			// Always close the channel
+			close(rtn)
+		}()
 
 		if request.Opts == nil {
 			rtn <- makeAIError(errors.New("no anthropic opts found"))
@@ -189,6 +204,14 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Ope
 
 		reader := bufio.NewReader(resp.Body)
 		for {
+			// Check for context cancellation
+			select {
+			case <-ctx.Done():
+				rtn <- makeAIError(fmt.Errorf("request cancelled: %v", ctx.Err()))
+				return
+			default:
+			}
+
 			sse, err := parseSSE(reader)
 			if err == io.EOF {
 				break
