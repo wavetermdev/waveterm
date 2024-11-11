@@ -134,6 +134,7 @@ export class VDomModel {
     refOutputStore: Map<string, any> = new Map();
     globalVersion: jotai.PrimitiveAtom<number> = jotai.atom(0);
     hasBackendWork: boolean = false;
+    noPadding: jotai.PrimitiveAtom<boolean>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "vdom";
@@ -147,6 +148,7 @@ export class VDomModel {
             const blockData = get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
             return blockData?.meta?.["vdom:route"];
         });
+        this.noPadding = jotai.atom(true);
         this.persist = getBlockMetaKeyAtom(this.blockId, "vdom:persist");
         this.wshClient = new VDomWshClient(this);
         DefaultRouter.registerRoute(this.wshClient.routeId, this.wshClient);

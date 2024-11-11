@@ -365,6 +365,7 @@ declare global {
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
         "term:vdomblockid"?: string;
+        "term:vdomtoolbarblockid"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -795,6 +796,13 @@ declare global {
     type VDomTarget = {
         newblock?: boolean;
         magnified?: boolean;
+        toolbar?: VDomTargetToolbar;
+    };
+
+    // vdom.VDomTargetToolbar
+    type VDomTargetToolbar = {
+        toolbar: boolean;
+        height?: string;
     };
 
     // vdom.VDomTransferElem

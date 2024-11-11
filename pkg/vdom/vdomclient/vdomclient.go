@@ -33,6 +33,8 @@ type AppOpts struct {
 	GlobalStyles         []byte
 	RootComponentName    string // defaults to "App"
 	NewBlockFlag         string // defaults to "n" (set to "-" to disable)
+	TargetNewBlock       bool
+	TargetToolbar        *vdom.VDomTargetToolbar
 }
 
 type Client struct {
@@ -116,7 +118,17 @@ func (client *Client) runMainE() error {
 	if err != nil {
 		return err
 	}
-	err = client.CreateVDomContext(&vdom.VDomTarget{NewBlock: client.NewBlockFlag})
+	target := &vdom.VDomTarget{}
+	if client.AppOpts.TargetNewBlock || client.NewBlockFlag {
+		target.NewBlock = client.NewBlockFlag
+	}
+	if client.AppOpts.TargetToolbar != nil {
+		target.Toolbar = client.AppOpts.TargetToolbar
+	}
+	if target.NewBlock && target.Toolbar != nil {
+		return fmt.Errorf("cannot specify both new block and toolbar target")
+	}
+	err = client.CreateVDomContext(target)
 	if err != nil {
 		return err
 	}
