@@ -229,6 +229,7 @@ declare global {
         endIconButtons?: jotai.Atom<IconButtonDecl[]>;
         blockBg?: jotai.Atom<MetaType>;
         manageConnection?: jotai.Atom<boolean>;
+        noPadding?: jotai.Atom<boolean>;
 
         onBack?: () => void;
         onForward?: () => void;
