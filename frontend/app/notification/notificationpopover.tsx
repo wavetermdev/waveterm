@@ -27,7 +27,6 @@ const NotificationPopover = () => {
 
     const handleTogglePopover = useCallback(() => {
         setNotificationPopoverMode(!notificationPopoverMode);
-        hideAllNotifications();
     }, [notificationPopoverMode]);
 
     const hasErrors = notifications.some((n) => n.color === "red");
@@ -43,7 +42,12 @@ const NotificationPopover = () => {
     };
 
     return (
-        <Popover className="notification-popover" placement="left-end" offset={{ mainAxis: 20, crossAxis: 2 }}>
+        <Popover
+            className="notification-popover"
+            placement="left-end"
+            offset={{ mainAxis: 20, crossAxis: 2 }}
+            onDismiss={handleTogglePopover}
+        >
             <PopoverButton
                 className={clsx(
                     "notification-trigger-button horizontal-padding-6 vertical-padding-4 border-radius-",
