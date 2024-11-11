@@ -151,7 +151,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             type: "separator",
         },
         {
-            label: "Actual Size",
+            label: "Reset Zoom",
             accelerator: "CommandOrControl+0",
             click: (_, window) => {
                 getWindowWebContents(window)?.setZoomFactor(1);
