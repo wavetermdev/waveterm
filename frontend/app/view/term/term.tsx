@@ -187,6 +187,7 @@ class TermViewModel {
                     elemtype: "iconbutton",
                     icon: "refresh",
                     click: this.forceRestartController.bind(this),
+                    title: "Force Restart Controller",
                 },
             ];
         });
