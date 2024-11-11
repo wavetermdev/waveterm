@@ -61,6 +61,7 @@ class TermViewModel {
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
     noPadding: jotai.PrimitiveAtom<boolean>;
+    endIconButtons: jotai.Atom<IconButtonDecl[]>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
@@ -176,6 +177,20 @@ class TermViewModel {
             });
         });
         this.noPadding = jotai.atom(true);
+        this.endIconButtons = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            if (blockData?.meta?.["controller"] != "cmd") {
+                return [];
+            }
+            return [
+                {
+                    elemtype: "iconbutton",
+                    icon: "refresh",
+                    click: this.forceRestartController.bind(this),
+                    title: "Force Restart Controller",
+                },
+            ];
+        });
     }
 
     setTermMode(mode: "term" | "vdom") {
@@ -296,6 +311,20 @@ class TermViewModel {
         });
     }
 
+    forceRestartController() {
+        const termsize = {
+            rows: this.termRef.current?.terminal?.rows,
+            cols: this.termRef.current?.terminal?.cols,
+        };
+        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: true,
+            rtopts: { termsize: termsize },
+        });
+        prtn.catch((e) => console.log("error controller resync (force restart)", e));
+    }
+
     getSettingsMenuItems(): ContextMenuItem[] {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
@@ -354,19 +383,7 @@ class TermViewModel {
         fullMenu.push({ type: "separator" });
         fullMenu.push({
             label: "Force Restart Controller",
-            click: () => {
-                const termsize = {
-                    rows: this.termRef.current?.terminal?.rows,
-                    cols: this.termRef.current?.terminal?.cols,
-                };
-                const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-                    tabid: globalStore.get(atoms.staticTabId),
-                    blockid: this.blockId,
-                    forcerestart: true,
-                    rtopts: { termsize: termsize },
-                });
-                prtn.catch((e) => console.log("error controller resync (force restart)", e));
-            },
+            click: this.forceRestartController.bind(this),
         });
         if (blockData?.meta?.["term:vdomtoolbarblockid"]) {
             fullMenu.push({ type: "separator" });
