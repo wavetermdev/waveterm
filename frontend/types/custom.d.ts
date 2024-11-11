@@ -316,8 +316,8 @@ declare global {
         message: string;
         timestamp: string;
         color: "red" | "yellow" | "green";
-        expiration: number;
-        hidden: boolean;
+        expiration?: number;
+        hidden?: boolean;
         actions?: NotificationActionType[];
         persistent?: boolean;
     };
