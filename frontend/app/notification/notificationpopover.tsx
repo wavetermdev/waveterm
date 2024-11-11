@@ -15,6 +15,7 @@ const NotificationPopover = () => {
     const {
         notifications,
         removeNotification,
+        hideAllNotifications,
         removeAllNotifications,
         copyNotification,
         handleActionClick,
@@ -26,6 +27,7 @@ const NotificationPopover = () => {
 
     const handleTogglePopover = useCallback(() => {
         setNotificationPopoverMode(!notificationPopoverMode);
+        hideAllNotifications();
     }, [notificationPopoverMode]);
 
     const hasErrors = notifications.some((n) => n.color === "red");

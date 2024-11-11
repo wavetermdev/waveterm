@@ -30,7 +30,7 @@ interface PopoverProps {
     className?: string;
     placement?: Placement;
     offset?: OffsetOptions;
-    onOpenChange?: (isOpen: boolean) => void;
+    onDismiss?: () => void;
 }
 
 const isPopoverButton = (
@@ -45,13 +45,20 @@ const isPopoverContent = (
     return element.type === PopoverContent;
 };
 
-const Popover = memo(({ children, className, placement = "bottom-start", offset = 3, onOpenChange }: PopoverProps) => {
+const Popover = memo(({ children, className, placement = "bottom-start", offset = 3, onDismiss }: PopoverProps) => {
     const [isOpen, setIsOpen] = useState(false);
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (!open && onDismiss) {
+            onDismiss();
+        }
+    };
 
     const { refs, floatingStyles, context } = useFloating({
         placement,
         open: isOpen,
-        onOpenChange: setIsOpen,
+        onOpenChange: handleOpenChange,
         middleware: [offsetMiddleware(offset)],
         whileElementsMounted: autoUpdate,
     });
