@@ -19,9 +19,7 @@ const NotificationBubbles = () => {
         setHoveredId,
     } = useNotification();
     const [isOpen, setIsOpen] = useState(notifications.length > 0);
-    const notificationMode = useAtomValue(atoms.notificationMode);
-
-    console.log("NotificationBubbles, notificationMode**************", notificationMode);
+    const notificationPopoverMode = useAtomValue(atoms.notificationPopoverMode);
 
     useEffect(() => {
         setIsOpen(notifications.length > 0);
@@ -37,13 +35,13 @@ const NotificationBubbles = () => {
 
     const floatingStyles = {
         position: strategy,
-        right: "53px",
-        bottom: "12px",
+        right: "58px",
+        bottom: "10px",
         top: "auto",
         left: "auto",
     };
 
-    if (!isOpen || notificationMode !== "bubbles") {
+    if (!isOpen || notificationPopoverMode) {
         return null;
     }
 

@@ -22,26 +22,20 @@ const NotificationPopover = () => {
         hoveredId,
         setHoveredId,
     } = useNotification();
-    const [notificationMode, setNotificationMode] = useAtom(atoms.notificationMode);
-
-    console.log("notificationMode**************", notificationMode);
+    const [notificationPopoverMode, setNotificationPopoverMode] = useAtom(atoms.notificationPopoverMode);
 
     const handleTogglePopover = useCallback(() => {
-        if (notificationMode === "popover") {
-            setNotificationMode("bubbles");
-        } else {
-            setNotificationMode("popover");
-        }
-    }, [notificationMode]);
+        setNotificationPopoverMode(!notificationPopoverMode);
+    }, [notificationPopoverMode]);
 
     return (
-        <Popover className="notification-popover" placement="left-end" offset={10}>
+        <Popover className="notification-popover" placement="left-end" offset={{ mainAxis: 20, crossAxis: 2 }}>
             <PopoverButton
                 className="notification-trigger-button horizontal-padding-6 vertical-padding-4 border-radius-6"
                 onClick={handleTogglePopover}
             >
                 <i className={makeIconClass("bell", false)}></i>
-                {notifications.length > 0 && <span className="notification-count">{notifications.length}</span>}
+                {/* {notifications.length > 0 && <span className="notification-count">{notifications.length}</span>} */}
             </PopoverButton>
             <PopoverContent className="notification-content">
                 <div className="header">

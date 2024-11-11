@@ -10,10 +10,9 @@ const notificationActions: { [key: string]: () => void } = {
 };
 
 export function useNotification() {
-    const notificationMode = useAtomValue(atoms.notificationMode);
+    const notificationPopoverMode = useAtomValue(atoms.notificationPopoverMode);
     const [notifications, setNotifications] = useAtom(atoms.notifications);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
-    const [mode, setMode] = useState(notificationMode);
 
     const removeNotification = useCallback(
         (id: string) => {
@@ -62,7 +61,7 @@ export function useNotification() {
     );
 
     useEffect(() => {
-        if (notificationMode === "popover") {
+        if (notificationPopoverMode) {
             return;
         }
 
@@ -82,7 +81,7 @@ export function useNotification() {
         }, 1000);
 
         return () => clearInterval(intervalId);
-    }, [notificationMode, notifications, hoveredId, setNotifications]);
+    }, [notificationPopoverMode, notifications, hoveredId, setNotifications]);
 
     const formatTimestamp = (timestamp: string): string => {
         const notificationTime = new Date(timestamp).getTime();

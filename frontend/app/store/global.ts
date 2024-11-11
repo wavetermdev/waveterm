@@ -141,7 +141,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     });
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
     const notificationsAtom = atom<NotificationType[]>([]);
-    const notificationModeAtom = atom<string | null>("bubbles");
+    const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
@@ -163,7 +163,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
         notifications: notificationsAtom,
-        notificationMode: notificationModeAtom,
+        notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
     };
 }

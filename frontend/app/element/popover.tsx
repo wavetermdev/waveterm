@@ -1,11 +1,13 @@
 import { Button } from "@/element/button";
 import {
+    autoUpdate,
     FloatingPortal,
     offset as offsetMiddleware,
     useClick,
     useDismiss,
     useFloating,
     useInteractions,
+    type OffsetOptions,
     type Placement,
 } from "@floating-ui/react";
 import clsx from "clsx";
@@ -27,7 +29,7 @@ interface PopoverProps {
     children: ReactNode;
     className?: string;
     placement?: Placement;
-    offset?: number;
+    offset?: OffsetOptions;
     onOpenChange?: (isOpen: boolean) => void;
 }
 
@@ -51,6 +53,7 @@ const Popover = memo(({ children, className, placement = "bottom-start", offset 
         open: isOpen,
         onOpenChange: setIsOpen,
         middleware: [offsetMiddleware(offset)],
+        whileElementsMounted: autoUpdate,
     });
 
     const click = useClick(context);
@@ -112,7 +115,7 @@ const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButt
 
         const combinedOnClick = (event: React.MouseEvent) => {
             if (userOnClick) {
-                userOnClick(event as any); // Your custom onClick logic
+                userOnClick(event as any); // Our custom onClick logic
             }
             if (popoverOnClick) {
                 popoverOnClick(event); // Popover's onClick logic
@@ -123,7 +126,7 @@ const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButt
             <Button
                 ref={ref}
                 className={clsx("popover-button", className, { "is-active": isActive })}
-                {...props} // Spread the rest of your props
+                {...props} // Spread the rest of the props
                 {...restReferenceProps} // Spread referenceProps without onClick
                 onClick={combinedOnClick} // Assign combined onClick after spreading
             >
