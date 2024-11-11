@@ -62,12 +62,22 @@ func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 }
 
 func RunAICommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
+	if request.Opts.APIType == "anthropic" {
+		endpoint := request.Opts.BaseURL
+		if endpoint == "" {
+			endpoint = "default"
+		}
+		log.Printf("sending ai chat message to anthropic endpoint %q using model %s\n", endpoint, request.Opts.Model)
+		anthropicBackend := AnthropicBackend{}
+		return anthropicBackend.StreamCompletion(ctx, request)
+	}
 	if IsCloudAIRequest(request.Opts) {
 		log.Print("sending ai chat message to default waveterm cloud endpoint\n")
 		cloudBackend := WaveAICloudBackend{}
 		return cloudBackend.StreamCompletion(ctx, request)
+	} else {
+		log.Printf("sending ai chat message to user-configured endpoint %s using model %s\n", request.Opts.BaseURL, request.Opts.Model)
+		openAIBackend := OpenAIBackend{}
+		return openAIBackend.StreamCompletion(ctx, request)
 	}
-	log.Printf("sending ai chat message to user-configured endpoint %s using model %s\n", request.Opts.BaseURL, request.Opts.Model)
-	openAIBackend := OpenAIBackend{}
-	return openAIBackend.StreamCompletion(ctx, request)
 }
