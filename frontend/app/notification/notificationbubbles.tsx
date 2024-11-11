@@ -12,7 +12,7 @@ const NotificationBubbles = () => {
     const {
         notifications,
         hoveredId,
-        removeNotification,
+        hideNotification,
         copyNotification,
         handleActionClick,
         formatTimestamp,
@@ -55,20 +55,23 @@ const NotificationBubbles = () => {
                     onClick: (e) => e.stopPropagation(),
                 })}
             >
-                {notifications.map((notif) => (
-                    <NotificationItem
-                        key={notif.id}
-                        className={clsx({ hovered: hoveredId === notif.id })}
-                        notification={notif}
-                        onRemove={removeNotification}
-                        onCopy={copyNotification}
-                        onActionClick={handleActionClick}
-                        formatTimestamp={formatTimestamp}
-                        onMouseEnter={() => setHoveredId(notif.id)}
-                        onMouseLeave={() => setHoveredId(null)}
-                        isBubble={true}
-                    />
-                ))}
+                {notifications.map((notif) => {
+                    if (notif.hidden) return null;
+                    return (
+                        <NotificationItem
+                            key={notif.id}
+                            className={clsx({ hovered: hoveredId === notif.id })}
+                            notification={notif}
+                            onRemove={hideNotification}
+                            onCopy={copyNotification}
+                            onActionClick={handleActionClick}
+                            formatTimestamp={formatTimestamp}
+                            onMouseEnter={() => setHoveredId(notif.id)}
+                            onMouseLeave={() => setHoveredId(null)}
+                            isBubble={true}
+                        />
+                    );
+                })}
             </div>
         </FloatingPortal>
     );

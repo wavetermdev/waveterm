@@ -21,6 +21,15 @@ export function useNotification() {
         [setNotifications]
     );
 
+    const hideNotification = useCallback(
+        (id: string) => {
+            setNotifications((prevNotifications) =>
+                prevNotifications.map((n) => (n.id === id ? { ...n, hidden: true } : n))
+            );
+        },
+        [setNotifications]
+    );
+
     const removeAllNotifications = useCallback(() => {
         setNotifications((prevNotifications) => prevNotifications.filter((n) => n.persistent));
     }, [setNotifications]);
@@ -109,6 +118,7 @@ export function useNotification() {
         hoveredId,
         setHoveredId,
         removeNotification,
+        hideNotification,
         removeAllNotifications,
         copyNotification,
         handleActionClick,
