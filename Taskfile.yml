@@ -32,6 +32,9 @@ tasks:
         deps:
             - yarn
             - build:backend
+        env:
+            WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
+            WCLOUD_WS_ENDPOINT: "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
 
     storybook:
         desc: Start the Storybook server.
