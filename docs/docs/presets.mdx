@@ -8,6 +8,16 @@ Presets can be used to apply multiple setting overrides at once to either a tab 
 
 You can set presets either by placing them in `~/.config/waveterm/presets.json` or by placing them in a JSON file in the `~/.config/waveterm/presets/` directory. All presets will be aggregated regardless of which file they're placed in so you can use the `presets` directory to organize them as you see fit.
 
+:::info
+
+You can open up the main presets config file in Wave by running:
+
+```
+wsh editconfig presets.json
+```
+
+:::
+
 ### File format
 
 Presets follow the following format:
@@ -76,18 +86,18 @@ The following configuration keys are available for use in presets:
 
 #### AI configurations
 
-| Key Name      | Type   | Function                                                                         |
-| ------------- | ------ | -------------------------------------------------------------------------------- |
-| ai:preset     | string | the default AI preset to use                                                     |
-| ai:baseurl    | string | Set the AI Base Url (must be OpenAI compatible)                                  |
-| ai:apitoken   | string | your AI api token                                                                |
-| ai:apitype    | string | defaults to "open_ai", but can also set to "azure" for special Azure AI handling |
-| ai:name       | string | string to display in the Wave AI block header                                    |
-| ai:model      | string | model name to pass to API                                                        |
-| ai:apiversion | string | for Azure AI only (when apitype is "azure", this will default to "2023-05-15")   |
-| ai:orgid      | string |                                                                                  |
-| ai:maxtokens  | int    | max tokens to pass to API                                                        |
-| ai:timeoutms  | int    | timeout (in milliseconds) for AI calls                                           |
+| Key Name      | Type   | Function                                                                                           |
+| ------------- | ------ | -------------------------------------------------------------------------------------------------- |
+| ai:preset     | string | the default AI preset to use                                                                       |
+| ai:baseurl    | string | Set the AI Base Url (must be OpenAI compatible)                                                    |
+| ai:apitoken   | string | your AI api token                                                                                  |
+| ai:apitype    | string | defaults to "open_ai", but can also set to "azure" (for special Azure AI handling), or "anthropic" |
+| ai:name       | string | string to display in the Wave AI block header                                                      |
+| ai:model      | string | model name to pass to API                                                                          |
+| ai:apiversion | string | for Azure AI only (when apitype is "azure", this will default to "2023-05-15")                     |
+| ai:orgid      | string |                                                                                                    |
+| ai:maxtokens  | int    | max tokens to pass to API                                                                          |
+| ai:timeoutms  | int    | timeout (in milliseconds) for AI calls                                                             |
 
 #### Background configurations
 
