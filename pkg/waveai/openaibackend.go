@@ -102,11 +102,14 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.OpenAi
 		}
 		client := openaiapi.NewClientWithConfig(clientConfig)
 		req := openaiapi.ChatCompletionRequest{
-			Model:               request.Opts.Model,
-			Messages:            convertPrompt(request.Prompt),
-			MaxTokens:           request.Opts.MaxTokens,
-			MaxCompletionTokens: request.Opts.MaxTokens,
-			Stream:              true,
+			Model:    request.Opts.Model,
+			Messages: convertPrompt(request.Prompt),
+			Stream:   true,
+		}
+		if strings.HasPrefix(request.Opts.Model, "o1-") {
+			req.MaxCompletionTokens = request.Opts.MaxTokens
+		} else {
+			req.MaxTokens = request.Opts.MaxTokens
 		}
 		if request.Opts.MaxChoices > 1 {
 			req.N = request.Opts.MaxChoices
