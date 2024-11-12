@@ -32,7 +32,7 @@ jobs:
             - name: Upload Build Artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: ${{env.STATIC_DOCSITE_PATH}}
+                  name: docsite
                   path: docs/build
     build-app:
         needs: build-docsite
@@ -65,7 +65,7 @@ jobs:
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
               if: matrix.platform == 'darwin'
-              run: brew install awscli && brew install tree
+              run: brew install awscli
 
             # The version of FPM that comes bundled with electron-builder doesn't include a Linux ARM target. Installing Gems onto the runner is super quick so we'll just do this for all targets.
             - name: Install FPM (not Windows)
@@ -131,11 +131,8 @@ jobs:
             - name: Download embedded docsite
               uses: actions/download-artifact@v4
               with:
-                  name: ${{env.STATIC_DOCSITE_PATH}}
+                  name: docsite
                   path: ${{env.STATIC_DOCSITE_PATH}}
-
-            - name: tree
-              run: tree -L 3 ..
 
             # Build and upload packages
             - name: Build (Linux)
