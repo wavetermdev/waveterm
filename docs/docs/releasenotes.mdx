@@ -6,6 +6,20 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.9.2 &mdash; Nov 11, 2024
+
+New minor release with bug fixes and new features! Fixed the bug around making Wave fullscreen (also affecting certain window managers like Hyprland). We've also put a lot of work into the doc site (https://docs.waveterm.dev), including documenting how [Widgets](./widgets) and [Presets](./presets) work!
+
+- Updated documentation
+- Wave AI now supports the Anthropic API! Checkout the [FAQ](./faq) for how to use the Claude models with Wave AI.
+- Removed defaultwidgets.json and unified it to widgets.json. Makes it more straightforward to override the default widgets.
+- New resolvers for `-b` param in `wsh`. "tab:N" for accessing the nth tab, "[view]" and "[view]:N" for accessing blocks of a particlar view.
+- New `wsh ai` command to send AI chats (and files) directly to a new or existing AI block
+- wsh setmeta/getmeta improvements. Allow setmeta to take a json file (and also read from stdin), also better output formats for getmeta (compatible with setmeta).
+- [bugfix] Set max completion tokens in the OpenAI API so we can now work with o1 models (also fallback to non-streaming mode)
+- [bugfix] Fixed content resizing when entering "full screen" mode. This bug also affected certain window managers (like Hyperland)
+- Lots of other small bug fixes, docs updates, and dependency bumps
+
 ### v0.9.1 &mdash; Nov 1, 2024
 
 Minor bug fix release to follow-up on the v0.9.0 build. Lots of issues fixed (especially for Windows).

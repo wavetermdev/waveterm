@@ -26,9 +26,11 @@ var aiCmd = &cobra.Command{
 }
 
 var aiFileFlags []string
+var aiNewBlockFlag bool
 
 func init() {
 	rootCmd.AddCommand(aiCmd)
+	aiCmd.Flags().BoolVarP(&aiNewBlockFlag, "new", "n", false, "create a new AI block")
 	aiCmd.Flags().StringArrayVarP(&aiFileFlags, "file", "f", nil, "attach file content (use '-' for stdin)")
 }
 
@@ -69,9 +71,12 @@ func aiRun(cmd *cobra.Command, args []string) {
 	if isDefaultBlock {
 		blockArg = "view@waveai"
 	}
-
-	fullORef, err := resolveSimpleId(blockArg)
-	if err != nil && isDefaultBlock {
+	var fullORef *waveobj.ORef
+	var err error
+	if !aiNewBlockFlag {
+		fullORef, err = resolveSimpleId(blockArg)
+	}
+	if (err != nil && isDefaultBlock) || aiNewBlockFlag {
 		// Create new AI block if default block doesn't exist
 		data := &wshrpc.CommandCreateBlockData{
 			BlockDef: &waveobj.BlockDef{
