@@ -15,6 +15,7 @@ const OpenAIPacketStr = "openai"
 const OpenAICloudReqStr = "openai-cloudreq"
 const PacketEOFStr = "EOF"
 const DefaultAzureAPIVersion = "2023-05-15"
+const ApiType_Anthropic = "anthropic"
 
 type OpenAICmdInfoPacketOutputType struct {
 	Model        string `json:"model,omitempty"`
@@ -62,7 +63,7 @@ func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 }
 
 func RunAICommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
-	if request.Opts.APIType == "anthropic" {
+	if request.Opts.APIType == ApiType_Anthropic {
 		endpoint := request.Opts.BaseURL
 		if endpoint == "" {
 			endpoint = "default"
