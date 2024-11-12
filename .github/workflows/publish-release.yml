@@ -49,7 +49,7 @@ jobs:
             - name: Install winget
               uses: Cyberboss/install-winget@v1
             - name: Install wingetcreate
-              run: winget install wingetcreate
+              run: winget install wingetcreate --accept-package-agreements
               shell: pwsh
             - name: Submit WinGet version bump
               run: "task artifacts:winget:publish:${{ github.ref_name }}"
