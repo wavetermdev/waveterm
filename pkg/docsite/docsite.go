@@ -9,11 +9,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
-var docsiteStaticPath = filepath.Join(wavebase.GetWaveAppPath(), "docsite")
-
 var docsiteHandler http.Handler
 
 func GetDocsiteHandler() http.Handler {
+	docsiteStaticPath := filepath.Join(wavebase.GetWaveAppPath(), "docsite")
 	stat, err := os.Stat(docsiteStaticPath)
 	if docsiteHandler == nil {
 		log.Println("Docsite is nil, initializing")
