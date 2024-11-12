@@ -1,0 +1,29 @@
+{
+  "id": "quickstart",
+  "title": "Quickstart",
+  "description": "Wave Terminal extends the terminal application you know and love with several additional features. This provides a quick overview of them and where you can look for more information.",
+  "source": "@site/docs/quickstart.mdx",
+  "sourceDirName": ".",
+  "slug": "/quickstart",
+  "permalink": "/quickstart",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/quickstart.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1.25,
+  "frontMatter": {
+    "sidebar_position": 1.25,
+    "id": "quickstart",
+    "title": "Quickstart"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "Home",
+    "permalink": "/"
+  },
+  "next": {
+    "title": "Customization",
+    "permalink": "/customization"
+  }
+}

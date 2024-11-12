@@ -1,0 +1,29 @@
+{
+  "id": "connections",
+  "title": "Connections",
+  "description": "Wave allows users to connect to various machines and unify them together in a way that preserves the unique behavior of each. At the moment, this extends to SSH remote connections and local WSL connections.",
+  "source": "@site/docs/connections.mdx",
+  "sourceDirName": ".",
+  "slug": "/connections",
+  "permalink": "/connections",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/connections.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 7,
+  "frontMatter": {
+    "sidebar_position": 7,
+    "id": "connections",
+    "title": "Connections"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "Custom Widgets",
+    "permalink": "/customwidgets"
+  },
+  "next": {
+    "title": "Telemetry",
+    "permalink": "/telemetry"
+  }
+}

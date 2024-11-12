@@ -1,0 +1,29 @@
+{
+  "id": "faq",
+  "title": "FAQ",
+  "description": "How do I set up my own LLM?",
+  "source": "@site/docs/faq.mdx",
+  "sourceDirName": ".",
+  "slug": "/faq",
+  "permalink": "/faq",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/faq.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 101,
+  "frontMatter": {
+    "sidebar_position": 101,
+    "id": "faq",
+    "title": "FAQ"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "Telemetry",
+    "permalink": "/telemetry"
+  },
+  "next": {
+    "title": "Release Notes",
+    "permalink": "/releasenotes"
+  }
+}

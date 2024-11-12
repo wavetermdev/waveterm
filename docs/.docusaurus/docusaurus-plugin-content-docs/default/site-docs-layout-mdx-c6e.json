@@ -1,0 +1,29 @@
+{
+  "id": "layout",
+  "title": "Tab Layout System",
+  "description": "screenshot showing a block being dragged over another block, with the placeholder depicting a out-of-line before outer drop",
+  "source": "@site/docs/layout.mdx",
+  "sourceDirName": ".",
+  "slug": "/layout",
+  "permalink": "/layout",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/layout.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2,
+    "id": "layout",
+    "title": "Tab Layout System"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "Key Bindings",
+    "permalink": "/keybindings"
+  },
+  "next": {
+    "title": "Configuration",
+    "permalink": "/config"
+  }
+}

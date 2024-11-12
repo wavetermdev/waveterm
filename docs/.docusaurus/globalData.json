@@ -1,0 +1,93 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/",
+          "mainDocId": "index",
+          "docs": [
+            {
+              "id": "config",
+              "path": "/config",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "connections",
+              "path": "/connections",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "customization",
+              "path": "/customization",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "customwidgets",
+              "path": "/customwidgets",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "faq",
+              "path": "/faq",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "index",
+              "path": "/",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "keybindings",
+              "path": "/keybindings",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "layout",
+              "path": "/layout",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "quickstart",
+              "path": "/quickstart",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "releasenotes",
+              "path": "/releasenotes",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "telemetry",
+              "path": "/telemetry",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "widgets",
+              "path": "/widgets",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "wsh",
+              "path": "/wsh",
+              "sidebar": "defaultSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "defaultSidebar": {
+              "link": {
+                "path": "/",
+                "label": "index"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

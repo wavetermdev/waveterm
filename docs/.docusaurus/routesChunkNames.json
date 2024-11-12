@@ -1,0 +1,73 @@
+{
+  "/search-5de": {
+    "__comp": "__comp---theme-search-page-1-a-4-d6f",
+    "__context": {
+      "plugin": "plugin---searchc-14-0ea"
+    }
+  },
+  "/-9e4": {
+    "__comp": "__comp---theme-docs-root-5-e-9-0b6",
+    "__context": {
+      "plugin": "plugin---aba-d70"
+    }
+  },
+  "/-a85": {
+    "__comp": "__comp---theme-doc-version-roota-7-b-5de",
+    "__props": "__props---22-d-307"
+  },
+  "/-1d9": {
+    "__comp": "__comp---theme-doc-roota-94-67a"
+  },
+  "/config-451": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---config-68-e-d9d"
+  },
+  "/connections-b73": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---connections-99-c-ce6"
+  },
+  "/customization-194": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---customization-899-b17"
+  },
+  "/customwidgets-96c": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---customwidgetsdc-2-9d0"
+  },
+  "/faq-850": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---faqea-3-da7"
+  },
+  "/keybindings-a8d": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---keybindings-295-d6f"
+  },
+  "/layout-69f": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---layoutc-6-e-baf"
+  },
+  "/quickstart-d2c": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---quickstart-748-35f"
+  },
+  "/releasenotes-8b8": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---releasenotesf-44-5bf"
+  },
+  "/telemetry-ce6": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---telemetry-25-f-e11"
+  },
+  "/widgets-a31": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---widgets-2-ea-192"
+  },
+  "/wsh-b75": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---wshaed-1f9"
+  },
+  "/-87e": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---4-ed-c51"
+  }
+}

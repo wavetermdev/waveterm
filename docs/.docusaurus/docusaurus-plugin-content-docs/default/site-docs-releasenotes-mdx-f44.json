@@ -1,0 +1,25 @@
+{
+  "id": "releasenotes",
+  "title": "Release Notes",
+  "description": "v0.9.1 &mdash; Nov 1, 2024",
+  "source": "@site/docs/releasenotes.mdx",
+  "sourceDirName": ".",
+  "slug": "/releasenotes",
+  "permalink": "/releasenotes",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/releasenotes.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 200,
+  "frontMatter": {
+    "id": "releasenotes",
+    "title": "Release Notes",
+    "sidebar_position": 200
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "FAQ",
+    "permalink": "/faq"
+  }
+}

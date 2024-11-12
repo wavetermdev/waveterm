@@ -1,0 +1,29 @@
+{
+  "id": "keybindings",
+  "title": "Key Bindings",
+  "description": "Here's the set of default keybindings available in Wave. It is split into sections.",
+  "source": "@site/docs/keybindings.mdx",
+  "sourceDirName": ".",
+  "slug": "/keybindings",
+  "permalink": "/keybindings",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/keybindings.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2,
+    "id": "keybindings",
+    "title": "Key Bindings"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "Customization",
+    "permalink": "/customization"
+  },
+  "next": {
+    "title": "Tab Layout System",
+    "permalink": "/layout"
+  }
+}

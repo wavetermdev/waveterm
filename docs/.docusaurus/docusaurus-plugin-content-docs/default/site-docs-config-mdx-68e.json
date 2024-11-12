@@ -1,0 +1,29 @@
+{
+  "id": "config",
+  "title": "Configuration",
+  "description": "Wave's configuration files are located at ~/.config/waveterm/.",
+  "source": "@site/docs/config.mdx",
+  "sourceDirName": ".",
+  "slug": "/config",
+  "permalink": "/config",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/config.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3,
+    "id": "config",
+    "title": "Configuration"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "Tab Layout System",
+    "permalink": "/layout"
+  },
+  "next": {
+    "title": "wsh command",
+    "permalink": "/wsh"
+  }
+}

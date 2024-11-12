@@ -1,0 +1,29 @@
+{
+  "id": "widgets",
+  "title": "Widgets",
+  "description": "Every individual Component is contained in its own widget. These can be added, removed, moved and resized. Each widget has its own header which can be right clicked to reveal more operations you can do with that widget.",
+  "source": "@site/docs/widgets.mdx",
+  "sourceDirName": ".",
+  "slug": "/widgets",
+  "permalink": "/widgets",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/widgets.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "sidebar_position": 5,
+    "id": "widgets",
+    "title": "Widgets"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "wsh command",
+    "permalink": "/wsh"
+  },
+  "next": {
+    "title": "Custom Widgets",
+    "permalink": "/customwidgets"
+  }
+}

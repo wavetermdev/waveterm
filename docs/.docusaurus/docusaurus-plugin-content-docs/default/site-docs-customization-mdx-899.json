@@ -1,0 +1,29 @@
+{
+  "id": "customization",
+  "title": "Customization",
+  "description": "Tab Themes",
+  "source": "@site/docs/customization.mdx",
+  "sourceDirName": ".",
+  "slug": "/customization",
+  "permalink": "/customization",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/customization.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1.5,
+  "frontMatter": {
+    "sidebar_position": 1.5,
+    "id": "customization",
+    "title": "Customization"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "Quickstart",
+    "permalink": "/quickstart"
+  },
+  "next": {
+    "title": "Key Bindings",
+    "permalink": "/keybindings"
+  }
+}

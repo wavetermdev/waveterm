@@ -1,0 +1,29 @@
+{
+  "id": "wsh",
+  "title": "wsh command",
+  "description": "The wsh command is always available from Wave blocks. It is a powerful tool for interacting with Wave blocks and can bridge data between your CLI and the widget GUIs.",
+  "source": "@site/docs/wsh.mdx",
+  "sourceDirName": ".",
+  "slug": "/wsh",
+  "permalink": "/wsh",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/wsh.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4,
+    "id": "wsh",
+    "title": "wsh command"
+  },
+  "sidebar": "defaultSidebar",
+  "previous": {
+    "title": "Configuration",
+    "permalink": "/config"
+  },
+  "next": {
+    "title": "Widgets",
+    "permalink": "/widgets"
+  }
+}
