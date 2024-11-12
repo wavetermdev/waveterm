@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { Button } from "@/element/button";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
@@ -26,8 +29,9 @@ const NotificationItem = ({
     onMouseEnter,
     onMouseLeave,
 }: NotificationItemProps) => {
-    const { id, title, message, icon, color, timestamp, persistent, actions } = notification;
+    const { id, title, message, icon, type, timestamp, persistent, actions } = notification;
     const closeable = isBubble || !persistent;
+    const color = type === "error" ? "red" : type === "warning" ? "yellow" : "green";
 
     return (
         <div

@@ -19,7 +19,6 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
 import { NotificationBubbles } from "./notification/notificationbubbles";
-import { useUpdateNotifier } from "./updatenotifier";
 
 import "./app.less";
 
@@ -265,7 +264,6 @@ const FlashError = () => {
 };
 
 const AppInner = () => {
-    useUpdateNotifier();
     const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
     const client = useAtomValue(atoms.client);
     const windowData = useAtomValue(atoms.waveWindow);
@@ -296,7 +294,6 @@ const AppInner = () => {
                 <Workspace />
             </DndProvider>
             <FlashError />
-            {/* <NotificationList></NotificationList> */}
             <NotificationBubbles></NotificationBubbles>
         </div>
     );

@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { Button } from "@/element/button";
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { atoms } from "@/store/global";
@@ -7,15 +10,16 @@ import { useAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { Fragment, useCallback } from "react";
 import { NotificationItem } from "./notificationitem";
+import { useUpdateNotifier } from "./updatenotifier";
 import { useNotification } from "./usenotification";
 
 import "./notificationpopover.less";
 
 const NotificationPopover = () => {
+    useUpdateNotifier();
     const {
         notifications,
         removeNotification,
-        hideAllNotifications,
         removeAllNotifications,
         copyNotification,
         handleActionClick,
@@ -29,8 +33,8 @@ const NotificationPopover = () => {
         setNotificationPopoverMode(!notificationPopoverMode);
     }, [notificationPopoverMode]);
 
-    const hasErrors = notifications.some((n) => n.color === "red");
-    const hasUpdate = notifications.some((n) => n.title.includes("Update"));
+    const hasErrors = notifications.some((n) => n.type === "error");
+    const hasUpdate = notifications.some((n) => n.type === "update");
 
     const addOnClassNames = hasUpdate ? "solid green" : hasErrors ? "solid red" : "ghost grey";
 

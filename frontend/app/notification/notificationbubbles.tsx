@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { atoms } from "@/store/global";
 import { FloatingPortal, useFloating, useInteractions } from "@floating-ui/react";
 import { useAtomValue } from "jotai";

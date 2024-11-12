@@ -309,17 +309,24 @@ declare global {
         disabled?: boolean;
     };
 
+    export enum NotificationTypes {
+        Error = "error",
+        Update = "update",
+        Info = "info",
+        Warning = "warning",
+    }
+
     export type NotificationType = {
         id: string;
         icon: string;
         title: string;
         message: string;
         timestamp: string;
-        color: "red" | "yellow" | "green";
         expiration?: number;
         hidden?: boolean;
         actions?: NotificationActionType[];
         persistent?: boolean;
+        type?: NotificationTypes;
     };
 
     interface AbstractWshClient {
