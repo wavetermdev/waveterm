@@ -13,8 +13,12 @@ New minor release with bug fixes and new features! Fixed the bug around making W
 - Updated documentation
 - Wave AI now supports the Anthropic API! Checkout the [FAQ](./faq) for how to use the Claude models with Wave AI.
 - Removed defaultwidgets.json and unified it to widgets.json. Makes it more straightforward to override the default widgets.
+- New resolvers for `-b` param in `wsh`. "tab:N" for accessing the nth tab, "[view]" and "[view]:N" for accessing blocks of a particlar view.
+- New `wsh ai` command to send AI chats (and files) directly to a new or existing AI block
+- wsh setmeta/getmeta improvements. Allow setmeta to take a json file (and also read from stdin), also better output formats for getmeta (compatible with setmeta).
 - [bugfix] Set max completion tokens in the OpenAI API so we can now work with o1 models.
 - [bugfix] Fixed content resizing when entering "full screen" mode. This bug also affected certain window managers (like Hyperland)
+- Lots of other small bug fixes, docs updates, and dependency bumps
 
 ### v0.9.1 &mdash; Nov 1, 2024
 
