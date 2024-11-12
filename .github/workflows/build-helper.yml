@@ -135,7 +135,7 @@ jobs:
                   path: ${{env.STATIC_DOCSITE_PATH}}
 
             - name: tree
-              run: tree -L 3
+              run: tree -L 3 ..
 
             # Build and upload packages
             - name: Build (Linux)
