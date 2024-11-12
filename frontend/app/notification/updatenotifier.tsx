@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms } from "@/store/global";
+import { atoms, isDev } from "@/store/global";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 
@@ -93,6 +93,8 @@ export const useUpdateNotifier = () => {
                 setNotifications((prev) => prev.filter((n) => n.type !== NotificationTypes.Update));
                 return;
         }
+
+        if (isDev()) return;
 
         setNotifications((prev) => {
             const otherNotifications = prev.filter((n) => n.type !== NotificationTypes.Update);

@@ -3,7 +3,15 @@
 
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { PLATFORM, atoms, createBlock, globalStore, removeFlashError, useSettingsPrefixAtom } from "@/store/global";
+import {
+    atoms,
+    createBlock,
+    globalStore,
+    isDev,
+    PLATFORM,
+    removeFlashError,
+    useSettingsPrefixAtom,
+} from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -294,7 +302,7 @@ const AppInner = () => {
                 <Workspace />
             </DndProvider>
             <FlashError />
-            <NotificationBubbles></NotificationBubbles>
+            {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
         </div>
     );
 };
