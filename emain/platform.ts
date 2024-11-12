@@ -17,6 +17,7 @@ app.setName("waveterm/electron");
 
 const isDev = !app.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
+console.log(`Running in ${isDev ? "development" : "production"} mode`);
 if (isDev) {
     process.env[WaveDevVarName] = "1";
 }

@@ -85,6 +85,7 @@ const (
 	MetaKey_TermLocalShellOpts               = "term:localshellopts"
 	MetaKey_TermScrollback                   = "term:scrollback"
 	MetaKey_TermVDomSubBlockId               = "term:vdomblockid"
+	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"

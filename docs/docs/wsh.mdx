@@ -106,6 +106,26 @@ wsh getmeta -b [other-tab-id] "bg:*" --clear-prefix | wsh setmeta -b tab --json 
 
 ---
 
+## ai
+
+Send messages to new or existing AI blocks directly from the CLI. `-f` passes a file. note that there is a maximum size of 10k for messages and files, so use a tail/grep to cut down file sizes before passing. The `-f` option works great for small files though like shell scripts or `.zshrc` etc.
+
+By default the messages get sent to the first AI block (by blocknum). If no AI block exists, then a new one will be created. Use `-n` to force creation of a new AI block. Use `-b` to target a specific AI block.
+
+```
+wsh ai "how do i write an ls command that sorts files in reverse size order"
+wsh ai -f <(tail -n 20 "my.log") -- "any idea what these error messages mean"
+wsh ai -f README.md "help me update this readme file"
+
+# creates a new AI block
+wsh ai -n "tell me a story"
+
+# targets block number 5
+wsh ai -b 5 "tell me more"
+```
+
+---
+
 ## editconfig
 
 You can easily open up any of Wave's config files using this command.

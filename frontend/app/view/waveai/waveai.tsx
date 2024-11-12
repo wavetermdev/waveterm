@@ -180,7 +180,15 @@ export class WaveAiModel implements ViewModel {
             const presetKey = get(this.presetKey);
             const presetName = presets[presetKey]?.["display:name"] ?? "";
             const isCloud = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
-            if (isCloud) {
+            if (aiOpts?.apitype == "anthropic") {
+                const modelName = aiOpts.model;
+                viewTextChildren.push({
+                    elemtype: "iconbutton",
+                    icon: "globe",
+                    title: "Using Remote Antropic API (" + modelName + ")",
+                    disabled: true,
+                });
+            } else if (isCloud) {
                 viewTextChildren.push({
                     elemtype: "iconbutton",
                     icon: "cloud",

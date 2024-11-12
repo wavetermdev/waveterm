@@ -56,8 +56,12 @@ class TermViewModel {
     termWshClient: TermWshClient;
     shellProcStatusRef: React.MutableRefObject<string>;
     vdomBlockId: jotai.Atom<string>;
+    vdomToolbarBlockId: jotai.Atom<string>;
+    vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
+    noPadding: jotai.PrimitiveAtom<boolean>;
+    endIconButtons: jotai.Atom<IconButtonDecl[]>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
@@ -70,6 +74,11 @@ class TermViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:vdomblockid"];
         });
+        this.vdomToolbarBlockId = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.["term:vdomtoolbarblockid"];
+        });
+        this.vdomToolbarTarget = jotai.atom<VDomTargetToolbar>(null) as jotai.PrimitiveAtom<VDomTargetToolbar>;
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:mode"] ?? "term";
@@ -167,6 +176,21 @@ class TermViewModel {
                 return blockData?.meta?.["term:theme"] ?? get(settingsKeyAtom) ?? "default-dark";
             });
         });
+        this.noPadding = jotai.atom(true);
+        this.endIconButtons = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            if (blockData?.meta?.["controller"] != "cmd") {
+                return [];
+            }
+            return [
+                {
+                    elemtype: "iconbutton",
+                    icon: "refresh",
+                    click: this.forceRestartController.bind(this),
+                    title: "Force Restart Controller",
+                },
+            ];
+        });
     }
 
     setTermMode(mode: "term" | "vdom") {
@@ -185,6 +209,18 @@ class TermViewModel {
             return null;
         }
         const bcm = getBlockComponentModel(vdomBlockId);
+        if (!bcm) {
+            return null;
+        }
+        return bcm.viewModel as VDomModel;
+    }
+
+    getVDomToolbarModel(): VDomModel {
+        const vdomToolbarBlockId = globalStore.get(this.vdomToolbarBlockId);
+        if (!vdomToolbarBlockId) {
+            return null;
+        }
+        const bcm = getBlockComponentModel(vdomToolbarBlockId);
         if (!bcm) {
             return null;
         }
@@ -275,6 +311,20 @@ class TermViewModel {
         });
     }
 
+    forceRestartController() {
+        const termsize = {
+            rows: this.termRef.current?.terminal?.rows,
+            cols: this.termRef.current?.terminal?.cols,
+        };
+        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: true,
+            rtopts: { termsize: termsize },
+        });
+        prtn.catch((e) => console.log("error controller resync (force restart)", e));
+    }
+
     getSettingsMenuItems(): ContextMenuItem[] {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
@@ -333,20 +383,17 @@ class TermViewModel {
         fullMenu.push({ type: "separator" });
         fullMenu.push({
             label: "Force Restart Controller",
-            click: () => {
-                const termsize = {
-                    rows: this.termRef.current?.terminal?.rows,
-                    cols: this.termRef.current?.terminal?.cols,
-                };
-                const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-                    tabid: globalStore.get(atoms.staticTabId),
-                    blockid: this.blockId,
-                    forcerestart: true,
-                    rtopts: { termsize: termsize },
-                });
-                prtn.catch((e) => console.log("error controller resync (force restart)", e));
-            },
+            click: this.forceRestartController.bind(this),
         });
+        if (blockData?.meta?.["term:vdomtoolbarblockid"]) {
+            fullMenu.push({ type: "separator" });
+            fullMenu.push({
+                label: "Close Toolbar",
+                click: () => {
+                    RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: blockData.meta["term:vdomtoolbarblockid"] });
+                },
+            });
+        }
         return fullMenu;
     }
 }
@@ -381,6 +428,44 @@ const TermResyncHandler = React.memo(({ blockId, model }: TerminalViewProps) => 
 
     return null;
 });
+
+const TermVDomToolbarNode = ({ vdomBlockId, blockId, model }: TerminalViewProps & { vdomBlockId: string }) => {
+    React.useEffect(() => {
+        const unsub = waveEventSubscribe({
+            eventType: "blockclose",
+            scope: WOS.makeORef("block", vdomBlockId),
+            handler: (event) => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", blockId),
+                    meta: {
+                        "term:mode": null,
+                        "term:vdomtoolbarblockid": null,
+                    },
+                });
+            },
+        });
+        return () => {
+            unsub();
+        };
+    }, []);
+    let vdomNodeModel = {
+        blockId: vdomBlockId,
+        isFocused: jotai.atom(false),
+        focusNode: () => {},
+        onClose: () => {
+            if (vdomBlockId != null) {
+                RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
+            }
+        },
+    };
+    const toolbarTarget = jotai.useAtomValue(model.vdomToolbarTarget);
+    const heightStr = toolbarTarget?.height ?? "1.5em";
+    return (
+        <div key="vdomToolbar" className="term-toolbar" style={{ height: heightStr }}>
+            <SubBlock key="vdom" nodeModel={vdomNodeModel} />
+        </div>
+    );
+};
 
 const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps & { vdomBlockId: string }) => {
     React.useEffect(() => {
@@ -429,6 +514,21 @@ const TermVDomNode = ({ blockId, model }: TerminalViewProps) => {
         return null;
     }
     return <TermVDomNodeSingleId key={vdomBlockId} vdomBlockId={vdomBlockId} blockId={blockId} model={model} />;
+};
+
+const TermToolbarVDomNode = ({ blockId, model }: TerminalViewProps) => {
+    const vdomToolbarBlockId = jotai.useAtomValue(model.vdomToolbarBlockId);
+    if (vdomToolbarBlockId == null) {
+        return null;
+    }
+    return (
+        <TermVDomToolbarNode
+            key={vdomToolbarBlockId}
+            vdomBlockId={vdomToolbarBlockId}
+            blockId={blockId}
+            model={model}
+        />
+    );
 };
 
 const TerminalView = ({ blockId, model }: TerminalViewProps) => {
@@ -547,14 +647,14 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         cols: termRef.current?.terminal.cols ?? 80,
         blockId: blockId,
     };
-
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} termRef={termRef} />
             <TermStickers config={stickerConfig} />
-            <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
+            <TermToolbarVDomNode key="vdom-toolbar" blockId={blockId} model={model} />
             <TermVDomNode key="vdom" blockId={blockId} model={model} />
+            <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
         </div>
     );
 };
