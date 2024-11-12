@@ -7,6 +7,11 @@ import { WshClient } from "./wshclient";
 
 // WshServerCommandToDeclMap
 class RpcApiType {
+    // command "aisendmessage" [call]
+    AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("aisendmessage", data, opts);
+    }
+
     // command "authenticate" [call]
     AuthenticateCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
         return client.wshRpcCall("authenticate", data, opts);
@@ -247,9 +252,14 @@ class RpcApiType {
         return client.wshRpcCall("vdomcreatecontext", data, opts);
     }
 
-    // command "vdomrender" [call]
-    VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): Promise<VDomBackendUpdate> {
-        return client.wshRpcCall("vdomrender", data, opts);
+    // command "vdomrender" [responsestream]
+	VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): AsyncGenerator<VDomBackendUpdate, void, boolean> {
+        return client.wshRpcStream("vdomrender", data, opts);
+    }
+
+    // command "vdomurlrequest" [responsestream]
+	VDomUrlRequestCommand(client: WshClient, data: VDomUrlRequestData, opts?: RpcOpts): AsyncGenerator<VDomUrlRequestResponse, void, boolean> {
+        return client.wshRpcStream("vdomurlrequest", data, opts);
     }
 
     // command "waitforroute" [call]

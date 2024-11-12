@@ -7,10 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 // ReactNode types = nil | string | Elem
@@ -25,7 +28,21 @@ type Hook struct {
 	Deps      []any
 }
 
-type CFunc = func(ctx context.Context, props map[string]any) any
+type Component[P any] func(props P) *VDomElem
+
+type styleAttrWrapper struct {
+	StyleAttr string
+	Val       any
+}
+
+type classAttrWrapper struct {
+	ClassName string
+	Cond      bool
+}
+
+type styleAttrMapWrapper struct {
+	StyleAttrMap map[string]any
+}
 
 func (e *VDomElem) Key() string {
 	keyVal, ok := e.Props[KeyPropKey]
@@ -56,6 +73,61 @@ func mergeProps(props *map[string]any, newProps map[string]any) {
 	}
 }
 
+func mergeStyleAttr(props *map[string]any, styleAttr styleAttrWrapper) {
+	if *props == nil {
+		*props = make(map[string]any)
+	}
+	if (*props)["style"] == nil {
+		(*props)["style"] = make(map[string]any)
+	}
+	styleMap, ok := (*props)["style"].(map[string]any)
+	if !ok {
+		return
+	}
+	styleMap[styleAttr.StyleAttr] = styleAttr.Val
+}
+
+func mergeClassAttr(props *map[string]any, classAttr classAttrWrapper) {
+	if *props == nil {
+		*props = make(map[string]any)
+	}
+	if classAttr.Cond {
+		if (*props)["className"] == nil {
+			(*props)["className"] = classAttr.ClassName
+			return
+		}
+		classVal, ok := (*props)["className"].(string)
+		if !ok {
+			return
+		}
+		// check if class already exists (must split, contains won't work)
+		splitArr := strings.Split(classVal, " ")
+		for _, class := range splitArr {
+			if class == classAttr.ClassName {
+				return
+			}
+		}
+		(*props)["className"] = classVal + " " + classAttr.ClassName
+	} else {
+		classVal, ok := (*props)["className"].(string)
+		if !ok {
+			return
+		}
+		splitArr := strings.Split(classVal, " ")
+		for i, class := range splitArr {
+			if class == classAttr.ClassName {
+				splitArr = append(splitArr[:i], splitArr[i+1:]...)
+				break
+			}
+		}
+		if len(splitArr) == 0 {
+			delete(*props, "className")
+		} else {
+			(*props)["className"] = strings.Join(splitArr, " ")
+		}
+	}
+}
+
 func E(tag string, parts ...any) *VDomElem {
 	rtn := &VDomElem{Tag: tag}
 	for _, part := range parts {
@@ -67,13 +139,104 @@ func E(tag string, parts ...any) *VDomElem {
 			mergeProps(&rtn.Props, props)
 			continue
 		}
+		if styleAttr, ok := part.(styleAttrWrapper); ok {
+			mergeStyleAttr(&rtn.Props, styleAttr)
+			continue
+		}
+		if styleAttrMap, ok := part.(styleAttrMapWrapper); ok {
+			for k, v := range styleAttrMap.StyleAttrMap {
+				mergeStyleAttr(&rtn.Props, styleAttrWrapper{StyleAttr: k, Val: v})
+			}
+			continue
+		}
+		if classAttr, ok := part.(classAttrWrapper); ok {
+			mergeClassAttr(&rtn.Props, classAttr)
+			continue
+		}
 		elems := partToElems(part)
 		rtn.Children = append(rtn.Children, elems...)
 	}
 	return rtn
 }
 
-func P(propName string, propVal any) map[string]any {
+func Class(name string) classAttrWrapper {
+	return classAttrWrapper{ClassName: name, Cond: true}
+}
+
+func ClassIf(cond bool, name string) classAttrWrapper {
+	return classAttrWrapper{ClassName: name, Cond: cond}
+}
+
+func ClassIfElse(cond bool, name string, elseName string) classAttrWrapper {
+	if cond {
+		return classAttrWrapper{ClassName: name, Cond: true}
+	}
+	return classAttrWrapper{ClassName: elseName, Cond: true}
+}
+
+func If(cond bool, part any) any {
+	if cond {
+		return part
+	}
+	return nil
+}
+
+func IfElse(cond bool, part any, elsePart any) any {
+	if cond {
+		return part
+	}
+	return elsePart
+}
+
+func ForEach[T any](items []T, fn func(T) any) []any {
+	var elems []any
+	for _, item := range items {
+		fnResult := fn(item)
+		elems = append(elems, fnResult)
+	}
+	return elems
+}
+
+func ForEachIdx[T any](items []T, fn func(T, int) any) []any {
+	var elems []any
+	for idx, item := range items {
+		fnResult := fn(item, idx)
+		elems = append(elems, fnResult)
+	}
+	return elems
+}
+
+func Props(props any) map[string]any {
+	m, err := utilfn.StructToMap(props)
+	if err != nil {
+		return nil
+	}
+	return m
+}
+
+func PStyle(styleAttr string, propVal any) any {
+	return styleAttrWrapper{StyleAttr: styleAttr, Val: propVal}
+}
+
+func Fragment(parts ...any) any {
+	return parts
+}
+
+func P(propName string, propVal any) any {
+	if propVal == nil {
+		return map[string]any{propName: nil}
+	}
+	if propName == "style" {
+		strVal, ok := propVal.(string)
+		if ok {
+			styleMap, err := styleAttrStrToStyleMap(strVal, nil)
+			if err == nil {
+				return styleAttrMapWrapper{StyleAttrMap: styleMap}
+			}
+			log.Printf("Error parsing style attribute: %v\n", err)
+			return nil
+		}
+	}
 	return map[string]any{propName: propVal}
 }
 
@@ -109,6 +272,31 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T)) {
 		vc.Root.AddRenderWork(vc.Comp.WaveId)
 	}
 	return rtnVal, setVal
+}
+
+func UseStateWithFn[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T)) {
+	vc, hookVal := getHookFromCtx(ctx)
+	if !hookVal.Init {
+		hookVal.Init = true
+		hookVal.Val = initialVal
+	}
+	var rtnVal T
+	rtnVal, ok := hookVal.Val.(T)
+	if !ok {
+		panic("UseState hook value is not a state (possible out of order or conditional hooks)")
+	}
+
+	setVal := func(newVal T) {
+		hookVal.Val = newVal
+		vc.Root.AddRenderWork(vc.Comp.WaveId)
+	}
+
+	setFuncVal := func(updateFunc func(T) T) {
+		hookVal.Val = updateFunc(hookVal.Val.(T))
+		vc.Root.AddRenderWork(vc.Comp.WaveId)
+	}
+
+	return rtnVal, setVal, setFuncVal
 }
 
 func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
@@ -150,12 +338,47 @@ func UseVDomRef(ctx context.Context) *VDomRef {
 	return refVal
 }
 
+func UseRef[T any](ctx context.Context, val T) *VDomSimpleRef[T] {
+	_, hookVal := getHookFromCtx(ctx)
+	if !hookVal.Init {
+		hookVal.Init = true
+		hookVal.Val = &VDomSimpleRef[T]{Current: val}
+	}
+	refVal, ok := hookVal.Val.(*VDomSimpleRef[T])
+	if !ok {
+		panic("UseRef hook value is not a ref (possible out of order or conditional hooks)")
+	}
+	return refVal
+}
+
 func UseId(ctx context.Context) string {
 	vc := getRenderContext(ctx)
 	if vc == nil {
 		panic("UseId must be called within a component (no context)")
 	}
 	return vc.Comp.WaveId
+}
+
+func UseRenderTs(ctx context.Context) int64 {
+	vc := getRenderContext(ctx)
+	if vc == nil {
+		panic("UseRenderTs must be called within a component (no context)")
+	}
+	return vc.Root.RenderTs
+}
+
+func QueueRefOp(ctx context.Context, ref *VDomRef, op VDomRefOperation) {
+	if ref == nil || !ref.HasCurrent {
+		return
+	}
+	vc := getRenderContext(ctx)
+	if vc == nil {
+		panic("QueueRefOp must be called within a component (no context)")
+	}
+	if op.RefId == "" {
+		op.RefId = ref.RefId
+	}
+	vc.Root.QueueRefOp(op)
 }
 
 func depsEqual(deps1 []any, deps2 []any) bool {

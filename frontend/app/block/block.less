@@ -26,6 +26,10 @@
         overflow: hidden;
         min-height: 0;
         padding: 5px;
+
+        &.block-no-padding {
+            padding: 0;
+        }
     }
 
     .block-focuselem {
@@ -405,7 +409,7 @@
             &.block-no-highlight,
             &.block-preview {
                 .block-mask {
-                    border: 2px solid rgba(255, 255, 255, 0.1);
+                    border: 2px solid rgba(255, 255, 255, 0.1) !important;
                 }
             }
         }

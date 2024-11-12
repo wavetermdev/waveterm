@@ -134,48 +134,6 @@ declare global {
         keyType: string;
     };
 
-    interface WaveKeyboardEvent {
-        type: "keydown" | "keyup" | "keypress" | "unknown";
-        /**
-         * Equivalent to KeyboardEvent.key.
-         */
-        key: string;
-        /**
-         * Equivalent to KeyboardEvent.code.
-         */
-        code: string;
-        /**
-         * Equivalent to KeyboardEvent.shiftKey.
-         */
-        shift: boolean;
-        /**
-         * Equivalent to KeyboardEvent.controlKey.
-         */
-        control: boolean;
-        /**
-         * Equivalent to KeyboardEvent.altKey.
-         */
-        alt: boolean;
-        /**
-         * Equivalent to KeyboardEvent.metaKey.
-         */
-        meta: boolean;
-        /**
-         * cmd is special, on mac it is meta, on windows it is alt
-         */
-        cmd: boolean;
-        /**
-         * option is special, on mac it is alt, on windows it is meta
-         */
-        option: boolean;
-
-        repeat: boolean;
-        /**
-         * Equivalent to KeyboardEvent.location.
-         */
-        location: number;
-    }
-
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
     type HeaderElem =
@@ -271,6 +229,7 @@ declare global {
         endIconButtons?: jotai.Atom<IconButtonDecl[]>;
         blockBg?: jotai.Atom<MetaType>;
         manageConnection?: jotai.Atom<boolean>;
+        noPadding?: jotai.Atom<boolean>;
 
         onBack?: () => void;
         onForward?: () => void;

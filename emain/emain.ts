@@ -721,7 +721,6 @@ async function appMain() {
         console.log("error initializing wshrpc", e);
     }
     await configureAutoUpdater();
-
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);

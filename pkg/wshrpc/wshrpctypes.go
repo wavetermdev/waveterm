@@ -81,6 +81,9 @@ const (
 	Command_VDomCreateContext   = "vdomcreatecontext"
 	Command_VDomAsyncInitiation = "vdomasyncinitiation"
 	Command_VDomRender          = "vdomrender"
+	Command_VDomUrlRequest      = "vdomurlrequest"
+
+	Command_AiSendMessage = "aisendmessage"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -155,8 +158,12 @@ type WshRpcInterface interface {
 	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
 	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
 
+	// ai
+	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
+
 	// proc
-	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) (*vdom.VDomBackendUpdate, error)
+	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
+	VDomUrlRequestCommand(ctx context.Context, data VDomUrlRequestData) chan RespOrErrorUnion[VDomUrlRequestResponse]
 }
 
 // for frontend
@@ -448,9 +455,27 @@ type WaveNotificationOptions struct {
 	Silent bool   `json:"silent,omitempty"`
 }
 
+type VDomUrlRequestData struct {
+	Method  string            `json:"method"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Body    []byte            `json:"body,omitempty"`
+}
+
+type VDomUrlRequestResponse struct {
+	StatusCode int               `json:"statuscode,omitempty"`
+	Headers    map[string]string `json:"headers,omitempty"`
+	Body       []byte            `json:"body,omitempty"`
+}
+
 type WaveInfoData struct {
 	Version   string `json:"version"`
+	ClientId  string `json:"clientid"`
 	BuildTime string `json:"buildtime"`
 	ConfigDir string `json:"configdir"`
 	DataDir   string `json:"datadir"`
+}
+
+type AiMessageData struct {
+	Message string `json:"message,omitempty"`
 }

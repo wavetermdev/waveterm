@@ -12,7 +12,7 @@ type ChildKey struct {
 	Key string
 }
 
-type Component struct {
+type ComponentImpl struct {
 	WaveId  string
 	Tag     string
 	Key     string
@@ -26,13 +26,13 @@ type Component struct {
 	Text string
 
 	// base component -- vdom, wave elem, or #fragment
-	Children []*Component
+	Children []*ComponentImpl
 
 	// component -> component
-	Comp *Component
+	Comp *ComponentImpl
 }
 
-func (c *Component) compMatch(tag string, key string) bool {
+func (c *ComponentImpl) compMatch(tag string, key string) bool {
 	if c == nil {
 		return false
 	}

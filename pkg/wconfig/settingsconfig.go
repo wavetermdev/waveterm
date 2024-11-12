@@ -91,8 +91,8 @@ type SettingsType struct {
 
 	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
 
-	WidgetClear    bool `json:"widget:*,omitempty"`
-	WidgetShowHelp bool `json:"widget:showhelp,omitempty"`
+	WidgetClear    bool  `json:"widget:*,omitempty"`
+	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`
 
 	WindowClear                       bool     `json:"window:*,omitempty"`
 	WindowTransparent                 bool     `json:"window:transparent,omitempty"`
