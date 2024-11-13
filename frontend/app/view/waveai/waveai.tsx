@@ -252,6 +252,14 @@ export class WaveAiModel implements ViewModel {
             });
             return viewTextChildren;
         });
+        this.endIconButtons = atom((get) => {
+            let clearButton: IconButtonDecl = {
+                elemtype: "iconbutton",
+                icon: "delete-left",
+                click: this.clearMessages.bind(this),
+            };
+            return [clearButton];
+        });
     }
 
     dispose() {
@@ -386,6 +394,19 @@ export class WaveAiModel implements ViewModel {
             messages,
             sendMessage: this.sendMessage.bind(this),
         };
+    }
+
+    async clearMessages() {
+        await BlockService.SaveWaveAiData(this.blockId, []);
+        globalStore.set(this.messagesAtom, []);
+    }
+
+    keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
+        if (checkKeyPressed(waveEvent, "Cmd:l")) {
+            this.clearMessages();
+            return true;
+        }
+        return false;
     }
 }
 
