@@ -432,7 +432,7 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 	return events, nil
 }
 
-func (ws *WshServer) SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error {
+func (ws *WshServer) SetConfigCommand(ctx context.Context, data wshrpc.MetaSettingsType) error {
 	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }

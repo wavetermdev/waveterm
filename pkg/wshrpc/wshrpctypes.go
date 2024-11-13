@@ -5,7 +5,9 @@
 package wshrpc
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 	"reflect"
@@ -13,7 +15,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
@@ -123,7 +124,7 @@ type WshRpcInterface interface {
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
-	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
+	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 
@@ -395,20 +396,20 @@ type CommandRemoteWriteFileData struct {
 }
 
 type SshKeywords struct {
-	User                         string
-	HostName                     string
-	Port                         string
-	IdentityFile                 []string
-	BatchMode                    bool
-	PubkeyAuthentication         bool
-	PasswordAuthentication       bool
-	KbdInteractiveAuthentication bool
-	PreferredAuthentications     []string
-	AddKeysToAgent               bool
-	IdentityAgent                string
-	ProxyJump                    []string
-	UserKnownHostsFile           []string
-	GlobalKnownHostsFile         []string
+	User                         string   `json:"ssh:user,omitempty"`
+	HostName                     string   `json:"ssh:hostname,omitempty"`
+	Port                         string   `json:"ssh:port,omitempty"`
+	IdentityFile                 []string `json:"ssh:identityfile,omitempty"`
+	BatchMode                    bool     `json:"ssh:batchmode,omitempty"`
+	PubkeyAuthentication         bool     `json:"ssh:pubkeyauthentication,omitempty"`
+	PasswordAuthentication       bool     `json:"ssh:passwordauthentication,omitempty"`
+	KbdInteractiveAuthentication bool     `json:"ssh:kbdinteractiveauthentication,omitempty"`
+	PreferredAuthentications     []string `json:"ssh:preferredauthentications,omitempty"`
+	AddKeysToAgent               bool     `json:"ssh:addkeystoagent,omitempty"`
+	IdentityAgent                string   `json:"ssh:identityagent,omitempty"`
+	ProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
+	UserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
+	GlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
 }
 
 const (
@@ -418,6 +419,25 @@ const (
 type TimeSeriesData struct {
 	Ts     int64              `json:"ts"`
 	Values map[string]float64 `json:"values"`
+}
+
+type MetaSettingsType struct {
+	waveobj.MetaMapType
+}
+
+func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
+	var metaMap waveobj.MetaMapType
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&metaMap); err != nil {
+		return err
+	}
+	*m = MetaSettingsType{MetaMapType: metaMap}
+	return nil
+}
+
+func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.MetaMapType)
 }
 
 type ConnStatus struct {

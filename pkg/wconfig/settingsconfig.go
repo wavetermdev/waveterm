@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const SettingsFile = "settings.json"
@@ -29,25 +30,6 @@ const AnySchema = `
   "additionalProperties": true
 }
 `
-
-type MetaSettingsType struct {
-	waveobj.MetaMapType
-}
-
-func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
-	var metaMap waveobj.MetaMapType
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	if err := decoder.Decode(&metaMap); err != nil {
-		return err
-	}
-	*m = MetaSettingsType{MetaMapType: metaMap}
-	return nil
-}
-
-func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.MetaMapType)
-}
 
 type SettingsType struct {
 	AiClear      bool    `json:"ai:*,omitempty"`
@@ -545,4 +527,7 @@ type TermThemeType struct {
 }
 
 type ConnectionsConfigType struct {
+	wshrpc.SshKeywords
+	WshEnabled          bool `json:"wshenabled,omitempty"`
+	AskBeforeWshInstall bool `json:"askbeforewshinstall,omitempty"`
 }

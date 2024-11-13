@@ -729,6 +729,7 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.SshKeywords, error) {
 	WaveSshConfigUserSettings().ReloadConfigs()
 	sshKeywords := &wshrpc.SshKeywords{}
 	var err error
+	//config := wconfig.ReadFullConfig()
 
 	userRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "User")
 	if err != nil {

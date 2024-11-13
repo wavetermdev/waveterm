@@ -212,6 +212,13 @@ declare global {
         error?: string;
     };
 
+    // wconfig.ConnectionsConfigType
+    type ConnectionsConfigType = {
+        SshKeywords: SshKeywords;
+        wshenabled?: boolean;
+        askbeforewshinstall?: boolean;
+    };
+
     // wshrpc.CpuDataRequest
     type CpuDataRequest = {
         id: string;
@@ -264,9 +271,11 @@ declare global {
     type FullConfigType = {
         settings: SettingsType;
         mimetypes: {[key: string]: MimeTypeConfigType};
+        defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
+        connections: {[key: string]: ConnectionsConfigType};
         configerrors: ConfigError[];
     };
 
@@ -535,20 +544,20 @@ declare global {
 
     // wshrpc.SshKeywords
     type SshKeywords = {
-        User: string;
-        HostName: string;
-        Port: string;
-        IdentityFile: string[];
-        BatchMode: boolean;
-        PubkeyAuthentication: boolean;
-        PasswordAuthentication: boolean;
-        KbdInteractiveAuthentication: boolean;
-        PreferredAuthentications: string[];
-        AddKeysToAgent: boolean;
-        IdentityAgent: string;
-        ProxyJump: string[];
-        UserKnownHostsFile: string[];
-        GlobalKnownHostsFile: string[];
+        "ssh:user"?: string;
+        "ssh:hostname"?: string;
+        "ssh:port"?: string;
+        "ssh:identityfile"?: string[];
+        "ssh:batchmode"?: boolean;
+        "ssh:pubkeyauthentication"?: boolean;
+        "ssh:passwordauthentication"?: boolean;
+        "ssh:kbdinteractiveauthentication"?: boolean;
+        "ssh:preferredauthentications"?: string[];
+        "ssh:addkeystoagent"?: boolean;
+        "ssh:identityagent"?: string;
+        "ssh:proxyjump"?: string[];
+        "ssh:userknownhostsfile"?: string[];
+        "ssh:globalknownhostsfile"?: string[];
     };
 
     // waveobj.StickerClickOptsType
