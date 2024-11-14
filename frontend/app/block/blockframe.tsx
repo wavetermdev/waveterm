@@ -180,7 +180,6 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
-    const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
 
@@ -236,12 +235,7 @@ const BlockFrame_Header = ({
     }
 
     return (
-        <div
-            className="block-frame-default-header"
-            ref={dragHandleRef}
-            onContextMenu={onContextMenu}
-            draggable={!(preview || magnified || ephemeral)}
-        >
+        <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}
