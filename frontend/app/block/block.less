@@ -288,10 +288,10 @@
             justify-content: flex-start;
             flex-direction: column;
             overflow: hidden;
-            background: rgba(230, 186, 30, 0.2);
+            background: var(--conn-status-overlay-bg-color);
             backdrop-filter: blur(50px);
             border-radius: 6px;
-            box-shadow: 0px 13px 16px 0px rgba(0, 0, 0, 0.4);
+            box-shadow: 0px 13px 16px 0px rgb(from var(--block-bg-color) r g b / 40%);
 
             .connstatus-content {
                 display: flex;
@@ -415,7 +415,7 @@
             &.block-no-highlight,
             &.block-preview {
                 .block-mask {
-                    border: 2px solid rgba(255, 255, 255, 0.1) !important;
+                    border: 2px solid rgb(from var(--border-color) r g b / 10%) !important;
                 }
             }
         }
