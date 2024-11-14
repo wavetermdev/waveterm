@@ -9,13 +9,16 @@ import { atom, useAtomValue } from "jotai";
 import { useCallback } from "react";
 import "./helpview.less";
 
+const docsiteWebUrl = "https://docs.waveterm.dev/";
+const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
+
 class HelpViewModel extends WebViewModel {
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
         this.getSettingsMenuItems = undefined;
         this.viewText = atom((get) => {
             // force a dependency on meta.url so we re-render the buttons when the url changes
-            let url = get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
+            get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
             return [
                 {
                     elemtype: "iconbutton",
@@ -41,14 +44,25 @@ class HelpViewModel extends WebViewModel {
         this.viewType = "help";
         this.viewIcon = atom("circle-question");
         this.viewName = atom("Help");
+
+        /* 
+        Add callback to take the current embedded docsite url and return the equivalent page in the public docsite.
+        The port used by the embedded docsite changes every time the app runs and the current page may be cached from a previous run so we can't trust that it matches the current embedded url.
+        We have a regex at the top of this file that can extract the base part of the url (i.e. http://127.0.0.1:53288). We'll use this regex to strip the base part of the url from both the current
+        page and the embedded docsite url. Because we host the embedded docsite at a subdirectory, we also need to strip that (hence the second replace). Then, we can build the public url from whatever's left.
+        */
+        this.modifyExternalUrl = (url: string) => {
+            const strippedDocsiteUrl = getApi().getDocsiteUrl().replace(baseUrlRegex, "");
+            const strippedCurUrl = url.replace(baseUrlRegex, "").replace(strippedDocsiteUrl, "");
+            const newUrl = docsiteWebUrl + strippedCurUrl;
+            return newUrl;
+        };
     }
 }
 
 function makeHelpViewModel(blockId: string, nodeModel: BlockNodeModel) {
     return new HelpViewModel(blockId, nodeModel);
 }
-
-const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
 
 function HelpView({ model }: { model: HelpViewModel }) {
     const homepageUrl = useAtomValue(model.homepageUrl);
