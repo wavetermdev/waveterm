@@ -832,7 +832,7 @@ export class LayoutModel {
                     const ephemeralNode = get(this.ephemeralNode);
                     return ephemeralNode?.id === nodeid;
                 }),
-                addEphemeralNodeToLayout: this.addEphemeralNodeToLayout,
+                addEphemeralNodeToLayout: () => this.addEphemeralNodeToLayout(),
                 animationTimeS: this.animationTimeS,
                 ready: this.ready,
                 disablePointerEvents: this.activeDrag,
@@ -946,10 +946,15 @@ export class LayoutModel {
      */
     focusNode(nodeId: string) {
         if (this.focusedNodeId === nodeId) return;
-        const layoutNode = findNode(this.treeState?.rootNode, nodeId);
+        let layoutNode = findNode(this.treeState?.rootNode, nodeId);
         if (!layoutNode) {
-            console.error("unable to focus node, cannot find it in tree", nodeId);
-            return;
+            const ephemeralNode = this.getter(this.ephemeralNode);
+            if (ephemeralNode?.id === nodeId) {
+                layoutNode = ephemeralNode;
+            } else {
+                console.error("unable to focus node, cannot find it in tree", nodeId);
+                return;
+            }
         }
         const action: LayoutTreeFocusNodeAction = {
             type: LayoutTreeActionType.FocusNode,
@@ -1021,6 +1026,7 @@ export class LayoutModel {
         const boundingRect = this.getBoundingRect();
         this.updateEphemeralNodeProps(ephemeralNode, addlProps, boundingRect);
         this.setter(this.additionalProps, addlProps);
+        this.focusNode(ephemeralNode.id);
     }
 
     addEphemeralNodeToLayout() {
@@ -1048,10 +1054,10 @@ export class LayoutModel {
     ) {
         const transform = setTransform(
             {
-                top: boundingRect.height * 0.1,
-                left: boundingRect.width * 0.1,
-                width: boundingRect.width * 0.8,
-                height: boundingRect.height * 0.8,
+                top: boundingRect.height * 0.075,
+                left: boundingRect.width * 0.075,
+                width: boundingRect.width * 0.85,
+                height: boundingRect.height * 0.85,
             },
             true,
             true,

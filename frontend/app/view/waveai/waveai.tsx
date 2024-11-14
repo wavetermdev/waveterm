@@ -240,7 +240,7 @@ export class WaveAiModel implements ViewModel {
                                 file: path,
                             },
                         };
-                        await createBlock(blockDef, true);
+                        await createBlock(blockDef, false, true);
                     });
                 },
             });

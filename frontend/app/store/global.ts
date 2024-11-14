@@ -341,17 +341,21 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
-async function createBlock(blockDef: BlockDef, magnified = false): Promise<string> {
+async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = false): Promise<string> {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const blockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+    if (ephemeral) {
+        layoutModel.newEphemeralNode(blockId);
+        return blockId;
+    }
     const insertNodeAction: LayoutTreeInsertNodeAction = {
         type: LayoutTreeActionType.InsertNode,
         node: newLayoutNode(undefined, undefined, undefined, { blockId }),
         magnified,
         focused: true,
     };
-    const tabId = globalStore.get(atoms.staticTabId);
-    const layoutModel = getLayoutModelForTabById(tabId);
     layoutModel.treeReducer(insertNodeAction);
     return blockId;
 }
