@@ -53,11 +53,8 @@ class HelpViewModel extends WebViewModel {
         */
         this.modifyExternalUrl = (url: string) => {
             const strippedDocsiteUrl = getApi().getDocsiteUrl().replace(baseUrlRegex, "");
-            console.log("strippedDocsiteUrl", strippedDocsiteUrl);
             const strippedCurUrl = url.replace(baseUrlRegex, "").replace(strippedDocsiteUrl, "");
-            console.log("strippedCurUrl", strippedCurUrl, url);
             const newUrl = docsiteWebUrl + strippedCurUrl;
-            console.log("newUrl", newUrl);
             return newUrl;
         };
     }
