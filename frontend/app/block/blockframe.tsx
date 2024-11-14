@@ -435,6 +435,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
+    const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
 
     const connBtnRef = React.useRef<HTMLDivElement>();
     React.useEffect(() => {
@@ -490,6 +492,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 "block-focused": isFocused || preview,
                 "block-preview": preview,
                 "block-no-highlight": numBlocksInTab === 1,
+                ephemeral: isEphemeral,
+                magnified: isMagnified,
             })}
             data-blockid={nodeModel.blockId}
             onClick={blockModel?.onClick}

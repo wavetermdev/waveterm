@@ -136,10 +136,33 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
     const ephemeralNode = useAtomValue(layoutModel.ephemeralNode);
     const magnifiedNodeId = useAtomValue(layoutModel.treeStateAtom).magnifiedNodeId;
 
+    const [showMagnifiedBackdrop, setShowMagnifiedBackdrop] = useState(!!ephemeralNode);
+    const [showEphemeralBackdrop, setShowEphemeralBackdrop] = useState(!!magnifiedNodeId);
+
+    const debouncedCallback = useCallback(
+        debounce(100, (callback: () => void) => callback()),
+        []
+    );
+
+    useEffect(() => {
+        if (magnifiedNodeId && !showMagnifiedBackdrop) {
+            debouncedCallback(() => setShowMagnifiedBackdrop(true));
+        }
+        if (!magnifiedNodeId) {
+            setShowMagnifiedBackdrop(false);
+        }
+        if (ephemeralNode && !showEphemeralBackdrop) {
+            debouncedCallback(() => setShowEphemeralBackdrop(true));
+        }
+        if (!ephemeralNode) {
+            setShowEphemeralBackdrop(false);
+        }
+    }, [ephemeralNode, magnifiedNodeId]);
+
     return (
         <>
-            {magnifiedNodeId && <div className="magnified-node-backdrop" />}
-            {ephemeralNode && <div className="ephemeral-node-backdrop" />}
+            {showMagnifiedBackdrop && <div className="magnified-node-backdrop" />}
+            {showEphemeralBackdrop && <div className="ephemeral-node-backdrop" />}
         </>
     );
 }
