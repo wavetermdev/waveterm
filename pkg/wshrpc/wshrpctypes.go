@@ -84,6 +84,8 @@ const (
 	Command_VDomAsyncInitiation = "vdomasyncinitiation"
 	Command_VDomRender          = "vdomrender"
 	Command_VDomUrlRequest      = "vdomurlrequest"
+
+	Command_AiSendMessage = "aisendmessage"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -160,6 +162,9 @@ type WshRpcInterface interface {
 	// terminal
 	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
 	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
+
+	// ai
+	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -453,7 +458,12 @@ type VDomUrlRequestResponse struct {
 
 type WaveInfoData struct {
 	Version   string `json:"version"`
+	ClientId  string `json:"clientid"`
 	BuildTime string `json:"buildtime"`
 	ConfigDir string `json:"configdir"`
 	DataDir   string `json:"datadir"`
+}
+
+type AiMessageData struct {
+	Message string `json:"message,omitempty"`
 }

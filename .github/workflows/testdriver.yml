@@ -1,156 +1,165 @@
 name: TestDriver.ai
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+*"
-  pull_request:
-    branches:
-      - main
-  schedule:
-    - cron: 0 21 * * *
-  workflow_dispatch: null
+    push:
+        branches:
+            - main
+        tags:
+            - "v[0-9]+.[0-9]+.[0-9]+*"
+    pull_request:
+        branches:
+            - main
+        paths-ignore:
+            - "docs/**"
+            - ".storybook/**"
+            - ".vscode/**"
+            - ".editorconfig"
+            - ".gitignore"
+            - ".prettierrc"
+            - ".eslintrc.js"
+            - "**/*.md"
+    schedule:
+        - cron: 0 21 * * *
+    workflow_dispatch: null
 
 env:
-  GO_VERSION: "1.22"
-  NODE_VERSION: "20"
+    GO_VERSION: "1.22"
+    NODE_VERSION: "20"
 
 permissions:
-  contents: read # To allow the action to read repository contents
-  pull-requests: write # To allow the action to create/update pull request comments
+    contents: read # To allow the action to read repository contents
+    pull-requests: write # To allow the action to create/update pull request comments
 
 jobs:
-  build_and_upload:
-    name: Test Onboarding
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
+    build_and_upload:
+        name: Test Onboarding
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      # General build dependencies
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{env.GO_VERSION}}
-          cache-dependency-path: |
-            go.sum
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{env.NODE_VERSION}}
-      - name: Install Yarn
-        run: |
-          corepack enable
-          yarn install
-      - name: Install Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+            # General build dependencies
+            - uses: actions/setup-go@v5
+              with:
+                  go-version: ${{env.GO_VERSION}}
+                  cache-dependency-path: |
+                      go.sum
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{env.NODE_VERSION}}
+            - name: Install Yarn
+              run: |
+                  corepack enable
+                  yarn install
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build
-        run: task package
-        env:
-          USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
-          CSC_IDENTITY_AUTO_DISCOVERY: false # disable codesign
-        shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
+            - name: Build
+              run: task package
+              env:
+                  USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
+                  CSC_IDENTITY_AUTO_DISCOVERY: false # disable codesign
+              shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
 
-      # Upload .exe as an artifact
-      - name: Upload .exe artifact
-        id: upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-exe
-          path: make/*.exe
+            # Upload .exe as an artifact
+            - name: Upload .exe artifact
+              id: upload
+              uses: actions/upload-artifact@v4
+              with:
+                  name: windows-exe
+                  path: make/*.exe
 
-      - uses: testdriverai/action@main
-        id: testdriver
-        env:
-          FORCE_COLOR: "3"
-        with:
-          key: ${{ secrets.DASHCAM_API }}
-          prerun: |
-            $headers = @{
-                Authorization = "token ${{ secrets.GITHUB_TOKEN }}"
-            }
+            - uses: testdriverai/action@main
+              id: testdriver
+              env:
+                  FORCE_COLOR: "3"
+              with:
+                  key: ${{ secrets.DASHCAM_API }}
+                  prerun: |
+                      $headers = @{
+                          Authorization = "token ${{ secrets.GITHUB_TOKEN }}"
+                      }
 
-            $downloadFolder = "./download"
-            $artifactFileName = "waveterm.exe"
-            $artifactFilePath = "$downloadFolder/$artifactFileName"
+                      $downloadFolder = "./download"
+                      $artifactFileName = "waveterm.exe"
+                      $artifactFilePath = "$downloadFolder/$artifactFileName"
 
-            Write-Host "Starting the artifact download process..."
+                      Write-Host "Starting the artifact download process..."
 
-            # Create the download directory if it doesn't exist
-            if (-not (Test-Path -Path $downloadFolder)) {
-                Write-Host "Creating download folder..."
-                mkdir $downloadFolder
-            } else {
-                Write-Host "Download folder already exists."
-            }
+                      # Create the download directory if it doesn't exist
+                      if (-not (Test-Path -Path $downloadFolder)) {
+                          Write-Host "Creating download folder..."
+                          mkdir $downloadFolder
+                      } else {
+                          Write-Host "Download folder already exists."
+                      }
 
-            # Fetch the artifact upload URL
-            Write-Host "Fetching the artifact upload URL..."
-            $artifactUrl = (Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" -Headers $headers).artifacts[0].archive_download_url
+                      # Fetch the artifact upload URL
+                      Write-Host "Fetching the artifact upload URL..."
+                      $artifactUrl = (Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" -Headers $headers).artifacts[0].archive_download_url
 
-            if ($artifactUrl) {
-                Write-Host "Artifact URL successfully fetched: $artifactUrl"
-            } else {
-                Write-Error "Failed to fetch the artifact URL."
-                exit 1
-            }
+                      if ($artifactUrl) {
+                          Write-Host "Artifact URL successfully fetched: $artifactUrl"
+                      } else {
+                          Write-Error "Failed to fetch the artifact URL."
+                          exit 1
+                      }
 
-            # Download the artifact (zipped file)
-            Write-Host "Starting artifact download..."
-            $artifactZipPath = "$env:TEMP\artifact.zip"
-            try {
-                Invoke-WebRequest -Uri $artifactUrl `
-                    -Headers $headers `
-                    -OutFile $artifactZipPath `
-                    -MaximumRedirection 5
+                      # Download the artifact (zipped file)
+                      Write-Host "Starting artifact download..."
+                      $artifactZipPath = "$env:TEMP\artifact.zip"
+                      try {
+                          Invoke-WebRequest -Uri $artifactUrl `
+                              -Headers $headers `
+                              -OutFile $artifactZipPath `
+                              -MaximumRedirection 5
 
-                Write-Host "Artifact downloaded successfully to $artifactZipPath"
-            } catch {
-                Write-Error "Error downloading artifact: $_"
-                exit 1
-            }
+                          Write-Host "Artifact downloaded successfully to $artifactZipPath"
+                      } catch {
+                          Write-Error "Error downloading artifact: $_"
+                          exit 1
+                      }
 
-            # Unzip the artifact
-            $artifactUnzipPath = "$env:TEMP\artifact"
-            Write-Host "Unzipping the artifact to $artifactUnzipPath..."
-            try {
-                Expand-Archive -Path $artifactZipPath -DestinationPath $artifactUnzipPath -Force
-                Write-Host "Artifact unzipped successfully to $artifactUnzipPath"
-            } catch {
-                Write-Error "Failed to unzip the artifact: $_"
-                exit 1
-            }
+                      # Unzip the artifact
+                      $artifactUnzipPath = "$env:TEMP\artifact"
+                      Write-Host "Unzipping the artifact to $artifactUnzipPath..."
+                      try {
+                          Expand-Archive -Path $artifactZipPath -DestinationPath $artifactUnzipPath -Force
+                          Write-Host "Artifact unzipped successfully to $artifactUnzipPath"
+                      } catch {
+                          Write-Error "Failed to unzip the artifact: $_"
+                          exit 1
+                      }
 
-            # Find the installer or app executable
-            $artifactInstallerPath = Get-ChildItem -Path $artifactUnzipPath -Filter *.exe -Recurse | Select-Object -First 1
+                      # Find the installer or app executable
+                      $artifactInstallerPath = Get-ChildItem -Path $artifactUnzipPath -Filter *.exe -Recurse | Select-Object -First 1
 
-            if ($artifactInstallerPath) {
-                Write-Host "Executable file found: $($artifactInstallerPath.FullName)"
-            } else {
-                Write-Error "Executable file not found. Exiting."
-                exit 1
-            }
+                      if ($artifactInstallerPath) {
+                          Write-Host "Executable file found: $($artifactInstallerPath.FullName)"
+                      } else {
+                          Write-Error "Executable file not found. Exiting."
+                          exit 1
+                      }
 
-            # Run the installer and log the result
-            Write-Host "Running the installer: $($artifactInstallerPath.FullName)..."
-            try {
-                Start-Process -FilePath $artifactInstallerPath.FullName -Wait
-                Write-Host "Installer ran successfully."
-            } catch {
-                Write-Error "Failed to run the installer: $_"
-                exit 1
-            }
+                      # Run the installer and log the result
+                      Write-Host "Running the installer: $($artifactInstallerPath.FullName)..."
+                      try {
+                          Start-Process -FilePath $artifactInstallerPath.FullName -Wait
+                          Write-Host "Installer ran successfully."
+                      } catch {
+                          Write-Error "Failed to run the installer: $_"
+                          exit 1
+                      }
 
-            # Optional: If the app executable is different from the installer, find and launch it
-            $wavePath = Join-Path $env:USERPROFILE "AppData\Local\Programs\waveterm\Wave.exe"
+                      # Optional: If the app executable is different from the installer, find and launch it
+                      $wavePath = Join-Path $env:USERPROFILE "AppData\Local\Programs\waveterm\Wave.exe"
 
-            Write-Host "Launching the application: $($wavePath)"
-            Start-Process -FilePath $wavePath
-            Write-Host "Application launched."
+                      Write-Host "Launching the application: $($wavePath)"
+                      Start-Process -FilePath $wavePath
+                      Write-Host "Application launched."
 
-          prompt: |
-            1. /run testdriver/onboarding.yml
-            2. /generate desktop 20
+                  prompt: |
+                      1. /run testdriver/onboarding.yml
+                      2. /generate desktop 20

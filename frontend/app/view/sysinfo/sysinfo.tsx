@@ -270,7 +270,7 @@ class SysinfoViewModel {
         const plotData = globalStore.get(this.dataAtom);
 
         termThemeKeys.sort((a, b) => {
-            return termThemes[a]["display:order"] - termThemes[b]["display:order"];
+            return (termThemes[a]["display:order"] ?? 0) - (termThemes[b]["display:order"] ?? 0);
         });
         const fullMenu: ContextMenuItem[] = [];
         let submenu: ContextMenuItem[];

@@ -5,15 +5,21 @@
     gap: 1rem;
 }
 
-@media (max-width: 650px) {
+@media (max-width: 450px) {
     .card-group {
         grid-template-columns: 1fr;
     }
 }
 
-@media (996px < width <= 1170px) {
+@media (min-width: 451px) and (max-width: 995px) {
     .card-group {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 996px) {
+    .card-group {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 

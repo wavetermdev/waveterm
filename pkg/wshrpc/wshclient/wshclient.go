@@ -14,6 +14,12 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 )
 
+// command "aisendmessage", wshserver.AiSendMessageCommand
+func AiSendMessageCommand(w *wshutil.WshRpc, data wshrpc.AiMessageData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "aisendmessage", data, opts)
+	return err
+}
+
 // command "authenticate", wshserver.AuthenticateCommand
 func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.CommandAuthenticateRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.CommandAuthenticateRtnData](w, "authenticate", data, opts)

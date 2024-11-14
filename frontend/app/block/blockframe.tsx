@@ -120,6 +120,7 @@ function computeEndIcons(
     const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
 
@@ -133,14 +134,27 @@ function computeEndIcons(
         click: onContextMenu,
     };
     endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
-    endIconsElem.push(
-        <OptMagnifyButton
-            key="unmagnify"
-            magnified={magnified}
-            toggleMagnify={nodeModel.toggleMagnify}
-            disabled={magnifyDisabled}
-        />
-    );
+    if (ephemeral) {
+        const addToLayoutDecl: IconButtonDecl = {
+            elemtype: "iconbutton",
+            icon: "circle-plus",
+            title: "Add to Layout",
+            click: () => {
+                nodeModel.addEphemeralNodeToLayout();
+            },
+        };
+        endIconsElem.push(<IconButton key="add-to-layout" decl={addToLayoutDecl} />);
+    } else {
+        endIconsElem.push(
+            <OptMagnifyButton
+                key="unmagnify"
+                magnified={magnified}
+                toggleMagnify={nodeModel.toggleMagnify}
+                disabled={magnifyDisabled}
+            />
+        );
+    }
+
     const closeDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "xmark-large",
@@ -166,6 +180,7 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
 
@@ -221,7 +236,12 @@ const BlockFrame_Header = ({
     }
 
     return (
-        <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
+        <div
+            className="block-frame-default-header"
+            ref={dragHandleRef}
+            onContextMenu={onContextMenu}
+            draggable={!(preview || magnified || ephemeral)}
+        >
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}
@@ -309,7 +329,6 @@ const ConnStatusOverlay = React.memo(
         const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
         const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
-        const blockNum = jotai.useAtomValue(nodeModel.blockNum);
 
         React.useEffect(() => {
             if (width) {
@@ -421,6 +440,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
+    const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
 
     const connBtnRef = React.useRef<HTMLDivElement>();
     React.useEffect(() => {
@@ -476,6 +497,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 "block-focused": isFocused || preview,
                 "block-preview": preview,
                 "block-no-highlight": numBlocksInTab === 1,
+                ephemeral: isEphemeral,
+                magnified: isMagnified,
             })}
             data-blockid={nodeModel.blockId}
             onClick={blockModel?.onClick}

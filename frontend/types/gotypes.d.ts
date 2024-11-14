@@ -5,6 +5,11 @@
 
 declare global {
 
+    // wshrpc.AiMessageData
+    type AiMessageData = {
+        message?: string;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
@@ -259,7 +264,6 @@ declare global {
     type FullConfigType = {
         settings: SettingsType;
         mimetypes: {[key: string]: MimeTypeConfigType};
-        defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
@@ -361,6 +365,7 @@ declare global {
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
         "term:vdomblockid"?: string;
+        "term:vdomtoolbarblockid"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -791,6 +796,13 @@ declare global {
     type VDomTarget = {
         newblock?: boolean;
         magnified?: boolean;
+        toolbar?: VDomTargetToolbar;
+    };
+
+    // vdom.VDomTargetToolbar
+    type VDomTargetToolbar = {
+        toolbar: boolean;
+        height?: string;
     };
 
     // vdom.VDomTransferElem
@@ -870,6 +882,7 @@ declare global {
     // wshrpc.WaveInfoData
     type WaveInfoData = {
         version: string;
+        clientid: string;
         buildtime: string;
         configdir: string;
         datadir: string;

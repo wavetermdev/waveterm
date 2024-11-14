@@ -25,12 +25,13 @@ import {
 } from "@/store/global";
 import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
-import { isBlank } from "@/util/util";
+import { isBlank, useAtomValueSafe } from "@/util/util";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
 import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
 import { WaveAi, WaveAiModel, makeWaveAiViewModel } from "@/view/waveai/waveai";
 import { WebView, WebViewModel, makeWebViewModel } from "@/view/webview/webview";
+import clsx from "clsx";
 import { atom, useAtomValue } from "jotai";
 import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./block.less";
@@ -154,11 +155,12 @@ const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
         () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
         [nodeModel.blockId, blockData?.meta?.view, viewModel]
     );
+    const noPadding = useAtomValueSafe(viewModel.noPadding);
     if (!blockData) {
         return null;
     }
     return (
-        <div key="content" className="block-content" ref={contentRef}>
+        <div key="content" className={clsx("block-content", { "block-no-padding": noPadding })} ref={contentRef}>
             <ErrorBoundary>
                 <Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</Suspense>
             </ErrorBoundary>
@@ -176,6 +178,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const isFocused = useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
+    const noPadding = useAtomValueSafe(viewModel.noPadding);
 
     useLayoutEffect(() => {
         setBlockClicked(isFocused);
@@ -273,7 +276,12 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
                     onChange={() => {}}
                 />
             </div>
-            <div key="content" className="block-content" ref={contentRef} style={blockContentStyle}>
+            <div
+                key="content"
+                className={clsx("block-content", { "block-no-padding": noPadding })}
+                ref={contentRef}
+                style={blockContentStyle}
+            >
                 <ErrorBoundary>
                     <Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{viewElem}</Suspense>
                 </ErrorBoundary>

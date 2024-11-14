@@ -74,14 +74,9 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] oref is required")
 		return
 	}
-	err := validateEasyORef(oref)
-	if err != nil {
-		WriteStderr("[error] %v\n", err)
-		return
-	}
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
-		WriteStderr("[error] resolving oref: %v\n", err)
+		WriteStderr("[error] %v\n", err)
 		return
 	}
 	resp, err := wshclient.GetMetaCommand(RpcClient, wshrpc.CommandGetMetaData{ORef: *fullORef}, &wshrpc.RpcOpts{Timeout: 2000})
