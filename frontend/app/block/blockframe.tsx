@@ -120,6 +120,7 @@ function computeEndIcons(
     const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
 
@@ -133,14 +134,27 @@ function computeEndIcons(
         click: onContextMenu,
     };
     endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
-    endIconsElem.push(
-        <OptMagnifyButton
-            key="unmagnify"
-            magnified={magnified}
-            toggleMagnify={nodeModel.toggleMagnify}
-            disabled={magnifyDisabled}
-        />
-    );
+    if (ephemeral) {
+        const addToLayoutDecl: IconButtonDecl = {
+            elemtype: "iconbutton",
+            icon: "circle-plus",
+            title: "Add to Layout",
+            click: () => {
+                nodeModel.addEphemeralNodeToLayout();
+            },
+        };
+        endIconsElem.push(<IconButton key="add-to-layout" decl={addToLayoutDecl} />);
+    } else {
+        endIconsElem.push(
+            <OptMagnifyButton
+                key="unmagnify"
+                magnified={magnified}
+                toggleMagnify={nodeModel.toggleMagnify}
+                disabled={magnifyDisabled}
+            />
+        );
+    }
+
     const closeDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "xmark-large",
@@ -167,7 +181,7 @@ const BlockFrame_Header = ({
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
-    const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+    const dragHandleRef = preview || magnified ? null : nodeModel.dragHandleRef;
 
     if (blockData?.meta?.["frame:title"]) {
         viewName = blockData.meta["frame:title"];
