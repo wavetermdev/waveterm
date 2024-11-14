@@ -61,7 +61,7 @@
     }
 
     &.block-preview.block-frame-default .block-frame-default-inner .block-frame-default-header {
-        background-color: rgba(0, 0, 0, 0.7);
+        background-color: var(--block-header-bg-color);
     }
 
     &.block-frame-default {
@@ -254,7 +254,7 @@
             }
 
             .block-frame-preview {
-                background-color: rgba(0, 0, 0, 0.7);
+                background-color: var(--block-header-bg-color);
                 width: 100%;
                 flex-grow: 1;
                 border-bottom-left-radius: var(--block-border-radius);
@@ -282,10 +282,10 @@
             justify-content: flex-start;
             flex-direction: column;
             overflow: hidden;
-            background: rgba(230, 186, 30, 0.2);
+            background: var(--conn-status-overlay-bg-color);
             backdrop-filter: blur(50px);
             border-radius: 6px;
-            box-shadow: 0px 13px 16px 0px rgba(0, 0, 0, 0.4);
+            box-shadow: 0px 13px 16px 0px var(--conn-status-overlay-box-shadow-color);
 
             .connstatus-content {
                 display: flex;
@@ -385,7 +385,7 @@
 
             &.show-block-mask .block-mask-inner {
                 margin-top: var(--header-height); // TODO fix this magic
-                background-color: rgba(0, 0, 0, 0.5);
+                background-color: var(--block-bg-color);
                 height: calc(100% - var(--header-height));
                 width: 100%;
                 display: flex;
@@ -409,7 +409,7 @@
             &.block-no-highlight,
             &.block-preview {
                 .block-mask {
-                    border: 2px solid rgba(255, 255, 255, 0.1) !important;
+                    border: 2px solid var(--block-preview-border-color) !important;
                 }
             }
         }
