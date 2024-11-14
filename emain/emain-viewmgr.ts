@@ -52,6 +52,7 @@ function createBareTabView(fullConfig: FullConfigType): WaveTabView {
         webPreferences: {
             preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
             webviewTag: true,
+            devTools: true,
         },
     }) as WaveTabView;
     tabView.createdTs = Date.now();
@@ -325,6 +326,7 @@ function getOrCreateWebViewForTab(fullConfig: FullConfigType, windowId: string, 
     tabView.webContents.on("blur", () => {
         handleCtrlShiftFocus(tabView.webContents, false);
     });
+    tabView.webContents.openDevTools({ mode: "detach" });
     configureAuthKeyRequestInjection(tabView.webContents.session);
     return [tabView, false];
 }
@@ -542,10 +544,12 @@ export async function createBrowserWindow(
     fullConfig: FullConfigType,
     opts: WindowOpts
 ): Promise<WaveBrowserWindow> {
+    console.log("createBrowserWindow", waveWindow.oid);
     const bwin = createBaseWaveBrowserWindow(waveWindow, fullConfig, opts);
 
     const workspace = await ClientService.GetWorkspace(waveWindow.workspaceid);
     if (!workspace.activetabid) {
+        console.log("no active tab, setting first tab active");
         await ObjectService.SetActiveTab(workspace.oid, workspace.tabids[0]);
     }
     return bwin;
