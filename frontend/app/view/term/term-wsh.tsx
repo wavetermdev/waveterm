@@ -41,6 +41,35 @@ export class TermWshClient extends WshClient {
                 magnified: data.target?.magnified,
             });
             return oref;
+        } else if (data.target?.toolbar?.toolbar) {
+            const oldVDomBlockId = globalStore.get(this.model.vdomToolbarBlockId);
+            console.log("vdom:toolbar", data.target.toolbar);
+            globalStore.set(this.model.vdomToolbarTarget, data.target.toolbar);
+            const oref = await RpcApi.CreateSubBlockCommand(this, {
+                parentblockid: this.blockId,
+                blockdef: {
+                    meta: {
+                        view: "vdom",
+                        "vdom:route": rh.getSource(),
+                    },
+                },
+            });
+            const [_, newVDomBlockId] = splitORef(oref);
+            if (!isBlank(oldVDomBlockId)) {
+                // dispose of the old vdom block
+                setTimeout(() => {
+                    RpcApi.DeleteSubBlockCommand(this, { blockid: oldVDomBlockId });
+                }, 500);
+            }
+            setTimeout(() => {
+                RpcApi.SetMetaCommand(this, {
+                    oref: makeORef("block", this.model.blockId),
+                    meta: {
+                        "term:vdomtoolbarblockid": newVDomBlockId,
+                    },
+                });
+            }, 50);
+            return oref;
         } else {
             // in the terminal
             // check if there is a current active vdom block

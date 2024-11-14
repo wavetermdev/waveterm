@@ -84,14 +84,6 @@
             backdrop-filter: blur(8px);
         }
 
-        &.magnified {
-            background-color: var(--block-bg-solid-color);
-            z-index: var(--zindex-layout-magnified-node);
-        }
-        &.last-magnified {
-            z-index: var(--zindex-layout-last-magnified-node);
-        }
-
         .tile-leaf {
             overflow: hidden;
         }
@@ -109,9 +101,27 @@
             }
         }
 
-        &:not(:only-child, .magnified) .tile-leaf {
+        &:not(:only-child) .tile-leaf {
             padding: calc(var(--gap-size-px) / 2);
         }
+    }
+
+    .magnified-node-backdrop,
+    .ephemeral-node-backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        backdrop-filter: blur(2px);
+    }
+
+    .magnified-node-backdrop {
+        z-index: var(--zindex-layout-magnified-node-backdrop);
+    }
+
+    .ephemeral-node-backdrop {
+        z-index: var(--zindex-layout-ephemeral-node-backdrop);
     }
 
     &.animate {

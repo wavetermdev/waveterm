@@ -26,6 +26,10 @@
         overflow: hidden;
         min-height: 0;
         padding: 5px;
+
+        &.block-no-padding {
+            padding: 0;
+        }
     }
 
     .block-focuselem {
@@ -57,7 +61,7 @@
     }
 
     &.block-preview.block-frame-default .block-frame-default-inner .block-frame-default-header {
-        background-color: rgba(0, 0, 0, 0.7);
+        background-color: rgb(from var(--block-bg-color) r g b / 70%);
     }
 
     &.block-frame-default {
@@ -250,7 +254,7 @@
             }
 
             .block-frame-preview {
-                background-color: rgba(0, 0, 0, 0.7);
+                background-color: rgb(from var(--block-bg-color) r g b / 70%);
                 width: 100%;
                 flex-grow: 1;
                 border-bottom-left-radius: var(--block-border-radius);
@@ -267,6 +271,12 @@
             }
         }
 
+        &.magnified,
+        &.ephemeral {
+            background-color: rgb(from var(--block-bg-color) r g b / 60%);
+            backdrop-filter: blur(10px);
+        }
+
         .connstatus-overlay {
             position: absolute;
             top: calc(var(--header-height) + 6px);
@@ -278,10 +288,10 @@
             justify-content: flex-start;
             flex-direction: column;
             overflow: hidden;
-            background: rgba(230, 186, 30, 0.2);
+            background: var(--conn-status-overlay-bg-color);
             backdrop-filter: blur(50px);
             border-radius: 6px;
-            box-shadow: 0px 13px 16px 0px rgba(0, 0, 0, 0.4);
+            box-shadow: 0px 13px 16px 0px rgb(from var(--block-bg-color) r g b / 40%);
 
             .connstatus-content {
                 display: flex;
@@ -381,7 +391,7 @@
 
             &.show-block-mask .block-mask-inner {
                 margin-top: var(--header-height); // TODO fix this magic
-                background-color: rgba(0, 0, 0, 0.5);
+                background-color: rgb(from var(--block-bg-color) r g b / 50%);
                 height: calc(100% - var(--header-height));
                 width: 100%;
                 display: flex;
@@ -405,7 +415,7 @@
             &.block-no-highlight,
             &.block-preview {
                 .block-mask {
-                    border: 2px solid rgba(255, 255, 255, 0.1);
+                    border: 2px solid rgb(from var(--border-color) r g b / 10%) !important;
                 }
             }
         }

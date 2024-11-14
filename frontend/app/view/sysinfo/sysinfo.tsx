@@ -270,7 +270,7 @@ class SysinfoViewModel {
         const plotData = globalStore.get(this.dataAtom);
 
         termThemeKeys.sort((a, b) => {
-            return termThemes[a]["display:order"] - termThemes[b]["display:order"];
+            return (termThemes[a]["display:order"] ?? 0) - (termThemes[b]["display:order"] ?? 0);
         });
         const fullMenu: ContextMenuItem[] = [];
         let submenu: ContextMenuItem[];
@@ -531,8 +531,12 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
     }
 
     return (
-        <OverlayScrollbarsComponent ref={osRef} className="scrollable" options={{ scrollbars: { autoHide: "leave" } }}>
-            <div className={clsx("sysinfo-view", { "two-columns": cols2 })}>
+        <OverlayScrollbarsComponent
+            ref={osRef}
+            className="sysinfo-view"
+            options={{ scrollbars: { autoHide: "leave" } }}
+        >
+            <div className={clsx("sysinfo-inner", { "two-columns": cols2 })}>
                 {yvals.map((yval, idx) => {
                     return (
                         <SingleLinePlot

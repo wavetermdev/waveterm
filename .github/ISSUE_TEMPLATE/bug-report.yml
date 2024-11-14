@@ -44,11 +44,21 @@ body:
           placeholder: v0.8.8
       validations:
           required: true
+    - type: dropdown
+      attributes:
+          label: Platform
+          description: The OS platform of the computer where you are running Wave
+          options:
+              - macOS
+              - Linux
+              - Windows
+      validations:
+          required: true
     - type: input
       attributes:
-          label: OS
-          description: The name and version of the operating system of the computer where you are running Wave
-          placeholder: macOS 15.0
+          label: OS Version/Distribution
+          description: The version of the operating system of the computer where you are running Wave
+          placeholder: Ubuntu 24.04
       validations:
           required: false
     - type: dropdown
@@ -59,7 +69,7 @@ body:
               - arm64
               - x64
       validations:
-          required: false
+          required: true
 
     - type: markdown
       attributes:

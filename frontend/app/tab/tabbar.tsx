@@ -96,11 +96,6 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
             Config Error
         </Button>
     );
-    return (
-        <div className="config-error" ref={buttonRef as React.RefObject<HTMLDivElement>}>
-            <i className="fa fa-solid fa-exclamation-triangle" />
-        </div>
-    );
 };
 
 const TabBar = React.memo(({ workspace }: TabBarProps) => {
@@ -253,6 +248,13 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         setSizeAndPosition();
         debounce(100, () => saveTabsPosition())();
     }, [tabIds, newTabId, isFullScreen]);
+
+    const reinitVersion = useAtomValue(atoms.reinitVersion);
+    useEffect(() => {
+        if (reinitVersion > 0) {
+            setSizeAndPosition();
+        }
+    }, [reinitVersion]);
 
     useEffect(() => {
         window.addEventListener("resize", () => handleResizeTabs());

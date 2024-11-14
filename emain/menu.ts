@@ -118,7 +118,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         },
     ];
 
-    const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Meta+I";
+    const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Shift+I";
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "Reload Tab",
@@ -151,7 +151,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             type: "separator",
         },
         {
-            label: "Actual Size",
+            label: "Reset Zoom",
             accelerator: "CommandOrControl+0",
             click: (_, window) => {
                 getWindowWebContents(window)?.setZoomFactor(1);

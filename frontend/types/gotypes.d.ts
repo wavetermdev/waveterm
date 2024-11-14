@@ -5,6 +5,11 @@
 
 declare global {
 
+    // wshrpc.AiMessageData
+    type AiMessageData = {
+        message?: string;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
@@ -259,7 +264,6 @@ declare global {
     type FullConfigType = {
         settings: SettingsType;
         mimetypes: {[key: string]: MimeTypeConfigType};
-        defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
@@ -315,7 +319,7 @@ declare global {
         "frame:*"?: boolean;
         frame?: boolean;
         "frame:bordercolor"?: string;
-        "frame:bordercolor:focused"?: string;
+        "frame:activebordercolor"?: string;
         "frame:title"?: string;
         "frame:icon"?: string;
         "frame:text"?: string;
@@ -340,6 +344,8 @@ declare global {
         "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
+        "editor:*"?: boolean;
+        "editor:wordwrap"?: boolean;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
@@ -348,6 +354,8 @@ declare global {
         bg?: string;
         "bg:opacity"?: number;
         "bg:blendmode"?: string;
+        "bg:bordercolor"?: string;
+        "bg:activebordercolor"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -357,6 +365,7 @@ declare global {
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
         "term:vdomblockid"?: string;
+        "term:vdomtoolbarblockid"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -638,6 +647,7 @@ declare global {
     type VDomBackendOpts = {
         closeonctrlc?: boolean;
         globalkeyboardevents?: boolean;
+        globalstyles?: boolean;
     };
 
     // vdom.VDomBackendUpdate
@@ -646,7 +656,9 @@ declare global {
         ts: number;
         blockid: string;
         opts?: VDomBackendOpts;
+        haswork?: boolean;
         renderupdates?: VDomRenderUpdate[];
+        transferelems?: VDomTransferElem[];
         statesync?: VDomStateSync[];
         refoperations?: VDomRefOperation[];
         messages?: VDomMessage[];
@@ -680,7 +692,13 @@ declare global {
     type VDomEvent = {
         waveid: string;
         eventtype: string;
-        eventdata: any;
+        globaleventtype?: string;
+        targetvalue?: string;
+        targetchecked?: boolean;
+        targetname?: string;
+        targetid?: string;
+        keydata?: WaveKeyboardEvent;
+        mousedata?: WavePointerData;
     };
 
     // vdom.VDomFrontendUpdate
@@ -704,7 +722,7 @@ declare global {
         stoppropagation?: boolean;
         preventdefault?: boolean;
         globalevent?: string;
-        keys?: string[];
+        #keys?: string[];
     };
 
     // vdom.VDomMessage
@@ -729,6 +747,7 @@ declare global {
         refid: string;
         op: string;
         params?: any[];
+        outputref?: string;
     };
 
     // vdom.VDomRefPosition
@@ -762,7 +781,8 @@ declare global {
     type VDomRenderUpdate = {
         updatetype: "root"|"append"|"replace"|"remove"|"insert";
         waveid?: string;
-        vdom: VDomElem;
+        vdomwaveid?: string;
+        vdom?: VDomElem;
         index?: number;
     };
 
@@ -776,6 +796,37 @@ declare global {
     type VDomTarget = {
         newblock?: boolean;
         magnified?: boolean;
+        toolbar?: VDomTargetToolbar;
+    };
+
+    // vdom.VDomTargetToolbar
+    type VDomTargetToolbar = {
+        toolbar: boolean;
+        height?: string;
+    };
+
+    // vdom.VDomTransferElem
+    type VDomTransferElem = {
+        waveid?: string;
+        tag: string;
+        props?: {[key: string]: any};
+        children?: string[];
+        text?: string;
+    };
+
+    // wshrpc.VDomUrlRequestData
+    type VDomUrlRequestData = {
+        method: string;
+        url: string;
+        headers: {[key: string]: string};
+        body?: string;
+    };
+
+    // wshrpc.VDomUrlRequestResponse
+    type VDomUrlRequestResponse = {
+        statuscode?: number;
+        headers?: {[key: string]: string};
+        body?: string;
     };
 
     type WSCommandType = {
@@ -828,6 +879,30 @@ declare global {
         meta: {[key: string]: any};
     };
 
+    // wshrpc.WaveInfoData
+    type WaveInfoData = {
+        version: string;
+        clientid: string;
+        buildtime: string;
+        configdir: string;
+        datadir: string;
+    };
+
+    // vdom.WaveKeyboardEvent
+    type WaveKeyboardEvent = {
+        type: "keydown"|"keyup"|"keypress"|"unknown";
+        key: string;
+        code: string;
+        repeat?: boolean;
+        location?: number;
+        shift?: boolean;
+        control?: boolean;
+        alt?: boolean;
+        meta?: boolean;
+        cmd?: boolean;
+        option?: boolean;
+    };
+
     // wshrpc.WaveNotificationOptions
     type WaveNotificationOptions = {
         title?: string;
@@ -849,6 +924,26 @@ declare global {
         otype: string;
         oid: string;
         obj?: WaveObj;
+    };
+
+    // vdom.WavePointerData
+    type WavePointerData = {
+        button: number;
+        buttons: number;
+        clientx?: number;
+        clienty?: number;
+        pagex?: number;
+        pagey?: number;
+        screenx?: number;
+        screeny?: number;
+        movementx?: number;
+        movementy?: number;
+        shift?: boolean;
+        control?: boolean;
+        alt?: boolean;
+        meta?: boolean;
+        cmd?: boolean;
+        option?: boolean;
     };
 
     // waveobj.Window

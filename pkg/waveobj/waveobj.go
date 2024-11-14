@@ -86,6 +86,9 @@ func ParseORef(orefStr string) (ORef, error) {
 	if !otypeRe.MatchString(otype) {
 		return ORef{}, fmt.Errorf("invalid object type: %q", otype)
 	}
+	if !ValidOTypes[otype] {
+		return ORef{}, fmt.Errorf("unknown object type: %q", otype)
+	}
 	oid := fields[1]
 	_, err := uuid.Parse(oid)
 	if err != nil {

@@ -60,7 +60,11 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		if err != nil {
 			return "", fmt.Errorf("error getting client: %w", err)
 		}
-		tabName = "T" + fmt.Sprint(client.NextTabId)
+		ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+		if ws == nil {
+			return "", fmt.Errorf("workspace not found: %q", workspaceId)
+		}
+		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
 		client.NextTabId++
 		err = wstore.DBUpdate(ctx, client)
 		if err != nil {

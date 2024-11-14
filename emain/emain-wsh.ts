@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Notification } from "electron";
+import { getResolvedUpdateChannel } from "emain/updater";
 import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
 import { getWaveWindowById } from "./emain-viewmgr";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
@@ -33,6 +34,10 @@ export class ElectronWshClientType extends WshClient {
             body: notificationOptions.body,
             silent: notificationOptions.silent,
         }).show();
+    }
+
+    async handle_getupdatechannel(rh: RpcResponseHelper): Promise<string> {
+        return getResolvedUpdateChannel();
     }
 }
 

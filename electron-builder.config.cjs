@@ -53,6 +53,21 @@ const config = {
         minimumSystemVersion: "10.15.0",
         mergeASARs: true,
         singleArchFiles: "dist/bin/wavesrv.*",
+        entitlements: "build/entitlements.mac.plist",
+        entitlementsInherit: "build/entitlements.mac.plist",
+        extendInfo: {
+            NSContactsUsageDescription: "A CLI application running in Wave wants to use your contacts.",
+            NSRemindersUsageDescription: "A CLI application running in Wave wants to use your reminders.",
+            NSLocationWhenInUseUsageDescription:
+                "A CLI application running in Wave wants to use your location information while active.",
+            NSLocationAlwaysUsageDescription:
+                "A CLI application running in Wave wants to use your location information, even in the background.",
+            NSCameraUsageDescription: "A CLI application running in Wave wants to use the camera.",
+            NSMicrophoneUsageDescription: "A CLI application running in Wave wants to use your microphone.",
+            NSCalendarsUsageDescription: "A CLI application running in Wave wants to use Calendar data.",
+            NSLocationUsageDescription: "A CLI application running in Wave wants to use your location information.",
+            NSAppleEventsUsageDescription: "A CLI application running in Wave wants to use AppleScript.",
+        },
     },
     linux: {
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",

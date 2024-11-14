@@ -55,10 +55,6 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 	if oref == "" {
 		return fmt.Errorf("blockid not specified")
 	}
-	err := validateEasyORef(oref)
-	if err != nil {
-		return err
-	}
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
 		return fmt.Errorf("resolving blockid: %w", err)

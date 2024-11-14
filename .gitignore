@@ -30,3 +30,5 @@ artifacts/
 storybook-static/
 
 test-results.xml
+
+docsite/
