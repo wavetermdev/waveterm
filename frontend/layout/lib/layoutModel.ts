@@ -517,7 +517,7 @@ export class LayoutModel {
             // Process ephemeral node, if present.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
-                this.updateEphemeralNodeProps(ephemeralNode, newAdditionalProps, boundingRect);
+                this.updateEphemeralNodeProps(ephemeralNode, newAdditionalProps, newLeafs, boundingRect);
             }
 
             this.treeState.leafOrder = getLeafOrder(newLeafs, newAdditionalProps);
@@ -1019,12 +1019,17 @@ export class LayoutModel {
     }
 
     newEphemeralNode(blockId: string) {
+        if (this.getter(this.ephemeralNode)) {
+            this.closeNode(this.getter(this.ephemeralNode).id);
+        }
+
         const ephemeralNode = newLayoutNode(undefined, undefined, undefined, { blockId });
         this.setter(this.ephemeralNode, ephemeralNode);
 
         const addlProps = this.getter(this.additionalProps);
+        const leafs = this.getter(this.leafs);
         const boundingRect = this.getBoundingRect();
-        this.updateEphemeralNodeProps(ephemeralNode, addlProps, boundingRect);
+        this.updateEphemeralNodeProps(ephemeralNode, addlProps, leafs, boundingRect);
         this.setter(this.additionalProps, addlProps);
         this.focusNode(ephemeralNode.id);
     }
@@ -1050,6 +1055,7 @@ export class LayoutModel {
     updateEphemeralNodeProps(
         node: LayoutNode,
         addlPropsMap: Record<string, LayoutNodeAdditionalProps>,
+        leafs: LayoutNode[],
         boundingRect: Dimensions
     ) {
         const transform = setTransform(
@@ -1064,6 +1070,7 @@ export class LayoutModel {
             "var(--zindex-layout-ephemeral-node)"
         );
         addlPropsMap[node.id] = { treeKey: "-1", transform };
+        leafs.push(node);
     }
 
     /**
