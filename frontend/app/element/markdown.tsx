@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CopyButton } from "@/app/element/copybutton";
+import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
+import { MarkdownContentBlockType, transformBlocks } from "@/app/element/markdown-util";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -17,7 +19,6 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
-import { remarkAlert } from "remark-github-blockquote-alert";
 import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
 import "./markdown.less";
@@ -109,6 +110,34 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
 
 const MarkdownSource = (props: React.HTMLAttributes<HTMLSourceElement>) => {
     return null;
+};
+
+interface WaveBlockProps {
+    blockkey: string;
+    blockmap: Map<string, MarkdownContentBlockType>;
+}
+
+const WaveBlock: React.FC<WaveBlockProps> = (props) => {
+    const { blockkey, blockmap } = props;
+    const block = blockmap.get(blockkey);
+    if (block == null) {
+        return null;
+    }
+    const sizeInKB = Math.round((block.content.length / 1024) * 10) / 10;
+    const displayName = block.id.replace(/^"|"$/g, "");
+    return (
+        <div className="waveblock">
+            <div className="wave-block-content">
+                <div className="wave-block-icon">
+                    <i className="fas fa-file-code"></i>
+                </div>
+                <div className="wave-block-info">
+                    <span className="wave-block-filename">{displayName}</span>
+                    <span className="wave-block-size">{sizeInKB} KB</span>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const MarkdownImg = ({
@@ -203,6 +232,11 @@ const Markdown = ({
     // Ensure uniqueness of ids between MD preview instances.
     const [idPrefix] = useState<string>(crypto.randomUUID());
 
+    text = textAtomValue ?? text;
+    const transformedOutput = transformBlocks(text);
+    const transformedText = transformedOutput.content;
+    const contentBlocksMap = transformedOutput.blocks;
+
     useEffect(() => {
         if (focusedHeading && contentsOsRef.current && contentsOsRef.current.osInstance()) {
             const { viewport } = contentsOsRef.current.osInstance().elements();
@@ -220,6 +254,7 @@ const Markdown = ({
         a: (props: React.HTMLAttributes<HTMLAnchorElement>) => (
             <Link props={props} setFocusedHeading={setFocusedHeading} />
         ),
+        p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <div className="paragraph" {...props} />,
         h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={1} />,
         h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={2} />,
         h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={3} />,
@@ -233,6 +268,7 @@ const Markdown = ({
             <CodeBlock children={props.children} onClickExecute={onClickExecute} />
         ),
     };
+    markdownComponents["waveblock"] = (props: any) => <WaveBlock {...props} blockmap={contentBlocksMap} />;
 
     const toc = useMemo(() => {
         if (showToc && tocRef.current.length > 0) {
@@ -251,7 +287,6 @@ const Markdown = ({
         }
     }, [showToc, tocRef]);
 
-    text = textAtomValue ?? text;
     let rehypePlugins = null;
     if (rehype) {
         rehypePlugins = [
@@ -269,12 +304,18 @@ const Markdown = ({
                             // Alternatively, to allow only certain class names:
                             // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
                         ],
+                        waveblock: [["blockkey"]],
                     },
-                    tagNames: [...(defaultSchema.tagNames || []), "span"],
+                    tagNames: [...(defaultSchema.tagNames || []), "span", "waveblock"],
                 }),
             () => rehypeSlug({ prefix: idPrefix }),
         ];
     }
+    const remarkPlugins: any = [
+        remarkGfm,
+        [RemarkFlexibleToc, { tocRef: tocRef.current }],
+        [createContentBlockPlugin, { blocks: contentBlocksMap }],
+    ];
 
     const ScrollableMarkdown = () => {
         return (
@@ -284,11 +325,11 @@ const Markdown = ({
                 options={{ scrollbars: { autoHide: "leave" } }}
             >
                 <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkAlert, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
+                    remarkPlugins={remarkPlugins}
                     rehypePlugins={rehypePlugins}
                     components={markdownComponents}
                 >
-                    {text}
+                    {transformedText}
                 </ReactMarkdown>
             </OverlayScrollbarsComponent>
         );
@@ -298,11 +339,11 @@ const Markdown = ({
         return (
             <div className="content non-scrollable">
                 <ReactMarkdown
-                    remarkPlugins={[remarkGfm, [RemarkFlexibleToc, { tocRef: tocRef.current }]]}
+                    remarkPlugins={remarkPlugins}
                     rehypePlugins={rehypePlugins}
                     components={markdownComponents}
                 >
-                    {text}
+                    {transformedText}
                 </ReactMarkdown>
             </div>
         );
