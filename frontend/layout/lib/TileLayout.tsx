@@ -161,8 +161,22 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
 
     return (
         <>
-            {showMagnifiedBackdrop && <div className="magnified-node-backdrop" />}
-            {showEphemeralBackdrop && <div className="ephemeral-node-backdrop" />}
+            {showMagnifiedBackdrop && (
+                <div
+                    className="magnified-node-backdrop"
+                    onClick={() => {
+                        layoutModel.magnifyNodeToggle(magnifiedNodeId);
+                    }}
+                />
+            )}
+            {showEphemeralBackdrop && (
+                <div
+                    className="ephemeral-node-backdrop"
+                    onClick={() => {
+                        layoutModel.closeNode(ephemeralNode?.id);
+                    }}
+                />
+            )}
         </>
     );
 }
