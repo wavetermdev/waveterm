@@ -57,6 +57,7 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
     const setActiveDrag = useSetAtom(layoutModel.activeDrag);
     const setReady = useSetAtom(layoutModel.ready);
     const isResizing = useAtomValue(layoutModel.isResizing);
+    const ephemeralNode = useAtomValue(layoutModel.ephemeralNode);
 
     const { activeDrag, dragClientOffset } = useDragLayer((monitor) => ({
         activeDrag: monitor.isDragging(),
@@ -121,6 +122,7 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
                 <div key="display" ref={layoutModel.displayContainerRef} className="display-container">
                     <ResizeHandleWrapper layoutModel={layoutModel} />
                     <DisplayNodesWrapper layoutModel={layoutModel} />
+                    <NodeBackdrops layoutModel={layoutModel} />
                 </div>
                 <Placeholder key="placeholder" layoutModel={layoutModel} style={{ top: 10000, ...overlayTransform }} />
                 <OverlayNodeWrapper layoutModel={layoutModel} />
@@ -129,6 +131,55 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
     );
 }
 export const TileLayout = memo(TileLayoutComponent) as typeof TileLayoutComponent;
+
+function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
+    const ephemeralNode = useAtomValue(layoutModel.ephemeralNode);
+    const magnifiedNodeId = useAtomValue(layoutModel.treeStateAtom).magnifiedNodeId;
+
+    const [showMagnifiedBackdrop, setShowMagnifiedBackdrop] = useState(!!ephemeralNode);
+    const [showEphemeralBackdrop, setShowEphemeralBackdrop] = useState(!!magnifiedNodeId);
+
+    const debouncedCallback = useCallback(
+        debounce(100, (callback: () => void) => callback()),
+        []
+    );
+
+    useEffect(() => {
+        if (magnifiedNodeId && !showMagnifiedBackdrop) {
+            debouncedCallback(() => setShowMagnifiedBackdrop(true));
+        }
+        if (!magnifiedNodeId) {
+            setShowMagnifiedBackdrop(false);
+        }
+        if (ephemeralNode && !showEphemeralBackdrop) {
+            debouncedCallback(() => setShowEphemeralBackdrop(true));
+        }
+        if (!ephemeralNode) {
+            setShowEphemeralBackdrop(false);
+        }
+    }, [ephemeralNode, magnifiedNodeId]);
+
+    return (
+        <>
+            {showMagnifiedBackdrop && (
+                <div
+                    className="magnified-node-backdrop"
+                    onClick={() => {
+                        layoutModel.magnifyNodeToggle(magnifiedNodeId);
+                    }}
+                />
+            )}
+            {showEphemeralBackdrop && (
+                <div
+                    className="ephemeral-node-backdrop"
+                    onClick={() => {
+                        layoutModel.closeNode(ephemeralNode?.id);
+                    }}
+                />
+            )}
+        </>
+    );
+}
 
 interface DisplayNodesWrapperProps {
     /**
@@ -173,7 +224,6 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
         () => ({
             type: dragItemType,
             item: () => node,
-            canDrag: () => !addlProps?.isMagnifiedNode,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
@@ -243,8 +293,6 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
         <div
             className={clsx("tile-node", {
                 dragging: isDragging,
-                magnified: addlProps?.isMagnifiedNode,
-                "last-magnified": addlProps?.isLastMagnifiedNode,
             })}
             key={node.id}
             ref={tileNodeRef}

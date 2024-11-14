@@ -61,7 +61,7 @@
     }
 
     &.block-preview.block-frame-default .block-frame-default-inner .block-frame-default-header {
-        background-color: rgba(0, 0, 0, 0.7);
+        background-color: rgb(from var(--block-bg-color) r g b / 70%);
     }
 
     &.block-frame-default {
@@ -254,7 +254,7 @@
             }
 
             .block-frame-preview {
-                background-color: rgba(0, 0, 0, 0.7);
+                background-color: rgb(from var(--block-bg-color) r g b / 70%);
                 width: 100%;
                 flex-grow: 1;
                 border-bottom-left-radius: var(--block-border-radius);
@@ -269,6 +269,12 @@
                     margin: -30px 0 0 0;
                 }
             }
+        }
+
+        &.magnified,
+        &.ephemeral {
+            background-color: rgb(from var(--block-bg-color) r g b / 60%);
+            backdrop-filter: blur(10px);
         }
 
         .connstatus-overlay {
@@ -385,7 +391,7 @@
 
             &.show-block-mask .block-mask-inner {
                 margin-top: var(--header-height); // TODO fix this magic
-                background-color: rgba(0, 0, 0, 0.5);
+                background-color: rgb(from var(--block-bg-color) r g b / 50%);
                 height: calc(100% - var(--header-height));
                 width: 100%;
                 display: flex;

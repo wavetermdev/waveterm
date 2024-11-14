@@ -332,8 +332,7 @@ export interface LayoutNodeAdditionalProps {
     rect?: Dimensions;
     pixelToSizeRatio?: number;
     resizeHandles?: ResizeHandleProps[];
-    isMagnifiedNode?: boolean;
-    isLastMagnifiedNode?: boolean;
+    isLastEphemeralNode?: boolean;
 }
 
 export interface NodeModel {
@@ -343,10 +342,12 @@ export interface NodeModel {
     numLeafs: Atom<number>;
     nodeId: string;
     blockId: string;
+    addEphemeralNodeToLayout: () => void;
     animationTimeS: Atom<number>;
     isResizing: Atom<boolean>;
     isFocused: Atom<boolean>;
     isMagnified: Atom<boolean>;
+    isEphemeral: Atom<boolean>;
     ready: Atom<boolean>;
     disablePointerEvents: Atom<boolean>;
     toggleMagnify: () => void;
