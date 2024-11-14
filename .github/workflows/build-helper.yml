@@ -11,7 +11,7 @@ on:
     workflow_dispatch:
 env:
     GO_VERSION: "1.22"
-    NODE_VERSION: "20"
+    NODE_VERSION: 22
     STATIC_DOCSITE_PATH: docsite
 jobs:
     build-docsite:
