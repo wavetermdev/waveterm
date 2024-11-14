@@ -252,10 +252,11 @@ export class WaveAiModel implements ViewModel {
             });
             return viewTextChildren;
         });
-        this.endIconButtons = atom((get) => {
+        this.endIconButtons = atom((_) => {
             let clearButton: IconButtonDecl = {
                 elemtype: "iconbutton",
                 icon: "delete-left",
+                title: "Clear Chat History",
                 click: this.clearMessages.bind(this),
             };
             return [clearButton];
