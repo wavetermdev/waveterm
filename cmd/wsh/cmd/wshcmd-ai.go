@@ -40,11 +40,11 @@ func encodeFile(builder *strings.Builder, file io.Reader, fileName string) error
 		return fmt.Errorf("error reading file: %w", err)
 	}
 	// Start delimiter with the file name
-	builder.WriteString(fmt.Sprintf("\n@@@ file_start %q\n", fileName))
+	builder.WriteString(fmt.Sprintf("\n@@@start file %q\n", fileName))
 	// Read the file content and write it to the builder
 	builder.Write(data)
 	// End delimiter with the file name
-	builder.WriteString(fmt.Sprintf("\n@@@ file_end %q\n\n", fileName))
+	builder.WriteString(fmt.Sprintf("\n@@@end file %q\n\n", fileName))
 	return nil
 }
 
