@@ -61,7 +61,7 @@
     }
 
     &.block-preview.block-frame-default .block-frame-default-inner .block-frame-default-header {
-        background-color: var(--block-header-bg-color);
+        background-color: rgb(from var(--block-bg-color) r g b / 70%);
     }
 
     &.block-frame-default {
@@ -254,7 +254,7 @@
             }
 
             .block-frame-preview {
-                background-color: var(--block-header-bg-color);
+                background-color: rgb(from var(--block-bg-color) r g b / 70%);
                 width: 100%;
                 flex-grow: 1;
                 border-bottom-left-radius: var(--block-border-radius);
@@ -271,6 +271,12 @@
             }
         }
 
+        &.magnified,
+        &.ephemeral {
+            background-color: rgb(from var(--block-bg-color) r g b / 60%);
+            backdrop-filter: blur(10px);
+        }
+
         .connstatus-overlay {
             position: absolute;
             top: calc(var(--header-height) + 6px);
@@ -285,7 +291,7 @@
             background: var(--conn-status-overlay-bg-color);
             backdrop-filter: blur(50px);
             border-radius: 6px;
-            box-shadow: 0px 13px 16px 0px var(--conn-status-overlay-box-shadow-color);
+            box-shadow: 0px 13px 16px 0px rgb(from var(--block-bg-color) r g b / 40%);
 
             .connstatus-content {
                 display: flex;
@@ -385,7 +391,7 @@
 
             &.show-block-mask .block-mask-inner {
                 margin-top: var(--header-height); // TODO fix this magic
-                background-color: var(--block-bg-color);
+                background-color: rgb(from var(--block-bg-color) r g b / 50%);
                 height: calc(100% - var(--header-height));
                 width: 100%;
                 display: flex;
@@ -409,7 +415,7 @@
             &.block-no-highlight,
             &.block-preview {
                 .block-mask {
-                    border: 2px solid var(--block-preview-border-color) !important;
+                    border: 2px solid rgb(from var(--border-color) r g b / 1%) !important;
                 }
             }
         }
