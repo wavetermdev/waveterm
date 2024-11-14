@@ -517,6 +517,7 @@ export class LayoutModel {
             // Process ephemeral node, if present.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
+                console.log("updateTree ephemeralNode", ephemeralNode);
                 this.updateEphemeralNodeProps(ephemeralNode, newAdditionalProps, newLeafs, boundingRect);
             }
 
@@ -661,6 +662,7 @@ export class LayoutModel {
      * @param leafOrder The new leaf order array to use when searching for stale nodes in the stack.
      */
     private validateFocusedNode(leafOrder: LeafOrderEntry[]) {
+        console.log("validateFocusedNode", this.treeState.focusedNodeId, this.focusedNodeId, this.focusedNodeIdStack);
         if (this.treeState.focusedNodeId !== this.focusedNodeId) {
             // Remove duplicates and stale entries from focus stack.
             const newFocusedNodeIdStack: string[] = [];
@@ -994,14 +996,22 @@ export class LayoutModel {
     async closeNode(nodeId: string) {
         const nodeToDelete = findNode(this.treeState.rootNode, nodeId);
         if (!nodeToDelete) {
+            // TODO: clean up the ephemeral node handling
             // The ephemeral node is not in the tree, so we need to handle it separately.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode?.id === nodeId) {
                 this.setter(this.ephemeralNode, undefined);
+                this.treeState.focusedNodeId = undefined;
+                this.updateTree(false);
+                this.setTreeStateAtom(true);
+                await this.onNodeDelete?.(ephemeralNode.data);
                 return;
             }
             console.error("unable to close node, cannot find it in tree", nodeId);
             return;
+        }
+        if (nodeId === this.magnifiedNodeId) {
+            this.magnifyNodeToggle(nodeId);
         }
         const deleteAction: LayoutTreeDeleteNodeAction = {
             type: LayoutTreeActionType.DeleteNode,
