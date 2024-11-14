@@ -180,8 +180,9 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
-    const dragHandleRef = preview || magnified ? null : nodeModel.dragHandleRef;
+    const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
 
     if (blockData?.meta?.["frame:title"]) {
         viewName = blockData.meta["frame:title"];
@@ -235,7 +236,12 @@ const BlockFrame_Header = ({
     }
 
     return (
-        <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
+        <div
+            className="block-frame-default-header"
+            ref={dragHandleRef}
+            onContextMenu={onContextMenu}
+            draggable={!(preview || magnified || ephemeral)}
+        >
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}
@@ -323,7 +329,6 @@ const ConnStatusOverlay = React.memo(
         const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
         const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
-        const blockNum = jotai.useAtomValue(nodeModel.blockNum);
 
         React.useEffect(() => {
             if (width) {
