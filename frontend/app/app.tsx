@@ -121,7 +121,7 @@ function AppSettingsUpdater() {
             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
         const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
         let baseBgColor = windowSettings?.["window:bgcolor"];
-        let mainDiv = document.getElementById("main");
+        const mainDiv = document.getElementById("main");
         // console.log("window settings", windowSettings, isTransparentOrBlur, opacity, baseBgColor, mainDiv);
         if (isTransparentOrBlur) {
             mainDiv.classList.add("is-transparent");
@@ -131,10 +131,10 @@ function AppSettingsUpdater() {
             }
             const color = new Color(baseBgColor);
             const rgbaColor = color.alpha(opacity).string();
-            mainDiv.style.backgroundColor = rgbaColor;
+            document.body.style.backgroundColor = rgbaColor;
         } else {
             mainDiv.classList.remove("is-transparent");
-            mainDiv.style.opacity = null;
+            document.body.style.backgroundColor = "var(--main-bg-color)";
         }
     }, [windowSettings]);
     return null;
