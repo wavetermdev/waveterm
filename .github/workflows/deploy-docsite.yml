@@ -3,7 +3,7 @@ name: Docsite and Storybook CI/CD
 run-name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Build and Deploy' || 'Test Build' }} Docsite and Storybook
 
 env:
-    NODE_VERSION: 20
+    NODE_VERSION: 22
 
 on:
     push:
