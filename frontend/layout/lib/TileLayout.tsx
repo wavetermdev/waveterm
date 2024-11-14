@@ -152,7 +152,7 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
             setShowMagnifiedBackdrop(false);
         }
         if (ephemeralNode && !showEphemeralBackdrop) {
-            debouncedCallback(() => setShowEphemeralBackdrop(true));
+            setShowEphemeralBackdrop(true);
         }
         if (!ephemeralNode) {
             setShowEphemeralBackdrop(false);
