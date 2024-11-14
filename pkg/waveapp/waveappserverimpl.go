@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package vdomclient
+package waveapp
 
 import (
 	"bytes"
@@ -14,14 +14,14 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-type VDomServerImpl struct {
+type WaveAppServerImpl struct {
 	Client  *Client
 	BlockId string
 }
 
-func (*VDomServerImpl) WshServerImpl() {}
+func (*WaveAppServerImpl) WshServerImpl() {}
 
-func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
+func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
 	respChan := make(chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate], 5)
 
 	defer func() {
@@ -99,7 +99,7 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 	return respChan
 }
 
-func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshrpc.VDomUrlRequestData) chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse] {
+func (impl *WaveAppServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshrpc.VDomUrlRequestData) chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse] {
 	respChan := make(chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse])
 	writer := NewStreamingResponseWriter(respChan)
 

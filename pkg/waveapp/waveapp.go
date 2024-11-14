@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package vdomclient
+package waveapp
 
 import (
 	"context"
@@ -44,7 +44,7 @@ type Client struct {
 	RootElem           *vdom.VDomElem
 	RpcClient          *wshutil.WshRpc
 	RpcContext         *wshrpc.RpcContext
-	ServerImpl         *VDomServerImpl
+	ServerImpl         *WaveAppServerImpl
 	IsDone             bool
 	RouteId            string
 	VDomContextBlockId string
@@ -171,7 +171,7 @@ func (client *Client) Connect() error {
 	if client.RpcContext == nil || client.RpcContext.BlockId == "" {
 		return fmt.Errorf("no block id in rpc context")
 	}
-	client.ServerImpl = &VDomServerImpl{BlockId: client.RpcContext.BlockId, Client: client}
+	client.ServerImpl = &WaveAppServerImpl{BlockId: client.RpcContext.BlockId, Client: client}
 	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
 	if err != nil {
 		return fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
