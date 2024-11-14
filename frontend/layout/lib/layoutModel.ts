@@ -662,7 +662,6 @@ export class LayoutModel {
      * @param leafOrder The new leaf order array to use when searching for stale nodes in the stack.
      */
     private validateFocusedNode(leafOrder: LeafOrderEntry[]) {
-        console.log("validateFocusedNode", this.treeState.focusedNodeId, this.focusedNodeId, this.focusedNodeIdStack);
         if (this.treeState.focusedNodeId !== this.focusedNodeId) {
             // Remove duplicates and stale entries from focus stack.
             const newFocusedNodeIdStack: string[] = [];

@@ -332,7 +332,6 @@ export interface LayoutNodeAdditionalProps {
     rect?: Dimensions;
     pixelToSizeRatio?: number;
     resizeHandles?: ResizeHandleProps[];
-    isLastEphemeralNode?: boolean;
 }
 
 export interface NodeModel {
