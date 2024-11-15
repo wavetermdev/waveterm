@@ -24,6 +24,7 @@ import {
     loadConnStatus,
     pushFlashError,
     pushNotification,
+    removeNotificationById,
     subscribeToConnEvents,
 } from "@/store/global";
 import * as WOS from "@/store/wos";
@@ -46,6 +47,7 @@ let savedInitOpts: WaveInitOpts = null;
 (window as any).getLayoutModelForStaticTab = getLayoutModelForStaticTab;
 (window as any).pushFlashError = pushFlashError;
 (window as any).pushNotification = pushNotification;
+(window as any).removeNotificationById = removeNotificationById;
 (window as any).modalsModel = modalsModel;
 
 async function initBare() {

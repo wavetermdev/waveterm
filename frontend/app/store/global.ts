@@ -586,6 +586,12 @@ function pushNotification(notif: NotificationType) {
     });
 }
 
+function removeNotificationById(id: string) {
+    globalStore.set(atoms.notifications, (prev) => {
+        return prev.filter((notif) => notif.id !== id);
+    });
+}
+
 function removeFlashError(id: string) {
     globalStore.set(atoms.flashErrors, (prev) => {
         return prev.filter((ferr) => ferr.id !== id);
@@ -632,6 +638,7 @@ export {
     registerBlockComponentModel,
     removeFlashError,
     removeNotification,
+    removeNotificationById,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,
