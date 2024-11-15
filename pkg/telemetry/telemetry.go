@@ -40,6 +40,7 @@ type ActivityUpdate struct {
 	Shutdown      int
 	BuildTime     string
 	Renderers     map[string]int
+	WshCmds       map[string]int
 }
 
 type ActivityType struct {
@@ -63,6 +64,7 @@ type TelemetryData struct {
 	NumStartup    int            `json:"numstartup,omitempty"`
 	NumShutdown   int            `json:"numshutdown,omitempty"`
 	Renderers     map[string]int `json:"renderers,omitempty"`
+	WshCmds       map[string]int `json:"wshcmds,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -86,10 +88,6 @@ func IsAutoUpdateEnabled() bool {
 func AutoUpdateChannel() string {
 	settings := wconfig.GetWatcher().GetFullConfig()
 	return settings.Settings.AutoUpdateChannel
-}
-
-func IsAllowedRenderer(renderer string) bool {
-	return allowedRenderers[renderer]
 }
 
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
@@ -136,6 +134,14 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 			}
 			for key, val := range update.Renderers {
 				tdata.Renderers[key] += val
+			}
+		}
+		if len(update.WshCmds) > 0 {
+			if tdata.WshCmds == nil {
+				tdata.WshCmds = make(map[string]int)
+			}
+			for key, val := range update.WshCmds {
+				tdata.WshCmds[key] += val
 			}
 		}
 		query = `UPDATE db_activity

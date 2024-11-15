@@ -331,6 +331,12 @@ func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, o
 	return resp, err
 }
 
+// command "wshactivity", wshserver.WshActivityCommand
+func WshActivityCommand(w *wshutil.WshRpc, data map[string]int, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "wshactivity", data, opts)
+	return err
+}
+
 // command "wsldefaultdistro", wshserver.WslDefaultDistroCommand
 func WslDefaultDistroCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "wsldefaultdistro", nil, opts)

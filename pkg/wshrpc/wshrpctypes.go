@@ -63,6 +63,7 @@ const (
 	Command_RemoteFileDelete  = "remotefiledelete"
 	Command_RemoteFileJoin    = "remotefilejoin"
 	Command_WaveInfo          = "waveinfo"
+	Command_WshActivity       = "wshactivity"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -126,6 +127,7 @@ type WshRpcInterface interface {
 	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
+	WshActivityCommand(ct context.Context, data map[string]int) error
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
