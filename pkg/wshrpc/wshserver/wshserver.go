@@ -582,7 +582,7 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 	}, nil
 }
 
-var wshActivityRe = regexp.MustCompile(`^[a-z:]+$`)
+var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {
 	if len(data) == 0 {

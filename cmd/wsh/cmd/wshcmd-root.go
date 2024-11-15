@@ -131,7 +131,7 @@ func sendActivity(wshCmdName string, success bool) {
 	dataMap := make(map[string]int)
 	dataMap[wshCmdName] = 1
 	if !success {
-		dataMap[wshCmdName+":"+"error"] = 1
+		dataMap[wshCmdName+"#"+"error"] = 1
 	}
 	wshclient.WshActivityCommand(RpcClient, dataMap, nil)
 }

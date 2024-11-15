@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -17,7 +18,7 @@ var editConfigCmd = &cobra.Command{
 	Short:   "edit Wave configuration files",
 	Long:    "Edit Wave configuration files. Defaults to settings.json if no file specified. Common files: settings.json, presets.json, widgets.json",
 	Args:    cobra.MaximumNArgs(1),
-	Run:     editConfigRun,
+	RunE:    editConfigRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -25,12 +26,15 @@ func init() {
 	rootCmd.AddCommand(editConfigCmd)
 }
 
-func editConfigRun(cmd *cobra.Command, args []string) {
+func editConfigRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("editconfig", rtnErr == nil)
+	}()
+
 	// Get config directory from Wave info
 	resp, err := wshclient.WaveInfoCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
-		WriteStderr("[error] getting Wave info: %v\n", err)
-		return
+		return fmt.Errorf("getting Wave info: %w", err)
 	}
 
 	configFile := "settings.json" // default
@@ -52,7 +56,7 @@ func editConfigRun(cmd *cobra.Command, args []string) {
 
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
-		WriteStderr("[error] opening config file: %v\n", err)
-		return
+		return fmt.Errorf("opening config file: %w", err)
 	}
+	return nil
 }
