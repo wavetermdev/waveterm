@@ -20,7 +20,7 @@ export const useUpdateNotifier = () => {
                     title: "Update Available",
                     message: "A new update is available and ready to be installed.",
                     timestamp: new Date().toLocaleString(),
-                    type: NotificationTypes.Update,
+                    type: "update",
                     actions: [
                         {
                             label: "Install Now",
@@ -39,7 +39,7 @@ export const useUpdateNotifier = () => {
                     title: "Downloading Update",
                     message: "The update is currently being downloaded.",
                     timestamp: new Date().toLocaleString(),
-                    type: NotificationTypes.Update,
+                    type: "update",
                     actions: [
                         {
                             label: "Downloading...",
@@ -58,7 +58,7 @@ export const useUpdateNotifier = () => {
                     title: "Installing Update",
                     message: "The update is currently being installed.",
                     timestamp: new Date().toLocaleString(),
-                    type: NotificationTypes.Update,
+                    type: "update",
                     actions: [
                         {
                             label: "Installing...",
@@ -77,7 +77,7 @@ export const useUpdateNotifier = () => {
                     title: "Update Error",
                     message: "An error occurred during the update process.",
                     timestamp: new Date().toLocaleString(),
-                    type: NotificationTypes.Update,
+                    type: "update",
                     actions: [
                         {
                             label: "Retry Update",
@@ -90,14 +90,14 @@ export const useUpdateNotifier = () => {
                 break;
 
             default:
-                setNotifications((prev) => prev.filter((n) => n.type !== NotificationTypes.Update));
+                setNotifications((prev) => prev.filter((n) => n.type !== "update"));
                 return;
         }
 
         if (isDev()) return;
 
         setNotifications((prev) => {
-            const otherNotifications = prev.filter((n) => n.type !== NotificationTypes.Update);
+            const otherNotifications = prev.filter((n) => n.type !== "update");
             return [...otherNotifications, notification!];
         });
     }, [appUpdateStatus, setNotifications]);
