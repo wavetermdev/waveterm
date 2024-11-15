@@ -56,6 +56,17 @@ func (e *VDomElem) Key() string {
 	return ""
 }
 
+func (e *VDomElem) WithKey(key string) *VDomElem {
+	if e == nil {
+		return nil
+	}
+	if e.Props == nil {
+		e.Props = make(map[string]any)
+	}
+	e.Props[KeyPropKey] = key
+	return e
+}
+
 func TextElem(text string) VDomElem {
 	return VDomElem{Tag: TextTag, Text: text}
 }
@@ -126,6 +137,33 @@ func mergeClassAttr(props *map[string]any, classAttr classAttrWrapper) {
 			(*props)["className"] = strings.Join(splitArr, " ")
 		}
 	}
+}
+
+func Classes(classes ...any) string {
+	var parts []string
+	for _, class := range classes {
+		switch c := class.(type) {
+		case nil:
+			continue
+		case string:
+			if c != "" {
+				parts = append(parts, c)
+			}
+		}
+		// Ignore any other types
+	}
+	return strings.Join(parts, " ")
+}
+
+func H(tag string, props map[string]any, children ...any) *VDomElem {
+	rtn := &VDomElem{Tag: tag, Props: props}
+	if len(children) > 0 {
+		for _, part := range children {
+			elems := partToElems(part)
+			rtn.Children = append(rtn.Children, elems...)
+		}
+	}
+	return rtn
 }
 
 func E(tag string, parts ...any) *VDomElem {
@@ -202,6 +240,26 @@ func ForEachIdx[T any](items []T, fn func(T, int) any) []any {
 	for idx, item := range items {
 		fnResult := fn(item, idx)
 		elems = append(elems, fnResult)
+	}
+	return elems
+}
+
+func Filter[T any](items []T, fn func(T) bool) []T {
+	var elems []T
+	for _, item := range items {
+		if fn(item) {
+			elems = append(elems, item)
+		}
+	}
+	return elems
+}
+
+func FilterIdx[T any](items []T, fn func(T, int) bool) []T {
+	var elems []T
+	for idx, item := range items {
+		if fn(item, idx) {
+			elems = append(elems, item)
+		}
 	}
 	return elems
 }
