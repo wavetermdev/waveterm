@@ -21,6 +21,7 @@ tasks:
         cmd: yarn dev
         deps:
             - yarn
+            - docsite:build:embedded
             - build:backend
         env:
             WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
@@ -31,6 +32,7 @@ tasks:
         cmd: yarn start
         deps:
             - yarn
+            - docsite:build:embedded
             - build:backend
         env:
             WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
@@ -39,6 +41,54 @@ tasks:
     storybook:
         desc: Start the Storybook server.
         cmd: yarn storybook
+        deps:
+            - yarn
+
+    storybook:build:
+        desc: Build the Storybook static site.
+        cmd: yarn build-storybook
+        generates:
+            - storybook-static/**/*
+        deps:
+            - yarn
+
+    docsite:start:
+        desc: Start the docsite dev server.
+        cmd: yarn start
+        dir: docs
+        deps:
+            - yarn
+
+    docsite:build:public:
+        desc: Build the full docsite.
+        cmds:
+            - cd docs && yarn build
+            - task: copyfiles:'storybook-static/':'docs/build/storybook'
+        sources:
+            - "docs/*"
+            - "docs/src/**/*"
+            - "docs/docs/**/*"
+            - "docs/static/**/*"
+        generates:
+            - "docs/build/**/*"
+        deps:
+            - yarn
+            - storybook:build
+
+    docsite:build:embedded:
+        desc: Build the embedded docsite and copy it to ./docsite
+        sources:
+            - "docs/*"
+            - "docs/src/**/*"
+            - "docs/docs/**/*"
+            - "docs/static/**/*"
+        generates:
+            - "docsite/**/*"
+        cmds:
+            - cd docs && yarn build-embedded
+            - task: copyfiles:'docs/build/':'../docsite'
+        deps:
+            - yarn
 
     package:
         desc: Package the application for the current platform.
@@ -66,8 +116,7 @@ tasks:
 
     build:server:macos:
         desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
-        status:
-            - exit {{if eq OS "darwin"}}1{{else}}0{{end}}
+        platforms: [darwin]
         cmds:
             - cmd: "{{.RM}} dist/bin/wavesrv*"
               ignore_error: true
@@ -77,8 +126,7 @@ tasks:
 
     build:server:windows:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
-        status:
-            - exit {{if eq OS "windows"}}1{{else}}0{{end}}
+        platforms: [windows]
         cmds:
             - cmd: "{{.RM}} dist/bin/wavesrv*"
               ignore_error: true
@@ -89,8 +137,7 @@ tasks:
 
     build:server:linux:
         desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
-        status:
-            - exit {{if eq OS "linux"}}1{{else}}0{{end}}
+        platforms: [linux]
         cmds:
             - cmd: "{{.RM}} dist/bin/wavesrv*"
               ignore_error: true
@@ -273,3 +320,10 @@ tasks:
         sources:
             - go.mod
         cmd: go mod tidy
+
+    copyfiles:*:*:
+        desc: Recursively copy directory contents to a new directory, creating the directory if needed.
+        internal: true
+        cmds:
+            - '{{if eq OS "windows"}}powershell New-Item -Path "." -Force -Name "{{index .MATCH 1}}" -ItemType "directory"{{else}}mkdir -p {{index .MATCH 1}}{{end}}'
+            - '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
