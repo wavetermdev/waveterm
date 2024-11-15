@@ -63,12 +63,13 @@ tasks:
         desc: Build the full docsite.
         cmds:
             - cd docs && yarn build
-            - task: copyfiles:'storybook-static/':'docs/build/storybook'
+            - task: copyfiles:'storybook-static':'docs/build/storybook'
         sources:
             - "docs/*"
             - "docs/src/**/*"
             - "docs/docs/**/*"
             - "docs/static/**/*"
+            - storybook-static/**/*
         generates:
             - "docs/build/**/*"
         deps:
@@ -86,7 +87,7 @@ tasks:
             - "docsite/**/*"
         cmds:
             - cd docs && yarn build-embedded
-            - task: copyfiles:'docs/build/':'../docsite'
+            - task: copyfiles:'docs/build':'../docsite'
         deps:
             - yarn
 
@@ -322,8 +323,6 @@ tasks:
         cmd: go mod tidy
 
     copyfiles:*:*:
-        desc: Recursively copy directory contents to a new directory, creating the directory if needed.
+        desc: Recursively copy directory and its contents.
         internal: true
-        cmds:
-            - '{{if eq OS "windows"}}powershell New-Item -Path "." -Force -Name "{{index .MATCH 1}}" -ItemType "directory"{{else}}mkdir -p {{index .MATCH 1}}{{end}}'
-            - '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
+        cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
