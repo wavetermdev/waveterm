@@ -32,6 +32,11 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
             - name: Install yarn
               run: |
                   corepack enable
