@@ -323,6 +323,6 @@ tasks:
         cmd: go mod tidy
 
     copyfiles:*:*:
-        desc: Recursively copy directory contents to a new directory, creating the directory if needed.
+        desc: Recursively copy directory and its contents.
         internal: true
         cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
