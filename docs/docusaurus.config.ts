@@ -93,7 +93,7 @@ const config: Config = {
                     ? [
                           {
                               position: "left",
-                              href: "https://docs.waveterm.dev/storybook/",
+                              href: "https://docs.waveterm.dev/storybook",
                               label: "Storybook",
                           },
                           {
@@ -174,7 +174,7 @@ const config: Config = {
         },
     ].filter((v) => v),
     stylesheets: [`${baseUrl}fontawesome/css/fontawesome.min.css`, `${baseUrl}fontawesome/css/sharp-regular.min.css`],
-    staticDirectories: ["static"],
+    staticDirectories: ["static", "storybook"],
 };
 
 export default config;
