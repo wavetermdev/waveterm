@@ -83,7 +83,7 @@
         "vitest": "^2.1.5"
     },
     "dependencies": {
-        "@floating-ui/react": "^0.26.27",
+        "@floating-ui/react": "^0.26.28",
         "@monaco-editor/loader": "^1.4.0",
         "@monaco-editor/react": "^4.6.0",
         "@observablehq/plot": "^0.6.16",
@@ -138,7 +138,7 @@
         "throttle-debounce": "^5.0.2",
         "tinycolor2": "^1.6.0",
         "use-device-pixel-ratio": "^1.1.2",
-        "winston": "^3.16.0",
+        "winston": "^3.17.0",
         "ws": "^8.18.0",
         "yaml": "^2.6.0"
     },
