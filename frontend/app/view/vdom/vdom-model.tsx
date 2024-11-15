@@ -256,6 +256,7 @@ export class VDomModel {
                 return false;
             }
             this.batchedEvents.push({
+                globaleventtype: "onKeyDown",
                 waveid: null,
                 eventtype: "onKeyDown",
                 keydata: e,
