@@ -32,18 +32,17 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
             - name: Install yarn
               run: |
                   corepack enable
                   yarn install
             - name: Build docsite
-              run: yarn build
-              working-directory: docs/
-
-            - name: Build Storybook
-              run: yarn build-storybook
-            - name: Copy Storybook to docsite output
-              run: cp -r storybook-static docs/build/storybook
+              run: task docsite:build:public
             - name: Upload Build Artifact
               # Only upload the build artifact when pushed to the main branch
               if: github.event_name == 'push' && github.ref == 'refs/heads/main'
