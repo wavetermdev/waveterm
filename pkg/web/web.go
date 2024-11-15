@@ -246,7 +246,7 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 	}
 }
 
-func handleRemoteStreamFile(w http.ResponseWriter, r *http.Request, conn string, path string, no404 bool) error {
+func handleRemoteStreamFile(w http.ResponseWriter, _ *http.Request, conn string, path string, no404 bool) error {
 	client := wshserver.GetMainRpcClient()
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
 	route := wshutil.MakeConnectionRouteId(conn)

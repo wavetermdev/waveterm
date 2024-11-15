@@ -7,10 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"runtime/debug"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -28,22 +26,11 @@ var (
 	}
 )
 
-var usingHtmlMode bool
 var WrappedStdin io.Reader = os.Stdin
 var RpcClient *wshutil.WshRpc
 var RpcContext wshrpc.RpcContext
 var UsingTermWshMode bool
 var blockArg string
-
-func extraShutdownFn() {
-	if usingHtmlMode {
-		cmd := &wshrpc.CommandSetMetaData{
-			Meta: map[string]any{"term:mode": nil},
-		}
-		RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd, nil)
-		time.Sleep(10 * time.Millisecond)
-	}
-}
 
 func WriteStderr(fmtStr string, args ...interface{}) {
 	output := fmt.Sprintf(fmtStr, args...)
@@ -107,20 +94,6 @@ func setupRpcClient(serverImpl wshutil.ServerImpl) error {
 	// note we don't modify WrappedStdin here (just use os.Stdin)
 	return nil
 }
-
-func setTermHtmlMode() {
-	wshutil.SetExtraShutdownFunc(extraShutdownFn)
-	cmd := &wshrpc.CommandSetMetaData{
-		Meta: map[string]any{"term:mode": "vdom"},
-	}
-	err := RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd, nil)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting html mode: %v\r\n", err)
-	}
-	usingHtmlMode = true
-}
-
-var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
 
 func isFullORef(orefStr string) bool {
 	_, err := waveobj.ParseORef(orefStr)

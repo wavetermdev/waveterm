@@ -25,19 +25,6 @@ var (
 	viewBlockRe    = regexp.MustCompile(`^([a-z]+)(?::(\d+))?$`) // Matches "ai" or "ai:2"
 )
 
-// Helper function to validate UUIDs or 8-char UUIDs format
-func isValidSimpleUUID(s string) bool {
-	// Try parsing as full UUID
-	_, err := uuid.Parse(s)
-	if err == nil {
-		return true
-	}
-
-	// Check if it's an 8-char hex prefix
-	shortUUIDPattern := regexp.MustCompile(`^[0-9a-f]{8}$`)
-	return shortUUIDPattern.MatchString(strings.ToLower(s))
-}
-
 // First function: detect/choose discriminator
 func parseSimpleId(simpleId string) (discriminator string, value string, err error) {
 	// Check for explicit discriminator with @
@@ -100,7 +87,7 @@ func resolveThis(ctx context.Context, data wshrpc.CommandResolveIdsData, value s
 	return nil, fmt.Errorf("invalid value for 'this' resolver: %s", value)
 }
 
-func resolveORef(ctx context.Context, value string) (*waveobj.ORef, error) {
+func resolveORef(_ context.Context, value string) (*waveobj.ORef, error) {
 	parsedORef, err := waveobj.ParseORef(value)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing oref: %v", err)

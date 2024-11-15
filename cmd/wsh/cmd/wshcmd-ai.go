@@ -20,7 +20,7 @@ var aiCmd = &cobra.Command{
 	Use:                   "ai [-] [message...]",
 	Short:                 "Send a message to an AI block",
 	Args:                  cobra.MinimumNArgs(1),
-	Run:                   aiRun,
+	RunE:                  aiRun,
 	PreRunE:               preRunSetupRpcClient,
 	DisableFlagsInUseLine: true,
 }
@@ -34,8 +34,21 @@ func init() {
 	aiCmd.Flags().StringArrayVarP(&aiFileFlags, "file", "f", nil, "attach file content (use '-' for stdin)")
 }
 
-func aiRun(cmd *cobra.Command, args []string) {
-	// Then in aiRun, we'd need logic like:
+func encodeFile(builder *strings.Builder, file io.Reader, fileName string) error {
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("error reading file: %w", err)
+	}
+	// Start delimiter with the file name
+	builder.WriteString(fmt.Sprintf("\n@@@start file %q\n", fileName))
+	// Read the file content and write it to the builder
+	builder.Write(data)
+	// End delimiter with the file name
+	builder.WriteString(fmt.Sprintf("\n@@@end file %q\n\n", fileName))
+	return nil
+}
+
+func aiRun(cmd *cobra.Command, args []string) error {
 	var stdinUsed bool
 	var message strings.Builder
 
@@ -43,27 +56,22 @@ func aiRun(cmd *cobra.Command, args []string) {
 	for _, file := range aiFileFlags {
 		if file == "-" {
 			if stdinUsed {
-				WriteStderr("[error] stdin (-) can only be used once\n")
-				return
+				return fmt.Errorf("stdin (-) can only be used once")
 			}
 			stdinUsed = true
-			data, err := io.ReadAll(os.Stdin)
-			if err != nil {
-				WriteStderr("[error] reading from stdin: %v\n", err)
-				return
+			if err := encodeFile(&message, os.Stdin, "<stdin>"); err != nil {
+				return fmt.Errorf("reading from stdin: %w", err)
 			}
-			message.WriteString("Content from stdin:\n")
-			message.Write(data)
 		} else {
-			data, err := os.ReadFile(file)
+			fd, err := os.Open(file)
 			if err != nil {
-				WriteStderr("[error] reading file %s: %v\n", file, err)
-				return
+				return fmt.Errorf("opening file %s: %w", file, err)
 			}
-			message.WriteString(fmt.Sprintf("Content of %s:\n", file))
-			message.Write(data)
+			defer fd.Close()
+			if err := encodeFile(&message, fd, file); err != nil {
+				return fmt.Errorf("reading file %s: %w", file, err)
+			}
 		}
-		message.WriteString("\n\n---------\n\n")
 	}
 
 	// Default to "waveai" block
@@ -88,8 +96,7 @@ func aiRun(cmd *cobra.Command, args []string) {
 
 		newORef, err := wshclient.CreateBlockCommand(RpcClient, *data, &wshrpc.RpcOpts{Timeout: 2000})
 		if err != nil {
-			WriteStderr("[error] creating AI block: %v\n", err)
-			return
+			return fmt.Errorf("creating AI block: %w", err)
 		}
 		fullORef = &newORef
 		// Wait for the block's route to be available
@@ -98,16 +105,13 @@ func aiRun(cmd *cobra.Command, args []string) {
 			WaitMs:  4000,
 		}, &wshrpc.RpcOpts{Timeout: 5000})
 		if err != nil {
-			WriteStderr("[error] waiting for AI block: %v\n", err)
-			return
+			return fmt.Errorf("waiting for AI block: %w", err)
 		}
 		if !gotRoute {
-			WriteStderr("[error] AI block route could not be established\n")
-			return
+			return fmt.Errorf("AI block route could not be established")
 		}
 	} else if err != nil {
-		WriteStderr("[error] resolving block: %v\n", err)
-		return
+		return fmt.Errorf("resolving block: %w", err)
 	}
 
 	// Create the route for this block
@@ -116,13 +120,11 @@ func aiRun(cmd *cobra.Command, args []string) {
 	// Then handle main message
 	if args[0] == "-" {
 		if stdinUsed {
-			WriteStderr("[error] stdin (-) can only be used once\n")
-			return
+			return fmt.Errorf("stdin (-) can only be used once")
 		}
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			WriteStderr("[error] reading from stdin: %v\n", err)
-			return
+			return fmt.Errorf("reading from stdin: %w", err)
 		}
 		message.Write(data)
 	} else {
@@ -130,12 +132,10 @@ func aiRun(cmd *cobra.Command, args []string) {
 	}
 
 	if message.Len() == 0 {
-		WriteStderr("[error] message is empty\n")
-		return
+		return fmt.Errorf("message is empty")
 	}
 	if message.Len() > 10*1024 {
-		WriteStderr("[error] current max message size is 10k\n")
-		return
+		return fmt.Errorf("current max message size is 10k")
 	}
 
 	messageData := wshrpc.AiMessageData{
@@ -146,7 +146,8 @@ func aiRun(cmd *cobra.Command, args []string) {
 		Timeout: 2000,
 	})
 	if err != nil {
-		WriteStderr("[error] sending message: %v\n", err)
-		return
+		return fmt.Errorf("sending message: %w", err)
 	}
+
+	return nil
 }

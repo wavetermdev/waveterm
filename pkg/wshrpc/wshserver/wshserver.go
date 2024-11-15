@@ -161,7 +161,7 @@ func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandR
 			}
 			continue
 		}
-		if err != nil || oref == nil {
+		if oref == nil {
 			continue
 		}
 		rtn.ResolvedIds[simpleId] = *oref
@@ -179,7 +179,6 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	blockRef := &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}
 	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error finding window for tab: %w", err)
@@ -189,7 +188,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	}
 	err = wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
-		BlockId:    blockRef.OID,
+		BlockId:    blockData.OID,
 		Magnified:  data.Magnified,
 		Focused:    true,
 	})
@@ -198,7 +197,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	wps.Broker.SendUpdateEvents(updates)
-	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockRef.OID}, nil
+	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}, nil
 }
 
 func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.CommandCreateSubBlockData) (*waveobj.ORef, error) {
