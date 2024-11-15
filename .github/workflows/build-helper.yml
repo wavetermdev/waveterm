@@ -11,7 +11,7 @@ on:
     workflow_dispatch:
 env:
     GO_VERSION: "1.22"
-    NODE_VERSION: "20"
+    NODE_VERSION: 22
     STATIC_DOCSITE_PATH: docsite
 jobs:
     build-docsite:
@@ -25,15 +25,18 @@ jobs:
               run: |
                   corepack enable
                   yarn install
-              working-directory: docs/
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
             - name: Build embedded docsite
-              run: yarn build-embedded
-              working-directory: docs/
+              run: task docsite:build:embedded
             - name: Upload Build Artifact
               uses: actions/upload-artifact@v4
               with:
                   name: docsite
-                  path: docs/build
+                  path: docsite
     build-app:
         needs: build-docsite
         outputs:

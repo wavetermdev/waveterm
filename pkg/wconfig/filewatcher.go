@@ -139,7 +139,7 @@ func isValidSubSettingsFileName(fileName string) bool {
 	return validFileRe.MatchString(baseName)
 }
 
-func (w *Watcher) handleSettingsFileEvent(event fsnotify.Event, fileName string) {
+func (w *Watcher) handleSettingsFileEvent(_ fsnotify.Event, _ string) {
 	fullConfig := ReadFullConfig()
 	w.fullConfig = fullConfig
 	w.broadcast(WatcherUpdate{FullConfig: w.fullConfig})

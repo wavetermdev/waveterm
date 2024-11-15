@@ -219,16 +219,19 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
     const previewRef = useRef<HTMLDivElement>(null);
     const addlProps = useAtomValue(nodeModel.additionalProps);
     const devicePixelRatio = useDevicePixelRatio();
+    const isEphemeral = useAtomValue(nodeModel.isEphemeral);
+    const isMagnified = useAtomValue(nodeModel.isMagnified);
 
     const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({
             type: dragItemType,
+            canDrag: () => !(isEphemeral || isMagnified),
             item: () => node,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
         }),
-        [node, addlProps]
+        [node, addlProps, isEphemeral, isMagnified]
     );
 
     const [previewElementGeneration, setPreviewElementGeneration] = useState(0);
