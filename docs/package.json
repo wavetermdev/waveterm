@@ -35,7 +35,7 @@
         "@docusaurus/module-type-aliases": "3.6.1",
         "@docusaurus/tsconfig": "3.6.1",
         "@docusaurus/types": "3.6.1",
-        "@eslint/js": "^9.13.0",
+        "@eslint/js": "^9.15.0",
         "@mdx-js/typescript-plugin": "^0.0.6",
         "@types/eslint": "^9.6.1",
         "@types/eslint-config-prettier": "^6.11.3",
@@ -51,7 +51,7 @@
         "remark-preset-lint-consistent": "^6.0.0",
         "remark-preset-lint-recommended": "^7.0.0",
         "typescript": "^5.6.3",
-        "typescript-eslint": "^8.11.0"
+        "typescript-eslint": "^8.14.0"
     },
     "resolutions": {
         "path-to-regexp@npm:2.2.1": "^3",
