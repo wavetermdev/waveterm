@@ -297,13 +297,6 @@ func DBInsert(ctx context.Context, val waveobj.WaveObj) error {
 	})
 }
 
-func DBFindWindowForTabId(ctx context.Context, tabId string) (string, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
-		query := "SELECT oid FROM db_window WHERE data->>'activetabid' = ?"
-		return tx.GetString(query, tabId), nil
-	})
-}
-
 func DBFindTabForBlockId(ctx context.Context, blockId string) (string, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
 		iterNum := 1

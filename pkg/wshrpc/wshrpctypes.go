@@ -423,18 +423,18 @@ type WebSelectorOpts struct {
 }
 
 type CommandWebSelectorData struct {
-	WindowId string           `json:"windowid"`
-	BlockId  string           `json:"blockid" wshcontext:"BlockId"`
-	TabId    string           `json:"tabid" wshcontext:"TabId"`
-	Selector string           `json:"selector"`
-	Opts     *WebSelectorOpts `json:"opts,omitempty"`
+	WorkspaceId string           `json:"workspaceid"`
+	BlockId     string           `json:"blockid" wshcontext:"BlockId"`
+	TabId       string           `json:"tabid" wshcontext:"TabId"`
+	Selector    string           `json:"selector"`
+	Opts        *WebSelectorOpts `json:"opts,omitempty"`
 }
 
 type BlockInfoData struct {
-	BlockId  string         `json:"blockid"`
-	TabId    string         `json:"tabid"`
-	WindowId string         `json:"windowid"`
-	Block    *waveobj.Block `json:"block"`
+	BlockId     string         `json:"blockid"`
+	TabId       string         `json:"tabid"`
+	WorkspaceId string         `json:"workspaceid"`
+	Block       *waveobj.Block `json:"block"`
 }
 
 type WaveNotificationOptions struct {

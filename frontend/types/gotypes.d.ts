@@ -36,7 +36,7 @@ declare global {
     type BlockInfoData = {
         blockid: string;
         tabid: string;
-        windowid: string;
+        workspaceid: string;
         block: Block;
     };
 
@@ -189,7 +189,7 @@ declare global {
 
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
-        windowid: string;
+        workspaceid: string;
         blockid: string;
         tabid: string;
         selector: string;

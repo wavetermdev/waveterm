@@ -268,7 +268,7 @@ electron.ipcMain.on("create-tab", async (event, opts) => {
     if (waveWindow == null) {
         return;
     }
-    const newTabId = await services.ObjectService.AddTabToWorkspace(waveWindowId, null, true);
+    const newTabId = await services.ObjectService.AddTabToWorkspace(waveWindow.workspaceid, null, true);
     const ww = getWaveWindowById(waveWindowId);
     if (ww == null) {
         return;

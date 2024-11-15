@@ -172,6 +172,14 @@ export function getWaveWindowById(windowId: string): WaveBrowserWindow {
     return waveWindowMap.get(windowId);
 }
 
+export function getWaveWindowByWorkspaceId(workspaceId: string): WaveBrowserWindow {
+    for (const waveWindow of waveWindowMap.values()) {
+        if (waveWindow.workspaceId === workspaceId) {
+            return waveWindow;
+        }
+    }
+}
+
 export function getAllWaveWindows(): WaveBrowserWindow[] {
     return Array.from(waveWindowMap.values());
 }

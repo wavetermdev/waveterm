@@ -180,13 +180,6 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
-	if err != nil {
-		return nil, fmt.Errorf("error finding window for tab: %w", err)
-	}
-	if windowId == "" {
-		return nil, fmt.Errorf("no window found for tab")
-	}
 	err = wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
 		BlockId:    blockData.OID,
@@ -356,13 +349,6 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	}
 	if tabId == "" {
 		return fmt.Errorf("no tab found for block")
-	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
-	if err != nil {
-		return fmt.Errorf("error finding window for tab: %w", err)
-	}
-	if windowId == "" {
-		return fmt.Errorf("no window found for tab")
 	}
 	err = wcore.DeleteBlock(ctx, data.BlockId)
 	if err != nil {
@@ -555,15 +541,15 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	if err != nil {
 		return nil, fmt.Errorf("error finding tab for block: %w", err)
 	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error finding window for tab: %w", err)
 	}
 	return &wshrpc.BlockInfoData{
-		BlockId:  blockId,
-		TabId:    tabId,
-		WindowId: windowId,
-		Block:    blockData,
+		BlockId:     blockId,
+		TabId:       tabId,
+		WorkspaceId: workspaceId,
+		Block:       blockData,
 	}, nil
 }
 

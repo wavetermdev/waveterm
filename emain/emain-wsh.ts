@@ -4,7 +4,7 @@
 import { Notification } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
-import { getWaveWindowById } from "./emain-viewmgr";
+import { getWaveWindowByWorkspaceId } from "./emain-viewmgr";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 
 export class ElectronWshClientType extends WshClient {
@@ -13,12 +13,12 @@ export class ElectronWshClientType extends WshClient {
     }
 
     async handle_webselector(rh: RpcResponseHelper, data: CommandWebSelectorData): Promise<string[]> {
-        if (!data.tabid || !data.blockid || !data.windowid) {
+        if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("tabid and blockid are required");
         }
-        const ww = getWaveWindowById(data.windowid);
+        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
         if (ww == null) {
-            throw new Error(`no window found with id ${data.windowid}`);
+            throw new Error(`no window found with workspace id ${data.workspaceid}`);
         }
         const wc = await getWebContentsByBlockId(ww, data.tabid, data.blockid);
         if (wc == null) {
