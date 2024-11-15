@@ -277,6 +277,11 @@ class RpcApiType {
         return client.wshRpcCall("webselector", data, opts);
     }
 
+    // command "wshactivity" [call]
+    WshActivityCommand(client: WshClient, data: {[key: string]: number}, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("wshactivity", data, opts);
+    }
+
     // command "wsldefaultdistro" [call]
     WslDefaultDistroCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("wsldefaultdistro", null, opts);
