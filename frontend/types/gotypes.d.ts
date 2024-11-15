@@ -14,6 +14,8 @@ declare global {
         newtab?: number;
         numblocks?: number;
         numwindows?: number;
+        numsshconn?: number;
+        numwslconn?: number;
         startup?: number;
         shutdown?: number;
         settabtheme?: number;
