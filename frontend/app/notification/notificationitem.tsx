@@ -60,7 +60,7 @@ const NotificationItem = ({
                     </div>
                 )}
                 <div className="notification-text">
-                    {title && <div className="notification-title">{title}</div>}
+                    {title && <div className={clsx("notification-title", color)}>{title}</div>}
                     {timestamp && !isBubble && (
                         <div className="notification-timestamp">{formatTimestamp(timestamp)}</div>
                     )}
