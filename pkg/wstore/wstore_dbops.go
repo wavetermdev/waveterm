@@ -17,6 +17,10 @@ import (
 
 var ErrNotFound = fmt.Errorf("not found")
 
+var SingletonOTypes = map[string]bool{
+	"client": true,
+}
+
 func waveObjTableName(w waveobj.WaveObj) string {
 	return "db_" + w.GetOType()
 }
@@ -36,6 +40,9 @@ func getOTypeGen[T waveobj.WaveObj]() string {
 }
 
 func DBGetCount[T waveobj.WaveObj](ctx context.Context) (int, error) {
+	if SingletonOTypes[getOTypeGen[T]()] {
+		return 0, fmt.Errorf("cannot get count of singleton %q with DBGetCount", getOTypeGen[T]())
+	}
 	return WithTxRtn(ctx, func(tx *TxWrap) (int, error) {
 		table := tableNameGen[T]()
 		query := fmt.Sprintf("SELECT count(*) FROM %s", table)
@@ -67,11 +74,13 @@ func DBGetSingleton[T waveobj.WaveObj](ctx context.Context) (T, error) {
 }
 
 func DBGetSingletonByType(ctx context.Context, otype string) (waveobj.WaveObj, error) {
+	if !SingletonOTypes[otype] {
+		return nil, fmt.Errorf("cannot get non-singleton %q with DBGetSingletonByType", otype)
+	}
 	return WithTxRtn(ctx, func(tx *TxWrap) (waveobj.WaveObj, error) {
-		table := tableNameFromOType(otype)
-		query := fmt.Sprintf("SELECT oid, version, data FROM %s LIMIT 1", table)
+		query := `SELECT oid, version, data FROM db_singleton WHERE otype = $1`
 		var row idDataType
-		found := tx.Get(&row, query)
+		found := tx.Get(&row, query, otype)
 		if !found {
 			return nil, ErrNotFound
 		}
@@ -84,7 +93,20 @@ func DBGetSingletonByType(ctx context.Context, otype string) (waveobj.WaveObj, e
 	})
 }
 
+func DBExistsSingletonByType(ctx context.Context, otype string) (bool, error) {
+	if !SingletonOTypes[otype] {
+		return false, fmt.Errorf("cannot check existence of non-singleton %q with DBExistsSingletonByType", otype)
+	}
+	return WithTxRtn(ctx, func(tx *TxWrap) (bool, error) {
+		query := `SELECT oid FROM db_singleton WHERE otype = $1`
+		return tx.Exists(query, otype), nil
+	})
+}
+
 func DBExistsORef(ctx context.Context, oref waveobj.ORef) (bool, error) {
+	if SingletonOTypes[oref.OType] {
+		return DBExistsSingletonByType(ctx, oref.OType)
+	}
 	return WithTxRtn(ctx, func(tx *TxWrap) (bool, error) {
 		table := tableNameFromOType(oref.OType)
 		query := fmt.Sprintf("SELECT oid FROM %s WHERE oid = ?", table)
@@ -111,6 +133,9 @@ func DBMustGet[T waveobj.WaveObj](ctx context.Context, id string) (T, error) {
 }
 
 func DBGetORef(ctx context.Context, oref waveobj.ORef) (waveobj.WaveObj, error) {
+	if SingletonOTypes[oref.OType] {
+		return DBGetSingletonByType(ctx, oref.OType)
+	}
 	return WithTxRtn(ctx, func(tx *TxWrap) (waveobj.WaveObj, error) {
 		table := tableNameFromOType(oref.OType)
 		query := fmt.Sprintf("SELECT oid, version, data FROM %s WHERE oid = ?", table)
@@ -130,6 +155,9 @@ func DBGetORef(ctx context.Context, oref waveobj.ORef) (waveobj.WaveObj, error) 
 
 func dbSelectOIDs(ctx context.Context, otype string, oids []string) ([]waveobj.WaveObj, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) ([]waveobj.WaveObj, error) {
+		if SingletonOTypes[otype] {
+			return nil, fmt.Errorf("cannot select singleton %q with DBSelectOIDs", otype)
+		}
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("SELECT oid, version, data FROM %s WHERE oid IN (SELECT value FROM json_each(?))", table)
 		var rows []idDataType
@@ -169,6 +197,9 @@ func DBResolveEasyOID(ctx context.Context, oid string) (*waveobj.ORef, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.ORef, error) {
 		for _, rtype := range waveobj.AllWaveObjTypes() {
 			otype := reflect.Zero(rtype).Interface().(waveobj.WaveObj).GetOType()
+			if SingletonOTypes[otype] {
+				continue
+			}
 			table := tableNameFromOType(otype)
 			var fullOID string
 			if len(oid) == 8 {
@@ -183,12 +214,23 @@ func DBResolveEasyOID(ctx context.Context, oid string) (*waveobj.ORef, error) {
 				return &oref, nil
 			}
 		}
+		// try singletons
+		query := `SELECT otype FROM db_singleton WHERE oid = ?`
+		otype := tx.GetString(query, oid)
+		if otype != "" {
+			oref := waveobj.MakeORef(otype, oid)
+			return &oref, nil
+		}
 		return nil, ErrNotFound
 	})
 }
 
 func DBSelectMap[T waveobj.WaveObj](ctx context.Context, ids []string) (map[string]T, error) {
-	rtnArr, err := dbSelectOIDs(ctx, getOTypeGen[T](), ids)
+	otype := getOTypeGen[T]()
+	if SingletonOTypes[otype] {
+		return nil, fmt.Errorf("cannot select singleton %q with DBSelectMap", otype)
+	}
+	rtnArr, err := dbSelectOIDs(ctx, otype, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +241,22 @@ func DBSelectMap[T waveobj.WaveObj](ctx context.Context, ids []string) (map[stri
 	return rtnMap, nil
 }
 
+func dbDeleteSingleton(ctx context.Context, otype string, oid string) error {
+	if !SingletonOTypes[otype] {
+		return fmt.Errorf("cannot delete non-singleton %q with DBDeleteSingleton", otype)
+	}
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := "DELETE FROM db_singleton WHERE otype = ? AND oid = ?"
+		tx.Exec(query, otype, oid)
+		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Delete, OType: otype, OID: oid})
+		return nil
+	})
+}
+
 func DBDelete(ctx context.Context, otype string, id string) error {
+	if SingletonOTypes[otype] {
+		return dbDeleteSingleton(ctx, otype, id)
+	}
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("DELETE FROM %s WHERE oid = ?", table)
@@ -223,7 +280,33 @@ func DBDelete(ctx context.Context, otype string, id string) error {
 	return nil
 }
 
+func dbUpdateSingleton(ctx context.Context, val waveobj.WaveObj) error {
+	otype := val.GetOType()
+	if !SingletonOTypes[otype] {
+		return fmt.Errorf("cannot update non-singleton %q with DBUpdateSingleton", otype)
+	}
+	oid := waveobj.GetOID(val)
+	if oid == "" {
+		return fmt.Errorf("cannot update %T value with empty id", val)
+	}
+	jsonData, err := waveobj.ToJson(val)
+	if err != nil {
+		return err
+	}
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := "UPDATE db_singleton SET version = version+1, data = ? WHERE otype = ? RETURNING version"
+		newVersion := tx.GetInt(query, jsonData, otype)
+		waveobj.SetVersion(val, newVersion)
+		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Update, OType: otype, OID: oid, Obj: val})
+		return nil
+	})
+}
+
 func DBUpdate(ctx context.Context, val waveobj.WaveObj) error {
+	otype := val.GetOType()
+	if SingletonOTypes[otype] {
+		return dbUpdateSingleton(ctx, val)
+	}
 	oid := waveobj.GetOID(val)
 	if oid == "" {
 		return fmt.Errorf("cannot update %T value with empty id", val)
@@ -242,7 +325,32 @@ func DBUpdate(ctx context.Context, val waveobj.WaveObj) error {
 	})
 }
 
+func dbInsertSingleton(ctx context.Context, val waveobj.WaveObj) error {
+	if !SingletonOTypes[val.GetOType()] {
+		return fmt.Errorf("cannot insert non-singleton %q with DBInsertSingleton", val.GetOType())
+	}
+	oid := waveobj.GetOID(val)
+	if oid == "" {
+		return fmt.Errorf("cannot insert %T value with empty id", val)
+	}
+	jsonData, err := waveobj.ToJson(val)
+	if err != nil {
+		return err
+	}
+	return WithTx(ctx, func(tx *TxWrap) error {
+		// will fail from primary key constraint if we add a 2nd singleton of the same type
+		query := "INSERT INTO db_singleton (otype, oid, version, data) VALUES (?, ?, ?, ?)"
+		tx.Exec(query, val.GetOType(), oid, 1, jsonData)
+		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
+		return nil
+	})
+}
+
 func DBInsert(ctx context.Context, val waveobj.WaveObj) error {
+	otype := val.GetOType()
+	if SingletonOTypes[otype] {
+		return dbInsertSingleton(ctx, val)
+	}
 	oid := waveobj.GetOID(val)
 	if oid == "" {
 		return fmt.Errorf("cannot insert %T value with empty id", val)
