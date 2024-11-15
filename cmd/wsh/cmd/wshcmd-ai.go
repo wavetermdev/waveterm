@@ -48,7 +48,11 @@ func encodeFile(builder *strings.Builder, file io.Reader, fileName string) error
 	return nil
 }
 
-func aiRun(cmd *cobra.Command, args []string) error {
+func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("ai", rtnErr == nil)
+	}()
+
 	var stdinUsed bool
 	var message strings.Builder
 

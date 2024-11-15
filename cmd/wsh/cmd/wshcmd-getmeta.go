@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,7 +18,7 @@ var getMetaCmd = &cobra.Command{
 	Short:   "get metadata for an entity",
 	Long:    "Get metadata for an entity. Keys can be exact matches or patterns like 'name:*' to get all keys that start with 'name:'",
 	Args:    cobra.ArbitraryArgs,
-	Run:     getMetaRun,
+	RunE:    getMetaRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -68,21 +69,22 @@ func filterMetaKeys(meta map[string]interface{}, keys []string) map[string]inter
 	return result
 }
 
-func getMetaRun(cmd *cobra.Command, args []string) {
+func getMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("getmeta", rtnErr == nil)
+	}()
+
 	oref := blockArg
 	if oref == "" {
-		WriteStderr("[error] oref is required")
-		return
+		return fmt.Errorf("blockid is required")
 	}
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
-		WriteStderr("[error] %v\n", err)
-		return
+		return err
 	}
 	resp, err := wshclient.GetMetaCommand(RpcClient, wshrpc.CommandGetMetaData{ORef: *fullORef}, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
-		WriteStderr("[error] getting metadata: %v\n", err)
-		return
+		return fmt.Errorf("getting metadata: %w", err)
 	}
 
 	var output interface{}
@@ -109,9 +111,9 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 
 	outBArr, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
-		WriteStderr("[error] formatting metadata: %v\n", err)
-		return
+		return fmt.Errorf("formatting metadata: %w", err)
 	}
 	outStr := string(outBArr)
 	WriteStdout("%s\n", outStr)
+	return nil
 }
