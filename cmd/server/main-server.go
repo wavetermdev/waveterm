@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -34,6 +35,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -120,6 +122,7 @@ func sendTelemetryWrapper() {
 	}()
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
+	beforeSendActivityUpdate(ctx)
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
 		log.Printf("[error] getting client data for telemetry: %v\n", err)
@@ -131,13 +134,23 @@ func sendTelemetryWrapper() {
 	}
 }
 
+func beforeSendActivityUpdate(ctx context.Context) {
+	activity := telemetry.ActivityUpdate{}
+	activity.NumTabs, _ = wstore.DBGetCount[*waveobj.Tab](ctx)
+	activity.NumBlocks, _ = wstore.DBGetCount[*waveobj.Block](ctx)
+	activity.NumWindows, _ = wstore.DBGetCount[*waveobj.Window](ctx)
+	activity.NumSSHConn = conncontroller.GetNumSSHHasConnected()
+	activity.NumWSLConn = wsl.GetNumWSLHasConnected()
+	err := telemetry.UpdateActivity(ctx, activity)
+	if err != nil {
+		log.Printf("error updating before activity: %v\n", err)
+	}
+}
+
 func startupActivityUpdate() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	activity := telemetry.ActivityUpdate{
-		Startup: 1,
-	}
-	activity.NumTabs, _ = wstore.DBGetCount[*waveobj.Tab](ctx)
+	activity := telemetry.ActivityUpdate{Startup: 1}
 	err := telemetry.UpdateActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
 	if err != nil {
 		log.Printf("error updating startup activity: %v\n", err)
@@ -145,9 +158,9 @@ func startupActivityUpdate() {
 }
 
 func shutdownActivityUpdate() {
-	activity := telemetry.ActivityUpdate{Shutdown: 1}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancelFn()
+	activity := telemetry.ActivityUpdate{Shutdown: 1}
 	err := telemetry.UpdateActivity(ctx, activity) // do NOT use the go routine wrap here (this needs to be synchronous)
 	if err != nil {
 		log.Printf("error updating shutdown activity: %v\n", err)

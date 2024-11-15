@@ -605,3 +605,8 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
 	return nil
 }
+
+func (ws *WshServer) ActivityCommand(ctx context.Context, activity telemetry.ActivityUpdate) error {
+	telemetry.GoUpdateActivityWrap(activity, "wshrpc-activity")
+	return nil
+}

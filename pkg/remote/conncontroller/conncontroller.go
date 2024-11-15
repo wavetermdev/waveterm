@@ -21,6 +21,7 @@ import (
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
 	"github.com/wavetermdev/waveterm/pkg/remote"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -70,6 +71,19 @@ func GetAllConnStatus() []wshrpc.ConnStatus {
 		connStatuses = append(connStatuses, conn.DeriveConnStatus())
 	}
 	return connStatuses
+}
+
+func GetNumSSHHasConnected() int {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+
+	var numConnected int
+	for _, conn := range clientControllerMap {
+		if conn.LastConnectTime > 0 {
+			numConnected++
+		}
+	}
+	return numConnected
 }
 
 func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
@@ -403,12 +417,18 @@ func (conn *SSHConn) Connect(ctx context.Context) error {
 			conn.Status = Status_Error
 			conn.Error = err.Error()
 			conn.close_nolock()
+			telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{
+				Conn: map[string]int{"ssh:connecterror": 1},
+			}, "ssh-connconnect")
 		} else {
 			conn.Status = Status_Connected
 			conn.LastConnectTime = time.Now().UnixMilli()
 			if conn.ActiveConnNum == 0 {
 				conn.ActiveConnNum = int(activeConnCounter.Add(1))
 			}
+			telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{
+				Conn: map[string]int{"ssh:connect": 1},
+			}, "ssh-connconnect")
 		}
 	})
 	conn.FireConnChangeEvent()

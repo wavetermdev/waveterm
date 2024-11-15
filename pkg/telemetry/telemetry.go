@@ -31,16 +31,22 @@ var allowedRenderers = map[string]bool{
 }
 
 type ActivityUpdate struct {
-	FgMinutes     int
-	ActiveMinutes int
-	OpenMinutes   int
-	NumTabs       int
-	NewTab        int
-	Startup       int
-	Shutdown      int
-	BuildTime     string
-	Renderers     map[string]int
-	WshCmds       map[string]int
+	FgMinutes     int            `json:"fgminutes,omitempty"`
+	ActiveMinutes int            `json:"activeminutes,omitempty"`
+	OpenMinutes   int            `json:"openminutes,omitempty"`
+	NumTabs       int            `json:"numtabs,omitempty"`
+	NewTab        int            `json:"newtab,omitempty"`
+	NumBlocks     int            `json:"numblocks,omitempty"`
+	NumWindows    int            `json:"numwindows,omitempty"`
+	NumSSHConn    int            `json:"numsshconn,omitempty"`
+	NumWSLConn    int            `json:"numwslconn,omitempty"`
+	Startup       int            `json:"startup,omitempty"`
+	Shutdown      int            `json:"shutdown,omitempty"`
+	SetTabTheme   int            `json:"settabtheme,omitempty"`
+	BuildTime     string         `json:"buildtime,omitempty"`
+	Renderers     map[string]int `json:"renderers,omitempty"`
+	WshCmds       map[string]int `json:"wshcmds,omitempty"`
+	Conn          map[string]int `json:"conn,omitempty"`
 }
 
 type ActivityType struct {
@@ -60,11 +66,17 @@ type TelemetryData struct {
 	FgMinutes     int            `json:"fgminutes"`
 	OpenMinutes   int            `json:"openminutes"`
 	NumTabs       int            `json:"numtabs"`
+	NumBlocks     int            `json:"numblocks,omitempty"`
+	NumWindows    int            `json:"numwindows,omitempty"`
+	NumSSHConn    int            `json:"numsshconn,omitempty"`
+	NumWSLConn    int            `json:"numwslconn,omitempty"`
 	NewTab        int            `json:"newtab"`
 	NumStartup    int            `json:"numstartup,omitempty"`
 	NumShutdown   int            `json:"numshutdown,omitempty"`
+	SetTabTheme   int            `json:"settabtheme,omitempty"`
 	Renderers     map[string]int `json:"renderers,omitempty"`
 	WshCmds       map[string]int `json:"wshcmds,omitempty"`
+	Conn          map[string]int `json:"conn,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -125,8 +137,21 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.NewTab += update.NewTab
 		tdata.NumStartup += update.Startup
 		tdata.NumShutdown += update.Shutdown
+		tdata.SetTabTheme += update.SetTabTheme
 		if update.NumTabs > 0 {
 			tdata.NumTabs = update.NumTabs
+		}
+		if update.NumBlocks > 0 {
+			tdata.NumBlocks = update.NumBlocks
+		}
+		if update.NumWindows > 0 {
+			tdata.NumWindows = update.NumWindows
+		}
+		if update.NumSSHConn > 0 && update.NumSSHConn > tdata.NumSSHConn {
+			tdata.NumSSHConn = update.NumSSHConn
+		}
+		if update.NumWSLConn > 0 && update.NumWSLConn > tdata.NumWSLConn {
+			tdata.NumWSLConn = update.NumWSLConn
 		}
 		if len(update.Renderers) > 0 {
 			if tdata.Renderers == nil {
@@ -142,6 +167,14 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 			}
 			for key, val := range update.WshCmds {
 				tdata.WshCmds[key] += val
+			}
+		}
+		if len(update.Conn) > 0 {
+			if tdata.Conn == nil {
+				tdata.Conn = make(map[string]int)
+			}
+			for key, val := range update.Conn {
+				tdata.Conn[key] += val
 			}
 		}
 		query = `UPDATE db_activity
