@@ -20,6 +20,7 @@ on:
             - "**/*.story.*"
             - "**/*.stories.*"
             - ".github/workflows/deploy-docsite.yml"
+            - "Taskfile.yml"
 
 jobs:
     build:
