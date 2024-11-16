@@ -180,8 +180,16 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+
+    React.useEffect(() => {
+        if (!magnified || preview || prevMagifiedState.current) {
+            return;
+        }
+        RpcApi.ActivityCommand(TabRpcClient, { nummagnify: 1 });
+    }, [magnified]);
 
     if (blockData?.meta?.["frame:title"]) {
         viewName = blockData.meta["frame:title"];

@@ -109,11 +109,18 @@ tasks:
 
     build:server:
         desc: Build the wavesrv component.
+        cmds:
+            - task: build:server:linux
+            - task: build:server:macos
+            - task: build:server:windows
         deps:
+            - go:mod:tidy
             - generate
-            - build:server:linux
-            - build:server:macos
-            - build:server:windows
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+        generates:
+            - dist/bin/wavesrv.*
 
     build:server:macos:
         desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
@@ -159,13 +166,6 @@ tasks:
                 var: ARCHS
                 split: ","
                 as: GOARCH
-        sources:
-            - "cmd/server/*.go"
-            - "pkg/**/*.go"
-        generates:
-            - dist/bin/wavesrv.*{{exeExt}}
-        deps:
-            - go:mod:tidy
         internal: true
 
     build:wsh:
@@ -198,19 +198,13 @@ tasks:
                   GOOS: windows
                   GOARCH: arm64
         deps:
+            - go:mod:tidy
             - generate
-
-    dev:installwsh:
-        desc: quick shortcut to rebuild wsh and install for macos arm64
-        requires:
-            vars:
-                - VERSION
-        cmds:
-            - task: build:wsh:internal
-              vars:
-                  GOOS: darwin
-                  GOARCH: arm64
-            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
+        sources:
+            - "cmd/wsh/**/*.go"
+            - "pkg/**/*.go"
+        generates:
+            - dist/bin/wsh-*
 
     build:wsh:internal:
         vars:
@@ -223,14 +217,7 @@ tasks:
                 - GOOS
                 - GOARCH
                 - VERSION
-        sources:
-            - "cmd/wsh/**/*.go"
-            - "pkg/**/*.go"
-        generates:
-            - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}}
         cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
-        deps:
-            - go:mod:tidy
         internal: true
 
     generate:
@@ -299,6 +286,18 @@ tasks:
             UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
         cmd: |
             wingetcreate update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t $env:GITHUB_TOKEN
+
+    dev:installwsh:
+        desc: quick shortcut to rebuild wsh and install for macos arm64
+        requires:
+            vars:
+                - VERSION
+        cmds:
+            - task: build:wsh:internal
+              vars:
+                  GOOS: darwin
+                  GOARCH: arm64
+            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
 
     yarn:
         desc: Runs `yarn`

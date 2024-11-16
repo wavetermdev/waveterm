@@ -19,7 +19,7 @@ var setMetaCmd = &cobra.Command{
 	Use:     "setmeta [-b {blockid|blocknum|this}] [--json file.json] key=value ...",
 	Short:   "set metadata for an entity",
 	Args:    cobra.MinimumNArgs(0),
-	Run:     setMetaRun,
+	RunE:    setMetaRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -107,25 +107,26 @@ func simpleMergeMeta(meta map[string]interface{}, metaUpdate map[string]interfac
 	return meta
 }
 
-func setMetaRun(cmd *cobra.Command, args []string) {
+func setMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("setmeta", rtnErr == nil)
+	}()
+
 	if blockArg == "" {
-		WriteStderr("[error] block (oref) is required\n")
-		return
+		return fmt.Errorf("block (oref) is required")
 	}
 	var jsonMeta map[string]interface{}
 	if setMetaJsonFilePath != "" {
 		var err error
 		jsonMeta, err = loadJSONFile(setMetaJsonFilePath)
 		if err != nil {
-			WriteStderr("[error] %v\n", err)
-			return
+			return err
 		}
 	}
 
 	cmdMeta, err := parseMetaSets(args)
 	if err != nil {
-		WriteStderr("[error] %v\n", err)
-		return
+		return err
 	}
 
 	// Merge JSON metadata with command-line metadata, with command-line taking precedence
@@ -136,13 +137,11 @@ func setMetaRun(cmd *cobra.Command, args []string) {
 		fullMeta = cmdMeta
 	}
 	if len(fullMeta) == 0 {
-		WriteStderr("[error] no metadata keys specified\n")
-		return
+		return fmt.Errorf("no metadata keys specified")
 	}
 	fullORef, err := resolveSimpleId(blockArg)
 	if err != nil {
-		WriteStderr("[error] %v\n", err)
-		return
+		return err
 	}
 
 	setMetaWshCmd := &wshrpc.CommandSetMetaData{
@@ -151,8 +150,8 @@ func setMetaRun(cmd *cobra.Command, args []string) {
 	}
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_SetMeta, setMetaWshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
-		WriteStderr("[error] setting metadata: %v\n", err)
-		return
+		return fmt.Errorf("setting metadata: %v", err)
 	}
 	WriteStdout("metadata set\n")
+	return nil
 }

@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -18,7 +19,7 @@ var wslCmd = &cobra.Command{
 	Use:     "wsl [-d <Distro>]",
 	Short:   "connect this terminal to a local wsl connection",
 	Args:    cobra.NoArgs,
-	Run:     wslRun,
+	RunE:    wslRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -27,14 +28,17 @@ func init() {
 	rootCmd.AddCommand(wslCmd)
 }
 
-func wslRun(cmd *cobra.Command, args []string) {
+func wslRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("wsl", rtnErr == nil)
+	}()
+
 	var err error
 	if distroName == "" {
 		// get default distro from the host
 		distroName, err = wshclient.WslDefaultDistroCommand(RpcClient, nil)
 		if err != nil {
-			WriteStderr("[error] %s\n", err)
-			return
+			return err
 		}
 	}
 	if !strings.HasPrefix(distroName, "wsl://") {
@@ -42,8 +46,7 @@ func wslRun(cmd *cobra.Command, args []string) {
 	}
 	blockId := RpcContext.BlockId
 	if blockId == "" {
-		WriteStderr("[error] cannot determine blockid (not in JWT)\n")
-		return
+		return fmt.Errorf("cannot determine blockid (not in JWT)")
 	}
 	data := wshrpc.CommandSetMetaData{
 		ORef: waveobj.MakeORef(waveobj.OType_Block, blockId),
@@ -53,8 +56,8 @@ func wslRun(cmd *cobra.Command, args []string) {
 	}
 	err = wshclient.SetMetaCommand(RpcClient, data, nil)
 	if err != nil {
-		WriteStderr("[error] setting switching connection: %v\n", err)
-		return
+		return fmt.Errorf("setting connection in block: %w", err)
 	}
 	WriteStderr("switched connection to %q\n", distroName)
+	return nil
 }

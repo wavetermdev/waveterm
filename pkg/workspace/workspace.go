@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -81,6 +82,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 			return "", fmt.Errorf("error setting active tab: %w", err)
 		}
 	}
+	telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{NewTab: 1}, "createtab")
 	return tab.OID, nil
 }
 

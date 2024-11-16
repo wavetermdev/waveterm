@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -11,7 +13,7 @@ import (
 var deleteBlockCmd = &cobra.Command{
 	Use:     "deleteblock",
 	Short:   "delete a block",
-	Run:     deleteBlockRun,
+	RunE:    deleteBlockRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -19,24 +21,25 @@ func init() {
 	rootCmd.AddCommand(deleteBlockCmd)
 }
 
-func deleteBlockRun(cmd *cobra.Command, args []string) {
+func deleteBlockRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("deleteblock", rtnErr == nil)
+	}()
 	oref := blockArg
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
-		WriteStderr("[error] %v\n", err)
-		return
+		return err
 	}
 	if fullORef.OType != "block" {
-		WriteStderr("[error] object reference is not a block\n")
-		return
+		return fmt.Errorf("object reference is not a block")
 	}
 	deleteBlockData := &wshrpc.CommandDeleteBlockData{
 		BlockId: fullORef.OID,
 	}
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_DeleteBlock, deleteBlockData, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
-		WriteStderr("[error] deleting block: %v\n", err)
-		return
+		return fmt.Errorf("delete block failed: %v", err)
 	}
 	WriteStdout("block deleted\n")
+	return nil
 }

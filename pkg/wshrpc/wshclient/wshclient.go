@@ -13,7 +13,14 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/workspace"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
 )
+
+// command "activity", wshserver.ActivityCommand
+func ActivityCommand(w *wshutil.WshRpc, data telemetry.ActivityUpdate, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "activity", data, opts)
+	return err
+}
 
 // command "aisendmessage", wshserver.AiSendMessageCommand
 func AiSendMessageCommand(w *wshutil.WshRpc, data wshrpc.AiMessageData, opts *wshrpc.RpcOpts) error {
@@ -336,6 +343,12 @@ func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, o
 func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (workspace.WorkspaceList, error) {
 	resp, err := sendRpcRequestCallHelper[workspace.WorkspaceList](w, "workspacelist", nil, opts)
 	return resp, err
+}
+
+// command "wshactivity", wshserver.WshActivityCommand
+func WshActivityCommand(w *wshutil.WshRpc, data map[string]int, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "wshactivity", data, opts)
+	return err
 }
 
 // command "wsldefaultdistro", wshserver.WslDefaultDistroCommand

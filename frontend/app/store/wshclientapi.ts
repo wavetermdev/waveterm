@@ -7,6 +7,11 @@ import { WshClient } from "./wshclient";
 
 // WshServerCommandToDeclMap
 class RpcApiType {
+    // command "activity" [call]
+    ActivityCommand(client: WshClient, data: ActivityUpdate, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("activity", data, opts);
+    }
+
     // command "aisendmessage" [call]
     AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("aisendmessage", data, opts);
@@ -98,7 +103,11 @@ class RpcApiType {
     }
 
     // command "eventreadhistory" [call]
-    EventReadHistoryCommand(client: WshClient, data: CommandEventReadHistoryData, opts?: RpcOpts): Promise<WaveEvent[]> {
+    EventReadHistoryCommand(
+        client: WshClient,
+        data: CommandEventReadHistoryData,
+        opts?: RpcOpts
+    ): Promise<WaveEvent[]> {
         return client.wshRpcCall("eventreadhistory", data, opts);
     }
 
@@ -178,12 +187,16 @@ class RpcApiType {
     }
 
     // command "remotestreamcpudata" [responsestream]
-	RemoteStreamCpuDataCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
+    RemoteStreamCpuDataCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
         return client.wshRpcStream("remotestreamcpudata", null, opts);
     }
 
     // command "remotestreamfile" [responsestream]
-	RemoteStreamFileCommand(client: WshClient, data: CommandRemoteStreamFileData, opts?: RpcOpts): AsyncGenerator<CommandRemoteStreamFileRtnData, void, boolean> {
+    RemoteStreamFileCommand(
+        client: WshClient,
+        data: CommandRemoteStreamFileData,
+        opts?: RpcOpts
+    ): AsyncGenerator<CommandRemoteStreamFileRtnData, void, boolean> {
         return client.wshRpcStream("remotestreamfile", data, opts);
     }
 
@@ -193,7 +206,11 @@ class RpcApiType {
     }
 
     // command "resolveids" [call]
-    ResolveIdsCommand(client: WshClient, data: CommandResolveIdsData, opts?: RpcOpts): Promise<CommandResolveIdsRtnData> {
+    ResolveIdsCommand(
+        client: WshClient,
+        data: CommandResolveIdsData,
+        opts?: RpcOpts
+    ): Promise<CommandResolveIdsRtnData> {
         return client.wshRpcCall("resolveids", data, opts);
     }
 
@@ -223,17 +240,25 @@ class RpcApiType {
     }
 
     // command "streamcpudata" [responsestream]
-	StreamCpuDataCommand(client: WshClient, data: CpuDataRequest, opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
+    StreamCpuDataCommand(
+        client: WshClient,
+        data: CpuDataRequest,
+        opts?: RpcOpts
+    ): AsyncGenerator<TimeSeriesData, void, boolean> {
         return client.wshRpcStream("streamcpudata", data, opts);
     }
 
     // command "streamtest" [responsestream]
-	StreamTestCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<number, void, boolean> {
+    StreamTestCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<number, void, boolean> {
         return client.wshRpcStream("streamtest", null, opts);
     }
 
     // command "streamwaveai" [responsestream]
-	StreamWaveAiCommand(client: WshClient, data: OpenAiStreamRequest, opts?: RpcOpts): AsyncGenerator<OpenAIPacketType, void, boolean> {
+    StreamWaveAiCommand(
+        client: WshClient,
+        data: OpenAiStreamRequest,
+        opts?: RpcOpts
+    ): AsyncGenerator<OpenAIPacketType, void, boolean> {
         return client.wshRpcStream("streamwaveai", data, opts);
     }
 
@@ -253,12 +278,20 @@ class RpcApiType {
     }
 
     // command "vdomrender" [responsestream]
-	VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): AsyncGenerator<VDomBackendUpdate, void, boolean> {
+    VDomRenderCommand(
+        client: WshClient,
+        data: VDomFrontendUpdate,
+        opts?: RpcOpts
+    ): AsyncGenerator<VDomBackendUpdate, void, boolean> {
         return client.wshRpcStream("vdomrender", data, opts);
     }
 
     // command "vdomurlrequest" [responsestream]
-	VDomUrlRequestCommand(client: WshClient, data: VDomUrlRequestData, opts?: RpcOpts): AsyncGenerator<VDomUrlRequestResponse, void, boolean> {
+    VDomUrlRequestCommand(
+        client: WshClient,
+        data: VDomUrlRequestData,
+        opts?: RpcOpts
+    ): AsyncGenerator<VDomUrlRequestResponse, void, boolean> {
         return client.wshRpcStream("vdomurlrequest", data, opts);
     }
 
@@ -275,6 +308,11 @@ class RpcApiType {
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
+    }
+
+    // command "wshactivity" [call]
+    WshActivityCommand(client: WshClient, data: { [key: string]: number }, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("wshactivity", data, opts);
     }
 
     // command "workspacelist" [call]
@@ -296,7 +334,6 @@ class RpcApiType {
     WslStatusCommand(client: WshClient, opts?: RpcOpts): Promise<ConnStatus[]> {
         return client.wshRpcCall("wslstatus", null, opts);
     }
-
 }
 
 export const RpcApi = new RpcApiType();

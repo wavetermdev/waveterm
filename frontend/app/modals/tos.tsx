@@ -167,18 +167,18 @@ const ModalPageLegacy = () => {
                 <div className="logo">
                     <Logo />
                 </div>
-                <div className="modal-title">Welcome to Wave v0.8</div>
+                <div className="modal-title">Welcome to Wave v0.9</div>
             </header>
             <div className="modal-content tos-content unselectable">
                 <div className="item">
-                    We’re excited to announce the release of Wave Terminal v0.8. This update introduces a brand-new
+                    We’re excited to announce the release of Wave Terminal v0.9. This update introduces a brand-new
                     layout engine, featuring drag-and-drop screen splitting with flexible block sizing and positioning.
                     We've also integrated powerful tools like file previews, an editor, web integration, and AI, all
                     designed to keep you focused and minimize context switching. And for the first time, Wave Terminal
                     runs <b>natively on Windows</b>!
                 </div>
                 <div>
-                    Wave v0.8 is less opinionated, giving you the freedom to use your standard terminal prompt and
+                    Wave v0.9 is less opinionated, giving you the freedom to use your standard terminal prompt and
                     command completions, while supporting all shells (not just bash/zsh). We've also improved
                     compatibility with ohmyzsh packages, removing some of the friction users experienced. It’s faster,
                     more performant, and provides a stronger foundation for you to build your own blocks and widgets in
