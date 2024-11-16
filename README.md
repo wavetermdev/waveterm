@@ -22,48 +22,9 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 
 Wave Terminal works on macOS, Linux, and Windows.
 
-Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
+Platform-specific installation instructions can be found [here](https://docs.waveterm.dev/gettingstarted).
 
-### Homebrew
-
-![Homebrew Cask Version](https://img.shields.io/homebrew/cask/v/wave)
-
-Also available as a Homebrew Cask for macOS.
-
-```bash
-brew install --cask wave
-```
-
-### Snap
-
-[![waveterm](https://snapcraft.io/waveterm/badge.svg)](https://snapcraft.io/waveterm)
-[![waveterm](https://snapcraft.io/waveterm/trending.svg?name=0)](https://snapcraft.io/waveterm)
-
-Also available as a Snap for Linux.
-
-```bash
-sudo snap install waveterm --classic
-```
-
-### Chocolatey
-
-![Chocolatey Version](https://img.shields.io/chocolatey/v/wave)
-
-Also available via Chocolatey for Windows:
-
-```Powershell
-choco install wave
-```
-
-### WinGet
-
-![WinGet Package Version](https://img.shields.io/winget/v/CommandLine.Wave)
-
-Also available via the Windows Package Manager (WinGet):
-
-```Powershell
-winget install CommandLine.Wave
-```
+You can also install Wave Terminal directly from: [www.waveterm.dev/download](https://www.waveterm.dev/download).
 
 ### Minimum requirements
 
