@@ -558,9 +558,9 @@ export async function createBrowserWindow(
 
     const workspace = await ClientService.GetWorkspace(waveWindow.workspaceid);
     console.log("workspace", workspace);
-    if (!workspace.activetabid) {
-        console.log("no active tab, setting first tab active");
-        await setActiveTab(bwin, workspace.tabids[0]);
+    if (workspace.activetabid) {
+        console.log("set active tab id");
+        await setActiveTab(bwin, workspace.activetabid);
     }
     return bwin;
 }
