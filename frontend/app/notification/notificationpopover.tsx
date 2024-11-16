@@ -73,7 +73,7 @@ const NotificationPopover = () => {
                                 removeAllNotifications();
                             }}
                         >
-                            Clear All
+                            Clear
                         </Button>
                     </div>
                     <OverlayScrollbarsComponent
