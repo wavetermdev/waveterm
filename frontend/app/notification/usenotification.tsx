@@ -38,7 +38,7 @@ export function useNotification() {
     }, [setNotifications]);
 
     const removeAllNotifications = useCallback(() => {
-        setNotifications([]);
+        setNotifications((prevNotifications) => prevNotifications.filter((n) => n.persistent));
     }, [setNotifications]);
 
     const copyNotification = useCallback(
