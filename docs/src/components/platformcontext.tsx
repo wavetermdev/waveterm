@@ -16,14 +16,14 @@ export const PlatformContext = createContext<PlatformContextProps | undefined>(u
 
 const detectPlatform = (): Platform => {
     const savedPlatform = localStorage.getItem("platform") as Platform | null;
-    if (savedPlatform && (savedPlatform === "mac" || savedPlatform === "linux")) {
+    if (savedPlatform) {
         return savedPlatform;
     }
     const { os } = UAParser(navigator.userAgent);
 
     if (/Windows/.test(os.name)) {
         return "windows";
-    } else if (/macOS|iOS/.test(os.name)) {
+    } else if (/Mac OS|iOS/.test(os.name)) {
         return "mac";
     } else {
         return "linux";
