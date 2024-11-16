@@ -89,7 +89,7 @@ export const useUpdateNotifier = () => {
                 break;
         }
 
-        if (isDev()) return;
+        if (!isDev()) return;
 
         if (notification) {
             pushNotification(notification);
