@@ -434,6 +434,7 @@ async function createNewWaveWindow(): Promise<void> {
     newBrowserWindow.show();
 }
 
+// Here's where init is not getting fired
 electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-ready") => {
     const tabView = getWaveTabViewByWebContentsId(event.sender.id);
     if (tabView == null || tabView.initResolve == null) {
@@ -443,7 +444,10 @@ electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-re
         console.log("initResolve");
         tabView.initResolve();
         if (tabView.savedInitOpts) {
+            console.log("savedInitOpts");
             tabView.webContents.send("wave-init", tabView.savedInitOpts);
+        } else {
+            console.log("no-savedInitOpts");
         }
     } else if (status === "wave-ready") {
         console.log("waveReadyResolve");
