@@ -173,7 +173,6 @@ const Tab = React.memo(
                             label: preset["display:name"] ?? presetName,
                             click: () => {
                                 services.ObjectService.UpdateObjectMeta(oref, preset);
-                                console.log("RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 })");
                                 RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
                             },
                         });
