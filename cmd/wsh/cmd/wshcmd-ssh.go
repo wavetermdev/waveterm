@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -14,7 +16,7 @@ var sshCmd = &cobra.Command{
 	Use:     "ssh",
 	Short:   "connect this terminal to a remote host",
 	Args:    cobra.ExactArgs(1),
-	Run:     sshRun,
+	RunE:    sshRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -22,12 +24,15 @@ func init() {
 	rootCmd.AddCommand(sshCmd)
 }
 
-func sshRun(cmd *cobra.Command, args []string) {
+func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("ssh", rtnErr == nil)
+	}()
+
 	sshArg := args[0]
 	blockId := RpcContext.BlockId
 	if blockId == "" {
-		WriteStderr("[error] cannot determine blockid (not in JWT)\n")
-		return
+		return fmt.Errorf("cannot determine blockid (not in JWT)")
 	}
 	data := wshrpc.CommandSetMetaData{
 		ORef: waveobj.MakeORef(waveobj.OType_Block, blockId),
@@ -37,8 +42,8 @@ func sshRun(cmd *cobra.Command, args []string) {
 	}
 	err := wshclient.SetMetaCommand(RpcClient, data, nil)
 	if err != nil {
-		WriteStderr("[error] setting switching connection: %v\n", err)
-		return
+		return fmt.Errorf("setting connection in block: %w", err)
 	}
 	WriteStderr("switched connection to %q\n", sshArg)
+	return nil
 }

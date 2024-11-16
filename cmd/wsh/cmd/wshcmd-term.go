@@ -4,7 +4,7 @@
 package cmd
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -21,7 +21,7 @@ var termCmd = &cobra.Command{
 	Use:     "term",
 	Short:   "open a terminal in directory",
 	Args:    cobra.RangeArgs(0, 1),
-	Run:     termRun,
+	RunE:    termRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -30,29 +30,30 @@ func init() {
 	rootCmd.AddCommand(termCmd)
 }
 
-func termRun(cmd *cobra.Command, args []string) {
+func termRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("term", rtnErr == nil)
+	}()
+
 	var cwd string
 	if len(args) > 0 {
 		cwd = args[0]
 		cwdExpanded, err := wavebase.ExpandHomeDir(cwd)
 		if err != nil {
-			log.Fatal(err)
-			return
+			return err
 		}
 		cwd = cwdExpanded
 	} else {
 		var err error
 		cwd, err = os.Getwd()
 		if err != nil {
-			WriteStderr("[error] getting current directory: %v\n", err)
-			return
+			return fmt.Errorf("getting current directory: %w", err)
 		}
 	}
 	var err error
 	cwd, err = filepath.Abs(cwd)
 	if err != nil {
-		WriteStderr("[error] getting absolute path: %v\n", err)
-		return
+		return fmt.Errorf("getting absolute path: %w", err)
 	}
 	createBlockData := wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
@@ -69,8 +70,8 @@ func termRun(cmd *cobra.Command, args []string) {
 	}
 	oref, err := wshclient.CreateBlockCommand(RpcClient, createBlockData, nil)
 	if err != nil {
-		WriteStderr("[error] creating new terminal block: %v\n", err)
-		return
+		return fmt.Errorf("creating new terminal block: %w", err)
 	}
 	WriteStdout("terminal block created: %s\n", oref)
+	return nil
 }

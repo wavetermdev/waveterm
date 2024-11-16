@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -578,4 +580,33 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 		ConfigDir: wavebase.GetWaveConfigDir(),
 		DataDir:   wavebase.GetWaveDataDir(),
 	}, nil
+}
+
+var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
+
+func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {
+	if len(data) == 0 {
+		return nil
+	}
+	for key, value := range data {
+		if len(key) > 20 {
+			delete(data, key)
+		}
+		if !wshActivityRe.MatchString(key) {
+			delete(data, key)
+		}
+		if value != 1 {
+			delete(data, key)
+		}
+	}
+	activityUpdate := telemetry.ActivityUpdate{
+		WshCmds: data,
+	}
+	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
+	return nil
+}
+
+func (ws *WshServer) ActivityCommand(ctx context.Context, activity telemetry.ActivityUpdate) error {
+	telemetry.GoUpdateActivityWrap(activity, "wshrpc-activity")
+	return nil
 }

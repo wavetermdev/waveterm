@@ -118,6 +118,7 @@ func CreateTab(ctx context.Context, windowId string, tabName string, activateTab
 			return "", fmt.Errorf("error setting active tab: %w", err)
 		}
 	}
+	telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{NewTab: 1}, "createtab")
 	return tab.OID, nil
 }
 

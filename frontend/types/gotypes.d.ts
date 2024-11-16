@@ -5,6 +5,27 @@
 
 declare global {
 
+    // telemetry.ActivityUpdate
+    type ActivityUpdate = {
+        fgminutes?: number;
+        activeminutes?: number;
+        openminutes?: number;
+        numtabs?: number;
+        newtab?: number;
+        numblocks?: number;
+        numwindows?: number;
+        numsshconn?: number;
+        numwslconn?: number;
+        nummagnify?: number;
+        startup?: number;
+        shutdown?: number;
+        settabtheme?: number;
+        buildtime?: string;
+        renderers?: {[key: string]: number};
+        wshcmds?: {[key: string]: number};
+        conn?: {[key: string]: number};
+    };
+
     // wshrpc.AiMessageData
     type AiMessageData = {
         message?: string;

@@ -7,6 +7,11 @@ import { WshClient } from "./wshclient";
 
 // WshServerCommandToDeclMap
 class RpcApiType {
+    // command "activity" [call]
+    ActivityCommand(client: WshClient, data: ActivityUpdate, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("activity", data, opts);
+    }
+
     // command "aisendmessage" [call]
     AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("aisendmessage", data, opts);
@@ -275,6 +280,11 @@ class RpcApiType {
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
+    }
+
+    // command "wshactivity" [call]
+    WshActivityCommand(client: WshClient, data: {[key: string]: number}, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("wshactivity", data, opts);
     }
 
     // command "wsldefaultdistro" [call]

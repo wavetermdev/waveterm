@@ -11,6 +11,7 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -63,6 +64,8 @@ const (
 	Command_RemoteFileDelete  = "remotefiledelete"
 	Command_RemoteFileJoin    = "remotefilejoin"
 	Command_WaveInfo          = "waveinfo"
+	Command_WshActivity       = "wshactivity"
+	Command_Activity          = "activity"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -126,6 +129,8 @@ type WshRpcInterface interface {
 	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
+	WshActivityCommand(ct context.Context, data map[string]int) error
+	ActivityCommand(ctx context.Context, data telemetry.ActivityUpdate) error
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
