@@ -579,11 +579,18 @@ function pushFlashError(ferr: FlashErrorType) {
     });
 }
 
-function pushNotification(notif: NotificationType) {
-    notif.id = crypto.randomUUID();
-    globalStore.set(atoms.notifications, (prev) => {
-        return [...prev, notif];
+function addOrUpdateNotification(notif: NotificationType) {
+    globalStore.set(atoms.notifications, (prevNotifications) => {
+        // Remove any existing notification with the same ID
+        const notificationsWithoutThisId = prevNotifications.filter((n) => n.id !== notif.id);
+        // Add the new notification
+        return [...notificationsWithoutThisId, notif];
     });
+}
+
+function pushNotification(notif: NotificationType) {
+    notif.id = notif.id ?? crypto.randomUUID();
+    addOrUpdateNotification(notif);
 }
 
 function removeNotificationById(id: string) {

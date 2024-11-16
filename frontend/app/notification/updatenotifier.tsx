@@ -1,13 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, isDev } from "@/store/global";
-import { useAtomValue, useSetAtom } from "jotai";
+import { atoms, isDev, pushNotification } from "@/store/global";
+import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 
 export const useUpdateNotifier = () => {
     const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
-    const setNotifications = useSetAtom(atoms.notifications);
 
     useEffect(() => {
         let notification: NotificationType | null = null;
@@ -88,17 +87,12 @@ export const useUpdateNotifier = () => {
                     ],
                 };
                 break;
-
-            default:
-                setNotifications((prev) => prev.filter((n) => n.type !== "update"));
-                return;
         }
 
         if (isDev()) return;
 
-        setNotifications((prev) => {
-            const otherNotifications = prev.filter((n) => n.type !== "update");
-            return [...otherNotifications, notification!];
-        });
-    }, [appUpdateStatus, setNotifications]);
+        if (notification) {
+            pushNotification(notification);
+        }
+    }, [appUpdateStatus]);
 };
