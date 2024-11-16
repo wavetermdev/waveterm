@@ -10,6 +10,12 @@
 # Wave Terminal
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
+![Homebrew Cask Version](https://img.shields.io/homebrew/cask/v/wave)
+[![waveterm](https://snapcraft.io/waveterm/badge.svg)](https://snapcraft.io/waveterm)
+[![waveterm](https://snapcraft.io/waveterm/trending.svg?name=0)](https://snapcraft.io/waveterm)
+![Chocolatey Version](https://img.shields.io/chocolatey/v/wave)
+![WinGet Package Version](https://img.shields.io/winget/v/CommandLine.Wave)
+![AUR Version](https://img.shields.io/aur/version/waveterm)
 
 Wave is an open-source terminal that can launch graphical widgets, controlled and integrated directly with the CLI. It includes a base terminal, directory browser, file previews (images, media, markdown), a graphical editor (for code/text files), a web browser, and integrated AI chat.
 
@@ -23,19 +29,42 @@ Wave Terminal works on macOS, Linux, and Windows.
 
 Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
 
-Also available as a Homebrew Cask for macOS:
+### Homebrew
+
+![Homebrew Cask Version](https://img.shields.io/homebrew/cask/v/wave)
+
+Also available as a Homebrew Cask for macOS.
 
 ```bash
 brew install --cask wave
 ```
 
-Also available as a [Snap](https://snapcraft.io/waveterm) on Linux:
+### Snap
+
+[![waveterm](https://snapcraft.io/waveterm/badge.svg)](https://snapcraft.io/waveterm)
+[![waveterm](https://snapcraft.io/waveterm/trending.svg?name=0)](https://snapcraft.io/waveterm)
+
+Also available as a Snap for Linux.
 
 ```bash
 sudo snap install waveterm --classic
 ```
 
-Also available via the Windows Package Manager:
+### Chocolatey
+
+![Chocolatey Version](https://img.shields.io/chocolatey/v/wave)
+
+Also available via Chocolatey for Windows:
+
+```Powershell
+choco install wave
+```
+
+### WinGet
+
+![WinGet Package Version](https://img.shields.io/winget/v/CommandLine.Wave)
+
+Also available via the Windows Package Manager (WinGet):
 
 ```Powershell
 winget install CommandLine.Wave
