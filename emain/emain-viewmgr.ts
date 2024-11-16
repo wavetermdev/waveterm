@@ -544,6 +544,7 @@ export function getLastFocusedWaveWindow(): WaveBrowserWindow {
     return focusedWaveWindow;
 }
 
+// TODO:
 // note, this does not *show* the window.
 // to show, await win.readyPromise and then win.show()
 export async function createBrowserWindow(
@@ -556,9 +557,10 @@ export async function createBrowserWindow(
     const bwin = createBaseWaveBrowserWindow(waveWindow, fullConfig, opts);
 
     const workspace = await ClientService.GetWorkspace(waveWindow.workspaceid);
+    console.log("workspace", workspace);
     if (!workspace.activetabid) {
         console.log("no active tab, setting first tab active");
-        await ObjectService.SetActiveTab(workspace.oid, workspace.tabids[0]);
+        await setActiveTab(bwin, workspace.tabids[0]);
     }
     return bwin;
 }
