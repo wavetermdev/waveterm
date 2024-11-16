@@ -30,9 +30,30 @@ const NotificationItem = ({
     onMouseLeave,
 }: NotificationItemProps) => {
     const { id, title, message, icon, type, timestamp, persistent, actions } = notification;
-    const closeable = isBubble || !persistent;
     const color = type === "error" ? "red" : type === "warning" ? "yellow" : "green";
     const nIcon = icon ? icon : "bell";
+
+    const renderCloseButton = () => {
+        if (!isBubble && persistent) {
+            return (
+                <span className="lock-btn" title="Cannot be closed">
+                    <i className={makeIconClass("lock", false)}></i>
+                </span>
+            );
+        }
+        return (
+            <Button
+                className="close-btn ghost grey vertical-padding-10"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(id);
+                }}
+                aria-label="Close"
+            >
+                <i className={clsx(makeIconClass("close", false), color)}></i>
+            </Button>
+        );
+    };
 
     return (
         <div
@@ -42,18 +63,7 @@ const NotificationItem = ({
             onClick={() => onCopy(id)}
             title="Click to Copy Notification Message"
         >
-            {closeable && (
-                <Button
-                    className="close-btn ghost grey vertical-padding-10"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onRemove(id);
-                    }}
-                    aria-label="Close"
-                >
-                    <i className={makeIconClass("close", false)}></i>
-                </Button>
-            )}
+            {renderCloseButton()}
             <div className="notification-inner">
                 {nIcon && (
                     <div className="notification-icon">
