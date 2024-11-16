@@ -140,6 +140,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return connStatuses;
     });
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
+    const notificationsAtom = atom<NotificationType[]>([]);
+    const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
@@ -160,6 +162,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
+        notifications: notificationsAtom,
+        notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
     };
 }
@@ -579,9 +583,38 @@ function pushFlashError(ferr: FlashErrorType) {
     });
 }
 
+function addOrUpdateNotification(notif: NotificationType) {
+    globalStore.set(atoms.notifications, (prevNotifications) => {
+        // Remove any existing notification with the same ID
+        const notificationsWithoutThisId = prevNotifications.filter((n) => n.id !== notif.id);
+        // Add the new notification
+        return [...notificationsWithoutThisId, notif];
+    });
+}
+
+function pushNotification(notif: NotificationType) {
+    if (!notif.id && notif.persistent) {
+        return;
+    }
+    notif.id = notif.id ?? crypto.randomUUID();
+    addOrUpdateNotification(notif);
+}
+
+function removeNotificationById(id: string) {
+    globalStore.set(atoms.notifications, (prev) => {
+        return prev.filter((notif) => notif.id !== id);
+    });
+}
+
 function removeFlashError(id: string) {
     globalStore.set(atoms.flashErrors, (prev) => {
         return prev.filter((ferr) => ferr.id !== id);
+    });
+}
+
+function removeNotification(id: string) {
+    globalStore.set(atoms.notifications, (prev) => {
+        return prev.filter((notif) => notif.id !== id);
     });
 }
 
@@ -614,9 +647,12 @@ export {
     openLink,
     PLATFORM,
     pushFlashError,
+    pushNotification,
     refocusNode,
     registerBlockComponentModel,
     removeFlashError,
+    removeNotification,
+    removeNotificationById,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,

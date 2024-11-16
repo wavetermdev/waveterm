@@ -24,6 +24,8 @@ declare global {
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
         flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
+        notifications: jotai.PrimitiveAtom<NotificationType[]>;
+        notificationPopoverMode: jotia.atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
     };
 
@@ -298,6 +300,27 @@ declare global {
         title: string;
         message: string;
         expiration: number;
+    };
+
+    export type NotificationActionType = {
+        label: string;
+        actionKey: string;
+        rightIcon?: string;
+        color?: "green" | "grey";
+        disabled?: boolean;
+    };
+
+    export type NotificationType = {
+        id?: string;
+        icon: string;
+        title: string;
+        message: string;
+        timestamp: string;
+        expiration?: number;
+        hidden?: boolean;
+        actions?: NotificationActionType[];
+        persistent?: boolean;
+        type?: "error" | "update" | "info" | "warning";
     };
 
     interface AbstractWshClient {
