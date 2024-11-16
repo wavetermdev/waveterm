@@ -32,6 +32,7 @@ const NotificationItem = ({
     const { id, title, message, icon, type, timestamp, persistent, actions } = notification;
     const closeable = isBubble || !persistent;
     const color = type === "error" ? "red" : type === "warning" ? "yellow" : "green";
+    const nIcon = icon ? icon : "bell";
 
     return (
         <div
@@ -54,9 +55,9 @@ const NotificationItem = ({
                 </Button>
             )}
             <div className="notification-inner">
-                {icon && (
+                {nIcon && (
                     <div className="notification-icon">
-                        <i className={clsx(makeIconClass(icon, false), color)}></i>
+                        <i className={clsx(makeIconClass(nIcon, false), color)}></i>
                     </div>
                 )}
                 <div className="notification-text">
