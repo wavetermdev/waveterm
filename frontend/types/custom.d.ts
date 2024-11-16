@@ -311,7 +311,7 @@ declare global {
     };
 
     export type NotificationType = {
-        id: string;
+        id?: string;
         icon: string;
         title: string;
         message: string;

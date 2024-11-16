@@ -589,6 +589,9 @@ function addOrUpdateNotification(notif: NotificationType) {
 }
 
 function pushNotification(notif: NotificationType) {
+    if (!notif.id && notif.persistent) {
+        return;
+    }
     notif.id = notif.id ?? crypto.randomUUID();
     addOrUpdateNotification(notif);
 }
