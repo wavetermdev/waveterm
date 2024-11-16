@@ -21,6 +21,7 @@ const NotificationPopover = () => {
         notifications,
         removeNotification,
         removeAllNotifications,
+        hideAllNotifications,
         copyNotification,
         handleActionClick,
         formatTimestamp,
@@ -30,6 +31,9 @@ const NotificationPopover = () => {
     const [notificationPopoverMode, setNotificationPopoverMode] = useAtom(atoms.notificationPopoverMode);
 
     const handleTogglePopover = useCallback(() => {
+        if (notificationPopoverMode) {
+            hideAllNotifications();
+        }
         setNotificationPopoverMode(!notificationPopoverMode);
     }, [notificationPopoverMode]);
 
