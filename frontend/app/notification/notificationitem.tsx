@@ -36,7 +36,7 @@ const NotificationItem = ({
     const renderCloseButton = () => {
         if (!isBubble && persistent) {
             return (
-                <span className="lock-btn" title="Cannot be closed">
+                <span className="lock-btn" title="Cannot be cleared">
                     <i className={makeIconClass("lock", false)}></i>
                 </span>
             );
