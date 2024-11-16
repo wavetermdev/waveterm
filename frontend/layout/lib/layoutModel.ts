@@ -401,6 +401,7 @@ export class LayoutModel {
             treeState?.pendingBackendActions?.length
         ) {
             this.treeState = treeState;
+            this.magnifiedNodeId = treeState.magnifiedNodeId;
 
             if (this.treeState?.pendingBackendActions?.length) {
                 const actions = this.treeState.pendingBackendActions;

@@ -20,6 +20,7 @@ const config: Config = {
     projectName: "waveterm-docs", // Usually your repo name.
     deploymentBranch: "main",
 
+    onBrokenAnchors: "ignore",
     onBrokenLinks: "throw",
     onBrokenMarkdownLinks: "warn",
     trailingSlash: false,
