@@ -40,6 +40,7 @@ type ActivityUpdate struct {
 	NumWindows    int            `json:"numwindows,omitempty"`
 	NumSSHConn    int            `json:"numsshconn,omitempty"`
 	NumWSLConn    int            `json:"numwslconn,omitempty"`
+	NumMagnify    int            `json:"nummagnify,omitempty"`
 	Startup       int            `json:"startup,omitempty"`
 	Shutdown      int            `json:"shutdown,omitempty"`
 	SetTabTheme   int            `json:"settabtheme,omitempty"`
@@ -70,6 +71,7 @@ type TelemetryData struct {
 	NumWindows    int            `json:"numwindows,omitempty"`
 	NumSSHConn    int            `json:"numsshconn,omitempty"`
 	NumWSLConn    int            `json:"numwslconn,omitempty"`
+	NumMagnify    int            `json:"nummagnify,omitempty"`
 	NewTab        int            `json:"newtab"`
 	NumStartup    int            `json:"numstartup,omitempty"`
 	NumShutdown   int            `json:"numshutdown,omitempty"`
@@ -138,6 +140,7 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.NumStartup += update.Startup
 		tdata.NumShutdown += update.Shutdown
 		tdata.SetTabTheme += update.SetTabTheme
+		tdata.NumMagnify += update.NumMagnify
 		if update.NumTabs > 0 {
 			tdata.NumTabs = update.NumTabs
 		}

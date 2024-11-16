@@ -16,6 +16,7 @@ declare global {
         numwindows?: number;
         numsshconn?: number;
         numwslconn?: number;
+        nummagnify?: number;
         startup?: number;
         shutdown?: number;
         settabtheme?: number;
