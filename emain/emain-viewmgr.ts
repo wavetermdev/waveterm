@@ -597,6 +597,7 @@ async function processTabSwitchQueue() {
 }
 
 async function setTabViewIntoWindow(bwin: WaveBrowserWindow, tabView: WaveTabView, tabInitialized: boolean) {
+    console.log("setTabViewIntoWindow", bwin, tabView, tabInitialized);
     const clientData = await ClientService.GetClientData();
     if (bwin.activeTabView == tabView) {
         return;

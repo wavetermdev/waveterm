@@ -427,6 +427,7 @@ async function createNewWaveWindow(): Promise<void> {
     if (recreatedWindow) {
         return;
     }
+    console.log("makewindow");
     const newWindow = await services.ClientService.MakeWindow();
     const newBrowserWindow = await createBrowserWindow(clientData.oid, newWindow, fullConfig, { unamePlatform });
     await newBrowserWindow.waveReadyPromise;
