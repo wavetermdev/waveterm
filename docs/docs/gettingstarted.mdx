@@ -1,0 +1,70 @@
+---
+sidebar_position: 1
+id: "gettingstarted"
+title: "Getting Started"
+---
+
+import { PlatformProvider, PlatformSelectorButton, PlatformItem } from "@site/src/components/platformcontext.tsx";
+
+<PlatformProvider>
+  <PlatformSelectorButton />
+
+## Installation
+
+You can install Wave directly from our [Downloads page](https://www.waveterm.dev/download) or by using a package manager.
+
+Unless otherwise noted, the package manager entries are supported officially by Command Line Inc.
+
+### Package managers
+
+<PlatformItem platforms={["mac"]}>
+
+#### Homebrew
+
+Wave is available on macOS as a [Homebrew Cask](https://formulae.brew.sh/cask/wave):
+
+```bash
+brew install --cask wave
+```
+
+</PlatformItem>
+<PlatformItem platforms={["windows"]}>
+
+Wave is available on Windows via Chocolatey and the Windows Package Manager
+
+#### Chocolatey
+
+```Powershell
+choco install wave
+```
+
+#### Windows Package Manager
+
+```Powershell
+winget install CommandLine.Wave
+```
+
+</PlatformItem>
+<PlatformItem platforms={["linux"]}>
+
+Wave is available in the following package managers for Linux
+
+#### Snap
+
+Different Linux distributions have different ways of enabling Snap. You can find distro-specific instructions in our [Snapcraft listing](https://snapcraft.io/waveterm).
+
+```bash
+sudo snap install --classic waveterm
+```
+
+#### AUR/Pacman (community)
+
+This is a [community-maintained AUR package](https://aur.archlinux.org/packages/waveterm) for installing Wave on Arch distributions.
+
+#### Nix (community)
+
+This is a [community-maintained Nix package](https://search.nixos.org/packages?channel=unstable&show=waveterm&size=50&sort=relevance&type=packages&query=waveterm) for installing on NixOS or any other Linux distribution set up with Nix.
+
+</PlatformItem>
+
+</PlatformProvider>

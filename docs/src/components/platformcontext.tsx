@@ -1,13 +1,15 @@
 import BrowserOnly from "@docusaurus/BrowserOnly";
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useState } from "react";
+import { UAParser } from "ua-parser-js";
 
+import clsx from "clsx";
 import "./platformcontext.css";
 
-export type Platform = "mac" | "linux";
+export type Platform = "mac" | "linux" | "windows";
 
 interface PlatformContextProps {
     platform: Platform;
-    togglePlatform: () => void;
+    setPlatform: (platform: Platform) => void;
 }
 
 export const PlatformContext = createContext<PlatformContextProps | undefined>(undefined);
@@ -17,19 +19,30 @@ const detectPlatform = (): Platform => {
     if (savedPlatform && (savedPlatform === "mac" || savedPlatform === "linux")) {
         return savedPlatform;
     }
-    return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? "mac" : "linux";
+    const { os } = UAParser(navigator.userAgent);
+
+    if (/Windows/.test(os.name)) {
+        return "windows";
+    } else if (/macOS|iOS/.test(os.name)) {
+        return "mac";
+    } else {
+        return "linux";
+    }
 };
 
 const PlatformProviderInternal = ({ children }: { children: ReactNode }) => {
     const [platform, setPlatform] = useState<Platform>(detectPlatform());
 
-    const togglePlatform = () => {
-        const newPlatform = platform === "mac" ? "linux" : "mac";
+    const setPlatformCallback = useCallback((newPlatform: Platform) => {
         setPlatform(newPlatform);
         localStorage.setItem("platform", newPlatform); // Store in localStorage
-    };
+    }, []);
 
-    return <PlatformContext.Provider value={{ platform, togglePlatform }}>{children}</PlatformContext.Provider>;
+    return (
+        <PlatformContext.Provider value={{ platform, setPlatform: setPlatformCallback }}>
+            {children}
+        </PlatformContext.Provider>
+    );
 };
 
 export const PlatformProvider: React.FC = ({ children }: { children: ReactNode }) => {
@@ -48,27 +61,45 @@ export const usePlatform = (): PlatformContextProps => {
     return context;
 };
 
-const PlatformToggleButtonInternal: React.FC = () => {
-    const { platform, togglePlatform } = usePlatform();
+const PlatformSelectorButtonInternal: React.FC = () => {
+    const { platform, setPlatform } = usePlatform();
 
     return (
         <div className="pill-toggle">
-            <button
-                className={`pill-option ${platform === "mac" ? "active" : ""}`}
-                onClick={() => platform !== "mac" && togglePlatform()}
-            >
-                MacOS
+            <button className={clsx("pill-option", { active: platform === "mac" })} onClick={() => setPlatform("mac")}>
+                macOS
             </button>
             <button
-                className={`pill-option ${platform === "linux" ? "active" : ""}`}
-                onClick={() => platform !== "linux" && togglePlatform()}
+                className={clsx("pill-option", { active: platform === "linux" })}
+                onClick={() => setPlatform("linux")}
             >
-                Linux/Windows
+                Linux
+            </button>
+            <button
+                className={clsx("pill-option", { active: platform === "windows" })}
+                onClick={() => setPlatform("windows")}
+            >
+                Windows
             </button>
         </div>
     );
 };
 
-export const PlatformToggleButton: React.FC = () => {
-    return <BrowserOnly fallback={<div />}>{() => <PlatformToggleButtonInternal />}</BrowserOnly>;
+export const PlatformSelectorButton: React.FC = () => {
+    return <BrowserOnly fallback={<div />}>{() => <PlatformSelectorButtonInternal />}</BrowserOnly>;
+};
+
+interface PlatformItemProps {
+    children: ReactNode;
+    platforms: Platform[];
+}
+
+const PlatformItemInternal = ({ children, platforms }: PlatformItemProps) => {
+    const platform = usePlatform();
+
+    return platforms.includes(platform.platform) && children;
+};
+
+export const PlatformItem = (props: PlatformItemProps) => {
+    return <BrowserOnly fallback={<div />}>{() => <PlatformItemInternal {...props} />}</BrowserOnly>;
 };
