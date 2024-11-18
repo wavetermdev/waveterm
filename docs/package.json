@@ -29,7 +29,8 @@
         "react": "^18.0.0",
         "react-dom": "^18.0.0",
         "remark-gfm": "^4.0.0",
-        "remark-typescript-code-import": "^1.0.1"
+        "remark-typescript-code-import": "^1.0.1",
+        "ua-parser-js": "^1.0.39"
     },
     "devDependencies": {
         "@docusaurus/module-type-aliases": "3.6.1",
@@ -39,6 +40,7 @@
         "@mdx-js/typescript-plugin": "^0.0.6",
         "@types/eslint": "^9.6.1",
         "@types/eslint-config-prettier": "^6.11.3",
+        "@types/ua-parser-js": "^0.7.39",
         "eslint": "^9.13.0",
         "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-mdx": "^3.1.5",

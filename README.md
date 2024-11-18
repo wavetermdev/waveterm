@@ -10,6 +10,7 @@
 # Wave Terminal
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
+[![waveterm](https://snapcraft.io/waveterm/trending.svg?name=0)](https://snapcraft.io/waveterm)
 
 Wave is an open-source terminal that can launch graphical widgets, controlled and integrated directly with the CLI. It includes a base terminal, directory browser, file previews (images, media, markdown), a graphical editor (for code/text files), a web browser, and integrated AI chat.
 
@@ -21,25 +22,9 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 
 Wave Terminal works on macOS, Linux, and Windows.
 
-Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
+Platform-specific installation instructions can be found [here](https://docs.waveterm.dev/gettingstarted).
 
-Also available as a Homebrew Cask for macOS:
-
-```bash
-brew install --cask wave
-```
-
-Also available as a [Snap](https://snapcraft.io/waveterm) on Linux:
-
-```bash
-sudo snap install waveterm --classic
-```
-
-Also available via the Windows Package Manager:
-
-```Powershell
-winget install CommandLine.Wave
-```
+You can also install Wave Terminal directly from: [www.waveterm.dev/download](https://www.waveterm.dev/download).
 
 ### Minimum requirements
 

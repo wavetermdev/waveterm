@@ -548,6 +548,10 @@ declare global {
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
         "window:maxtabcachesize"?: number;
+        "window:magnifiedblockopacity"?: number;
+        "window:magnifiedblocksize"?: number;
+        "window:magnifiedblockblurprimarypx"?: number;
+        "window:magnifiedblockblursecondarypx"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;

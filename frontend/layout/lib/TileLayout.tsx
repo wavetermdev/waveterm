@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getSettingsKeyAtom } from "@/app/store/global";
 import clsx from "clsx";
 import { toPng } from "html-to-image";
 import { Atom, useAtomValue, useSetAtom } from "jotai";
@@ -133,6 +134,8 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
 export const TileLayout = memo(TileLayoutComponent) as typeof TileLayoutComponent;
 
 function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
+    const [blockBlurAtom] = useState(() => getSettingsKeyAtom("window:magnifiedblockblursecondarypx"));
+    const blockBlur = useAtomValue(blockBlurAtom);
     const ephemeralNode = useAtomValue(layoutModel.ephemeralNode);
     const magnifiedNodeId = useAtomValue(layoutModel.treeStateAtom).magnifiedNodeId;
 
@@ -159,6 +162,8 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
         }
     }, [ephemeralNode, magnifiedNodeId]);
 
+    const blockBlurStr = `${blockBlur}px`;
+
     return (
         <>
             {showMagnifiedBackdrop && (
@@ -167,6 +172,7 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
                     onClick={() => {
                         layoutModel.magnifyNodeToggle(magnifiedNodeId);
                     }}
+                    style={{ "--block-blur": blockBlurStr } as CSSProperties}
                 />
             )}
             {showEphemeralBackdrop && (
@@ -175,6 +181,7 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
                     onClick={() => {
                         layoutModel.closeNode(ephemeralNode?.id);
                     }}
+                    style={{ "--block-blur": blockBlurStr } as CSSProperties}
                 />
             )}
         </>

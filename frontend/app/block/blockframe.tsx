@@ -444,7 +444,10 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
     const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
-
+    const [magnifiedBlockBlurAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
+    const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
+    const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
+    const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>();
     React.useEffect(() => {
         if (!manageConnection) {
@@ -506,6 +509,12 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
+            style={
+                {
+                    "--magnified-block-opacity": magnifiedBlockOpacity,
+                    "--magnified-block-blur": `${magnifiedBlockBlur}px`,
+                } as React.CSSProperties
+            }
         >
             <BlockMask nodeModel={nodeModel} />
             {preview || viewModel == null ? null : (

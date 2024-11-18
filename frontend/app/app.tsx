@@ -3,7 +3,15 @@
 
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { PLATFORM, atoms, createBlock, globalStore, removeFlashError, useSettingsPrefixAtom } from "@/store/global";
+import {
+    atoms,
+    createBlock,
+    globalStore,
+    isDev,
+    PLATFORM,
+    removeFlashError,
+    useSettingsPrefixAtom,
+} from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -17,8 +25,10 @@ import { Fragment, useEffect, useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
-import "./app.less";
 import { CenteredDiv } from "./element/quickelems";
+import { NotificationBubbles } from "./notification/notificationbubbles";
+
+import "./app.less";
 
 const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
@@ -292,6 +302,7 @@ const AppInner = () => {
                 <Workspace />
             </DndProvider>
             <FlashError />
+            {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
         </div>
     );
 };

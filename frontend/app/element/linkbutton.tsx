@@ -12,8 +12,6 @@ interface LinkButtonProps {
     target?: string;
     children: React.ReactNode;
     disabled?: boolean;
-    leftIcon?: React.ReactNode;
-    rightIcon?: React.ReactNode;
     style?: React.CSSProperties;
     autoFocus?: boolean;
     className?: string;
@@ -22,14 +20,10 @@ interface LinkButtonProps {
     onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
-const LinkButton = ({ leftIcon, rightIcon, children, className, ...rest }: LinkButtonProps) => {
+const LinkButton = ({ children, className, ...rest }: LinkButtonProps) => {
     return (
         <a {...rest} className={clsx("button grey solid link-button", className)}>
-            <span className="button-inner">
-                {leftIcon && <span className="icon-left">{leftIcon}</span>}
-                {children}
-                {rightIcon && <span className="icon-right">{rightIcon}</span>}
-            </span>
+            <span className="button-inner">{children}</span>
         </a>
     );
 };

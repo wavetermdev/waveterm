@@ -5964,6 +5964,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/ua-parser-js@npm:^0.7.39":
+  version: 0.7.39
+  resolution: "@types/ua-parser-js@npm:0.7.39"
+  checksum: 10c0/fea522f42dfc2854d9c93144a13c3db3bbe1c791458451db06d46bec7e1dbbe945d1542e02bb38378e39a04bdb7810b43e2ead26f9e6c250832e187312522708
+  languageName: node
+  linkType: hard
+
 "@types/unist@npm:*, @types/unist@npm:^3.0.0":
   version: 3.0.3
   resolution: "@types/unist@npm:3.0.3"
@@ -19783,6 +19790,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ua-parser-js@npm:^1.0.39":
+  version: 1.0.39
+  resolution: "ua-parser-js@npm:1.0.39"
+  bin:
+    ua-parser-js: script/cli.js
+  checksum: 10c0/c6452b0c683000f10975cb0a7e74cb1119ea95d4522ae85f396fa53b0b17884358a24ffdd86a66030c6b2981bdc502109a618c79fdaa217ee9032c9e46fcc78a
+  languageName: node
+  linkType: hard
+
 "undici-types@npm:~6.19.2, undici-types@npm:~6.19.8":
   version: 6.19.8
   resolution: "undici-types@npm:6.19.8"
@@ -20646,6 +20662,7 @@ __metadata:
     "@mdx-js/typescript-plugin": "npm:^0.0.6"
     "@types/eslint": "npm:^9.6.1"
     "@types/eslint-config-prettier": "npm:^6.11.3"
+    "@types/ua-parser-js": "npm:^0.7.39"
     "@waveterm/docusaurus-og": "https://github.com/wavetermdev/docusaurus-og"
     clsx: "npm:^2.1.1"
     eslint: "npm:^9.13.0"
@@ -20666,6 +20683,7 @@ __metadata:
     remark-typescript-code-import: "npm:^1.0.1"
     typescript: "npm:^5.6.3"
     typescript-eslint: "npm:^8.14.0"
+    ua-parser-js: "npm:^1.0.39"
   languageName: unknown
   linkType: soft
 
