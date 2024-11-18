@@ -202,6 +202,22 @@ declare global {
         meta: MetaType;
     };
 
+    // wshrpc.CommandVarData
+    type CommandVarData = {
+        key: string;
+        val?: string;
+        remove?: boolean;
+        zoneid: string;
+        filename: string;
+    };
+
+    // wshrpc.CommandVarResponseData
+    type CommandVarResponseData = {
+        key: string;
+        val: string;
+        exists: boolean;
+    };
+
     // wshrpc.CommandWaitForRouteData
     type CommandWaitForRouteData = {
         routeid: string;

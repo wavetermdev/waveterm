@@ -157,6 +157,11 @@ class RpcApiType {
         return client.wshRpcCall("getupdatechannel", null, opts);
     }
 
+    // command "getvar" [call]
+    GetVarCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<CommandVarResponseData> {
+        return client.wshRpcCall("getvar", data, opts);
+    }
+
     // command "message" [call]
     MessageCommand(client: WshClient, data: CommandMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("message", data, opts);
@@ -220,6 +225,11 @@ class RpcApiType {
     // command "setmeta" [call]
     SetMetaCommand(client: WshClient, data: CommandSetMetaData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setmeta", data, opts);
+    }
+
+    // command "setvar" [call]
+    SetVarCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setvar", data, opts);
     }
 
     // command "setview" [call]
