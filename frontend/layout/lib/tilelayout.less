@@ -108,12 +108,13 @@
 
     .magnified-node-backdrop,
     .ephemeral-node-backdrop {
+        --block-blur: 2px;
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        backdrop-filter: blur(2px);
+        backdrop-filter: blur(var(--block-blur));
     }
 
     .magnified-node-backdrop {
