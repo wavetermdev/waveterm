@@ -19,6 +19,7 @@ import (
 const SimpleId_This = "this"
 const SimpleId_Tab = "tab"
 const SimpleId_Ws = "ws"
+const SimpleId_Client = "client"
 
 var (
 	simpleTabNumRe = regexp.MustCompile(`^tab:(\d{1,3})$`)
@@ -34,7 +35,7 @@ func parseSimpleId(simpleId string) (discriminator string, value string, err err
 	}
 
 	// Handle special keywords
-	if simpleId == SimpleId_This || simpleId == SimpleId_Tab || simpleId == SimpleId_Ws {
+	if simpleId == SimpleId_This || simpleId == SimpleId_Tab || simpleId == SimpleId_Ws || simpleId == SimpleId_Client {
 		return "this", simpleId, nil
 	}
 
@@ -95,6 +96,13 @@ func resolveThis(ctx context.Context, data wshrpc.CommandResolveIdsData, value s
 			return nil, fmt.Errorf("error finding workspace: %v", err)
 		}
 		return &waveobj.ORef{OType: waveobj.OType_Workspace, OID: wsId}, nil
+	}
+	if value == SimpleId_Client {
+		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting client: %v", err)
+		}
+		return &waveobj.ORef{OType: waveobj.OType_Client, OID: client.OID}, nil
 	}
 	return nil, fmt.Errorf("invalid value for 'this' resolver: %s", value)
 }
