@@ -31,6 +31,7 @@ var RpcClient *wshutil.WshRpc
 var RpcContext wshrpc.RpcContext
 var UsingTermWshMode bool
 var blockArg string
+var WshExitCode int
 
 func WriteStderr(fmtStr string, args ...interface{}) {
 	output := fmt.Sprintf(fmtStr, args...)
@@ -145,7 +146,7 @@ func Execute() {
 			debug.PrintStack()
 			wshutil.DoShutdown("", 1, true)
 		} else {
-			wshutil.DoShutdown("", 0, false)
+			wshutil.DoShutdown("", WshExitCode, false)
 		}
 	}()
 	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "this", "for commands which require a block id")
