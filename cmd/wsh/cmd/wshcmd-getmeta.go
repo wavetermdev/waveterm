@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -24,9 +25,11 @@ var getMetaCmd = &cobra.Command{
 
 var getMetaRawOutput bool
 var getMetaClearPrefix bool
+var getMetaVerbose bool
 
 func init() {
 	rootCmd.AddCommand(getMetaCmd)
+	getMetaCmd.Flags().BoolVarP(&getMetaVerbose, "verbose", "v", false, "output full metadata")
 	getMetaCmd.Flags().BoolVar(&getMetaRawOutput, "raw", false, "output singleton string values without quotes")
 	getMetaCmd.Flags().BoolVar(&getMetaClearPrefix, "clear-prefix", false, "output the special clearing key for prefix queries")
 }
@@ -81,6 +84,9 @@ func getMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
 		return err
+	}
+	if getMetaVerbose {
+		fmt.Fprintf(os.Stderr, "resolved-id: %s\n", fullORef.String())
 	}
 	resp, err := wshclient.GetMetaCommand(RpcClient, wshrpc.CommandGetMetaData{ORef: *fullORef}, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
