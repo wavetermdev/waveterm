@@ -111,10 +111,6 @@ func setMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("setmeta", rtnErr == nil)
 	}()
-
-	if blockArg == "" {
-		return fmt.Errorf("block (oref) is required")
-	}
 	var jsonMeta map[string]interface{}
 	if setMetaJsonFilePath != "" {
 		var err error
@@ -139,7 +135,7 @@ func setMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if len(fullMeta) == 0 {
 		return fmt.Errorf("no metadata keys specified")
 	}
-	fullORef, err := resolveSimpleId(blockArg)
+	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return err
 	}
