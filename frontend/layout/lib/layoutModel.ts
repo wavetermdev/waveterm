@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getSettingsKeyAtom } from "@/app/store/global";
 import { atomWithThrottle, boundNumber } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -189,6 +190,7 @@ export class LayoutModel {
      * The last node to be an ephemeral node. This node should sit at a higher z-index than the others so that it floats above the other nodes as it returns to its original position.
      */
     lastEphemeralNodeId: string;
+    magnifiedNodeSizeAtom: Atom<number>;
 
     /**
      * The size of the resize handles, in CSS pixels.
@@ -278,6 +280,7 @@ export class LayoutModel {
         });
 
         this.ephemeralNode = atom();
+        this.magnifiedNodeSizeAtom = getSettingsKeyAtom("window:magnifiedblocksize");
 
         this.focusedNode = atom((get) => {
             const treeState = get(this.treeStateAtom);
@@ -503,12 +506,15 @@ export class LayoutModel {
 
             const boundingRect = this.getBoundingRect();
 
+            const magnifiedNodeSize = this.getter(this.magnifiedNodeSizeAtom);
+
             const callback = (node: LayoutNode) =>
                 this.updateTreeHelper(
                     node,
                     newAdditionalProps,
                     newLeafs,
                     resizeHandleSizePx,
+                    magnifiedNodeSize,
                     boundingRect,
                     resizeAction
                 );
@@ -519,7 +525,13 @@ export class LayoutModel {
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
                 console.log("updateTree ephemeralNode", ephemeralNode);
-                this.updateEphemeralNodeProps(ephemeralNode, newAdditionalProps, newLeafs, boundingRect);
+                this.updateEphemeralNodeProps(
+                    ephemeralNode,
+                    newAdditionalProps,
+                    newLeafs,
+                    magnifiedNodeSize,
+                    boundingRect
+                );
             }
 
             this.treeState.leafOrder = getLeafOrder(newLeafs, newAdditionalProps);
@@ -547,6 +559,7 @@ export class LayoutModel {
         additionalPropsMap: Record<string, LayoutNodeAdditionalProps>,
         leafs: LayoutNode[],
         resizeHandleSizePx: number,
+        magnifiedNodeSizePct: number,
         boundingRect: Dimensions,
         resizeAction?: LayoutTreeResizeNodeAction
     ) {
@@ -555,12 +568,13 @@ export class LayoutModel {
             const addlProps = additionalPropsMap[node.id];
             if (addlProps) {
                 if (this.magnifiedNodeId === node.id) {
+                    const magnifiedNodeMarginPct = (1 - magnifiedNodeSizePct) / 2;
                     const transform = setTransform(
                         {
-                            top: boundingRect.height * 0.05,
-                            left: boundingRect.width * 0.05,
-                            width: boundingRect.width * 0.9,
-                            height: boundingRect.height * 0.9,
+                            top: boundingRect.height * magnifiedNodeMarginPct,
+                            left: boundingRect.width * magnifiedNodeMarginPct,
+                            width: boundingRect.width * magnifiedNodeSizePct,
+                            height: boundingRect.height * magnifiedNodeSizePct,
                         },
                         true,
                         true,
@@ -1039,7 +1053,8 @@ export class LayoutModel {
         const addlProps = this.getter(this.additionalProps);
         const leafs = this.getter(this.leafs);
         const boundingRect = this.getBoundingRect();
-        this.updateEphemeralNodeProps(ephemeralNode, addlProps, leafs, boundingRect);
+        const magnifiedNodeSizePct = this.getter(this.magnifiedNodeSizeAtom);
+        this.updateEphemeralNodeProps(ephemeralNode, addlProps, leafs, magnifiedNodeSizePct, boundingRect);
         this.setter(this.additionalProps, addlProps);
         this.focusNode(ephemeralNode.id);
     }
@@ -1066,14 +1081,19 @@ export class LayoutModel {
         node: LayoutNode,
         addlPropsMap: Record<string, LayoutNodeAdditionalProps>,
         leafs: LayoutNode[],
+        magnifiedNodeSizePct: number,
         boundingRect: Dimensions
     ) {
+        const ephemeralNodeSizePct = this.magnifiedNodeId
+            ? magnifiedNodeSizePct * magnifiedNodeSizePct
+            : magnifiedNodeSizePct;
+        const ephemeralNodeMarginPct = (1 - ephemeralNodeSizePct) / 2;
         const transform = setTransform(
             {
-                top: boundingRect.height * 0.075,
-                left: boundingRect.width * 0.075,
-                width: boundingRect.width * 0.85,
-                height: boundingRect.height * 0.85,
+                top: boundingRect.height * ephemeralNodeMarginPct,
+                left: boundingRect.width * ephemeralNodeMarginPct,
+                width: boundingRect.width * ephemeralNodeSizePct,
+                height: boundingRect.height * ephemeralNodeSizePct,
             },
             true,
             true,

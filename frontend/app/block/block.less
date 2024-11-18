@@ -271,10 +271,13 @@
             }
         }
 
+        --magnified-block-opacity: 0.6;
+        --magnified-block-blur: 10px;
+
         &.magnified,
         &.ephemeral {
-            background-color: rgb(from var(--block-bg-color) r g b / 60%);
-            backdrop-filter: blur(10px);
+            background-color: rgb(from var(--block-bg-color) r g b / var(--magnified-block-opacity));
+            backdrop-filter: blur(var(--magnified-block-blur));
         }
 
         .connstatus-overlay {

@@ -13,6 +13,10 @@
     "window:tilegapsize": 3,
     "window:maxtabcachesize": 10,
     "window:nativetitlebar": true,
+    "window:magnifiedblockopacity": 0.6,
+    "window:magnifiedblocksize": 0.9,
+    "window:magnifiedblockblurprimarypx": 10,
+    "window:magnifiedblockblursecondarypx": 2,
     "telemetry:enabled": true,
     "term:copyonselect": true
 }
