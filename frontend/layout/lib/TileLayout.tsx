@@ -162,6 +162,8 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
         }
     }, [ephemeralNode, magnifiedNodeId]);
 
+    const blockBlurStr = `${blockBlur}px`;
+
     return (
         <>
             {showMagnifiedBackdrop && (
@@ -170,7 +172,7 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
                     onClick={() => {
                         layoutModel.magnifyNodeToggle(magnifiedNodeId);
                     }}
-                    style={{ "--block-blur": blockBlur } as CSSProperties}
+                    style={{ "--block-blur": blockBlurStr } as CSSProperties}
                 />
             )}
             {showEphemeralBackdrop && (
@@ -179,7 +181,7 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
                     onClick={() => {
                         layoutModel.closeNode(ephemeralNode?.id);
                     }}
-                    style={{ "--block-blur": blockBlur } as CSSProperties}
+                    style={{ "--block-blur": blockBlurStr } as CSSProperties}
                 />
             )}
         </>

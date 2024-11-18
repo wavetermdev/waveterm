@@ -512,7 +512,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             style={
                 {
                     "--magnified-block-opacity": magnifiedBlockOpacity,
-                    "--magnified-block-blur": magnifiedBlockBlur,
+                    "--magnified-block-blur": `${magnifiedBlockBlur}px`,
                 } as React.CSSProperties
             }
         >

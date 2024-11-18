@@ -525,7 +525,13 @@ export class LayoutModel {
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
                 console.log("updateTree ephemeralNode", ephemeralNode);
-                this.updateEphemeralNodeProps(ephemeralNode, newAdditionalProps, newLeafs, boundingRect);
+                this.updateEphemeralNodeProps(
+                    ephemeralNode,
+                    newAdditionalProps,
+                    newLeafs,
+                    magnifiedNodeSize,
+                    boundingRect
+                );
             }
 
             this.treeState.leafOrder = getLeafOrder(newLeafs, newAdditionalProps);
@@ -1047,7 +1053,8 @@ export class LayoutModel {
         const addlProps = this.getter(this.additionalProps);
         const leafs = this.getter(this.leafs);
         const boundingRect = this.getBoundingRect();
-        this.updateEphemeralNodeProps(ephemeralNode, addlProps, leafs, boundingRect);
+        const magnifiedNodeSizePct = this.getter(this.magnifiedNodeSizeAtom);
+        this.updateEphemeralNodeProps(ephemeralNode, addlProps, leafs, magnifiedNodeSizePct, boundingRect);
         this.setter(this.additionalProps, addlProps);
         this.focusNode(ephemeralNode.id);
     }
@@ -1074,14 +1081,19 @@ export class LayoutModel {
         node: LayoutNode,
         addlPropsMap: Record<string, LayoutNodeAdditionalProps>,
         leafs: LayoutNode[],
+        magnifiedNodeSizePct: number,
         boundingRect: Dimensions
     ) {
+        const ephemeralNodeSizePct = this.magnifiedNodeId
+            ? magnifiedNodeSizePct * magnifiedNodeSizePct
+            : magnifiedNodeSizePct;
+        const ephemeralNodeMarginPct = (1 - ephemeralNodeSizePct) / 2;
         const transform = setTransform(
             {
-                top: boundingRect.height * 0.075,
-                left: boundingRect.width * 0.075,
-                width: boundingRect.width * 0.85,
-                height: boundingRect.height * 0.85,
+                top: boundingRect.height * ephemeralNodeMarginPct,
+                left: boundingRect.width * ephemeralNodeMarginPct,
+                width: boundingRect.width * ephemeralNodeSizePct,
+                height: boundingRect.height * ephemeralNodeSizePct,
             },
             true,
             true,
