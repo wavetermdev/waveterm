@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -14,19 +15,43 @@ import (
 const DefaultVarFileName = "var"
 
 var setVarCmd = &cobra.Command{
-	Use:     "setvar key [value]",
-	Short:   "set variable for a block",
-	Long:    "Set a variable for a block. If value is omitted, the variable will be removed.",
-	Args:    cobra.RangeArgs(1, 2),
+	Use:   "setvar [flags] KEY=VALUE...",
+	Short: "set variable(s) for a block",
+	Long: `Set one or more variables for a block. 
+Use --remove/-r to remove variables instead of setting them.
+When setting, each argument must be in KEY=VALUE format.
+When removing, each argument is treated as a key to remove.`,
+	Example: "  wsh setvar FOO=bar BAZ=123\n  wsh setvar -r FOO BAZ",
+	Args:    cobra.MinimumNArgs(1),
 	RunE:    setVarRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
-var envFileName string
+var (
+	varFileName string
+	removeVar   bool
+)
 
 func init() {
 	rootCmd.AddCommand(setVarCmd)
-	setVarCmd.Flags().StringVar(&envFileName, "varfile", DefaultVarFileName, "var file name")
+	setVarCmd.Flags().StringVar(&varFileName, "varfile", DefaultVarFileName, "var file name")
+	setVarCmd.Flags().BoolVarP(&removeVar, "remove", "r", false, "remove the variable(s) instead of setting")
+}
+
+func parseKeyValue(arg string) (key, value string, err error) {
+	if removeVar {
+		return arg, "", nil
+	}
+
+	parts := strings.SplitN(arg, "=", 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid KEY=VALUE format %q (= sign required)", arg)
+	}
+	key = parts[0]
+	if key == "" {
+		return "", "", fmt.Errorf("empty key not allowed")
+	}
+	return key, parts[1], nil
 }
 
 func setVarRun(cmd *cobra.Command, args []string) (rtnErr error) {
@@ -40,27 +65,28 @@ func setVarRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return err
 	}
 
-	key := args[0]
-	commandData := wshrpc.CommandVarData{
-		Key:      key,
-		ZoneId:   fullORef.OID,
-		FileName: envFileName,
-		Remove:   len(args) < 2,
-	}
+	// Process all variables
+	for _, arg := range args {
+		key, value, err := parseKeyValue(arg)
+		if err != nil {
+			return err
+		}
 
-	if len(args) == 2 {
-		commandData.Val = args[1]
-	}
+		commandData := wshrpc.CommandVarData{
+			Key:      key,
+			ZoneId:   fullORef.OID,
+			FileName: varFileName,
+			Remove:   removeVar,
+		}
 
-	err = wshclient.SetVarCommand(RpcClient, commandData, &wshrpc.RpcOpts{Timeout: 2000})
-	if err != nil {
-		return fmt.Errorf("setting variable: %w", err)
-	}
+		if !removeVar {
+			commandData.Val = value
+		}
 
-	if commandData.Remove {
-		WriteStdout("removed variable %s\n", key)
-	} else {
-		WriteStdout("set variable %s\n", key)
+		err = wshclient.SetVarCommand(RpcClient, commandData, &wshrpc.RpcOpts{Timeout: 2000})
+		if err != nil {
+			return fmt.Errorf("setting variable %s: %w", key, err)
+		}
 	}
 	return nil
 }
