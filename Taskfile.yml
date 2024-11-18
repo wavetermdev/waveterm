@@ -299,6 +299,32 @@ tasks:
                   GOARCH: arm64
             - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
 
+    dev:clearconfig:
+        desc: Clear the config directory for waveterm-dev
+        cmd: "{{.RMRF}} ~/.config/waveterm-dev"
+
+    dev:cleardata:
+        desc: Clear the data directory for waveterm-dev
+        cmds:
+            - task: dev:cleardata:windows
+            - task: dev:cleardata:linux
+            - task: dev:cleardata:macos
+
+    dev:cleardata:windows:
+        internal: true
+        platforms: [windows]
+        cmd: '{{.RMRF}} %LOCALAPPDATA%\waveterm-dev\Data'
+
+    dev:cleardata:linux:
+        internal: true
+        platforms: [linux]
+        cmd: "rm -rf ~/.local/share/waveterm-dev"
+
+    dev:cleardata:macos:
+        internal: true
+        platforms: [darwin]
+        cmd: 'rm -rf ~/Library/Application\ Support/waveterm-dev'
+
     yarn:
         desc: Runs `yarn`
         internal: true
