@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -609,4 +610,38 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 func (ws *WshServer) ActivityCommand(ctx context.Context, activity telemetry.ActivityUpdate) error {
 	telemetry.GoUpdateActivityWrap(activity, "wshrpc-activity")
 	return nil
+}
+
+func (ws *WshServer) GetVarCommand(ctx context.Context, data wshrpc.CommandVarData) (*wshrpc.CommandVarResponseData, error) {
+	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+	if err == fs.ErrNotExist {
+		return &wshrpc.CommandVarResponseData{Key: data.Key, Exists: false}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error reading blockfile: %w", err)
+	}
+	envMap := envutil.EnvToMap(string(fileData))
+	value, ok := envMap[data.Key]
+	return &wshrpc.CommandVarResponseData{Key: data.Key, Exists: ok, Val: value}, nil
+}
+
+func (ws *WshServer) SetVarCommand(ctx context.Context, data wshrpc.CommandVarData) error {
+	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+	if err == fs.ErrNotExist {
+		fileData = []byte{}
+		err = filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{})
+		if err != nil {
+			return fmt.Errorf("error creating blockfile: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("error reading blockfile: %w", err)
+	}
+	envMap := envutil.EnvToMap(string(fileData))
+	if data.Remove {
+		delete(envMap, data.Key)
+	} else {
+		envMap[data.Key] = data.Val
+	}
+	envStr := envutil.MapToEnv(envMap)
+	return filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, []byte(envStr))
 }

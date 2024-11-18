@@ -66,6 +66,8 @@ const (
 	Command_WaveInfo          = "waveinfo"
 	Command_WshActivity       = "wshactivity"
 	Command_Activity          = "activity"
+	Command_GetVar            = "getvar"
+	Command_SetVar            = "setvar"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -131,6 +133,8 @@ type WshRpcInterface interface {
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
 	ActivityCommand(ctx context.Context, data telemetry.ActivityUpdate) error
+	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
+	SetVarCommand(ctx context.Context, data CommandVarData) error
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -466,4 +470,18 @@ type WaveInfoData struct {
 
 type AiMessageData struct {
 	Message string `json:"message,omitempty"`
+}
+
+type CommandVarData struct {
+	Key      string `json:"key"`
+	Val      string `json:"val,omitempty"`
+	Remove   bool   `json:"remove,omitempty"`
+	ZoneId   string `json:"zoneid"`
+	FileName string `json:"filename"`
+}
+
+type CommandVarResponseData struct {
+	Key    string `json:"key"`
+	Val    string `json:"val"`
+	Exists bool   `json:"exists"`
 }
