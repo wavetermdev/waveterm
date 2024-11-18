@@ -28,18 +28,20 @@ When removing, each argument is treated as a key to remove.`,
 }
 
 var (
-	varFileName string
-	removeVar   bool
+	setVarFileName  string
+	setVarRemoveVar bool
+	setVarLocal     bool
 )
 
 func init() {
 	rootCmd.AddCommand(setVarCmd)
-	setVarCmd.Flags().StringVar(&varFileName, "varfile", DefaultVarFileName, "var file name")
-	setVarCmd.Flags().BoolVarP(&removeVar, "remove", "r", false, "remove the variable(s) instead of setting")
+	setVarCmd.Flags().StringVar(&setVarFileName, "varfile", DefaultVarFileName, "var file name")
+	setVarCmd.Flags().BoolVarP(&setVarLocal, "local", "l", false, "set variables local to block")
+	setVarCmd.Flags().BoolVarP(&setVarRemoveVar, "remove", "r", false, "remove the variable(s) instead of setting")
 }
 
 func parseKeyValue(arg string) (key, value string, err error) {
-	if removeVar {
+	if setVarRemoveVar {
 		return arg, "", nil
 	}
 
@@ -60,6 +62,13 @@ func setVarRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}()
 
 	// Resolve block to get zoneId
+	if blockArg == "" {
+		if getVarLocal {
+			blockArg = "this"
+		} else {
+			blockArg = "client"
+		}
+	}
 	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return err
@@ -75,11 +84,11 @@ func setVarRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		commandData := wshrpc.CommandVarData{
 			Key:      key,
 			ZoneId:   fullORef.OID,
-			FileName: varFileName,
-			Remove:   removeVar,
+			FileName: setVarFileName,
+			Remove:   setVarRemoveVar,
 		}
 
-		if !removeVar {
+		if !setVarRemoveVar {
 			commandData.Val = value
 		}
 

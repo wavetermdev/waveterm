@@ -76,7 +76,6 @@ func getMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("getmeta", rtnErr == nil)
 	}()
-
 	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return err

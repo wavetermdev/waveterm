@@ -25,16 +25,18 @@ With --all, prints all variables. Use -0 for null-terminated output.`,
 }
 
 var (
-	getVarFileName string
-	getAllVars     bool
-	nullTerminate  bool
+	getVarFileName      string
+	getVarAllVars       bool
+	getVarNullTerminate bool
+	getVarLocal         bool
 )
 
 func init() {
 	rootCmd.AddCommand(getVarCmd)
 	getVarCmd.Flags().StringVar(&getVarFileName, "varfile", DefaultVarFileName, "var file name")
-	getVarCmd.Flags().BoolVar(&getAllVars, "all", false, "get all variables")
-	getVarCmd.Flags().BoolVarP(&nullTerminate, "null", "0", false, "use null terminators in output")
+	getVarCmd.Flags().BoolVar(&getVarAllVars, "all", false, "get all variables")
+	getVarCmd.Flags().BoolVarP(&getVarNullTerminate, "null", "0", false, "use null terminators in output")
+	getVarCmd.Flags().BoolVarP(&getVarLocal, "local", "l", false, "get variables local to block")
 }
 
 func getVarRun(cmd *cobra.Command, args []string) error {
@@ -43,12 +45,19 @@ func getVarRun(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Resolve block to get zoneId
+	if blockArg == "" {
+		if getVarLocal {
+			blockArg = "this"
+		} else {
+			blockArg = "client"
+		}
+	}
 	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return err
 	}
 
-	if getAllVars {
+	if getVarAllVars {
 		if len(args) > 0 {
 			return fmt.Errorf("cannot specify key with --all")
 		}
@@ -100,7 +109,7 @@ func getAllVariables(zoneId string) error {
 	envMap := envutil.EnvToMap(string(envBytes))
 
 	terminator := "\n"
-	if nullTerminate {
+	if getVarNullTerminate {
 		terminator = "\x00"
 	}
 
