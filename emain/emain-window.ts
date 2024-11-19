@@ -215,7 +215,7 @@ export class WaveBrowserWindow extends BaseWindow {
         const workspace = await ClientService.GetWorkspace(this.workspaceId);
         await ObjectService.SetActiveTab(workspace.oid, tabId);
         const fullConfig = await FileService.GetFullConfig();
-        const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, this.workspaceId, tabId);
+        const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, tabId);
         this.queueTabSwitch(tabView, tabInitialized);
     }
 

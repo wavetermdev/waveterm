@@ -161,11 +161,7 @@ export function clearTabCache() {
 }
 
 // returns [tabview, initialized]
-export function getOrCreateWebViewForTab(
-    fullConfig: FullConfigType,
-    windowId: string,
-    tabId: string
-): [WaveTabView, boolean] {
+export function getOrCreateWebViewForTab(fullConfig: FullConfigType, tabId: string): [WaveTabView, boolean] {
     let tabView = getWaveTabView(tabId);
     if (tabView) {
         return [tabView, true];
