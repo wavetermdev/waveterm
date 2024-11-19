@@ -1021,9 +1021,9 @@ declare global {
     // waveobj.Workspace
     type Workspace = WaveObj & {
         name: string;
-        tabids: string[];
         icon: string;
         color: string;
+        tabids: string[];
         activetabid: string;
     };
 

@@ -134,8 +134,7 @@ func (*Client) GetOType() string {
 	return OType_Client
 }
 
-// stores the ui-context of the window
-// workspaceid, active tab, active block within each tab, window size, etc.
+// stores the ui-context of the window, points to a workspace containing the actual data being displayed in the window
 type Window struct {
 	OID         string      `json:"oid"`
 	Version     int         `json:"version"`
@@ -155,11 +154,11 @@ type Workspace struct {
 	OID         string      `json:"oid"`
 	Version     int         `json:"version"`
 	Name        string      `json:"name"`
-	TabIds      []string    `json:"tabids"`
-	Meta        MetaMapType `json:"meta"`
 	Icon        string      `json:"icon"`
 	Color       string      `json:"color"`
+	TabIds      []string    `json:"tabids"`
 	ActiveTabId string      `json:"activetabid"`
+	Meta        MetaMapType `json:"meta"`
 }
 
 func (*Workspace) GetOType() string {

@@ -3,21 +3,13 @@
 
 import * as electron from "electron";
 import * as path from "path";
-import { debounce } from "throttle-debounce";
-import { ClientService, FileService, ObjectService, WindowService } from "../frontend/app/store/services";
+import { ClientService, WindowService } from "../frontend/app/store/services";
 import * as keyutil from "../frontend/util/keyutil";
 import { configureAuthKeyRequestInjection } from "./authkey";
-import { getGlobalIsQuitting, getGlobalIsRelaunching, setWasActive, setWasInFg } from "./emain-activity";
-import {
-    delay,
-    ensureBoundsAreVisible,
-    handleCtrlShiftFocus,
-    handleCtrlShiftState,
-    shFrameNavHandler,
-    shNavHandler,
-} from "./emain-util";
+import { setWasActive } from "./emain-activity";
+import { delay, handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
+import { WaveBrowserWindow, WindowOpts } from "./emain-window";
 import { getElectronAppBasePath, isDevVite } from "./platform";
-import { updater } from "./updater";
 
 let MaxCacheSize = 10;
 let HotSpareTab: WaveTabView = null;
@@ -355,191 +347,6 @@ async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindo
     }
 }
 
-type WindowOpts = {
-    unamePlatform: string;
-};
-
-function createBaseWaveBrowserWindow(
-    waveWindow: WaveWindow,
-    fullConfig: FullConfigType,
-    opts: WindowOpts
-): WaveBrowserWindow {
-    console.log("create win", waveWindow.oid);
-    let winWidth = waveWindow?.winsize?.width;
-    let winHeight = waveWindow?.winsize?.height;
-    let winPosX = waveWindow.pos.x;
-    let winPosY = waveWindow.pos.y;
-    if (winWidth == null || winWidth == 0) {
-        const primaryDisplay = electron.screen.getPrimaryDisplay();
-        const { width } = primaryDisplay.workAreaSize;
-        winWidth = width - winPosX - 100;
-        if (winWidth > 2000) {
-            winWidth = 2000;
-        }
-    }
-    if (winHeight == null || winHeight == 0) {
-        const primaryDisplay = electron.screen.getPrimaryDisplay();
-        const { height } = primaryDisplay.workAreaSize;
-        winHeight = height - winPosY - 100;
-        if (winHeight > 1200) {
-            winHeight = 1200;
-        }
-    }
-    let winBounds = {
-        x: winPosX,
-        y: winPosY,
-        width: winWidth,
-        height: winHeight,
-    };
-    winBounds = ensureBoundsAreVisible(winBounds);
-    const settings = fullConfig?.settings;
-    const winOpts: Electron.BaseWindowConstructorOptions = {
-        titleBarStyle:
-            opts.unamePlatform === "darwin" ? "hiddenInset" : settings["window:nativetitlebar"] ? "default" : "hidden",
-        titleBarOverlay:
-            opts.unamePlatform !== "darwin"
-                ? {
-                      symbolColor: "white",
-                      color: "#00000000",
-                  }
-                : false,
-        x: winBounds.x,
-        y: winBounds.y,
-        width: winBounds.width,
-        height: winBounds.height,
-        minWidth: 400,
-        minHeight: 300,
-        icon:
-            opts.unamePlatform == "linux"
-                ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
-                : undefined,
-        show: false,
-        autoHideMenuBar: !settings?.["window:showmenubar"],
-    };
-    const isTransparent = settings?.["window:transparent"] ?? false;
-    const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
-    if (isTransparent) {
-        winOpts.transparent = true;
-    } else if (isBlur) {
-        switch (opts.unamePlatform) {
-            case "win32": {
-                winOpts.backgroundMaterial = "acrylic";
-                break;
-            }
-            case "darwin": {
-                winOpts.vibrancy = "fullscreen-ui";
-                break;
-            }
-        }
-    } else {
-        winOpts.backgroundColor = "#222222";
-    }
-    const bwin = new electron.BaseWindow(winOpts);
-    const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
-    win.waveWindowId = waveWindow.oid;
-    win.workspaceId = waveWindow.workspaceid;
-    win.alreadyClosed = false;
-    win.allTabViews = new Map<string, WaveTabView>();
-    const winBoundsPoller = setInterval(() => {
-        if (win.isDestroyed()) {
-            clearInterval(winBoundsPoller);
-            return;
-        }
-        if (tabSwitchQueue.length > 0) {
-            return;
-        }
-        finalizePositioning(win);
-    }, 1000);
-    win.on(
-        // @ts-expect-error
-        "resize",
-        debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
-    );
-    win.on("resize", () => {
-        if (win.isDestroyed()) {
-            return;
-        }
-        positionTabOnScreen(win.activeTabView, win.getContentBounds());
-    });
-    win.on(
-        // @ts-expect-error
-        "move",
-        debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
-    );
-    win.on("enter-full-screen", async () => {
-        console.log("enter-full-screen event", win.getContentBounds());
-        const tabView = win.activeTabView;
-        if (tabView) {
-            tabView.webContents.send("fullscreen-change", true);
-        }
-        positionTabOnScreen(win.activeTabView, win.getContentBounds());
-    });
-    win.on("leave-full-screen", async () => {
-        const tabView = win.activeTabView;
-        if (tabView) {
-            tabView.webContents.send("fullscreen-change", false);
-        }
-        positionTabOnScreen(win.activeTabView, win.getContentBounds());
-    });
-    win.on("focus", () => {
-        if (getGlobalIsRelaunching()) {
-            return;
-        }
-        focusedWaveWindow = win;
-        console.log("focus win", win.waveWindowId);
-        ClientService.FocusWindow(win.waveWindowId);
-        setWasInFg(true);
-        setWasActive(true);
-    });
-    win.on("blur", () => {
-        if (focusedWaveWindow == win) {
-            focusedWaveWindow = null;
-        }
-    });
-    win.on("close", (e) => {
-        console.log("win 'close' handler fired", win.waveWindowId);
-        if (getGlobalIsQuitting() || updater?.status == "installing" || getGlobalIsRelaunching()) {
-            return;
-        }
-        const numWindows = waveWindowMap.size;
-        if (numWindows == 1) {
-            return;
-        }
-        const choice = electron.dialog.showMessageBoxSync(win, {
-            type: "question",
-            buttons: ["Cancel", "Yes"],
-            title: "Confirm",
-            message: "Are you sure you want to close this window (all tabs and blocks will be deleted)?",
-        });
-        if (choice === 0) {
-            e.preventDefault();
-        } else {
-            win.deleteAllowed = true;
-        }
-    });
-    win.on("closed", () => {
-        console.log("win 'closed' handler fired", win.waveWindowId);
-        if (getGlobalIsQuitting() || updater?.status == "installing") {
-            return;
-        }
-        if (getGlobalIsRelaunching()) {
-            destroyWindow(win);
-            return;
-        }
-        const numWindows = waveWindowMap.size;
-        if (numWindows == 0) {
-            return;
-        }
-        if (!win.alreadyClosed && win.deleteAllowed) {
-            console.log("win removing window from backend DB", win.waveWindowId);
-            WindowService.CloseWindow(waveWindow.oid, true);
-        }
-        destroyWindow(win);
-    });
-    waveWindowMap.set(waveWindow.oid, win);
-    return win;
-}
-
 export function getLastFocusedWaveWindow(): WaveBrowserWindow {
     return focusedWaveWindow;
 }
@@ -554,24 +361,15 @@ export async function createBrowserWindow(
     opts: WindowOpts
 ): Promise<WaveBrowserWindow> {
     console.log("createBrowserWindow", waveWindow.oid);
-    const bwin = createBaseWaveBrowserWindow(waveWindow, fullConfig, opts);
+    const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
 
     const workspace = await ClientService.GetWorkspace(waveWindow.workspaceid);
     console.log("workspace", workspace);
     if (workspace.activetabid) {
         console.log("set active tab id");
-        await setActiveTab(bwin, workspace.activetabid);
+        await bwin.setActiveTab(bwin, workspace.activetabid);
     }
     return bwin;
-}
-
-export async function setActiveTab(waveWindow: WaveBrowserWindow, tabId: string) {
-    console.log("setActiveTab", waveWindow);
-    const workspace = await ClientService.GetWorkspace(waveWindow.workspaceId);
-    await ObjectService.SetActiveTab(workspace.oid, tabId);
-    const fullConfig = await FileService.GetFullConfig();
-    const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, waveWindow.workspaceId, tabId);
-    queueTabSwitch(waveWindow, tabView, tabInitialized);
 }
 
 export function queueTabSwitch(bwin: WaveBrowserWindow, tabView: WaveTabView, tabInitialized: boolean) {
