@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
@@ -109,16 +110,19 @@ type WshRpcInterface interface {
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
 	ControllerStopCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
-	FileAppendCommand(ctx context.Context, data CommandFileData) error
-	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
 	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (waveobj.ORef, error)
 	CreateSubBlockCommand(ctx context.Context, data CommandCreateSubBlockData) (waveobj.ORef, error)
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
+	FileCreateCommand(ctx context.Context, data CommandFileCreateData) error
+	FileDeleteCommand(ctx context.Context, data CommandFileData) error
+	FileAppendCommand(ctx context.Context, data CommandFileData) error
+	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data CommandFileData) error
 	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
+	FileInfoCommand(ctx context.Context, data CommandFileData) (*filestore.WaveFile, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -299,6 +303,13 @@ type CommandFileData struct {
 	ZoneId   string `json:"zoneid" wshcontext:"BlockId"`
 	FileName string `json:"filename"`
 	Data64   string `json:"data64,omitempty"`
+}
+
+type CommandFileCreateData struct {
+	ZoneId   string                  `json:"zoneid"`
+	FileName string                  `json:"filename"`
+	Meta     map[string]any          `json:"meta,omitempty"`
+	Opts     *filestore.FileOptsType `json:"opts,omitempty"`
 }
 
 type CommandAppendIJsonData struct {

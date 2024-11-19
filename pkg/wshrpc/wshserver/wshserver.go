@@ -266,6 +266,55 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 	return bc.SendInput(inputUnion)
 }
 
+func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.CommandFileCreateData) error {
+	var fileOpts filestore.FileOptsType
+	if data.Opts != nil {
+		fileOpts = *data.Opts
+	}
+	err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, data.Meta, fileOpts)
+	if err != nil {
+		return fmt.Errorf("error creating blockfile: %w", err)
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
+		Data: &wps.WSFileEventData{
+			ZoneId:   data.ZoneId,
+			FileName: data.FileName,
+			FileOp:   wps.FileOp_Create,
+		},
+	})
+	return nil
+}
+
+func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
+	err := filestore.WFS.DeleteFile(ctx, data.ZoneId, data.FileName)
+	if err != nil {
+		return fmt.Errorf("error deleting blockfile: %w", err)
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
+		Data: &wps.WSFileEventData{
+			ZoneId:   data.ZoneId,
+			FileName: data.FileName,
+			FileOp:   wps.FileOp_Delete,
+		},
+	})
+	return nil
+}
+
+func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFileData) (*filestore.WaveFile, error) {
+	fileInfo, err := filestore.WFS.Stat(ctx, data.ZoneId, data.FileName)
+	if err != nil {
+		if err == fs.ErrNotExist {
+			return nil, fmt.Errorf("NOTFOUND: %w", err)
+		}
+		return nil, fmt.Errorf("error getting file info: %w", err)
+	}
+	return fileInfo, nil
+}
+
 func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {

@@ -148,6 +148,14 @@ declare global {
         maxitems: number;
     };
 
+    // wshrpc.CommandFileCreateData
+    type CommandFileCreateData = {
+        zoneid: string;
+        filename: string;
+        meta?: {[key: string]: any};
+        opts?: FileOptsType;
+    };
+
     // wshrpc.CommandFileData
     type CommandFileData = {
         zoneid: string;

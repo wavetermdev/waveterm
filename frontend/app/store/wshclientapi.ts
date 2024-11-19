@@ -137,6 +137,21 @@ class RpcApiType {
         return client.wshRpcCall("fileappendijson", data, opts);
     }
 
+    // command "filecreate" [call]
+    FileCreateCommand(client: WshClient, data: CommandFileCreateData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("filecreate", data, opts);
+    }
+
+    // command "filedelete" [call]
+    FileDeleteCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("filedelete", data, opts);
+    }
+
+    // command "fileinfo" [call]
+    FileInfoCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<WaveFile> {
+        return client.wshRpcCall("fileinfo", data, opts);
+    }
+
     // command "fileread" [call]
     FileReadCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("fileread", data, opts);

@@ -13,6 +13,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/filestore"
 )
 
 // command "activity", wshserver.ActivityCommand
@@ -169,6 +170,24 @@ func FileAppendCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wsh
 func FileAppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "fileappendijson", data, opts)
 	return err
+}
+
+// command "filecreate", wshserver.FileCreateCommand
+func FileCreateCommand(w *wshutil.WshRpc, data wshrpc.CommandFileCreateData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filecreate", data, opts)
+	return err
+}
+
+// command "filedelete", wshserver.FileDeleteCommand
+func FileDeleteCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filedelete", data, opts)
+	return err
+}
+
+// command "fileinfo", wshserver.FileInfoCommand
+func FileInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.RpcOpts) (*filestore.WaveFile, error) {
+	resp, err := sendRpcRequestCallHelper[*filestore.WaveFile](w, "fileinfo", data, opts)
+	return resp, err
 }
 
 // command "fileread", wshserver.FileReadCommand
