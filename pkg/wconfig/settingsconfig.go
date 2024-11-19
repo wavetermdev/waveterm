@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -269,7 +270,7 @@ func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileNam
 	var rtn waveobj.MetaMapType
 	var errs []ConfigError
 	for _, ent := range suffixEnts {
-		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, filepath.Join(dirName, ent.Name()))
+		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, path.Join(dirName, ent.Name()))
 		rtn = mergeMetaMap(rtn, fileVal, simpleMerge)
 		errs = append(errs, cerrs...)
 	}
@@ -281,6 +282,7 @@ func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMe
 	config, errs := readConfigFilesForDir(fsys, logPrefix, partName, "", simpleMerge)
 	allErrs := errs
 	rtn := config
+	log.Printf("config: %v, errs: %v\n", rtn, allErrs)
 	config, errs = readConfigFileFS(fsys, logPrefix, partName+".json")
 	allErrs = append(allErrs, errs...)
 	return mergeMetaMap(rtn, config, simpleMerge), allErrs
