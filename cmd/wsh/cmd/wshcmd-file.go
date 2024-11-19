@@ -12,6 +12,8 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -458,8 +460,42 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func getTargetPath(src, dst string) (string, error) {
+	var srcBase string
+	if strings.HasPrefix(src, WaveFilePrefix) {
+		srcBase = path.Base(src)
+	} else {
+		srcBase = filepath.Base(src)
+	}
+
+	if strings.HasPrefix(dst, WaveFilePrefix) {
+		// For wavefile URLs
+		if strings.HasSuffix(dst, "/") {
+			return dst + srcBase, nil
+		}
+		return dst, nil
+	}
+
+	// For local paths
+	dstInfo, err := os.Stat(dst)
+	if err == nil && dstInfo.IsDir() {
+		// If it's an existing directory, use the source filename
+		return filepath.Join(dst, srcBase), nil
+	}
+	if err != nil && !os.IsNotExist(err) {
+		// Return error if it's something other than not exists
+		return "", fmt.Errorf("checking destination path: %w", err)
+	}
+
+	return dst, nil
+}
+
 func fileCpRun(cmd *cobra.Command, args []string) error {
-	src, dst := args[0], args[1]
+	src, origDst := args[0], args[1]
+	dst, err := getTargetPath(src, origDst)
+	if err != nil {
+		return err
+	}
 	srcIsWave := strings.HasPrefix(src, WaveFilePrefix)
 	dstIsWave := strings.HasPrefix(dst, WaveFilePrefix)
 
