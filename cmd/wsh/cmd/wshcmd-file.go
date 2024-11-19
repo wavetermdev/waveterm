@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -45,6 +44,9 @@ func init() {
 
 	fileCmd.PersistentFlags().IntVarP(&fileTimeout, "timeout", "t", 15000, "timeout in milliseconds for long operations")
 
+	fileListCmd.Flags().BoolP("recursive", "r", false, "list subdirectories recursively")
+
+	fileCmd.AddCommand(fileListCmd)
 	fileCmd.AddCommand(fileCatCmd)
 	fileCmd.AddCommand(fileWriteCmd)
 	fileCmd.AddCommand(fileRmCmd)
@@ -90,6 +92,14 @@ func parseWaveFileURL(fileURL string) (*waveFileRef, error) {
 
 func resolveWaveFile(ref *waveFileRef) (*waveobj.ORef, error) {
 	return resolveSimpleId(ref.zoneId)
+}
+
+var fileListCmd = &cobra.Command{
+	Use:     "ls [wavefile://zone[/path]]",
+	Short:   "list wave files",
+	Example: "  wsh file ls wavefile://block/\n  wsh file ls wavefile://client/configs/",
+	RunE:    fileListRun,
+	PreRunE: preRunSetupRpcClient,
 }
 
 var fileCatCmd = &cobra.Command{
@@ -159,7 +169,7 @@ func convertNotFoundErr(err error) error {
 	return err
 }
 
-func ensureWaveFile(origName string, fileData wshrpc.CommandFileData) (*filestore.WaveFile, error) {
+func ensureWaveFile(origName string, fileData wshrpc.CommandFileData) (*wshrpc.WaveFileInfo, error) {
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
@@ -593,6 +603,72 @@ func copyFromLocalToWave(src, dst string) error {
 	err = streamWriteToWaveFile(fileData, file)
 	if err != nil {
 		return fmt.Errorf("writing wave file: %w", err)
+	}
+
+	return nil
+}
+
+func fileListRun(cmd *cobra.Command, args []string) error {
+	recursive, _ := cmd.Flags().GetBool("recursive")
+
+	// Default to listing everything if no path specified
+	if len(args) == 0 {
+		args = append(args, "wavefile://client/")
+	}
+
+	ref, err := parseWaveFileURL(args[0])
+	if err != nil {
+		return err
+	}
+
+	fullORef, err := resolveWaveFile(ref)
+	if err != nil {
+		return err
+	}
+
+	listData := wshrpc.CommandFileListData{
+		ZoneId: fullORef.OID,
+		Prefix: ref.fileName,
+		All:    recursive,
+	}
+
+	files, err := wshclient.FileListCommand(RpcClient, listData, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("listing files: %w", err)
+	}
+
+	// If no files found with prefix, check if a single file exists
+	if len(files) == 0 && ref.fileName != "" {
+		fileData := wshrpc.CommandFileData{
+			ZoneId:   fullORef.OID,
+			FileName: ref.fileName,
+		}
+		info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+		err = convertNotFoundErr(err)
+		if err != fs.ErrNotExist {
+			if err != nil {
+				return fmt.Errorf("getting file info: %w", err)
+			}
+			files = append(files, info)
+		}
+	}
+
+	// Display results
+	for _, f := range files {
+		// For directories (files ending in /), show them distinctly
+		name := f.Name
+		if f.Size == 0 && !strings.HasSuffix(name, "/") && strings.Contains(name, "/") {
+			name += "/"
+		}
+
+		// Format timestamp
+		timestamp := time.Unix(f.ModTs/1000, 0).Format("Jan 02 15:04")
+
+		if f.Size == 0 && strings.HasSuffix(name, "/") {
+			WriteStdout("%-40s  %8s  %s\n", name, "-", timestamp)
+		} else {
+			WriteStdout("%-40s  %8d  %s\n", name, f.Size, timestamp)
+		}
 	}
 
 	return nil

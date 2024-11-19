@@ -122,7 +122,8 @@ type WshRpcInterface interface {
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data CommandFileData) error
 	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
-	FileInfoCommand(ctx context.Context, data CommandFileData) (*filestore.WaveFile, error)
+	FileInfoCommand(ctx context.Context, data CommandFileData) (*WaveFileInfo, error)
+	FileListCommand(ctx context.Context, data CommandFileListData) ([]*WaveFileInfo, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -309,6 +310,25 @@ type CommandFileData struct {
 	FileName string             `json:"filename"`
 	Data64   string             `json:"data64,omitempty"`
 	At       *CommandFileDataAt `json:"at,omitempty"` // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
+}
+
+type WaveFileInfo struct {
+	ZoneId    string                 `json:"zoneid"`
+	Name      string                 `json:"name"`
+	Opts      filestore.FileOptsType `json:"opts,omitempty"`
+	Size      int64                  `json:"size,omitempty"`
+	CreatedTs int64                  `json:"createdts,omitempty"`
+	ModTs     int64                  `json:"modts,omitempty"`
+	Meta      map[string]any         `json:"meta,omitempty"`
+	IsDir     bool                   `json:"isdir,omitempty"`
+}
+
+type CommandFileListData struct {
+	ZoneId string `json:"zoneid"`
+	Prefix string `json:"prefix,omitempty"`
+	All    bool   `json:"all,omitempty"`
+	Offset int    `json:"offset,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
 }
 
 type CommandFileCreateData struct {

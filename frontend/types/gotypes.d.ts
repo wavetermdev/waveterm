@@ -170,6 +170,15 @@ declare global {
         size?: number;
     };
 
+    // wshrpc.CommandFileListData
+    type CommandFileListData = {
+        zoneid: string;
+        prefix?: string;
+        all?: boolean;
+        offset?: number;
+        limit?: number;
+    };
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
@@ -929,6 +938,18 @@ declare global {
         size: number;
         modts: number;
         meta: {[key: string]: any};
+    };
+
+    // wshrpc.WaveFileInfo
+    type WaveFileInfo = {
+        zoneid: string;
+        name: string;
+        opts?: FileOptsType;
+        size?: number;
+        createdts?: number;
+        modts?: number;
+        meta?: {[key: string]: any};
+        isdir?: boolean;
     };
 
     // wshrpc.WaveInfoData

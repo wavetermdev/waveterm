@@ -304,7 +304,19 @@ func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.CommandF
 	return nil
 }
 
-func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFileData) (*filestore.WaveFile, error) {
+func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
+	return &wshrpc.WaveFileInfo{
+		ZoneId:    wf.ZoneId,
+		Name:      wf.Name,
+		Opts:      wf.Opts,
+		Size:      wf.Size,
+		CreatedTs: wf.CreatedTs,
+		ModTs:     wf.ModTs,
+		Meta:      wf.Meta,
+	}
+}
+
+func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFileData) (*wshrpc.WaveFileInfo, error) {
 	fileInfo, err := filestore.WFS.Stat(ctx, data.ZoneId, data.FileName)
 	if err != nil {
 		if err == fs.ErrNotExist {
@@ -312,7 +324,54 @@ func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFil
 		}
 		return nil, fmt.Errorf("error getting file info: %w", err)
 	}
-	return fileInfo, nil
+	return waveFileToWaveFileInfo(fileInfo), nil
+}
+
+func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFileListData) ([]*wshrpc.WaveFileInfo, error) {
+	fileListOrig, err := filestore.WFS.ListFiles(ctx, data.ZoneId)
+	if err != nil {
+		return nil, fmt.Errorf("error listing blockfiles: %w", err)
+	}
+	var fileList []*wshrpc.WaveFileInfo
+	for _, wf := range fileListOrig {
+		fileList = append(fileList, waveFileToWaveFileInfo(wf))
+	}
+	if data.Prefix != "" {
+		var filteredList []*wshrpc.WaveFileInfo
+		for _, file := range fileList {
+			if strings.HasPrefix(file.Name, data.Prefix) {
+				filteredList = append(filteredList, file)
+			}
+		}
+		fileList = filteredList
+	}
+	if !data.All {
+		var filteredList []*wshrpc.WaveFileInfo
+		for _, file := range fileList {
+			// if there is an extra "/" after the prefix, don't include it
+			// first strip the prefix
+			relPath := strings.TrimPrefix(file.Name, data.Prefix)
+			// then check if there is a "/" after the prefix
+			if strings.Contains(relPath, "/") {
+				continue
+			}
+			filteredList = append(filteredList, file)
+		}
+		fileList = filteredList
+	}
+	if data.Offset > 0 {
+		if data.Offset >= len(fileList) {
+			fileList = nil
+		} else {
+			fileList = fileList[data.Offset:]
+		}
+	}
+	if data.Limit > 0 {
+		if data.Limit < len(fileList) {
+			fileList = fileList[:data.Limit]
+		}
+	}
+	return fileList, nil
 }
 
 func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFileData) error {

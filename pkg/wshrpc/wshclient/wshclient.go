@@ -13,7 +13,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
 )
 
 // command "activity", wshserver.ActivityCommand
@@ -185,8 +184,14 @@ func FileDeleteCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wsh
 }
 
 // command "fileinfo", wshserver.FileInfoCommand
-func FileInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.RpcOpts) (*filestore.WaveFile, error) {
-	resp, err := sendRpcRequestCallHelper[*filestore.WaveFile](w, "fileinfo", data, opts)
+func FileInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.RpcOpts) (*wshrpc.WaveFileInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.WaveFileInfo](w, "fileinfo", data, opts)
+	return resp, err
+}
+
+// command "filelist", wshserver.FileListCommand
+func FileListCommand(w *wshutil.WshRpc, data wshrpc.CommandFileListData, opts *wshrpc.RpcOpts) ([]*wshrpc.WaveFileInfo, error) {
+	resp, err := sendRpcRequestCallHelper[[]*wshrpc.WaveFileInfo](w, "filelist", data, opts)
 	return resp, err
 }
 

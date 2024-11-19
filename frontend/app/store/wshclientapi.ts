@@ -148,8 +148,13 @@ class RpcApiType {
     }
 
     // command "fileinfo" [call]
-    FileInfoCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<WaveFile> {
+    FileInfoCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<WaveFileInfo> {
         return client.wshRpcCall("fileinfo", data, opts);
+    }
+
+    // command "filelist" [call]
+    FileListCommand(client: WshClient, data: CommandFileListData, opts?: RpcOpts): Promise<WaveFileInfo[]> {
+        return client.wshRpcCall("filelist", data, opts);
     }
 
     // command "fileread" [call]
