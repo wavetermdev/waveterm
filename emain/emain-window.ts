@@ -228,6 +228,7 @@ export class WaveBrowserWindow extends BaseWindow {
         const tabView = this.allTabViews.get(tabId);
         if (tabView) {
             const rtn = await WindowService.CloseTab(this.waveWindowId, tabId, true);
+            this.allTabViews.delete(tabId);
             if (rtn?.closewindow && !this.alreadyClosed) {
                 this.destroy(); // bypass the "are you sure?" dialog
             } else if (rtn?.newactivetabid) {
