@@ -17,6 +17,7 @@ import (
 )
 
 const SimpleId_This = "this"
+const SimpleId_Block = "block"
 const SimpleId_Tab = "tab"
 const SimpleId_Ws = "ws"
 const SimpleId_Client = "client"
@@ -35,7 +36,7 @@ func parseSimpleId(simpleId string) (discriminator string, value string, err err
 	}
 
 	// Handle special keywords
-	if simpleId == SimpleId_This || simpleId == SimpleId_Tab || simpleId == SimpleId_Ws || simpleId == SimpleId_Client {
+	if simpleId == SimpleId_This || simpleId == SimpleId_Block || simpleId == SimpleId_Tab || simpleId == SimpleId_Ws || simpleId == SimpleId_Client {
 		return "this", simpleId, nil
 	}
 
@@ -76,7 +77,7 @@ func resolveThis(ctx context.Context, data wshrpc.CommandResolveIdsData, value s
 		return nil, fmt.Errorf("no blockid in request")
 	}
 
-	if value == SimpleId_This {
+	if value == SimpleId_This || value == SimpleId_Block {
 		return &waveobj.ORef{OType: waveobj.OType_Block, OID: data.BlockId}, nil
 	}
 	if value == SimpleId_Tab {
