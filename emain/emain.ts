@@ -30,20 +30,17 @@ import {
     setWasActive,
     setWasInFg,
 } from "./emain-activity";
+import { ensureHotSpareTab, getWaveTabViewByWebContentsId, setMaxTabCacheSize } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
+import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
 import {
     createBrowserWindow,
-    ensureHotSpareTab,
+    focusedWaveWindow,
     getAllWaveWindows,
-    getFocusedWaveWindow,
-    getLastFocusedWaveWindow,
-    getWaveTabViewByWebContentsId,
     getWaveWindowById,
     getWaveWindowByWebContentsId,
-    setActiveTab,
-    setMaxTabCacheSize,
-} from "./emain-viewmgr";
-import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
+    WaveBrowserWindow,
+} from "./emain-window";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
@@ -254,7 +251,7 @@ electron.ipcMain.on("download", (event, payload) => {
 electron.ipcMain.on("set-active-tab", async (event, tabId) => {
     const ww = getWaveWindowByWebContentsId(event.sender.id);
     console.log("set-active-tab", tabId, ww?.waveWindowId);
-    await setActiveTab(ww, tabId);
+    await ww?.setActiveTab(tabId);
 });
 
 electron.ipcMain.on("create-tab", async (event, opts) => {
@@ -273,7 +270,7 @@ electron.ipcMain.on("create-tab", async (event, opts) => {
     if (ww == null) {
         return;
     }
-    await setActiveTab(ww, newTabId);
+    await ww.setActiveTab(newTabId);
     event.returnValue = true;
     return null;
 });
@@ -289,7 +286,7 @@ electron.ipcMain.on("close-tab", async (event, tabId) => {
         ww.alreadyClosed = true;
         ww?.destroy(); // bypass the "are you sure?" dialog
     } else if (rtn?.newactivetabid) {
-        setActiveTab(getWaveWindowById(tabView.waveWindowId), rtn.newactivetabid);
+        getWaveWindowById(tabView.waveWindowId)?.setActiveTab(rtn.newactivetabid);
     }
     event.returnValue = true;
     return null;
@@ -463,7 +460,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
     if (defaultFileName == null || defaultFileName == "") {
         defaultFileName = "image";
     }
-    const ww = getFocusedWaveWindow();
+    const ww = focusedWaveWindow;
     const mimeToExtension: { [key: string]: string } = {
         "image/png": "png",
         "image/jpeg": "jpg",
@@ -537,7 +534,7 @@ async function logActiveState() {
         console.log("error logging active state", e);
     } finally {
         // for next iteration
-        const ww = getFocusedWaveWindow();
+        const ww = focusedWaveWindow;
         setWasInFg(ww?.isFocused() ?? false);
         setWasActive(false);
     }
@@ -575,7 +572,6 @@ function instantiateAppMenu(): electron.Menu {
     return getAppMenu({
         createNewWaveWindow,
         relaunchBrowserWindows,
-        getLastFocusedWaveWindow: getLastFocusedWaveWindow,
     });
 }
 

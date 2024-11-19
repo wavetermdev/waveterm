@@ -3,14 +3,14 @@
 
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
-import { clearTabCache, getFocusedWaveWindow } from "./emain-viewmgr";
+import { clearTabCache } from "./emain-tabview";
+import { focusedWaveWindow, WaveBrowserWindow } from "./emain-window";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
 
 type AppMenuCallbacks = {
     createNewWaveWindow: () => Promise<void>;
     relaunchBrowserWindows: () => Promise<void>;
-    getLastFocusedWaveWindow: () => WaveBrowserWindow;
 };
 
 function getWindowWebContents(window: electron.BaseWindow): electron.WebContents {
@@ -38,7 +38,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             role: "close",
             accelerator: "", // clear the accelerator
             click: () => {
-                getFocusedWaveWindow()?.close();
+                focusedWaveWindow?.close();
             },
         },
     ];

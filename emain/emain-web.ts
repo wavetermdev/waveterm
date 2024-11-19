@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ipcMain, webContents, WebContents } from "electron";
+import { WaveBrowserWindow } from "./emain-window";
 
 export function getWebContentsByBlockId(ww: WaveBrowserWindow, tabId: string, blockId: string): Promise<WebContents> {
     const prtn = new Promise<WebContents>((resolve, reject) => {

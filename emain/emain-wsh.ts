@@ -4,8 +4,8 @@
 import { Notification } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
-import { getWaveWindowByWorkspaceId } from "./emain-viewmgr";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
+import { getWaveWindowByWorkspaceId } from "./emain-window";
 
 export class ElectronWshClientType extends WshClient {
     constructor() {
