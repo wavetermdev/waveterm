@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -190,6 +189,10 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 
 func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
 	barr, readErr := fs.ReadFile(fsys, fileName)
+	if readErr != nil && strings.Contains(readErr.Error(), "invalid argument") {
+		// If we get an `invalid argument` error, we may be using the wrong path separator for the given FS interface. Try switching the separator.
+		barr, readErr = fs.ReadFile(fsys, filepath.ToSlash(fileName))
+	}
 	return readConfigHelper(logPrefix+fileName, barr, readErr)
 }
 
@@ -270,7 +273,8 @@ func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileNam
 	var rtn waveobj.MetaMapType
 	var errs []ConfigError
 	for _, ent := range suffixEnts {
-		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, path.Join(dirName, ent.Name()))
+		// This always should be a
+		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, filepath.Join(dirName, ent.Name()))
 		rtn = mergeMetaMap(rtn, fileVal, simpleMerge)
 		errs = append(errs, cerrs...)
 	}
