@@ -98,12 +98,12 @@ func getAllVariables(zoneId string) error {
 	}
 
 	envStr64, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
-	if err != nil {
-		return fmt.Errorf("reading variables: %w", err)
-	}
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
 		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("reading variables: %w", err)
 	}
 	envBytes, err := base64.StdEncoding.DecodeString(envStr64)
 	if err != nil {
