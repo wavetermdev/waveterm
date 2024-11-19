@@ -18,9 +18,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/util/colprint"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"golang.org/x/term"
 )
 
 const (
@@ -45,6 +48,9 @@ func init() {
 	fileCmd.PersistentFlags().IntVarP(&fileTimeout, "timeout", "t", 15000, "timeout in milliseconds for long operations")
 
 	fileListCmd.Flags().BoolP("recursive", "r", false, "list subdirectories recursively")
+	fileListCmd.Flags().BoolP("long", "l", false, "use long listing format")
+	fileListCmd.Flags().BoolP("one", "1", false, "list one file per line")
+	fileListCmd.Flags().BoolP("files", "f", false, "list files only")
 
 	fileCmd.AddCommand(fileListCmd)
 	fileCmd.AddCommand(fileCatCmd)
@@ -157,118 +163,6 @@ Exactly one of source or destination must be a wavefile:// URL.`,
 	Args:    cobra.ExactArgs(2),
 	RunE:    fileCpRun,
 	PreRunE: preRunSetupRpcClient,
-}
-
-func convertNotFoundErr(err error) error {
-	if err == nil {
-		return nil
-	}
-	if strings.HasPrefix(err.Error(), "NOTFOUND:") {
-		return fs.ErrNotExist
-	}
-	return err
-}
-
-func ensureWaveFile(origName string, fileData wshrpc.CommandFileData) (*wshrpc.WaveFileInfo, error) {
-	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
-	err = convertNotFoundErr(err)
-	if err == fs.ErrNotExist {
-		createData := wshrpc.CommandFileCreateData{
-			ZoneId:   fileData.ZoneId,
-			FileName: fileData.FileName,
-		}
-		err = wshclient.FileCreateCommand(RpcClient, createData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
-		if err != nil {
-			return nil, fmt.Errorf("creating file: %w", err)
-		}
-		info, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
-		if err != nil {
-			return nil, fmt.Errorf("getting file info: %w", err)
-		}
-		return info, err
-	}
-	if err != nil {
-		return nil, fmt.Errorf("getting file info: %w", err)
-	}
-	return info, nil
-}
-
-func streamWriteToWaveFile(fileData wshrpc.CommandFileData, reader io.Reader) error {
-	// First truncate the file with an empty write
-	emptyWrite := fileData
-	emptyWrite.Data64 = ""
-	err := wshclient.FileWriteCommand(RpcClient, emptyWrite, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
-	if err != nil {
-		return fmt.Errorf("initializing file with empty write: %w", err)
-	}
-
-	const chunkSize = 32 * 1024 // 32KB chunks
-	buf := make([]byte, chunkSize)
-	totalWritten := int64(0)
-
-	for {
-		n, err := reader.Read(buf)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("reading input: %w", err)
-		}
-
-		// Check total size
-		totalWritten += int64(n)
-		if totalWritten > MaxFileSize {
-			return fmt.Errorf("input exceeds maximum file size of %d bytes", MaxFileSize)
-		}
-
-		// Prepare and send chunk
-		chunk := buf[:n]
-		appendData := fileData
-		appendData.Data64 = base64.StdEncoding.EncodeToString(chunk)
-
-		err = wshclient.FileAppendCommand(RpcClient, appendData, &wshrpc.RpcOpts{Timeout: fileTimeout})
-		if err != nil {
-			return fmt.Errorf("appending chunk to file: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func streamReadFromWaveFile(fileData wshrpc.CommandFileData, size int64, writer io.Writer) error {
-	const chunkSize = 32 * 1024 // 32KB chunks
-	for offset := int64(0); offset < size; offset += chunkSize {
-		// Calculate the length of this chunk
-		length := chunkSize
-		if offset+int64(length) > size {
-			length = int(size - offset)
-		}
-
-		// Set up the ReadAt request
-		fileData.At = &wshrpc.CommandFileDataAt{
-			Offset: offset,
-			Size:   int64(length),
-		}
-
-		// Read the chunk
-		content64, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
-		if err != nil {
-			return fmt.Errorf("reading chunk at offset %d: %w", offset, err)
-		}
-
-		// Decode and write the chunk
-		chunk, err := base64.StdEncoding.DecodeString(content64)
-		if err != nil {
-			return fmt.Errorf("decoding chunk at offset %d: %w", offset, err)
-		}
-
-		_, err = writer.Write(chunk)
-		if err != nil {
-			return fmt.Errorf("writing chunk at offset %d: %w", offset, err)
-		}
-	}
-
-	return nil
 }
 
 func fileCatRun(cmd *cobra.Command, args []string) error {
@@ -608,8 +502,97 @@ func copyFromLocalToWave(src, dst string) error {
 	return nil
 }
 
+func filePrintColumns(filesChan <-chan fileListResult) error {
+	width := 80 // default if we can't get terminal
+	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil {
+		width = w
+	}
+
+	numCols := width / 10
+	if numCols < 1 {
+		numCols = 1
+	}
+
+	return colprint.PrintColumns(
+		filesChan,
+		numCols,
+		100, // sample size
+		func(f fileListResult) (string, error) {
+			if f.err != nil {
+				return "", f.err
+			}
+			return f.info.Name, nil
+		},
+		os.Stdout,
+	)
+}
+
+func filePrintLong(filesChan <-chan fileListResult) error {
+	// Sample first 100 files to determine name width
+	maxNameLen := 0
+	var samples []*wshrpc.WaveFileInfo
+
+	for f := range filesChan {
+		if f.err != nil {
+			return f.err
+		}
+		samples = append(samples, f.info)
+		if len(f.info.Name) > maxNameLen {
+			maxNameLen = len(f.info.Name)
+		}
+
+		if len(samples) >= 100 {
+			break
+		}
+	}
+
+	// Use sampled width, but cap it at 60 chars to prevent excessive width
+	nameWidth := maxNameLen + 2
+	if nameWidth > 60 {
+		nameWidth = 60
+	}
+
+	// Print samples
+	for _, f := range samples {
+		name := f.Name
+		t := time.Unix(f.ModTs/1000, 0)
+		timestamp := utilfn.FormatLsTime(t)
+		if f.Size == 0 && strings.HasSuffix(name, "/") {
+			fmt.Fprintf(os.Stdout, "%-*s  %8s  %s\n", nameWidth, name, "-", timestamp)
+		} else {
+			fmt.Fprintf(os.Stdout, "%-*s  %8d  %s\n", nameWidth, name, f.Size, timestamp)
+		}
+	}
+
+	// Continue with remaining files
+	for f := range filesChan {
+		if f.err != nil {
+			return f.err
+		}
+		name := f.info.Name
+		timestamp := time.Unix(f.info.ModTs/1000, 0).Format("Jan 02 15:04")
+		if f.info.Size == 0 && strings.HasSuffix(name, "/") {
+			fmt.Fprintf(os.Stdout, "%-*s  %8s  %s\n", nameWidth, name, "-", timestamp)
+		} else {
+			fmt.Fprintf(os.Stdout, "%-*s  %8d  %s\n", nameWidth, name, f.info.Size, timestamp)
+		}
+	}
+
+	return nil
+}
+
 func fileListRun(cmd *cobra.Command, args []string) error {
 	recursive, _ := cmd.Flags().GetBool("recursive")
+	longForm, _ := cmd.Flags().GetBool("long")
+	onePerLine, _ := cmd.Flags().GetBool("one")
+	filesOnly, _ := cmd.Flags().GetBool("files")
+
+	// Check if we're in a pipe
+	stat, _ := os.Stdout.Stat()
+	isPipe := (stat.Mode() & os.ModeCharDevice) == 0
+	if isPipe {
+		onePerLine = true
+	}
 
 	// Default to listing everything if no path specified
 	if len(args) == 0 {
@@ -626,50 +609,24 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	listData := wshrpc.CommandFileListData{
-		ZoneId: fullORef.OID,
-		Prefix: ref.fileName,
-		All:    recursive,
-	}
-
-	files, err := wshclient.FileListCommand(RpcClient, listData, &wshrpc.RpcOpts{Timeout: 2000})
+	filesChan, err := streamFileList(fullORef.OID, ref.fileName, recursive, filesOnly)
 	if err != nil {
-		return fmt.Errorf("listing files: %w", err)
+		return err
 	}
 
-	// If no files found with prefix, check if a single file exists
-	if len(files) == 0 && ref.fileName != "" {
-		fileData := wshrpc.CommandFileData{
-			ZoneId:   fullORef.OID,
-			FileName: ref.fileName,
-		}
-		info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
-		err = convertNotFoundErr(err)
-		if err != fs.ErrNotExist {
-			if err != nil {
-				return fmt.Errorf("getting file info: %w", err)
+	if longForm {
+		return filePrintLong(filesChan)
+	}
+
+	if onePerLine {
+		for f := range filesChan {
+			if f.err != nil {
+				return f.err
 			}
-			files = append(files, info)
+			fmt.Fprintln(os.Stdout, f.info.Name)
 		}
+		return nil
 	}
 
-	// Display results
-	for _, f := range files {
-		// For directories (files ending in /), show them distinctly
-		name := f.Name
-		if f.Size == 0 && !strings.HasSuffix(name, "/") && strings.Contains(name, "/") {
-			name += "/"
-		}
-
-		// Format timestamp
-		timestamp := time.Unix(f.ModTs/1000, 0).Format("Jan 02 15:04")
-
-		if f.Size == 0 && strings.HasSuffix(name, "/") {
-			WriteStdout("%-40s  %8s  %s\n", name, "-", timestamp)
-		} else {
-			WriteStdout("%-40s  %8d  %s\n", name, f.Size, timestamp)
-		}
-	}
-
-	return nil
+	return filePrintColumns(filesChan)
 }

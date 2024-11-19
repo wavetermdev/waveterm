@@ -347,15 +347,32 @@ func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFil
 	}
 	if !data.All {
 		var filteredList []*wshrpc.WaveFileInfo
+		dirMap := make(map[string]int64) // the value is max modtime
 		for _, file := range fileList {
 			// if there is an extra "/" after the prefix, don't include it
 			// first strip the prefix
 			relPath := strings.TrimPrefix(file.Name, data.Prefix)
 			// then check if there is a "/" after the prefix
 			if strings.Contains(relPath, "/") {
+				dirPath := strings.Split(relPath, "/")[0]
+				modTime := dirMap[dirPath]
+				if file.ModTs > modTime {
+					dirMap[dirPath] = file.ModTs
+				}
 				continue
 			}
 			filteredList = append(filteredList, file)
+		}
+		for dir := range dirMap {
+			filteredList = append(filteredList, &wshrpc.WaveFileInfo{
+				ZoneId:    data.ZoneId,
+				Name:      data.Prefix + dir + "/",
+				Size:      0,
+				Meta:      nil,
+				ModTs:     dirMap[dir],
+				CreatedTs: dirMap[dir],
+				IsDir:     true,
+			})
 		}
 		fileList = filteredList
 	}
