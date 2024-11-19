@@ -398,11 +398,17 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFi
 	}
 	if data.At != nil {
 		err = filestore.WFS.WriteAt(ctx, data.ZoneId, data.FileName, data.At.Offset, dataBuf)
+		if err == fs.ErrNotExist {
+			return fmt.Errorf("NOTFOUND: %w", err)
+		}
 		if err != nil {
 			return fmt.Errorf("error writing to blockfile: %w", err)
 		}
 	} else {
 		err = filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, dataBuf)
+		if err == fs.ErrNotExist {
+			return fmt.Errorf("NOTFOUND: %w", err)
+		}
 		if err != nil {
 			return fmt.Errorf("error writing to blockfile: %w", err)
 		}
@@ -422,12 +428,18 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFi
 func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.CommandFileData) (string, error) {
 	if data.At != nil {
 		_, dataBuf, err := filestore.WFS.ReadAt(ctx, data.ZoneId, data.FileName, data.At.Offset, data.At.Size)
+		if err == fs.ErrNotExist {
+			return "", fmt.Errorf("NOTFOUND: %w", err)
+		}
 		if err != nil {
 			return "", fmt.Errorf("error reading blockfile: %w", err)
 		}
 		return base64.StdEncoding.EncodeToString(dataBuf), nil
 	} else {
 		_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+		if err == fs.ErrNotExist {
+			return "", fmt.Errorf("NOTFOUND: %w", err)
+		}
 		if err != nil {
 			return "", fmt.Errorf("error reading blockfile: %w", err)
 		}
@@ -441,6 +453,9 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandF
 		return fmt.Errorf("error decoding data64: %w", err)
 	}
 	err = filestore.WFS.AppendData(ctx, data.ZoneId, data.FileName, dataBuf)
+	if err == fs.ErrNotExist {
+		return fmt.Errorf("NOTFOUND: %w", err)
+	}
 	if err != nil {
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
