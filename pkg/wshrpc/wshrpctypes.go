@@ -299,10 +299,16 @@ type CommandBlockInputData struct {
 	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
+type CommandFileDataAt struct {
+	Offset int64 `json:"offset"`
+	Size   int64 `json:"size,omitempty"`
+}
+
 type CommandFileData struct {
-	ZoneId   string `json:"zoneid" wshcontext:"BlockId"`
-	FileName string `json:"filename"`
-	Data64   string `json:"data64,omitempty"`
+	ZoneId   string             `json:"zoneid" wshcontext:"BlockId"`
+	FileName string             `json:"filename"`
+	Data64   string             `json:"data64,omitempty"`
+	At       *CommandFileDataAt `json:"at,omitempty"` // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
 }
 
 type CommandFileCreateData struct {

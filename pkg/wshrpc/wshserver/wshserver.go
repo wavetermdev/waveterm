@@ -320,9 +320,16 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFi
 	if err != nil {
 		return fmt.Errorf("error decoding data64: %w", err)
 	}
-	err = filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, dataBuf)
-	if err != nil {
-		return fmt.Errorf("error writing to blockfile: %w", err)
+	if data.At != nil {
+		err = filestore.WFS.WriteAt(ctx, data.ZoneId, data.FileName, data.At.Offset, dataBuf)
+		if err != nil {
+			return fmt.Errorf("error writing to blockfile: %w", err)
+		}
+	} else {
+		err = filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, dataBuf)
+		if err != nil {
+			return fmt.Errorf("error writing to blockfile: %w", err)
+		}
 	}
 	wps.Broker.Publish(wps.WaveEvent{
 		Event:  wps.Event_BlockFile,
@@ -337,11 +344,19 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFi
 }
 
 func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.CommandFileData) (string, error) {
-	_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
-	if err != nil {
-		return "", fmt.Errorf("error reading blockfile: %w", err)
+	if data.At != nil {
+		_, dataBuf, err := filestore.WFS.ReadAt(ctx, data.ZoneId, data.FileName, data.At.Offset, data.At.Size)
+		if err != nil {
+			return "", fmt.Errorf("error reading blockfile: %w", err)
+		}
+		return base64.StdEncoding.EncodeToString(dataBuf), nil
+	} else {
+		_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+		if err != nil {
+			return "", fmt.Errorf("error reading blockfile: %w", err)
+		}
+		return base64.StdEncoding.EncodeToString(dataBuf), nil
 	}
-	return base64.StdEncoding.EncodeToString(dataBuf), nil
 }
 
 func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandFileData) error {

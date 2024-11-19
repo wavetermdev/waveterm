@@ -9,6 +9,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/fs"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -20,7 +22,13 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
-const MaxFileSize = 10 * 1024 * 1024 // 10MB
+const (
+	MaxFileSize    = 10 * 1024 * 1024 // 10MB
+	WaveFileScheme = "wavefile"
+	WaveFilePrefix = "wavefile://"
+
+	DefaultFileTimeout = 5000
+)
 
 var fileCmd = &cobra.Command{
 	Use:   "file",
@@ -28,132 +36,284 @@ var fileCmd = &cobra.Command{
 	Long:  "Commands to manage Wave Terminal files stored in blocks",
 }
 
-var (
-	fileLocal   bool
-	fileTimeout int
-)
+var fileTimeout int
 
 func init() {
 	rootCmd.AddCommand(fileCmd)
 
-	// Add shared flags to all subcommands
-	fileCmd.PersistentFlags().BoolVarP(&fileLocal, "local", "l", false, "operate on files local to block")
-	fileWriteCmd.Flags().IntVarP(&fileTimeout, "timeout", "t", 60000, "timeout in milliseconds for write operation")
+	fileCmd.PersistentFlags().IntVarP(&fileTimeout, "timeout", "t", 15000, "timeout in milliseconds for long operations")
 
 	fileCmd.AddCommand(fileCatCmd)
 	fileCmd.AddCommand(fileWriteCmd)
 	fileCmd.AddCommand(fileRmCmd)
 	fileCmd.AddCommand(fileInfoCmd)
 	fileCmd.AddCommand(fileAppendCmd)
-	fileCmd.AddCommand(fileCpToCmd)
-	fileCmd.AddCommand(fileCpFromCmd)
+	fileCmd.AddCommand(fileCpCmd)
+}
+
+type waveFileRef struct {
+	zoneId   string
+	fileName string
+}
+
+func parseWaveFileURL(fileURL string) (*waveFileRef, error) {
+	if !strings.HasPrefix(fileURL, WaveFilePrefix) {
+		return nil, fmt.Errorf("invalid file reference %q: must use wavefile:// URL format", fileURL)
+	}
+
+	u, err := url.Parse(fileURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid wavefile URL: %w", err)
+	}
+
+	if u.Scheme != WaveFileScheme {
+		return nil, fmt.Errorf("invalid URL scheme %q: must be wavefile://", u.Scheme)
+	}
+
+	// Path must start with /
+	if !strings.HasPrefix(u.Path, "/") {
+		return nil, fmt.Errorf("invalid wavefile URL: path must start with /")
+	}
+
+	// Must have a host (zone)
+	if u.Host == "" {
+		return nil, fmt.Errorf("invalid wavefile URL: must specify zone (e.g., wavefile://block/file.txt)")
+	}
+
+	return &waveFileRef{
+		zoneId:   u.Host,
+		fileName: strings.TrimPrefix(u.Path, "/"),
+	}, nil
+}
+
+func resolveWaveFile(ref *waveFileRef) (*waveobj.ORef, error) {
+	return resolveSimpleId(ref.zoneId)
 }
 
 var fileCatCmd = &cobra.Command{
-	Use:     "cat FILENAME",
-	Short:   "display contents of a file",
+	Use:     "cat wavefile://zone/file",
+	Short:   "display contents of a wave file",
+	Example: "  wsh file cat wavefile://block/config.txt\n  wsh file cat wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
 	RunE:    fileCatRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileInfoCmd = &cobra.Command{
-	Use:     "info FILENAME",
-	Short:   "show file information",
+	Use:     "info wavefile://zone/file",
+	Short:   "show wave file information",
+	Example: "  wsh file info wavefile://block/config.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    fileInfoRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileRmCmd = &cobra.Command{
-	Use:     "rm FILENAME",
-	Short:   "remove a file",
+	Use:     "rm wavefile://zone/file",
+	Short:   "remove a wave file",
+	Example: "  wsh file rm wavefile://block/config.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    fileRmRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileWriteCmd = &cobra.Command{
-	Use:     "write FILENAME",
-	Short:   "write stdin into a file (up to 10MB)",
+	Use:     "write wavefile://zone/file",
+	Short:   "write stdin into a wave file (up to 10MB)",
+	Example: "  echo 'hello' | wsh file write wavefile://block/greeting.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    fileWriteRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileAppendCmd = &cobra.Command{
-	Use:     "append FILENAME",
-	Short:   "append stdin to a file",
-	Long:    "append stdin to a file, buffering input and respecting 10MB total file size limit",
+	Use:     "append wavefile://zone/file",
+	Short:   "append stdin to a wave file",
+	Long:    "append stdin to a wave file, buffering input and respecting 10MB total file size limit",
+	Example: "  tail -f log.txt | wsh file append wavefile://block/app.log",
 	Args:    cobra.ExactArgs(1),
 	RunE:    fileAppendRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
-var fileCpToCmd = &cobra.Command{
-	Use:     "cpto WAVEFILE LOCALFILE",
-	Short:   "copy from local file to wave file",
+var fileCpCmd = &cobra.Command{
+	Use:   "cp source destination",
+	Short: "copy between wave files and local files",
+	Long: `Copy files between wave storage and local filesystem.
+Exactly one of source or destination must be a wavefile:// URL.`,
+	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt",
 	Args:    cobra.ExactArgs(2),
-	RunE:    fileCpToRun,
+	RunE:    fileCpRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
-var fileCpFromCmd = &cobra.Command{
-	Use:     "cpfrom WAVEFILE LOCALFILE",
-	Short:   "copy from wave file to local file",
-	Args:    cobra.ExactArgs(2),
-	RunE:    fileCpFromRun,
-	PreRunE: preRunSetupRpcClient,
+func convertNotFoundErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.HasPrefix(err.Error(), "NOTFOUND:") {
+		return fs.ErrNotExist
+	}
+	return err
 }
 
-func resolveFileZoneId() (*waveobj.ORef, error) {
-	if blockArg == "" {
-		if fileLocal {
-			blockArg = "this"
-		} else {
-			blockArg = "client"
+func ensureWaveFile(origName string, fileData wshrpc.CommandFileData) (*filestore.WaveFile, error) {
+	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	err = convertNotFoundErr(err)
+	if err == fs.ErrNotExist {
+		createData := wshrpc.CommandFileCreateData{
+			ZoneId:   fileData.ZoneId,
+			FileName: fileData.FileName,
+		}
+		err = wshclient.FileCreateCommand(RpcClient, createData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+		if err != nil {
+			return nil, fmt.Errorf("creating file: %w", err)
+		}
+		info, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+		if err != nil {
+			return nil, fmt.Errorf("getting file info: %w", err)
+		}
+		return info, err
+	}
+	if err != nil {
+		return nil, fmt.Errorf("getting file info: %w", err)
+	}
+	return info, nil
+}
+
+func streamWriteToWaveFile(fileData wshrpc.CommandFileData, reader io.Reader) error {
+	// First truncate the file with an empty write
+	emptyWrite := fileData
+	emptyWrite.Data64 = ""
+	err := wshclient.FileWriteCommand(RpcClient, emptyWrite, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	if err != nil {
+		return fmt.Errorf("initializing file with empty write: %w", err)
+	}
+
+	const chunkSize = 32 * 1024 // 32KB chunks
+	buf := make([]byte, chunkSize)
+	totalWritten := int64(0)
+
+	for {
+		n, err := reader.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("reading input: %w", err)
+		}
+
+		// Check total size
+		totalWritten += int64(n)
+		if totalWritten > MaxFileSize {
+			return fmt.Errorf("input exceeds maximum file size of %d bytes", MaxFileSize)
+		}
+
+		// Prepare and send chunk
+		chunk := buf[:n]
+		appendData := fileData
+		appendData.Data64 = base64.StdEncoding.EncodeToString(chunk)
+
+		err = wshclient.FileAppendCommand(RpcClient, appendData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+		if err != nil {
+			return fmt.Errorf("appending chunk to file: %w", err)
 		}
 	}
-	return resolveBlockArg()
+
+	return nil
+}
+
+func streamReadFromWaveFile(fileData wshrpc.CommandFileData, size int64, writer io.Writer) error {
+	const chunkSize = 32 * 1024 // 32KB chunks
+	for offset := int64(0); offset < size; offset += chunkSize {
+		// Calculate the length of this chunk
+		length := chunkSize
+		if offset+int64(length) > size {
+			length = int(size - offset)
+		}
+
+		// Set up the ReadAt request
+		fileData.At = &wshrpc.CommandFileDataAt{
+			Offset: offset,
+			Size:   int64(length),
+		}
+
+		// Read the chunk
+		content64, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+		if err != nil {
+			return fmt.Errorf("reading chunk at offset %d: %w", offset, err)
+		}
+
+		// Decode and write the chunk
+		chunk, err := base64.StdEncoding.DecodeString(content64)
+		if err != nil {
+			return fmt.Errorf("decoding chunk at offset %d: %w", offset, err)
+		}
+
+		_, err = writer.Write(chunk)
+		if err != nil {
+			return fmt.Errorf("writing chunk at offset %d: %w", offset, err)
+		}
+	}
+
+	return nil
 }
 
 func fileCatRun(cmd *cobra.Command, args []string) error {
-	fullORef, err := resolveFileZoneId()
+	ref, err := parseWaveFileURL(args[0])
+	if err != nil {
+		return err
+	}
+
+	fullORef, err := resolveWaveFile(ref)
 	if err != nil {
 		return err
 	}
 
 	fileData := wshrpc.CommandFileData{
 		ZoneId:   fullORef.OID,
-		FileName: args[0],
+		FileName: ref.fileName,
 	}
 
-	content64, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+	// Get file info first to check existence and get size
+	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+	err = convertNotFoundErr(err)
+	if err == fs.ErrNotExist {
+		return fmt.Errorf("%s: no such file", args[0])
+	}
+	if err != nil {
+		return fmt.Errorf("getting file info: %w", err)
+	}
+
+	err = streamReadFromWaveFile(fileData, info.Size, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
 	}
 
-	content, err := base64.StdEncoding.DecodeString(content64)
-	if err != nil {
-		return fmt.Errorf("decoding file content: %w", err)
-	}
-
-	WriteStdout("%s", content)
 	return nil
 }
 
 func fileInfoRun(cmd *cobra.Command, args []string) error {
-	fullORef, err := resolveFileZoneId()
+	ref, err := parseWaveFileURL(args[0])
+	if err != nil {
+		return err
+	}
+
+	fullORef, err := resolveWaveFile(ref)
 	if err != nil {
 		return err
 	}
 
 	fileData := wshrpc.CommandFileData{
 		ZoneId:   fullORef.OID,
-		FileName: args[0],
+		FileName: ref.fileName,
 	}
 
-	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	err = convertNotFoundErr(err)
+	if err == fs.ErrNotExist {
+		return fmt.Errorf("%s: no such file", args[0])
+	}
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
 	}
@@ -163,7 +323,7 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 	WriteStdout("ctime:    %s\n", time.Unix(info.CreatedTs/1000, 0).Format(time.DateTime))
 	WriteStdout("mtime:    %s\n", time.Unix(info.ModTs/1000, 0).Format(time.DateTime))
 	if len(info.Meta) > 0 {
-		WriteStdout("Metadata:\n")
+		WriteStdout("metadata:\n")
 		for k, v := range info.Meta {
 			WriteStdout("  %s: %v\n", k, v)
 		}
@@ -172,24 +332,31 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileRmRun(cmd *cobra.Command, args []string) error {
-	fullORef, err := resolveFileZoneId()
+	ref, err := parseWaveFileURL(args[0])
+	if err != nil {
+		return err
+	}
+
+	fullORef, err := resolveWaveFile(ref)
 	if err != nil {
 		return err
 	}
 
 	fileData := wshrpc.CommandFileData{
 		ZoneId:   fullORef.OID,
-		FileName: args[0],
+		FileName: ref.fileName,
 	}
 
-	_, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+	_, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	err = convertNotFoundErr(err)
+	if err == fs.ErrNotExist {
+		return fmt.Errorf("%s: no such file", args[0])
+	}
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "NOTFOUND:") {
-			return fmt.Errorf("%s: no such file", args[0])
-		}
 		return fmt.Errorf("getting file info: %w", err)
 	}
-	err = wshclient.FileDeleteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+
+	err = wshclient.FileDeleteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	if err != nil {
 		return fmt.Errorf("removing file: %w", err)
 	}
@@ -198,48 +365,27 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileWriteRun(cmd *cobra.Command, args []string) error {
-	fullORef, err := resolveFileZoneId()
+	ref, err := parseWaveFileURL(args[0])
+	if err != nil {
+		return err
+	}
+
+	fullORef, err := resolveWaveFile(ref)
 	if err != nil {
 		return err
 	}
 
 	fileData := wshrpc.CommandFileData{
 		ZoneId:   fullORef.OID,
-		FileName: args[0],
-	}
-	finfo, infoErr := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
-	if infoErr != nil && strings.HasPrefix(infoErr.Error(), "NOTFOUND:") {
-		infoErr = nil
-		// create the file
-		createData := wshrpc.CommandFileCreateData{
-			ZoneId:   fullORef.OID,
-			FileName: args[0],
-		}
-		err = wshclient.FileCreateCommand(RpcClient, createData, &wshrpc.RpcOpts{Timeout: 2000})
-		if err != nil {
-			return fmt.Errorf("creating file: %w", err)
-		}
-	}
-	if infoErr != nil {
-		return fmt.Errorf("getting existing file info: %w", infoErr)
-	}
-	if finfo != nil && (finfo.Opts.IJson) {
-		return fmt.Errorf("cannot write an IJSON file")
-	}
-	// Read all input up to MaxFileSize
-	var buf bytes.Buffer
-	limitedReader := io.LimitReader(WrappedStdin, MaxFileSize+1)
-	n, err := buf.ReadFrom(limitedReader)
-	if err != nil {
-		return fmt.Errorf("reading input: %w", err)
-	}
-	if n > MaxFileSize {
-		return fmt.Errorf("input exceeds maximum file size of %d bytes", MaxFileSize)
+		FileName: ref.fileName,
 	}
 
-	// Write the data
-	fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-	err = wshclient.FileWriteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+	_, err = ensureWaveFile(args[0], fileData)
+	if err != nil {
+		return err
+	}
+
+	err = streamWriteToWaveFile(fileData, WrappedStdin)
 	if err != nil {
 		return fmt.Errorf("writing file: %w", err)
 	}
@@ -248,43 +394,34 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileAppendRun(cmd *cobra.Command, args []string) error {
-	fullORef, err := resolveFileZoneId()
+	ref, err := parseWaveFileURL(args[0])
+	if err != nil {
+		return err
+	}
+
+	fullORef, err := resolveWaveFile(ref)
 	if err != nil {
 		return err
 	}
 
 	fileData := wshrpc.CommandFileData{
 		ZoneId:   fullORef.OID,
-		FileName: args[0],
+		FileName: ref.fileName,
 	}
 
-	// Check current file size
-	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+	info, err := ensureWaveFile(args[0], fileData)
 	if err != nil {
-		// If file doesn't exist, create it
-		createData := wshrpc.CommandFileCreateData{
-			ZoneId:   fullORef.OID,
-			FileName: args[0],
-		}
-		err = wshclient.FileCreateCommand(RpcClient, createData, &wshrpc.RpcOpts{Timeout: 2000})
-		if err != nil {
-			return fmt.Errorf("creating file: %w", err)
-		}
-		info = &filestore.WaveFile{Size: 0}
+		return err
 	}
-
 	if info.Size >= MaxFileSize {
 		return fmt.Errorf("file already at maximum size (%d bytes)", MaxFileSize)
 	}
 
-	// Set up buffered reader
 	reader := bufio.NewReader(WrappedStdin)
 	var buf bytes.Buffer
 	remainingSpace := MaxFileSize - info.Size
-
 	for {
-		// Read a chunk
-		chunk := make([]byte, 1024)
+		chunk := make([]byte, 8192)
 		n, err := reader.Read(chunk)
 		if err == io.EOF {
 			break
@@ -293,17 +430,15 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("reading input: %w", err)
 		}
 
-		// Check if this chunk would exceed the limit
 		if int64(buf.Len()+n) > remainingSpace {
 			return fmt.Errorf("append would exceed maximum file size of %d bytes", MaxFileSize)
 		}
 
 		buf.Write(chunk[:n])
 
-		// If we have enough data, do an append
 		if buf.Len() >= 8192 { // 8KB batch size
 			fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-			err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+			err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 			if err != nil {
 				return fmt.Errorf("appending to file: %w", err)
 			}
@@ -312,10 +447,9 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Append any remaining data
 	if buf.Len() > 0 {
 		fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-		err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+		err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 		if err != nil {
 			return fmt.Errorf("appending to file: %w", err)
 		}
@@ -324,77 +458,105 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func fileCpToRun(cmd *cobra.Command, args []string) error {
-	fullORef, err := resolveFileZoneId()
+func fileCpRun(cmd *cobra.Command, args []string) error {
+	src, dst := args[0], args[1]
+	srcIsWave := strings.HasPrefix(src, WaveFilePrefix)
+	dstIsWave := strings.HasPrefix(dst, WaveFilePrefix)
+
+	if srcIsWave == dstIsWave {
+		return fmt.Errorf("exactly one file must be a wavefile:// URL")
+	}
+
+	if srcIsWave {
+		return copyFromWaveToLocal(src, dst)
+	} else {
+		return copyFromLocalToWave(src, dst)
+	}
+}
+
+func copyFromWaveToLocal(src, dst string) error {
+	ref, err := parseWaveFileURL(src)
 	if err != nil {
 		return err
 	}
 
-	waveFile := args[0]
-	localFile := args[1]
-
-	// Read local file
-	content, err := os.ReadFile(localFile)
+	fullORef, err := resolveWaveFile(ref)
 	if err != nil {
-		return fmt.Errorf("reading local file: %w", err)
-	}
-	if len(content) > MaxFileSize {
-		return fmt.Errorf("file exceeds maximum size of %d bytes", MaxFileSize)
+		return err
 	}
 
-	// Create the wave file
-	createData := wshrpc.CommandFileCreateData{
-		ZoneId:   fullORef.OID,
-		FileName: waveFile,
-	}
-	err = wshclient.FileCreateCommand(RpcClient, createData, &wshrpc.RpcOpts{Timeout: 2000})
-	if err != nil {
-		return fmt.Errorf("creating wave file: %w", err)
-	}
-
-	// Write the data
 	fileData := wshrpc.CommandFileData{
 		ZoneId:   fullORef.OID,
-		FileName: waveFile,
-		Data64:   base64.StdEncoding.EncodeToString(content),
+		FileName: ref.fileName,
 	}
-	err = wshclient.FileWriteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+
+	// Get file info first to check existence and get size
+	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+	err = convertNotFoundErr(err)
+	if err == fs.ErrNotExist {
+		return fmt.Errorf("%s: no such file", src)
+	}
 	if err != nil {
-		return fmt.Errorf("writing wave file: %w", err)
+		return fmt.Errorf("getting file info: %w", err)
+	}
+
+	// Create the destination file
+	f, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("creating local file: %w", err)
+	}
+	defer f.Close()
+
+	err = streamReadFromWaveFile(fileData, info.Size, f)
+	if err != nil {
+		return fmt.Errorf("reading wave file: %w", err)
 	}
 
 	return nil
 }
 
-func fileCpFromRun(cmd *cobra.Command, args []string) error {
-	fullORef, err := resolveFileZoneId()
+func copyFromLocalToWave(src, dst string) error {
+	ref, err := parseWaveFileURL(dst)
 	if err != nil {
 		return err
 	}
 
-	waveFile := args[0]
-	localFile := args[1]
+	fullORef, err := resolveWaveFile(ref)
+	if err != nil {
+		return err
+	}
 
-	// Read wave file
+	// stat local file
+	stat, err := os.Stat(src)
+	if err == fs.ErrNotExist {
+		return fmt.Errorf("%s: no such file", src)
+	}
+	if err != nil {
+		return fmt.Errorf("stat local file: %w", err)
+	}
+	if stat.IsDir() {
+		return fmt.Errorf("%s: is a directory", src)
+	}
+
 	fileData := wshrpc.CommandFileData{
 		ZoneId:   fullORef.OID,
-		FileName: waveFile,
+		FileName: ref.fileName,
 	}
 
-	content64, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+	_, err = ensureWaveFile(dst, fileData)
 	if err != nil {
-		return fmt.Errorf("reading wave file: %w", err)
+		return err
 	}
 
-	content, err := base64.StdEncoding.DecodeString(content64)
+	file, err := os.Open(src)
 	if err != nil {
-		return fmt.Errorf("decoding file content: %w", err)
+		return fmt.Errorf("opening local file: %w", err)
 	}
+	defer file.Close()
 
-	// Write to local file
-	err = os.WriteFile(localFile, content, 0644)
+	err = streamWriteToWaveFile(fileData, file)
 	if err != nil {
-		return fmt.Errorf("writing local file: %w", err)
+		return fmt.Errorf("writing wave file: %w", err)
 	}
 
 	return nil

@@ -161,6 +161,13 @@ declare global {
         zoneid: string;
         filename: string;
         data64?: string;
+        at?: CommandFileDataAt;
+    };
+
+    // wshrpc.CommandFileDataAt
+    type CommandFileDataAt = {
+        offset: number;
+        size?: number;
     };
 
     // wshrpc.CommandGetMetaData
