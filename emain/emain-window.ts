@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { ClientService, FileService, ObjectService, WindowService } from "@/app/store/services";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, screen } from "electron";
 import path from "path";
