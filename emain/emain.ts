@@ -257,21 +257,11 @@ electron.ipcMain.on("set-active-tab", async (event, tabId) => {
 
 electron.ipcMain.on("create-tab", async (event, opts) => {
     const senderWc = event.sender;
-    const tabView = getWaveTabViewByWebContentsId(senderWc.id);
-    if (tabView == null) {
+    const ww = getWaveWindowByWebContentsId(senderWc.id);
+    if (!ww) {
         return;
     }
-    const waveWindowId = tabView.waveWindowId;
-    const waveWindow = (await services.ObjectService.GetObject("window:" + waveWindowId)) as WaveWindow;
-    if (waveWindow == null) {
-        return;
-    }
-    const newTabId = await services.ObjectService.AddTabToWorkspace(waveWindow.workspaceid, null, true);
-    const ww = getWaveWindowById(waveWindowId);
-    if (ww == null) {
-        return;
-    }
-    await ww.setActiveTab(newTabId);
+    await ww.createTab();
     event.returnValue = true;
     return null;
 });

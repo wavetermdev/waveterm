@@ -219,6 +219,23 @@ export class WaveBrowserWindow extends BaseWindow {
         this.queueTabSwitch(tabView, tabInitialized);
     }
 
+    async createTab() {
+        const tabId = await ObjectService.AddTabToWorkspace(this.workspaceId, null, true);
+        this.setActiveTab(tabId);
+    }
+
+    async closeTab(tabId: string) {
+        const tabView = this.allTabViews.get(tabId);
+        if (tabView) {
+            const rtn = await WindowService.CloseTab(this.waveWindowId, tabId, true);
+            if (rtn?.closewindow && !this.alreadyClosed) {
+                this.destroy(); // bypass the "are you sure?" dialog
+            } else if (rtn?.newactivetabid) {
+                this.setActiveTab(rtn.newactivetabid);
+            }
+        }
+    }
+
     async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
         console.log("setTabViewIntoWindow", this, tabView, tabInitialized);
         const clientData = await ClientService.GetClientData();
@@ -354,18 +371,6 @@ export class WaveBrowserWindow extends BaseWindow {
             );
         } catch (e) {
             console.log("error sending new window bounds to backend", e);
-        }
-    }
-
-    async closeTab(tabId: string) {
-        const tabView = this.allTabViews.get(tabId);
-        if (tabView) {
-            const rtn = await WindowService.CloseTab(this.waveWindowId, tabId, true);
-            if (rtn?.closewindow && !this.alreadyClosed) {
-                this.destroy(); // bypass the "are you sure?" dialog
-            } else if (rtn?.newactivetabid) {
-                this.setActiveTab(rtn.newactivetabid);
-            }
         }
     }
 

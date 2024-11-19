@@ -47,7 +47,6 @@ export class WaveTabView extends WebContentsView {
             webPreferences: {
                 preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
                 webviewTag: true,
-                devTools: true,
             },
         });
         this.createdTs = Date.now();
@@ -203,7 +202,6 @@ export function getOrCreateWebViewForTab(
     tabView.webContents.on("blur", () => {
         handleCtrlShiftFocus(tabView.webContents, false);
     });
-    tabView.webContents.openDevTools({ mode: "detach" });
     configureAuthKeyRequestInjection(tabView.webContents.session);
     return [tabView, false];
 }
