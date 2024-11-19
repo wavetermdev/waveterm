@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/base64"
 	"fmt"
+	"io/fs"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -100,7 +101,10 @@ func getAllVariables(zoneId string) error {
 	if err != nil {
 		return fmt.Errorf("reading variables: %w", err)
 	}
-
+	err = convertNotFoundErr(err)
+	if err == fs.ErrNotExist {
+		return nil
+	}
 	envBytes, err := base64.StdEncoding.DecodeString(envStr64)
 	if err != nil {
 		return fmt.Errorf("decoding variables: %w", err)
