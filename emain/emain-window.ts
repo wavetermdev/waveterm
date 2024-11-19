@@ -124,7 +124,7 @@ export class WaveBrowserWindow extends BaseWindow {
         this.on(
             // @ts-expect-error
             "resize",
-            debounce(400, (e) => this.mainResizeHandler(e, waveWindow.oid))
+            debounce(400, (e) => this.mainResizeHandler(e))
         );
         this.on("resize", () => {
             if (this.isDestroyed()) {
@@ -135,7 +135,7 @@ export class WaveBrowserWindow extends BaseWindow {
         this.on(
             // @ts-expect-error
             "move",
-            debounce(400, (e) => this.mainResizeHandler(e, waveWindow.oid))
+            debounce(400, (e) => this.mainResizeHandler(e))
         );
         this.on("enter-full-screen", async () => {
             console.log("enter-full-screen event", this.getContentBounds());
@@ -203,7 +203,7 @@ export class WaveBrowserWindow extends BaseWindow {
             }
             if (!this.alreadyClosed && this.deleteAllowed) {
                 console.log("win removing window from backend DB", this.waveWindowId);
-                WindowService.CloseWindow(waveWindow.oid, true);
+                WindowService.CloseWindow(this.waveWindowId, true);
             }
             this.destroy();
         });
@@ -341,19 +341,31 @@ export class WaveBrowserWindow extends BaseWindow {
         }
     }
 
-    async mainResizeHandler(_: any, windowId: string) {
+    async mainResizeHandler(_: any) {
         if (this == null || this.isDestroyed() || this.fullScreen) {
             return;
         }
         const bounds = this.getBounds();
         try {
             await WindowService.SetWindowPosAndSize(
-                windowId,
+                this.waveWindowId,
                 { x: bounds.x, y: bounds.y },
                 { width: bounds.width, height: bounds.height }
             );
         } catch (e) {
             console.log("error sending new window bounds to backend", e);
+        }
+    }
+
+    async closeTab(tabId: string) {
+        const tabView = this.allTabViews.get(tabId);
+        if (tabView) {
+            const rtn = await WindowService.CloseTab(this.waveWindowId, tabId, true);
+            if (rtn?.closewindow && !this.alreadyClosed) {
+                this.destroy(); // bypass the "are you sure?" dialog
+            } else if (rtn?.newactivetabid) {
+                this.setActiveTab(rtn.newactivetabid);
+            }
         }
     }
 
@@ -363,6 +375,15 @@ export class WaveBrowserWindow extends BaseWindow {
             tabView?.destroy();
         }
         waveWindowMap.delete(this.waveWindowId);
+        super.destroy();
+    }
+}
+
+export function getWaveWindowByTabId(tabId: string): WaveBrowserWindow {
+    for (const ww of waveWindowMap.values()) {
+        if (ww.allTabViews.has(tabId)) {
+            return ww;
+        }
     }
 }
 
@@ -371,7 +392,7 @@ export function getWaveWindowByWebContentsId(webContentsId: number): WaveBrowser
     if (tabView == null) {
         return null;
     }
-    return waveWindowMap.get(tabView.waveWindowId);
+    return getWaveWindowByTabId(tabView.waveTabId);
 }
 
 export function getWaveWindowById(windowId: string): WaveBrowserWindow {

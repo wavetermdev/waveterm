@@ -69,7 +69,7 @@ export class WaveTabView extends WebContentsView {
         }
         this.webContents.on("destroyed", () => {
             wcIdToWaveTabMap.delete(this.webContents.id);
-            removeWaveTabView(this.waveWindowId, this.waveTabId);
+            removeWaveTabView(this.waveTabId);
         });
         this.setBackgroundColor(computeBgColor(fullConfig));
     }
@@ -104,7 +104,7 @@ export class WaveTabView extends WebContentsView {
     destroy() {
         console.log("destroy tab", this.waveTabId);
         this.webContents.close();
-        removeWaveTabView(this.waveWindowId, this.waveTabId);
+        removeWaveTabView(this.waveTabId);
         const waveWindow = waveWindowMap.get(this.waveWindowId);
         if (waveWindow) {
             waveWindow.allTabViews.delete(this.waveTabId);
@@ -120,22 +120,12 @@ export function setMaxTabCacheSize(size: number) {
     MaxCacheSize = size;
 }
 
-export function getWaveTabView(waveWindowId: string, waveTabId: string): WaveTabView | undefined {
-    const cacheKey = waveWindowId + "|" + waveTabId;
-    const rtn = wcvCache.get(cacheKey);
+export function getWaveTabView(waveTabId: string): WaveTabView | undefined {
+    const rtn = wcvCache.get(waveTabId);
     if (rtn) {
         rtn.lastUsedTs = Date.now();
     }
     return rtn;
-}
-
-function forceRemoveAllTabsForWindow(waveWindowId: string): void {
-    const keys = Array.from(wcvCache.keys());
-    for (const key of keys) {
-        if (key.startsWith(waveWindowId)) {
-            wcvCache.delete(key);
-        }
-    }
 }
 
 function checkAndEvictCache(): void {
@@ -177,15 +167,14 @@ export function getOrCreateWebViewForTab(
     windowId: string,
     tabId: string
 ): [WaveTabView, boolean] {
-    let tabView = getWaveTabView(windowId, tabId);
+    let tabView = getWaveTabView(tabId);
     if (tabView) {
         return [tabView, true];
     }
     tabView = getSpareTab(fullConfig);
     tabView.lastUsedTs = Date.now();
     tabView.waveTabId = tabId;
-    tabView.waveWindowId = windowId;
-    setWaveTabView(windowId, tabId, tabView);
+    setWaveTabView(tabId, tabView);
     tabView.webContents.on("will-navigate", shNavHandler);
     tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
     tabView.webContents.on("did-attach-webview", (event, wc) => {
@@ -219,15 +208,13 @@ export function getOrCreateWebViewForTab(
     return [tabView, false];
 }
 
-export function setWaveTabView(waveWindowId: string, waveTabId: string, wcv: WaveTabView): void {
-    const cacheKey = waveWindowId + "|" + waveTabId;
-    wcvCache.set(cacheKey, wcv);
+export function setWaveTabView(waveTabId: string, wcv: WaveTabView): void {
+    wcvCache.set(waveTabId, wcv);
     checkAndEvictCache();
 }
 
-function removeWaveTabView(waveWindowId: string, waveTabId: string): void {
-    const cacheKey = waveWindowId + "|" + waveTabId;
-    wcvCache.delete(cacheKey);
+function removeWaveTabView(waveTabId: string): void {
+    wcvCache.delete(waveTabId);
 }
 
 let HotSpareTab: WaveTabView = null;

@@ -38,6 +38,7 @@ import {
     focusedWaveWindow,
     getAllWaveWindows,
     getWaveWindowById,
+    getWaveWindowByTabId,
     getWaveWindowByWebContentsId,
     WaveBrowserWindow,
 } from "./emain-window";
@@ -276,18 +277,8 @@ electron.ipcMain.on("create-tab", async (event, opts) => {
 });
 
 electron.ipcMain.on("close-tab", async (event, tabId) => {
-    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
-    if (tabView == null) {
-        return;
-    }
-    const rtn = await services.WindowService.CloseTab(tabView.waveWindowId, tabId, true);
-    if (rtn?.closewindow) {
-        const ww = getWaveWindowById(tabView.waveWindowId);
-        ww.alreadyClosed = true;
-        ww?.destroy(); // bypass the "are you sure?" dialog
-    } else if (rtn?.newactivetabid) {
-        getWaveWindowById(tabView.waveWindowId)?.setActiveTab(rtn.newactivetabid);
-    }
+    const ww = getWaveWindowByTabId(tabId);
+    await ww.closeTab(tabId);
     event.returnValue = true;
     return null;
 });
