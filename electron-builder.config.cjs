@@ -109,14 +109,6 @@ const config = {
         provider: "generic",
         url: "https://dl.waveterm.dev/releases-w2",
     },
-    beforePack: () => {
-        const staticSourcePath = process.env.STATIC_DOCSITE_PATH;
-        const staticDestPath = "dist/docsite";
-        if (staticSourcePath) {
-            console.log(`Static docsite path is specified, copying from "${staticSourcePath}" to "${staticDestPath}"`);
-            fs.cpSync(staticSourcePath, staticDestPath, { recursive: true });
-        }
-    },
     afterPack: (context) => {
         // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.
         if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {

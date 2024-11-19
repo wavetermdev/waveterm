@@ -12,33 +12,8 @@ on:
 env:
     GO_VERSION: "1.22"
     NODE_VERSION: 22
-    STATIC_DOCSITE_PATH: docsite
 jobs:
-    build-docsite:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{env.NODE_VERSION}}
-            - name: Install Yarn
-              run: |
-                  corepack enable
-                  yarn install
-            - name: Install Task
-              uses: arduino/setup-task@v2
-              with:
-                  version: 3.x
-                  repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - name: Build embedded docsite
-              run: task docsite:build:embedded
-            - name: Upload Build Artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: docsite
-                  path: docsite
     build-app:
-        needs: build-docsite
         outputs:
             version: ${{ steps.set-version.outputs.WAVETERM_VERSION }}
         strategy:
@@ -131,19 +106,12 @@ jobs:
                   smctl windows certsync
               shell: cmd
 
-            - name: Download embedded docsite
-              uses: actions/download-artifact@v4
-              with:
-                  name: docsite
-                  path: ${{env.STATIC_DOCSITE_PATH}}
-
             # Build and upload packages
             - name: Build (Linux)
               if: matrix.platform == 'linux'
               run: task package
               env:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
-                  STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
                   SNAPCRAFT_BUILD_ENVIRONMENT: host
             - name: Build (Darwin)
               if: matrix.platform == 'darwin'
