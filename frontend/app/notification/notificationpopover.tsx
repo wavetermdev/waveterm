@@ -37,8 +37,10 @@ const NotificationPopover = () => {
         setNotificationPopoverMode(!notificationPopoverMode);
     }, [notificationPopoverMode]);
 
-    const hasErrors = notifications.some((n) => n.statusType === "error");
-    const hasUpdate = notifications.some((n) => n.statusType === "update");
+    const filteredNotifications = notifications.filter((n) => n.componentType == null);
+
+    const hasErrors = filteredNotifications.some((n) => n.statusType === "error");
+    const hasUpdate = filteredNotifications.some((n) => n.statusType === "update");
 
     const addOnClassNames = hasUpdate ? "solid green" : hasErrors ? "solid red" : "ghost grey";
 
@@ -61,12 +63,12 @@ const NotificationPopover = () => {
                     "notification-trigger-button horizontal-padding-6 vertical-padding-4 border-radius-",
                     addOnClassNames
                 )}
-                disabled={notifications.length === 0}
+                disabled={filteredNotifications.length === 0}
                 onClick={handleTogglePopover}
             >
                 {getIcon()}
             </PopoverButton>
-            {notifications.length > 0 && (
+            {filteredNotifications.length > 0 && (
                 <PopoverContent className="notification-content">
                     <div className="header">
                         <span>Notifications</span>
@@ -85,7 +87,7 @@ const NotificationPopover = () => {
                         options={{ scrollbars: { autoHide: "leave" } }}
                         style={{ maxHeight: window.innerHeight / 2 }}
                     >
-                        {notifications.map((notif, index) => (
+                        {filteredNotifications.map((notif, index) => (
                             <Fragment key={notif.id}>
                                 <NotificationItem
                                     className={clsx({ hovered: hoveredId === notif.id })}
@@ -98,7 +100,7 @@ const NotificationPopover = () => {
                                     onMouseEnter={() => setHoveredId(notif.id)}
                                     onMouseLeave={() => setHoveredId(null)}
                                 />
-                                {index !== notifications.length - 1 && <div className="divider"></div>}
+                                {index !== filteredNotifications.length - 1 && <div className="divider"></div>}
                             </Fragment>
                         ))}
                     </OverlayScrollbarsComponent>

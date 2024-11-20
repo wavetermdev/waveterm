@@ -1,33 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.notification-title {
-    font-size: 13px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: 18px;
-    margin-bottom: 3px;
-    color: var(--success-color);
-}
-
-.notification-message {
-    font-size: 13px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 18px;
-    opacity: 0.7;
-}
-
-.close-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-}
-
-.rating-bubble {
+.notification-rating-bubble {
     position: relative;
     display: flex;
-    width: 380px;
+    width: 432px;
     padding: 16px 24px 16px 16px;
     align-items: flex-start;
     gap: 12px;
@@ -35,14 +12,25 @@
     border: 0.5px solid rgba(255, 255, 255, 0.12);
     background: #232323;
     box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
-}
 
-.notification-inner {
-    display: flex;
-    align-items: flex-start;
-    column-gap: 6px;
-}
+    .notification-inner {
+        display: flex;
+        align-items: flex-start;
+        flex-direction: column;
+        column-gap: 6px;
 
-&.hovered {
-    background: #292929;
+        .actions-wrapper {
+            display: flex;
+            column-gap: 9px;
+            margin-top: 12px;
+
+            button {
+                width: 32px;
+                height: 32px;
+                padding: 0;
+                text-align: center;
+                justify-content: center;
+            }
+        }
+    }
 }

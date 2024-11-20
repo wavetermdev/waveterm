@@ -30,7 +30,7 @@ const RatingBubble = ({ notification, onRemove }: RatingBubbleProps) => {
     };
 
     return (
-        <div className={clsx("rating-bubble")} title="Click to Copy Notification Message">
+        <div className={clsx("notification-rating-bubble")} title="Click to Copy Notification Message">
             <Button
                 className="close-btn ghost grey vertical-padding-10"
                 onClick={(e) => {
@@ -42,13 +42,13 @@ const RatingBubble = ({ notification, onRemove }: RatingBubbleProps) => {
                 <i className={clsx(makeIconClass("close", false))}></i>
             </Button>
             <div className="notification-inner">
-                <div className="notification-text">
-                    {title && <div className={clsx("notification-title green")}>{title}</div>}
-                    {message && <div className="notification-message">{message}</div>}
+                {title && <div className={clsx("notification-title green")}>{title}</div>}
+                {message && <div className="notification-message">{message}</div>}
+                <div className="actions-wrapper">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
                         <Button
                             key={rating}
-                            className={clsx(hoveredButtons[rating] ? "green" : "grey")}
+                            className={clsx("border-radius-4", hoveredButtons[rating] ? "green" : "grey")}
                             onClick={() => handleRatingClick(rating)}
                             onMouseEnter={() => handleMouseEnter(rating)}
                             onMouseLeave={() => handleMouseLeave(rating)}
