@@ -18,18 +18,6 @@ import (
 
 const MaxTzNameLen = 50
 
-// "terminal" should not be in this list
-var allowedRenderers = map[string]bool{
-	"markdown": true,
-	"code":     true,
-	"openai":   true,
-	"csv":      true,
-	"image":    true,
-	"pdf":      true,
-	"media":    true,
-	"mustache": true,
-}
-
 type ActivityDisplayType struct {
 	Width    int     `json:"width"`
 	Height   int     `json:"height"`
