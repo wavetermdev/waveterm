@@ -320,7 +320,8 @@ declare global {
         hidden?: boolean;
         actions?: NotificationActionType[];
         persistent?: boolean;
-        type?: "error" | "update" | "info" | "warning";
+        componentType?: "rating";
+        statusType?: "error" | "update" | "info" | "warning";
     };
 
     interface AbstractWshClient {

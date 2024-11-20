@@ -29,8 +29,8 @@ const NotificationItem = ({
     onMouseEnter,
     onMouseLeave,
 }: NotificationItemProps) => {
-    const { id, title, message, icon, type, timestamp, persistent, actions } = notification;
-    const color = type === "error" ? "red" : type === "warning" ? "yellow" : "green";
+    const { id, title, message, icon, statusType, timestamp, persistent, actions } = notification;
+    const color = statusType === "error" ? "red" : statusType === "warning" ? "yellow" : "green";
     const nIcon = icon ? icon : "bell";
 
     const renderCloseButton = () => {

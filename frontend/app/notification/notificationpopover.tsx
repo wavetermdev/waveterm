@@ -37,8 +37,8 @@ const NotificationPopover = () => {
         setNotificationPopoverMode(!notificationPopoverMode);
     }, [notificationPopoverMode]);
 
-    const hasErrors = notifications.some((n) => n.type === "error");
-    const hasUpdate = notifications.some((n) => n.type === "update");
+    const hasErrors = notifications.some((n) => n.statusType === "error");
+    const hasUpdate = notifications.some((n) => n.statusType === "update");
 
     const addOnClassNames = hasUpdate ? "solid green" : hasErrors ? "solid red" : "ghost grey";
 
