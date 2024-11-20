@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -265,14 +266,152 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 	return bc.SendInput(inputUnion)
 }
 
+func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.CommandFileCreateData) error {
+	var fileOpts filestore.FileOptsType
+	if data.Opts != nil {
+		fileOpts = *data.Opts
+	}
+	err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, data.Meta, fileOpts)
+	if err != nil {
+		return fmt.Errorf("error creating blockfile: %w", err)
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
+		Data: &wps.WSFileEventData{
+			ZoneId:   data.ZoneId,
+			FileName: data.FileName,
+			FileOp:   wps.FileOp_Create,
+		},
+	})
+	return nil
+}
+
+func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
+	err := filestore.WFS.DeleteFile(ctx, data.ZoneId, data.FileName)
+	if err != nil {
+		return fmt.Errorf("error deleting blockfile: %w", err)
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
+		Data: &wps.WSFileEventData{
+			ZoneId:   data.ZoneId,
+			FileName: data.FileName,
+			FileOp:   wps.FileOp_Delete,
+		},
+	})
+	return nil
+}
+
+func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
+	return &wshrpc.WaveFileInfo{
+		ZoneId:    wf.ZoneId,
+		Name:      wf.Name,
+		Opts:      wf.Opts,
+		Size:      wf.Size,
+		CreatedTs: wf.CreatedTs,
+		ModTs:     wf.ModTs,
+		Meta:      wf.Meta,
+	}
+}
+
+func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFileData) (*wshrpc.WaveFileInfo, error) {
+	fileInfo, err := filestore.WFS.Stat(ctx, data.ZoneId, data.FileName)
+	if err != nil {
+		if err == fs.ErrNotExist {
+			return nil, fmt.Errorf("NOTFOUND: %w", err)
+		}
+		return nil, fmt.Errorf("error getting file info: %w", err)
+	}
+	return waveFileToWaveFileInfo(fileInfo), nil
+}
+
+func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFileListData) ([]*wshrpc.WaveFileInfo, error) {
+	fileListOrig, err := filestore.WFS.ListFiles(ctx, data.ZoneId)
+	if err != nil {
+		return nil, fmt.Errorf("error listing blockfiles: %w", err)
+	}
+	var fileList []*wshrpc.WaveFileInfo
+	for _, wf := range fileListOrig {
+		fileList = append(fileList, waveFileToWaveFileInfo(wf))
+	}
+	if data.Prefix != "" {
+		var filteredList []*wshrpc.WaveFileInfo
+		for _, file := range fileList {
+			if strings.HasPrefix(file.Name, data.Prefix) {
+				filteredList = append(filteredList, file)
+			}
+		}
+		fileList = filteredList
+	}
+	if !data.All {
+		var filteredList []*wshrpc.WaveFileInfo
+		dirMap := make(map[string]int64) // the value is max modtime
+		for _, file := range fileList {
+			// if there is an extra "/" after the prefix, don't include it
+			// first strip the prefix
+			relPath := strings.TrimPrefix(file.Name, data.Prefix)
+			// then check if there is a "/" after the prefix
+			if strings.Contains(relPath, "/") {
+				dirPath := strings.Split(relPath, "/")[0]
+				modTime := dirMap[dirPath]
+				if file.ModTs > modTime {
+					dirMap[dirPath] = file.ModTs
+				}
+				continue
+			}
+			filteredList = append(filteredList, file)
+		}
+		for dir := range dirMap {
+			filteredList = append(filteredList, &wshrpc.WaveFileInfo{
+				ZoneId:    data.ZoneId,
+				Name:      data.Prefix + dir + "/",
+				Size:      0,
+				Meta:      nil,
+				ModTs:     dirMap[dir],
+				CreatedTs: dirMap[dir],
+				IsDir:     true,
+			})
+		}
+		fileList = filteredList
+	}
+	if data.Offset > 0 {
+		if data.Offset >= len(fileList) {
+			fileList = nil
+		} else {
+			fileList = fileList[data.Offset:]
+		}
+	}
+	if data.Limit > 0 {
+		if data.Limit < len(fileList) {
+			fileList = fileList[:data.Limit]
+		}
+	}
+	return fileList, nil
+}
+
 func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("error decoding data64: %w", err)
 	}
-	err = filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, dataBuf)
-	if err != nil {
-		return fmt.Errorf("error writing to blockfile: %w", err)
+	if data.At != nil {
+		err = filestore.WFS.WriteAt(ctx, data.ZoneId, data.FileName, data.At.Offset, dataBuf)
+		if err == fs.ErrNotExist {
+			return fmt.Errorf("NOTFOUND: %w", err)
+		}
+		if err != nil {
+			return fmt.Errorf("error writing to blockfile: %w", err)
+		}
+	} else {
+		err = filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, dataBuf)
+		if err == fs.ErrNotExist {
+			return fmt.Errorf("NOTFOUND: %w", err)
+		}
+		if err != nil {
+			return fmt.Errorf("error writing to blockfile: %w", err)
+		}
 	}
 	wps.Broker.Publish(wps.WaveEvent{
 		Event:  wps.Event_BlockFile,
@@ -287,11 +426,25 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFi
 }
 
 func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.CommandFileData) (string, error) {
-	_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
-	if err != nil {
-		return "", fmt.Errorf("error reading blockfile: %w", err)
+	if data.At != nil {
+		_, dataBuf, err := filestore.WFS.ReadAt(ctx, data.ZoneId, data.FileName, data.At.Offset, data.At.Size)
+		if err == fs.ErrNotExist {
+			return "", fmt.Errorf("NOTFOUND: %w", err)
+		}
+		if err != nil {
+			return "", fmt.Errorf("error reading blockfile: %w", err)
+		}
+		return base64.StdEncoding.EncodeToString(dataBuf), nil
+	} else {
+		_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+		if err == fs.ErrNotExist {
+			return "", fmt.Errorf("NOTFOUND: %w", err)
+		}
+		if err != nil {
+			return "", fmt.Errorf("error reading blockfile: %w", err)
+		}
+		return base64.StdEncoding.EncodeToString(dataBuf), nil
 	}
-	return base64.StdEncoding.EncodeToString(dataBuf), nil
 }
 
 func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandFileData) error {
@@ -300,6 +453,9 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandF
 		return fmt.Errorf("error decoding data64: %w", err)
 	}
 	err = filestore.WFS.AppendData(ctx, data.ZoneId, data.FileName, dataBuf)
+	if err == fs.ErrNotExist {
+		return fmt.Errorf("NOTFOUND: %w", err)
+	}
 	if err != nil {
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
@@ -609,4 +765,38 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 func (ws *WshServer) ActivityCommand(ctx context.Context, activity telemetry.ActivityUpdate) error {
 	telemetry.GoUpdateActivityWrap(activity, "wshrpc-activity")
 	return nil
+}
+
+func (ws *WshServer) GetVarCommand(ctx context.Context, data wshrpc.CommandVarData) (*wshrpc.CommandVarResponseData, error) {
+	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+	if err == fs.ErrNotExist {
+		return &wshrpc.CommandVarResponseData{Key: data.Key, Exists: false}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error reading blockfile: %w", err)
+	}
+	envMap := envutil.EnvToMap(string(fileData))
+	value, ok := envMap[data.Key]
+	return &wshrpc.CommandVarResponseData{Key: data.Key, Exists: ok, Val: value}, nil
+}
+
+func (ws *WshServer) SetVarCommand(ctx context.Context, data wshrpc.CommandVarData) error {
+	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+	if err == fs.ErrNotExist {
+		fileData = []byte{}
+		err = filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{})
+		if err != nil {
+			return fmt.Errorf("error creating blockfile: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("error reading blockfile: %w", err)
+	}
+	envMap := envutil.EnvToMap(string(fileData))
+	if data.Remove {
+		delete(envMap, data.Key)
+	} else {
+		envMap[data.Key] = data.Val
+	}
+	envStr := envutil.MapToEnv(envMap)
+	return filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, []byte(envStr))
 }

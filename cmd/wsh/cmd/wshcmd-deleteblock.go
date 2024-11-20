@@ -25,8 +25,7 @@ func deleteBlockRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("deleteblock", rtnErr == nil)
 	}()
-	oref := blockArg
-	fullORef, err := resolveSimpleId(oref)
+	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return err
 	}
