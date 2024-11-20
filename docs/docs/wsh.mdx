@@ -271,12 +271,248 @@ This command connects to the specified connection if it isn't already connected.
 
 ---
 
-### setconfig
+## setconfig
 
 ```
 wsh setconfig [config name]=[config value]
 ```
 
 This allows setting various options in the `config/settings.json` file. It will check to be sure a valid config option was provided.
+
+---
+
+## file
+
+The `file` command provides a set of subcommands for managing files stored in Wave blocks. Files are referenced using `wavefile://` URLs which specify the zone where the file is stored (e.g., `wavefile://block/mydocs.md` or `wavefile://global/myfile.txt`).
+
+### cat
+
+```bash
+wsh file cat wavefile://global/filename
+```
+
+Display the contents of a wave file. For example:
+
+```bash
+wsh file cat wavefile://block/config.txt
+wsh file cat wavefile://client/settings.json
+```
+
+### write
+
+```bash
+wsh file write wavefile://tab/filename
+```
+
+Write data from stdin to a wave file. The maximum file size is 10MB. For example:
+
+```bash
+echo "hello" | wsh file write wavefile://block/greeting.txt
+cat config.json | wsh file write wavefile://client/settings.json
+```
+
+### append
+
+```bash
+wsh file append wavefile://global/filename
+```
+
+Append data from stdin to an existing wave file, respecting the 10MB total file size limit. This is useful for log files or accumulating data. For example:
+
+```bash
+tail -f app.log | wsh file append wavefile://block/logs.txt
+echo "new line" | wsh file append wavefile://client/notes.txt
+```
+
+### rm
+
+```bash
+wsh file rm wavefile://client/filename
+```
+
+Remove a wave file. For example:
+
+```bash
+wsh file rm wavefile://block/old-config.txt
+wsh file rm wavefile://client/temp.json
+```
+
+### info
+
+```bash
+wsh file info wavefile://client/filename
+```
+
+Display information about a wave file including size, creation time, modification time, and metadata. For example:
+
+```bash
+wsh file info wavefile://block/config.txt
+wsh file info wavefile://client/settings.json
+```
+
+### cp
+
+```bash
+wsh file cp source destination
+```
+
+Copy files between wave storage and the local filesystem. Exactly one of the source or destination must be a wavefile:// URL. For example:
+
+```bash
+# Copy from wave storage to local filesystem
+wsh file cp wavefile://block/config.txt ./local-config.txt
+
+# Copy from local filesystem to wave storage
+wsh file cp ./local-config.txt wavefile://client/config.txt
+```
+
+### ls
+
+```bash
+wsh file ls [flags] [wavefile://zone/path]
+```
+
+List wave files in a zone. If no path is specified, lists all files in `wavefile://client/`.
+
+Examples:
+
+```bash
+# List all files in client zone
+wsh file ls
+
+# List files in a specific zone
+wsh file ls wavefile://block/
+wsh file ls wavefile://workspace/configs/
+
+# Show detailed file information
+wsh file ls -l wavefile://client/
+
+# List files recursively
+wsh file ls -r wavefile://block/
+
+# List one file per line (good for scripting)
+wsh file ls -1 wavefile://client/
+```
+
+Flags:
+
+- `-l, --long` - use long listing format showing size, timestamps, and metadata
+- `-r, --recursive` - list subdirectories recursively
+- `-1, --one` - list one file per line
+- `-f, --files` - list only files (no directories)
+
+When output is piped to another command, automatically switches to one-file-per-line format:
+
+```bash
+# Easy to process with grep, awk, etc.
+wsh file ls wavefile://client/ | grep ".json$"
+```
+
+:::info
+
+Note: Wave file locations can be:
+
+- `wavefile://block/...` - stored in the current block ("this" is also an alias for "block")
+- `wavefile://tab/...` - stored in the current tab
+- `wavefile://workspace/...` - stored in the current workspace ("ws" is also an alias for "workspace")
+- `wavefile://client/...` - stored globally for the client ("global" is also an alias for "client")
+- `wavefile://[uuid]/...` - an entity id (can be a block, tab, workspace, etc.)
+
+All file operations respect a maximum file size of 10MB.
+
+:::
+
+---
+
+## getvar/setvar
+
+Wave Terminal provides commands for managing persistent variables at different scopes (block, tab, workspace, or client-wide).
+
+### setvar
+
+```bash
+wsh setvar [flags] KEY=VALUE...
+```
+
+Set one or more variables. By default, variables are set at the client (global) level. Use `-l` for block-local variables.
+
+Examples:
+
+```bash
+# Set a single variable
+wsh setvar API_KEY=abc123
+
+# Set multiple variables at once
+wsh setvar HOST=localhost PORT=8080 DEBUG=true
+
+# Set a block-local variable
+wsh setvar -l BLOCK_SPECIFIC=value
+
+# Remove variables
+wsh setvar -r API_KEY PORT
+```
+
+Flags:
+
+- `-l, --local` - set variables local to the current block
+- `-r, --remove` - remove the specified variables instead of setting them
+- `--varfile string` - use a different variable file (default "var")
+- `-b [blockid]` - used to set a specific zone (block, tab, workspace, client, or UUID)
+
+### getvar
+
+```bash
+wsh getvar [flags] [key]
+```
+
+Get the value of a variable. Returns exit code 0 if the variable exists, 1 if it doesn't. This allows for shell scripting like:
+
+```bash
+# Check if a variable exists
+if wsh getvar API_KEY >/dev/null; then
+    echo "API key is set"
+fi
+
+# Use a variable in a command
+curl -H "Authorization: $(wsh getvar API_KEY)" https://api.example.com
+
+# Get a block-local variable
+wsh getvar -l BLOCK_SPECIFIC
+
+# List all variables
+wsh getvar --all
+
+# List all variables with null terminators (for scripting)
+wsh getvar --all -0
+```
+
+Flags:
+
+- `-l, --local` - get variables local to the current block
+- `--all` - list all variables
+- `-0, --null` - use null terminators in output instead of newlines
+- `--varfile string` - use a different variable file (default "var")
+
+Variables can be accessed at different scopes using the `-b` flag:
+
+```bash
+# Get/set at block level
+wsh getvar -b block MYVAR
+wsh setvar -b block MYVAR=value
+
+# Get/set at tab level
+wsh getvar -b tab MYVAR
+wsh setvar -b tab MYVAR=value
+
+# Get/set at workspace level
+wsh getvar -b workspace MYVAR
+wsh setvar -b workspace MYVAR=value
+
+# Get/set at client (global) level
+wsh getvar -b client MYVAR
+wsh setvar -b client MYVAR=value
+```
+
+Variables set with these commands persist across sessions and can be used to store configuration values, secrets, or any other string data that needs to be accessible across blocks or tabs.
 
 </PlatformProvider>
