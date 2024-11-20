@@ -30,7 +30,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/web"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
-	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
@@ -276,7 +275,7 @@ func main() {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancelFn()
 		if !firstRun {
-			ws, err := workspace.GetWorkspace(ctx, window.WorkspaceId)
+			ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
 			if err != nil {
 				log.Printf("error getting workspace: %v\n", err)
 				return

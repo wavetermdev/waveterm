@@ -28,7 +28,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
-	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -569,8 +568,8 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 	}, nil
 }
 
-func (ws *WshServer) WorkspaceListCommand(ctx context.Context) (workspace.WorkspaceList, error) {
-	return workspace.List()
+func (ws *WshServer) WorkspaceListCommand(ctx context.Context) (waveobj.WorkspaceList, error) {
+	return wcore.ListWorkspaces()
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)

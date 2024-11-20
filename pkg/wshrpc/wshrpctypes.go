@@ -15,7 +15,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
@@ -161,7 +160,7 @@ type WshRpcInterface interface {
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 
-	WorkspaceListCommand(ctx context.Context) (workspace.WorkspaceList, error)
+	WorkspaceListCommand(ctx context.Context) (waveobj.WorkspaceList, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal

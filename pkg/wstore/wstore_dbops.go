@@ -335,3 +335,13 @@ func DBFindWorkspaceForTabId(ctx context.Context, tabId string) (string, error) 
 		return tx.GetString(query, tabId), nil
 	})
 }
+
+func DBFindWindowForWorkspaceId(ctx context.Context, workspaceId string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		query := `
+			SELECT w.oid
+			FROM db_window w, json_extract(data, '$.workspaceid') je
+			WHERE je.value = ?`
+		return tx.GetString(query, workspaceId), nil
+	})
+}

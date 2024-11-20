@@ -13,7 +13,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/workspace"
 )
 
 // command "activity", wshserver.ActivityCommand
@@ -340,8 +339,8 @@ func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, o
 }
 
 // command "workspacelist", wshserver.WorkspaceListCommand
-func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (workspace.WorkspaceList, error) {
-	resp, err := sendRpcRequestCallHelper[workspace.WorkspaceList](w, "workspacelist", nil, opts)
+func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (waveobj.WorkspaceList, error) {
+	resp, err := sendRpcRequestCallHelper[waveobj.WorkspaceList](w, "workspacelist", nil, opts)
 	return resp, err
 }
 

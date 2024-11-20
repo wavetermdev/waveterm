@@ -16,7 +16,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
-	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -74,7 +73,7 @@ func (cs *ClientService) MakeWindow(ctx context.Context) (*waveobj.Window, error
 		return nil, err
 	}
 	log.Printf("New window: %v\n", window)
-	ws, err := workspace.GetWorkspace(ctx, window.WorkspaceId)
+	ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
 	if err != nil {
 		log.Printf("error creating workspace: %v\n", err)
 		return nil, err

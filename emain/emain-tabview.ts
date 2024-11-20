@@ -104,6 +104,8 @@ export class WaveTabView extends WebContentsView {
         console.log("destroy tab", this.waveTabId);
         this.webContents.close();
         removeWaveTabView(this.waveTabId);
+
+        // TODO: circuitous
         const waveWindow = waveWindowMap.get(this.waveWindowId);
         if (waveWindow) {
             waveWindow.allTabViews.delete(this.waveTabId);

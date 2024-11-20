@@ -13,7 +13,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
-	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -85,7 +84,7 @@ func (svc *ObjectService) AddTabToWorkspace(workspaceId string, tabName string, 
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := workspace.CreateTab(ctx, workspaceId, tabName, activateTab)
+	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}
@@ -110,7 +109,7 @@ func (svc *ObjectService) UpdateWorkspaceTabIds(uiContext waveobj.UIContext, wor
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := workspace.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
+	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
 	if err != nil {
 		return nil, fmt.Errorf("error updating workspace tab ids: %w", err)
 	}
@@ -127,7 +126,7 @@ func (svc *ObjectService) SetActiveTab(workspaceId string, tabId string) (waveob
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := workspace.SetActiveTab(ctx, workspaceId, tabId)
+	err := wcore.SetActiveTab(ctx, workspaceId, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}

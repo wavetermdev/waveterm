@@ -210,6 +210,17 @@ export class WaveBrowserWindow extends BaseWindow {
         waveWindowMap.set(waveWindow.oid, this);
     }
 
+    async setWorkspace(workspaceId: string) {
+        if (this.allTabViews.size) {
+            for (const tab of this.allTabViews.values()) {
+                tab?.destroy();
+            }
+        }
+
+        await Wshr;
+        this.allTabViews = new Map();
+    }
+
     async setActiveTab(tabId: string) {
         console.log("setActiveTab", this);
         const workspace = await ClientService.GetWorkspace(this.workspaceId);

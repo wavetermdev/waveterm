@@ -150,6 +150,13 @@ func (*Window) GetOType() string {
 	return OType_Window
 }
 
+type WorkspaceListEntry struct {
+	WorkspaceId string `json:"workspaceid"`
+	WindowId    string `json:"windowid"`
+}
+
+type WorkspaceList []*WorkspaceListEntry
+
 type Workspace struct {
 	OID         string      `json:"oid"`
 	Version     int         `json:"version"`

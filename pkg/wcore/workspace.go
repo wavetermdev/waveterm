@@ -1,4 +1,4 @@
-package workspace
+package wcore
 
 import (
 	"context"
@@ -24,6 +24,30 @@ func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
 		return nil, fmt.Errorf("error inserting tab: %w", err)
 	}
 	return ws, nil
+}
+
+func DeleteWorkspace(ctx context.Context, workspaceId string, fromElectron bool) error {
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
+		if err != nil {
+			return fmt.Errorf("error getting workspace: %w", err)
+		}
+		if workspace.Name != "" && fromElectron {
+			log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
+			return nil
+		}
+		for _, tabId := range workspace.TabIds {
+			err := DeleteTab(ctx, workspaceId, tabId)
+			if err != nil {
+				return fmt.Errorf("error closing tab: %w", err)
+			}
+		}
+		err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
+		if err != nil {
+			return fmt.Errorf("error deleting workspace: %w", err)
+		}
+		return nil
+	})
 }
 
 func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) {
@@ -98,6 +122,14 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 		if tab == nil {
 			return fmt.Errorf("tab not found: %q", tabId)
 		}
+
+		// close blocks (sends events + stops block controllers)
+		for _, blockId := range tab.BlockIds {
+			err := DeleteBlock(ctx, blockId)
+			if err != nil {
+				return fmt.Errorf("error deleting block %s: %w", blockId, err)
+			}
+		}
 		if len(tab.BlockIds) != 0 {
 			return fmt.Errorf("tab has blocks, must delete blocks first")
 		}
@@ -143,14 +175,7 @@ func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []str
 	})
 }
 
-type WorkspaceListEntry struct {
-	WorkspaceId string `json:"workspaceid"`
-	WindowId    string `json:"windowid"`
-}
-
-type WorkspaceList []*WorkspaceListEntry
-
-func List() (WorkspaceList, error) {
+func ListWorkspaces() (waveobj.WorkspaceList, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	workspaceIds, err := wstore.DBGetAllOIDsByType(ctx, waveobj.OType_Workspace)
@@ -170,13 +195,13 @@ func List() (WorkspaceList, error) {
 		workspaceToWindow[window.WorkspaceId] = window.OID
 	}
 
-	var wl WorkspaceList
+	var wl waveobj.WorkspaceList
 	for _, workspaceId := range workspaceIds {
 		windowId, ok := workspaceToWindow[workspaceId]
 		if !ok {
 			windowId = ""
 		}
-		wl = append(wl, &WorkspaceListEntry{
+		wl = append(wl, &waveobj.WorkspaceListEntry{
 			WorkspaceId: workspaceId,
 			WindowId:    windowId,
 		})

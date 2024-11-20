@@ -14,7 +14,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/workspace"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -63,98 +62,6 @@ func sendBlockCloseEvent(blockId string) {
 	wps.Broker.Publish(waveEvent)
 }
 
-func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
-	tabData, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
-	if err != nil {
-		return fmt.Errorf("error getting tab: %w", err)
-	}
-	if tabData == nil {
-		return nil
-	}
-	// close blocks (sends events + stops block controllers)
-	for _, blockId := range tabData.BlockIds {
-		err := DeleteBlock(ctx, blockId)
-		if err != nil {
-			return fmt.Errorf("error deleting block %s: %w", blockId, err)
-		}
-	}
-	// now delete tab (also deletes layout)
-	err = workspace.DeleteTab(ctx, workspaceId, tabId)
-	if err != nil {
-		return fmt.Errorf("error deleting tab: %w", err)
-	}
-
-	return nil
-}
-
-func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId string) (*waveobj.Window, error) {
-	var ws *waveobj.Workspace
-	if workspaceId == "" {
-		ws1, err := workspace.CreateWorkspace(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("error creating workspace: %w", err)
-		}
-		ws = ws1
-	} else {
-		ws1, err := workspace.GetWorkspace(ctx, workspaceId)
-		if err != nil {
-			return nil, fmt.Errorf("error getting workspace: %w", err)
-		}
-		ws = ws1
-	}
-	windowId := uuid.NewString()
-	if winSize == nil {
-		winSize = &waveobj.WinSize{
-			Width:  0,
-			Height: 0,
-		}
-	}
-	window := &waveobj.Window{
-		OID:         windowId,
-		WorkspaceId: ws.OID,
-		IsNew:       true,
-		Pos: waveobj.Point{
-			X: 0,
-			Y: 0,
-		},
-		WinSize: *winSize,
-	}
-	err := wstore.DBInsert(ctx, window)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting window: %w", err)
-	}
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting client: %w", err)
-	}
-	client.WindowIds = append(client.WindowIds, windowId)
-	err = wstore.DBUpdate(ctx, client)
-	if err != nil {
-		return nil, fmt.Errorf("error updating client: %w", err)
-	}
-	return wstore.DBMustGet[*waveobj.Window](ctx, windowId)
-}
-
-func checkAndFixWindow(ctx context.Context, windowId string) {
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
-	if err != nil {
-		log.Printf("error getting window %q (in checkAndFixWindow): %v\n", windowId, err)
-		return
-	}
-	ws, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
-	if err != nil {
-		log.Printf("error getting workspace %q (in checkAndFixWindow): %v\n", window.WorkspaceId, err)
-		return
-	}
-	if len(ws.TabIds) == 0 {
-		log.Printf("fixing workspace with no tabs %q (in checkAndFixWindow)\n", ws.OID)
-		_, err = workspace.CreateTab(ctx, ws.OID, "", true)
-		if err != nil {
-			log.Printf("error creating tab (in checkAndFixWindow): %v\n", err)
-		}
-	}
-}
-
 // returns (new-window, first-time, error)
 func EnsureInitialData() (*waveobj.Window, bool, error) {
 	// does not need to run in a transaction since it is called on startup
@@ -182,7 +89,7 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
-		checkAndFixWindow(ctx, client.WindowIds[0])
+		CheckAndFixWindow(ctx, client.WindowIds[0])
 	}
 	if len(client.WindowIds) > 0 {
 		return nil, false, nil
