@@ -31,9 +31,10 @@ var allowedRenderers = map[string]bool{
 }
 
 type ActivityDisplayType struct {
-	Width  int     `json:"width"`
-	Height int     `json:"height"`
-	DPR    float64 `json:"dpr"`
+	Width    int     `json:"width"`
+	Height   int     `json:"height"`
+	DPR      float64 `json:"dpr"`
+	Internal bool    `json:"internal,omitempty"`
 }
 
 type ActivityUpdate struct {

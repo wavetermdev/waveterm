@@ -5,6 +5,14 @@
 
 declare global {
 
+    // telemetry.ActivityDisplayType
+    type ActivityDisplayType = {
+        width: number;
+        height: number;
+        dpr: number;
+        internal?: boolean;
+    };
+
     // telemetry.ActivityUpdate
     type ActivityUpdate = {
         fgminutes?: number;
@@ -21,6 +29,7 @@ declare global {
         shutdown?: number;
         settabtheme?: number;
         buildtime?: string;
+        displays?: ActivityDisplayType[];
         renderers?: {[key: string]: number};
         wshcmds?: {[key: string]: number};
         conn?: {[key: string]: number};

@@ -518,6 +518,27 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenu
     event.returnValue = true;
 });
 
+// we try to set the primary display as index [0]
+function getActivityDisplays(): ActivityDisplayType[] {
+    const displays = electron.screen.getAllDisplays();
+    const primaryDisplay = electron.screen.getPrimaryDisplay();
+    const rtn: ActivityDisplayType[] = [];
+    for (const display of displays) {
+        const adt = {
+            width: display.size.width,
+            height: display.size.height,
+            dpr: display.scaleFactor,
+            internal: display.internal,
+        };
+        if (display.id === primaryDisplay?.id) {
+            rtn.unshift(adt);
+        } else {
+            rtn.push(adt);
+        }
+    }
+    return rtn;
+}
+
 async function logActiveState() {
     const astate = getActivityState();
     const activity: ActivityUpdate = { openminutes: 1 };
@@ -527,6 +548,7 @@ async function logActiveState() {
     if (astate.wasActive) {
         activity.activeminutes = 1;
     }
+    activity.displays = getActivityDisplays();
     try {
         RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
     } catch (e) {
