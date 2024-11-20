@@ -38,7 +38,6 @@ import {
     focusedWaveWindow,
     getAllWaveWindows,
     getWaveWindowById,
-    getWaveWindowByTabId,
     getWaveWindowByWebContentsId,
     WaveBrowserWindow,
 } from "./emain-window";
@@ -247,30 +246,6 @@ electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, 
 electron.ipcMain.on("download", (event, payload) => {
     const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
     event.sender.downloadURL(streamingUrl);
-});
-
-electron.ipcMain.on("set-active-tab", async (event, tabId) => {
-    const ww = getWaveWindowByWebContentsId(event.sender.id);
-    console.log("set-active-tab", tabId, ww?.waveWindowId);
-    await ww?.setActiveTab(tabId);
-});
-
-electron.ipcMain.on("create-tab", async (event, opts) => {
-    const senderWc = event.sender;
-    const ww = getWaveWindowByWebContentsId(senderWc.id);
-    if (!ww) {
-        return;
-    }
-    await ww.createTab();
-    event.returnValue = true;
-    return null;
-});
-
-electron.ipcMain.on("close-tab", async (event, tabId) => {
-    const ww = getWaveWindowByTabId(tabId);
-    await ww.closeTab(tabId);
-    event.returnValue = true;
-    return null;
 });
 
 electron.ipcMain.on("get-cursor-point", (event) => {

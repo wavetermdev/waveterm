@@ -21,6 +21,13 @@ const DefaultTimeout = 2 * time.Second
 
 type WindowService struct{}
 
+func (svc *WindowService) SetWindowPosAndSize_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "set window position and size",
+		ArgNames: []string{"windowId", "pos", "size"},
+	}
+}
+
 func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId string, pos *waveobj.Point, size *waveobj.WinSize) (waveobj.UpdatesRtnType, error) {
 	if pos == nil && size == nil {
 		return nil, nil
@@ -99,6 +106,23 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 		Focused:    true,
 	})
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
+}
+
+func (svc *WindowService) SwitchWorkspace_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"windowId", "workspaceId"},
+	}
+}
+
+func (svc *WindowService) SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (*waveobj.Workspace, error) {
+	ctx = waveobj.ContextWithUpdates(ctx)
+	return wcore.SwitchWorkspace(ctx, windowId, workspaceId)
+}
+
+func (svc *WindowService) CloseWindow_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"windowId", "fromElectron"},
+	}
 }
 
 func (svc *WindowService) CloseWindow(ctx context.Context, windowId string, fromElectron bool) error {

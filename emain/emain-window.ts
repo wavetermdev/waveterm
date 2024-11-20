@@ -1,8 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ClientService, FileService, ObjectService, WindowService } from "@/app/store/services";
-import { BaseWindow, BaseWindowConstructorOptions, dialog, screen } from "electron";
+import { ClientService, FileService, WindowService, WorkspaceService } from "@/app/store/services";
+import { BaseWindow, BaseWindowConstructorOptions, dialog, ipcMain, screen } from "electron";
 import path from "path";
 import { debounce } from "throttle-debounce";
 import { getGlobalIsQuitting, getGlobalIsRelaunching, setWasActive, setWasInFg } from "./emain-activity";
@@ -210,35 +210,38 @@ export class WaveBrowserWindow extends BaseWindow {
         waveWindowMap.set(waveWindow.oid, this);
     }
 
-    async setWorkspace(workspaceId: string) {
+    async switchWorkspace(workspaceId: string) {
+        const newWs = await WindowService.SwitchWorkspace(this.waveWindowId, workspaceId);
         if (this.allTabViews.size) {
             for (const tab of this.allTabViews.values()) {
                 tab?.destroy();
             }
         }
-
-        await Wshr;
+        this.workspaceId = workspaceId;
         this.allTabViews = new Map();
+        const fullConfig = await FileService.GetFullConfig();
+        const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, newWs.activetabid);
+        this.queueTabSwitch(tabView, tabInitialized);
     }
 
     async setActiveTab(tabId: string) {
         console.log("setActiveTab", this);
         const workspace = await ClientService.GetWorkspace(this.workspaceId);
-        await ObjectService.SetActiveTab(workspace.oid, tabId);
+        await WorkspaceService.SetActiveTab(workspace.oid, tabId);
         const fullConfig = await FileService.GetFullConfig();
         const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, tabId);
         this.queueTabSwitch(tabView, tabInitialized);
     }
 
     async createTab() {
-        const tabId = await ObjectService.AddTabToWorkspace(this.workspaceId, null, true);
+        const tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true);
         this.setActiveTab(tabId);
     }
 
     async closeTab(tabId: string) {
         const tabView = this.allTabViews.get(tabId);
         if (tabView) {
-            const rtn = await WindowService.CloseTab(this.waveWindowId, tabId, true);
+            const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
             this.allTabViews.delete(tabId);
             if (rtn?.closewindow && !this.alreadyClosed) {
                 this.destroy(); // bypass the "are you sure?" dialog
@@ -448,3 +451,33 @@ export async function createBrowserWindow(
     }
     return bwin;
 }
+
+ipcMain.on("set-active-tab", async (event, tabId) => {
+    const ww = getWaveWindowByWebContentsId(event.sender.id);
+    console.log("set-active-tab", tabId, ww?.waveWindowId);
+    await ww?.setActiveTab(tabId);
+});
+
+ipcMain.on("create-tab", async (event, opts) => {
+    const senderWc = event.sender;
+    const ww = getWaveWindowByWebContentsId(senderWc.id);
+    if (!ww) {
+        return;
+    }
+    await ww.createTab();
+    event.returnValue = true;
+    return null;
+});
+
+ipcMain.on("close-tab", async (event, tabId) => {
+    const ww = getWaveWindowByTabId(tabId);
+    await ww.closeTab(tabId);
+    event.returnValue = true;
+    return null;
+});
+
+ipcMain.on("switch-workspace", async (event, workspaceId) => {
+    const ww = getWaveWindowByWebContentsId(event.sender.id);
+    console.log("switch-workspace", workspaceId, ww?.waveWindowId);
+    await ww?.switchWorkspace(workspaceId);
+});

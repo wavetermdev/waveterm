@@ -12,34 +12,33 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) error {
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (*waveobj.Workspace, error) {
+	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*waveobj.Workspace, error) {
+		ws, err := GetWorkspace(tx.Context(), workspaceId)
+		if err != nil {
+			return nil, err
+		}
 		window, err := GetWindow(tx.Context(), windowId)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if window.WorkspaceId == workspaceId {
-			return nil
-		}
-
-		_, err = GetWorkspace(tx.Context(), workspaceId)
-		if err != nil {
-			return err
+			return ws, nil
 		}
 
 		allWindows, err := wstore.DBGetAllObjsByType[*waveobj.Window](tx.Context(), waveobj.OType_Window)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		for _, w := range allWindows {
 			if w.WorkspaceId == workspaceId {
-				return fmt.Errorf("cannot set workspace %s for window %s as it is already claimed by window %s", workspaceId, windowId, w.OID)
+				return nil, fmt.Errorf("cannot set workspace %s for window %s as it is already claimed by window %s", workspaceId, windowId, w.OID)
 			}
 		}
 
 		window.WorkspaceId = workspaceId
-		return wstore.DBInsert(tx.Context(), window)
+		return ws, wstore.DBInsert(tx.Context(), window)
 	})
 }
 
