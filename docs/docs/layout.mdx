@@ -48,7 +48,9 @@ You can move blocks by clicking on the block header and dragging the block aroun
 
 There are 7 different drop targets for any given block. A block is divided into quadrants along its diagonals. If the block is tiling as a row (left-to-right), dropping a block into the left or right quadrant will place the dropped block in the same level as the targeted block. This can be considered dropping the block inline. If you drop the block out of line (in quadrants corresponding to opposite tiling direction), the block will either be placed one level above or one level below the targeted block. Dropping the block towards the outside will place it in the same level as the target block's parent, while dropping it towards the center of the block will create a new level, where both the target block and the dropped block will be moved. The middle fifth of the block is reserved for the swap action. Dropping a block here will cause the target block and the dropped block to swap positions in the layout.
 
-![screenshot showing a block being dragged over another block, with the placeholder depicting a swap movement](./img/drag-swap.png)
+<video width="100%" height="100%" playsinline autoplay muted controls>
+  <source src="/img/drag-move-24fps-crf43.mp4" type="video/mp4" />
+</video>
 
 #### Possible block movements
 
@@ -56,6 +58,7 @@ There are 7 different drop targets for any given block. A block is divided into 
 All block movements except for Swap will cause the rest of the layout to shift to accommodate the block's new displacement.
 :::
 
+![screenshot showing a block being dragged over another block, with the placeholder depicting a swap movement](./img/drag-swap.png)
 ![annotated example showing the drop targets within a block](./img/block-drag-example.jpg)
 
 1. Inline before: Drops the block under the same node as the target block, placing it before the target in the same tiling direction
@@ -68,7 +71,12 @@ All block movements except for Swap will cause the rest of the layout to shift t
 
 ### Resize a block
 
-![screenshot showing the line that appears when the cursor hovers over the margin of a block, indicating which blocks will be resized by dragging the margin](./img/node-resize.png)
+<video width="100%" height="100%" playsinline autoplay muted controls>
+  <source src="/img/resize-24fps-crf43.mp4" type="video/mp4" />
+</video>
+
+![screenshot showing the line that appears when the cursor hovers over the margin of a block, indicating which blocks
+will be resized by dragging the margin](./img/node-resize.png)
 
 You do not directly resize a block. Rather, you resize the nodes containing the blocks. If you hover your mouse over the margin of a block, you will see the cursor change to <i className="fa-sharp fa-arrows-left-right"/> or <i className="fa-sharp fa-arrows-up-down"/> to indicate the direction the node can be resized. You will also see a line appear after 500ms to show you how many blocks will be resized by moving that margin. Clicking and dragging on this margin will cause the block(s) to get resized.
 

@@ -47,11 +47,20 @@ When telemetry is active, we collect the following data. It is stored in the `te
 | ActiveMinutes | The number of minutes that the user has actively used Waveterm on a given day. This requires the terminal window to be in focus while the user is actively interacting with it. |
 | FgMinutes     | The number of minutes that Waveterm has been in the foreground on a given day. This requires the terminal window to be in focus regardless of user interaction.                 |
 | OpenMinutes   | The number of minutes that Waveterm has been open on a given day. This only requires that the terminal is open, even if the window is out of focus.                             |
+| NumBlocks     | The number of existing blocks open on a given day                                                                                                                               |
 | NumTabs       | The number of existing tabs open on a given day.                                                                                                                                |
+| NewTab        | The number of new tabs created on a given day                                                                                                                                   |
+| NumWindows    | The number of existing windows open on a give day.                                                                                                                              |
 | NewTab        | The number of new tabs opened on a given day.                                                                                                                                   |
 | NumStartup    | The number of times waveterm has been started on a given day.                                                                                                                   |
 | NumShutdown   | The number of times waveterm has been shut down on a given day.                                                                                                                 |
+| SetTabTheme   | The number of times the tab theme is changed from the context menu                                                                                                              |
+| NumMagnify    | The number of times any block is magnified                                                                                                                                      |
+| NumSSHConn    | The number of distinct SSH connections that have been made to distinct hosts                                                                                                    |
+| NumWSLConns   | The number of distinct WSL connections that have been made to distinct distros                                                                                                  |
 | Renderers     | The number of new block views of each type are open on a given day.                                                                                                             |
+| WshCmds       | The number of wsh commands of each type run on a given day                                                                                                                      |
+| Conn          | The number of successful remote connections made (and errors) on a given day                                                                                                    |
 
 ## Associated Data
 
@@ -67,6 +76,7 @@ In addition to the telemetry data collected, the following is also reported. It 
 | ClientArch    | This includes the user's operating system (e.g. linux or darwin) and architecture (e.g. x86_64 or arm64). It does not include data for any Connections at this time.                                                                                                                             |
 | BuildTime     | This serves as a more accurate version number that keeps track of when we built the version. It has no bearing on when that version was installed by you.                                                                                                                                        |
 | OSRelease     | This lists the version of the operating system the user has installed.                                                                                                                                                                                                                           |
+| Displays      | Display resolutions (added in v0.9.3 to help us understand what screen resolutions to optimize for)                                                                                                                                                                                              |
 
 ## Telemetry Metadata
 

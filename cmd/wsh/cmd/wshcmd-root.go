@@ -31,6 +31,7 @@ var RpcClient *wshutil.WshRpc
 var RpcContext wshrpc.RpcContext
 var UsingTermWshMode bool
 var blockArg string
+var WshExitCode int
 
 func WriteStderr(fmtStr string, args ...interface{}) {
 	output := fmt.Sprintf(fmtStr, args...)
@@ -59,7 +60,7 @@ func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
 func resolveBlockArg() (*waveobj.ORef, error) {
 	oref := blockArg
 	if oref == "" {
-		return nil, fmt.Errorf("blockid is required")
+		oref = "this"
 	}
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
@@ -145,10 +146,10 @@ func Execute() {
 			debug.PrintStack()
 			wshutil.DoShutdown("", 1, true)
 		} else {
-			wshutil.DoShutdown("", 0, false)
+			wshutil.DoShutdown("", WshExitCode, false)
 		}
 	}()
-	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "this", "for commands which require a block id")
+	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "", "for commands which require a block id")
 	err := rootCmd.Execute()
 	if err != nil {
 		wshutil.DoShutdown("", 1, true)

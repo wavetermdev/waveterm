@@ -28,6 +28,7 @@ import (
 	"strings"
 	"syscall"
 	"text/template"
+	"time"
 	"unicode/utf8"
 )
 
@@ -931,4 +932,17 @@ func FindStringInSlice(slice []string, val string) int {
 		}
 	}
 	return -1
+}
+
+func FormatLsTime(t time.Time) string {
+	now := time.Now()
+	sixMonthsAgo := now.AddDate(0, -6, 0)
+
+	if t.After(sixMonthsAgo) {
+		// Recent files: "Nov 18 18:40"
+		return t.Format("Jan _2 15:04")
+	} else {
+		// Older files: "Apr 12  2024"
+		return t.Format("Jan _2  2006")
+	}
 }
