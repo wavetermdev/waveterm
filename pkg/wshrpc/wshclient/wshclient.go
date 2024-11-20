@@ -171,6 +171,30 @@ func FileAppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonDat
 	return err
 }
 
+// command "filecreate", wshserver.FileCreateCommand
+func FileCreateCommand(w *wshutil.WshRpc, data wshrpc.CommandFileCreateData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filecreate", data, opts)
+	return err
+}
+
+// command "filedelete", wshserver.FileDeleteCommand
+func FileDeleteCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filedelete", data, opts)
+	return err
+}
+
+// command "fileinfo", wshserver.FileInfoCommand
+func FileInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.RpcOpts) (*wshrpc.WaveFileInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.WaveFileInfo](w, "fileinfo", data, opts)
+	return resp, err
+}
+
+// command "filelist", wshserver.FileListCommand
+func FileListCommand(w *wshutil.WshRpc, data wshrpc.CommandFileListData, opts *wshrpc.RpcOpts) ([]*wshrpc.WaveFileInfo, error) {
+	resp, err := sendRpcRequestCallHelper[[]*wshrpc.WaveFileInfo](w, "filelist", data, opts)
+	return resp, err
+}
+
 // command "fileread", wshserver.FileReadCommand
 func FileReadCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "fileread", data, opts)
@@ -192,6 +216,12 @@ func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wsh
 // command "getupdatechannel", wshserver.GetUpdateChannelCommand
 func GetUpdateChannelCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "getupdatechannel", nil, opts)
+	return resp, err
+}
+
+// command "getvar", wshserver.GetVarCommand
+func GetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.RpcOpts) (*wshrpc.CommandVarResponseData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandVarResponseData](w, "getvar", data, opts)
 	return resp, err
 }
 
@@ -268,6 +298,12 @@ func SetConfigCommand(w *wshutil.WshRpc, data wconfig.MetaSettingsType, opts *ws
 // command "setmeta", wshserver.SetMetaCommand
 func SetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandSetMetaData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setmeta", data, opts)
+	return err
+}
+
+// command "setvar", wshserver.SetVarCommand
+func SetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "setvar", data, opts)
 	return err
 }
 

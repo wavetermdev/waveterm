@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
@@ -66,6 +67,8 @@ const (
 	Command_WaveInfo          = "waveinfo"
 	Command_WshActivity       = "wshactivity"
 	Command_Activity          = "activity"
+	Command_GetVar            = "getvar"
+	Command_SetVar            = "setvar"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -107,16 +110,20 @@ type WshRpcInterface interface {
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
 	ControllerStopCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
-	FileAppendCommand(ctx context.Context, data CommandFileData) error
-	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
 	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (waveobj.ORef, error)
 	CreateSubBlockCommand(ctx context.Context, data CommandCreateSubBlockData) (waveobj.ORef, error)
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
+	FileCreateCommand(ctx context.Context, data CommandFileCreateData) error
+	FileDeleteCommand(ctx context.Context, data CommandFileData) error
+	FileAppendCommand(ctx context.Context, data CommandFileData) error
+	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data CommandFileData) error
 	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
+	FileInfoCommand(ctx context.Context, data CommandFileData) (*WaveFileInfo, error)
+	FileListCommand(ctx context.Context, data CommandFileListData) ([]*WaveFileInfo, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -131,6 +138,8 @@ type WshRpcInterface interface {
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
 	ActivityCommand(ctx context.Context, data telemetry.ActivityUpdate) error
+	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
+	SetVarCommand(ctx context.Context, data CommandVarData) error
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -291,10 +300,42 @@ type CommandBlockInputData struct {
 	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
+type CommandFileDataAt struct {
+	Offset int64 `json:"offset"`
+	Size   int64 `json:"size,omitempty"`
+}
+
 type CommandFileData struct {
-	ZoneId   string `json:"zoneid" wshcontext:"BlockId"`
-	FileName string `json:"filename"`
-	Data64   string `json:"data64,omitempty"`
+	ZoneId   string             `json:"zoneid" wshcontext:"BlockId"`
+	FileName string             `json:"filename"`
+	Data64   string             `json:"data64,omitempty"`
+	At       *CommandFileDataAt `json:"at,omitempty"` // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
+}
+
+type WaveFileInfo struct {
+	ZoneId    string                 `json:"zoneid"`
+	Name      string                 `json:"name"`
+	Opts      filestore.FileOptsType `json:"opts,omitempty"`
+	Size      int64                  `json:"size,omitempty"`
+	CreatedTs int64                  `json:"createdts,omitempty"`
+	ModTs     int64                  `json:"modts,omitempty"`
+	Meta      map[string]any         `json:"meta,omitempty"`
+	IsDir     bool                   `json:"isdir,omitempty"`
+}
+
+type CommandFileListData struct {
+	ZoneId string `json:"zoneid"`
+	Prefix string `json:"prefix,omitempty"`
+	All    bool   `json:"all,omitempty"`
+	Offset int    `json:"offset,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
+}
+
+type CommandFileCreateData struct {
+	ZoneId   string                  `json:"zoneid"`
+	FileName string                  `json:"filename"`
+	Meta     map[string]any          `json:"meta,omitempty"`
+	Opts     *filestore.FileOptsType `json:"opts,omitempty"`
 }
 
 type CommandAppendIJsonData struct {
@@ -466,4 +507,18 @@ type WaveInfoData struct {
 
 type AiMessageData struct {
 	Message string `json:"message,omitempty"`
+}
+
+type CommandVarData struct {
+	Key      string `json:"key"`
+	Val      string `json:"val,omitempty"`
+	Remove   bool   `json:"remove,omitempty"`
+	ZoneId   string `json:"zoneid"`
+	FileName string `json:"filename"`
+}
+
+type CommandVarResponseData struct {
+	Key    string `json:"key"`
+	Val    string `json:"val"`
+	Exists bool   `json:"exists"`
 }

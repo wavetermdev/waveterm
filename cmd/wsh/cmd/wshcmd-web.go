@@ -51,11 +51,7 @@ func init() {
 }
 
 func webGetRun(cmd *cobra.Command, args []string) error {
-	oref := blockArg
-	if oref == "" {
-		return fmt.Errorf("blockid not specified")
-	}
-	fullORef, err := resolveSimpleId(oref)
+	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return fmt.Errorf("resolving blockid: %w", err)
 	}
