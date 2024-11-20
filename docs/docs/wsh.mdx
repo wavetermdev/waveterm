@@ -366,6 +366,48 @@ wsh file cp wavefile://block/config.txt ./local-config.txt
 wsh file cp ./local-config.txt wavefile://client/config.txt
 ```
 
+### ls
+
+```bash
+wsh file ls [flags] [wavefile://zone/path]
+```
+
+List wave files in a zone. If no path is specified, lists all files in `wavefile://client/`.
+
+Examples:
+
+```bash
+# List all files in client zone
+wsh file ls
+
+# List files in a specific zone
+wsh file ls wavefile://block/
+wsh file ls wavefile://workspace/configs/
+
+# Show detailed file information
+wsh file ls -l wavefile://client/
+
+# List files recursively
+wsh file ls -r wavefile://block/
+
+# List one file per line (good for scripting)
+wsh file ls -1 wavefile://client/
+```
+
+Flags:
+
+- `-l, --long` - use long listing format showing size, timestamps, and metadata
+- `-r, --recursive` - list subdirectories recursively
+- `-1, --one` - list one file per line
+- `-f, --files` - list only files (no directories)
+
+When output is piped to another command, automatically switches to one-file-per-line format:
+
+```bash
+# Easy to process with grep, awk, etc.
+wsh file ls wavefile://client/ | grep ".json$"
+```
+
 :::info
 
 Note: Wave file locations can be:
