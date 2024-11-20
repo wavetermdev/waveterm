@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
@@ -14,7 +15,6 @@ import winston from "winston";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
-import { fetch } from "../frontend/util/fetchutil";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
@@ -518,16 +518,39 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenu
     event.returnValue = true;
 });
 
+// we try to set the primary display as index [0]
+function getActivityDisplays(): ActivityDisplayType[] {
+    const displays = electron.screen.getAllDisplays();
+    const primaryDisplay = electron.screen.getPrimaryDisplay();
+    const rtn: ActivityDisplayType[] = [];
+    for (const display of displays) {
+        const adt = {
+            width: display.size.width,
+            height: display.size.height,
+            dpr: display.scaleFactor,
+            internal: display.internal,
+        };
+        if (display.id === primaryDisplay?.id) {
+            rtn.unshift(adt);
+        } else {
+            rtn.push(adt);
+        }
+    }
+    return rtn;
+}
+
 async function logActiveState() {
     const astate = getActivityState();
-    const activeState = { fg: astate.wasInFg, active: astate.wasActive, open: true };
-    const url = new URL(getWebServerEndpoint() + "/wave/log-active-state");
+    const activity: ActivityUpdate = { openminutes: 1 };
+    if (astate.wasInFg) {
+        activity.fgminutes = 1;
+    }
+    if (astate.wasActive) {
+        activity.activeminutes = 1;
+    }
+    activity.displays = getActivityDisplays();
     try {
-        const resp = await fetch(url, { method: "post", body: JSON.stringify(activeState) });
-        if (!resp.ok) {
-            console.log("error logging active state", resp.status, resp.statusText);
-            return;
-        }
+        RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
     } catch (e) {
         console.log("error logging active state", e);
     } finally {

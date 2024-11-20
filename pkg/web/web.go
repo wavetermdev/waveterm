@@ -26,14 +26,11 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/service"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 type WebFnType = func(http.ResponseWriter, *http.Request)
@@ -358,34 +355,6 @@ type ClientActiveState struct {
 	Open   bool `json:"open"`
 }
 
-// params: fg, active, open
-func handleLogActiveState(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var activeState ClientActiveState
-	err := decoder.Decode(&activeState)
-	if err != nil {
-		WriteJsonError(w, fmt.Errorf("error decoding json: %v", err))
-		return
-	}
-	activity := telemetry.ActivityUpdate{}
-	if activeState.Fg {
-		activity.FgMinutes = 1
-	}
-	if activeState.Active {
-		activity.ActiveMinutes = 1
-	}
-	if activeState.Open {
-		activity.OpenMinutes = 1
-	}
-	activity.NumTabs, _ = wstore.DBGetCount[*waveobj.Tab](r.Context())
-	err = telemetry.UpdateActivity(r.Context(), activity)
-	if err != nil {
-		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
-		return
-	}
-	WriteJsonSuccess(w, true)
-}
-
 func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -450,7 +419,6 @@ func RunWebServer(listener net.Listener) {
 	gr.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
-	gr.HandleFunc("/wave/log-active-state", WebFnWrap(WebFnOpts{JsonErrors: true}, handleLogActiveState))
 	gr.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
 	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
 	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
