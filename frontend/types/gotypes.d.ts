@@ -76,7 +76,7 @@ declare global {
         nexttabid?: number;
     };
 
-    // windowservice.CloseTabRtnType
+    // workspaceservice.CloseTabRtnType
     type CloseTabRtnType = {
         closewindow?: boolean;
         newactivetabid?: string;
@@ -1027,7 +1027,7 @@ declare global {
         activetabid: string;
     };
 
-    // workspace.WorkspaceListEntry
+    // waveobj.WorkspaceListEntry
     type WorkspaceListEntry = {
         workspaceid: string;
         windowid: string;

@@ -153,10 +153,6 @@ export const UserInputService = new UserInputServiceType();
 
 // windowservice.WindowService (window)
 class WindowServiceType {
-    // @returns object updates
-    CloseTab(arg2: string, arg3: string, arg4: boolean): Promise<CloseTabRtnType> {
-        return WOS.callBackendService("window", "CloseTab", Array.from(arguments))
-    }
     CloseWindow(arg2: string, arg3: boolean): Promise<void> {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
@@ -177,6 +173,10 @@ export const WindowService = new WindowServiceType();
 
 // workspaceservice.WorkspaceService (workspace)
 class WorkspaceServiceType {
+    // @returns object updates
+    CloseTab(arg2: string, arg3: string, arg4: boolean): Promise<CloseTabRtnType> {
+        return WOS.callBackendService("workspace", "CloseTab", Array.from(arguments))
+    }
 }
 
 export const WorkspaceService = new WorkspaceServiceType();
