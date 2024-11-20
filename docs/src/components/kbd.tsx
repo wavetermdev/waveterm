@@ -28,7 +28,11 @@ function convertKey(platform: Platform, key: string): [any, string, boolean] {
         }
     }
     if (key == "Ctrl") {
-        return ["⌃", "Control", true];
+        if (platform === "mac") {
+            return ["⌃", "Control", true];
+        } else {
+            return ["Ctrl", "Control", false];
+        }
     }
     if (key == "Shift") {
         return ["⇧", "Shift", true];

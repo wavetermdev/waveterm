@@ -3,13 +3,12 @@
 
 import { atoms } from "@/store/global";
 import { FloatingPortal, useFloating, useInteractions } from "@floating-ui/react";
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
+import "./notificationbubbles.less";
 import { NotificationItem } from "./notificationitem";
 import { useNotification } from "./usenotification";
-
-import clsx from "clsx";
-import "./notificationBubbles.less";
 
 const NotificationBubbles = () => {
     const {

@@ -77,17 +77,17 @@ tasks:
             - storybook:build
 
     docsite:build:embedded:
-        desc: Build the embedded docsite and copy it to ./docsite
+        desc: Build the embedded docsite and copy it to dist/docsite
         sources:
             - "docs/*"
             - "docs/src/**/*"
             - "docs/docs/**/*"
             - "docs/static/**/*"
         generates:
-            - "docsite/**/*"
+            - "dist/docsite/**/*"
         cmds:
             - cd docs && yarn build-embedded
-            - task: copyfiles:'docs/build':'../docsite'
+            - task: copyfiles:'docs/build':'dist/docsite'
         deps:
             - yarn
 
@@ -99,6 +99,7 @@ tasks:
             - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
         deps:
             - yarn
+            - docsite:build:embedded
             - build:backend
 
     build:backend:
@@ -350,4 +351,4 @@ tasks:
     copyfiles:*:*:
         desc: Recursively copy directory and its contents.
         internal: true
-        cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
+        cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}mkdir -p "$(dirname {{index .MATCH 1}})" && cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
