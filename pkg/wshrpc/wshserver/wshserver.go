@@ -725,7 +725,7 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 }
 
 func (ws *WshServer) WorkspaceListCommand(ctx context.Context) (waveobj.WorkspaceList, error) {
-	return wcore.ListWorkspaces()
+	return wcore.ListWorkspaces(ctx)
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)

@@ -17,11 +17,12 @@ import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { colord } from "colord";
-import { atom, useAtom } from "jotai";
+import { Atom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 
+import { Workspace } from "../workspace/workspace";
 import "./workspaceswitcher.less";
 
 interface ColorSelectorProps {
@@ -145,57 +146,13 @@ const ColorAndIconSelector = memo(
     }
 );
 
-interface WorkspaceDataType {
-    id: string;
-    icon: string;
-    label: string;
-    color: string;
-    isActive: boolean;
-}
-
-// Define the global Jotai atom for menuData
-const workspaceData: WorkspaceDataType[] = [
-    {
-        id: "596e76eb-d87d-425e-9f6e-1519069ee446",
-        icon: "",
-        label: "Default",
-        color: "",
-        isActive: false,
-    },
-    {
-        id: "596e76eb-d87d-425e-9f6e-1519069ee447",
-        icon: "shield-cat",
-        label: "Cat Space",
-        color: "#e91e63",
-        isActive: true,
-    },
-    {
-        id: "596e76eb-d87d-425e-9f6e-1519069ee448",
-        icon: "paw-simple",
-        label: "Bear Space",
-        color: "#ffc107",
-        isActive: false,
-    },
-];
-
-export const menuDataAtom = atom<WorkspaceDataType[]>(workspaceData);
+type WorkspaceAtomMap = Record<string, Atom<Workspace>>;
 
 const WorkspaceSwitcher = () => {
-    const [menuData, setMenuData] = useAtom(menuDataAtom);
+    const [workspaceAtoms, setWorkspaceAtoms] = useState<WorkspaceAtomMap>({});
 
     const handleTitleChange = (id: string, newTitle: string) => {
         // This should call a service
-        setMenuData((prevMenuData) =>
-            prevMenuData.map((item) => {
-                if (item.id === id) {
-                    return {
-                        ...item,
-                        label: newTitle,
-                    };
-                }
-                return item;
-            })
-        );
     };
 
     const handleColorChange = (id: string, newColor: string) => {

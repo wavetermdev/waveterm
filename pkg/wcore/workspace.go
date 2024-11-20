@@ -175,9 +175,7 @@ func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []str
 	})
 }
 
-func ListWorkspaces() (waveobj.WorkspaceList, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 	workspaceIds, err := wstore.DBGetAllOIDsByType(ctx, waveobj.OType_Workspace)
 	if err != nil {
 		return nil, err

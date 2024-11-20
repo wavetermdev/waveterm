@@ -18,6 +18,12 @@ const DefaultTimeout = 2 * time.Second
 
 type WorkspaceService struct{}
 
+func (svg *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	return wcore.ListWorkspaces(ctx)
+}
+
 func (svc *WorkspaceService) CreateTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames:   []string{"windowId", "tabName", "activateTab"},
