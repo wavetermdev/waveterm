@@ -17,8 +17,9 @@ const RatingBubble = ({ notification, onRemove }: RatingBubbleProps) => {
     const { id, title, message } = notification;
     const [hoveredButtons, setHoveredButtons] = useState<{ [key: number]: boolean }>({});
 
-    const handleRatingClick = (rating: number) => {
+    const handleRatingClick = (id, rating: number) => {
         console.log("rating clicked");
+        onRemove(id);
     };
 
     const handleMouseEnter = (buttonIndex: number) => {
@@ -49,7 +50,7 @@ const RatingBubble = ({ notification, onRemove }: RatingBubbleProps) => {
                         <Button
                             key={rating}
                             className={clsx("border-radius-4", hoveredButtons[rating] ? "green" : "grey")}
-                            onClick={() => handleRatingClick(rating)}
+                            onClick={() => handleRatingClick(id, rating)}
                             onMouseEnter={() => handleMouseEnter(rating)}
                             onMouseLeave={() => handleMouseLeave(rating)}
                         >
