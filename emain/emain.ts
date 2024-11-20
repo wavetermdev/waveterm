@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
@@ -14,7 +15,6 @@ import winston from "winston";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
-import { fetch } from "../frontend/util/fetchutil";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
@@ -520,14 +520,15 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenu
 
 async function logActiveState() {
     const astate = getActivityState();
-    const activeState = { fg: astate.wasInFg, active: astate.wasActive, open: true };
-    const url = new URL(getWebServerEndpoint() + "/wave/log-active-state");
+    const activity: ActivityUpdate = { openminutes: 1 };
+    if (astate.wasInFg) {
+        activity.fgminutes = 1;
+    }
+    if (astate.wasActive) {
+        activity.activeminutes = 1;
+    }
     try {
-        const resp = await fetch(url, { method: "post", body: JSON.stringify(activeState) });
-        if (!resp.ok) {
-            console.log("error logging active state", resp.status, resp.statusText);
-            return;
-        }
+        RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
     } catch (e) {
         console.log("error logging active state", e);
     } finally {
