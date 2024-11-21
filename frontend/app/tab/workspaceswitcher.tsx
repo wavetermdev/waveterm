@@ -159,16 +159,20 @@ const WorkspaceSwitcher = () => {
     const updateWorkspaceMap = useCallback(() => {
         WorkspaceService.ListWorkspaces()
             .then((workspaceList) => {
-                const newMap: WorkspaceMap = {};
+                const newMap = { ...workspaceMap };
                 if (!workspaceList) {
                     return;
                 }
                 console.log(workspaceList);
                 for (const entry of workspaceList) {
-                    newMap[entry.workspaceid] = {
-                        windowId: entry.windowid,
-                        workspaceAtom: getWaveObjectAtom(makeORef("workspace", entry.workspaceid)),
-                    };
+                    if (newMap[entry.workspaceid]) {
+                        newMap[entry.workspaceid].windowId = entry.windowid;
+                    } else {
+                        newMap[entry.workspaceid] = {
+                            windowId: entry.windowid,
+                            workspaceAtom: getWaveObjectAtom(makeORef("workspace", entry.workspaceid)),
+                        };
+                    }
                 }
                 setWorkspaceMap(newMap);
             })
