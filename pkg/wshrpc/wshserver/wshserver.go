@@ -18,6 +18,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
@@ -45,11 +46,7 @@ func (*WshServer) WshServerImpl() {}
 var WshServerImpl = WshServer{}
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("panic in TestCommand: %v", r)
-		}
-	}()
+	defer panichandler.PanicHandler("TestCommand")
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	log.Printf("TEST src:%s | %s\n", rpcSource, data)
 	return nil

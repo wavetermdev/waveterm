@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -81,11 +81,9 @@ func getStringFromMap(jmsg map[string]any, key string) string {
 func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
 	var rtnErr error
 	defer func() {
-		r := recover()
-		if r != nil {
-			rtnErr = fmt.Errorf("panic: %v", r)
-			log.Printf("[websocket] panic in processMessage: %v\n", r)
-			debug.PrintStack()
+		panicErr := panichandler.PanicHandler("processWSCommand")
+		if panicErr != nil {
+			rtnErr = panicErr
 		}
 		if rtnErr == nil {
 			return
