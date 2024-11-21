@@ -5,10 +5,9 @@
   "source": "@site/docs/customization.mdx",
   "sourceDirName": ".",
   "slug": "/customization",
-  "permalink": "/customization",
+  "permalink": "/docsite/customization",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/customization.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 1.5,
@@ -19,11 +18,11 @@
   },
   "sidebar": "defaultSidebar",
   "previous": {
-    "title": "Quickstart",
-    "permalink": "/quickstart"
+    "title": "Getting Started",
+    "permalink": "/docsite/gettingstarted"
   },
   "next": {
     "title": "Key Bindings",
-    "permalink": "/keybindings"
+    "permalink": "/docsite/keybindings"
   }
 }

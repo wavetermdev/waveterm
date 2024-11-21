@@ -5,10 +5,9 @@
   "source": "@site/docs/faq.mdx",
   "sourceDirName": ".",
   "slug": "/faq",
-  "permalink": "/faq",
+  "permalink": "/docsite/faq",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/faq.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 101,
@@ -20,10 +19,10 @@
   "sidebar": "defaultSidebar",
   "previous": {
     "title": "Telemetry",
-    "permalink": "/telemetry"
+    "permalink": "/docsite/telemetry"
   },
   "next": {
     "title": "Release Notes",
-    "permalink": "/releasenotes"
+    "permalink": "/docsite/releasenotes"
   }
 }

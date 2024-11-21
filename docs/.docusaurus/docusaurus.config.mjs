@@ -8,10 +8,11 @@ export default {
   "tagline": "Level Up Your Terminal With Graphical Widgets",
   "favicon": "img/logo/wave-logo_appicon.svg",
   "url": "https://docs.waveterm.dev",
-  "baseUrl": "/",
+  "baseUrl": "/docsite/",
   "organizationName": "wavetermdev",
   "projectName": "waveterm-docs",
   "deploymentBranch": "main",
+  "onBrokenAnchors": "ignore",
   "onBrokenLinks": "throw",
   "onBrokenMarkdownLinks": "warn",
   "trailingSlash": false,
@@ -31,8 +32,7 @@ export default {
         "routeBasePath": "/",
         "exclude": [
           "features/**"
-        ],
-        "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/"
+        ]
       }
     ],
     "ideal-image",
@@ -42,13 +42,6 @@ export default {
         "changefreq": "daily",
         "filename": "sitemap.xml"
       }
-    ],
-    [
-      "@waveterm/docusaurus-og",
-      {
-        "path": "./preview-images",
-        "imageRenderers": {}
-      }
     ]
   ],
   "themes": [
@@ -57,8 +50,7 @@ export default {
       {
         "customCss": "src/css/custom.css"
       }
-    ],
-    "@docusaurus/theme-search-algolia"
+    ]
   ],
   "themeConfig": {
     "docs": {
@@ -86,23 +78,6 @@ export default {
           "position": "left",
           "docId": "index",
           "label": "Docs"
-        },
-        {
-          "position": "left",
-          "href": "https://docs.waveterm.dev/storybook/",
-          "label": "Storybook"
-        },
-        {
-          "href": "https://discord.gg/zUeP2aAjaP",
-          "position": "right",
-          "className": "header-link-custom custom-icon-discord",
-          "aria-label": "Discord invite"
-        },
-        {
-          "href": "https://github.com/wavetermdev/waveterm",
-          "position": "right",
-          "className": "header-link-custom custom-icon-github",
-          "aria-label": "GitHub repository"
         }
       ]
     },
@@ -136,10 +111,7 @@ export default {
     "algolia": {
       "appId": "B6A8512SN4",
       "apiKey": "e879cd8663f109b2822cd004d9cd468c",
-      "indexName": "waveterm",
-      "contextualSearch": true,
-      "searchParameters": {},
-      "searchPagePath": "search"
+      "indexName": "waveterm"
     },
     "blog": {
       "sidebar": {
@@ -301,7 +273,7 @@ export default {
         "as": "font",
         "type": "font/woff2",
         "data-next-font": "size-adjust",
-        "href": "/fontawesome/webfonts/fa-sharp-regular-400.woff2"
+        "href": "/docsite/fontawesome/webfonts/fa-sharp-regular-400.woff2"
       }
     },
     {
@@ -310,24 +282,17 @@ export default {
         "rel": "sitemap",
         "type": "application/xml",
         "title": "Sitemap",
-        "href": "/sitemap.xml"
-      }
-    },
-    {
-      "tagName": "script",
-      "attributes": {
-        "defer": "true",
-        "data-domain": "docs.waveterm.dev",
-        "src": "https://plausible.io/js/script.file-downloads.outbound-links.tagged-events.js"
+        "href": "/docsite/sitemap.xml"
       }
     }
   ],
   "stylesheets": [
-    "/fontawesome/css/fontawesome.min.css",
-    "/fontawesome/css/sharp-regular.min.css"
+    "/docsite/fontawesome/css/fontawesome.min.css",
+    "/docsite/fontawesome/css/sharp-regular.min.css"
   ],
   "staticDirectories": [
-    "static"
+    "static",
+    "storybook"
   ],
   "baseUrlIssueBanner": true,
   "future": {
@@ -345,7 +310,6 @@ export default {
     },
     "experimental_router": "browser"
   },
-  "onBrokenAnchors": "warn",
   "onDuplicateRoutes": "warn",
   "customFields": {},
   "presets": [],

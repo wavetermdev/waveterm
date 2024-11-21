@@ -76,17 +76,21 @@ type SettingsType struct {
 	WidgetClear    bool  `json:"widget:*,omitempty"`
 	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`
 
-	WindowClear                       bool     `json:"window:*,omitempty"`
-	WindowTransparent                 bool     `json:"window:transparent,omitempty"`
-	WindowBlur                        bool     `json:"window:blur,omitempty"`
-	WindowOpacity                     *float64 `json:"window:opacity,omitempty"`
-	WindowBgColor                     string   `json:"window:bgcolor,omitempty"`
-	WindowReducedMotion               bool     `json:"window:reducedmotion,omitempty"`
-	WindowTileGapSize                 *int64   `json:"window:tilegapsize,omitempty"`
-	WindowShowMenuBar                 bool     `json:"window:showmenubar,omitempty"`
-	WindowNativeTitleBar              bool     `json:"window:nativetitlebar,omitempty"`
-	WindowDisableHardwareAcceleration bool     `json:"window:disablehardwareacceleration,omitempty"`
-	WindowMaxTabCacheSize             int      `json:"window:maxtabcachesize,omitempty"`
+	WindowClear                         bool     `json:"window:*,omitempty"`
+	WindowTransparent                   bool     `json:"window:transparent,omitempty"`
+	WindowBlur                          bool     `json:"window:blur,omitempty"`
+	WindowOpacity                       *float64 `json:"window:opacity,omitempty"`
+	WindowBgColor                       string   `json:"window:bgcolor,omitempty"`
+	WindowReducedMotion                 bool     `json:"window:reducedmotion,omitempty"`
+	WindowTileGapSize                   *int64   `json:"window:tilegapsize,omitempty"`
+	WindowShowMenuBar                   bool     `json:"window:showmenubar,omitempty"`
+	WindowNativeTitleBar                bool     `json:"window:nativetitlebar,omitempty"`
+	WindowDisableHardwareAcceleration   bool     `json:"window:disablehardwareacceleration,omitempty"`
+	WindowMaxTabCacheSize               int      `json:"window:maxtabcachesize,omitempty"`
+	WindowMagnifiedBlockOpacity         *float64 `json:"window:magnifiedblockopacity,omitempty"`
+	WindowMagnifiedBlockSize            *float64 `json:"window:magnifiedblocksize,omitempty"`
+	WindowMagnifiedBlockBlurPrimaryPx   *int64   `json:"window:magnifiedblockblurprimarypx,omitempty"`
+	WindowMagnifiedBlockBlurSecondaryPx *int64   `json:"window:magnifiedblockblursecondarypx,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
@@ -169,6 +173,10 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 
 func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
 	barr, readErr := fs.ReadFile(fsys, fileName)
+	if readErr != nil && strings.Contains(readErr.Error(), "invalid argument") {
+		// If we get an `invalid argument` error, we may be using the wrong path separator for the given FS interface. Try switching the separator.
+		barr, readErr = fs.ReadFile(fsys, filepath.ToSlash(fileName))
+	}
 	return readConfigHelper(logPrefix+fileName, barr, readErr)
 }
 

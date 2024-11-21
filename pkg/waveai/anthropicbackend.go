@@ -10,11 +10,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"runtime/debug"
 	"strings"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -115,17 +114,10 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Ope
 
 	go func() {
 		defer func() {
-			if r := recover(); r != nil {
-				// Convert panic to error and send it
-				log.Printf("panic: %v\n", r)
-				debug.PrintStack()
-				err, ok := r.(error)
-				if !ok {
-					err = fmt.Errorf("anthropic backend panic: %v", r)
-				}
-				rtn <- makeAIError(err)
+			panicErr := panichandler.PanicHandler("AnthropicBackend.StreamCompletion")
+			if panicErr != nil {
+				rtn <- makeAIError(panicErr)
 			}
-			// Always close the channel
 			close(rtn)
 		}()
 

@@ -3,97 +3,98 @@ import ComponentCreator from '@docusaurus/ComponentCreator';
 
 export default [
   {
-    path: '/search',
-    component: ComponentCreator('/search', '5de'),
-    exact: true
-  },
-  {
-    path: '/',
-    component: ComponentCreator('/', '9e4'),
+    path: '/docsite/',
+    component: ComponentCreator('/docsite/', '2ab'),
     routes: [
       {
-        path: '/',
-        component: ComponentCreator('/', 'a85'),
+        path: '/docsite/',
+        component: ComponentCreator('/docsite/', '837'),
         routes: [
           {
-            path: '/',
-            component: ComponentCreator('/', '1d9'),
+            path: '/docsite/',
+            component: ComponentCreator('/docsite/', 'd82'),
             routes: [
               {
-                path: '/config',
-                component: ComponentCreator('/config', '451'),
+                path: '/docsite/config',
+                component: ComponentCreator('/docsite/config', 'a2a'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/connections',
-                component: ComponentCreator('/connections', 'b73'),
+                path: '/docsite/connections',
+                component: ComponentCreator('/docsite/connections', 'f42'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/customization',
-                component: ComponentCreator('/customization', '194'),
+                path: '/docsite/customization',
+                component: ComponentCreator('/docsite/customization', '866'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/customwidgets',
-                component: ComponentCreator('/customwidgets', '96c'),
+                path: '/docsite/customwidgets',
+                component: ComponentCreator('/docsite/customwidgets', '8db'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/faq',
-                component: ComponentCreator('/faq', '850'),
+                path: '/docsite/faq',
+                component: ComponentCreator('/docsite/faq', 'a19'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/keybindings',
-                component: ComponentCreator('/keybindings', 'a8d'),
+                path: '/docsite/gettingstarted',
+                component: ComponentCreator('/docsite/gettingstarted', '8c4'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/layout',
-                component: ComponentCreator('/layout', '69f'),
+                path: '/docsite/keybindings',
+                component: ComponentCreator('/docsite/keybindings', '36a'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/quickstart',
-                component: ComponentCreator('/quickstart', 'd2c'),
+                path: '/docsite/layout',
+                component: ComponentCreator('/docsite/layout', '170'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/releasenotes',
-                component: ComponentCreator('/releasenotes', '8b8'),
+                path: '/docsite/presets',
+                component: ComponentCreator('/docsite/presets', 'e74'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/telemetry',
-                component: ComponentCreator('/telemetry', 'ce6'),
+                path: '/docsite/releasenotes',
+                component: ComponentCreator('/docsite/releasenotes', '49b'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/widgets',
-                component: ComponentCreator('/widgets', 'a31'),
+                path: '/docsite/telemetry',
+                component: ComponentCreator('/docsite/telemetry', 'b75'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/wsh',
-                component: ComponentCreator('/wsh', 'b75'),
+                path: '/docsite/widgets',
+                component: ComponentCreator('/docsite/widgets', '5bf'),
                 exact: true,
                 sidebar: "defaultSidebar"
               },
               {
-                path: '/',
-                component: ComponentCreator('/', '87e'),
+                path: '/docsite/wsh',
+                component: ComponentCreator('/docsite/wsh', '493'),
+                exact: true,
+                sidebar: "defaultSidebar"
+              },
+              {
+                path: '/docsite/',
+                component: ComponentCreator('/docsite/', '6cc'),
                 exact: true,
                 sidebar: "defaultSidebar"
               }

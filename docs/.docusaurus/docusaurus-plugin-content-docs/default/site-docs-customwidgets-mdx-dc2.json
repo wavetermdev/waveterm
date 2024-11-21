@@ -1,14 +1,13 @@
 {
   "id": "customwidgets",
   "title": "Custom Widgets",
-  "description": "Wave allows users to create their own widgets to uniquely customize their experience for what works for them. While we plan on greatly expanding on this in the future, it is already possible to make some widgets that you can access at the press of a button. All widgets can be created by modifying the /config/widgets.json file.",
+  "description": "Wave allows users to create their own widgets to uniquely customize their experience for what works for them. While we plan on greatly expanding on this in the future, it is already possible to make some widgets that you can access at the press of a button. All widgets can be created by modifying the /config/widgets.json file. By adding a widget to this file, it is possible to add widgets to the widget bar. By default, the widget bar looks like this:",
   "source": "@site/docs/customwidgets.mdx",
   "sourceDirName": ".",
   "slug": "/customwidgets",
-  "permalink": "/customwidgets",
+  "permalink": "/docsite/customwidgets",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/customwidgets.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 6,
@@ -20,10 +19,10 @@
   "sidebar": "defaultSidebar",
   "previous": {
     "title": "Widgets",
-    "permalink": "/widgets"
+    "permalink": "/docsite/widgets"
   },
   "next": {
     "title": "Connections",
-    "permalink": "/connections"
+    "permalink": "/docsite/connections"
   }
 }

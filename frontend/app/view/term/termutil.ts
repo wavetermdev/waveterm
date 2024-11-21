@@ -1,20 +1,18 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as util from "@/util/util";
+export const DefaultTermTheme = "default-dark";
 
-function computeTheme(fullConfig: FullConfigType, themeName: string): TermThemeType {
-    let defaultThemeName = "default-dark";
-    themeName = themeName ?? "default-dark";
-    const defaultTheme: TermThemeType = fullConfig?.termthemes?.[defaultThemeName] || ({} as any);
-    const theme: TermThemeType = fullConfig?.termthemes?.[themeName] || ({} as any);
-    const combinedTheme = { ...defaultTheme };
-    for (const key in theme) {
-        if (!util.isBlank(theme[key])) {
-            combinedTheme[key] = theme[key];
-        }
+// returns (theme, bgcolor)
+function computeTheme(fullConfig: FullConfigType, themeName: string): [TermThemeType, string] {
+    let theme: TermThemeType = fullConfig?.termthemes?.[themeName];
+    if (theme == null) {
+        theme = fullConfig?.termthemes?.[DefaultTermTheme] || ({} as any);
     }
-    return combinedTheme;
+    const themeCopy = { ...theme };
+    let bgcolor = themeCopy.background;
+    themeCopy.background = "#00000000";
+    return [themeCopy, bgcolor];
 }
 
 export { computeTheme };

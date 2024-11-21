@@ -1,19 +1,18 @@
 {
   "id": "index",
   "title": "Home",
-  "description": "Wave is an open-source terminal that adds the ability to launch graphical widgets, controlled and integrated directly with the CLI. We support MacOS, Linux, and Windows (Downloads).",
+  "description": "Wave is an open-source terminal that adds the ability to launch graphical widgets, controlled and integrated directly with the CLI. We support MacOS, Linux, and Windows (Getting Started).",
   "source": "@site/docs/index.mdx",
   "sourceDirName": ".",
   "slug": "/",
-  "permalink": "/",
+  "permalink": "/docsite/",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/index.mdx",
   "tags": [],
   "version": "current",
-  "sidebarPosition": 1,
+  "sidebarPosition": -1,
   "frontMatter": {
-    "sidebar_position": 1,
+    "sidebar_position": -1,
     "id": "index",
     "title": "Home",
     "hide_title": true,
@@ -21,7 +20,7 @@
   },
   "sidebar": "defaultSidebar",
   "next": {
-    "title": "Quickstart",
-    "permalink": "/quickstart"
+    "title": "Getting Started",
+    "permalink": "/docsite/gettingstarted"
   }
 }

@@ -240,7 +240,7 @@ export class WaveAiModel implements ViewModel {
                                 file: path,
                             },
                         };
-                        await createBlock(blockDef, true);
+                        await createBlock(blockDef, false, true);
                     });
                 },
             });
@@ -251,6 +251,15 @@ export class WaveAiModel implements ViewModel {
                 items: dropdownItems,
             });
             return viewTextChildren;
+        });
+        this.endIconButtons = atom((_) => {
+            let clearButton: IconButtonDecl = {
+                elemtype: "iconbutton",
+                icon: "delete-left",
+                title: "Clear Chat History",
+                click: this.clearMessages.bind(this),
+            };
+            return [clearButton];
         });
     }
 
@@ -386,6 +395,19 @@ export class WaveAiModel implements ViewModel {
             messages,
             sendMessage: this.sendMessage.bind(this),
         };
+    }
+
+    async clearMessages() {
+        await BlockService.SaveWaveAiData(this.blockId, []);
+        globalStore.set(this.messagesAtom, []);
+    }
+
+    keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
+        if (checkKeyPressed(waveEvent, "Cmd:l")) {
+            this.clearMessages();
+            return true;
+        }
+        return false;
     }
 }
 

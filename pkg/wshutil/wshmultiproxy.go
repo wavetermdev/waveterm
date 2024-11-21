@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -112,6 +113,7 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		p.setRouteInfo(routeInfo.AuthToken, routeInfo)
 		p.sendAuthResponse(msg, routeId, routeInfo.AuthToken)
 		go func() {
+			defer panichandler.PanicHandler("WshRpcMultiProxy:handleUnauthMessage")
 			for msgBytes := range routeInfo.Proxy.ToRemoteCh {
 				p.ToRemoteCh <- msgBytes
 			}

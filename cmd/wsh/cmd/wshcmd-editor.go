@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ var editorCmd = &cobra.Command{
 	Use:     "editor",
 	Short:   "edit a file (blocks until editor is closed)",
 	Args:    cobra.ExactArgs(1),
-	Run:     editorRun,
+	RunE:    editorRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -30,21 +31,22 @@ func init() {
 	rootCmd.AddCommand(editorCmd)
 }
 
-func editorRun(cmd *cobra.Command, args []string) {
+func editorRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("editor", rtnErr == nil)
+	}()
+
 	fileArg := args[0]
 	absFile, err := filepath.Abs(fileArg)
 	if err != nil {
-		WriteStderr("[error] getting absolute path: %v\n", err)
-		return
+		return fmt.Errorf("getting absolute path: %w", err)
 	}
 	_, err = os.Stat(absFile)
 	if err == fs.ErrNotExist {
-		WriteStderr("[error] file does not exist: %q\n", absFile)
-		return
+		return fmt.Errorf("file does not exist: %q", absFile)
 	}
 	if err != nil {
-		WriteStderr("[error] getting file info: %v\n", err)
-		return
+		return fmt.Errorf("getting file info: %w", err)
 	}
 	wshCmd := wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
@@ -61,8 +63,7 @@ func editorRun(cmd *cobra.Command, args []string) {
 	}
 	blockRef, err := wshclient.CreateBlockCommand(RpcClient, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
-		WriteStderr("[error] running view command: %v\r\n", err)
-		return
+		return fmt.Errorf("running view command: %w", err)
 	}
 	doneCh := make(chan bool)
 	RpcClient.EventListener.On(wps.Event_BlockClose, func(event *wps.WaveEvent) {
@@ -72,4 +73,5 @@ func editorRun(cmd *cobra.Command, args []string) {
 	})
 	wshclient.EventSubCommand(RpcClient, wps.SubscriptionRequest{Event: wps.Event_BlockClose, Scopes: []string{blockRef.String()}}, nil)
 	<-doneCh
+	return nil
 }

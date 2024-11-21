@@ -51,11 +51,7 @@ func init() {
 }
 
 func webGetRun(cmd *cobra.Command, args []string) error {
-	oref := blockArg
-	if oref == "" {
-		return fmt.Errorf("blockid not specified")
-	}
-	fullORef, err := resolveSimpleId(oref)
+	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return fmt.Errorf("resolving blockid: %w", err)
 	}
@@ -97,7 +93,11 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func webOpenRun(cmd *cobra.Command, args []string) error {
+func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("web", rtnErr == nil)
+	}()
+
 	wshCmd := wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]any{

@@ -48,6 +48,7 @@ export class WebViewModel implements ViewModel {
     endIconButtons?: Atom<IconButtonDecl[]>;
     mediaPlaying: PrimitiveAtom<boolean>;
     mediaMuted: PrimitiveAtom<boolean>;
+    modifyExternalUrl?: (url: string) => string;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
@@ -142,7 +143,8 @@ export class WebViewModel implements ViewModel {
                     title: "Open in External Browser",
                     click: () => {
                         if (url != null && url != "") {
-                            return getApi().openExternal(url);
+                            const externalUrl = this.modifyExternalUrl?.(url) ?? url;
+                            return getApi().openExternal(externalUrl);
                         }
                     },
                 },

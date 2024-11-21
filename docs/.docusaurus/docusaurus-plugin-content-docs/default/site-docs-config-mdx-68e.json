@@ -5,10 +5,9 @@
   "source": "@site/docs/config.mdx",
   "sourceDirName": ".",
   "slug": "/config",
-  "permalink": "/config",
+  "permalink": "/docsite/config",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/config.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 3,
@@ -20,10 +19,10 @@
   "sidebar": "defaultSidebar",
   "previous": {
     "title": "Tab Layout System",
-    "permalink": "/layout"
+    "permalink": "/docsite/layout"
   },
   "next": {
-    "title": "wsh command",
-    "permalink": "/wsh"
+    "title": "Presets",
+    "permalink": "/docsite/presets"
   }
 }

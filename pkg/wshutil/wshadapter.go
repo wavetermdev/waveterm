@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -131,6 +132,7 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 				return true
 			}
 			go func() {
+				defer panichandler.PanicHandler("serverImplAdapter:responseStream")
 				defer handler.Finalize()
 				// must use reflection here because we don't know the generic type of RespOrErrorUnion
 				for {

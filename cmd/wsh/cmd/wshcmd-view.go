@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -20,7 +21,7 @@ var viewCmd = &cobra.Command{
 	Use:     "view {file|directory|URL}",
 	Short:   "preview/edit a file or directory",
 	Args:    cobra.ExactArgs(1),
-	Run:     viewRun,
+	RunE:    viewRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -28,7 +29,7 @@ var editCmd = &cobra.Command{
 	Use:     "edit {file}",
 	Short:   "edit a file",
 	Args:    cobra.ExactArgs(1),
-	Run:     viewRun,
+	RunE:    viewRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -38,7 +39,10 @@ func init() {
 	rootCmd.AddCommand(editCmd)
 }
 
-func viewRun(cmd *cobra.Command, args []string) {
+func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("view", rtnErr == nil)
+	}()
 	fileArg := args[0]
 	conn := RpcContext.Conn
 	var wshCmd *wshrpc.CommandCreateBlockData
@@ -55,22 +59,18 @@ func viewRun(cmd *cobra.Command, args []string) {
 	} else {
 		absFile, err := filepath.Abs(fileArg)
 		if err != nil {
-			WriteStderr("[error] getting absolute path: %v\n", err)
-			return
+			return fmt.Errorf("getting absolute path: %w", err)
 		}
 		absParent, err := filepath.Abs(filepath.Dir(fileArg))
 		if err != nil {
-			WriteStderr("[error] getting absolute path of parent dir: %v\n", err)
-			return
+			return fmt.Errorf("getting absolute path of parent dir: %w", err)
 		}
 		_, err = os.Stat(absParent)
 		if err == fs.ErrNotExist {
-			WriteStderr("[error] parent directory does not exist: %q\n", absParent)
-			return
+			return fmt.Errorf("parent directory does not exist: %q", absParent)
 		}
 		if err != nil {
-			WriteStderr("[error] getting file info: %v\n", err)
-			return
+			return fmt.Errorf("getting file info: %w", err)
 		}
 		wshCmd = &wshrpc.CommandCreateBlockData{
 			BlockDef: &waveobj.BlockDef{
@@ -90,7 +90,7 @@ func viewRun(cmd *cobra.Command, args []string) {
 	}
 	_, err := RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
-		WriteStderr("[error] running view command: %v\r\n", err)
-		return
+		return fmt.Errorf("running view command: %w", err)
 	}
+	return nil
 }

@@ -130,6 +130,52 @@
         .heading.is-6 {
             font-size: 0.85em;
         }
+
+        .waveblock {
+            margin: 16px 0;
+
+            .wave-block-content {
+                display: flex;
+                align-items: center;
+                padding: 12px;
+                background-color: var(--highlight-bg-color);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                transition: background-color 0.2s ease;
+            }
+
+            .wave-block-icon {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 40px;
+                background-color: black;
+                border-radius: 8px;
+                margin-right: 12px;
+            }
+
+            .wave-block-icon i {
+                font-size: 18px;
+                color: var(--secondary-text-color);
+            }
+
+            .wave-block-info {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .wave-block-filename {
+                font-size: 14px;
+                font-weight: 500;
+                color: var(--main-text-color);
+            }
+
+            .wave-block-size {
+                font-size: 12px;
+                color: var(--secondary-text-color);
+            }
+        }
     }
 
     // The TOC view should scroll independently of the contents view.

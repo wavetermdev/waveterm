@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package vdomclient
+package waveapp
 
 import (
 	"bytes"
@@ -10,25 +10,25 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-type VDomServerImpl struct {
+type WaveAppServerImpl struct {
 	Client  *Client
 	BlockId string
 }
 
-func (*VDomServerImpl) WshServerImpl() {}
+func (*WaveAppServerImpl) WshServerImpl() {}
 
-func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
+func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
 	respChan := make(chan wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate], 5)
-
 	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("panic in VDomRenderCommand: %v\n", r)
+		panicErr := panichandler.PanicHandler("VDomRenderCommand")
+		if panicErr != nil {
 			respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
-				Error: fmt.Errorf("internal error: %v", r),
+				Error: panicErr,
 			}
 			close(respChan)
 		}
@@ -88,6 +88,7 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 	// Split the update into chunks and send them sequentially
 	updates := vdom.SplitBackendUpdate(update)
 	go func() {
+		defer panichandler.PanicHandler("VDomRenderCommand:splitUpdates")
 		defer close(respChan)
 		for _, splitUpdate := range updates {
 			respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
@@ -99,7 +100,7 @@ func (impl *VDomServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom
 	return respChan
 }
 
-func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshrpc.VDomUrlRequestData) chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse] {
+func (impl *WaveAppServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshrpc.VDomUrlRequestData) chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse] {
 	respChan := make(chan wshrpc.RespOrErrorUnion[wshrpc.VDomUrlRequestResponse])
 	writer := NewStreamingResponseWriter(respChan)
 
@@ -108,9 +109,10 @@ func (impl *VDomServerImpl) VDomUrlRequestCommand(ctx context.Context, data wshr
 		defer writer.Close()  // Ensures writer is closed before the channel is closed
 
 		defer func() {
-			if r := recover(); r != nil {
+			panicErr := panichandler.PanicHandler("VDomUrlRequestCommand")
+			if panicErr != nil {
 				writer.WriteHeader(http.StatusInternalServerError)
-				writer.Write([]byte(fmt.Sprintf("internal server error: %v", r)))
+				writer.Write([]byte(fmt.Sprintf("internal server error: %v", panicErr)))
 			}
 		}()
 

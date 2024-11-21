@@ -6,10 +6,12 @@ import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { atoms, createBlock } from "@/store/global";
+import { atoms, createBlock, isDev } from "@/store/global";
 import { isBlank, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
+import { NotificationPopover } from "../notification/notificationpopover";
+
 import "./workspace.less";
 
 const iconRegex = /^[a-z0-9-]+$/;
@@ -64,6 +66,7 @@ const Widgets = memo(() => {
                     <Widget key="help" widget={helpWidget} />
                 </>
             ) : null}
+            {isDev() ? <NotificationPopover /> : null}
         </div>
     );
 });

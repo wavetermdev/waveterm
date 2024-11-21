@@ -1,78 +1,83 @@
 {
   "docusaurus-plugin-content-docs": {
     "default": {
-      "path": "/",
+      "path": "/docsite/",
       "versions": [
         {
           "name": "current",
           "label": "Next",
           "isLast": true,
-          "path": "/",
+          "path": "/docsite/",
           "mainDocId": "index",
           "docs": [
             {
               "id": "config",
-              "path": "/config",
+              "path": "/docsite/config",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "connections",
-              "path": "/connections",
+              "path": "/docsite/connections",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "customization",
-              "path": "/customization",
+              "path": "/docsite/customization",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "customwidgets",
-              "path": "/customwidgets",
+              "path": "/docsite/customwidgets",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "faq",
-              "path": "/faq",
+              "path": "/docsite/faq",
+              "sidebar": "defaultSidebar"
+            },
+            {
+              "id": "gettingstarted",
+              "path": "/docsite/gettingstarted",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "index",
-              "path": "/",
+              "path": "/docsite/",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "keybindings",
-              "path": "/keybindings",
+              "path": "/docsite/keybindings",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "layout",
-              "path": "/layout",
+              "path": "/docsite/layout",
               "sidebar": "defaultSidebar"
             },
             {
-              "id": "quickstart",
-              "path": "/quickstart",
+              "id": "presets",
+              "path": "/docsite/presets",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "releasenotes",
-              "path": "/releasenotes",
+              "path": "/docsite/releasenotes",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "telemetry",
-              "path": "/telemetry",
+              "path": "/docsite/telemetry",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "widgets",
-              "path": "/widgets",
+              "path": "/docsite/widgets",
               "sidebar": "defaultSidebar"
             },
             {
               "id": "wsh",
-              "path": "/wsh",
+              "path": "/docsite/wsh",
               "sidebar": "defaultSidebar"
             }
           ],
@@ -80,7 +85,7 @@
           "sidebars": {
             "defaultSidebar": {
               "link": {
-                "path": "/",
+                "path": "/docsite/",
                 "label": "index"
               }
             }

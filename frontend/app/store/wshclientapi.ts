@@ -7,6 +7,11 @@ import { WshClient } from "./wshclient";
 
 // WshServerCommandToDeclMap
 class RpcApiType {
+    // command "activity" [call]
+    ActivityCommand(client: WshClient, data: ActivityUpdate, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("activity", data, opts);
+    }
+
     // command "aisendmessage" [call]
     AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("aisendmessage", data, opts);
@@ -132,6 +137,26 @@ class RpcApiType {
         return client.wshRpcCall("fileappendijson", data, opts);
     }
 
+    // command "filecreate" [call]
+    FileCreateCommand(client: WshClient, data: CommandFileCreateData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("filecreate", data, opts);
+    }
+
+    // command "filedelete" [call]
+    FileDeleteCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("filedelete", data, opts);
+    }
+
+    // command "fileinfo" [call]
+    FileInfoCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<WaveFileInfo> {
+        return client.wshRpcCall("fileinfo", data, opts);
+    }
+
+    // command "filelist" [call]
+    FileListCommand(client: WshClient, data: CommandFileListData, opts?: RpcOpts): Promise<WaveFileInfo[]> {
+        return client.wshRpcCall("filelist", data, opts);
+    }
+
     // command "fileread" [call]
     FileReadCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("fileread", data, opts);
@@ -150,6 +175,11 @@ class RpcApiType {
     // command "getupdatechannel" [call]
     GetUpdateChannelCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("getupdatechannel", null, opts);
+    }
+
+    // command "getvar" [call]
+    GetVarCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<CommandVarResponseData> {
+        return client.wshRpcCall("getvar", data, opts);
     }
 
     // command "message" [call]
@@ -217,6 +247,11 @@ class RpcApiType {
         return client.wshRpcCall("setmeta", data, opts);
     }
 
+    // command "setvar" [call]
+    SetVarCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setvar", data, opts);
+    }
+
     // command "setview" [call]
     SetViewCommand(client: WshClient, data: CommandBlockSetViewData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setview", data, opts);
@@ -275,6 +310,11 @@ class RpcApiType {
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
+    }
+
+    // command "wshactivity" [call]
+    WshActivityCommand(client: WshClient, data: {[key: string]: number}, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("wshactivity", data, opts);
     }
 
     // command "wsldefaultdistro" [call]

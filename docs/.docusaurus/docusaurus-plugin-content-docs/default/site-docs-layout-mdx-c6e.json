@@ -5,10 +5,9 @@
   "source": "@site/docs/layout.mdx",
   "sourceDirName": ".",
   "slug": "/layout",
-  "permalink": "/layout",
+  "permalink": "/docsite/layout",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/layout.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 2,
@@ -20,10 +19,10 @@
   "sidebar": "defaultSidebar",
   "previous": {
     "title": "Key Bindings",
-    "permalink": "/keybindings"
+    "permalink": "/docsite/keybindings"
   },
   "next": {
     "title": "Configuration",
-    "permalink": "/config"
+    "permalink": "/docsite/config"
   }
 }

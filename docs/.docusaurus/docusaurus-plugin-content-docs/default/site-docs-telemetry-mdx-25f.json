@@ -5,10 +5,9 @@
   "source": "@site/docs/telemetry.mdx",
   "sourceDirName": ".",
   "slug": "/telemetry",
-  "permalink": "/telemetry",
+  "permalink": "/docsite/telemetry",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/telemetry.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 100,
@@ -20,10 +19,10 @@
   "sidebar": "defaultSidebar",
   "previous": {
     "title": "Connections",
-    "permalink": "/connections"
+    "permalink": "/docsite/connections"
   },
   "next": {
     "title": "FAQ",
-    "permalink": "/faq"
+    "permalink": "/docsite/faq"
   }
 }

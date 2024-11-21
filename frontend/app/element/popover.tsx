@@ -1,10 +1,16 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { Button } from "@/element/button";
 import {
+    autoUpdate,
     FloatingPortal,
     offset as offsetMiddleware,
+    useClick,
     useDismiss,
     useFloating,
     useInteractions,
+    type OffsetOptions,
     type Placement,
 } from "@floating-ui/react";
 import clsx from "clsx";
@@ -26,8 +32,8 @@ interface PopoverProps {
     children: ReactNode;
     className?: string;
     placement?: Placement;
-    offset?: number;
-    onOpenChange?: (isOpen: boolean) => void;
+    offset?: OffsetOptions;
+    onDismiss?: () => void;
 }
 
 const isPopoverButton = (
@@ -42,23 +48,27 @@ const isPopoverContent = (
     return element.type === PopoverContent;
 };
 
-const Popover = memo(({ children, className, placement = "bottom-start", offset = 3, onOpenChange }: PopoverProps) => {
+const Popover = memo(({ children, className, placement = "bottom-start", offset = 3, onDismiss }: PopoverProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
-    const toggleOpen = () => {
-        setIsOpen((prev) => !prev);
-        onOpenChange?.(!isOpen);
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (!open && onDismiss) {
+            onDismiss();
+        }
     };
 
     const { refs, floatingStyles, context } = useFloating({
         placement,
         open: isOpen,
-        onOpenChange: setIsOpen,
+        onOpenChange: handleOpenChange,
         middleware: [offsetMiddleware(offset)],
+        whileElementsMounted: autoUpdate,
     });
 
+    const click = useClick(context);
     const dismiss = useDismiss(context);
-    const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
+    const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss]);
 
     const renderChildren = Children.map(children, (child) => {
         if (isValidElement(child)) {
@@ -67,7 +77,7 @@ const Popover = memo(({ children, className, placement = "bottom-start", offset 
                     isActive: isOpen,
                     ref: refs.setReference,
                     getReferenceProps,
-                    onClick: toggleOpen,
+                    // Do not overwrite onClick
                 });
             }
 
@@ -90,20 +100,45 @@ const Popover = memo(({ children, className, placement = "bottom-start", offset 
 interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     isActive?: boolean;
     children: React.ReactNode;
-    onClick?: () => void;
     getReferenceProps?: () => any;
     as?: keyof JSX.IntrinsicElements | React.ComponentType<any>;
 }
 
 const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButtonProps>(
-    ({ isActive, children, onClick, getReferenceProps, className, as: Component = "button", ...props }, ref) => {
+    (
+        {
+            isActive,
+            children,
+            onClick: userOnClick, // Destructured from props
+            getReferenceProps,
+            className,
+            as: Component = "button",
+            ...props // The rest of the props, without onClick
+        },
+        ref
+    ) => {
+        const referenceProps = getReferenceProps?.() || {};
+        const popoverOnClick = referenceProps.onClick;
+
+        // Remove onClick from referenceProps to prevent it from overwriting our combinedOnClick
+        const { onClick: refOnClick, ...restReferenceProps } = referenceProps;
+
+        const combinedOnClick = (event: React.MouseEvent) => {
+            if (userOnClick) {
+                userOnClick(event as any); // Our custom onClick logic
+            }
+            if (popoverOnClick) {
+                popoverOnClick(event); // Popover's onClick logic
+            }
+        };
+
         return (
             <Button
                 ref={ref}
                 className={clsx("popover-button", className, { "is-active": isActive })}
-                onClick={onClick}
-                {...getReferenceProps?.()}
-                {...props}
+                {...props} // Spread the rest of the props
+                {...restReferenceProps} // Spread referenceProps without onClick
+                onClick={combinedOnClick} // Assign combined onClick after spreading
             >
                 {children}
             </Button>

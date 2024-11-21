@@ -7,6 +7,7 @@
 :root {
     --main-text-color: #f7f7f7;
     --title-font-size: 18px;
+    --window-opacity: 1;
     --secondary-text-color: rgb(195, 200, 194);
     --grey-text-color: #666;
     --main-bg-color: rgb(34, 34, 34);
@@ -56,10 +57,14 @@
     --zindex-tab-name: 3;
     --zindex-layout-display-container: 0;
     --zindex-layout-last-magnified-node: 1;
-    --zindex-layout-resize-handle: 2;
-    --zindex-layout-placeholder-container: 3;
-    --zindex-layout-overlay-container: 4;
-    --zindex-layout-magnified-node: 5;
+    --zindex-layout-last-ephemeral-node: 2;
+    --zindex-layout-resize-handle: 3;
+    --zindex-layout-placeholder-container: 4;
+    --zindex-layout-overlay-container: 5;
+    --zindex-layout-magnified-node-backdrop: 6;
+    --zindex-layout-magnified-node: 7;
+    --zindex-layout-ephemeral-node-backdrop: 8;
+    --zindex-layout-ephemeral-node: 9;
     --zindex-block-mask-inner: 10;
     --zindex-flash-error-container: 550;
     --zindex-app-background: -1;
@@ -105,6 +110,7 @@
     --conn-icon-color-6: #ffa24e;
     --conn-icon-color-7: #dbde52;
     --conn-icon-color-8: #58c142;
+    --conn-status-overlay-bg-color: rgba(230, 186, 30, 0.2);
 
     --sysinfo-cpu-color: #58c142;
     --sysinfo-mem-color: #53b4ea;

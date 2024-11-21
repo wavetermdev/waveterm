@@ -5,10 +5,9 @@
   "source": "@site/docs/wsh.mdx",
   "sourceDirName": ".",
   "slug": "/wsh",
-  "permalink": "/wsh",
+  "permalink": "/docsite/wsh",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/wsh.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 4,
@@ -19,11 +18,11 @@
   },
   "sidebar": "defaultSidebar",
   "previous": {
-    "title": "Configuration",
-    "permalink": "/config"
+    "title": "Presets",
+    "permalink": "/docsite/presets"
   },
   "next": {
     "title": "Widgets",
-    "permalink": "/widgets"
+    "permalink": "/docsite/widgets"
   }
 }

@@ -5,10 +5,9 @@
   "source": "@site/docs/keybindings.mdx",
   "sourceDirName": ".",
   "slug": "/keybindings",
-  "permalink": "/keybindings",
+  "permalink": "/docsite/keybindings",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/keybindings.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 2,
@@ -20,10 +19,10 @@
   "sidebar": "defaultSidebar",
   "previous": {
     "title": "Customization",
-    "permalink": "/customization"
+    "permalink": "/docsite/customization"
   },
   "next": {
     "title": "Tab Layout System",
-    "permalink": "/layout"
+    "permalink": "/docsite/layout"
   }
 }

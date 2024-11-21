@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"golang.org/x/crypto/ssh"
 )
@@ -51,6 +52,7 @@ func (cw CmdWrap) KillGraceful(timeout time.Duration) {
 		cw.Cmd.Process.Signal(syscall.SIGTERM)
 	}
 	go func() {
+		defer panichandler.PanicHandler("KillGraceful:Kill")
 		time.Sleep(timeout)
 		if cw.Cmd.ProcessState == nil || !cw.Cmd.ProcessState.Exited() {
 			cw.Cmd.Process.Kill() // force kill if it is already not exited
@@ -159,6 +161,7 @@ func (wcw WslCmdWrap) KillGraceful(timeout time.Duration) {
 	}
 	process.Signal(os.Interrupt)
 	go func() {
+		defer panichandler.PanicHandler("KillGraceful-wsl:Kill")
 		time.Sleep(timeout)
 		process := wcw.WslCmd.GetProcess()
 		processState := wcw.WslCmd.GetProcessState()

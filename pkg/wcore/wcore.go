@@ -12,9 +12,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -118,6 +120,7 @@ func CreateTab(ctx context.Context, windowId string, tabName string, activateTab
 			return "", fmt.Errorf("error setting active tab: %w", err)
 		}
 	}
+	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")
 	return tab.OID, nil
 }
 
@@ -213,6 +216,13 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 			return nil, false, fmt.Errorf("error updating client: %w", err)
 		}
 	}
+	if client.TempOID == "" {
+		client.TempOID = uuid.NewString()
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return nil, false, fmt.Errorf("error updating client: %w", err)
+		}
+	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
 		checkAndFixWindow(ctx, client.WindowIds[0])
@@ -266,13 +276,14 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
 	go func() {
+		defer panichandler.PanicHandler("CreateBlock:telemetry")
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
 		if blockView == "" {
 			return
 		}
 		tctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancelFn()
-		telemetry.UpdateActivity(tctx, telemetry.ActivityUpdate{
+		telemetry.UpdateActivity(tctx, wshrpc.ActivityUpdate{
 			Renderers: map[string]int{blockView: 1},
 		})
 	}()

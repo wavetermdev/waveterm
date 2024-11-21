@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getSettingsKeyAtom } from "@/app/store/global";
 import { atomWithThrottle, boundNumber } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -171,6 +172,8 @@ export class LayoutModel {
      * Atom pointing to the currently focused node.
      */
     focusedNode: Atom<LayoutNode>;
+
+    // TODO: Nodes that need to be placed at higher z-indices should probably be handled by an ordered list, rather than individual properties.
     /**
      * The currently magnified node.
      */
@@ -179,6 +182,15 @@ export class LayoutModel {
      * The last node to be magnified, other than the current magnified node, if set. This node should sit at a higher z-index than the others so that it floats above the other nodes as it returns to its original position.
      */
     lastMagnifiedNodeId: string;
+    /**
+     * Atom holding an ephemeral node that is not part of the layout tree. This node displays above all other nodes.
+     */
+    ephemeralNode: PrimitiveAtom<LayoutNode>;
+    /**
+     * The last node to be an ephemeral node. This node should sit at a higher z-index than the others so that it floats above the other nodes as it returns to its original position.
+     */
+    lastEphemeralNodeId: string;
+    magnifiedNodeSizeAtom: Atom<number>;
 
     /**
      * The size of the resize handles, in CSS pixels.
@@ -266,6 +278,9 @@ export class LayoutModel {
                 return newTransform;
             }
         });
+
+        this.ephemeralNode = atom();
+        this.magnifiedNodeSizeAtom = getSettingsKeyAtom("window:magnifiedblocksize");
 
         this.focusedNode = atom((get) => {
             const treeState = get(this.treeStateAtom);
@@ -366,6 +381,7 @@ export class LayoutModel {
         if (this.lastTreeStateGeneration < this.treeState.generation) {
             if (this.magnifiedNodeId !== this.treeState.magnifiedNodeId) {
                 this.lastMagnifiedNodeId = this.magnifiedNodeId;
+                this.lastEphemeralNodeId = undefined;
                 this.magnifiedNodeId = this.treeState.magnifiedNodeId;
             }
             this.updateTree();
@@ -388,6 +404,7 @@ export class LayoutModel {
             treeState?.pendingBackendActions?.length
         ) {
             this.treeState = treeState;
+            this.magnifiedNodeId = treeState.magnifiedNodeId;
 
             if (this.treeState?.pendingBackendActions?.length) {
                 const actions = this.treeState.pendingBackendActions;
@@ -486,10 +503,36 @@ export class LayoutModel {
                     ? (pendingAction as LayoutTreeResizeNodeAction)
                     : null;
             const resizeHandleSizePx = this.getter(this.resizeHandleSizePx);
+
+            const boundingRect = this.getBoundingRect();
+
+            const magnifiedNodeSize = this.getter(this.magnifiedNodeSizeAtom);
+
             const callback = (node: LayoutNode) =>
-                this.updateTreeHelper(node, newAdditionalProps, newLeafs, resizeHandleSizePx, resizeAction);
+                this.updateTreeHelper(
+                    node,
+                    newAdditionalProps,
+                    newLeafs,
+                    resizeHandleSizePx,
+                    magnifiedNodeSize,
+                    boundingRect,
+                    resizeAction
+                );
             if (balanceTree) this.treeState.rootNode = balanceNode(this.treeState.rootNode, callback);
             else walkNodes(this.treeState.rootNode, callback);
+
+            // Process ephemeral node, if present.
+            const ephemeralNode = this.getter(this.ephemeralNode);
+            if (ephemeralNode) {
+                console.log("updateTree ephemeralNode", ephemeralNode);
+                this.updateEphemeralNodeProps(
+                    ephemeralNode,
+                    newAdditionalProps,
+                    newLeafs,
+                    magnifiedNodeSize,
+                    boundingRect
+                );
+            }
 
             this.treeState.leafOrder = getLeafOrder(newLeafs, newAdditionalProps);
             this.validateFocusedNode(this.treeState.leafOrder);
@@ -516,36 +559,34 @@ export class LayoutModel {
         additionalPropsMap: Record<string, LayoutNodeAdditionalProps>,
         leafs: LayoutNode[],
         resizeHandleSizePx: number,
+        magnifiedNodeSizePct: number,
+        boundingRect: Dimensions,
         resizeAction?: LayoutTreeResizeNodeAction
     ) {
-        /**
-         * Gets normalized dimensions for the TileLayout container.
-         * @returns The normalized dimensions for the TileLayout container.
-         */
-        const getBoundingRect: () => Dimensions = () => {
-            const boundingRect = this.displayContainerRef.current.getBoundingClientRect();
-            return { top: 0, left: 0, width: boundingRect.width, height: boundingRect.height };
-        };
-
         if (!node.children?.length) {
             leafs.push(node);
             const addlProps = additionalPropsMap[node.id];
             if (addlProps) {
                 if (this.magnifiedNodeId === node.id) {
-                    const boundingRect = getBoundingRect();
+                    const magnifiedNodeMarginPct = (1 - magnifiedNodeSizePct) / 2;
                     const transform = setTransform(
                         {
-                            top: boundingRect.height * 0.05,
-                            left: boundingRect.width * 0.05,
-                            width: boundingRect.width * 0.9,
-                            height: boundingRect.height * 0.9,
+                            top: boundingRect.height * magnifiedNodeMarginPct,
+                            left: boundingRect.width * magnifiedNodeMarginPct,
+                            width: boundingRect.width * magnifiedNodeSizePct,
+                            height: boundingRect.height * magnifiedNodeSizePct,
                         },
-                        true
+                        true,
+                        true,
+                        "var(--zindex-layout-magnified-node)"
                     );
                     addlProps.transform = transform;
-                    addlProps.isMagnifiedNode = true;
                 }
-                addlProps.isLastMagnifiedNode = this.lastMagnifiedNodeId === node.id;
+                if (this.lastMagnifiedNodeId === node.id) {
+                    addlProps.transform.zIndex = "var(--zindex-layout-last-magnified-node)";
+                } else if (this.lastEphemeralNodeId === node.id) {
+                    addlProps.transform.zIndex = "var(--zindex-layout-last-ephemeral-node)";
+                }
             }
             return;
         }
@@ -558,7 +599,7 @@ export class LayoutModel {
             ? additionalPropsMap[node.id]
             : { treeKey: "0" };
 
-        const nodeRect: Dimensions = node.id === this.treeState.rootNode.id ? getBoundingRect() : additionalProps.rect;
+        const nodeRect: Dimensions = node.id === this.treeState.rootNode.id ? boundingRect : additionalProps.rect;
         const nodeIsRow = node.flexDirection === FlexDirection.Row;
         const nodePixels = nodeIsRow ? nodeRect.width : nodeRect.height;
         const totalChildrenSize = node.children.reduce((acc, child) => acc + getNodeSize(child), 0);
@@ -614,6 +655,15 @@ export class LayoutModel {
             resizeHandles,
         };
     }
+
+    /**
+     * Gets normalized dimensions for the TileLayout container.
+     * @returns The normalized dimensions for the TileLayout container.
+     */
+    getBoundingRect: () => Dimensions = () => {
+        const boundingRect = this.displayContainerRef.current.getBoundingClientRect();
+        return { top: 0, left: 0, width: boundingRect.width, height: boundingRect.height };
+    };
 
     /**
      * The id of the focused node in the layout.
@@ -794,6 +844,11 @@ export class LayoutModel {
                     const treeState = get(this.treeStateAtom);
                     return treeState.magnifiedNodeId === nodeid;
                 }),
+                isEphemeral: atom((get) => {
+                    const ephemeralNode = get(this.ephemeralNode);
+                    return ephemeralNode?.id === nodeid;
+                }),
+                addEphemeralNodeToLayout: () => this.addEphemeralNodeToLayout(),
                 animationTimeS: this.animationTimeS,
                 ready: this.ready,
                 disablePointerEvents: this.activeDrag,
@@ -907,10 +962,15 @@ export class LayoutModel {
      */
     focusNode(nodeId: string) {
         if (this.focusedNodeId === nodeId) return;
-        const layoutNode = findNode(this.treeState?.rootNode, nodeId);
+        let layoutNode = findNode(this.treeState?.rootNode, nodeId);
         if (!layoutNode) {
-            console.error("unable to focus node, cannot find it in tree", nodeId);
-            return;
+            const ephemeralNode = this.getter(this.ephemeralNode);
+            if (ephemeralNode?.id === nodeId) {
+                layoutNode = ephemeralNode;
+            } else {
+                console.error("unable to focus node, cannot find it in tree", nodeId);
+                return;
+            }
         }
         const action: LayoutTreeFocusNodeAction = {
             type: LayoutTreeActionType.FocusNode,
@@ -931,13 +991,16 @@ export class LayoutModel {
      * Toggle magnification of a given node.
      * @param nodeId The id of the node that is being magnified.
      */
-    magnifyNodeToggle(nodeId: string) {
+    magnifyNodeToggle(nodeId: string, setState = true) {
         const action: LayoutTreeMagnifyNodeToggleAction = {
             type: LayoutTreeActionType.MagnifyNodeToggle,
             nodeId: nodeId,
         };
 
-        this.treeReducer(action);
+        // Unset the last ephemeral node id to ensure the magnify animation sits on top of the layout.
+        this.lastEphemeralNodeId = undefined;
+
+        this.treeReducer(action, setState);
     }
 
     /**
@@ -947,8 +1010,22 @@ export class LayoutModel {
     async closeNode(nodeId: string) {
         const nodeToDelete = findNode(this.treeState.rootNode, nodeId);
         if (!nodeToDelete) {
+            // TODO: clean up the ephemeral node handling
+            // The ephemeral node is not in the tree, so we need to handle it separately.
+            const ephemeralNode = this.getter(this.ephemeralNode);
+            if (ephemeralNode?.id === nodeId) {
+                this.setter(this.ephemeralNode, undefined);
+                this.treeState.focusedNodeId = undefined;
+                this.updateTree(false);
+                this.setTreeStateAtom(true);
+                await this.onNodeDelete?.(ephemeralNode.data);
+                return;
+            }
             console.error("unable to close node, cannot find it in tree", nodeId);
             return;
+        }
+        if (nodeId === this.magnifiedNodeId) {
+            this.magnifyNodeToggle(nodeId);
         }
         const deleteAction: LayoutTreeDeleteNodeAction = {
             type: LayoutTreeActionType.DeleteNode,
@@ -963,6 +1040,67 @@ export class LayoutModel {
      */
     async closeFocusedNode() {
         await this.closeNode(this.focusedNodeId);
+    }
+
+    newEphemeralNode(blockId: string) {
+        if (this.getter(this.ephemeralNode)) {
+            this.closeNode(this.getter(this.ephemeralNode).id);
+        }
+
+        const ephemeralNode = newLayoutNode(undefined, undefined, undefined, { blockId });
+        this.setter(this.ephemeralNode, ephemeralNode);
+
+        const addlProps = this.getter(this.additionalProps);
+        const leafs = this.getter(this.leafs);
+        const boundingRect = this.getBoundingRect();
+        const magnifiedNodeSizePct = this.getter(this.magnifiedNodeSizeAtom);
+        this.updateEphemeralNodeProps(ephemeralNode, addlProps, leafs, magnifiedNodeSizePct, boundingRect);
+        this.setter(this.additionalProps, addlProps);
+        this.focusNode(ephemeralNode.id);
+    }
+
+    addEphemeralNodeToLayout() {
+        const ephemeralNode = this.getter(this.ephemeralNode);
+        this.setter(this.ephemeralNode, undefined);
+        if (this.magnifiedNodeId) {
+            this.magnifyNodeToggle(this.magnifiedNodeId, false);
+        }
+        this.lastEphemeralNodeId = ephemeralNode.id;
+        if (ephemeralNode) {
+            const action: LayoutTreeInsertNodeAction = {
+                type: LayoutTreeActionType.InsertNode,
+                node: ephemeralNode,
+                magnified: false,
+                focused: false,
+            };
+            this.treeReducer(action);
+        }
+    }
+
+    updateEphemeralNodeProps(
+        node: LayoutNode,
+        addlPropsMap: Record<string, LayoutNodeAdditionalProps>,
+        leafs: LayoutNode[],
+        magnifiedNodeSizePct: number,
+        boundingRect: Dimensions
+    ) {
+        const ephemeralNodeSizePct = this.magnifiedNodeId
+            ? magnifiedNodeSizePct * magnifiedNodeSizePct
+            : magnifiedNodeSizePct;
+        const ephemeralNodeMarginPct = (1 - ephemeralNodeSizePct) / 2;
+        const transform = setTransform(
+            {
+                top: boundingRect.height * ephemeralNodeMarginPct,
+                left: boundingRect.width * ephemeralNodeMarginPct,
+                width: boundingRect.width * ephemeralNodeSizePct,
+                height: boundingRect.height * ephemeralNodeSizePct,
+            },
+            true,
+            true,
+            "var(--zindex-layout-ephemeral-node)"
+        );
+        addlPropsMap[node.id] = { treeKey: "-1", transform };
+        leafs.push(node);
     }
 
     /**

@@ -11,6 +11,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -75,6 +76,7 @@ func (svc *WindowService) CloseTab(ctx context.Context, windowId string, tabId s
 		}
 	}
 	go func() {
+		defer panichandler.PanicHandler("WindowService:CloseTab:StopBlockControllers")
 		for _, blockId := range tab.BlockIds {
 			blockcontroller.StopBlockController(blockId)
 		}
@@ -107,6 +109,7 @@ func (svc *WindowService) CloseTab(ctx context.Context, windowId string, tabId s
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
+		defer panichandler.PanicHandler("WindowService:CloseTab:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return rtn, updates, nil

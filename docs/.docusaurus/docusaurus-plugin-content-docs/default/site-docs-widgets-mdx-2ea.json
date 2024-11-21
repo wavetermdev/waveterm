@@ -5,10 +5,9 @@
   "source": "@site/docs/widgets.mdx",
   "sourceDirName": ".",
   "slug": "/widgets",
-  "permalink": "/widgets",
+  "permalink": "/docsite/widgets",
   "draft": false,
   "unlisted": false,
-  "editUrl": "https://github.com/wavetermdev/waveterm/edit/main/docs/docs/widgets.mdx",
   "tags": [],
   "version": "current",
   "sidebarPosition": 5,
@@ -20,10 +19,10 @@
   "sidebar": "defaultSidebar",
   "previous": {
     "title": "wsh command",
-    "permalink": "/wsh"
+    "permalink": "/docsite/wsh"
   },
   "next": {
     "title": "Custom Widgets",
-    "permalink": "/customwidgets"
+    "permalink": "/docsite/customwidgets"
   }
 }

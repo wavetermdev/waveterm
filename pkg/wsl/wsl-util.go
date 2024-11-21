@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 )
 
 func DetectShell(ctx context.Context, client *Distro) (string, error) {
@@ -233,6 +235,7 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 		return fmt.Errorf("cannot open local file %s to send to host: %v", sourcePath, err)
 	}
 	go func() {
+		defer panichandler.PanicHandler("wslutil:cpHostToRemote:catStdin")
 		io.Copy(catStdin, input)
 		installStepCmds["cat"].Cancel()
 
