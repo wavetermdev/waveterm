@@ -36,5 +36,11 @@
     },
     "[go]": {
         "editor.defaultFormatter": "golang.go"
+    },
+    "[mdx]": {
+        "editor.wordWrap": "on"
+    },
+    "[md]": {
+        "editor.wordWrap": "on"
     }
 }
