@@ -215,6 +215,13 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 			return nil, false, fmt.Errorf("error updating client: %w", err)
 		}
 	}
+	if client.TempOID == "" {
+		client.TempOID = uuid.NewString()
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return nil, false, fmt.Errorf("error updating client: %w", err)
+		}
+	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
 		checkAndFixWindow(ctx, client.WindowIds[0])

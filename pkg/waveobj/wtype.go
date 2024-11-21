@@ -128,6 +128,7 @@ type Client struct {
 	TosAgreed     int64       `json:"tosagreed,omitempty"`
 	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
 	NextTabId     int         `json:"nexttabid,omitempty"`
+	TempOID       string      `json:"tempoid,omitempty"`
 }
 
 func (*Client) GetOType() string {
