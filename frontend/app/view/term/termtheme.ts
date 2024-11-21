@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { DefaultTermTheme } from "@/app/view/term/termutil";
 import { TermWrap } from "@/app/view/term/termwrap";
 import { atoms, WOS } from "@/store/global";
 import * as util from "@/util/util";
@@ -16,8 +17,8 @@ const TermThemeUpdater = ({ blockId, termRef }: TermThemeProps) => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const termthemes = fullConfig?.termthemes;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    let defaultThemeName = "default-dark";
-    let themeName = blockData.meta?.["term:theme"] ?? "default-dark";
+    let defaultThemeName = DefaultTermTheme;
+    let themeName = blockData.meta?.["term:theme"] ?? DefaultTermTheme;
 
     const defaultTheme: TermThemeType = termthemes?.[defaultThemeName] || ({} as any);
     const theme: TermThemeType = termthemes?.[themeName] || ({} as any);

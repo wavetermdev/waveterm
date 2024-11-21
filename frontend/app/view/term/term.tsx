@@ -11,14 +11,15 @@ import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import {
-    WOS,
     atoms,
     getBlockComponentModel,
     getConnStatusAtom,
+    getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
     useBlockAtom,
     useSettingsPrefixAtom,
+    WOS,
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
@@ -28,7 +29,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
-import { computeTheme } from "./termutil";
+import { computeTheme, DefaultTermTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
 import "./xterm.css";
 
@@ -139,12 +140,8 @@ class TermViewModel {
             return true;
         });
         this.blockBg = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
-            let themeName: string = get(getSettingsKeyAtom("term:theme"));
-            if (blockData?.meta?.["term:theme"]) {
-                themeName = blockData.meta["term:theme"];
-            }
+            let themeName: string = get(getOverrideConfigAtom(this.blockId, "term:theme")) ?? DefaultTermTheme;
             const theme = computeTheme(fullConfig, themeName);
             if (theme != null && theme.background != null) {
                 return { bg: theme.background };
@@ -173,7 +170,7 @@ class TermViewModel {
             return jotai.atom<string>((get) => {
                 const blockData = get(this.blockAtom);
                 const settingsKeyAtom = getSettingsKeyAtom("term:theme");
-                return blockData?.meta?.["term:theme"] ?? get(settingsKeyAtom) ?? "default-dark";
+                return blockData?.meta?.["term:theme"] ?? get(settingsKeyAtom) ?? DefaultTermTheme;
             });
         });
         this.noPadding = jotai.atom(true);
@@ -659,4 +656,4 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     );
 };
 
-export { TermViewModel, TerminalView, makeTerminalModel };
+export { makeTerminalModel, TerminalView, TermViewModel };
