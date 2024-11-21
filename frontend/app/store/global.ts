@@ -246,7 +246,7 @@ function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
 
 const settingsAtomCache = new Map<string, Atom<any>>();
 
-function makeOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): Atom<SettingsType[T]> {
+function getOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): Atom<SettingsType[T]> {
     const blockCache = getSingleBlockAtomCache(blockId);
     const overrideAtomName = "#settingsoverride-" + key;
     let overrideAtom = blockCache.get(overrideAtomName);
@@ -271,7 +271,7 @@ function makeOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, k
 }
 
 function useOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): SettingsType[T] {
-    return useAtomValue(makeOverrideConfigAtom(blockId, key));
+    return useAtomValue(getOverrideConfigAtom(blockId, key));
 }
 
 function getSettingsKeyAtom<T extends keyof SettingsType>(key: T): Atom<SettingsType[T]> {
@@ -636,6 +636,7 @@ export {
     getConnStatusAtom,
     getHostName,
     getObjectId,
+    getOverrideConfigAtom,
     getSettingsKeyAtom,
     getUserName,
     globalStore,
@@ -643,7 +644,6 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
-    makeOverrideConfigAtom,
     openLink,
     PLATFORM,
     pushFlashError,
