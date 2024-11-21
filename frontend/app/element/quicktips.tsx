@@ -3,7 +3,7 @@
 
 import { MagnifyIcon } from "@/app/element/magnify";
 import { PLATFORM } from "@/app/store/global";
-import "./quicktips.less";
+import "./quicktips.scss";
 
 const KeyBinding = ({ keyDecl }: { keyDecl: string }) => {
     const parts = keyDecl.split(":");

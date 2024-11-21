@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "../mixins.less";
+@use "../mixins.scss";
 
 .block {
     display: flex;
@@ -118,7 +118,7 @@
                 }
 
                 .block-frame-text {
-                    .ellipsis();
+                    @include mixins.ellipsis();
                     font: var(--fixed-font);
                     font-size: 11px;
                     opacity: 0.7;
@@ -324,7 +324,7 @@
                     }
 
                     .connstatus-status {
-                        .ellipsis();
+                        @include mixins.ellipsis();
                         display: flex;
                         flex-direction: column;
                         align-items: flex-start;
@@ -333,7 +333,7 @@
                         width: 100%;
 
                         .connstatus-status-text {
-                            .ellipsis();
+                            @include mixins.ellipsis();
                             max-width: 100%;
                             font-size: 11px;
                             font-style: normal;
@@ -344,7 +344,7 @@
                         }
 
                         .connstatus-error {
-                            .ellipsis();
+                            @include mixins.ellipsis();
                             width: 94%;
                             font-size: 11px;
                             font-style: normal;

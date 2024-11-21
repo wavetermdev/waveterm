@@ -3,7 +3,7 @@
 
 import clsx from "clsx";
 import MagnifySVG from "../asset/magnify.svg";
-import "./magnify.less";
+import "./magnify.scss";
 
 interface MagnifyIconProps {
     enabled: boolean;

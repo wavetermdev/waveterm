@@ -4,7 +4,7 @@
 import clsx from "clsx";
 import { forwardRef, memo, ReactNode, useImperativeHandle, useRef } from "react";
 
-import "./button.less";
+import "./button.scss";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     className?: string;

@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "../../mixins.less";
+@use "../../mixins.scss";
 
 .dir-table-container {
     display: flex;
@@ -167,7 +167,7 @@
                         }
 
                         .dir-table-type {
-                            .ellipsis();
+                            @include mixins.ellipsis();
                         }
 
                         .dir-table-modestr {
@@ -175,7 +175,7 @@
                         }
 
                         &:has(.dir-table-name) {
-                            .ellipsis();
+                            @include mixins.ellipsis();
                         }
                         .dir-table-name {
                             font-weight: 500;

@@ -4,7 +4,7 @@
 import clsx from "clsx";
 import React, { forwardRef, memo, useImperativeHandle, useRef, useState } from "react";
 
-import "./input.less";
+import "./input.scss";
 
 interface InputGroupProps {
     children: React.ReactNode;

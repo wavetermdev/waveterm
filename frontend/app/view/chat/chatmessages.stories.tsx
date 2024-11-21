@@ -3,7 +3,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { ChatMessages } from "./chatmessages";
-import "./chatmessages.less";
+import "./chatmessages.scss";
 
 export interface ChatMessage {
     id: string;

@@ -3,7 +3,7 @@
 import { memo } from "react";
 
 import clsx from "clsx";
-import "./avatar.less";
+import "./avatar.scss";
 
 interface AvatarProps {
     name: string;

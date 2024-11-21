@@ -24,7 +24,7 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
-import "./directorypreview.less";
+import "./directorypreview.scss";
 
 interface DirectoryTableProps {
     model: PreviewModel;

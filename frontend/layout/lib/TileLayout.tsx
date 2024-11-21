@@ -21,7 +21,7 @@ import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
 import { LayoutModel } from "./layoutModel";
 import { useNodeModel, useTileLayout } from "./layoutModelHooks";
-import "./tilelayout.less";
+import "./tilelayout.scss";
 import {
     LayoutNode,
     LayoutTreeActionType,
