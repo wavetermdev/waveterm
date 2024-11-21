@@ -58,6 +58,7 @@ func doShutdown(reason string) {
 		shutdownActivityUpdate()
 		sendTelemetryWrapper()
 		// TODO deal with flush in progress
+		clearTempFiles()
 		filestore.WFS.FlushCache(ctx)
 		watcher := wconfig.GetWatcher()
 		if watcher != nil {
@@ -193,6 +194,17 @@ func grabAndRemoveEnvVars() error {
 	return nil
 }
 
+func clearTempFiles() error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return fmt.Errorf("error getting client: %v", err)
+	}
+	filestore.WFS.DeleteZone(ctx, client.TempOID)
+	return nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
@@ -266,6 +278,11 @@ func main() {
 	window, firstRun, err := wcore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
+		return
+	}
+	err = clearTempFiles()
+	if err != nil {
+		log.Printf("error clearing temp files: %v\n", err)
 		return
 	}
 	if firstRun {

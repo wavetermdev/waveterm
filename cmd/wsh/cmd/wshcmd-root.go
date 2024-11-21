@@ -57,6 +57,17 @@ func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+type RunEFnType = func(*cobra.Command, []string) error
+
+func activityWrap(activityStr string, origRunE RunEFnType) RunEFnType {
+	return func(cmd *cobra.Command, args []string) (rtnErr error) {
+		defer func() {
+			sendActivity(activityStr, rtnErr == nil)
+		}()
+		return origRunE(cmd, args)
+	}
+}
+
 func resolveBlockArg() (*waveobj.ORef, error) {
 	oref := blockArg
 	if oref == "" {

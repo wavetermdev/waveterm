@@ -28,6 +28,7 @@ const (
 	OType_Tab         = "tab"
 	OType_LayoutState = "layout"
 	OType_Block       = "block"
+	OType_Temp        = "temp"
 )
 
 var ValidOTypes = map[string]bool{
@@ -37,6 +38,7 @@ var ValidOTypes = map[string]bool{
 	OType_Tab:         true,
 	OType_LayoutState: true,
 	OType_Block:       true,
+	OType_Temp:        true,
 }
 
 type WaveObjUpdate struct {
@@ -128,6 +130,7 @@ type Client struct {
 	TosAgreed     int64       `json:"tosagreed,omitempty"`
 	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
 	NextTabId     int         `json:"nexttabid,omitempty"`
+	TempOID       string      `json:"tempoid,omitempty"`
 }
 
 func (*Client) GetOType() string {

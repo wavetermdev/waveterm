@@ -25,6 +25,7 @@ declare global {
         numsshconn?: number;
         numwslconn?: number;
         nummagnify?: number;
+        numpanics?: number;
         startup?: number;
         shutdown?: number;
         settabtheme?: number;
@@ -83,6 +84,7 @@ declare global {
         tosagreed?: number;
         hasoldhistory?: boolean;
         nexttabid?: number;
+        tempoid?: string;
     };
 
     // windowservice.CloseTabRtnType
