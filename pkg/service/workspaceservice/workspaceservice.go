@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
@@ -34,6 +35,7 @@ func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.Update
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:DeleteWorkspace:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return updates, nil
@@ -66,6 +68,7 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:CreateTab:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return tabId, updates, nil
@@ -114,6 +117,7 @@ func (svc *WorkspaceService) SetActiveTab(workspaceId string, tabId string) (wav
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:SetActiveTab:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	var extraUpdates waveobj.UpdatesRtnType
@@ -192,6 +196,7 @@ func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, t
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:CloseTab:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return rtn, updates, nil

@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -358,21 +358,18 @@ type ClientActiveState struct {
 func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			recErr := recover()
+			recErr := panichandler.PanicHandler("WebFnWrap")
 			if recErr == nil {
 				return
 			}
-			panicStr := fmt.Sprintf("panic: %v", recErr)
-			log.Printf("panic: %v\n", recErr)
-			debug.PrintStack()
 			if opts.JsonErrors {
-				jsonRtn := marshalReturnValue(nil, fmt.Errorf(panicStr))
+				jsonRtn := marshalReturnValue(nil, recErr)
 				w.Header().Set(ContentTypeHeaderKey, ContentTypeJson)
 				w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", len(jsonRtn)))
 				w.WriteHeader(http.StatusOK)
 				w.Write(jsonRtn)
 			} else {
-				http.Error(w, panicStr, http.StatusInternalServerError)
+				http.Error(w, recErr.Error(), http.StatusInternalServerError)
 			}
 		}()
 		if !opts.AllowCaching {

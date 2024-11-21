@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
@@ -64,6 +65,7 @@ func (w *Watcher) Start() {
 	w.sendInitialValues()
 
 	go func() {
+		defer panichandler.PanicHandler("filewatcher:Start")
 		for {
 			select {
 			case event, ok := <-w.watcher.Events:

@@ -6,7 +6,7 @@ import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { atoms, createBlock } from "@/store/global";
+import { atoms, createBlock, isDev } from "@/store/global";
 import { isBlank, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
@@ -64,9 +64,9 @@ const Widgets = memo(() => {
                     <div className="widget-spacer" />
                     <Widget key="tips" widget={tipsWidget} />
                     <Widget key="help" widget={helpWidget} />
-                    <NotificationPopover></NotificationPopover>
                 </>
             ) : null}
+            {isDev() ? <NotificationPopover /> : null}
         </div>
     );
 });

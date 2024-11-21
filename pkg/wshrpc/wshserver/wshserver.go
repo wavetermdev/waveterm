@@ -18,6 +18,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
@@ -45,11 +46,7 @@ func (*WshServer) WshServerImpl() {}
 var WshServerImpl = WshServer{}
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("panic in TestCommand: %v", r)
-		}
-	}()
+	defer panichandler.PanicHandler("TestCommand")
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	log.Printf("TEST src:%s | %s\n", rpcSource, data)
 	return nil
@@ -65,6 +62,7 @@ func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMess
 func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrErrorUnion[int] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[int])
 	go func() {
+		defer panichandler.PanicHandler("StreamTestCommand")
 		for i := 1; i <= 5; i++ {
 			rtn <- wshrpc.RespOrErrorUnion[int]{Response: i}
 			time.Sleep(1 * time.Second)

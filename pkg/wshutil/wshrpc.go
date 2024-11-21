@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -281,15 +281,6 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 	}
 
 	var respHandler *RpcResponseHandler
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("panic in handleRequest: %v\n", r)
-			debug.PrintStack()
-			if respHandler != nil {
-				respHandler.SendResponseError(fmt.Errorf("panic: %v", r))
-			}
-		}
-	}()
 	timeoutMs := req.Timeout
 	if timeoutMs <= 0 {
 		timeoutMs = DefaultTimeoutMs
@@ -313,13 +304,13 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 	w.registerResponseHandler(req.ReqId, respHandler)
 	isAsync := false
 	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("panic in handleRequest: %v\n", r)
-			debug.PrintStack()
-			respHandler.SendResponseError(fmt.Errorf("panic: %v", r))
+		panicErr := panichandler.PanicHandler("handleRequest")
+		if panicErr != nil {
+			respHandler.SendResponseError(panicErr)
 		}
 		if isAsync {
 			go func() {
+				defer panichandler.PanicHandler("handleRequest:finalize")
 				<-ctx.Done()
 				respHandler.Finalize()
 			}()
@@ -394,6 +385,7 @@ func (w *WshRpc) registerRpc(ctx context.Context, reqId string) chan *RpcMessage
 		Ctx:   ctx,
 	}
 	go func() {
+		defer panichandler.PanicHandler("registerRpc:timeout")
 		<-ctx.Done()
 		w.unregisterRpc(reqId, fmt.Errorf("EC-TIME: timeout waiting for response"))
 	}()
@@ -463,12 +455,7 @@ func (handler *RpcRequestHandler) Context() context.Context {
 }
 
 func (handler *RpcRequestHandler) SendCancel() {
-	defer func() {
-		if r := recover(); r != nil {
-			// this is likely a write to closed channel
-			log.Printf("panic in SendCancel: %v\n", r)
-		}
-	}()
+	defer panichandler.PanicHandler("SendCancel")
 	msg := &RpcMessage{
 		Cancel:    true,
 		ReqId:     handler.reqId,
@@ -573,13 +560,7 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 }
 
 func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
-	defer func() {
-		if r := recover(); r != nil {
-			// this is likely a write to closed channel
-			log.Printf("panic in SendResponse: %v\n", r)
-			handler.close()
-		}
-	}()
+	defer panichandler.PanicHandler("SendResponse")
 	if handler.reqId == "" {
 		return nil // no response expected
 	}
@@ -604,13 +585,7 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 }
 
 func (handler *RpcResponseHandler) SendResponseError(err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			// this is likely a write to closed channel
-			log.Printf("panic in SendResponseError: %v\n", r)
-			handler.close()
-		}
-	}()
+	defer panichandler.PanicHandler("SendResponseError")
 	if handler.reqId == "" || handler.done.Load() {
 		return
 	}
@@ -659,12 +634,7 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 	if timeoutMs <= 0 {
 		timeoutMs = DefaultTimeoutMs
 	}
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("panic in SendComplexRequest: %v\n", r)
-			rtnErr = fmt.Errorf("panic: %v", r)
-		}
-	}()
+	defer panichandler.PanicHandler("SendComplexRequest")
 	if command == "" {
 		return nil, fmt.Errorf("command cannot be empty")
 	}

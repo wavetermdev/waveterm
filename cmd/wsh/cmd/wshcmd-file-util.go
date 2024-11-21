@@ -184,7 +184,7 @@ func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) 
 			}
 
 			if len(files) == 0 {
-				if !foundAny {
+				if !foundAny && prefix != "" {
 					resultChan <- fileListResult{err: fmt.Errorf("%s: No such file or directory", path)}
 				}
 				return

@@ -104,7 +104,7 @@ var fileListCmd = &cobra.Command{
 	Use:     "ls [wavefile://zone[/path]]",
 	Short:   "list wave files",
 	Example: "  wsh file ls wavefile://block/\n  wsh file ls wavefile://client/configs/",
-	RunE:    fileListRun,
+	RunE:    activityWrap("file", fileListRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -113,7 +113,7 @@ var fileCatCmd = &cobra.Command{
 	Short:   "display contents of a wave file",
 	Example: "  wsh file cat wavefile://block/config.txt\n  wsh file cat wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
-	RunE:    fileCatRun,
+	RunE:    activityWrap("file", fileCatRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -122,7 +122,7 @@ var fileInfoCmd = &cobra.Command{
 	Short:   "show wave file information",
 	Example: "  wsh file info wavefile://block/config.txt",
 	Args:    cobra.ExactArgs(1),
-	RunE:    fileInfoRun,
+	RunE:    activityWrap("file", fileInfoRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -131,7 +131,7 @@ var fileRmCmd = &cobra.Command{
 	Short:   "remove a wave file",
 	Example: "  wsh file rm wavefile://block/config.txt",
 	Args:    cobra.ExactArgs(1),
-	RunE:    fileRmRun,
+	RunE:    activityWrap("file", fileRmRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -140,7 +140,7 @@ var fileWriteCmd = &cobra.Command{
 	Short:   "write stdin into a wave file (up to 10MB)",
 	Example: "  echo 'hello' | wsh file write wavefile://block/greeting.txt",
 	Args:    cobra.ExactArgs(1),
-	RunE:    fileWriteRun,
+	RunE:    activityWrap("file", fileWriteRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -150,7 +150,7 @@ var fileAppendCmd = &cobra.Command{
 	Long:    "append stdin to a wave file, buffering input and respecting 10MB total file size limit",
 	Example: "  tail -f log.txt | wsh file append wavefile://block/app.log",
 	Args:    cobra.ExactArgs(1),
-	RunE:    fileAppendRun,
+	RunE:    activityWrap("file", fileAppendRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -161,7 +161,7 @@ var fileCpCmd = &cobra.Command{
 Exactly one of source or destination must be a wavefile:// URL.`,
 	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt",
 	Args:    cobra.ExactArgs(2),
-	RunE:    fileCpRun,
+	RunE:    activityWrap("file", fileCpRun),
 	PreRunE: preRunSetupRpcClient,
 }
 

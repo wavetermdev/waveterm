@@ -6,6 +6,7 @@ package wshclient
 import (
 	"errors"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -39,6 +40,7 @@ func sendRpcRequestCallHelper[T any](w *wshutil.WshRpc, command string, data int
 
 func rtnErr[T any](ch chan wshrpc.RespOrErrorUnion[T], err error) {
 	go func() {
+		defer panichandler.PanicHandler("wshclientutil:rtnErr")
 		ch <- wshrpc.RespOrErrorUnion[T]{Error: err}
 		close(ch)
 	}()
@@ -63,6 +65,7 @@ func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string
 		reqHandler.SendCancel()
 	}
 	go func() {
+		defer panichandler.PanicHandler("sendRpcRequestResponseStreamHelper")
 		defer close(respChan)
 		for {
 			if reqHandler.ResponseDone() {

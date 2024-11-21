@@ -189,8 +189,8 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 
 func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
 	barr, readErr := fs.ReadFile(fsys, fileName)
-	if readErr != nil && strings.Contains(readErr.Error(), "invalid argument") {
-		// If we get an `invalid argument` error, we may be using the wrong path separator for the given FS interface. Try switching the separator.
+	if readErr != nil {
+		// If we get an error, we may be using the wrong path separator for the given FS interface. Try switching the separator.
 		barr, readErr = fs.ReadFile(fsys, filepath.ToSlash(fileName))
 	}
 	return readConfigHelper(logPrefix+fileName, barr, readErr)
