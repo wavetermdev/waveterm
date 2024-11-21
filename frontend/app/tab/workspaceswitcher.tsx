@@ -12,14 +12,15 @@ import {
 } from "@/element/expandablemenu";
 import { Input } from "@/element/input";
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
-import { fireAndForget, makeIconClass, useAtomValueSafe } from "@/util/util";
+import { makeIconClass, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { useAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { CSSProperties, memo, useCallback, useEffect, useRef, useState } from "react";
+import WorkspaceSVG from "../asset/workspace.svg";
 import { atoms, getApi } from "../store/global";
 import { WorkspaceService } from "../store/services";
-import { getWaveObjectAtom, makeORef } from "../store/wos";
+import { getWaveObjectAtom, makeORef, setObjectValue } from "../store/wos";
 import "./workspaceswitcher.less";
 
 interface ColorSelectorProps {
@@ -155,29 +156,47 @@ const WorkspaceSwitcher = () => {
 
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
 
-    const updateWorkspaceMap = useCallback(async () => {
-        const newMap = { ...workspaceMap };
-        const workspaceList = await WorkspaceService.ListWorkspaces();
-        for (const entry of workspaceList) {
-            if (newMap[entry.workspaceid]) {
-                newMap[entry.workspaceid].windowId = entry.windowid;
-            } else {
-                newMap[entry.workspaceid] = {
-                    windowId: entry.windowid,
-                    workspaceAtom: getWaveObjectAtom(makeORef("workspace", entry.workspaceid)),
-                };
-            }
-        }
-        setWorkspaceMap(newMap);
+    const updateWorkspaceMap = useCallback(() => {
+        WorkspaceService.ListWorkspaces()
+            .then((workspaceList) => {
+                const newMap = { ...workspaceMap };
+                if (!workspaceList) {
+                    return;
+                }
+                console.log(workspaceList);
+                for (const entry of workspaceList) {
+                    if (newMap[entry.workspaceid]) {
+                        newMap[entry.workspaceid].windowId = entry.windowid;
+                    } else {
+                        newMap[entry.workspaceid] = {
+                            windowId: entry.windowid,
+                            workspaceAtom: getWaveObjectAtom(makeORef("workspace", entry.workspaceid)),
+                        };
+                    }
+                }
+                setWorkspaceMap(newMap);
+            })
+            .catch((e) => {
+                console.error("Failed to update workspace map", e);
+            });
     }, []);
 
     useEffect(() => {
-        fireAndForget(async () => updateWorkspaceMap());
+        updateWorkspaceMap();
     }, []);
 
-    const workspaceIcon = (
+    const workspaceIcon = activeWorkspace.icon ? (
         <i className={makeIconClass(activeWorkspace.icon, false)} style={{ color: activeWorkspace.color }}></i>
+    ) : (
+        <WorkspaceSVG />
     );
+
+    const saveWorkspace = () => {
+        setObjectValue({ ...activeWorkspace, name: "New Workspace", icon: "circle", color: "green" }, undefined, true);
+        setTimeout(() => {
+            updateWorkspaceMap();
+        }, 10);
+    };
 
     return (
         <Popover className="workspace-switcher-popover">
@@ -194,14 +213,16 @@ const WorkspaceSwitcher = () => {
                     </ExpandableMenu>
                 </OverlayScrollbarsComponent>
 
-                <div className="actions">
-                    <ExpandableMenuItem>
-                        <ExpandableMenuItemLeftElement>
-                            <i className="fa-sharp fa-solid fa-plus"></i>
-                        </ExpandableMenuItemLeftElement>
-                        <div className="content">New workspace</div>
-                    </ExpandableMenuItem>
-                </div>
+                {!activeWorkspace.name && (
+                    <div className="actions">
+                        <ExpandableMenuItem onClick={() => saveWorkspace()}>
+                            <ExpandableMenuItemLeftElement>
+                                <i className="fa-sharp fa-solid fa-floppy-disk"></i>
+                            </ExpandableMenuItemLeftElement>
+                            <div className="content">Save workspace</div>
+                        </ExpandableMenuItem>
+                    </div>
+                )}
             </PopoverContent>
         </Popover>
     );
