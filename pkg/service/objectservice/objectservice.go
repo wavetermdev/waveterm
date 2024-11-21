@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
@@ -94,6 +95,7 @@ func (svc *ObjectService) AddTabToWorkspace(windowId string, tabName string, act
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
+		defer panichandler.PanicHandler("ObjectService:AddTabToWorkspace:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return tabId, updates, nil
@@ -142,6 +144,7 @@ func (svc *ObjectService) SetActiveTab(windowId string, tabId string) (waveobj.U
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
+		defer panichandler.PanicHandler("ObjectService:SetActiveTab:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	var extraUpdates waveobj.UpdatesRtnType

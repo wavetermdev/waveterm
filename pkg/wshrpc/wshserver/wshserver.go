@@ -62,6 +62,7 @@ func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMess
 func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrErrorUnion[int] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[int])
 	go func() {
+		defer panichandler.PanicHandler("StreamTestCommand")
 		for i := 1; i <= 5; i++ {
 			rtn <- wshrpc.RespOrErrorUnion[int]{Response: i}
 			time.Sleep(1 * time.Second)

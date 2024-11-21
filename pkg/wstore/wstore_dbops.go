@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
@@ -211,6 +212,7 @@ func DBDelete(ctx context.Context, otype string, id string) error {
 		return err
 	}
 	go func() {
+		defer panichandler.PanicHandler("DBDelete:filestore.DeleteZone")
 		// we spawn a go routine here because we don't want to reuse the DB connection
 		// since DBDelete is called in a transaction from DeleteTab
 		deleteCtx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)

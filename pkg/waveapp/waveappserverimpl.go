@@ -88,6 +88,7 @@ func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate v
 	// Split the update into chunks and send them sequentially
 	updates := vdom.SplitBackendUpdate(update)
 	go func() {
+		defer panichandler.PanicHandler("VDomRenderCommand:splitUpdates")
 		defer close(respChan)
 		for _, splitUpdate := range updates {
 			respChan <- wshrpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{

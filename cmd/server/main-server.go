@@ -257,6 +257,7 @@ func main() {
 	}
 	panichandler.PanicTelemetryHandler = panicTelemetryHandler
 	go func() {
+		defer panichandler.PanicHandler("InitCustomShellStartupFiles")
 		err := shellutil.InitCustomShellStartupFiles()
 		if err != nil {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)

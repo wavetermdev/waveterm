@@ -9,6 +9,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -106,6 +107,7 @@ func AutoUpdateChannel() string {
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
 func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
 	go func() {
+		defer panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap")
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 		err := UpdateActivity(ctx, update)

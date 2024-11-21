@@ -302,6 +302,7 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
+		defer panichandler.PanicHandler("HandleWsInternal:outputCh")
 		// no waitgroup add here
 		// move values from rpcOutputCh to outputCh
 		for msgBytes := range wproxy.ToRemoteCh {
@@ -313,11 +314,13 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 		}
 	}()
 	go func() {
+		defer panichandler.PanicHandler("HandleWsInternal:ReadLoop")
 		// read loop
 		defer wg.Done()
 		ReadLoop(conn, outputCh, closeCh, wproxy.FromRemoteCh, routeId)
 	}()
 	go func() {
+		defer panichandler.PanicHandler("HandleWsInternal:WriteLoop")
 		// write loop
 		defer wg.Done()
 		WriteLoop(conn, outputCh, closeCh, routeId)

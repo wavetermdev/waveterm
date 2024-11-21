@@ -310,6 +310,7 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 		}
 		if isAsync {
 			go func() {
+				defer panichandler.PanicHandler("handleRequest:finalize")
 				<-ctx.Done()
 				respHandler.Finalize()
 			}()
@@ -384,6 +385,7 @@ func (w *WshRpc) registerRpc(ctx context.Context, reqId string) chan *RpcMessage
 		Ctx:   ctx,
 	}
 	go func() {
+		defer panichandler.PanicHandler("registerRpc:timeout")
 		<-ctx.Done()
 		w.unregisterRpc(reqId, fmt.Errorf("EC-TIME: timeout waiting for response"))
 	}()

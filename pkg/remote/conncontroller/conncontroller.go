@@ -20,6 +20,7 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
@@ -193,6 +194,7 @@ func (conn *SSHConn) OpenDomainSocketListener() error {
 		conn.DomainSockListener = listener
 	})
 	go func() {
+		defer panichandler.PanicHandler("conncontroller:OpenDomainSocketListener")
 		defer conn.WithLock(func() {
 			conn.DomainSockListener = nil
 			conn.SockName = ""
@@ -252,6 +254,7 @@ func (conn *SSHConn) StartConnServer() error {
 	})
 	// service the I/O
 	go func() {
+		defer panichandler.PanicHandler("conncontroller:sshSession.Wait")
 		// wait for termination, clear the controller
 		defer conn.WithLock(func() {
 			conn.ConnController = nil
@@ -260,6 +263,7 @@ func (conn *SSHConn) StartConnServer() error {
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
+		defer panichandler.PanicHandler("conncontroller:sshSession-output")
 		readErr := wshutil.StreamToLines(pipeRead, func(line []byte) {
 			lineStr := string(line)
 			if !strings.HasSuffix(lineStr, "\n") {

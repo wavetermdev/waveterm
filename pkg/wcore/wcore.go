@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -267,6 +268,7 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
 	go func() {
+		defer panichandler.PanicHandler("CreateBlock:telemetry")
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
 		if blockView == "" {
 			return
