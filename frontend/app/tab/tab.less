@@ -17,8 +17,13 @@
         height: 100%;
         white-space: nowrap;
         border-radius: 6px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 0.5px solid rgba(255, 255, 255, 0.08);
+        // background: rgba(255, 255, 255, 0.05);
+        // border: 0.5px solid rgba(255, 255, 255, 0.08);
+        transition: background 0.15s ease-in;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.07);
+        }
     }
 
     &.animate {
@@ -29,9 +34,10 @@
 
     &.active {
         .tab-inner {
-            border: 0.5px solid rgba(255, 255, 255, 0.2);
-            background: radial-gradient(ellipse 92px 32px at bottom, rgba(118, 255, 53, 0.3) 0%, transparent 100%),
-                rgba(255, 255, 255, 0.2);
+            // border: 0.5px solid rgba(255, 255, 255, 0.2);
+            // background: radial-gradient(ellipse 92px 32px at bottom, rgba(118, 255, 53, 0.3) 0%, transparent 100%),
+            //     rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.07);
         }
 
         .name {
