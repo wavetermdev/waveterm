@@ -18238,15 +18238,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sass-migrator@npm:^2.2.1":
-  version: 2.2.1
-  resolution: "sass-migrator@npm:2.2.1"
-  bin:
-    sass-migrator: sass-migrator.js
-  checksum: 10c0/fa3f244ff7106da1556685faf8ef18f8aee57670abc55e8aa92a0cccaca7836d6dc2799e5c69d06e250ecb35faede4d9a088cc883afa31a3e4e3fd737a6c330c
-  languageName: node
-  linkType: hard
-
 "sass@npm:^1.81.0":
   version: 1.81.0
   resolution: "sass@npm:1.81.0"
@@ -20868,7 +20859,6 @@ __metadata:
     rollup-plugin-flow: "npm:^1.1.1"
     rxjs: "npm:^7.8.1"
     sass: "npm:^1.81.0"
-    sass-migrator: "npm:^2.2.1"
     semver: "npm:^7.6.3"
     sharp: "npm:^0.33.5"
     shell-quote: "npm:^1.8.1"
