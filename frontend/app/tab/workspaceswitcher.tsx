@@ -159,20 +159,16 @@ const WorkspaceSwitcher = () => {
     const updateWorkspaceMap = useCallback(() => {
         WorkspaceService.ListWorkspaces()
             .then((workspaceList) => {
-                const newMap = { ...workspaceMap };
+                const newMap: WorkspaceMap = {};
                 if (!workspaceList) {
                     return;
                 }
                 console.log(workspaceList);
                 for (const entry of workspaceList) {
-                    if (newMap[entry.workspaceid]) {
-                        newMap[entry.workspaceid].windowId = entry.windowid;
-                    } else {
-                        newMap[entry.workspaceid] = {
-                            windowId: entry.windowid,
-                            workspaceAtom: getWaveObjectAtom(makeORef("workspace", entry.workspaceid)),
-                        };
-                    }
+                    newMap[entry.workspaceid] = {
+                        windowId: entry.windowid,
+                        workspaceAtom: getWaveObjectAtom(makeORef("workspace", entry.workspaceid)),
+                    };
                 }
                 setWorkspaceMap(newMap);
             })
@@ -200,7 +196,7 @@ const WorkspaceSwitcher = () => {
 
     return (
         <Popover className="workspace-switcher-popover">
-            <PopoverButton className="workspace-switcher-button grey" as="div">
+            <PopoverButton className="workspace-switcher-button grey" as="div" onClick={() => updateWorkspaceMap()}>
                 <span className="workspace-icon">{workspaceIcon}</span>
             </PopoverButton>
             <PopoverContent className="workspace-switcher-content">
