@@ -342,6 +342,7 @@ func IsPowershell(shellPath string) bool {
 func NormalizeConfigPattern(pattern string) string {
 	userName, err := WaveSshConfigUserSettings().GetStrict(pattern, "User")
 	if err != nil {
+		log.Printf("warning: error parsing username of %s for conn dropdown: %v", pattern, err)
 		localUser, err := user.Current()
 		if err == nil {
 			userName = localUser.Username

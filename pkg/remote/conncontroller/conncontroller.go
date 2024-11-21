@@ -584,7 +584,7 @@ func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
 			for _, hostPattern := range host.Patterns {
 				hostPatternStr := hostPattern.String()
 				normalized := remote.NormalizeConfigPattern(hostPatternStr)
-				if (!strings.Contains(hostPatternStr, "*") && !strings.Contains(hostPatternStr, "?") && !strings.Contains(hostPatternStr, "!")) || alreadyUsed[normalized] {
+				if !strings.Contains(hostPatternStr, "*") && !strings.Contains(hostPatternStr, "?") && !strings.Contains(hostPatternStr, "!") && !alreadyUsed[normalized] {
 					discoveredPatterns = append(discoveredPatterns, normalized)
 					alreadyUsed[normalized] = true
 					break
