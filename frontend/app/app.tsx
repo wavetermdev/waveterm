@@ -17,7 +17,6 @@ import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
-import Color from "color";
 import debug from "debug";
 import { Provider, useAtomValue } from "jotai";
 import "overlayscrollbars/overlayscrollbars.css";
@@ -130,21 +129,24 @@ function AppSettingsUpdater() {
         const isTransparentOrBlur =
             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
         const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
-        let baseBgColor = windowSettings?.["window:bgcolor"];
+        const baseBgColor = windowSettings?.["window:bgcolor"];
         const mainDiv = document.getElementById("main");
         // console.log("window settings", windowSettings, isTransparentOrBlur, opacity, baseBgColor, mainDiv);
         if (isTransparentOrBlur) {
             mainDiv.classList.add("is-transparent");
-            const rootStyles = getComputedStyle(document.documentElement);
-            if (baseBgColor == null) {
-                baseBgColor = rootStyles.getPropertyValue("--main-bg-color").trim();
+            if (opacity != null) {
+                document.body.style.setProperty("--window-opacity", `${opacity}`);
+            } else {
+                document.body.style.removeProperty("--window-opacity");
             }
-            const color = new Color(baseBgColor);
-            const rgbaColor = color.alpha(opacity).string();
-            document.body.style.backgroundColor = rgbaColor;
         } else {
             mainDiv.classList.remove("is-transparent");
-            document.body.style.backgroundColor = "var(--main-bg-color)";
+            document.body.style.removeProperty("--window-opacity");
+        }
+        if (baseBgColor != null) {
+            document.body.style.setProperty("--main-bg-color", baseBgColor);
+        } else {
+            document.body.style.removeProperty("--main-bg-color");
         }
     }, [windowSettings]);
     return null;
