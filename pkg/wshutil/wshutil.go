@@ -19,6 +19,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -150,6 +151,7 @@ func installShutdownSignalHandlers(quiet bool) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
+		defer panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers")
 		for sig := range sigCh {
 			DoShutdown(fmt.Sprintf("got signal %v", sig), 1, quiet)
 			break
@@ -198,6 +200,7 @@ func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
 	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	go func() {
+		defer panichandler.PanicHandler("SetupTerminalRpcClient")
 		for msg := range outputCh {
 			barr, err := EncodeWaveOSCBytes(WaveOSC, msg)
 			if err != nil {
@@ -218,6 +221,7 @@ func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerIm
 	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	go packetparser.Parse(input, messageCh, rawCh)
 	go func() {
+		defer panichandler.PanicHandler("SetupPacketRpcClient:outputloop")
 		for msg := range outputCh {
 			packetparser.WritePacket(output, msg)
 		}
@@ -230,6 +234,7 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan err
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	writeErrCh := make(chan error, 1)
 	go func() {
+		defer panichandler.PanicHandler("SetupConnRpcClient:AdaptOutputChToStream")
 		writeErr := AdaptOutputChToStream(outputCh, conn)
 		if writeErr != nil {
 			writeErrCh <- writeErr
@@ -237,6 +242,7 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan err
 		}
 	}()
 	go func() {
+		defer panichandler.PanicHandler("SetupConnRpcClient:AdaptStreamToMsgCh")
 		// when input is closed, close the connection
 		defer conn.Close()
 		AdaptStreamToMsgCh(conn, inputCh)
@@ -264,6 +270,7 @@ func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc
 	}
 	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl)
 	go func() {
+		defer panichandler.PanicHandler("SetupDomainSocketRpcClient:closeConn")
 		defer conn.Close()
 		err := <-errCh
 		if err != nil && err != io.EOF {
@@ -410,9 +417,11 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 		proxy.DisposeRoutes()
 	}
 	go func() {
+		defer panichandler.PanicHandler("HandleStdIOClient:RunUnauthLoop")
 		proxy.RunUnauthLoop()
 	}()
 	go func() {
+		defer panichandler.PanicHandler("HandleStdIOClient:ToRemoteChLoop")
 		defer closeDoneCh()
 		for msg := range proxy.ToRemoteCh {
 			err := packetparser.WritePacket(output, msg)
@@ -423,6 +432,7 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 		}
 	}()
 	go func() {
+		defer panichandler.PanicHandler("HandleStdIOClient:RawChLoop")
 		defer closeDoneCh()
 		for msg := range rawCh {
 			log.Printf("[%s:stdout] %s", logName, msg)
@@ -435,6 +445,7 @@ func handleDomainSocketClient(conn net.Conn) {
 	var routeIdContainer atomic.Pointer[string]
 	proxy := MakeRpcProxy()
 	go func() {
+		defer panichandler.PanicHandler("handleDomainSocketClient:AdaptOutputChToStream")
 		writeErr := AdaptOutputChToStream(proxy.ToRemoteCh, conn)
 		if writeErr != nil {
 			log.Printf("error writing to domain socket: %v\n", writeErr)
@@ -442,6 +453,7 @@ func handleDomainSocketClient(conn net.Conn) {
 	}()
 	go func() {
 		// when input is closed, close the connection
+		defer panichandler.PanicHandler("handleDomainSocketClient:AdaptStreamToMsgCh")
 		defer func() {
 			conn.Close()
 			routeIdPtr := routeIdContainer.Load()

@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime/debug"
 
 	"runtime"
 	"sync"
@@ -19,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
@@ -111,15 +111,16 @@ func telemetryLoop() {
 	}
 }
 
+func panicTelemetryHandler() {
+	activity := telemetry.ActivityUpdate{NumPanics: 1}
+	err := telemetry.UpdateActivity(context.Background(), activity)
+	if err != nil {
+		log.Printf("error updating activity (panicTelemetryHandler): %v\n", err)
+	}
+}
+
 func sendTelemetryWrapper() {
-	defer func() {
-		r := recover()
-		if r == nil {
-			return
-		}
-		log.Printf("[error] in sendTelemetryWrapper: %v\n", r)
-		debug.PrintStack()
-	}()
+	defer panichandler.PanicHandler("sendTelemetryWrapper")
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
@@ -254,7 +255,9 @@ func main() {
 		log.Printf("error initializing wstore: %v\n", err)
 		return
 	}
+	panichandler.PanicTelemetryHandler = panicTelemetryHandler
 	go func() {
+		defer panichandler.PanicHandler("InitCustomShellStartupFiles")
 		err := shellutil.InitCustomShellStartupFiles()
 		if err != nil {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)

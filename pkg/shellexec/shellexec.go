@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -51,6 +52,7 @@ type ShellProc struct {
 func (sp *ShellProc) Close() {
 	sp.Cmd.KillGraceful(DefaultGracefulKillWait)
 	go func() {
+		defer panichandler.PanicHandler("ShellProc.Close")
 		waitErr := sp.Cmd.Wait()
 		sp.SetWaitErrorAndSignalDone(waitErr)
 
@@ -450,6 +452,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error
 	ioDone := make(chan bool)
 	var outputBuf bytes.Buffer
 	go func() {
+		panichandler.PanicHandler("RunSimpleCmdInPty:ioCopy")
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer close(ioDone)
 		io.Copy(&outputBuf, cmdPty)

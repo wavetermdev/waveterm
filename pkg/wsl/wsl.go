@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -234,6 +235,7 @@ func (conn *WslConn) StartConnServer() error {
 	})
 	// service the I/O
 	go func() {
+		defer panichandler.PanicHandler("wsl:StartConnServer:wait")
 		// wait for termination, clear the controller
 		defer conn.WithLock(func() {
 			conn.ConnController = nil
@@ -242,6 +244,7 @@ func (conn *WslConn) StartConnServer() error {
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
+		defer panichandler.PanicHandler("wsl:StartConnServer:handleStdIOClient")
 		logName := fmt.Sprintf("conncontroller:%s", conn.GetName())
 		wshutil.HandleStdIOClient(logName, pipeRead, inputPipeWrite)
 	}()

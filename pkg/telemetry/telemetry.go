@@ -9,6 +9,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -36,6 +37,7 @@ type ActivityUpdate struct {
 	NumSSHConn    int                   `json:"numsshconn,omitempty"`
 	NumWSLConn    int                   `json:"numwslconn,omitempty"`
 	NumMagnify    int                   `json:"nummagnify,omitempty"`
+	NumPanics     int                   `json:"numpanics,omitempty"`
 	Startup       int                   `json:"startup,omitempty"`
 	Shutdown      int                   `json:"shutdown,omitempty"`
 	SetTabTheme   int                   `json:"settabtheme,omitempty"`
@@ -71,6 +73,7 @@ type TelemetryData struct {
 	NewTab        int                   `json:"newtab"`
 	NumStartup    int                   `json:"numstartup,omitempty"`
 	NumShutdown   int                   `json:"numshutdown,omitempty"`
+	NumPanics     int                   `json:"numpanics,omitempty"`
 	SetTabTheme   int                   `json:"settabtheme,omitempty"`
 	Displays      []ActivityDisplayType `json:"displays,omitempty"`
 	Renderers     map[string]int        `json:"renderers,omitempty"`
@@ -104,6 +107,7 @@ func AutoUpdateChannel() string {
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
 func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
 	go func() {
+		defer panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap")
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 		err := UpdateActivity(ctx, update)
@@ -138,6 +142,7 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.NumShutdown += update.Shutdown
 		tdata.SetTabTheme += update.SetTabTheme
 		tdata.NumMagnify += update.NumMagnify
+		tdata.NumPanics += update.NumPanics
 		if update.NumTabs > 0 {
 			tdata.NumTabs = update.NumTabs
 		}
