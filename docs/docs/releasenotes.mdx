@@ -6,6 +6,26 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.9.3 &mdash; Nov 20, 2024
+
+New minor release that introduces Wave's connected computing extensions. We've introduced new `wsh` commands that allow you to store variables and files, and access them across terminal sessions (on both local and remote machines).
+
+- `wsh setvar/getvar` to get and set variables -- [Docs](https://docs.waveterm.dev/wsh#getvarsetvar)
+- `wsh file` operations (cat, write, append, rm, info, cp, and ls) -- [Docs](https://docs.waveterm.dev/wsh#file)
+- Improved golang panic handling to prevent backend crashes
+- Improved SSH config logging and fixes a reused connection bug
+- Updated telemetry to track additional counters
+- New configuration settings (under "window:magnifiedblock") to control magnified block margins and display
+- New block/zone aliases (client, global, block, workspace, temp)
+- `wsh ai` file attachments are now rendered with special handling in the AI block
+- New ephemeral block type for creating modal widgets which will not disturb the underlying layout
+- New button to clear the AI chat (also bound to Cmd-L)
+- [bugfix] Presets directory was not loading correctly on Windows
+- [bugfix] Magnified blocks were not showing correct on startup
+- [bugfix] Window opacity and background color was not getting applied properly in all cases
+- MacOS 10.15 (Catalina) is no longer supported
+- Other bug fixes, docs improvements, and dependency bumps
+
 ### v0.9.2 &mdash; Nov 11, 2024
 
 New minor release with bug fixes and new features! Fixed the bug around making Wave fullscreen (also affecting certain window managers like Hyprland). We've also put a lot of work into the doc site (https://docs.waveterm.dev), including documenting how [Widgets](./widgets) and [Presets](./presets) work!
