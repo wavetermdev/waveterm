@@ -24,6 +24,7 @@ const (
 	SimpleId_Workspace = "workspace"
 	SimpleId_Client    = "client"
 	SimpleId_Global    = "global"
+	SimpleId_Temp      = "temp"
 )
 
 var (
@@ -41,7 +42,8 @@ func parseSimpleId(simpleId string) (discriminator string, value string, err err
 
 	// Handle special keywords
 	if simpleId == SimpleId_This || simpleId == SimpleId_Block || simpleId == SimpleId_Tab ||
-		simpleId == SimpleId_Ws || simpleId == SimpleId_Workspace || simpleId == SimpleId_Client || simpleId == SimpleId_Global {
+		simpleId == SimpleId_Ws || simpleId == SimpleId_Workspace ||
+		simpleId == SimpleId_Client || simpleId == SimpleId_Global || simpleId == SimpleId_Temp {
 		return "this", simpleId, nil
 	}
 
@@ -109,6 +111,13 @@ func resolveThis(ctx context.Context, data wshrpc.CommandResolveIdsData, value s
 			return nil, fmt.Errorf("error getting client: %v", err)
 		}
 		return &waveobj.ORef{OType: waveobj.OType_Client, OID: client.OID}, nil
+	}
+	if value == SimpleId_Temp {
+		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting client: %v", err)
+		}
+		return &waveobj.ORef{OType: "temp", OID: client.TempOID}, nil
 	}
 	return nil, fmt.Errorf("invalid value for 'this' resolver: %s", value)
 }

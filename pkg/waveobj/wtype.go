@@ -28,6 +28,7 @@ const (
 	OType_Tab         = "tab"
 	OType_LayoutState = "layout"
 	OType_Block       = "block"
+	OType_Temp        = "temp"
 )
 
 var ValidOTypes = map[string]bool{
@@ -37,6 +38,7 @@ var ValidOTypes = map[string]bool{
 	OType_Tab:         true,
 	OType_LayoutState: true,
 	OType_Block:       true,
+	OType_Temp:        true,
 }
 
 type WaveObjUpdate struct {
