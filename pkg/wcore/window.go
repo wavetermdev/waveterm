@@ -104,7 +104,8 @@ func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error 
 	if err != nil {
 		return fmt.Errorf("error getting window: %w", err)
 	}
-	err = DeleteWorkspace(ctx, window.WorkspaceId, fromElectron)
+
+	err = DeleteWorkspace(ctx, window.WorkspaceId, false)
 	if err != nil {
 		return fmt.Errorf("error deleting workspace: %w", err)
 	}

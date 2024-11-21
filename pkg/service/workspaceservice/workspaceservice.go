@@ -18,6 +18,27 @@ const DefaultTimeout = 2 * time.Second
 
 type WorkspaceService struct{}
 
+func (svc *WorkspaceService) DeleteWorkspace_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"workspaceId"},
+	}
+}
+
+func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.UpdatesRtnType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = waveobj.ContextWithUpdates(ctx)
+	err := wcore.DeleteWorkspace(ctx, workspaceId, true)
+	if err != nil {
+		return nil, fmt.Errorf("error deleting workspace: %w", err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
+}
+
 func (svg *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()

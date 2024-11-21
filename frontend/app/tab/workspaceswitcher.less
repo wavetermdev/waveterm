@@ -86,11 +86,14 @@
         border: 1px solid transparent;
         border-radius: 4px;
 
+        --background-color: var(--main-bg-color);
+
         .menu-group-title-wrapper {
             display: flex;
             width: 100%;
             padding: 5px 8px;
             border-radius: 4px;
+            background-color: rgb(from var(--background-color) r g b / 0.1);
         }
 
         &.open:not(:first-child) {

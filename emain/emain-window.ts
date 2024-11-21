@@ -481,3 +481,9 @@ ipcMain.on("switch-workspace", async (event, workspaceId) => {
     console.log("switch-workspace", workspaceId, ww?.waveWindowId);
     await ww?.switchWorkspace(workspaceId);
 });
+
+ipcMain.on("delete-workspace", async (event, workspaceId) => {
+    const ww = getWaveWindowByWebContentsId(event.sender.id);
+    console.log("delete-workspace", workspaceId, ww?.waveWindowId);
+    await WorkspaceService.DeleteWorkspace(workspaceId);
+});

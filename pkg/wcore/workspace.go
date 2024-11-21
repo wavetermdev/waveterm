@@ -26,13 +26,13 @@ func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
 	return ws, nil
 }
 
-func DeleteWorkspace(ctx context.Context, workspaceId string, fromElectron bool) error {
+func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) error {
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
 		if err != nil {
 			return fmt.Errorf("error getting workspace: %w", err)
 		}
-		if workspace.Name != "" && fromElectron {
+		if workspace.Name != "" && !force {
 			log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 			return nil
 		}

@@ -173,6 +173,14 @@ class WorkspaceServiceType {
     }
 
     // @returns object updates
+    DeleteWorkspace(workspaceId: string): Promise<void> {
+        return WOS.callBackendService("workspace", "DeleteWorkspace", Array.from(arguments))
+    }
+    ListWorkspaces(): Promise<WorkspaceListEntry[]> {
+        return WOS.callBackendService("workspace", "ListWorkspaces", Array.from(arguments))
+    }
+
+    // @returns object updates
     SetActiveTab(uiContext: string, tabId: string): Promise<void> {
         return WOS.callBackendService("workspace", "SetActiveTab", Array.from(arguments))
     }
