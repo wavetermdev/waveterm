@@ -281,14 +281,6 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 	}
 
 	var respHandler *RpcResponseHandler
-	defer func() {
-		panicErr := panichandler.PanicHandler("handleRequest")
-		if panicErr != nil {
-			if respHandler != nil {
-				respHandler.SendResponseError(panicErr)
-			}
-		}
-	}()
 	timeoutMs := req.Timeout
 	if timeoutMs <= 0 {
 		timeoutMs = DefaultTimeoutMs
