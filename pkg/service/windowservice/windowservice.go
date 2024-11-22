@@ -21,6 +21,37 @@ const DefaultTimeout = 2 * time.Second
 
 type WindowService struct{}
 
+func (svc *WindowService) GetWindow(windowId string) (*waveobj.Window, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	window, err := wstore.DBGet[*waveobj.Window](ctx, windowId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting window: %w", err)
+	}
+	return window, nil
+}
+
+func (svc *WindowService) MakeWindow(ctx context.Context) (*waveobj.Window, error) {
+	log.Println("MakeWindow")
+	window, err := wcore.CreateWindow(ctx, nil, "")
+	if err != nil {
+		log.Printf("error creating window: %v\n", err)
+		return nil, err
+	}
+	log.Printf("New window: %v\n", window)
+	ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
+	if err != nil {
+		log.Printf("error getting workspace: %v\n", err)
+		return nil, err
+	}
+	log.Printf("New workspace: %v\n", ws)
+	err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
+	if err != nil {
+		return window, err
+	}
+	return window, nil
+}
+
 func (svc *WindowService) SetWindowPosAndSize_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "set window position and size",

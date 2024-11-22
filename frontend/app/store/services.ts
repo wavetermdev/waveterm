@@ -40,15 +40,6 @@ class ClientServiceType {
     GetTab(arg1: string): Promise<Tab> {
         return WOS.callBackendService("client", "GetTab", Array.from(arguments))
     }
-    GetWindow(arg1: string): Promise<WaveWindow> {
-        return WOS.callBackendService("client", "GetWindow", Array.from(arguments))
-    }
-    GetWorkspace(arg1: string): Promise<Workspace> {
-        return WOS.callBackendService("client", "GetWorkspace", Array.from(arguments))
-    }
-    MakeWindow(): Promise<WaveWindow> {
-        return WOS.callBackendService("client", "MakeWindow", Array.from(arguments))
-    }
     TelemetryUpdate(arg2: boolean): Promise<void> {
         return WOS.callBackendService("client", "TelemetryUpdate", Array.from(arguments))
     }
@@ -141,6 +132,12 @@ class WindowServiceType {
     CloseWindow(fromElectron: string, arg3: boolean): Promise<void> {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
+    GetWindow(arg1: string): Promise<WaveWindow> {
+        return WOS.callBackendService("window", "GetWindow", Array.from(arguments))
+    }
+    MakeWindow(): Promise<WaveWindow> {
+        return WOS.callBackendService("window", "MakeWindow", Array.from(arguments))
+    }
 
     // move block to new window
     // @returns object updates
@@ -175,6 +172,9 @@ class WorkspaceServiceType {
     // @returns object updates
     DeleteWorkspace(workspaceId: string): Promise<void> {
         return WOS.callBackendService("workspace", "DeleteWorkspace", Array.from(arguments))
+    }
+    GetWorkspace(workspaceId: string): Promise<Workspace> {
+        return WOS.callBackendService("workspace", "GetWorkspace", Array.from(arguments))
     }
     ListWorkspaces(): Promise<WorkspaceListEntry[]> {
         return WOS.callBackendService("workspace", "ListWorkspaces", Array.from(arguments))

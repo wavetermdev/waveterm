@@ -103,29 +103,31 @@ if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
 
-async function handleWSEvent(evtMsg: WSEventType) {
-    console.log("handleWSEvent", evtMsg?.eventtype);
-    if (evtMsg.eventtype == "electron:newwindow") {
-        const windowId: string = evtMsg.data;
-        const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
-        if (windowData == null) {
-            return;
+function handleWSEvent(evtMsg: WSEventType) {
+    fireAndForget(async () => {
+        console.log("handleWSEvent", evtMsg?.eventtype);
+        if (evtMsg.eventtype == "electron:newwindow") {
+            const windowId: string = evtMsg.data;
+            const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+            if (windowData == null) {
+                return;
+            }
+            const clientData = await services.ClientService.GetClientData();
+            const fullConfig = await services.FileService.GetFullConfig();
+            const newWin = await createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
+            await newWin.waveReadyPromise;
+            newWin.show();
+        } else if (evtMsg.eventtype == "electron:closewindow") {
+            if (evtMsg.data === undefined) return;
+            const ww = getWaveWindowById(evtMsg.data);
+            if (ww != null) {
+                ww.alreadyClosed = true;
+                ww.destroy(); // bypass the "are you sure?" dialog
+            }
+        } else {
+            console.log("unhandled electron ws eventtype", evtMsg.eventtype);
         }
-        const clientData = await services.ClientService.GetClientData();
-        const fullConfig = await services.FileService.GetFullConfig();
-        const newWin = await createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
-        await newWin.waveReadyPromise;
-        newWin.show();
-    } else if (evtMsg.eventtype == "electron:closewindow") {
-        if (evtMsg.data === undefined) return;
-        const ww = getWaveWindowById(evtMsg.data);
-        if (ww != null) {
-            ww.alreadyClosed = true;
-            ww.destroy(); // bypass the "are you sure?" dialog
-        }
-    } else {
-        console.log("unhandled electron ws eventtype", evtMsg.eventtype);
-    }
+    });
 }
 
 // Listen for the open-external event from the renderer process
@@ -381,7 +383,7 @@ async function createNewWaveWindow(): Promise<void> {
         return;
     }
     console.log("makewindow");
-    const newWindow = await services.ClientService.MakeWindow();
+    const newWindow = await services.WindowService.MakeWindow();
     const newBrowserWindow = await createBrowserWindow(clientData.oid, newWindow, fullConfig, { unamePlatform });
     await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
@@ -497,26 +499,28 @@ function getActivityDisplays(): ActivityDisplayType[] {
     return rtn;
 }
 
-async function logActiveState() {
-    const astate = getActivityState();
-    const activity: ActivityUpdate = { openminutes: 1 };
-    if (astate.wasInFg) {
-        activity.fgminutes = 1;
-    }
-    if (astate.wasActive) {
-        activity.activeminutes = 1;
-    }
-    activity.displays = getActivityDisplays();
-    try {
-        RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
-    } catch (e) {
-        console.log("error logging active state", e);
-    } finally {
-        // for next iteration
-        const ww = focusedWaveWindow;
-        setWasInFg(ww?.isFocused() ?? false);
-        setWasActive(false);
-    }
+function logActiveState() {
+    fireAndForget(async () => {
+        const astate = getActivityState();
+        const activity: ActivityUpdate = { openminutes: 1 };
+        if (astate.wasInFg) {
+            activity.fgminutes = 1;
+        }
+        if (astate.wasActive) {
+            activity.activeminutes = 1;
+        }
+        activity.displays = getActivityDisplays();
+        try {
+            await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
+        } catch (e) {
+            console.log("error logging active state", e);
+        } finally {
+            // for next iteration
+            const ww = focusedWaveWindow;
+            setWasInFg(ww?.isFocused() ?? false);
+            setWasActive(false);
+        }
+    });
 }
 
 // this isn't perfect, but gets the job done without being complicated
@@ -706,10 +710,10 @@ async function appMain() {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
     }
 
-    electronApp.on("activate", async () => {
+    electronApp.on("activate", () => {
         const allWindows = getAllWaveWindows();
         if (allWindows.length === 0) {
-            await createNewWaveWindow();
+            fireAndForget(createNewWaveWindow);
         }
     });
 }

@@ -19,6 +19,22 @@ const DefaultTimeout = 2 * time.Second
 
 type WorkspaceService struct{}
 
+func (svc *WorkspaceService) GetWorkspace_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"workspaceId"},
+	}
+}
+
+func (svc *WorkspaceService) GetWorkspace(workspaceId string) (*waveobj.Workspace, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ws, err := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting workspace: %w", err)
+	}
+	return ws, nil
+}
+
 func (svc *WorkspaceService) DeleteWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"workspaceId"},

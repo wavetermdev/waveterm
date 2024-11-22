@@ -198,6 +198,8 @@ const WorkspaceSwitcher = () => {
         }, 10);
     };
 
+    const isActiveWorkspaceEphemeral = !activeWorkspace.name || !activeWorkspace.icon;
+
     return (
         <Popover className="workspace-switcher-popover">
             <PopoverButton className="workspace-switcher-button grey" as="div" onClick={() => updateWorkspaceMap()}>
@@ -213,7 +215,7 @@ const WorkspaceSwitcher = () => {
                     </ExpandableMenu>
                 </OverlayScrollbarsComponent>
 
-                {!activeWorkspace.name && (
+                {isActiveWorkspaceEphemeral && (
                     <div className="actions">
                         <ExpandableMenuItem onClick={() => saveWorkspace()}>
                             <ExpandableMenuItemLeftElement>

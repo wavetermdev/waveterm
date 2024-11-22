@@ -14,7 +14,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
@@ -35,16 +34,6 @@ func (cs *ClientService) GetClientData() (*waveobj.Client, error) {
 	return clientData, nil
 }
 
-func (cs *ClientService) GetWorkspace(workspaceId string) (*waveobj.Workspace, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	ws, err := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting workspace: %w", err)
-	}
-	return ws, nil
-}
-
 func (cs *ClientService) GetTab(tabId string) (*waveobj.Tab, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
@@ -53,37 +42,6 @@ func (cs *ClientService) GetTab(tabId string) (*waveobj.Tab, error) {
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
 	return tab, nil
-}
-
-func (cs *ClientService) GetWindow(windowId string) (*waveobj.Window, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	window, err := wstore.DBGet[*waveobj.Window](ctx, windowId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting window: %w", err)
-	}
-	return window, nil
-}
-
-func (cs *ClientService) MakeWindow(ctx context.Context) (*waveobj.Window, error) {
-	log.Println("MakeWindow")
-	window, err := wcore.CreateWindow(ctx, nil, "")
-	if err != nil {
-		log.Printf("error creating window: %v\n", err)
-		return nil, err
-	}
-	log.Printf("New window: %v\n", window)
-	ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
-	if err != nil {
-		log.Printf("error creating workspace: %v\n", err)
-		return nil, err
-	}
-	log.Printf("New workspace: %v\n", ws)
-	err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
-	if err != nil {
-		return window, err
-	}
-	return window, nil
 }
 
 func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnStatus, error) {

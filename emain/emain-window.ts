@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ClientService, FileService, WindowService, WorkspaceService } from "@/app/store/services";
+import { fireAndForget } from "@/util/util";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, ipcMain, screen } from "electron";
 import path from "path";
 import { debounce } from "throttle-debounce";
@@ -10,7 +11,6 @@ import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } 
 import { delay, ensureBoundsAreVisible } from "./emain-util";
 import { getElectronAppBasePath } from "./platform";
 import { updater } from "./updater";
-
 export type WindowOpts = {
     unamePlatform: string;
 };
@@ -25,6 +25,7 @@ export class WaveBrowserWindow extends BaseWindow {
     waveReadyPromise: Promise<void>;
     allTabViews: Map<string, WaveTabView>;
     activeTabView: WaveTabView;
+    canClose: boolean;
     alreadyClosed: boolean;
     deleteAllowed: boolean;
     private tabSwitchQueue: { tabView: WaveTabView; tabInitialized: boolean }[];
@@ -138,6 +139,9 @@ export class WaveBrowserWindow extends BaseWindow {
             debounce(400, (e) => this.mainResizeHandler(e))
         );
         this.on("enter-full-screen", async () => {
+            if (this.isDestroyed()) {
+                return;
+            }
             console.log("enter-full-screen event", this.getContentBounds());
             const tabView = this.activeTabView;
             if (tabView) {
@@ -146,6 +150,9 @@ export class WaveBrowserWindow extends BaseWindow {
             this.activeTabView?.positionTabOnScreen(this.getContentBounds());
         });
         this.on("leave-full-screen", async () => {
+            if (this.isDestroyed()) {
+                return;
+            }
             const tabView = this.activeTabView;
             if (tabView) {
                 tabView.webContents.send("fullscreen-change", false);
@@ -153,42 +160,64 @@ export class WaveBrowserWindow extends BaseWindow {
             this.activeTabView?.positionTabOnScreen(this.getContentBounds());
         });
         this.on("focus", () => {
+            if (this.isDestroyed()) {
+                return;
+            }
             if (getGlobalIsRelaunching()) {
                 return;
             }
             focusedWaveWindow = this;
             console.log("focus win", this.waveWindowId);
-            ClientService.FocusWindow(this.waveWindowId);
+            fireAndForget(async () => await ClientService.FocusWindow(this.waveWindowId));
             setWasInFg(true);
             setWasActive(true);
         });
         this.on("blur", () => {
+            if (this.isDestroyed()) {
+                return;
+            }
             if (focusedWaveWindow == this) {
                 focusedWaveWindow = null;
             }
         });
         this.on("close", (e) => {
+            if (this.canClose) {
+                return;
+            }
+            if (this.isDestroyed()) {
+                return;
+            }
             console.log("win 'close' handler fired", this.waveWindowId);
             if (getGlobalIsQuitting() || updater?.status == "installing" || getGlobalIsRelaunching()) {
                 return;
             }
-            const numWindows = waveWindowMap.size;
-            if (numWindows == 1) {
-                return;
-            }
-            const choice = dialog.showMessageBoxSync(this, {
-                type: "question",
-                buttons: ["Cancel", "Yes"],
-                title: "Confirm",
-                message: "Are you sure you want to close this window (all tabs and blocks will be deleted)?",
+            e.preventDefault();
+            fireAndForget(async () => {
+                const numWindows = waveWindowMap.size;
+                if (numWindows > 1) {
+                    const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
+                    if (!workspace.name && !workspace.icon && workspace.tabids.length > 1) {
+                        const choice = dialog.showMessageBoxSync(this, {
+                            type: "question",
+                            buttons: ["Cancel", "Yes"],
+                            title: "Confirm",
+                            message:
+                                "Are you sure you want to close this window (all tabs and blocks will be deleted)?",
+                        });
+                        if (choice === 0) {
+                            return;
+                        }
+                    }
+                    this.deleteAllowed = true;
+                }
+                this.canClose = true;
+                this.close();
             });
-            if (choice === 0) {
-                e.preventDefault();
-            } else {
-                this.deleteAllowed = true;
-            }
         });
         this.on("closed", () => {
+            if (this.isDestroyed()) {
+                return;
+            }
             console.log("win 'closed' handler fired", this.waveWindowId);
             if (getGlobalIsQuitting() || updater?.status == "installing") {
                 return;
@@ -203,7 +232,7 @@ export class WaveBrowserWindow extends BaseWindow {
             }
             if (!this.alreadyClosed && this.deleteAllowed) {
                 console.log("win removing window from backend DB", this.waveWindowId);
-                WindowService.CloseWindow(this.waveWindowId, true);
+                fireAndForget(async () => await WindowService.CloseWindow(this.waveWindowId, true));
             }
             this.destroy();
         });
@@ -221,16 +250,16 @@ export class WaveBrowserWindow extends BaseWindow {
         this.allTabViews = new Map();
         const fullConfig = await FileService.GetFullConfig();
         const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, newWs.activetabid);
-        this.queueTabSwitch(tabView, tabInitialized);
+        await this.queueTabSwitch(tabView, tabInitialized);
     }
 
     async setActiveTab(tabId: string) {
         console.log("setActiveTab", this);
-        const workspace = await ClientService.GetWorkspace(this.workspaceId);
+        const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
         await WorkspaceService.SetActiveTab(workspace.oid, tabId);
         const fullConfig = await FileService.GetFullConfig();
         const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, tabId);
-        this.queueTabSwitch(tabView, tabInitialized);
+        await this.queueTabSwitch(tabView, tabInitialized);
     }
 
     async createTab() {
@@ -348,14 +377,14 @@ export class WaveBrowserWindow extends BaseWindow {
         }
     }
 
-    queueTabSwitch(tabView: WaveTabView, tabInitialized: boolean) {
+    async queueTabSwitch(tabView: WaveTabView, tabInitialized: boolean) {
         if (this.tabSwitchQueue.length == 2) {
             this.tabSwitchQueue[1] = { tabView, tabInitialized };
             return;
         }
         this.tabSwitchQueue.push({ tabView, tabInitialized });
         if (this.tabSwitchQueue.length == 1) {
-            this.processTabSwitchQueue();
+            await this.processTabSwitchQueue();
         }
     }
 
@@ -369,7 +398,7 @@ export class WaveBrowserWindow extends BaseWindow {
             await this.setTabViewIntoWindow(tabView, tabInitialized);
         } finally {
             this.tabSwitchQueue.shift();
-            this.processTabSwitchQueue();
+            await this.processTabSwitchQueue();
         }
     }
 
@@ -395,6 +424,9 @@ export class WaveBrowserWindow extends BaseWindow {
             tabView?.destroy();
         }
         waveWindowMap.delete(this.waveWindowId);
+        if (focusedWaveWindow == this) {
+            focusedWaveWindow = null;
+        }
         super.destroy();
     }
 }
@@ -443,7 +475,7 @@ export async function createBrowserWindow(
     console.log("createBrowserWindow", waveWindow.oid);
     const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
 
-    const workspace = await ClientService.GetWorkspace(waveWindow.workspaceid);
+    const workspace = await WorkspaceService.GetWorkspace(waveWindow.workspaceid);
     console.log("workspace", workspace);
     if (workspace.activetabid) {
         console.log("set active tab id");

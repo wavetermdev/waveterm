@@ -32,7 +32,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) error 
 		if err != nil {
 			return fmt.Errorf("error getting workspace: %w", err)
 		}
-		if workspace.Name != "" && !force {
+		if workspace.Name != "" && workspace.Icon != "" && !force {
 			log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 			return nil
 		}
@@ -195,7 +195,7 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 
 	var wl waveobj.WorkspaceList
 	for _, workspace := range workspaces {
-		if workspace.Name == "" {
+		if workspace.Name == "" || workspace.Icon == "" || workspace.Color == "" {
 			continue
 		}
 		windowId, ok := workspaceToWindow[workspace.OID]
