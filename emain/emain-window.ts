@@ -245,7 +245,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     async switchWorkspace(workspaceId: string) {
         const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-        if ((curWorkspace.tabids.length > 1 && !curWorkspace.name) || !curWorkspace.icon) {
+        if (curWorkspace.tabids.length > 1 && (!curWorkspace.name || !curWorkspace.icon)) {
             const choice = dialog.showMessageBoxSync(this, {
                 type: "question",
                 buttons: ["Cancel", "Open in New Window", "Yes"],
@@ -487,20 +487,24 @@ export function getAllWaveWindows(): WaveBrowserWindow[] {
     return Array.from(waveWindowMap.values());
 }
 
-// TODO:
 // note, this does not *show* the window.
 // to show, await win.readyPromise and then win.show()
 export async function createBrowserWindow(
-    clientId: string,
     waveWindow: WaveWindow,
     fullConfig: FullConfigType,
     opts: WindowOpts
 ): Promise<WaveBrowserWindow> {
+    let workspace: Workspace;
+    if (!waveWindow) {
+        [waveWindow, workspace] = await WindowService.CreateWindow(null, "");
+    } else {
+        workspace = await WorkspaceService.GetWorkspace(waveWindow.workspaceid);
+    }
+    console.log("workspace", workspace);
+
     console.log("createBrowserWindow", waveWindow.oid);
     const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
 
-    const workspace = await WorkspaceService.GetWorkspace(waveWindow.workspaceid);
-    console.log("workspace", workspace);
     if (workspace.activetabid) {
         console.log("set active tab id");
         await bwin.setActiveTab(workspace.activetabid);

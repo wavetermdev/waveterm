@@ -19,10 +19,6 @@ func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
 		TabIds: []string{},
 	}
 	wstore.DBInsert(ctx, ws)
-	_, err := CreateTab(ctx, ws.OID, "", true)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting tab: %w", err)
-	}
 	return ws, nil
 }
 

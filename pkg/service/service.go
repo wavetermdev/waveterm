@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 
@@ -172,6 +173,7 @@ func convertSpecial(argType reflect.Type, jsonArg any) (any, error) {
 }
 
 func convertSpecialForReturn(argType reflect.Type, nativeArg any) (any, error) {
+	log.Printf("convertSpecialForReturn(%s, %T)", argType, nativeArg)
 	if argType == waveObjRType {
 		return waveobj.ToJsonMap(nativeArg.(waveobj.WaveObj))
 	} else if argType == waveObjSliceRType {
@@ -279,6 +281,7 @@ func convertReturnValues(rtnVals []reflect.Value) *WebReturnType {
 	if len(rtnVals) == 0 {
 		return rtn
 	}
+	rtnData := make([]any, 0)
 	for _, val := range rtnVals {
 		if isNilable(val) && val.IsNil() {
 			continue
@@ -299,10 +302,15 @@ func convertReturnValues(rtnVals []reflect.Value) *WebReturnType {
 				rtn.Error = fmt.Errorf("cannot convert special return value: %v", err).Error()
 				continue
 			}
-			rtn.Data = jsonVal
+			rtnData = append(rtnData, jsonVal)
 			continue
 		}
-		rtn.Data = val.Interface()
+		rtnData = append(rtnData, val.Interface())
+	}
+	if len(rtnData) > 1 {
+		rtn.Data = rtnData
+	} else if len(rtnData) == 1 {
+		rtn.Data = rtnData[0]
 	}
 	if rtn.Error == "" {
 		rtn.Success = true

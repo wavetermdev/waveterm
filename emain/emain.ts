@@ -114,7 +114,7 @@ function handleWSEvent(evtMsg: WSEventType) {
             }
             const clientData = await services.ClientService.GetClientData();
             const fullConfig = await services.FileService.GetFullConfig();
-            const newWin = await createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
+            const newWin = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
             await newWin.waveReadyPromise;
             newWin.show();
         } else if (evtMsg.eventtype == "electron:closewindow") {
@@ -374,7 +374,7 @@ async function createNewWaveWindow(): Promise<void> {
         const existingWindowId = clientData.windowids[0];
         const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
-            const win = await createBrowserWindow(clientData.oid, existingWindowData, fullConfig, { unamePlatform });
+            const win = await createBrowserWindow(existingWindowData, fullConfig, { unamePlatform });
             await win.waveReadyPromise;
             win.show();
             recreatedWindow = true;
@@ -383,9 +383,7 @@ async function createNewWaveWindow(): Promise<void> {
     if (recreatedWindow) {
         return;
     }
-    console.log("makewindow");
-    const newWindow = await services.WindowService.MakeWindow();
-    const newBrowserWindow = await createBrowserWindow(clientData.oid, newWindow, fullConfig, { unamePlatform });
+    const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
     await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
 }
@@ -660,7 +658,7 @@ async function relaunchBrowserWindows(): Promise<void> {
             });
             continue;
         }
-        const win = await createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
+        const win = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
         wins.push(win);
     }
     for (const win of wins) {
