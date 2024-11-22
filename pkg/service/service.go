@@ -6,7 +6,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -173,7 +172,6 @@ func convertSpecial(argType reflect.Type, jsonArg any) (any, error) {
 }
 
 func convertSpecialForReturn(argType reflect.Type, nativeArg any) (any, error) {
-	log.Printf("convertSpecialForReturn(%s, %T)", argType, nativeArg)
 	if argType == waveObjRType {
 		return waveobj.ToJsonMap(nativeArg.(waveobj.WaveObj))
 	} else if argType == waveObjSliceRType {

@@ -305,7 +305,6 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
-        console.log("setTabViewIntoWindow", this, tabView, tabInitialized);
         const clientData = await ClientService.GetClientData();
         if (this.activeTabView == tabView) {
             return;
@@ -500,13 +499,8 @@ export async function createBrowserWindow(
     } else {
         workspace = await WorkspaceService.GetWorkspace(waveWindow.workspaceid);
     }
-    console.log("workspace", workspace);
-
-    console.log("createBrowserWindow", waveWindow.oid);
     const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
-
     if (workspace.activetabid) {
-        console.log("set active tab id");
         await bwin.setActiveTab(workspace.activetabid);
     }
     return bwin;

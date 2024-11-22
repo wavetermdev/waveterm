@@ -128,7 +128,6 @@ function callBackendService(service: string, method: string, args: any[], noUICo
             }
             const durationStr = Date.now() - startTs + "ms";
             debugLogBackendCall(methodName, durationStr, args);
-            console.log("callBackendService", methodName, durationStr, respData);
             return respData.data;
         });
     return prtn;

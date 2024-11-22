@@ -9,6 +9,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -26,6 +29,20 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 		return nil, nil
 	}
 
+	allWindows, err := wstore.DBGetAllObjsByType[*waveobj.Window](ctx, waveobj.OType_Window)
+	if err != nil {
+		return nil, fmt.Errorf("error getting all windows: %w", err)
+	}
+
+	for _, w := range allWindows {
+		if w.WorkspaceId == workspaceId {
+			log.Printf("workspace %s already has a window %s, focusing that window\n", workspaceId, w.OID)
+			client := wshclient.GetBareRpcClient()
+			err = wshclient.FocusWindowCommand(client, w.OID, &wshrpc.RpcOpts{Route: wshutil.ElectronRoute})
+			return nil, err
+		}
+	}
+
 	curWs, err := GetWorkspace(ctx, window.WorkspaceId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting current workspace: %w", err)
@@ -35,18 +52,6 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 		err = DeleteWorkspace(ctx, curWs.OID, false)
 		if err != nil {
 			return nil, fmt.Errorf("error deleting current workspace: %w", err)
-		}
-	}
-
-	allWindows, err := wstore.DBGetAllObjsByType[*waveobj.Window](ctx, waveobj.OType_Window)
-	if err != nil {
-		return nil, fmt.Errorf("error getting all windows: %w", err)
-	}
-
-	for _, w := range allWindows {
-		if w.WorkspaceId == workspaceId {
-			log.Printf("workspace %s already has a window %s, focusing that window\n", workspaceId, w.OID)
-			return nil, FocusWindow(ctx, w.OID)
 		}
 	}
 

@@ -84,6 +84,7 @@ const (
 
 	Command_WebSelector      = "webselector"
 	Command_Notify           = "notify"
+	Command_FocusWindow      = "focuswindow"
 	Command_GetUpdateChannel = "getupdatechannel"
 
 	Command_VDomCreateContext   = "vdomcreatecontext"
@@ -168,6 +169,7 @@ type WshRpcInterface interface {
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+	FocusWindowCommand(ctx context.Context, windowId string) error
 
 	WorkspaceListCommand(ctx context.Context) (waveobj.WorkspaceList, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)

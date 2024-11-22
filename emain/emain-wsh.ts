@@ -1,11 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { FileService, WindowService } from "@/app/store/services";
 import { Notification } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
-import { getWaveWindowByWorkspaceId } from "./emain-window";
+import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
+import { unamePlatform } from "./platform";
 
 export class ElectronWshClientType extends WshClient {
     constructor() {
@@ -18,7 +20,7 @@ export class ElectronWshClientType extends WshClient {
         }
         const ww = getWaveWindowByWorkspaceId(data.workspaceid);
         if (ww == null) {
-            throw new Error(`no window found with workspace id ${data.workspaceid}`);
+            throw new Error(`no window found with workspace ${data.workspaceid}`);
         }
         const wc = await getWebContentsByBlockId(ww, data.tabid, data.blockid);
         if (wc == null) {
@@ -38,6 +40,20 @@ export class ElectronWshClientType extends WshClient {
 
     async handle_getupdatechannel(rh: RpcResponseHelper): Promise<string> {
         return getResolvedUpdateChannel();
+    }
+
+    async handle_focuswindow(rh: RpcResponseHelper, windowId: string) {
+        console.log(`focuswindow ${windowId}`);
+        const fullConfig = await FileService.GetFullConfig();
+        let ww = getWaveWindowById(windowId);
+        if (ww == null) {
+            const window = await WindowService.GetWindow(windowId);
+            if (window == null) {
+                throw new Error(`window ${windowId} not found`);
+            }
+            ww = await createBrowserWindow(window, fullConfig, { unamePlatform });
+        }
+        ww.focus();
     }
 }
 
