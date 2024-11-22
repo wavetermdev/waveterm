@@ -65,7 +65,7 @@ func (svg *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
 
 func (svc *WorkspaceService) CreateTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames:   []string{"windowId", "tabName", "activateTab"},
+		ArgNames:   []string{"workspaceId", "tabName", "activateTab"},
 		ReturnDesc: "tabId",
 	}
 }
@@ -109,7 +109,7 @@ func (svc *WorkspaceService) UpdateTabIds(uiContext waveobj.UIContext, workspace
 
 func (svc *WorkspaceService) SetActiveTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"uiContext", "tabId"},
+		ArgNames: []string{"workspaceId", "tabId"},
 	}
 }
 
@@ -150,7 +150,7 @@ type CloseTabRtnType struct {
 
 func (svc *WorkspaceService) CloseTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"workspaceId", "tabId", "fromElectron"},
+		ArgNames: []string{"ctx", "workspaceId", "tabId", "fromElectron"},
 	}
 }
 

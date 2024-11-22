@@ -41,7 +41,7 @@ func (svc *WindowService) GetWindow(windowId string) (*waveobj.Window, error) {
 
 func (svc *WindowService) CreateWindow_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"winSize", "workspaceId"},
+		ArgNames: []string{"ctx", "winSize", "workspaceId"},
 	}
 }
 
@@ -70,7 +70,7 @@ func (svc *WindowService) CreateWindow(ctx context.Context, winSize *waveobj.Win
 func (svc *WindowService) SetWindowPosAndSize_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "set window position and size",
-		ArgNames: []string{"windowId", "pos", "size"},
+		ArgNames: []string{"ctx", "windowId", "pos", "size"},
 	}
 }
 
@@ -156,7 +156,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 
 func (svc *WindowService) SwitchWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"windowId", "workspaceId"},
+		ArgNames: []string{"ctx", "windowId", "workspaceId"},
 	}
 }
 
@@ -174,7 +174,7 @@ func (svc *WindowService) SwitchWorkspace(ctx context.Context, windowId string, 
 
 func (svc *WindowService) CloseWindow_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"windowId", "fromElectron"},
+		ArgNames: []string{"ctx", "windowId", "fromElectron"},
 	}
 }
 
