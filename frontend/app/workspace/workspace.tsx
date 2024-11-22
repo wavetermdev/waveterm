@@ -12,7 +12,7 @@ import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { NotificationPopover } from "../notification/notificationpopover";
 
-import "./workspace.less";
+import "./workspace.scss";
 
 const iconRegex = /^[a-z0-9-]+$/;
 

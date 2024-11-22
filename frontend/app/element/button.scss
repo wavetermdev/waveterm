@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "../mixins.less";
+@use "../mixins.scss";
 
 .button {
     // override default button appearance
@@ -158,9 +158,9 @@
     }
 
     // Include mixins
-    .border-radius-mixin();
-    .vertical-padding-mixin();
-    .horizontal-padding-mixin();
-    .font-size-mixin();
-    .font-weight-mixin();
+    @include mixins.border-radius-mixin();
+    @include mixins.vertical-padding-mixin();
+    @include mixins.horizontal-padding-mixin();
+    @include mixins.font-size-mixin();
+    @include mixins.font-weight-mixin();
 }

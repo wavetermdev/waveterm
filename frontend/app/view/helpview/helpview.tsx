@@ -7,7 +7,7 @@ import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { fireAndForget } from "@/util/util";
 import { atom, useAtomValue } from "jotai";
 import { useCallback } from "react";
-import "./helpview.less";
+import "./helpview.scss";
 
 const docsiteWebUrl = "https://docs.waveterm.dev/";
 const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;

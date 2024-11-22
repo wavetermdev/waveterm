@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "../mixins.less";
+@use "../mixins.scss";
 
 .expandable-menu {
     display: flex;
@@ -20,7 +20,7 @@
     border-radius: 4px;
 
     .label {
-        .ellipsis();
+        @include mixins.ellipsis();
     }
 }
 

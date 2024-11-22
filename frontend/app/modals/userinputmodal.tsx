@@ -8,7 +8,7 @@ import * as keyutil from "@/util/keyutil";
 import { UserInputService } from "../store/services";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import "./userinputmodal.less";
+import "./userinputmodal.scss";
 
 const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = useState("");

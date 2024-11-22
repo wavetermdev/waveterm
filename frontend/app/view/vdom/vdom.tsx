@@ -16,7 +16,7 @@ import {
     validateAndWrapCss,
     validateAndWrapReactStyle,
 } from "@/app/view/vdom/vdom-utils";
-import "./vdom.less";
+import "./vdom.scss";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";

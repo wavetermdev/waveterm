@@ -16,7 +16,7 @@ import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
 import ymlWorker from "./yamlworker?worker";
 
-import "./codeeditor.less";
+import "./codeeditor.scss";
 
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: Monaco;

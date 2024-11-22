@@ -1,0 +1,232 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+@use "../../mixins.scss";
+
+.dir-table-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  --min-row-width: 35rem;
+  .dir-table {
+    height: 100%;
+    width: 100%;
+    --col-size-size: 0.2rem;
+    display: flex;
+    flex-direction: column;
+
+    &:not([data-scroll-height="0"]) .dir-table-head::after {
+      background: oklch(from var(--block-bg-color) calc(l + 0.5) c h);
+      backdrop-filter: blur(2px);
+      content: "";
+      z-index: -1;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+
+    .dir-table-head {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: 100%;
+      border-bottom: 1px solid var(--border-color);
+
+      .dir-table-head-row {
+        display: flex;
+        min-width: var(--min-row-width);
+        padding: 4px 6px;
+        font-size: 0.75rem;
+
+        .dir-table-head-cell {
+          flex: 0 0 auto;
+          user-select: none;
+        }
+        .dir-table-head-cell:not(:first-child) {
+          position: relative;
+          display: flex;
+          white-space: nowrap;
+          overflow: hidden;
+
+          .dir-table-head-cell-content {
+            padding: 2px 4px;
+            display: flex;
+            gap: 0.3rem;
+            flex: 1 1 auto;
+            overflow-x: hidden;
+            letter-spacing: -0.12px;
+
+            .dir-table-head-direction {
+              margin-right: 0.2rem;
+              margin-top: 0.2rem;
+            }
+
+            .dir-table-head-size {
+              align-self: flex-end;
+            }
+          }
+
+          .dir-table-head-resize-box {
+            width: 12px;
+            display: flex;
+            justify-content: center;
+            flex: 0 0 auto;
+            .dir-table-head-resize {
+              cursor: col-resize;
+              user-select: none;
+              -webkit-user-select: none;
+              touch-action: none;
+              width: 4px;
+            }
+          }
+        }
+      }
+    }
+
+    .dir-table-body {
+      display: flex;
+      flex-direction: column;
+      .dir-table-body-search-display {
+        display: flex;
+        border-radius: 3px;
+        padding: 0.25rem 0.5rem;
+        background-color: var(--warning-color);
+
+        .search-display-close-button {
+          margin-left: auto;
+        }
+      }
+
+      .dir-table-body-scroll-box {
+        position: relative;
+        .dummy {
+          position: absolute;
+          visibility: hidden;
+        }
+        .dir-table-body-row {
+          display: flex;
+          align-items: center;
+          border-radius: 5px;
+          padding: 0 6px;
+          min-width: var(--min-row-width);
+
+          &.focused {
+            background-color: rgb(from var(--accent-color) r g b / 0.5);
+            color: var(--main-text-color);
+
+            .dir-table-body-cell {
+              .dir-table-lastmod,
+              .dir-table-modestr,
+              .dir-table-size,
+              .dir-table-type {
+                color: var(--main-text-color);
+              }
+            }
+          }
+
+          &:focus {
+            background-color: rgb(from var(--accent-color) r g b / 0.5);
+            color: var(--main-text-color);
+
+            .dir-table-body-cell {
+              .dir-table-lastmod,
+              .dir-table-modestr,
+              .dir-table-size,
+              .dir-table-type {
+                color: var(--main-text-color);
+              }
+            }
+          }
+
+          &:hover:not(:focus):not(.focused) {
+            background-color: var(--highlight-bg-color);
+          }
+
+          .dir-table-body-cell {
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 0.25rem;
+            cursor: default;
+            font-size: 0.8125rem;
+            flex: 0 0 auto;
+
+            &.col-size {
+              text-align: right;
+            }
+
+            .dir-table-lastmod,
+            .dir-table-modestr,
+            .dir-table-size,
+            .dir-table-type {
+              color: var(--secondary-text-color);
+              margin-right: 12px;
+            }
+
+            .dir-table-type {
+              @include mixins.ellipsis();
+            }
+
+            .dir-table-modestr {
+              font-family: Hack;
+            }
+
+            &:has(.dir-table-name) {
+              @include mixins.ellipsis();
+            }
+            .dir-table-name {
+              font-weight: 500;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .dir-table-search-line {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.7rem;
+
+    .dir-table-search-box {
+      width: 0;
+      height: 0;
+      opacity: 0;
+      padding: 0;
+      border: none;
+      pointer-events: none;
+    }
+  }
+}
+
+.dir-table-button {
+  background-color: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  padding: 0.2rem;
+  border-radius: 6px;
+
+  input {
+    width: 0;
+    height: 0;
+    opacity: 0;
+    padding: 0;
+    border: none;
+    pointer-events: none;
+  }
+
+  &:hover {
+    background-color: var(--highlight-bg-color);
+  }
+
+  &:focus {
+    background-color: var(--highlight-bg-color);
+  }
+
+  &:focus-within {
+    background-color: var(--highlight-bg-color);
+  }
+}

@@ -4,7 +4,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { UserList } from "./userlist";
 
-import "./userlist.less";
+import "./userlist.scss";
 
 export interface UserStatus {
     text: string;

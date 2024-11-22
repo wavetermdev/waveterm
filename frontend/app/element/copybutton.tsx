@@ -3,7 +3,7 @@
 
 import { clsx } from "clsx";
 import { useEffect, useRef, useState } from "react";
-import "./copybutton.less";
+import "./copybutton.scss";
 import { IconButton } from "./iconbutton";
 
 type CopyButtonProps = {

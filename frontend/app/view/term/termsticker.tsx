@@ -10,7 +10,7 @@ import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
 import GaugeChart from "react-gauge-chart";
-import "./term.less";
+import "./term.scss";
 
 type StickerType = {
     position: "absolute";
