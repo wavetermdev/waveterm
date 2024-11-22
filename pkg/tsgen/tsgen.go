@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 
@@ -342,19 +343,23 @@ func GenerateMethodSignature(serviceName string, method reflect.Method, meta tsg
 	sb.WriteString(method.Name)
 	sb.WriteString("(")
 	wroteArg := false
+	log.Printf("method %s: %s, args: %v", method.Name, method.Type, meta.ArgNames)
+	idxOffset := 1
 	// skip first arg, which is the receiver
-	for idx := 1; idx < method.Type.NumIn(); idx++ {
+	for idx := idxOffset; idx < method.Type.NumIn(); idx++ {
 		if wroteArg {
 			sb.WriteString(", ")
 		}
 		inType := method.Type.In(idx)
 		if inType == contextRType || inType == uiContextRType {
+			idxOffset++
 			continue
 		}
 		tsTypeName, _ := TypeToTSType(inType, tsTypesMap)
 		var argName string
-		if idx-1 < len(meta.ArgNames) {
-			argName = meta.ArgNames[idx-1] // subtract 1 for receiver
+		log.Printf("method %s arg %d: %s", method.Name, idx, tsTypeName)
+		if idx-idxOffset < len(meta.ArgNames) {
+			argName = meta.ArgNames[idx-idxOffset] // subtract 1 for receiver
 		} else {
 			argName = fmt.Sprintf("arg%d", idx)
 		}
