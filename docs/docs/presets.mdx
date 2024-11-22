@@ -84,6 +84,12 @@ The following configuration keys are available for use in presets:
 | display:name  | string | the name to use when displaying the preset in a menu (required)        |
 | display:order | float  | the order in which the preset should be displayed in a menu (optional) |
 
+:::info
+
+Configs in a preset are applied in order to override the default config values, which will persist for the remainder of the tab or block's lifetime. Setting `bg:*` or `ai:*` to `"true"` will clear the values of any previously overridden Background or AI configurations, respectively, setting them back to their defaults. You almost always want to add these keys to your presets in order to create a clean slate and prevent previously set values from leaking in.
+
+:::
+
 #### AI configurations
 
 | Key Name      | Type   | Function                                                                                           |
@@ -109,12 +115,6 @@ The following configuration keys are available for use in presets:
 | bg:blendmode         | string | the [blend mode](https://developer.mozilla.org/en-US/docs/Web/CSS/blend-mode) of the background |
 | bg:bordercolor       | string | the color of the border                                                                         |
 | bg:activebordercolor | string | the color of the border when a block is active                                                  |
-
-:::info
-
-Configs in a preset are applied in order to override the default config values, which will persist for the remainder of the tab or block's lifetime. Setting `bg:*` or `ai:*` to `"true"` will clear the values of any previously overridden Background or AI configurations, respectively, setting them back to their defaults. You almost always want to add this key to your presets in order to create a clean slate and prevent previously set values from leaking in.
-
-:::
 
 #### Unset a default value
 
