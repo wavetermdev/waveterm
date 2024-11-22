@@ -30,7 +30,7 @@
         "react-dom": "^18.0.0",
         "remark-gfm": "^4.0.0",
         "remark-typescript-code-import": "^1.0.1",
-        "ua-parser-js": "^1.0.39"
+        "ua-parser-js": "^2.0.0"
     },
     "devDependencies": {
         "@docusaurus/module-type-aliases": "3.6.3",
