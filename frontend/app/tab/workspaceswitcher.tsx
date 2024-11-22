@@ -18,6 +18,7 @@ import { useAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { CSSProperties, memo, useCallback, useEffect, useRef, useState } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
+import { IconButton } from "../element/iconbutton";
 import { atoms, getApi } from "../store/global";
 import { WorkspaceService } from "../store/services";
 import { getWaveObjectAtom, makeORef, setObjectValue } from "../store/wos";
@@ -231,10 +232,28 @@ const WorkspaceSwitcher = () => {
 };
 
 const WorkspaceSwitcherItem = memo(({ entry }: { entry: WorkspaceMapEntry }) => {
+    const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const [workspace, setWorkspace] = useAtom(entry.workspaceAtom);
     const [isOpen, setIsOpen] = useState(false);
 
+    const isWorkspaceActive = !!entry.windowId;
+    const isCurrentWorkspace = activeWorkspace.oid === workspace.oid;
+
     const isActive = !!entry.windowId;
+    const editIconDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        className: "edit",
+        icon: "pencil",
+        title: "Edit workspace",
+        click: () => setIsOpen(!isOpen),
+    };
+    const windowIconDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        className: "window",
+        disabled: true,
+        icon: isCurrentWorkspace ? "check" : "window",
+        title: isCurrentWorkspace ? "This is your current workspace" : "This workspace is open",
+    };
 
     return (
         <ExpandableMenuItemGroup key={workspace.oid} isOpen={isOpen} className={clsx({ "is-active": isActive })}>
@@ -243,7 +262,7 @@ const WorkspaceSwitcherItem = memo(({ entry }: { entry: WorkspaceMapEntry }) => 
                     className="menu-group-title-wrapper"
                     style={
                         {
-                            "--background-color": workspace.color,
+                            "--workspace-color": workspace.color,
                         } as CSSProperties
                     }
                 >
@@ -256,14 +275,10 @@ const WorkspaceSwitcherItem = memo(({ entry }: { entry: WorkspaceMapEntry }) => 
                     <div className="label">{workspace.name}</div>
                     <ExpandableMenuItemRightElement>
                         {isActive ? (
-                            <>
-                                <i
-                                    className="fa-sharp fa-solid fa-pencil"
-                                    style={{ color: workspace.color }}
-                                    onClick={() => setIsOpen(true)}
-                                />
-                                <i className="fa-sharp fa-solid fa-check" style={{ color: workspace.color }} />
-                            </>
+                            <div className="icons">
+                                <IconButton decl={editIconDecl} />
+                                <IconButton decl={windowIconDecl} />
+                            </div>
                         ) : null}
                     </ExpandableMenuItemRightElement>
                 </div>
