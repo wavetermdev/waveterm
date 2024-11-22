@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useRef } from "react";
-import "./toggle.less";
+import "./toggle.scss";
 
 interface ToggleProps {
     checked: boolean;

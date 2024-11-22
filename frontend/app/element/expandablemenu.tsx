@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 import { atom, useAtom } from "jotai";
 import { Children, ReactElement, ReactNode, cloneElement, isValidElement, useRef } from "react";
 
-import "./expandablemenu.less";
+import "./expandablemenu.scss";
 
 // Define the global atom for managing open groups
 const openGroupsAtom = atom<{ [key: string]: boolean }>({});

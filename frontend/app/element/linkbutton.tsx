@@ -4,7 +4,7 @@
 import { clsx } from "clsx";
 import * as React from "react";
 
-import "./linkbutton.less";
+import "./linkbutton.scss";
 
 interface LinkButtonProps {
     href: string;

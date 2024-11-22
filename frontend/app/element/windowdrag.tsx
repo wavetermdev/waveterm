@@ -4,7 +4,7 @@
 import { clsx } from "clsx";
 import React, { forwardRef } from "react";
 
-import "./windowdrag.less";
+import "./windowdrag.scss";
 
 interface WindowDragProps {
     className?: string;

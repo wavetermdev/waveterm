@@ -14,7 +14,7 @@ import clsx from "clsx";
 import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue } from "jotai";
 import { Fragment, createRef, memo, useEffect, useRef, useState } from "react";
-import "./webview.less";
+import "./webview.scss";
 
 let webviewPreloadUrl = null;
 

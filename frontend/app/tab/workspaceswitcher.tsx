@@ -21,7 +21,7 @@ import WorkspaceSVG from "../asset/workspace.svg";
 import { atoms, getApi } from "../store/global";
 import { WorkspaceService } from "../store/services";
 import { getWaveObjectAtom, makeORef, setObjectValue } from "../store/wos";
-import "./workspaceswitcher.less";
+import "./workspaceswitcher.scss";
 
 interface ColorSelectorProps {
     colors: string[];

@@ -13,7 +13,7 @@ import { NotificationItem } from "./notificationitem";
 import { useUpdateNotifier } from "./updatenotifier";
 import { useNotification } from "./usenotification";
 
-import "./notificationpopover.less";
+import "./notificationpopover.scss";
 
 const NotificationPopover = () => {
     useUpdateNotifier();

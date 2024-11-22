@@ -4,7 +4,7 @@
 import { CollapsibleMenu } from "@/app/element/collapsiblemenu";
 import { memo } from "react";
 
-import "./channels.less";
+import "./channels.scss";
 
 const Channels = memo(({ channels }: { channels: MenuItem[] }) => {
     return <CollapsibleMenu className="channel-list" items={channels}></CollapsibleMenu>;

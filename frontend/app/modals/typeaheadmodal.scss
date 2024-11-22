@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "../mixins.less";
+@use "../mixins.scss";
 
 .type-ahead-modal-backdrop {
     position: absolute;
@@ -97,7 +97,7 @@
             }
 
             .typeahead-item-name {
-                .ellipsis();
+                @include mixins.ellipsis();
                 display: flex;
                 gap: 8px;
                 font-size: 11px;

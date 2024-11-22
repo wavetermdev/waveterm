@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { createRef, Fragment, memo, ReactNode, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
-import "./flyoutmenu.less";
+import "./flyoutmenu.scss";
 
 type MenuProps = {
     items: MenuItem[];
