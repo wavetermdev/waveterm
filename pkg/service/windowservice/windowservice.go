@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -147,7 +149,14 @@ func (svc *WindowService) SwitchWorkspace_Meta() tsgenmeta.MethodMeta {
 
 func (svc *WindowService) SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (*waveobj.Workspace, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
-	return wcore.SwitchWorkspace(ctx, windowId, workspaceId)
+	ws, err := wcore.SwitchWorkspace(ctx, windowId, workspaceId)
+
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:SwitchWorkspace:SendUpdateEvents")
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return ws, err
 }
 
 func (svc *WindowService) CloseWindow_Meta() tsgenmeta.MethodMeta {

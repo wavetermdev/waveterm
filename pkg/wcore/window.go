@@ -22,7 +22,7 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 		return nil, err
 	}
 	if window.WorkspaceId == workspaceId {
-		return ws, nil
+		return nil, nil
 	}
 
 	allWindows, err := wstore.DBGetAllObjsByType[*waveobj.Window](ctx, waveobj.OType_Window)
@@ -32,7 +32,7 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 
 	for _, w := range allWindows {
 		if w.WorkspaceId == workspaceId {
-			return nil, fmt.Errorf("cannot set workspace %s for window %s as it is already claimed by window %s", workspaceId, windowId, w.OID)
+			return nil, FocusWindow(ctx, w.OID)
 		}
 	}
 
@@ -151,4 +151,21 @@ func CheckAndFixWindow(ctx context.Context, windowId string) {
 			log.Printf("error creating tab (in checkAndFixWindow): %v\n", err)
 		}
 	}
+}
+
+func FocusWindow(ctx context.Context, windowId string) error {
+	log.Printf("FocusWindow %s\n", windowId)
+	client, err := GetClientData(ctx)
+	if err != nil {
+		log.Printf("error getting client data: %v\n", err)
+		return err
+	}
+	winIdx := utilfn.SliceIdx(client.WindowIds, windowId)
+	if winIdx == -1 {
+		log.Printf("window %s not found in client data\n", windowId)
+		return nil
+	}
+	client.WindowIds = utilfn.MoveSliceIdxToFront(client.WindowIds, winIdx)
+	log.Printf("client.WindowIds: %v\n", client.WindowIds)
+	return wstore.DBUpdate(ctx, client)
 }

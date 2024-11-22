@@ -257,7 +257,7 @@ const WorkspaceSwitcherItem = memo(({ entry }: { entry: WorkspaceMapEntry }) => 
 
     return (
         <ExpandableMenuItemGroup key={workspace.oid} isOpen={isOpen} className={clsx({ "is-active": isActive })}>
-            <ExpandableMenuItemGroupTitle onClick={() => !entry.windowId && getApi().switchWorkspace(workspace.oid)}>
+            <ExpandableMenuItemGroupTitle onClick={() => getApi().switchWorkspace(workspace.oid)}>
                 <div
                     className="menu-group-title-wrapper"
                     style={

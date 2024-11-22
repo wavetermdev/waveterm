@@ -245,6 +245,9 @@ export class WaveBrowserWindow extends BaseWindow {
 
     async switchWorkspace(workspaceId: string) {
         const newWs = await WindowService.SwitchWorkspace(this.waveWindowId, workspaceId);
+        if (!newWs) {
+            return;
+        }
         if (this.allTabViews.size) {
             for (const tab of this.allTabViews.values()) {
                 tab?.destroy();

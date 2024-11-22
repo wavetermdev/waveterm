@@ -161,3 +161,12 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 	}()
 	return blockData, nil
 }
+
+func GetClientData(ctx context.Context) (*waveobj.Client, error) {
+	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting client data: %w", err)
+	}
+	log.Printf("clientData: %v\n", clientData)
+	return clientData, nil
+}
