@@ -9,7 +9,7 @@
   align-items: center;
   gap: 12px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--modal-bg-color);
   margin-top: 6px;
   margin-right: 13px;
   box-sizing: border-box;
@@ -50,18 +50,19 @@
   flex-direction: column;
   align-items: center;
   border-radius: 8px;
-  border: 0.5px solid rgba(255, 255, 255, 0.1);
-  background-color: rgb(35, 35, 35);
-  box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.8);
+  box-shadow: 0px 8px 24px 0px var(--modal-shadow-color);
 
   .title {
-    color: #fff;
     font-size: 12px;
     line-height: 19px;
     font-weight: 600;
     margin-bottom: 5px;
     width: 100%;
     padding: 6px 8px 0px;
+  }
+
+  .expandable-menu {
+    gap: 5px;
   }
 
   .expandable-menu-item {
@@ -119,7 +120,7 @@
       visibility: visible;
     }
 
-    &.open:not(:first-child) {
+    &.open {
       background-color: var(--modal-bg-color);
       border: 1px solid var(--modal-border-color);
     }
@@ -133,13 +134,16 @@
 
   .expandable-menu-item,
   .expandable-menu-item-group-title {
-    color: #fff;
     font-size: 12px;
     line-height: 19px;
     padding: 5px 8px;
 
     .content {
       width: 100%;
+    }
+
+    &:hover {
+      background-color: transparent;
     }
   }
 
@@ -153,6 +157,7 @@
   }
 
   .color-icon-selector {
+    width: 100%;
     .input {
       margin: 5px 0 10px;
     }
@@ -185,7 +190,7 @@
         }
 
         &.selected:before {
-          border-color: white; // Highlight for the selected circle
+          border-color: var(--main-text-color); // Highlight for the selected circle
         }
       }
     }
@@ -201,16 +206,13 @@
 
       .icon-item {
         font-size: 15px;
-        color: #666;
+        color: oklch(from var(--modal-bg-color) calc(l * 1.5) c h);
         cursor: pointer;
         transition: color 0.3s ease;
 
-        &.selected {
-          color: white;
-        }
-
+        &.selected,
         &:hover {
-          color: #fff;
+          color: var(--main-text-color);
         }
       }
     }
@@ -226,6 +228,6 @@
   .actions {
     width: 100%;
     padding: 3px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--modal-border-color);
   }
 }
