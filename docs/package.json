@@ -33,9 +33,9 @@
         "ua-parser-js": "^1.0.39"
     },
     "devDependencies": {
-        "@docusaurus/module-type-aliases": "3.6.1",
-        "@docusaurus/tsconfig": "3.6.1",
-        "@docusaurus/types": "3.6.1",
+        "@docusaurus/module-type-aliases": "3.6.3",
+        "@docusaurus/tsconfig": "3.6.3",
+        "@docusaurus/types": "3.6.3",
         "@eslint/js": "^9.15.0",
         "@mdx-js/typescript-plugin": "^0.0.6",
         "@types/eslint": "^9.6.1",
