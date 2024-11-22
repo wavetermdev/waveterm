@@ -244,6 +244,23 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async switchWorkspace(workspaceId: string) {
+        const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
+        if ((curWorkspace.tabids.length > 1 && !curWorkspace.name) || !curWorkspace.icon) {
+            const choice = dialog.showMessageBoxSync(this, {
+                type: "question",
+                buttons: ["Cancel", "Open in New Window", "Yes"],
+                title: "Confirm",
+                message:
+                    "This window has unsaved tabs, switching workspaces will delete the existing tabs. Would you like to continue?",
+            });
+            if (choice === 0) {
+                console.log("user cancelled switch workspace", this.waveWindowId);
+                return;
+            } else if (choice === 1) {
+                await WindowService.CreateWindow(null, workspaceId);
+                return;
+            }
+        }
         const newWs = await WindowService.SwitchWorkspace(this.waveWindowId, workspaceId);
         if (!newWs) {
             return;

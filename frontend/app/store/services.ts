@@ -12,7 +12,7 @@ class BlockServiceType {
     }
 
     // save the terminal state to a blockfile
-    SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize): Promise<void> {
+    SaveTerminalState(ctx: string, blockId: string, state: string, stateType: number, ptyOffset: TermSize): Promise<void> {
         return WOS.callBackendService("block", "SaveTerminalState", Array.from(arguments))
     }
     SaveWaveAiData(arg2: string, arg3: OpenAIPromptMessageType[]): Promise<void> {
@@ -81,12 +81,12 @@ export const FileService = new FileServiceType();
 // objectservice.ObjectService (object)
 class ObjectServiceType {
     // @returns blockId (and object updates)
-    CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<string> {
+    CreateBlock(uiContext: BlockDef, blockDef: RuntimeOpts): Promise<string> {
         return WOS.callBackendService("object", "CreateBlock", Array.from(arguments))
     }
 
     // @returns object updates
-    DeleteBlock(blockId: string): Promise<void> {
+    DeleteBlock(uiContext: string): Promise<void> {
         return WOS.callBackendService("object", "DeleteBlock", Array.from(arguments))
     }
 
@@ -101,17 +101,17 @@ class ObjectServiceType {
     }
 
     // @returns object updates
-    UpdateObject(waveObj: WaveObj, returnUpdates: boolean): Promise<void> {
+    UpdateObject(uiContext: WaveObj, waveObj: boolean): Promise<void> {
         return WOS.callBackendService("object", "UpdateObject", Array.from(arguments))
     }
 
     // @returns object updates
-    UpdateObjectMeta(oref: string, meta: MetaType): Promise<void> {
+    UpdateObjectMeta(uiContext: string, oref: MetaType): Promise<void> {
         return WOS.callBackendService("object", "UpdateObjectMeta", Array.from(arguments))
     }
 
     // @returns object updates
-    UpdateTabName(tabId: string, name: string): Promise<void> {
+    UpdateTabName(uiContext: string, tabId: string): Promise<void> {
         return WOS.callBackendService("object", "UpdateTabName", Array.from(arguments))
     }
 }
@@ -129,28 +129,28 @@ export const UserInputService = new UserInputServiceType();
 
 // windowservice.WindowService (window)
 class WindowServiceType {
-    CloseWindow(fromElectron: string, arg3: boolean): Promise<void> {
+    CloseWindow(windowId: string, fromElectron: boolean): Promise<void> {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
-    GetWindow(arg1: string): Promise<WaveWindow> {
-        return WOS.callBackendService("window", "GetWindow", Array.from(arguments))
+    CreateWindow(winSize: WinSize, workspaceId: string): Promise<WaveWindow>Promise<Workspace> {
+        return WOS.callBackendService("window", "CreateWindow", Array.from(arguments))
     }
-    MakeWindow(): Promise<WaveWindow> {
-        return WOS.callBackendService("window", "MakeWindow", Array.from(arguments))
+    GetWindow(windowId: string): Promise<WaveWindow> {
+        return WOS.callBackendService("window", "GetWindow", Array.from(arguments))
     }
 
     // move block to new window
     // @returns object updates
-    MoveBlockToNewWindow(currentTabId: string, blockId: string): Promise<void> {
+    MoveBlockToNewWindow(ctx: string, currentTabId: string): Promise<void> {
         return WOS.callBackendService("window", "MoveBlockToNewWindow", Array.from(arguments))
     }
 
     // set window position and size
     // @returns object updates
-    SetWindowPosAndSize(pos: string, size: Point, arg4: WinSize): Promise<void> {
+    SetWindowPosAndSize(windowId: string, pos: Point, size: WinSize): Promise<void> {
         return WOS.callBackendService("window", "SetWindowPosAndSize", Array.from(arguments))
     }
-    SwitchWorkspace(workspaceId: string, arg3: string): Promise<Workspace> {
+    SwitchWorkspace(windowId: string, workspaceId: string): Promise<Workspace> {
         return WOS.callBackendService("window", "SwitchWorkspace", Array.from(arguments))
     }
 }
@@ -160,7 +160,7 @@ export const WindowService = new WindowServiceType();
 // workspaceservice.WorkspaceService (workspace)
 class WorkspaceServiceType {
     // @returns object updates
-    CloseTab(tabId: string, fromElectron: string, arg4: boolean): Promise<CloseTabRtnType> {
+    CloseTab(workspaceId: string, tabId: string, fromElectron: boolean): Promise<CloseTabRtnType> {
         return WOS.callBackendService("workspace", "CloseTab", Array.from(arguments))
     }
 
@@ -186,7 +186,7 @@ class WorkspaceServiceType {
     }
 
     // @returns object updates
-    UpdateTabIds(workspaceId: string, tabIds: string[]): Promise<void> {
+    UpdateTabIds(uiContext: string, workspaceId: string[]): Promise<void> {
         return WOS.callBackendService("workspace", "UpdateTabIds", Array.from(arguments))
     }
 }

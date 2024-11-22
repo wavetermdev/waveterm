@@ -23,6 +23,12 @@ const DefaultTimeout = 2 * time.Second
 
 type WindowService struct{}
 
+func (svc *WindowService) GetWindow_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"windowId"},
+	}
+}
+
 func (svc *WindowService) GetWindow(windowId string) (*waveobj.Window, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
@@ -33,25 +39,32 @@ func (svc *WindowService) GetWindow(windowId string) (*waveobj.Window, error) {
 	return window, nil
 }
 
-func (svc *WindowService) MakeWindow(ctx context.Context) (*waveobj.Window, error) {
-	log.Println("MakeWindow")
-	window, err := wcore.CreateWindow(ctx, nil, "")
-	if err != nil {
-		log.Printf("error creating window: %v\n", err)
-		return nil, err
+func (svc *WindowService) CreateWindow_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"winSize", "workspaceId"},
 	}
-	log.Printf("New window: %v\n", window)
+}
+
+func (svc *WindowService) CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId string) (*waveobj.Window, *waveobj.Workspace, error) {
+	window, err := wcore.CreateWindow(ctx, winSize, workspaceId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating window: %w", err)
+	}
 	ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
 	if err != nil {
-		log.Printf("error getting workspace: %v\n", err)
-		return nil, err
+		return nil, nil, fmt.Errorf("error getting workspace: %w", err)
 	}
-	log.Printf("New workspace: %v\n", ws)
-	err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
+	if len(ws.TabIds) == 0 {
+		err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
+		if err != nil {
+			return window, ws, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
+		}
+	}
+	ws, err = wcore.GetWorkspace(ctx, window.WorkspaceId)
 	if err != nil {
-		return window, err
+		return window, ws, fmt.Errorf("error getting updated workspace: %w", err)
 	}
-	return window, nil
+	return window, ws, nil
 }
 
 func (svc *WindowService) SetWindowPosAndSize_Meta() tsgenmeta.MethodMeta {

@@ -13,30 +13,45 @@ import (
 )
 
 func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (*waveobj.Workspace, error) {
+	log.Printf("SwitchWorkspace %s %s\n", windowId, workspaceId)
 	ws, err := GetWorkspace(ctx, workspaceId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting new workspace: %w", err)
 	}
 	window, err := GetWindow(ctx, windowId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting window: %w", err)
 	}
 	if window.WorkspaceId == workspaceId {
 		return nil, nil
 	}
 
+	curWs, err := GetWorkspace(ctx, window.WorkspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting current workspace: %w", err)
+	}
+	if curWs.Name == "" || curWs.Icon == "" {
+		log.Printf("current workspace %s is not named, deleting it\n", curWs.OID)
+		err = DeleteWorkspace(ctx, curWs.OID, false)
+		if err != nil {
+			return nil, fmt.Errorf("error deleting current workspace: %w", err)
+		}
+	}
+
 	allWindows, err := wstore.DBGetAllObjsByType[*waveobj.Window](ctx, waveobj.OType_Window)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting all windows: %w", err)
 	}
 
 	for _, w := range allWindows {
 		if w.WorkspaceId == workspaceId {
+			log.Printf("workspace %s already has a window %s, focusing that window\n", workspaceId, w.OID)
 			return nil, FocusWindow(ctx, w.OID)
 		}
 	}
 
 	window.WorkspaceId = workspaceId
+	log.Printf("switching window %s to workspace %s\n", windowId, workspaceId)
 	return ws, wstore.DBUpdate(ctx, window)
 }
 
