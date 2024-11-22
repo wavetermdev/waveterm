@@ -12,7 +12,7 @@ class BlockServiceType {
     }
 
     // save the terminal state to a blockfile
-    SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize): Promise<void> {
+    SaveTerminalState(ctx: string, blockId: string, state: string, stateType: number, ptyOffset: TermSize): Promise<void> {
         return WOS.callBackendService("block", "SaveTerminalState", Array.from(arguments))
     }
     SaveWaveAiData(arg2: string, arg3: OpenAIPromptMessageType[]): Promise<void> {
@@ -95,12 +95,12 @@ class ObjectServiceType {
     }
 
     // @returns blockId (and object updates)
-    CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<string> {
+    CreateBlock(uiContext: BlockDef, blockDef: RuntimeOpts): Promise<string> {
         return WOS.callBackendService("object", "CreateBlock", Array.from(arguments))
     }
 
     // @returns object updates
-    DeleteBlock(blockId: string): Promise<void> {
+    DeleteBlock(uiContext: string): Promise<void> {
         return WOS.callBackendService("object", "DeleteBlock", Array.from(arguments))
     }
 
@@ -120,22 +120,22 @@ class ObjectServiceType {
     }
 
     // @returns object updates
-    UpdateObject(waveObj: WaveObj, returnUpdates: boolean): Promise<void> {
+    UpdateObject(uiContext: WaveObj, waveObj: boolean): Promise<void> {
         return WOS.callBackendService("object", "UpdateObject", Array.from(arguments))
     }
 
     // @returns object updates
-    UpdateObjectMeta(oref: string, meta: MetaType): Promise<void> {
+    UpdateObjectMeta(uiContext: string, oref: MetaType): Promise<void> {
         return WOS.callBackendService("object", "UpdateObjectMeta", Array.from(arguments))
     }
 
     // @returns object updates
-    UpdateTabName(tabId: string, name: string): Promise<void> {
+    UpdateTabName(uiContext: string, tabId: string): Promise<void> {
         return WOS.callBackendService("object", "UpdateTabName", Array.from(arguments))
     }
 
     // @returns object updates
-    UpdateWorkspaceTabIds(workspaceId: string, tabIds: string[]): Promise<void> {
+    UpdateWorkspaceTabIds(uiContext: string, workspaceId: string[]): Promise<void> {
         return WOS.callBackendService("object", "UpdateWorkspaceTabIds", Array.from(arguments))
     }
 }
@@ -163,7 +163,7 @@ class WindowServiceType {
 
     // move block to new window
     // @returns object updates
-    MoveBlockToNewWindow(currentTabId: string, blockId: string): Promise<void> {
+    MoveBlockToNewWindow(ctx: string, currentTabId: string): Promise<void> {
         return WOS.callBackendService("window", "MoveBlockToNewWindow", Array.from(arguments))
     }
 
