@@ -4,7 +4,7 @@
 import clsx from "clsx";
 import React, { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from "react";
 
-import "./multilineinput.less";
+import "./multilineinput.scss";
 
 interface MultiLineInputProps {
     value?: string;

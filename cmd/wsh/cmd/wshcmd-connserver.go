@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -53,6 +54,7 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 	var routeIdContainer atomic.Pointer[string]
 	proxy := wshutil.MakeRpcProxy()
 	go func() {
+		defer panichandler.PanicHandler("handleNewListenerConn:AdaptOutputChToStream")
 		writeErr := wshutil.AdaptOutputChToStream(proxy.ToRemoteCh, conn)
 		if writeErr != nil {
 			log.Printf("error writing to domain socket: %v\n", writeErr)
@@ -60,6 +62,7 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 	}()
 	go func() {
 		// when input is closed, close the connection
+		defer panichandler.PanicHandler("handleNewListenerConn:AdaptStreamToMsgCh")
 		defer func() {
 			conn.Close()
 			routeIdPtr := routeIdContainer.Load()
@@ -136,6 +139,7 @@ func serverRunRouter() error {
 	rawCh := make(chan []byte, wshutil.DefaultOutputChSize)
 	go packetparser.Parse(os.Stdin, termProxy.FromRemoteCh, rawCh)
 	go func() {
+		defer panichandler.PanicHandler("serverRunRouter:WritePackets")
 		for msg := range termProxy.ToRemoteCh {
 			packetparser.WritePacket(os.Stdout, msg)
 		}

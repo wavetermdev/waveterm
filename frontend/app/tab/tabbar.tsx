@@ -12,7 +12,7 @@ import { OverlayScrollbars } from "overlayscrollbars";
 import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { Tab } from "./tab";
-import "./tabbar.less";
+import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
 

@@ -79,7 +79,7 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	// Default to "waveai" block
-	isDefaultBlock := blockArg == "" || blockArg == "this"
+	isDefaultBlock := blockArg == ""
 	if isDefaultBlock {
 		blockArg = "view@waveai"
 	}

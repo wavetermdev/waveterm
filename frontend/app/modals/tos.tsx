@@ -13,7 +13,7 @@ import { QuickTips } from "@/app/element/quicktips";
 import { atoms, getApi } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import "./tos.less";
+import "./tos.scss";
 
 const pageNumAtom: PrimitiveAtom<number> = atom<number>(1);
 

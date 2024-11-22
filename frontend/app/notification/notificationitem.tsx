@@ -5,7 +5,7 @@ import { Button } from "@/element/button";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 
-import "./notificationitem.less";
+import "./notificationitem.scss";
 interface NotificationItemProps {
     notification: NotificationType;
     onRemove: (id: string) => void;

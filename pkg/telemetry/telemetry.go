@@ -9,6 +9,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -18,36 +19,33 @@ import (
 
 const MaxTzNameLen = 50
 
-// "terminal" should not be in this list
-var allowedRenderers = map[string]bool{
-	"markdown": true,
-	"code":     true,
-	"openai":   true,
-	"csv":      true,
-	"image":    true,
-	"pdf":      true,
-	"media":    true,
-	"mustache": true,
+type ActivityDisplayType struct {
+	Width    int     `json:"width"`
+	Height   int     `json:"height"`
+	DPR      float64 `json:"dpr"`
+	Internal bool    `json:"internal,omitempty"`
 }
 
 type ActivityUpdate struct {
-	FgMinutes     int            `json:"fgminutes,omitempty"`
-	ActiveMinutes int            `json:"activeminutes,omitempty"`
-	OpenMinutes   int            `json:"openminutes,omitempty"`
-	NumTabs       int            `json:"numtabs,omitempty"`
-	NewTab        int            `json:"newtab,omitempty"`
-	NumBlocks     int            `json:"numblocks,omitempty"`
-	NumWindows    int            `json:"numwindows,omitempty"`
-	NumSSHConn    int            `json:"numsshconn,omitempty"`
-	NumWSLConn    int            `json:"numwslconn,omitempty"`
-	NumMagnify    int            `json:"nummagnify,omitempty"`
-	Startup       int            `json:"startup,omitempty"`
-	Shutdown      int            `json:"shutdown,omitempty"`
-	SetTabTheme   int            `json:"settabtheme,omitempty"`
-	BuildTime     string         `json:"buildtime,omitempty"`
-	Renderers     map[string]int `json:"renderers,omitempty"`
-	WshCmds       map[string]int `json:"wshcmds,omitempty"`
-	Conn          map[string]int `json:"conn,omitempty"`
+	FgMinutes     int                   `json:"fgminutes,omitempty"`
+	ActiveMinutes int                   `json:"activeminutes,omitempty"`
+	OpenMinutes   int                   `json:"openminutes,omitempty"`
+	NumTabs       int                   `json:"numtabs,omitempty"`
+	NewTab        int                   `json:"newtab,omitempty"`
+	NumBlocks     int                   `json:"numblocks,omitempty"`
+	NumWindows    int                   `json:"numwindows,omitempty"`
+	NumSSHConn    int                   `json:"numsshconn,omitempty"`
+	NumWSLConn    int                   `json:"numwslconn,omitempty"`
+	NumMagnify    int                   `json:"nummagnify,omitempty"`
+	NumPanics     int                   `json:"numpanics,omitempty"`
+	Startup       int                   `json:"startup,omitempty"`
+	Shutdown      int                   `json:"shutdown,omitempty"`
+	SetTabTheme   int                   `json:"settabtheme,omitempty"`
+	BuildTime     string                `json:"buildtime,omitempty"`
+	Displays      []ActivityDisplayType `json:"displays,omitempty"`
+	Renderers     map[string]int        `json:"renderers,omitempty"`
+	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
+	Conn          map[string]int        `json:"conn,omitempty"`
 }
 
 type ActivityType struct {
@@ -63,22 +61,24 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	ActiveMinutes int            `json:"activeminutes"`
-	FgMinutes     int            `json:"fgminutes"`
-	OpenMinutes   int            `json:"openminutes"`
-	NumTabs       int            `json:"numtabs"`
-	NumBlocks     int            `json:"numblocks,omitempty"`
-	NumWindows    int            `json:"numwindows,omitempty"`
-	NumSSHConn    int            `json:"numsshconn,omitempty"`
-	NumWSLConn    int            `json:"numwslconn,omitempty"`
-	NumMagnify    int            `json:"nummagnify,omitempty"`
-	NewTab        int            `json:"newtab"`
-	NumStartup    int            `json:"numstartup,omitempty"`
-	NumShutdown   int            `json:"numshutdown,omitempty"`
-	SetTabTheme   int            `json:"settabtheme,omitempty"`
-	Renderers     map[string]int `json:"renderers,omitempty"`
-	WshCmds       map[string]int `json:"wshcmds,omitempty"`
-	Conn          map[string]int `json:"conn,omitempty"`
+	ActiveMinutes int                   `json:"activeminutes"`
+	FgMinutes     int                   `json:"fgminutes"`
+	OpenMinutes   int                   `json:"openminutes"`
+	NumTabs       int                   `json:"numtabs"`
+	NumBlocks     int                   `json:"numblocks,omitempty"`
+	NumWindows    int                   `json:"numwindows,omitempty"`
+	NumSSHConn    int                   `json:"numsshconn,omitempty"`
+	NumWSLConn    int                   `json:"numwslconn,omitempty"`
+	NumMagnify    int                   `json:"nummagnify,omitempty"`
+	NewTab        int                   `json:"newtab"`
+	NumStartup    int                   `json:"numstartup,omitempty"`
+	NumShutdown   int                   `json:"numshutdown,omitempty"`
+	NumPanics     int                   `json:"numpanics,omitempty"`
+	SetTabTheme   int                   `json:"settabtheme,omitempty"`
+	Displays      []ActivityDisplayType `json:"displays,omitempty"`
+	Renderers     map[string]int        `json:"renderers,omitempty"`
+	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
+	Conn          map[string]int        `json:"conn,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -107,6 +107,7 @@ func AutoUpdateChannel() string {
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
 func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
 	go func() {
+		defer panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap")
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 		err := UpdateActivity(ctx, update)
@@ -141,6 +142,7 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.NumShutdown += update.Shutdown
 		tdata.SetTabTheme += update.SetTabTheme
 		tdata.NumMagnify += update.NumMagnify
+		tdata.NumPanics += update.NumPanics
 		if update.NumTabs > 0 {
 			tdata.NumTabs = update.NumTabs
 		}
@@ -179,6 +181,9 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 			for key, val := range update.Conn {
 				tdata.Conn[key] += val
 			}
+		}
+		if len(update.Displays) > 0 {
+			tdata.Displays = update.Displays
 		}
 		query = `UPDATE db_activity
                  SET tdata = ?,

@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "../mixins.less";
+@use "../mixins.scss";
 
 .input {
     width: 100%;
@@ -28,11 +28,11 @@
     }
 
     // Include mixins
-    .border-radius-mixin();
-    .vertical-padding-mixin();
-    .horizontal-padding-mixin();
-    .font-size-mixin();
-    .font-weight-mixin();
+    @include mixins.border-radius-mixin();
+    @include mixins.vertical-padding-mixin();
+    @include mixins.horizontal-padding-mixin();
+    @include mixins.font-size-mixin();
+    @include mixins.font-weight-mixin();
 }
 
 /* Styles when an InputGroup is present */
@@ -87,7 +87,7 @@
     }
 
     // Include mixins
-    .border-radius-mixin();
-    .font-size-mixin();
-    .font-weight-mixin();
+    @include mixins.border-radius-mixin();
+    @include mixins.font-size-mixin();
+    @include mixins.font-weight-mixin();
 }

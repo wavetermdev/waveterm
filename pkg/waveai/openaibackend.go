@@ -8,12 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"regexp"
-	"runtime/debug"
 	"strings"
 
 	openaiapi "github.com/sashabaranov/go-openai"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -75,17 +74,10 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.OpenAi
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
 	go func() {
 		defer func() {
-			if r := recover(); r != nil {
-				// Convert panic to error and send it
-				log.Printf("panic: %v\n", r)
-				debug.PrintStack()
-				err, ok := r.(error)
-				if !ok {
-					err = fmt.Errorf("openai backend panic: %v", r)
-				}
-				rtn <- makeAIError(err)
+			panicErr := panichandler.PanicHandler("OpenAIBackend.StreamCompletion")
+			if panicErr != nil {
+				rtn <- makeAIError(panicErr)
 			}
-			// Always close the channel
 			close(rtn)
 		}()
 		if request.Opts == nil {

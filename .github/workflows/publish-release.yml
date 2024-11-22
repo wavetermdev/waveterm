@@ -38,6 +38,7 @@ jobs:
               shell: bash
     bump-winget:
         if: ${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, 'beta') }}
+        needs: [publish]
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v4
@@ -48,8 +49,10 @@ jobs:
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
             - name: Install winget
               uses: Cyberboss/install-winget@v1
+              with:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             - name: Install wingetcreate
-              run: winget install wingetcreate --accept-package-agreements
+              run: winget install -e --silent --accept-package-agreements --accept-source-agreements wingetcreate
               shell: pwsh
             - name: Submit WinGet version bump
               run: "task artifacts:winget:publish:${{ github.ref_name }}"

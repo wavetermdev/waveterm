@@ -76,12 +76,7 @@ func getMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("getmeta", rtnErr == nil)
 	}()
-
-	oref := blockArg
-	if oref == "" {
-		return fmt.Errorf("blockid is required")
-	}
-	fullORef, err := resolveSimpleId(oref)
+	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return err
 	}

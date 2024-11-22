@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -214,6 +215,13 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 			return nil, false, fmt.Errorf("error updating client: %w", err)
 		}
 	}
+	if client.TempOID == "" {
+		client.TempOID = uuid.NewString()
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return nil, false, fmt.Errorf("error updating client: %w", err)
+		}
+	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
 		checkAndFixWindow(ctx, client.WindowIds[0])
@@ -267,6 +275,7 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
 	go func() {
+		defer panichandler.PanicHandler("CreateBlock:telemetry")
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
 		if blockView == "" {
 			return

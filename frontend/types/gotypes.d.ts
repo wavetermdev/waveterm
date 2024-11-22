@@ -5,6 +5,14 @@
 
 declare global {
 
+    // telemetry.ActivityDisplayType
+    type ActivityDisplayType = {
+        width: number;
+        height: number;
+        dpr: number;
+        internal?: boolean;
+    };
+
     // telemetry.ActivityUpdate
     type ActivityUpdate = {
         fgminutes?: number;
@@ -17,10 +25,12 @@ declare global {
         numsshconn?: number;
         numwslconn?: number;
         nummagnify?: number;
+        numpanics?: number;
         startup?: number;
         shutdown?: number;
         settabtheme?: number;
         buildtime?: string;
+        displays?: ActivityDisplayType[];
         renderers?: {[key: string]: number};
         wshcmds?: {[key: string]: number};
         conn?: {[key: string]: number};
@@ -74,6 +84,7 @@ declare global {
         tosagreed?: number;
         hasoldhistory?: boolean;
         nexttabid?: number;
+        tempoid?: string;
     };
 
     // windowservice.CloseTabRtnType
@@ -148,11 +159,35 @@ declare global {
         maxitems: number;
     };
 
+    // wshrpc.CommandFileCreateData
+    type CommandFileCreateData = {
+        zoneid: string;
+        filename: string;
+        meta?: {[key: string]: any};
+        opts?: FileOptsType;
+    };
+
     // wshrpc.CommandFileData
     type CommandFileData = {
         zoneid: string;
         filename: string;
         data64?: string;
+        at?: CommandFileDataAt;
+    };
+
+    // wshrpc.CommandFileDataAt
+    type CommandFileDataAt = {
+        offset: number;
+        size?: number;
+    };
+
+    // wshrpc.CommandFileListData
+    type CommandFileListData = {
+        zoneid: string;
+        prefix?: string;
+        all?: boolean;
+        offset?: number;
+        limit?: number;
     };
 
     // wshrpc.CommandGetMetaData
@@ -200,6 +235,22 @@ declare global {
     type CommandSetMetaData = {
         oref: ORef;
         meta: MetaType;
+    };
+
+    // wshrpc.CommandVarData
+    type CommandVarData = {
+        key: string;
+        val?: string;
+        remove?: boolean;
+        zoneid: string;
+        filename: string;
+    };
+
+    // wshrpc.CommandVarResponseData
+    type CommandVarResponseData = {
+        key: string;
+        val: string;
+        exists: boolean;
     };
 
     // wshrpc.CommandWaitForRouteData
@@ -902,6 +953,18 @@ declare global {
         size: number;
         modts: number;
         meta: {[key: string]: any};
+    };
+
+    // wshrpc.WaveFileInfo
+    type WaveFileInfo = {
+        zoneid: string;
+        name: string;
+        opts?: FileOptsType;
+        size?: number;
+        createdts?: number;
+        modts?: number;
+        meta?: {[key: string]: any};
+        isdir?: boolean;
     };
 
     // wshrpc.WaveInfoData

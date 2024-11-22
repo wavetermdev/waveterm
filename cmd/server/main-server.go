@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime/debug"
 
 	"runtime"
 	"sync"
@@ -19,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
@@ -58,6 +58,7 @@ func doShutdown(reason string) {
 		shutdownActivityUpdate()
 		sendTelemetryWrapper()
 		// TODO deal with flush in progress
+		clearTempFiles()
 		filestore.WFS.FlushCache(ctx)
 		watcher := wconfig.GetWatcher()
 		if watcher != nil {
@@ -111,15 +112,16 @@ func telemetryLoop() {
 	}
 }
 
+func panicTelemetryHandler() {
+	activity := telemetry.ActivityUpdate{NumPanics: 1}
+	err := telemetry.UpdateActivity(context.Background(), activity)
+	if err != nil {
+		log.Printf("error updating activity (panicTelemetryHandler): %v\n", err)
+	}
+}
+
 func sendTelemetryWrapper() {
-	defer func() {
-		r := recover()
-		if r == nil {
-			return
-		}
-		log.Printf("[error] in sendTelemetryWrapper: %v\n", r)
-		debug.PrintStack()
-	}()
+	defer panichandler.PanicHandler("sendTelemetryWrapper")
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
@@ -192,6 +194,17 @@ func grabAndRemoveEnvVars() error {
 	return nil
 }
 
+func clearTempFiles() error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return fmt.Errorf("error getting client: %v", err)
+	}
+	filestore.WFS.DeleteZone(ctx, client.TempOID)
+	return nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
@@ -254,7 +267,9 @@ func main() {
 		log.Printf("error initializing wstore: %v\n", err)
 		return
 	}
+	panichandler.PanicTelemetryHandler = panicTelemetryHandler
 	go func() {
+		defer panichandler.PanicHandler("InitCustomShellStartupFiles")
 		err := shellutil.InitCustomShellStartupFiles()
 		if err != nil {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
@@ -263,6 +278,11 @@ func main() {
 	window, firstRun, err := wcore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
+		return
+	}
+	err = clearTempFiles()
+	if err != nil {
+		log.Printf("error clearing temp files: %v\n", err)
 		return
 	}
 	if firstRun {
