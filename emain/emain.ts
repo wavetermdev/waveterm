@@ -118,6 +118,7 @@ function handleWSEvent(evtMsg: WSEventType) {
             await newWin.waveReadyPromise;
             newWin.show();
         } else if (evtMsg.eventtype == "electron:closewindow") {
+            console.log("electron:closewindow", evtMsg.data);
             if (evtMsg.data === undefined) return;
             const ww = getWaveWindowById(evtMsg.data);
             if (ww != null) {

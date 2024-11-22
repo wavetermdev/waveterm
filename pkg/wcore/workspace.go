@@ -27,27 +27,28 @@ func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
 }
 
 func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) error {
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
-		if err != nil {
-			return fmt.Errorf("error getting workspace: %w", err)
-		}
-		if workspace.Name != "" && workspace.Icon != "" && !force {
-			log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
-			return nil
-		}
-		for _, tabId := range workspace.TabIds {
-			err := DeleteTab(ctx, workspaceId, tabId)
-			if err != nil {
-				return fmt.Errorf("error closing tab: %w", err)
-			}
-		}
-		err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
-		if err != nil {
-			return fmt.Errorf("error deleting workspace: %w", err)
-		}
+	log.Printf("DeleteWorkspace %s\n", workspaceId)
+	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
+	if err != nil {
+		return fmt.Errorf("error getting workspace: %w", err)
+	}
+	if workspace.Name != "" && workspace.Icon != "" && !force {
+		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 		return nil
-	})
+	}
+	for _, tabId := range workspace.TabIds {
+		log.Printf("deleting tab %s\n", tabId)
+		err := DeleteTab(ctx, workspaceId, tabId)
+		if err != nil {
+			return fmt.Errorf("error closing tab: %w", err)
+		}
+	}
+	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
+	log.Printf("deleted workspace %s\n", workspaceId)
+	if err != nil {
+		return fmt.Errorf("error deleting workspace: %w", err)
+	}
+	return nil
 }
 
 func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) {
@@ -55,27 +56,25 @@ func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) 
 }
 
 func createTabObj(ctx context.Context, workspaceId string, name string) (*waveobj.Tab, error) {
-	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*waveobj.Tab, error) {
-		ws, _ := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if ws == nil {
-			return nil, fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		layoutStateId := uuid.NewString()
-		tab := &waveobj.Tab{
-			OID:         uuid.NewString(),
-			Name:        name,
-			BlockIds:    []string{},
-			LayoutState: layoutStateId,
-		}
-		layoutState := &waveobj.LayoutState{
-			OID: layoutStateId,
-		}
-		ws.TabIds = append(ws.TabIds, tab.OID)
-		wstore.DBInsert(tx.Context(), tab)
-		wstore.DBInsert(tx.Context(), layoutState)
-		wstore.DBUpdate(tx.Context(), ws)
-		return tab, nil
-	})
+	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if ws == nil {
+		return nil, fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	layoutStateId := uuid.NewString()
+	tab := &waveobj.Tab{
+		OID:         uuid.NewString(),
+		Name:        name,
+		BlockIds:    []string{},
+		LayoutState: layoutStateId,
+	}
+	layoutState := &waveobj.LayoutState{
+		OID: layoutStateId,
+	}
+	ws.TabIds = append(ws.TabIds, tab.OID)
+	wstore.DBInsert(ctx, tab)
+	wstore.DBInsert(ctx, layoutState)
+	wstore.DBUpdate(ctx, ws)
+	return tab, nil
 }
 
 // returns tabid
@@ -113,66 +112,60 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 // must delete all blocks individually first
 // also deletes LayoutState
 func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		ws, _ := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if ws == nil {
-			return fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		tab, _ := wstore.DBGet[*waveobj.Tab](tx.Context(), tabId)
-		if tab == nil {
-			return fmt.Errorf("tab not found: %q", tabId)
-		}
+	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if ws == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+	if tab == nil {
+		return fmt.Errorf("tab not found: %q", tabId)
+	}
 
-		// close blocks (sends events + stops block controllers)
-		for _, blockId := range tab.BlockIds {
-			err := DeleteBlock(ctx, blockId)
-			if err != nil {
-				return fmt.Errorf("error deleting block %s: %w", blockId, err)
-			}
+	// close blocks (sends events + stops block controllers)
+	for _, blockId := range tab.BlockIds {
+		err := DeleteBlock(ctx, blockId)
+		if err != nil {
+			return fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
-		if len(tab.BlockIds) != 0 {
-			return fmt.Errorf("tab has blocks, must delete blocks first")
-		}
-		tabIdx := utilfn.FindStringInSlice(ws.TabIds, tabId)
-		if tabIdx == -1 {
-			return nil
-		}
-		ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
-		wstore.DBUpdate(tx.Context(), ws)
-		wstore.DBDelete(tx.Context(), waveobj.OType_Tab, tabId)
-		wstore.DBDelete(tx.Context(), waveobj.OType_LayoutState, tab.LayoutState)
+	}
+	if len(tab.BlockIds) != 0 {
+		return fmt.Errorf("tab has blocks, must delete blocks first")
+	}
+	tabIdx := utilfn.FindStringInSlice(ws.TabIds, tabId)
+	if tabIdx == -1 {
 		return nil
-	})
+	}
+	ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
+	wstore.DBUpdate(ctx, ws)
+	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
+	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
+	return nil
 }
 
 func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		workspace, _ := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if workspace == nil {
-			return fmt.Errorf("workspace not found: %q", workspaceId)
+	workspace, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if workspace == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	if tabId != "" {
+		tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+		if tab == nil {
+			return fmt.Errorf("tab not found: %q", tabId)
 		}
-		if tabId != "" {
-			tab, _ := wstore.DBGet[*waveobj.Tab](tx.Context(), tabId)
-			if tab == nil {
-				return fmt.Errorf("tab not found: %q", tabId)
-			}
-		}
-		workspace.ActiveTabId = tabId
-		wstore.DBUpdate(tx.Context(), workspace)
-		return nil
-	})
+	}
+	workspace.ActiveTabId = tabId
+	wstore.DBUpdate(ctx, workspace)
+	return nil
 }
 
 func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		ws, _ := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if ws == nil {
-			return fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		ws.TabIds = tabIds
-		wstore.DBUpdate(tx.Context(), ws)
-		return nil
-	})
+	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if ws == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	ws.TabIds = tabIds
+	wstore.DBUpdate(ctx, ws)
+	return nil
 }
 
 func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
@@ -213,50 +206,44 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 func SetIcon(workspaceId string, icon string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		ws, e := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if e != nil {
-			return e
-		}
-		if ws == nil {
-			return fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		ws.Icon = icon
-		wstore.DBUpdate(tx.Context(), ws)
-		return nil
-	})
+	ws, e := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if e != nil {
+		return e
+	}
+	if ws == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	ws.Icon = icon
+	wstore.DBUpdate(ctx, ws)
+	return nil
 }
 
 func SetColor(workspaceId string, color string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		ws, e := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if e != nil {
-			return e
-		}
-		if ws == nil {
-			return fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		ws.Color = color
-		wstore.DBUpdate(tx.Context(), ws)
-		return nil
-	})
+	ws, e := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if e != nil {
+		return e
+	}
+	if ws == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	ws.Color = color
+	wstore.DBUpdate(ctx, ws)
+	return nil
 }
 
 func SetName(workspaceId string, name string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		ws, e := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if e != nil {
-			return e
-		}
-		if ws == nil {
-			return fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		ws.Name = name
-		wstore.DBUpdate(tx.Context(), ws)
-		return nil
-	})
+	ws, e := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if e != nil {
+		return e
+	}
+	if ws == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	ws.Name = name
+	wstore.DBUpdate(ctx, ws)
+	return nil
 }

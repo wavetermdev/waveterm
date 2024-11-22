@@ -195,8 +195,11 @@ export class WaveBrowserWindow extends BaseWindow {
             fireAndForget(async () => {
                 const numWindows = waveWindowMap.size;
                 if (numWindows > 1) {
+                    console.log("numWindows > 1", numWindows);
                     const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
+                    console.log("workspace", workspace);
                     if (!workspace.name && !workspace.icon && workspace.tabids.length > 1) {
+                        console.log("workspace has no name, icon, and multiple tabs", workspace);
                         const choice = dialog.showMessageBoxSync(this, {
                             type: "question",
                             buttons: ["Cancel", "Yes"],
@@ -205,6 +208,7 @@ export class WaveBrowserWindow extends BaseWindow {
                                 "Are you sure you want to close this window (all tabs and blocks will be deleted)?",
                         });
                         if (choice === 0) {
+                            console.log("user cancelled close window", this.waveWindowId);
                             return;
                         }
                     }
@@ -215,19 +219,19 @@ export class WaveBrowserWindow extends BaseWindow {
             });
         });
         this.on("closed", () => {
-            if (this.isDestroyed()) {
-                return;
-            }
             console.log("win 'closed' handler fired", this.waveWindowId);
             if (getGlobalIsQuitting() || updater?.status == "installing") {
+                console.log("win quitting or updating", this.waveWindowId);
                 return;
             }
             if (getGlobalIsRelaunching()) {
+                console.log("win relaunching", this.waveWindowId);
                 this.destroy();
                 return;
             }
             const numWindows = waveWindowMap.size;
             if (numWindows == 0) {
+                console.log("win no windows left", this.waveWindowId);
                 return;
             }
             if (!this.alreadyClosed && this.deleteAllowed) {
@@ -273,7 +277,7 @@ export class WaveBrowserWindow extends BaseWindow {
             const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
             this.allTabViews.delete(tabId);
             if (rtn?.closewindow && !this.alreadyClosed) {
-                this.destroy(); // bypass the "are you sure?" dialog
+                this.close();
             } else if (rtn?.newactivetabid) {
                 this.setActiveTab(rtn.newactivetabid);
             }

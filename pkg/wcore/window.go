@@ -13,33 +13,31 @@ import (
 )
 
 func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (*waveobj.Workspace, error) {
-	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*waveobj.Workspace, error) {
-		ws, err := GetWorkspace(tx.Context(), workspaceId)
-		if err != nil {
-			return nil, err
-		}
-		window, err := GetWindow(tx.Context(), windowId)
-		if err != nil {
-			return nil, err
-		}
-		if window.WorkspaceId == workspaceId {
-			return ws, nil
-		}
+	ws, err := GetWorkspace(ctx, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+	window, err := GetWindow(ctx, windowId)
+	if err != nil {
+		return nil, err
+	}
+	if window.WorkspaceId == workspaceId {
+		return ws, nil
+	}
 
-		allWindows, err := wstore.DBGetAllObjsByType[*waveobj.Window](tx.Context(), waveobj.OType_Window)
-		if err != nil {
-			return nil, err
-		}
+	allWindows, err := wstore.DBGetAllObjsByType[*waveobj.Window](ctx, waveobj.OType_Window)
+	if err != nil {
+		return nil, err
+	}
 
-		for _, w := range allWindows {
-			if w.WorkspaceId == workspaceId {
-				return nil, fmt.Errorf("cannot set workspace %s for window %s as it is already claimed by window %s", workspaceId, windowId, w.OID)
-			}
+	for _, w := range allWindows {
+		if w.WorkspaceId == workspaceId {
+			return nil, fmt.Errorf("cannot set workspace %s for window %s as it is already claimed by window %s", workspaceId, windowId, w.OID)
 		}
+	}
 
-		window.WorkspaceId = workspaceId
-		return ws, wstore.DBInsert(tx.Context(), window)
-	})
+	window.WorkspaceId = workspaceId
+	return ws, wstore.DBUpdate(ctx, window)
 }
 
 func GetWindow(ctx context.Context, windowId string) (*waveobj.Window, error) {
@@ -100,19 +98,22 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId str
 }
 
 func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error {
+	log.Printf("CloseWindow %s\n", windowId)
 	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 	if err != nil {
 		return fmt.Errorf("error getting window: %w", err)
 	}
-
+	log.Printf("got window %s\n", windowId)
 	err = DeleteWorkspace(ctx, window.WorkspaceId, false)
 	if err != nil {
 		return fmt.Errorf("error deleting workspace: %w", err)
 	}
+	log.Printf("deleted workspace %s\n", window.WorkspaceId)
 	err = wstore.DBDelete(ctx, waveobj.OType_Window, windowId)
 	if err != nil {
 		return fmt.Errorf("error deleting window: %w", err)
 	}
+	log.Printf("deleted window %s\n", windowId)
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
@@ -122,6 +123,7 @@ func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error 
 	if err != nil {
 		return fmt.Errorf("error updating client: %w", err)
 	}
+	log.Printf("updated client\n")
 	if !fromElectron {
 		eventbus.SendEventToElectron(eventbus.WSEventType{
 			EventType: eventbus.WSEvent_ElectronCloseWindow,

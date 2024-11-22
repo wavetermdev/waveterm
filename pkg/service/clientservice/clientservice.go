@@ -25,12 +25,14 @@ type ClientService struct{}
 const DefaultTimeout = 2 * time.Second
 
 func (cs *ClientService) GetClientData() (*waveobj.Client, error) {
+	log.Println("GetClientData")
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting client data: %w", err)
 	}
+	log.Printf("clientData: %v\n", clientData)
 	return clientData, nil
 }
 
@@ -52,15 +54,19 @@ func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnSta
 
 // moves the window to the front of the windowId stack
 func (cs *ClientService) FocusWindow(ctx context.Context, windowId string) error {
+	log.Printf("FocusWindow %s\n", windowId)
 	client, err := cs.GetClientData()
 	if err != nil {
+		log.Printf("error getting client data: %v\n", err)
 		return err
 	}
 	winIdx := utilfn.SliceIdx(client.WindowIds, windowId)
 	if winIdx == -1 {
+		log.Printf("window %s not found in client data\n", windowId)
 		return nil
 	}
 	client.WindowIds = utilfn.MoveSliceIdxToFront(client.WindowIds, winIdx)
+	log.Printf("client.WindowIds: %v\n", client.WindowIds)
 	return wstore.DBUpdate(ctx, client)
 }
 
