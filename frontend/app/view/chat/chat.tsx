@@ -10,7 +10,7 @@ import { ChatBox } from "./chatbox";
 import { channels, messages, users } from "./data";
 import { UserList } from "./userlist";
 
-import "./chat.less";
+import "./chat.scss";
 
 class ChatModel {
     viewType: string;

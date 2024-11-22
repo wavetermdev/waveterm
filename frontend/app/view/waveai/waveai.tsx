@@ -16,7 +16,7 @@ import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import "./waveai.less";
+import "./waveai.scss";
 
 interface ChatMessageType {
     id: string;

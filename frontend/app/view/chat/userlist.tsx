@@ -4,7 +4,7 @@
 import clsx from "clsx";
 import { memo } from "react";
 import { Avatar } from "../../element/avatar";
-import "./userlist.less";
+import "./userlist.scss";
 
 export interface UserStatus {
     label: string;

@@ -6,7 +6,7 @@ import { FloatingPortal, useFloating, useInteractions } from "@floating-ui/react
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
-import "./notificationbubbles.less";
+import "./notificationbubbles.scss";
 import { NotificationItem } from "./notificationitem";
 import { useNotification } from "./usenotification";
 

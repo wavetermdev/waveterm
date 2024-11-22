@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "../mixins.less";
+@use "../mixins.scss";
 
 .collapsible-menu {
     list-style: none;
@@ -32,7 +32,7 @@
 }
 
 .collapsible-menu-item-text {
-    .ellipsis();
+    @include mixins.ellipsis();
     text-decoration: none;
 }
 

@@ -12,7 +12,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import { atoms, globalStore, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import "./tab.less";
+import "./tab.scss";
 
 interface TabProps {
     id: string;

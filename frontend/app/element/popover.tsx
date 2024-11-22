@@ -26,7 +26,7 @@ import {
     useState,
 } from "react";
 
-import "./popover.less";
+import "./popover.scss";
 
 interface PopoverProps {
     children: ReactNode;

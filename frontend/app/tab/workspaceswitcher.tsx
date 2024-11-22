@@ -22,7 +22,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { memo, useEffect, useRef } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 
-import "./workspaceswitcher.less";
+import "./workspaceswitcher.scss";
 
 interface ColorSelectorProps {
     colors: string[];

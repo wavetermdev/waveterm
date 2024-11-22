@@ -3,7 +3,7 @@
 
 import { clsx } from "clsx";
 
-import "./typingindicator.less";
+import "./typingindicator.scss";
 
 type TypingIndicatorProps = {
     className?: string;
