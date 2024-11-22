@@ -140,7 +140,7 @@
         "use-device-pixel-ratio": "^1.1.2",
         "winston": "^3.17.0",
         "ws": "^8.18.0",
-        "yaml": "^2.6.0"
+        "yaml": "^2.6.1"
     },
     "resolutions": {
         "send@npm:0.18.0": "0.19.0",
