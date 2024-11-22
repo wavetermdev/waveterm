@@ -6,7 +6,7 @@ import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { useState } from "react";
 
-import "./ratingbubble.less";
+import "./ratingbubble.scss";
 
 interface RatingBubbleProps {
     notification: NotificationType;
