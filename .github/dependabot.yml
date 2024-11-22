@@ -24,24 +24,8 @@ updates:
           electron:
               patterns:
                   - "*electron*"
-    - package-ecosystem: "npm"
-      directory: "docs/"
-      schedule:
-          interval: "weekly"
-          day: "friday"
-          time: "09:00"
-          timezone: "America/Los_Angeles"
-      groups:
-          docsite-dev-dependencies:
-              dependency-type: "development"
-              exclude-patterns:
-                  - "*docusaurus*"
-          docsite-docusaurus:
+          docusaurus:
               patterns:
-                  - "*docusaurus*"
-          docsite-prod-dependencies:
-              dependency-type: "production"
-              exclude-patterns:
                   - "*docusaurus*"
     - package-ecosystem: "gomod"
       directory: "/"
