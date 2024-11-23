@@ -277,6 +277,7 @@ declare global {
     // wshrpc.ConnStatus
     type ConnStatus = {
         status: string;
+        wshenabled: boolean;
         connection: string;
         connected: boolean;
         hasconnected: boolean;
@@ -616,6 +617,7 @@ declare global {
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
+        "conn:wshenabled"?: boolean;
     };
 
     // wshrpc.SshKeywords

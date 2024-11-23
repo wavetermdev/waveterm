@@ -52,6 +52,7 @@ var activeConnCounter = &atomic.Int32{}
 type SSHConn struct {
 	Lock               *sync.Mutex
 	Status             string
+	WshEnabled         *atomic.Bool
 	Opts               *remote.SSHOpts
 	Client             *ssh.Client
 	SockName           string
@@ -290,6 +291,12 @@ type WshInstallOpts struct {
 	NoUserPrompt bool
 }
 
+type WshInstallSkipError struct{}
+
+func (wise *WshInstallSkipError) Error() string {
+	return "skipping wsh installation"
+}
+
 func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName string, opts *WshInstallOpts) error {
 	if opts == nil {
 		opts = &WshInstallOpts{}
@@ -328,8 +335,11 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			CheckBoxMsg:  "Don't show me this again",
 		}
 		response, err := userinput.GetUserInput(ctx, request)
-		if err != nil || !response.Confirm {
+		if err != nil {
 			return err
+		}
+		if !response.Confirm {
+			return &WshInstallSkipError{}
 		}
 		if response.CheckboxStat {
 			meta := waveobj.MetaMapType{
@@ -462,15 +472,46 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.SshK
 		return err
 	}
 	config := wconfig.ReadFullConfig()
-	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !config.Settings.ConnAskBeforeWshInstall})
-	if installErr != nil {
-		log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
-		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
+	enableWsh := config.Settings.ConnWshEnabled
+	askBeforeInstall := config.Settings.ConnAskBeforeWshInstall
+	connSettings, ok := config.Connections[conn.GetName()]
+	if !ok {
+		if connSettings.WshEnabled != nil {
+			enableWsh = *connSettings.WshEnabled
+		}
+		if connSettings.AskBeforeWshInstall != nil {
+			askBeforeInstall = *connSettings.AskBeforeWshInstall
+		}
 	}
-	csErr := conn.StartConnServer()
-	if csErr != nil {
-		log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
-		return fmt.Errorf("conncontroller %s start wsh connserver error: %v", conn.GetName(), csErr)
+	log.Printf("enable wsh: %t", enableWsh)
+	// do checks here for noUserPrompt
+	// we need a case for:
+	// - checkAndInstall with a user prompt
+	// - checkAndInstall with no prompt (auto install)
+	// - skip even checking in the first place
+	if enableWsh {
+		installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !askBeforeInstall})
+		if errors.Is(installErr, &WshInstallSkipError{}) { //TODO
+			// skips are not true errors
+			conn.WithLock(func() {
+				conn.WshEnabled.Store(false)
+			})
+		} else if installErr != nil {
+			log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
+			return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
+		} else {
+			conn.WshEnabled.Store(true)
+		}
+
+		if conn.WshEnabled.Load() {
+			csErr := conn.StartConnServer()
+			if csErr != nil {
+				log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
+				return fmt.Errorf("conncontroller %s start wsh connserver error: %v", conn.GetName(), csErr)
+			}
+		}
+	} else {
+		conn.WshEnabled.Store(false)
 	}
 	conn.HasWaiter.Store(true)
 	go conn.waitForDisconnect()
@@ -504,7 +545,7 @@ func getConnInternal(opts *remote.SSHOpts) *SSHConn {
 	defer globalLock.Unlock()
 	rtn := clientControllerMap[*opts]
 	if rtn == nil {
-		rtn = &SSHConn{Lock: &sync.Mutex{}, Status: Status_Init, Opts: opts, HasWaiter: &atomic.Bool{}}
+		rtn = &SSHConn{Lock: &sync.Mutex{}, Status: Status_Init, WshEnabled: &atomic.Bool{}, Opts: opts, HasWaiter: &atomic.Bool{}}
 		clientControllerMap[*opts] = rtn
 	}
 	return rtn

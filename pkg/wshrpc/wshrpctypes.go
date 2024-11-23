@@ -487,6 +487,7 @@ func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
 
 type ConnStatus struct {
 	Status        string `json:"status"`
+	WshEnabled    bool   `json:"wshenabled"`
 	Connection    string `json:"connection"`
 	Connected     bool   `json:"connected"`
 	HasConnected  bool   `json:"hasconnected"` // true if it has *ever* connected successfully

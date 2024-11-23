@@ -341,7 +341,7 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, connName, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, { "ssh:hostname": connName }, { timeout: 60000 });
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -673,7 +673,11 @@ const ChangeConnectionBlockModal = React.memo(
             label: `Reconnect to ${connStatus.connection}`,
             value: "",
             onSelect: async (_: string) => {
-                const prtn = RpcApi.ConnConnectCommand(TabRpcClient, connStatus.connection, { timeout: 60000 });
+                const prtn = RpcApi.ConnConnectCommand(
+                    TabRpcClient,
+                    { "ssh:hostname": connStatus.connection },
+                    { timeout: 60000 }
+                );
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };

@@ -97,6 +97,7 @@ type SettingsType struct {
 
 	ConnClear               bool `json:"conn:*,omitempty"`
 	ConnAskBeforeWshInstall bool `json:"conn:askbeforewshinstall,omitempty"`
+	ConnWshEnabled          bool `json:"conn:wshenabled,omitempty"`
 }
 
 type ConfigError struct {
@@ -536,6 +537,6 @@ type TermThemeType struct {
 
 type ConnectionsConfigType struct {
 	wshrpc.SshKeywords
-	WshEnabled          bool `json:"wshenabled,omitempty"`
-	AskBeforeWshInstall bool `json:"askbeforewshinstall,omitempty"`
+	WshEnabled          *bool `json:"wshenabled,omitempty"`
+	AskBeforeWshInstall *bool `json:"askbeforewshinstall,omitempty"`
 }
