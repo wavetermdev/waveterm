@@ -58,7 +58,8 @@
 		}
     }
 
-	&.before-active:after {
+	&.before-active:after,
+	&:last-child::after {
 		content: none;
 	}
 
