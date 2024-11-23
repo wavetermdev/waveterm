@@ -47,12 +47,14 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 	if err != nil {
 		return nil, fmt.Errorf("error getting current workspace: %w", err)
 	}
-	if curWs.Name == "" || curWs.Icon == "" {
-		log.Printf("current workspace %s is not named, deleting it\n", curWs.OID)
-		err = DeleteWorkspace(ctx, curWs.OID, false)
-		if err != nil {
-			return nil, fmt.Errorf("error deleting current workspace: %w", err)
-		}
+	deleted, err := DeleteWorkspace(ctx, curWs.OID, false)
+	if err != nil {
+		return nil, fmt.Errorf("error deleting current workspace: %w", err)
+	}
+	if !deleted {
+		log.Printf("current workspace %s was not deleted\n", curWs.OID)
+	} else {
+		log.Printf("deleted current workspace %s\n", curWs.OID)
 	}
 
 	window.WorkspaceId = workspaceId
@@ -124,11 +126,13 @@ func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error 
 		return fmt.Errorf("error getting window: %w", err)
 	}
 	log.Printf("got window %s\n", windowId)
-	err = DeleteWorkspace(ctx, window.WorkspaceId, false)
+	deleted, err := DeleteWorkspace(ctx, window.WorkspaceId, false)
 	if err != nil {
 		return fmt.Errorf("error deleting workspace: %w", err)
 	}
-	log.Printf("deleted workspace %s\n", window.WorkspaceId)
+	if deleted {
+		log.Printf("deleted workspace %s\n", window.WorkspaceId)
+	}
 	err = wstore.DBDelete(ctx, waveobj.OType_Window, windowId)
 	if err != nil {
 		return fmt.Errorf("error deleting window: %w", err)

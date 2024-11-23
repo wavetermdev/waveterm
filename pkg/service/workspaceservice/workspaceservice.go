@@ -45,9 +45,12 @@ func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.Update
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wcore.DeleteWorkspace(ctx, workspaceId, true)
+	deleted, err := wcore.DeleteWorkspace(ctx, workspaceId, true)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting workspace: %w", err)
+	}
+	if !deleted {
+		return nil, nil
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {

@@ -342,8 +342,7 @@ func DBFindWindowForWorkspaceId(ctx context.Context, workspaceId string) (string
 	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
 		query := `
 			SELECT w.oid
-			FROM db_window w, json_extract(data, '$.workspaceid') je
-			WHERE je.value = ?`
+			FROM db_window w WHERE json_extract(data, '$.workspaceid') = ?`
 		return tx.GetString(query, workspaceId), nil
 	})
 }

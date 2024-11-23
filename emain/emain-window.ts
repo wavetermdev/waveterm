@@ -9,7 +9,7 @@ import { debounce } from "throttle-debounce";
 import { getGlobalIsQuitting, getGlobalIsRelaunching, setWasActive, setWasInFg } from "./emain-activity";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
 import { delay, ensureBoundsAreVisible } from "./emain-util";
-import { getElectronAppBasePath } from "./platform";
+import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
 export type WindowOpts = {
     unamePlatform: string;
@@ -212,8 +212,10 @@ export class WaveBrowserWindow extends BaseWindow {
                             return;
                         }
                     }
+                    console.log("deleteAllowed = true", this.waveWindowId);
                     this.deleteAllowed = true;
                 }
+                console.log("canClose = true", this.waveWindowId);
                 this.canClose = true;
                 this.close();
             });
@@ -257,7 +259,13 @@ export class WaveBrowserWindow extends BaseWindow {
                 console.log("user cancelled switch workspace", this.waveWindowId);
                 return;
             } else if (choice === 1) {
-                await WindowService.CreateWindow(null, workspaceId);
+                console.log("user chose open in new window", this.waveWindowId);
+                const [newWin] = await WindowService.CreateWindow(null, workspaceId);
+                if (!newWin) {
+                    console.log("error creating new window", this.waveWindowId);
+                }
+                const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), { unamePlatform });
+                newBwin.show();
                 return;
             }
         }

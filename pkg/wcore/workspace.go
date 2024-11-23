@@ -22,29 +22,29 @@ func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
 	return ws, nil
 }
 
-func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) error {
+func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, error) {
 	log.Printf("DeleteWorkspace %s\n", workspaceId)
 	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
 	if err != nil {
-		return fmt.Errorf("error getting workspace: %w", err)
+		return false, fmt.Errorf("error getting workspace: %w", err)
 	}
 	if workspace.Name != "" && workspace.Icon != "" && !force {
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
-		return nil
+		return false, nil
 	}
 	for _, tabId := range workspace.TabIds {
 		log.Printf("deleting tab %s\n", tabId)
 		err := DeleteTab(ctx, workspaceId, tabId)
 		if err != nil {
-			return fmt.Errorf("error closing tab: %w", err)
+			return false, fmt.Errorf("error closing tab: %w", err)
 		}
 	}
 	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
-	log.Printf("deleted workspace %s\n", workspaceId)
 	if err != nil {
-		return fmt.Errorf("error deleting workspace: %w", err)
+		return false, fmt.Errorf("error deleting workspace: %w", err)
 	}
-	return nil
+	log.Printf("deleted workspace %s\n", workspaceId)
+	return true, nil
 }
 
 func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) {
@@ -123,9 +123,6 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 		if err != nil {
 			return fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
-	}
-	if len(tab.BlockIds) != 0 {
-		return fmt.Errorf("tab has blocks, must delete blocks first")
 	}
 	tabIdx := utilfn.FindStringInSlice(ws.TabIds, tabId)
 	if tabIdx == -1 {
