@@ -12,16 +12,17 @@ import {
 } from "@/element/expandablemenu";
 import { Input } from "@/element/input";
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
-import { makeIconClass, useAtomValueSafe } from "@/util/util";
+import { fireAndForget, makeIconClass, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
-import { useAtom } from "jotai";
+import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { splitAtom } from "jotai/utils";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { CSSProperties, memo, useCallback, useEffect, useRef, useState } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
 import { atoms, getApi } from "../store/global";
 import { WorkspaceService } from "../store/services";
-import { getWaveObjectAtom, makeORef, setObjectValue } from "../store/wos";
+import { getObjectValue, makeORef, setObjectValue } from "../store/wos";
 import "./workspaceswitcher.scss";
 
 interface ColorSelectorProps {
@@ -145,45 +146,39 @@ const ColorAndIconSelector = memo(
     }
 );
 
-type WorkspaceMapEntry = {
+type WorkspaceListEntry = {
     windowId: string;
-    workspaceAtom: WritableWaveObjectAtom<Workspace>;
+    workspace: Workspace;
 };
 
-type WorkspaceMap = Record<string, WorkspaceMapEntry>;
-
+type WorkspaceList = WorkspaceListEntry[];
+const workspaceMapAtom = atom<WorkspaceList>([]);
+const workspaceSplitAtom = splitAtom(workspaceMapAtom);
 const WorkspaceSwitcher = () => {
-    const [workspaceMap, setWorkspaceMap] = useState<WorkspaceMap>({});
-
+    const setWorkspaceList = useSetAtom(workspaceMapAtom);
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
+    const workspaceList = useAtomValue(workspaceSplitAtom);
 
-    const updateWorkspaceMap = useCallback(() => {
-        WorkspaceService.ListWorkspaces()
-            .then((workspaceList) => {
-                const newMap = { ...workspaceMap };
-                if (!workspaceList) {
-                    return;
-                }
-                console.log(workspaceList);
-                for (const entry of workspaceList) {
-                    if (newMap[entry.workspaceid]) {
-                        newMap[entry.workspaceid].windowId = entry.windowid;
-                    } else {
-                        newMap[entry.workspaceid] = {
-                            windowId: entry.windowid,
-                            workspaceAtom: getWaveObjectAtom(makeORef("workspace", entry.workspaceid)),
-                        };
-                    }
-                }
-                setWorkspaceMap(newMap);
-            })
-            .catch((e) => {
-                console.error("Failed to update workspace map", e);
+    const updateWorkspaceList = useCallback(async () => {
+        const workspaceList = await WorkspaceService.ListWorkspaces();
+        if (!workspaceList) {
+            return;
+        }
+        console.log(workspaceList);
+        const newList: WorkspaceList = [];
+        for (const entry of workspaceList) {
+            // This just ensures that the atom exists for easier setting of the object
+            getObjectValue(makeORef("workspace", entry.workspaceid));
+            newList.push({
+                windowId: entry.windowid,
+                workspace: await WorkspaceService.GetWorkspace(entry.workspaceid),
             });
+        }
+        setWorkspaceList(newList);
     }, []);
 
     useEffect(() => {
-        updateWorkspaceMap();
+        fireAndForget(updateWorkspaceList);
     }, []);
 
     const workspaceIcon = activeWorkspace.icon ? (
@@ -195,7 +190,7 @@ const WorkspaceSwitcher = () => {
     const saveWorkspace = () => {
         setObjectValue({ ...activeWorkspace, name: "New Workspace", icon: "circle", color: "green" }, undefined, true);
         setTimeout(() => {
-            updateWorkspaceMap();
+            fireAndForget(updateWorkspaceList);
         }, 10);
     };
 
@@ -203,15 +198,22 @@ const WorkspaceSwitcher = () => {
 
     return (
         <Popover className="workspace-switcher-popover">
-            <PopoverButton className="workspace-switcher-button grey" as="div" onClick={() => updateWorkspaceMap()}>
+            <PopoverButton
+                className="workspace-switcher-button grey"
+                as="div"
+                onClick={() => {
+                    console.log("onclick");
+                    fireAndForget(updateWorkspaceList);
+                }}
+            >
                 <span className="workspace-icon">{workspaceIcon}</span>
             </PopoverButton>
             <PopoverContent className="workspace-switcher-content">
                 <div className="title">Switch workspace</div>
                 <OverlayScrollbarsComponent className={"scrollable"} options={{ scrollbars: { autoHide: "leave" } }}>
                     <ExpandableMenu noIndent singleOpen>
-                        {Object.entries(workspaceMap).map((entry) => (
-                            <WorkspaceSwitcherItem key={entry[0]} entry={entry[1]} />
+                        {workspaceList.map((entry, i) => (
+                            <WorkspaceSwitcherItem key={i} entryAtom={entry} />
                         ))}
                     </ExpandableMenu>
                 </OverlayScrollbarsComponent>
@@ -231,21 +233,32 @@ const WorkspaceSwitcher = () => {
     );
 };
 
-const WorkspaceSwitcherItem = memo(({ entry }: { entry: WorkspaceMapEntry }) => {
+const WorkspaceSwitcherItem = ({ entryAtom }: { entryAtom: PrimitiveAtom<WorkspaceListEntry> }) => {
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
-    const [workspace, setWorkspace] = useAtom(entry.workspaceAtom);
+    const [workspaceEntry, setWorkspaceEntry] = useAtom(entryAtom);
     const [isOpen, setIsOpen] = useState(false);
 
-    const isWorkspaceActive = !!entry.windowId;
+    const workspace = workspaceEntry.workspace;
     const isCurrentWorkspace = activeWorkspace.oid === workspace.oid;
 
-    const isActive = !!entry.windowId;
+    const setWorkspace = useCallback((newWorkspace: Workspace) => {
+        fireAndForget(async () => {
+            console.log("setWorkspace", newWorkspace);
+            setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
+            setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
+        });
+    }, []);
+
+    const isActive = !!workspaceEntry.windowId;
     const editIconDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         className: "edit",
         icon: "pencil",
         title: "Edit workspace",
-        click: () => setIsOpen(!isOpen),
+        click: (e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+        },
     };
     const windowIconDecl: IconButtonDecl = {
         elemtype: "iconbutton",
@@ -297,6 +310,6 @@ const WorkspaceSwitcherItem = memo(({ entry }: { entry: WorkspaceMapEntry }) => 
             </ExpandableMenuItem>
         </ExpandableMenuItemGroup>
     );
-});
+};
 
 export { WorkspaceSwitcher };
