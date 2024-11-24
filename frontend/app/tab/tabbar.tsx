@@ -106,6 +106,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     // const [scrollable, setScrollable] = useState(false);
     // const [tabWidth, setTabWidth] = useState(TAB_DEFAULT_WIDTH);
     const [newTabId, setNewTabId] = useState<string | null>(null);
+    const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
 
     const tabbarWrapperRef = useRef<HTMLDivElement>(null);
     const tabBarRef = useRef<HTMLDivElement>(null);
@@ -519,8 +520,22 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         });
     }, []);
 
+    const handleMouseEnter = (event: React.MouseEvent<HTMLDivElement, MouseEvent>, tabId: string) => {
+        event.stopPropagation();
+        setHoveredTabId(tabId);
+    };
+
+    const handleMouseLeave = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+        event.stopPropagation();
+        setHoveredTabId(null);
+    };
+
     const isBeforeActive = (tabId: string) => {
         return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
+    };
+
+    const isBeforeHovered = (tabId: string) => {
+        return tabIds.indexOf(tabId) === tabIds.indexOf(hoveredTabId) - 1;
     };
 
     function onEllipsisClick() {
@@ -560,9 +575,12 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}
                                 isBeforeActive={isBeforeActive(tabId)}
+                                isBeforeHovered={isBeforeHovered(tabId)}
                                 isDragging={draggingTab === tabId}
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}
+                                onMouseEnter={(e) => handleMouseEnter(e, tabId)}
+                                onMouseLeave={handleMouseLeave}
                             />
                         );
                     })}

@@ -19,6 +19,7 @@ interface TabProps {
     active: boolean;
     isFirst: boolean;
     isBeforeActive: boolean;
+    isBeforeHovered: boolean;
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
@@ -26,6 +27,8 @@ interface TabProps {
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
+    onMouseEnter?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseLeave?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
 }
 
 const Tab = React.memo(
@@ -36,6 +39,7 @@ const Tab = React.memo(
                 active,
                 isFirst,
                 isBeforeActive,
+                isBeforeHovered,
                 isDragging,
                 tabWidth,
                 isNew,
@@ -43,6 +47,8 @@ const Tab = React.memo(
                 onSelect,
                 onClose,
                 onDragStart,
+                onMouseEnter,
+                onMouseLeave,
             },
             ref
         ) => {
@@ -191,11 +197,14 @@ const Tab = React.memo(
                         active,
                         isDragging,
                         "before-active": isBeforeActive,
+                        "before-hovered": isBeforeHovered,
                         "new-tab": isNew,
                     })}
                     onMouseDown={onDragStart}
                     onClick={onSelect}
                     onContextMenu={handleContextMenu}
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
                     data-tab-id={id}
                 >
                     <div className="tab-inner">

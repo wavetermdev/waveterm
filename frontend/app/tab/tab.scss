@@ -29,12 +29,18 @@
         height: 100%;
         white-space: nowrap;
 		border-radius: 6px;
-
-        &:hover {
-            border-color: transparent;
-            background: rgb(from var(--main-text-color) r g b / 0.07);
-        }
     }
+
+	&:hover {
+		&::after {
+			content: none;
+		}
+
+		.tab-inner {
+			border-color: transparent;
+			background: rgb(from var(--main-text-color) r g b / 0.07);
+		}
+	}
 
     &.animate {
         transition:
@@ -59,6 +65,7 @@
     }
 
 	&.before-active:after,
+	&.before-hovered:after,
 	&:last-child::after {
 		content: none;
 	}
