@@ -19,7 +19,7 @@ import clsx from "clsx";
 import { colord } from "colord";
 import { atom, useAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { memo, useEffect, useRef } from "react";
+import { forwardRef, memo, useEffect, useRef } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 
 import "./workspaceswitcher.scss";
@@ -180,7 +180,7 @@ const workspaceData: WorkspaceDataType[] = [
 
 export const menuDataAtom = atom<WorkspaceDataType[]>(workspaceData);
 
-const WorkspaceSwitcher = () => {
+const WorkspaceSwitcher = forwardRef<HTMLDivElement, {}>(({}, ref) => {
     const [menuData, setMenuData] = useAtom(menuDataAtom);
 
     const handleTitleChange = (id: string, newTitle: string) => {
@@ -399,7 +399,7 @@ const WorkspaceSwitcher = () => {
     }
 
     return (
-        <Popover className="workspace-switcher-popover">
+        <Popover ref={ref} className="workspace-switcher-popover">
             <PopoverButton className="workspace-switcher-button grey" as="div">
                 <span className="workspace-icon">{workspaceIcon}</span>
                 {/* <span className="divider" />
@@ -426,6 +426,6 @@ const WorkspaceSwitcher = () => {
             </PopoverContent>
         </Popover>
     );
-};
+});
 
 export { WorkspaceSwitcher };

@@ -8,12 +8,13 @@ import "./windowdrag.scss";
 
 interface WindowDragProps {
     className?: string;
+    style?: React.CSSProperties;
     children?: React.ReactNode;
 }
 
-const WindowDrag = forwardRef<HTMLDivElement, WindowDragProps>(({ children, className }, ref) => {
+const WindowDrag = forwardRef<HTMLDivElement, WindowDragProps>(({ children, className, style }, ref) => {
     return (
-        <div ref={ref} className={clsx(`window-drag`, className)}>
+        <div ref={ref} className={clsx(`window-drag`, className)} style={style}>
             {children}
         </div>
     );
