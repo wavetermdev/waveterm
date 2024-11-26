@@ -87,7 +87,7 @@ tasks:
             - "dist/docsite/**/*"
         cmds:
             - cd docs && yarn build-embedded
-            - task: copyfiles:'docs/build':'dist/docsite'
+            - task: copyfiles:'docs/build/':'dist/docsite'
         deps:
             - yarn
 
