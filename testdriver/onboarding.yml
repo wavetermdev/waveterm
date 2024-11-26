@@ -10,3 +10,5 @@ steps:
         text: Get Started
         description: button to complete onboarding
         action: click
+      - command: assert
+        expect: the cpu usage graph is being displayed

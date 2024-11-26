@@ -140,6 +140,7 @@ func beforeSendActivityUpdate(ctx context.Context) {
 	activity := telemetry.ActivityUpdate{}
 	activity.NumTabs, _ = wstore.DBGetCount[*waveobj.Tab](ctx)
 	activity.NumBlocks, _ = wstore.DBGetCount[*waveobj.Block](ctx)
+	activity.Blocks, _ = wstore.DBGetBlockViewCounts(ctx)
 	activity.NumWindows, _ = wstore.DBGetCount[*waveobj.Window](ctx)
 	activity.NumSSHConn = conncontroller.GetNumSSHHasConnected()
 	activity.NumWSLConn = wsl.GetNumWSLHasConnected()
