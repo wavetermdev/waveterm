@@ -32,6 +32,7 @@ declare global {
         buildtime?: string;
         displays?: ActivityDisplayType[];
         renderers?: {[key: string]: number};
+        blocks?: {[key: string]: number};
         wshcmds?: {[key: string]: number};
         conn?: {[key: string]: number};
     };
