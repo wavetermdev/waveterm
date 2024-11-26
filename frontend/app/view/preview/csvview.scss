@@ -1,12 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "../../mixins.less";
+@use "../../mixins.scss";
 
 .csv-view {
     opacity: 0; /* Start with an opacity of 0, meaning it's invisible */
 
-    .ellipsis();
+    @include mixins.ellipsis();
 
     overflow-x: auto;
     overflow-y: hidden;
@@ -53,7 +53,7 @@
                         text-align: left;
                         padding-right: 15px;
                         position: relative;
-                        .ellipsis();
+                        @include mixins.ellipsis();
 
                         .sort-icon {
                             position: absolute;
@@ -85,7 +85,7 @@
                 flex-grow: 2;
                 display: block;
                 text-align: left;
-                .ellipsis();
+                @include mixins.ellipsis();
             }
         }
     }

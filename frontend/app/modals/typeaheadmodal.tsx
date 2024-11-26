@@ -8,7 +8,7 @@ import clsx from "clsx";
 import React, { forwardRef, useLayoutEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 
-import "./typeaheadmodal.less";
+import "./typeaheadmodal.scss";
 
 interface SuggestionsProps {
     suggestions?: SuggestionsType[];

@@ -25,7 +25,7 @@ import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { createRef, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
-import "./preview.less";
+import "./preview.scss";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB

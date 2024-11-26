@@ -21,7 +21,7 @@ import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
-import "./markdown.less";
+import "./markdown.scss";
 
 const Link = ({
     setFocusedHeading,

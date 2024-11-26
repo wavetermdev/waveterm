@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { memo, useEffect, useRef } from "react";
 
-import "./chatmessages.less";
+import "./chatmessages.scss";
 
 export interface ChatMessage {
     id: string;

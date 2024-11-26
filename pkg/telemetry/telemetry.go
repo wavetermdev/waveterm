@@ -49,6 +49,7 @@ type TelemetryData struct {
 	SetTabTheme   int                          `json:"settabtheme,omitempty"`
 	Displays      []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
 	Renderers     map[string]int               `json:"renderers,omitempty"`
+	Blocks        map[string]int               `json:"blocks,omitempty"`
 	WshCmds       map[string]int               `json:"wshcmds,omitempty"`
 	Conn          map[string]int               `json:"conn,omitempty"`
 }
@@ -156,6 +157,9 @@ func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 		}
 		if len(update.Displays) > 0 {
 			tdata.Displays = update.Displays
+		}
+		if len(update.Blocks) > 0 {
+			tdata.Blocks = update.Blocks
 		}
 		query = `UPDATE db_activity
                  SET tdata = ?,

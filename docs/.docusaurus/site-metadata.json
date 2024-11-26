@@ -1,26 +1,26 @@
 {
-  "docusaurusVersion": "3.6.1",
+  "docusaurusVersion": "3.6.3",
   "siteVersion": "0.0.0",
   "pluginVersions": {
     "docusaurus-plugin-content-docs": {
       "type": "package",
       "name": "@docusaurus/plugin-content-docs",
-      "version": "3.6.1"
+      "version": "3.6.3"
     },
     "docusaurus-plugin-ideal-image": {
       "type": "package",
       "name": "@docusaurus/plugin-ideal-image",
-      "version": "3.6.1"
+      "version": "3.6.3"
     },
     "docusaurus-plugin-sitemap": {
       "type": "package",
       "name": "@docusaurus/plugin-sitemap",
-      "version": "3.6.1"
+      "version": "3.6.3"
     },
     "docusaurus-theme-classic": {
       "type": "package",
       "name": "@docusaurus/theme-classic",
-      "version": "3.6.1"
+      "version": "3.6.3"
     }
   }
 }

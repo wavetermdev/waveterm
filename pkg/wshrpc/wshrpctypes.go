@@ -585,6 +585,7 @@ type ActivityUpdate struct {
 	BuildTime     string                `json:"buildtime,omitempty"`
 	Displays      []ActivityDisplayType `json:"displays,omitempty"`
 	Renderers     map[string]int        `json:"renderers,omitempty"`
+	Blocks        map[string]int        `json:"blocks,omitempty"`
 	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
 	Conn          map[string]int        `json:"conn,omitempty"`
 }

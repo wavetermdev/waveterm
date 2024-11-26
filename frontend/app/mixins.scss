@@ -1,14 +1,14 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.ellipsis() {
+@mixin ellipsis(){
     display: block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.border-radius-mixin() {
+@mixin border-radius-mixin(){
     &.border-radius-2 {
         border-radius: 4px;
     }
@@ -38,7 +38,7 @@
     }
 }
 
-.vertical-padding-mixin() {
+@mixin vertical-padding-mixin(){
     &.vertical-padding-0 {
         padding-top: 0px;
         padding-bottom: 0px;
@@ -85,7 +85,7 @@
     }
 }
 
-.horizontal-padding-mixin() {
+@mixin horizontal-padding-mixin(){
     &.horizontal-padding-0 {
         padding-left: 0px;
         padding-right: 0px;
@@ -132,7 +132,7 @@
     }
 }
 
-.font-size-mixin() {
+@mixin font-size-mixin(){
     &.font-size-10 {
         font-size: 10px;
     }
@@ -186,7 +186,7 @@
     }
 }
 
-.font-weight-mixin() {
+@mixin font-weight-mixin(){
     &.font-weight-100 {
         font-weight: 100;
     }
@@ -210,7 +210,7 @@
     }
 }
 
-.avatar-dims-mixin() {
+@mixin avatar-dims-mixin(){
     &.size-xs {
         width: 20px;
         height: 20px;

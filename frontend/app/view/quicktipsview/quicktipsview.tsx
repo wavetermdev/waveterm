@@ -4,7 +4,7 @@
 import { QuickTips } from "@/app/element/quicktips";
 import { globalStore } from "@/app/store/global";
 import { Atom, atom, PrimitiveAtom } from "jotai";
-import "./quicktipsview.less";
+import "./quicktipsview.scss";
 
 class QuickTipsViewModel implements ViewModel {
     viewType: string;

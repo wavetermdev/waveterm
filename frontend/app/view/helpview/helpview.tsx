@@ -7,7 +7,7 @@ import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { fireAndForget } from "@/util/util";
 import { atom, useAtomValue } from "jotai";
 import { useCallback } from "react";
-import "./helpview.less";
+import "./helpview.scss";
 
 const docsiteWebUrl = "https://docs.waveterm.dev/";
 const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
@@ -15,7 +15,6 @@ const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
 class HelpViewModel extends WebViewModel {
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
-        this.getSettingsMenuItems = undefined;
         this.viewText = atom((get) => {
             // force a dependency on meta.url so we re-render the buttons when the url changes
             get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
@@ -57,6 +56,23 @@ class HelpViewModel extends WebViewModel {
             const newUrl = docsiteWebUrl + strippedCurUrl;
             return newUrl;
         };
+    }
+
+    getSettingsMenuItems(): ContextMenuItem[] {
+        return [
+            {
+                label: this.webviewRef.current?.isDevToolsOpened() ? "Close DevTools" : "Open DevTools",
+                click: async () => {
+                    if (this.webviewRef.current) {
+                        if (this.webviewRef.current.isDevToolsOpened()) {
+                            this.webviewRef.current.closeDevTools();
+                        } else {
+                            this.webviewRef.current.openDevTools();
+                        }
+                    }
+                },
+            },
+        ];
     }
 }
 

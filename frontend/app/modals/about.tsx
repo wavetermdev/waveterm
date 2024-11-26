@@ -9,7 +9,7 @@ import { Modal } from "./modal";
 import { isDev } from "@/util/isdev";
 import { useState } from "react";
 import { getApi } from "../store/global";
-import "./about.less";
+import "./about.scss";
 
 interface AboutModalProps {}
 
