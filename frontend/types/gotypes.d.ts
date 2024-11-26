@@ -727,8 +727,10 @@ declare global {
         title: string;
         markdown: boolean;
         timeoutms: number;
-        checkboxmsg: string;
+        checkboxmsgs: string[];
         publictext: boolean;
+        oklabel?: string;
+        cancellabel?: string;
     };
 
     // userinput.UserInputResponse
@@ -738,7 +740,7 @@ declare global {
         text?: string;
         confirm?: boolean;
         errormsg?: string;
-        checkboxstat?: boolean;
+        checkboxstats?: boolean[];
     };
 
     // vdom.VDomAsyncInitiationRequest

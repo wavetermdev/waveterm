@@ -332,16 +332,20 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			QueryText:    queryText,
 			Title:        title,
 			Markdown:     true,
-			CheckBoxMsg:  "Don't show me this again",
+			CheckBoxMsgs: []string{"Don't ask again for this connection", "Don't ask again for any connections"},
+			OkLabel:      "Install wsh",
+			CancelLabel:  "No wsh",
 		}
 		response, err := userinput.GetUserInput(ctx, request)
 		if err != nil {
+			log.Printf("user input returned error %v", err)
 			return err
 		}
 		if !response.Confirm {
+			log.Print("user input returned a response of no")
 			return &WshInstallSkipError{}
 		}
-		if response.CheckboxStat {
+		if response.CheckboxStats[1] {
 			meta := waveobj.MetaMapType{
 				wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
 			}

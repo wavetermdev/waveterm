@@ -333,7 +333,14 @@ func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote str
 	return func() (*userinput.UserInputResponse, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return userinput.GetUserInput(ctx, request)
+		resp, err := userinput.GetUserInput(ctx, request)
+		if err != nil {
+			return nil, err
+		}
+		if !resp.Confirm {
+			return nil, fmt.Errorf("user selected no")
+		}
+		return resp, nil
 	}
 }
 
@@ -357,7 +364,14 @@ func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, rem
 	return func() (*userinput.UserInputResponse, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return userinput.GetUserInput(ctx, request)
+		resp, err := userinput.GetUserInput(ctx, request)
+		if err != nil {
+			return nil, err
+		}
+		if !resp.Confirm {
+			return nil, fmt.Errorf("user selected no")
+		}
+		return resp, nil
 	}
 }
 
