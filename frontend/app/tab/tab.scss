@@ -17,7 +17,7 @@
 	&::after {
 		content: "";
 		position: absolute;
-		right: 0;
+		left: 0;
 		width: 1px;
 		height: 14px;
 		border-right: 1px solid rgb(from var(--main-text-color) r g b / 0.2);
@@ -32,6 +32,7 @@
     }
 
 	&:hover {
+		& + .tab::after,
 		&::after {
 			content: none;
 		}
@@ -59,14 +60,13 @@
             color: var(--main-text-color);
         }
 
+		&+.tab::after,
 		&::after {
 			content: none;
 		}
     }
 
-	&.before-active:after,
-	&.before-hovered:after,
-	&:last-child::after {
+	&:first-child::after {
 		content: none;
 	}
 
