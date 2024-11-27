@@ -645,7 +645,6 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 
-	log.Printf("intermediate connFlags %#+v", connFlags)
 	connFlags.User = opts.SSHUser
 	connFlags.HostName = opts.SSHHost
 	connFlags.Port = fmt.Sprintf("%d", opts.SSHPort)
@@ -654,7 +653,6 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if err != nil {
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
-	log.Printf("intermediate connFlags2 %#+v", sshKeywords)
 
 	for _, proxyName := range sshKeywords.ProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
