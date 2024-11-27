@@ -406,6 +406,8 @@ declare global {
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
+        "cmd:args"?: string[];
+        "cmd:shell"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;

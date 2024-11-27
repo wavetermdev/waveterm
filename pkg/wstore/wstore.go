@@ -105,7 +105,6 @@ func CreateSubBlock(ctx context.Context, parentBlockId string, blockDef *waveobj
 		blockData := &waveobj.Block{
 			OID:         blockId,
 			ParentORef:  waveobj.MakeORef(waveobj.OType_Block, parentBlockId).String(),
-			BlockDef:    blockDef,
 			RuntimeOpts: nil,
 			Meta:        blockDef.Meta,
 		}
@@ -126,7 +125,6 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		blockData := &waveobj.Block{
 			OID:         blockId,
 			ParentORef:  waveobj.MakeORef(waveobj.OType_Tab, tabId).String(),
-			BlockDef:    blockDef,
 			RuntimeOpts: rtOpts,
 			Meta:        blockDef.Meta,
 		}

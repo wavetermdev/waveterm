@@ -80,32 +80,24 @@ func GetBool(v interface{}, field string) bool {
 
 var needsQuoteRe = regexp.MustCompile(`[^\w@%:,./=+-]`)
 
-// minimum maxlen=6
+// minimum maxlen=6, pass -1 for no max length
 func ShellQuote(val string, forceQuote bool, maxLen int) string {
-	if maxLen < 6 {
+	if maxLen != -1 && maxLen < 6 {
 		maxLen = 6
 	}
 	rtn := val
 	if needsQuoteRe.MatchString(val) {
 		rtn = "'" + strings.ReplaceAll(val, "'", `'"'"'`) + "'"
+	} else if forceQuote {
+		rtn = "\"" + rtn + "\""
+	}
+	if maxLen == -1 || len(rtn) <= maxLen {
+		return rtn
 	}
 	if strings.HasPrefix(rtn, "\"") || strings.HasPrefix(rtn, "'") {
-		if len(rtn) > maxLen {
-			return rtn[0:maxLen-4] + "..." + rtn[0:1]
-		}
-		return rtn
+		return rtn[0:maxLen-4] + "..." + rtn[len(rtn)-1:]
 	}
-	if forceQuote {
-		if len(rtn) > maxLen-2 {
-			return "\"" + rtn[0:maxLen-5] + "...\""
-		}
-		return "\"" + rtn + "\""
-	} else {
-		if len(rtn) > maxLen {
-			return rtn[0:maxLen-3] + "..."
-		}
-		return rtn
-	}
+	return rtn[0:maxLen-3] + "..."
 }
 
 func EllipsisStr(s string, maxLen int) string {

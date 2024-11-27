@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -263,7 +264,19 @@ func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.Block
 	return blockData, nil
 }
 
-func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
+func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (rtnBlock *waveobj.Block, rtnErr error) {
+	var blockCreated bool
+	var newBlockOID string
+	defer func() {
+		if rtnErr == nil {
+			return
+		}
+		// if there was an error, and we created the block, clean it up since the function failed
+		if blockCreated && newBlockOID != "" {
+			wstore.DeleteBlock(ctx, newBlockOID)
+			filestore.WFS.DeleteZone(ctx, newBlockOID)
+		}
+	}()
 	if blockDef == nil {
 		return nil, fmt.Errorf("blockDef is nil")
 	}
@@ -273,6 +286,21 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 	blockData, err := wstore.CreateBlock(ctx, tabId, blockDef, rtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
+	}
+	blockCreated = true
+	newBlockOID = blockData.OID
+	// upload the files if present
+	if len(blockDef.Files) > 0 {
+		for fileName, fileDef := range blockDef.Files {
+			err := filestore.WFS.MakeFile(ctx, newBlockOID, fileName, fileDef.Meta, filestore.FileOptsType{})
+			if err != nil {
+				return nil, fmt.Errorf("error making blockfile %q: %w", fileName, err)
+			}
+			err = filestore.WFS.WriteFile(ctx, newBlockOID, fileName, []byte(fileDef.Content))
+			if err != nil {
+				return nil, fmt.Errorf("error writing blockfile %q: %w", fileName, err)
+			}
+		}
 	}
 	go func() {
 		defer panichandler.PanicHandler("CreateBlock:telemetry")

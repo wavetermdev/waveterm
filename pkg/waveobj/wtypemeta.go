@@ -46,6 +46,8 @@ type MetaTSType struct {
 	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
 	CmdCwd            string            `json:"cmd:cwd,omitempty"`
 	CmdNoWsh          bool              `json:"cmd:nowsh,omitempty"`
+	CmdArgs           []string          `json:"cmd:args,omitempty"`  // args for cmd (only if cmd:shell is false)
+	CmdShell          *bool             `json:"cmd:shell,omitempty"` // shell expansion for cmd+args (defaults to true)
 
 	// AI options match settings
 	AiClear      bool    `json:"ai:*,omitempty"`

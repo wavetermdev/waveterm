@@ -47,6 +47,8 @@ const (
 	MetaKey_CmdEnv                           = "cmd:env"
 	MetaKey_CmdCwd                           = "cmd:cwd"
 	MetaKey_CmdNoWsh                         = "cmd:nowsh"
+	MetaKey_CmdArgs                          = "cmd:args"
+	MetaKey_CmdShell                         = "cmd:shell"
 
 	MetaKey_AiClear                          = "ai:*"
 	MetaKey_AiPresetKey                      = "ai:preset"

@@ -20,6 +20,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -199,6 +201,66 @@ func (bc *BlockController) resetTerminalState() {
 	}
 }
 
+// for "cmd" type blocks
+func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType) (string, *shellexec.CommandOptsType, error) {
+	var cmdStr string
+	var cmdOpts shellexec.CommandOptsType
+	cmdOpts.Env = make(map[string]string)
+	cmdStr = blockMeta.GetString(waveobj.MetaKey_Cmd, "")
+	if cmdStr == "" {
+		return "", nil, fmt.Errorf("missing cmd in block meta")
+	}
+	cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
+	if cmdOpts.Cwd != "" {
+		cwdPath, err := wavebase.ExpandHomeDir(cmdOpts.Cwd)
+		if err != nil {
+			return "", nil, err
+		}
+		cmdOpts.Cwd = cwdPath
+	}
+	useShell := blockMeta.GetBool(waveobj.MetaKey_CmdShell, true)
+	if !useShell {
+		if strings.Index(cmdStr, " ") != -1 {
+			return "", nil, fmt.Errorf("cmd should not have spaces if cmd:shell is false (use cmd:args)")
+		}
+		cmdArgs := blockMeta.GetStringList(waveobj.MetaKey_CmdArgs)
+		// shell escape the args
+		for _, arg := range cmdArgs {
+			cmdStr = cmdStr + " " + utilfn.ShellQuote(arg, false, -1)
+		}
+	}
+
+	// get the "env" file
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	_, envFileData, err := filestore.WFS.ReadFile(ctx, blockId, "env")
+	if err == fs.ErrNotExist {
+		err = nil
+	}
+	if err != nil {
+		return "", nil, fmt.Errorf("error reading command env file: %w", err)
+	}
+	if len(envFileData) > 0 {
+		envMap := envutil.EnvToMap(string(envFileData))
+		for k, v := range envMap {
+			cmdOpts.Env[k] = v
+		}
+	}
+	cmdEnv := blockMeta.GetMap(waveobj.MetaKey_CmdEnv)
+	for k, v := range cmdEnv {
+		if v == nil {
+			continue
+		}
+		if _, ok := v.(string); ok {
+			cmdOpts.Env[k] = v.(string)
+		}
+		if _, ok := v.(float64); ok {
+			cmdOpts.Env[k] = fmt.Sprintf("%v", v)
+		}
+	}
+	return cmdStr, &cmdOpts, nil
+}
+
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
@@ -220,10 +282,9 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	// TODO better sync here (don't let two starts happen at the same times)
 	remoteName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
 	var cmdStr string
-	cmdOpts := shellexec.CommandOptsType{
-		Env: make(map[string]string),
-	}
+	var cmdOpts shellexec.CommandOptsType
 	if bc.ControllerType == BlockController_Shell {
+		cmdOpts.Env = make(map[string]string)
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
 		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
@@ -235,32 +296,12 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			cmdOpts.Cwd = cwdPath
 		}
 	} else if bc.ControllerType == BlockController_Cmd {
-		cmdStr = blockMeta.GetString(waveobj.MetaKey_Cmd, "")
-		if cmdStr == "" {
-			return fmt.Errorf("missing cmd in block meta")
+		var cmdOptsPtr *shellexec.CommandOptsType
+		cmdStr, cmdOptsPtr, err = createCmdStrAndOpts(bc.BlockId, blockMeta)
+		if err != nil {
+			return err
 		}
-		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
-		if cmdOpts.Cwd != "" {
-			cwdPath, err := wavebase.ExpandHomeDir(cmdOpts.Cwd)
-			if err != nil {
-				return err
-			}
-			cmdOpts.Cwd = cwdPath
-		}
-		cmdOpts.Interactive = blockMeta.GetBool(waveobj.MetaKey_CmdInteractive, false)
-		cmdOpts.Login = blockMeta.GetBool(waveobj.MetaKey_CmdLogin, false)
-		cmdEnv := blockMeta.GetMap(waveobj.MetaKey_CmdEnv)
-		for k, v := range cmdEnv {
-			if v == nil {
-				continue
-			}
-			if _, ok := v.(string); ok {
-				cmdOpts.Env[k] = v.(string)
-			}
-			if _, ok := v.(float64); ok {
-				cmdOpts.Env[k] = fmt.Sprintf("%v", v)
-			}
-		}
+		cmdOpts = *cmdOptsPtr
 	} else {
 		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
