@@ -23,6 +23,7 @@ import (
 )
 
 const SettingsFile = "settings.json"
+const ConnectionsFile = "connections.json"
 
 const AnySchema = `
 {
@@ -492,6 +493,25 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		}
 	}
 	return WriteWaveHomeConfigFile(SettingsFile, m)
+}
+
+func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) error {
+	m, cerrs := ReadWaveHomeConfigFile(ConnectionsFile)
+	if len(cerrs) > 0 {
+		return fmt.Errorf("error reading config file: %v", cerrs[0])
+	}
+	if m == nil {
+		m = make(waveobj.MetaMapType)
+	}
+	connData := m.GetMap(connName)
+	if connData == nil {
+		connData = make(waveobj.MetaMapType)
+	}
+	for configKey, val := range toMerge {
+		connData[configKey] = val
+	}
+	m[connName] = connData
+	return WriteWaveHomeConfigFile(ConnectionsFile, m)
 }
 
 type WidgetConfigType struct {

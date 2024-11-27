@@ -332,20 +332,24 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			QueryText:    queryText,
 			Title:        title,
 			Markdown:     true,
-			CheckBoxMsgs: []string{"Don't ask again for this connection", "Don't ask again for any connections"},
+			CheckBoxMsgs: []string{"Automatically install for all connections"},
 			OkLabel:      "Install wsh",
 			CancelLabel:  "No wsh",
 		}
 		response, err := userinput.GetUserInput(ctx, request)
 		if err != nil {
-			log.Printf("user input returned error %v", err)
 			return err
 		}
 		if !response.Confirm {
-			log.Print("user input returned a response of no")
+			meta := make(map[string]any)
+			meta["wshenabled"] = false
+			err = wconfig.SetConnectionsConfigValue(conn.GetName(), meta)
+			if err != nil {
+				log.Printf("warning: error writing to connections file: %v", err)
+			}
 			return &WshInstallSkipError{}
 		}
-		if response.CheckboxStats[1] {
+		if response.CheckboxStats[0] {
 			meta := waveobj.MetaMapType{
 				wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
 			}
@@ -479,7 +483,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.SshK
 	enableWsh := config.Settings.ConnWshEnabled
 	askBeforeInstall := config.Settings.ConnAskBeforeWshInstall
 	connSettings, ok := config.Connections[conn.GetName()]
-	if !ok {
+	if ok {
 		if connSettings.WshEnabled != nil {
 			enableWsh = *connSettings.WshEnabled
 		}
@@ -487,15 +491,9 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.SshK
 			askBeforeInstall = *connSettings.AskBeforeWshInstall
 		}
 	}
-	log.Printf("enable wsh: %t", enableWsh)
-	// do checks here for noUserPrompt
-	// we need a case for:
-	// - checkAndInstall with a user prompt
-	// - checkAndInstall with no prompt (auto install)
-	// - skip even checking in the first place
 	if enableWsh {
 		installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !askBeforeInstall})
-		if errors.Is(installErr, &WshInstallSkipError{}) { //TODO
+		if errors.Is(installErr, &WshInstallSkipError{}) {
 			// skips are not true errors
 			conn.WithLock(func() {
 				conn.WshEnabled.Store(false)
