@@ -82,6 +82,7 @@ func getVarRun(cmd *cobra.Command, args []string) error {
 
 	// Single variable case - existing logic
 	if len(args) != 1 {
+		OutputHelpMessage(cmd)
 		return fmt.Errorf("requires a key argument")
 	}
 
