@@ -107,14 +107,14 @@ type ConfigError struct {
 }
 
 type FullConfigType struct {
-	Settings       SettingsType                     `json:"settings" merge:"meta"`
-	MimeTypes      map[string]MimeTypeConfigType    `json:"mimetypes"`
-	DefaultWidgets map[string]WidgetConfigType      `json:"defaultwidgets"`
-	Widgets        map[string]WidgetConfigType      `json:"widgets"`
-	Presets        map[string]waveobj.MetaMapType   `json:"presets"`
-	TermThemes     map[string]TermThemeType         `json:"termthemes"`
-	Connections    map[string]ConnectionsConfigType `json:"connections"`
-	ConfigErrors   []ConfigError                    `json:"configerrors" configfile:"-"`
+	Settings       SettingsType                   `json:"settings" merge:"meta"`
+	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
+	DefaultWidgets map[string]WidgetConfigType    `json:"defaultwidgets"`
+	Widgets        map[string]WidgetConfigType    `json:"widgets"`
+	Presets        map[string]waveobj.MetaMapType `json:"presets"`
+	TermThemes     map[string]TermThemeType       `json:"termthemes"`
+	Connections    map[string]wshrpc.SshKeywords  `json:"connections"`
+	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 
 func goBackWS(barr []byte, offset int) int {
@@ -553,10 +553,4 @@ type TermThemeType struct {
 	SelectionBackground string  `json:"selectionBackground"`
 	Background          string  `json:"background"`
 	Cursor              string  `json:"cursor"`
-}
-
-type ConnectionsConfigType struct {
-	wshrpc.SshKeywords
-	WshEnabled          *bool `json:"wshenabled,omitempty"`
-	AskBeforeWshInstall *bool `json:"askbeforewshinstall,omitempty"`
 }

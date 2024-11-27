@@ -441,6 +441,9 @@ type CommandRemoteWriteFileData struct {
 }
 
 type SshKeywords struct {
+	WshEnabled          *bool `json:"wshenabled,omitempty"`
+	AskBeforeWshInstall *bool `json:"askbeforewshinstall,omitempty"`
+
 	User                         string   `json:"ssh:user,omitempty"`
 	HostName                     string   `json:"ssh:hostname,omitempty"`
 	Port                         string   `json:"ssh:port,omitempty"`

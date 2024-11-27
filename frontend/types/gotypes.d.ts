@@ -286,13 +286,6 @@ declare global {
         error?: string;
     };
 
-    // wconfig.ConnectionsConfigType
-    type ConnectionsConfigType = {
-        SshKeywords: SshKeywords;
-        wshenabled?: boolean;
-        askbeforewshinstall?: boolean;
-    };
-
     // wshrpc.CpuDataRequest
     type CpuDataRequest = {
         id: string;
@@ -349,7 +342,7 @@ declare global {
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
-        connections: {[key: string]: ConnectionsConfigType};
+        connections: {[key: string]: SshKeywords};
         configerrors: ConfigError[];
     };
 
@@ -623,6 +616,8 @@ declare global {
 
     // wshrpc.SshKeywords
     type SshKeywords = {
+        wshenabled?: boolean;
+        askbeforewshinstall?: boolean;
         "ssh:user"?: string;
         "ssh:hostname"?: string;
         "ssh:port"?: string;
