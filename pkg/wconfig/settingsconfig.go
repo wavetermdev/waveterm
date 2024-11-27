@@ -387,12 +387,12 @@ func reindentJson(barr []byte, indentStr string) []byte {
 	if barr[0] != '{' && barr[0] != '[' {
 		return barr
 	}
-	if bytes.Contains(barr, []byte("\n")) {
+	if !bytes.Contains(barr, []byte("\n")) {
 		return barr
 	}
 	outputLines := bytes.Split(barr, []byte("\n"))
 	for i, line := range outputLines {
-		if i == 0 || i == len(outputLines)-1 {
+		if i == 0 {
 			continue
 		}
 		outputLines[i] = append([]byte(indentStr), line...)
