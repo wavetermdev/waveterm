@@ -527,8 +527,22 @@ func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, r
 			log.Printf("error truncating term blockfile: %v\n", err)
 		}
 	}
+	runOnce := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnce, false)
 	runOnStart := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnStart, true)
-	if runOnStart {
+	if runOnStart || runOnce {
+		if runOnce {
+			ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancelFn()
+			metaUpdate := map[string]any{
+				waveobj.MetaKey_CmdRunOnce:    false,
+				waveobj.MetaKey_CmdRunOnStart: false,
+			}
+			err := wstore.UpdateObjectMeta(ctx, waveobj.MakeORef(waveobj.OType_Block, bc.BlockId), metaUpdate)
+			if err != nil {
+				log.Printf("error updating block meta (in blockcontroller.run): %v\n", err)
+				return
+			}
+		}
 		go func() {
 			defer panichandler.PanicHandler("blockcontroller:run-shell-command")
 			var termSize waveobj.TermSize

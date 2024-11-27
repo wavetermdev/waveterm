@@ -74,17 +74,21 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	// Convert to null-terminated format
 	envContent := envutil.MapToEnv(envMap)
-
+	createMeta := map[string]any{
+		waveobj.MetaKey_View:       "term",
+		waveobj.MetaKey_Cmd:        cmdArgs[0],
+		waveobj.MetaKey_CmdArgs:    cmdArgs[1:],
+		waveobj.MetaKey_CmdCwd:     cwd,
+		waveobj.MetaKey_Controller: "cmd",
+		waveobj.MetaKey_CmdShell:   false,
+		waveobj.MetaKey_CmdRunOnce: true,
+	}
+	if RpcContext.Conn != "" {
+		createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn
+	}
 	createBlockData := wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
-			Meta: map[string]interface{}{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Cmd:        cmdArgs[0],
-				waveobj.MetaKey_CmdArgs:    cmdArgs[1:],
-				waveobj.MetaKey_CmdCwd:     cwd,
-				waveobj.MetaKey_Controller: "cmd",
-				waveobj.MetaKey_CmdShell:   false,
-			},
+			Meta: createMeta,
 			Files: map[string]*waveobj.FileDef{
 				"env": {
 					Content: envContent,

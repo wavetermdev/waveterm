@@ -714,11 +714,16 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	if err != nil {
 		return nil, fmt.Errorf("error finding window for tab: %w", err)
 	}
+	fileList, err := filestore.WFS.ListFiles(ctx, blockId)
+	if err != nil {
+		return nil, fmt.Errorf("error listing blockfiles: %w", err)
+	}
 	return &wshrpc.BlockInfoData{
 		BlockId:  blockId,
 		TabId:    tabId,
 		WindowId: windowId,
 		Block:    blockData,
+		Files:    fileList,
 	}, nil
 }
 

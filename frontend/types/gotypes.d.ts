@@ -45,7 +45,6 @@ declare global {
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
-        blockdef: BlockDef;
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
         subblockids?: string[];
@@ -70,6 +69,7 @@ declare global {
         tabid: string;
         windowid: string;
         block: Block;
+        files: WaveFile[];
     };
 
     // webcmd.BlockInputWSCommand
@@ -303,9 +303,6 @@ declare global {
 
     // waveobj.FileDef
     type FileDef = {
-        filetype?: string;
-        path?: string;
-        url?: string;
         content?: string;
         meta?: {[key: string]: any};
     };
@@ -403,6 +400,7 @@ declare global {
         "cmd:runonstart"?: boolean;
         "cmd:clearonstart"?: boolean;
         "cmd:clearonrestart"?: boolean;
+        "cmd:runonce"?: boolean;
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;

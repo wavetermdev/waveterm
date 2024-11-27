@@ -44,6 +44,7 @@ const (
 	MetaKey_CmdRunOnStart                    = "cmd:runonstart"
 	MetaKey_CmdClearOnStart                  = "cmd:clearonstart"
 	MetaKey_CmdClearOnRestart                = "cmd:clearonrestart"
+	MetaKey_CmdRunOnce                       = "cmd:runonce"
 	MetaKey_CmdEnv                           = "cmd:env"
 	MetaKey_CmdCwd                           = "cmd:cwd"
 	MetaKey_CmdNoWsh                         = "cmd:nowsh"

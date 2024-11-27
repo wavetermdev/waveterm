@@ -43,11 +43,12 @@ type MetaTSType struct {
 	CmdRunOnStart     bool              `json:"cmd:runonstart,omitempty"`
 	CmdClearOnStart   bool              `json:"cmd:clearonstart,omitempty"`
 	CmdClearOnRestart bool              `json:"cmd:clearonrestart,omitempty"`
+	CmdRunOnce        bool              `json:"cmd:runonce,omitempty"`
 	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
 	CmdCwd            string            `json:"cmd:cwd,omitempty"`
 	CmdNoWsh          bool              `json:"cmd:nowsh,omitempty"`
 	CmdArgs           []string          `json:"cmd:args,omitempty"`  // args for cmd (only if cmd:shell is false)
-	CmdShell          *bool             `json:"cmd:shell,omitempty"` // shell expansion for cmd+args (defaults to true)
+	CmdShell          bool              `json:"cmd:shell,omitempty"` // shell expansion for cmd+args (defaults to true)
 
 	// AI options match settings
 	AiClear      bool    `json:"ai:*,omitempty"`
