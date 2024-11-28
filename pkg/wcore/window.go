@@ -159,17 +159,18 @@ func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error 
 	return nil
 }
 
-func CheckAndFixWindow(ctx context.Context, windowId string) {
+func CheckAndFixWindow(ctx context.Context, windowId string) *waveobj.Window {
 	log.Printf("CheckAndFixWindow %s\n", windowId)
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
+	window, err := GetWindow(ctx, windowId)
 	if err != nil {
 		log.Printf("error getting window %q (in checkAndFixWindow): %v\n", windowId, err)
-		return
+		return nil
 	}
-	ws, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
+	ws, err := GetWorkspace(ctx, window.WorkspaceId)
 	if err != nil {
 		log.Printf("error getting workspace %q (in checkAndFixWindow): %v\n", window.WorkspaceId, err)
-		return
+		CloseWindow(ctx, windowId, false)
+		return nil
 	}
 	if len(ws.TabIds) == 0 {
 		log.Printf("fixing workspace with no tabs %q (in checkAndFixWindow)\n", ws.OID)
@@ -178,6 +179,7 @@ func CheckAndFixWindow(ctx context.Context, windowId string) {
 			log.Printf("error creating tab (in checkAndFixWindow): %v\n", err)
 		}
 	}
+	return window
 }
 
 func FocusWindow(ctx context.Context, windowId string) error {
