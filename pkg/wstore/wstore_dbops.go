@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
@@ -41,6 +42,26 @@ func DBGetCount[T waveobj.WaveObj](ctx context.Context) (int, error) {
 		table := tableNameGen[T]()
 		query := fmt.Sprintf("SELECT count(*) FROM %s", table)
 		return tx.GetInt(query), nil
+	})
+}
+
+var viewRe = regexp.MustCompile(`^[a-z0-9]{1,20}$`)
+
+func DBGetBlockViewCounts(ctx context.Context) (map[string]int, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (map[string]int, error) {
+		query := `SELECT COALESCE(json_extract(data, '$.meta.view'), '') AS view FROM db_block`
+		views := tx.SelectStrings(query)
+		rtn := make(map[string]int)
+		for _, view := range views {
+			if view == "" {
+				continue
+			}
+			if !viewRe.MatchString(view) {
+				continue
+			}
+			rtn[view]++
+		}
+		return rtn, nil
 	})
 }
 
