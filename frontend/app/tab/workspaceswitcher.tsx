@@ -17,7 +17,7 @@ import clsx from "clsx";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { CSSProperties, memo, useCallback, useEffect, useRef, useState } from "react";
+import { CSSProperties, memo, useCallback, useEffect, useRef } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
 import { atoms, getApi } from "../store/global";
@@ -137,7 +137,7 @@ const ColorAndIconSelector = memo(
                     onSelect={onIconChange}
                 />
                 <div className="delete-ws-btn-wrapper">
-                    <Button className="ghost grey font-size-12" onClick={onDeleteWorkspace}>
+                    <Button className="ghost red font-size-12" onClick={onDeleteWorkspace}>
                         Delete workspace
                     </Button>
                 </div>
@@ -154,6 +154,7 @@ type WorkspaceListEntry = {
 type WorkspaceList = WorkspaceListEntry[];
 const workspaceMapAtom = atom<WorkspaceList>([]);
 const workspaceSplitAtom = splitAtom(workspaceMapAtom);
+const editingWorkspaceAtom = atom<string>();
 const WorkspaceSwitcher = () => {
     const setWorkspaceList = useSetAtom(workspaceMapAtom);
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
@@ -249,7 +250,7 @@ const WorkspaceSwitcherItem = ({
 }) => {
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const [workspaceEntry, setWorkspaceEntry] = useAtom(entryAtom);
-    const [isOpen, setIsOpen] = useState(false);
+    const [editingWorkspace, setEditingWorkspace] = useAtom(editingWorkspaceAtom);
 
     const workspace = workspaceEntry.workspace;
     const isCurrentWorkspace = activeWorkspace.oid === workspace.oid;
@@ -269,7 +270,7 @@ const WorkspaceSwitcherItem = ({
         title: "Edit workspace",
         click: (e) => {
             e.stopPropagation();
-            setIsOpen(!isOpen);
+            setEditingWorkspace(workspace.oid);
         },
     };
     const windowIconDecl: IconButtonDecl = {
@@ -280,8 +281,10 @@ const WorkspaceSwitcherItem = ({
         title: isCurrentWorkspace ? "This is your current workspace" : "This workspace is open",
     };
 
+    const isEditing = editingWorkspace === workspace.oid;
+
     return (
-        <ExpandableMenuItemGroup key={workspace.oid} isOpen={isOpen} className={clsx({ "is-active": isActive })}>
+        <ExpandableMenuItemGroup key={workspace.oid} isOpen={isEditing} className={clsx({ "is-active": isActive })}>
             <ExpandableMenuItemGroupTitle
                 onClick={() => {
                     getApi().switchWorkspace(workspace.oid);
@@ -317,7 +320,7 @@ const WorkspaceSwitcherItem = ({
                     title={workspace.name}
                     icon={workspace.icon}
                     color={workspace.color}
-                    focusInput={isOpen}
+                    focusInput={isEditing}
                     onTitleChange={(title) => setWorkspace({ ...workspace, name: title })}
                     onColorChange={(color) => setWorkspace({ ...workspace, color })}
                     onIconChange={(icon) => setWorkspace({ ...workspace, icon })}
