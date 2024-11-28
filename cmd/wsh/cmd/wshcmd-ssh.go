@@ -23,7 +23,7 @@ var sshCmd = &cobra.Command{
 }
 
 func init() {
-	sshCmd.Flags().StringArrayVarP(&identityFiles, "identity_file", "i", []string{}, "add an identity file for publickey authentication")
+	sshCmd.Flags().StringArrayVarP(&identityFiles, "identityfile", "i", []string{}, "add an identity file for publickey authentication")
 	rootCmd.AddCommand(sshCmd)
 }
 
