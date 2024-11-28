@@ -101,6 +101,10 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating window: %w", err)
 	}
+	_, err = CreateTab(ctx, window.WorkspaceId, "", true)
+	if err != nil {
+		return nil, false, fmt.Errorf("error creating tab: %w", err)
+	}
 	return window, firstRun, nil
 }
 
