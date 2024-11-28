@@ -1,7 +1,8 @@
 import type { Config } from "@docusaurus/types";
 import { docOgRenderer } from "./src/renderer/image-renderers";
 
-const baseUrl = process.env.EMBEDDED ? "/docsite/" : "/";
+const isEmbedded = !!process.env.EMBEDDED;
+const baseUrl = isEmbedded ? "/docsite/" : "/";
 
 const config: Config = {
     title: "Wave Terminal Documentation",
@@ -39,10 +40,15 @@ const config: Config = {
                 path: "docs",
                 routeBasePath: "/",
                 exclude: ["features/**"],
-                editUrl: !process.env.EMBEDDED ? "https://github.com/wavetermdev/waveterm/edit/main/docs/" : undefined,
+                editUrl: !isEmbedded ? "https://github.com/wavetermdev/waveterm/edit/main/docs/" : undefined,
             } as import("@docusaurus/plugin-content-docs").Options,
         ],
-        "ideal-image",
+        [
+            "ideal-image",
+            {
+                quality: isEmbedded ? 50 : 100,
+            },
+        ],
         [
             "@docusaurus/plugin-sitemap",
             {
@@ -50,7 +56,7 @@ const config: Config = {
                 filename: "sitemap.xml",
             },
         ],
-        !process.env.EMBEDDED && [
+        !isEmbedded && [
             "@waveterm/docusaurus-og",
             {
                 path: "./preview-images", // relative to the build directory
@@ -62,7 +68,7 @@ const config: Config = {
     ].filter((v) => v),
     themes: [
         ["classic", { customCss: "src/css/custom.css" }],
-        !process.env.EMBEDDED && "@docusaurus/theme-search-algolia",
+        !isEmbedded && "@docusaurus/theme-search-algolia",
     ].filter((v) => v),
     themeConfig: {
         docs: {
@@ -90,7 +96,7 @@ const config: Config = {
                     docId: "index",
                     label: "Docs",
                 },
-                !process.env.EMBEDDED
+                !isEmbedded
                     ? [
                           {
                               position: "left",
@@ -165,7 +171,7 @@ const config: Config = {
                 href: `${baseUrl}sitemap.xml`,
             },
         },
-        !process.env.EMBEDDED && {
+        !isEmbedded && {
             tagName: "script",
             attributes: {
                 defer: "true",
