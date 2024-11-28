@@ -56,7 +56,6 @@ class TermViewModel {
     manageConnection: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
     termWshClient: TermWshClient;
-    shellProcStatusRef: React.MutableRefObject<string>;
     vdomBlockId: jotai.Atom<string>;
     vdomToolbarBlockId: jotai.Atom<string>;
     vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
@@ -64,6 +63,8 @@ class TermViewModel {
     termThemeNameAtom: jotai.Atom<string>;
     noPadding: jotai.PrimitiveAtom<boolean>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
+    shellProcStatus: jotai.PrimitiveAtom<string>;
+    shellProcStatusUnsubFn: () => void;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
@@ -118,20 +119,19 @@ class TermViewModel {
                 ];
             } else {
                 const vdomBlockId = get(this.vdomBlockId);
+                const rtn = [];
                 if (vdomBlockId) {
-                    return [
-                        {
-                            elemtype: "iconbutton",
-                            icon: "bolt",
-                            title: "Switch to Wave App",
-                            click: () => {
-                                this.setTermMode("vdom");
-                            },
+                    rtn.push({
+                        elemtype: "iconbutton",
+                        icon: "bolt",
+                        title: "Switch to Wave App",
+                        click: () => {
+                            this.setTermMode("vdom");
                         },
-                    ];
+                    });
                 }
+                return rtn;
             }
-            return null;
         });
         this.manageConnection = jotai.atom((get) => {
             const termMode = get(this.termMode);
@@ -175,17 +175,34 @@ class TermViewModel {
         this.noPadding = jotai.atom(true);
         this.endIconButtons = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
-            if (blockData?.meta?.["controller"] != "cmd") {
+            const shellProcStatus = get(this.shellProcStatus);
+            if (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done") {
                 return [];
             }
-            return [
-                {
-                    elemtype: "iconbutton",
-                    icon: "refresh",
-                    click: this.forceRestartController.bind(this),
-                    title: "Force Restart Controller",
-                },
-            ];
+            const buttonDecl: IconButtonDecl = {
+                elemtype: "iconbutton",
+                icon: "refresh",
+                click: this.forceRestartController.bind(this),
+                title: "Force Restart Controller",
+            };
+            if (shellProcStatus == "done") {
+                buttonDecl.iconColor = "var(--error-color)";
+                buttonDecl.title = "Controller Exited. Click to Restart";
+            }
+            return [buttonDecl];
+        });
+        this.shellProcStatus = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+        const initialShellProcStatus = services.BlockService.GetControllerStatus(blockId);
+        initialShellProcStatus.then((rts) => {
+            this.updateShellProcStatus(rts?.shellprocstatus);
+        });
+        this.shellProcStatusUnsubFn = waveEventSubscribe({
+            eventType: "controllerstatus",
+            scope: WOS.makeORef("block", blockId),
+            handler: (event) => {
+                let bcRTS: BlockControllerRuntimeStatus = event.data;
+                this.updateShellProcStatus(bcRTS?.shellprocstatus);
+            },
         });
     }
 
@@ -197,6 +214,18 @@ class TermViewModel {
             oref: WOS.makeORef("block", this.blockId),
             meta: { "term:mode": mode },
         });
+    }
+
+    updateShellProcStatus(status: string) {
+        if (status == null) {
+            return;
+        }
+        globalStore.set(this.shellProcStatus, status);
+        if (status == "running") {
+            this.termRef.current?.setIsRunning(true);
+        } else {
+            this.termRef.current?.setIsRunning(false);
+        }
     }
 
     getVDomModel(): VDomModel {
@@ -225,6 +254,9 @@ class TermViewModel {
 
     dispose() {
         DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
+        if (this.shellProcStatusUnsubFn) {
+            this.shellProcStatusUnsubFn();
+        }
     }
 
     giveFocus(): boolean {
@@ -284,7 +316,8 @@ class TermViewModel {
             event.stopPropagation();
             return false;
         }
-        if (this.shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
+        const shellProcStatus = globalStore.get(this.shellProcStatus);
+        if (shellProcStatus == "done" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
             // restart
             const tabId = globalStore.get(atoms.staticTabId);
             const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, { tabid: tabId, blockid: this.blockId });
@@ -538,8 +571,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<TermWrap>(null);
     model.termRef = termRef;
-    const spstatusRef = React.useRef<string>(null);
-    model.shellProcStatusRef = spstatusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
@@ -587,6 +618,12 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 useWebGl: !termSettings?.["term:disablewebgl"],
             }
         );
+        const shellProcStatus = globalStore.get(model.shellProcStatus);
+        if (shellProcStatus == "running") {
+            termWrap.setIsRunning(true);
+        } else if (shellProcStatus == "done") {
+            termWrap.setIsRunning(false);
+        }
         (window as any).term = termWrap;
         termRef.current = termWrap;
         const rszObs = new ResizeObserver(() => {
@@ -612,34 +649,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         }
         termModeRef.current = termMode;
     }, [termMode]);
-
-    // set intitial controller status, and then subscribe for updates
-    React.useEffect(() => {
-        function updateShellProcStatus(status: string) {
-            if (status == null) {
-                return;
-            }
-            model.shellProcStatusRef.current = status;
-            if (status == "running") {
-                termRef.current?.setIsRunning(true);
-            } else {
-                termRef.current?.setIsRunning(false);
-            }
-        }
-        const initialRTStatus = services.BlockService.GetControllerStatus(blockId);
-        initialRTStatus.then((rts) => {
-            updateShellProcStatus(rts?.shellprocstatus);
-        });
-        return waveEventSubscribe({
-            eventType: "controllerstatus",
-            scope: WOS.makeORef("block", blockId),
-            handler: (event) => {
-                console.log("term waveEvent handler", event);
-                let bcRTS: BlockControllerRuntimeStatus = event.data;
-                updateShellProcStatus(bcRTS?.shellprocstatus);
-            },
-        });
-    }, []);
 
     let stickerConfig = {
         charWidth: 8,
