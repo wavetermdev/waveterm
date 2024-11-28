@@ -12,9 +12,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -26,21 +28,35 @@ import (
 const DefaultTimeout = 2 * time.Second
 const DefaultActivateBlockTimeout = 60 * time.Second
 
-func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
-	err := wstore.DeleteBlock(ctx, tabId, blockId)
+func DeleteBlock(ctx context.Context, blockId string) error {
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+	if block == nil {
+		return nil
+	}
+	if len(block.SubBlockIds) > 0 {
+		for _, subBlockId := range block.SubBlockIds {
+			err := DeleteBlock(ctx, subBlockId)
+			if err != nil {
+				return fmt.Errorf("error deleting subblock %s: %w", subBlockId, err)
+			}
+		}
+	}
+	err = wstore.DeleteBlock(ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
 	go blockcontroller.StopBlockController(blockId)
-	sendBlockCloseEvent(tabId, blockId)
+	sendBlockCloseEvent(blockId)
 	return nil
 }
 
-func sendBlockCloseEvent(tabId string, blockId string) {
+func sendBlockCloseEvent(blockId string) {
 	waveEvent := wps.WaveEvent{
 		Event: wps.Event_BlockClose,
 		Scopes: []string{
-			waveobj.MakeORef(waveobj.OType_Tab, tabId).String(),
 			waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
 		},
 		Data: blockId,
@@ -58,7 +74,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 	}
 	// close blocks (sends events + stops block controllers)
 	for _, blockId := range tabData.BlockIds {
-		err := DeleteBlock(ctx, tabId, blockId)
+		err := DeleteBlock(ctx, blockId)
 		if err != nil {
 			return fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
@@ -78,6 +94,22 @@ func CreateTab(ctx context.Context, windowId string, tabName string, activateTab
 	if err != nil {
 		return "", fmt.Errorf("error getting window: %w", err)
 	}
+	if tabName == "" {
+		ws, err := wstore.DBMustGet[*waveobj.Workspace](ctx, windowData.WorkspaceId)
+		if err != nil {
+			return "", fmt.Errorf("error getting workspace: %w", err)
+		}
+		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
+		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		if err != nil {
+			return "", fmt.Errorf("error getting client: %w", err)
+		}
+		client.NextTabId++
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return "", fmt.Errorf("error updating client: %w", err)
+		}
+	}
 	tab, err := wstore.CreateTab(ctx, windowData.WorkspaceId, tabName)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
@@ -88,6 +120,7 @@ func CreateTab(ctx context.Context, windowId string, tabName string, activateTab
 			return "", fmt.Errorf("error setting active tab: %w", err)
 		}
 	}
+	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")
 	return tab.OID, nil
 }
 
@@ -122,7 +155,7 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize) (*waveobj.Windo
 	if err != nil {
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
-	_, err = CreateTab(ctx, windowId, "T1", true)
+	_, err = CreateTab(ctx, windowId, "", true)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting tab: %w", err)
 	}
@@ -151,7 +184,7 @@ func checkAndFixWindow(ctx context.Context, windowId string) {
 	}
 	if len(workspace.TabIds) == 0 {
 		log.Printf("fixing workspace with no tabs %q (in checkAndFixWindow)\n", workspace.OID)
-		_, err = CreateTab(ctx, windowId, "T1", true)
+		_, err = CreateTab(ctx, windowId, "", true)
 		if err != nil {
 			log.Printf("error creating tab (in checkAndFixWindow): %v\n", err)
 		}
@@ -172,6 +205,24 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		}
 		firstRun = true
 	}
+	if client.NextTabId == 0 {
+		tabCount, err := wstore.DBGetCount[*waveobj.Tab](ctx)
+		if err != nil {
+			return nil, false, fmt.Errorf("error getting tab count: %w", err)
+		}
+		client.NextTabId = tabCount + 1
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return nil, false, fmt.Errorf("error updating client: %w", err)
+		}
+	}
+	if client.TempOID == "" {
+		client.TempOID = uuid.NewString()
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return nil, false, fmt.Errorf("error updating client: %w", err)
+		}
+	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
 		checkAndFixWindow(ctx, client.WindowIds[0])
@@ -190,12 +241,27 @@ func CreateClient(ctx context.Context) (*waveobj.Client, error) {
 	client := &waveobj.Client{
 		OID:       uuid.NewString(),
 		WindowIds: []string{},
+		NextTabId: 1,
 	}
 	err := wstore.DBInsert(ctx, client)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting client: %w", err)
 	}
 	return client, nil
+}
+
+func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {
+	if blockDef == nil {
+		return nil, fmt.Errorf("blockDef is nil")
+	}
+	if blockDef.Meta == nil || blockDef.Meta.GetString(waveobj.MetaKey_View, "") == "" {
+		return nil, fmt.Errorf("no view provided for new block")
+	}
+	blockData, err := wstore.CreateSubBlock(ctx, blockId, blockDef)
+	if err != nil {
+		return nil, fmt.Errorf("error creating sub block: %w", err)
+	}
+	return blockData, nil
 }
 
 func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
@@ -210,13 +276,14 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
 	go func() {
+		defer panichandler.PanicHandler("CreateBlock:telemetry")
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
 		if blockView == "" {
 			return
 		}
 		tctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancelFn()
-		telemetry.UpdateActivity(tctx, telemetry.ActivityUpdate{
+		telemetry.UpdateActivity(tctx, wshrpc.ActivityUpdate{
 			Renderers: map[string]int{blockView: 1},
 		})
 	}()

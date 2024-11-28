@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
@@ -40,6 +42,26 @@ func DBGetCount[T waveobj.WaveObj](ctx context.Context) (int, error) {
 		table := tableNameGen[T]()
 		query := fmt.Sprintf("SELECT count(*) FROM %s", table)
 		return tx.GetInt(query), nil
+	})
+}
+
+var viewRe = regexp.MustCompile(`^[a-z0-9]{1,20}$`)
+
+func DBGetBlockViewCounts(ctx context.Context) (map[string]int, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (map[string]int, error) {
+		query := `SELECT COALESCE(json_extract(data, '$.meta.view'), '') AS view FROM db_block`
+		views := tx.SelectStrings(query)
+		rtn := make(map[string]int)
+		for _, view := range views {
+			if view == "" {
+				continue
+			}
+			if !viewRe.MatchString(view) {
+				continue
+			}
+			rtn[view]++
+		}
+		return rtn, nil
 	})
 }
 
@@ -211,6 +233,7 @@ func DBDelete(ctx context.Context, otype string, id string) error {
 		return err
 	}
 	go func() {
+		defer panichandler.PanicHandler("DBDelete:filestore.DeleteZone")
 		// we spawn a go routine here because we don't want to reuse the DB connection
 		// since DBDelete is called in a transaction from DeleteTab
 		deleteCtx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
@@ -270,10 +293,39 @@ func DBFindWindowForTabId(ctx context.Context, tabId string) (string, error) {
 
 func DBFindTabForBlockId(ctx context.Context, blockId string) (string, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		iterNum := 1
+		for {
+			if iterNum > 5 {
+				return "", fmt.Errorf("too many iterations looking for tab in block parents")
+			}
+			query := `
+			SELECT json_extract(b.data, '$.parentoref') AS parentoref
+			FROM db_block b
+			WHERE b.oid = ?;`
+			parentORef := tx.GetString(query, blockId)
+			oref, err := waveobj.ParseORef(parentORef)
+			if err != nil {
+				return "", fmt.Errorf("bad block parent oref: %v", err)
+			}
+			if oref.OType == "tab" {
+				return oref.OID, nil
+			}
+			if oref.OType == "block" {
+				blockId = oref.OID
+				iterNum++
+				continue
+			}
+			return "", fmt.Errorf("bad parent oref type: %v", oref.OType)
+		}
+	})
+}
+
+func DBFindWorkspaceForTabId(ctx context.Context, tabId string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
 		query := `
-			SELECT t.oid 
-			FROM db_tab t, json_each(data->'blockids') je 
-			WHERE je.value = ?;`
-		return tx.GetString(query, blockId), nil
+			SELECT w.oid
+			FROM db_workspace w, json_each(data->'tabids') je
+			WHERE je.value = ?`
+		return tx.GetString(query, tabId), nil
 	})
 }

@@ -6,11 +6,13 @@ import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { atoms, createBlock } from "@/store/global";
+import { atoms, createBlock, isDev } from "@/store/global";
 import { isBlank, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
-import "./workspace.less";
+import { NotificationPopover } from "../notification/notificationpopover";
+
+import "./workspace.scss";
 
 const iconRegex = /^[a-z0-9-]+$/;
 
@@ -27,7 +29,7 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
     }
     const wlist = Object.values(wmap);
     wlist.sort((a, b) => {
-        return a["display:order"] - b["display:order"];
+        return (a["display:order"] ?? 0) - (b["display:order"] ?? 0);
     });
     return wlist;
 }
@@ -53,15 +55,9 @@ const Widgets = memo(() => {
         },
     };
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
-    const showDivider = keyLen(fullConfig?.defaultwidgets) > 0 && keyLen(fullConfig?.widgets) > 0;
-    const defaultWidgets = sortByDisplayOrder(fullConfig?.defaultwidgets);
     const widgets = sortByDisplayOrder(fullConfig?.widgets);
     return (
         <div className="workspace-widgets">
-            {defaultWidgets.map((data, idx) => (
-                <Widget key={`defwidget-${idx}`} widget={data} />
-            ))}
-            {showDivider ? <div className="widget-divider" /> : null}
             {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} />)}
             {showHelp ? (
                 <>
@@ -70,6 +66,7 @@ const Widgets = memo(() => {
                     <Widget key="help" widget={helpWidget} />
                 </>
             ) : null}
+            {isDev() ? <NotificationPopover /> : null}
         </div>
     );
 });
@@ -94,20 +91,18 @@ const Widget = memo(({ widget }: { widget: WidgetConfigType }) => {
 });
 
 const WorkspaceElem = memo(() => {
-    const windowData = useAtomValue(atoms.waveWindow);
-    const activeTabId = windowData?.activetabid;
+    const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
-
     return (
         <div className="workspace">
             <TabBar key={ws.oid} workspace={ws} />
             <div className="workspace-tabcontent">
-                <ErrorBoundary key={activeTabId}>
-                    {activeTabId == "" ? (
+                <ErrorBoundary key={tabId}>
+                    {tabId == "" ? (
                         <CenteredDiv>No Active Tab</CenteredDiv>
                     ) : (
                         <>
-                            <TabContent key={activeTabId} tabId={activeTabId} />
+                            <TabContent key={tabId} tabId={tabId} />
                             <Widgets />
                             <ModalsRenderer />
                         </>

@@ -11,7 +11,7 @@ import * as WOS from "@/store/wos";
 import { atom, useAtomValue } from "jotai";
 import * as React from "react";
 import { useMemo } from "react";
-import "./tabcontent.less";
+import "./tabcontent.scss";
 
 const tileGapSizeAtom = atom((get) => {
     const settings = get(atoms.settingsAtom);

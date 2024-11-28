@@ -28,7 +28,18 @@ const (
 	OType_Tab         = "tab"
 	OType_LayoutState = "layout"
 	OType_Block       = "block"
+	OType_Temp        = "temp"
 )
+
+var ValidOTypes = map[string]bool{
+	OType_Client:      true,
+	OType_Window:      true,
+	OType_Workspace:   true,
+	OType_Tab:         true,
+	OType_LayoutState: true,
+	OType_Block:       true,
+	OType_Temp:        true,
+}
 
 type WaveObjUpdate struct {
 	UpdateType string  `json:"updatetype"`
@@ -118,6 +129,8 @@ type Client struct {
 	Meta          MetaMapType `json:"meta"`
 	TosAgreed     int64       `json:"tosagreed,omitempty"`
 	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
+	NextTabId     int         `json:"nexttabid,omitempty"`
+	TempOID       string      `json:"tempoid,omitempty"`
 }
 
 func (*Client) GetOType() string {
@@ -252,11 +265,13 @@ type WinSize struct {
 
 type Block struct {
 	OID         string         `json:"oid"`
+	ParentORef  string         `json:"parentoref,omitempty"`
 	Version     int            `json:"version"`
 	BlockDef    *BlockDef      `json:"blockdef"`
 	RuntimeOpts *RuntimeOpts   `json:"runtimeopts,omitempty"`
 	Stickers    []*StickerType `json:"stickers,omitempty"`
 	Meta        MetaMapType    `json:"meta"`
+	SubBlockIds []string       `json:"subblockids,omitempty"`
 }
 
 func (*Block) GetOType() string {

@@ -42,9 +42,13 @@ var ExtraTypes = []any{
 	wshutil.RpcMessage{},
 	wshrpc.WshServerCommandMeta{},
 	userinput.UserInputRequest{},
-	vdom.Elem{},
-	vdom.VDomFuncType{},
-	vdom.VDomRefType{},
+	vdom.VDomCreateContext{},
+	vdom.VDomElem{},
+	vdom.VDomFunc{},
+	vdom.VDomRef{},
+	vdom.VDomBinding{},
+	vdom.VDomFrontendUpdate{},
+	vdom.VDomBackendUpdate{},
 	waveobj.MetaTSType{},
 }
 
@@ -57,7 +61,7 @@ var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
 var anyRType = reflect.TypeOf((*interface{})(nil)).Elem()
 var metaRType = reflect.TypeOf((*waveobj.MetaMapType)(nil)).Elem()
-var metaSettingsType = reflect.TypeOf((*wconfig.MetaSettingsType)(nil)).Elem()
+var metaSettingsType = reflect.TypeOf((*wshrpc.MetaSettingsType)(nil)).Elem()
 var uiContextRType = reflect.TypeOf((*waveobj.UIContext)(nil)).Elem()
 var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 var updatesRtnRType = reflect.TypeOf(waveobj.UpdatesRtnType{})
@@ -126,6 +130,10 @@ func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, [
 	case reflect.Bool:
 		return "boolean", nil
 	case reflect.Slice, reflect.Array:
+		// special case for byte slice, marshals to base64 encoded string
+		if t.Elem().Kind() == reflect.Uint8 {
+			return "string", nil
+		}
 		elemType, subTypes := TypeToTSType(t.Elem(), tsTypesMap)
 		if elemType == "" {
 			return "", nil

@@ -9,7 +9,7 @@ import { Modal } from "./modal";
 import { isDev } from "@/util/isdev";
 import { useState } from "react";
 import { getApi } from "../store/global";
-import "./about.less";
+import "./about.scss";
 
 interface AboutModalProps {}
 
@@ -41,26 +41,19 @@ const AboutModal = ({}: AboutModalProps) => {
                         className="secondary solid"
                         href="https://github.com/wavetermdev/waveterm"
                         target="_blank"
-                        leftIcon={<i className="fa-brands fa-github"></i>}
                     >
-                        Github
+                        <i className="fa-brands fa-github"></i>Github
                     </LinkButton>
-                    <LinkButton
-                        className="secondary solid"
-                        href="https://www.waveterm.dev/"
-                        target="_blank"
-                        leftIcon={<i className="fa-sharp fa-light fa-globe"></i>}
-                    >
-                        Website
+                    <LinkButton className="secondary solid" href="https://www.waveterm.dev/" target="_blank">
+                        <i className="fa-sharp fa-light fa-globe"></i>Website
                     </LinkButton>
                     <LinkButton
                         className="secondary solid"
                         href="https://github.com/wavetermdev/waveterm/blob/main/ACKNOWLEDGEMENTS.md"
                         target="_blank"
                         rel={"noopener"}
-                        leftIcon={<i className="fa-sharp fa-light fa-heart"></i>}
                     >
-                        Acknowledgements
+                        <i className="fa-sharp fa-light fa-heart"></i>Acknowledgements
                     </LinkButton>
                 </div>
                 <div className="section text-standard">&copy; {currentDate.getFullYear()} Command Line Inc.</div>

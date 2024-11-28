@@ -4,9 +4,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -42,8 +46,13 @@ func (cw CmdWrap) KillGraceful(timeout time.Duration) {
 	if cw.Cmd.ProcessState != nil && cw.Cmd.ProcessState.Exited() {
 		return
 	}
-	cw.Cmd.Process.Signal(os.Interrupt)
+	if runtime.GOOS == "windows" {
+		cw.Cmd.Process.Signal(os.Interrupt)
+	} else {
+		cw.Cmd.Process.Signal(syscall.SIGTERM)
+	}
 	go func() {
+		defer panichandler.PanicHandler("KillGraceful:Kill")
 		time.Sleep(timeout)
 		if cw.Cmd.ProcessState == nil || !cw.Cmd.ProcessState.Exited() {
 			cw.Cmd.Process.Kill() // force kill if it is already not exited
@@ -128,4 +137,44 @@ func (sw SessionWrap) StderrPipe() (io.ReadCloser, error) {
 
 func (sw SessionWrap) SetSize(h int, w int) error {
 	return sw.Session.WindowChange(h, w)
+}
+
+type WslCmdWrap struct {
+	*wsl.WslCmd
+	Tty pty.Tty
+	pty.Pty
+}
+
+func (wcw WslCmdWrap) Kill() {
+	wcw.Tty.Close()
+	wcw.Close()
+}
+
+func (wcw WslCmdWrap) KillGraceful(timeout time.Duration) {
+	process := wcw.WslCmd.GetProcess()
+	if process == nil {
+		return
+	}
+	processState := wcw.WslCmd.GetProcessState()
+	if processState != nil && processState.Exited() {
+		return
+	}
+	process.Signal(os.Interrupt)
+	go func() {
+		defer panichandler.PanicHandler("KillGraceful-wsl:Kill")
+		time.Sleep(timeout)
+		process := wcw.WslCmd.GetProcess()
+		processState := wcw.WslCmd.GetProcessState()
+		if processState == nil || !processState.Exited() {
+			process.Kill() // force kill if it is already not exited
+		}
+	}()
+}
+
+/**
+ * SetSize does nothing for WslCmdWrap as there
+ * is no pty to manage.
+**/
+func (wcw WslCmdWrap) SetSize(w int, h int) error {
+	return nil
 }

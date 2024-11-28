@@ -3,13 +3,20 @@
 
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { PLATFORM, atoms, createBlock, globalStore, removeFlashError, useSettingsPrefixAtom } from "@/store/global";
+import {
+    atoms,
+    createBlock,
+    globalStore,
+    isDev,
+    PLATFORM,
+    removeFlashError,
+    useSettingsPrefixAtom,
+} from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
-import Color from "color";
 import debug from "debug";
 import { Provider, useAtomValue } from "jotai";
 import "overlayscrollbars/overlayscrollbars.css";
@@ -17,13 +24,18 @@ import { Fragment, useEffect, useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
-import "./app.less";
 import { CenteredDiv } from "./element/quickelems";
+import { NotificationBubbles } from "./notification/notificationbubbles";
+
+import "./app.scss";
 
 const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
 
-const App = () => {
+const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
+    useEffect(() => {
+        onFirstRender();
+    }, []);
     return (
         <Provider store={globalStore}>
             <AppInner />
@@ -65,6 +77,9 @@ async function getClipboardURL(): Promise<URL> {
             return null;
         }
         const url = new URL(clipboardText);
+        if (!url.protocol.startsWith("http")) {
+            return null;
+        }
         return url;
     } catch (e) {
         return null;
@@ -114,19 +129,24 @@ function AppSettingsUpdater() {
         const isTransparentOrBlur =
             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
         const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
-        let baseBgColor = windowSettings?.["window:bgcolor"];
+        const baseBgColor = windowSettings?.["window:bgcolor"];
+        const mainDiv = document.getElementById("main");
+        // console.log("window settings", windowSettings, isTransparentOrBlur, opacity, baseBgColor, mainDiv);
         if (isTransparentOrBlur) {
-            document.body.classList.add("is-transparent");
-            const rootStyles = getComputedStyle(document.documentElement);
-            if (baseBgColor == null) {
-                baseBgColor = rootStyles.getPropertyValue("--main-bg-color").trim();
+            mainDiv.classList.add("is-transparent");
+            if (opacity != null) {
+                document.body.style.setProperty("--window-opacity", `${opacity}`);
+            } else {
+                document.body.style.removeProperty("--window-opacity");
             }
-            const color = new Color(baseBgColor);
-            const rgbaColor = color.alpha(opacity).string();
-            document.body.style.backgroundColor = rgbaColor;
         } else {
-            document.body.classList.remove("is-transparent");
-            document.body.style.opacity = null;
+            mainDiv.classList.remove("is-transparent");
+            document.body.style.removeProperty("--window-opacity");
+        }
+        if (baseBgColor != null) {
+            document.body.style.setProperty("--main-bg-color", baseBgColor);
+        } else {
+            document.body.style.removeProperty("--main-bg-color");
         }
     }, [windowSettings]);
     return null;
@@ -284,6 +304,7 @@ const AppInner = () => {
                 <Workspace />
             </DndProvider>
             <FlashError />
+            {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
         </div>
     );
 };

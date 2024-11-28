@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useOnResize } from "@/app/hook/useDimensions";
 import { atoms, globalStore, WOS } from "@/app/store/global";
 import { fireAndForget } from "@/util/util";
-import useResizeObserver from "@react-hook/resize-observer";
 import { Atom, useAtomValue } from "jotai";
 import { CSSProperties, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -36,8 +36,8 @@ export function getLayoutModelForTabById(tabId: string) {
     return getLayoutModelForTab(tabAtom);
 }
 
-export function getLayoutModelForActiveTab() {
-    const tabId = globalStore.get(atoms.activeTabId);
+export function getLayoutModelForStaticTab() {
+    const tabId = globalStore.get(atoms.staticTabId);
     return getLayoutModelForTabById(tabId);
 }
 
@@ -53,7 +53,8 @@ export function useTileLayout(tabAtom: Atom<Tab>, tileContent: TileLayoutContent
     // Use tab data to ensure we can reload if the tab is disposed and remade (such as during Hot Module Reloading)
     useAtomValue(tabAtom);
     const layoutModel = useLayoutModel(tabAtom);
-    useResizeObserver(layoutModel?.displayContainerRef, layoutModel?.onContainerResize);
+
+    useOnResize(layoutModel?.displayContainerRef, layoutModel?.onContainerResize);
 
     // Once the TileLayout is mounted, re-run the state update to get all the nodes to flow in the layout.
     useEffect(() => fireAndForget(async () => layoutModel.onTreeStateAtomUpdated(true)), []);

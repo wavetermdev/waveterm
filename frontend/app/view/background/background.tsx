@@ -1,14 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { atoms, globalStore } from "@/app/store/global";
-import { WebViewModel } from "@/app/view/webview/webview";
-import { NodeModel } from "@/layout/index";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
-import { atom, useAtomValue } from "jotai";
+import { Atom, atom, useAtomValue } from "jotai";
 
-import "./background.less";
+import "./background.scss";
 
 type BackgroundType = {
     label: string;
@@ -16,10 +15,14 @@ type BackgroundType = {
     click: () => void;
 };
 
-class BackgroundModel extends WebViewModel {
-    constructor(blockId: string, nodeModel: NodeModel) {
-        super(blockId, nodeModel);
-
+class BackgroundModel implements ViewModel {
+    viewType: string;
+    blockId: string;
+    blockAtom: Atom<Block>;
+    viewIcon: Atom<string | IconButtonDecl>;
+    viewName: Atom<string>;
+    viewText: Atom<HeaderElem[]>;
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewText = atom((get) => {
             return [];
         });
@@ -29,12 +32,12 @@ class BackgroundModel extends WebViewModel {
     }
 }
 
-function makeBackgroundModel(blockId: string, nodeModel: NodeModel) {
+function makeBackgroundModel(blockId: string, nodeModel: BlockNodeModel) {
     return new BackgroundModel(blockId, nodeModel);
 }
 
 function Background({ model }: { model: BackgroundModel }) {
-    const tabId = useAtomValue(atoms.activeTabId);
+    const tabId = useAtomValue(atoms.staticTabId);
     const backgrounds: BackgroundType[] = [];
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const bgPresets: string[] = [];

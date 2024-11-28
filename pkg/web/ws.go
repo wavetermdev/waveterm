@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -81,11 +81,9 @@ func getStringFromMap(jmsg map[string]any, key string) string {
 func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
 	var rtnErr error
 	defer func() {
-		r := recover()
-		if r != nil {
-			rtnErr = fmt.Errorf("panic: %v", r)
-			log.Printf("[websocket] panic in processMessage: %v\n", r)
-			debug.PrintStack()
+		panicErr := panichandler.PanicHandler("processWSCommand")
+		if panicErr != nil {
+			rtnErr = panicErr
 		}
 		if rtnErr == nil {
 			return
@@ -252,7 +250,7 @@ func registerConn(wsConnId string, routeId string, wproxy *wshutil.WshRpcProxy) 
 		wshutil.DefaultRouter.UnregisterRoute(routeId)
 	}
 	RouteToConnMap[routeId] = wsConnId
-	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy)
+	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy, true)
 }
 
 func unregisterConn(wsConnId string, routeId string) {
@@ -269,11 +267,10 @@ func unregisterConn(wsConnId string, routeId string) {
 }
 
 func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
-	windowId := r.URL.Query().Get("windowid")
-	if windowId == "" {
-		return fmt.Errorf("windowid is required")
+	tabId := r.URL.Query().Get("tabid")
+	if tabId == "" {
+		return fmt.Errorf("tabid is required")
 	}
-
 	err := authkey.ValidateIncomingRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -290,13 +287,13 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	outputCh := make(chan any, 100)
 	closeCh := make(chan any)
 	var routeId string
-	if windowId == wshutil.ElectronRoute {
+	if tabId == wshutil.ElectronRoute {
 		routeId = wshutil.ElectronRoute
 	} else {
-		routeId = wshutil.MakeWindowRouteId(windowId)
+		routeId = wshutil.MakeTabRouteId(tabId)
 	}
-	log.Printf("[websocket] new connection: windowid:%s connid:%s routeid:%s\n", windowId, wsConnId, routeId)
-	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
+	log.Printf("[websocket] new connection: tabid:%s connid:%s routeid:%s\n", tabId, wsConnId, routeId)
+	eventbus.RegisterWSChannel(wsConnId, tabId, outputCh)
 	defer eventbus.UnregisterWSChannel(wsConnId)
 	wproxy := wshutil.MakeRpcProxy() // we create a wshproxy to handle rpc messages to/from the window
 	defer close(wproxy.ToRemoteCh)
@@ -305,6 +302,7 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
+		defer panichandler.PanicHandler("HandleWsInternal:outputCh")
 		// no waitgroup add here
 		// move values from rpcOutputCh to outputCh
 		for msgBytes := range wproxy.ToRemoteCh {
@@ -316,11 +314,13 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 		}
 	}()
 	go func() {
+		defer panichandler.PanicHandler("HandleWsInternal:ReadLoop")
 		// read loop
 		defer wg.Done()
 		ReadLoop(conn, outputCh, closeCh, wproxy.FromRemoteCh, routeId)
 	}()
 	go func() {
+		defer panichandler.PanicHandler("HandleWsInternal:WriteLoop")
 		// write loop
 		defer wg.Done()
 		WriteLoop(conn, outputCh, closeCh, routeId)

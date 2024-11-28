@@ -10,7 +10,9 @@ class BlockServiceType {
     GetControllerStatus(arg2: string): Promise<BlockControllerRuntimeStatus> {
         return WOS.callBackendService("block", "GetControllerStatus", Array.from(arguments))
     }
-    SaveTerminalState(arg2: string, arg3: string, arg4: string, arg5: number): Promise<void> {
+
+    // save the terminal state to a blockfile
+    SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize): Promise<void> {
         return WOS.callBackendService("block", "SaveTerminalState", Array.from(arguments))
     }
     SaveWaveAiData(arg2: string, arg3: OpenAIPromptMessageType[]): Promise<void> {
@@ -88,7 +90,7 @@ export const FileService = new FileServiceType();
 // objectservice.ObjectService (object)
 class ObjectServiceType {
     // @returns tabId (and object updates)
-    AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<string> {
+    AddTabToWorkspace(windowId: string, tabName: string, activateTab: boolean): Promise<string> {
         return WOS.callBackendService("object", "AddTabToWorkspace", Array.from(arguments))
     }
 
@@ -113,7 +115,7 @@ class ObjectServiceType {
     }
 
     // @returns object updates
-    SetActiveTab(tabId: string): Promise<void> {
+    SetActiveTab(uiContext: string, tabId: string): Promise<void> {
         return WOS.callBackendService("object", "SetActiveTab", Array.from(arguments))
     }
 
@@ -152,10 +154,10 @@ export const UserInputService = new UserInputServiceType();
 // windowservice.WindowService (window)
 class WindowServiceType {
     // @returns object updates
-    CloseTab(arg3: string): Promise<void> {
+    CloseTab(arg2: string, arg3: string, arg4: boolean): Promise<CloseTabRtnType> {
         return WOS.callBackendService("window", "CloseTab", Array.from(arguments))
     }
-    CloseWindow(arg2: string): Promise<void> {
+    CloseWindow(arg2: string, arg3: boolean): Promise<void> {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
 

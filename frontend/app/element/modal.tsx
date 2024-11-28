@@ -4,7 +4,7 @@
 import { Button } from "@/element/button";
 import React from "react";
 
-import "./modal.less";
+import "./modal.scss";
 
 interface ModalProps {
     id?: string;

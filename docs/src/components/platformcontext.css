@@ -1,0 +1,35 @@
+.pill-toggle {
+    display: inline-flex;
+    border: 1px solid var(--ifm-scrollbar-thumb-background-color);
+    border-radius: 20px;
+    overflow: hidden;
+    background-color: var(--ifm-scrollbar-track-background-color);
+}
+
+.pill-option {
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--ifm-color-secondary-contrast-foreground);
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+    outline: none;
+    font-weight: bold;
+
+    &:not(:first-of-type) {
+        border-left: 1px solid var(--ifm-scrollbar-thumb-background-color);
+    }
+}
+
+.pill-option.active {
+    background-color: var(--ifm-color-primary);
+    color: var(--ifm-color-secondary-contrast-background);
+}
+
+.pill-option:not(.active):hover {
+    background-color: var(--ifm-scrollbar-thumb-background-color);
+}

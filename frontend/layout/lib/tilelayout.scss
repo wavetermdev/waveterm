@@ -1,0 +1,149 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.tile-layout {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+
+    --gap-size-px: 5px;
+
+    .overlay-container,
+    .display-container,
+    .placeholder-container {
+        position: absolute;
+        display: flex;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        min-height: 4rem;
+        min-width: 4rem;
+    }
+
+    .display-container {
+        z-index: var(--zindex-layout-display-container);
+    }
+
+    .placeholder-container {
+        z-index: var(--zindex-layout-placeholder-container);
+    }
+
+    .overlay-container {
+        z-index: var(--zindex-layout-overlay-container);
+    }
+
+    .overlay-node {
+        display: flex;
+        flex: 0 1 auto;
+    }
+
+    .resize-handle {
+        z-index: var(--zindex-layout-resize-handle);
+
+        .line {
+            visibility: hidden;
+        }
+        &.flex-row {
+            cursor: ew-resize;
+            .line {
+                height: 100%;
+                width: calc(50% + 1px);
+                border-right: 2px solid var(--accent-color);
+            }
+        }
+        &.flex-column {
+            cursor: ns-resize;
+            .line {
+                height: calc(50% + 1px);
+                border-bottom: 2px solid var(--accent-color);
+            }
+        }
+        &:hover .line {
+            visibility: visible;
+
+            // Ignore the prefers-reduced-motion override, since we are not applying a true animation here, just a delay.
+            transition-property: visibility !important;
+            transition-delay: var(--animation-time-s) !important;
+        }
+    }
+
+    .tile-node {
+        border-radius: calc(var(--block-border-radius) + 2px);
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+
+        &.dragging {
+            filter: blur(8px);
+        }
+
+        &.resizing {
+            border: 1px solid var(--accent-color);
+            backdrop-filter: blur(8px);
+        }
+
+        .tile-leaf {
+            overflow: hidden;
+        }
+
+        .tile-preview-container {
+            position: absolute;
+            top: 10000px;
+            white-space: nowrap !important;
+            user-select: none;
+            -webkit-user-select: none;
+
+            .tile-preview {
+                width: 100%;
+                height: 100%;
+            }
+        }
+
+        &:not(:only-child) .tile-leaf {
+            padding: calc(var(--gap-size-px) / 2);
+        }
+    }
+
+    --block-blur: 2px;
+
+    .magnified-node-backdrop,
+    .ephemeral-node-backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        backdrop-filter: blur(var(--block-blur));
+    }
+
+    .magnified-node-backdrop {
+        z-index: var(--zindex-layout-magnified-node-backdrop);
+    }
+
+    .ephemeral-node-backdrop {
+        z-index: var(--zindex-layout-ephemeral-node-backdrop);
+    }
+
+    &.animate {
+        .tile-node,
+        .placeholder {
+            transition-duration: var(--animation-time-s);
+            transition-timing-function: linear;
+            transition-property: transform, width, height, background-color;
+        }
+    }
+
+    .tile-leaf,
+    .overlay-leaf {
+        height: 100%;
+        width: 100%;
+    }
+
+    .placeholder {
+        background-color: var(--accent-color);
+        opacity: 0.5;
+        border-radius: calc(var(--block-border-radius) + 2px);
+    }
+}

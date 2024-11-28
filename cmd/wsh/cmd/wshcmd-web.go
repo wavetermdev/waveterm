@@ -28,9 +28,9 @@ var webOpenCmd = &cobra.Command{
 }
 
 var webGetCmd = &cobra.Command{
-	Use:    "get [--inner] [--all] [--json] blockid css-selector",
+	Use:    "get [--inner] [--all] [--json] css-selector",
 	Short:  "get the html for a css selector",
-	Args:   cobra.ExactArgs(2),
+	Args:   cobra.ExactArgs(1),
 	Hidden: true,
 	RunE:   webGetRun,
 }
@@ -51,15 +51,7 @@ func init() {
 }
 
 func webGetRun(cmd *cobra.Command, args []string) error {
-	oref := args[0]
-	if oref == "" {
-		return fmt.Errorf("blockid not specified")
-	}
-	err := validateEasyORef(oref)
-	if err != nil {
-		return err
-	}
-	fullORef, err := resolveSimpleId(oref)
+	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return fmt.Errorf("resolving blockid: %w", err)
 	}
@@ -67,14 +59,14 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("getting block info: %w", err)
 	}
-	if blockInfo.Meta.GetString(waveobj.MetaKey_View, "") != "web" {
+	if blockInfo.Block.Meta.GetString(waveobj.MetaKey_View, "") != "web" {
 		return fmt.Errorf("block %s is not a web block", fullORef.OID)
 	}
 	data := wshrpc.CommandWebSelectorData{
 		WindowId: blockInfo.WindowId,
 		BlockId:  fullORef.OID,
 		TabId:    blockInfo.TabId,
-		Selector: args[1],
+		Selector: args[0],
 		Opts: &wshrpc.WebSelectorOpts{
 			Inner: webGetInner,
 			All:   webGetAll,
@@ -101,7 +93,11 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func webOpenRun(cmd *cobra.Command, args []string) error {
+func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("web", rtnErr == nil)
+	}()
+
 	wshCmd := wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]any{

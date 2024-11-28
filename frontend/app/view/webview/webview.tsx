@@ -1,12 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getApi, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
-import { NodeModel } from "@/layout/index";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
@@ -14,7 +14,7 @@ import clsx from "clsx";
 import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue } from "jotai";
 import { Fragment, createRef, memo, useEffect, useRef, useState } from "react";
-import "./webview.less";
+import "./webview.scss";
 
 let webviewPreloadUrl = null;
 
@@ -44,12 +44,13 @@ export class WebViewModel implements ViewModel {
     refreshIcon: PrimitiveAtom<string>;
     webviewRef: React.RefObject<WebviewTag>;
     urlInputRef: React.RefObject<HTMLInputElement>;
-    nodeModel: NodeModel;
+    nodeModel: BlockNodeModel;
     endIconButtons?: Atom<IconButtonDecl[]>;
     mediaPlaying: PrimitiveAtom<boolean>;
     mediaMuted: PrimitiveAtom<boolean>;
+    modifyExternalUrl?: (url: string) => string;
 
-    constructor(blockId: string, nodeModel: NodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
         this.viewType = "web";
         this.blockId = blockId;
@@ -142,7 +143,8 @@ export class WebViewModel implements ViewModel {
                     title: "Open in External Browser",
                     click: () => {
                         if (url != null && url != "") {
-                            return getApi().openExternal(url);
+                            const externalUrl = this.modifyExternalUrl?.(url) ?? url;
+                            return getApi().openExternal(externalUrl);
                         }
                     },
                 },
@@ -369,17 +371,17 @@ export class WebViewModel implements ViewModel {
         if (url != null && url != "") {
             switch (scope) {
                 case "block":
-                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                    await RpcApi.SetMetaCommand(TabRpcClient, {
                         oref: WOS.makeORef("block", this.blockId),
                         meta: { pinnedurl: url },
                     });
                     break;
                 case "global":
-                    await RpcApi.SetMetaCommand(WindowRpcClient, {
+                    await RpcApi.SetMetaCommand(TabRpcClient, {
                         oref: WOS.makeORef("block", this.blockId),
                         meta: { pinnedurl: "" },
                     });
-                    await RpcApi.SetConfigCommand(WindowRpcClient, { "web:defaulturl": url });
+                    await RpcApi.SetConfigCommand(TabRpcClient, { "web:defaulturl": url });
                     break;
             }
         }
@@ -459,7 +461,7 @@ export class WebViewModel implements ViewModel {
     }
 }
 
-function makeWebViewModel(blockId: string, nodeModel: NodeModel): WebViewModel {
+function makeWebViewModel(blockId: string, nodeModel: BlockNodeModel): WebViewModel {
     const webviewModel = new WebViewModel(blockId, nodeModel);
     return webviewModel;
 }

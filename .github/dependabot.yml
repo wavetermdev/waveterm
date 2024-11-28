@@ -24,6 +24,9 @@ updates:
           electron:
               patterns:
                   - "*electron*"
+          docusaurus:
+              patterns:
+                  - "*docusaurus*"
     - package-ecosystem: "gomod"
       directory: "/"
       schedule:

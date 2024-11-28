@@ -26,9 +26,8 @@ import {
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
-import * as services from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
@@ -60,17 +59,17 @@ function handleHeaderContextMenu(
                 onMagnifyToggle();
             },
         },
-        {
-            label: "Move to New Window",
-            click: () => {
-                const currentTabId = globalStore.get(atoms.activeTabId);
-                try {
-                    services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
-                } catch (e) {
-                    console.error("error moving block to new window", e);
-                }
-            },
-        },
+        // {
+        //     label: "Move to New Window",
+        //     click: () => {
+        //         const currentTabId = globalStore.get(atoms.staticTabId);
+        //         try {
+        //             services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
+        //         } catch (e) {
+        //             console.error("error moving block to new window", e);
+        //         }
+        //     },
+        // },
         { type: "separator" },
         {
             label: "Copy BlockId",
@@ -121,6 +120,7 @@ function computeEndIcons(
     const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
 
@@ -134,14 +134,27 @@ function computeEndIcons(
         click: onContextMenu,
     };
     endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
-    endIconsElem.push(
-        <OptMagnifyButton
-            key="unmagnify"
-            magnified={magnified}
-            toggleMagnify={nodeModel.toggleMagnify}
-            disabled={magnifyDisabled}
-        />
-    );
+    if (ephemeral) {
+        const addToLayoutDecl: IconButtonDecl = {
+            elemtype: "iconbutton",
+            icon: "circle-plus",
+            title: "Add to Layout",
+            click: () => {
+                nodeModel.addEphemeralNodeToLayout();
+            },
+        };
+        endIconsElem.push(<IconButton key="add-to-layout" decl={addToLayoutDecl} />);
+    } else {
+        endIconsElem.push(
+            <OptMagnifyButton
+                key="unmagnify"
+                magnified={magnified}
+                toggleMagnify={nodeModel.toggleMagnify}
+                disabled={magnifyDisabled}
+            />
+        );
+    }
+
     const closeDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "xmark-large",
@@ -167,8 +180,16 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+
+    React.useEffect(() => {
+        if (!magnified || preview || prevMagifiedState.current) {
+            return;
+        }
+        RpcApi.ActivityCommand(TabRpcClient, { nummagnify: 1 });
+    }, [magnified]);
 
     if (blockData?.meta?.["frame:title"]) {
         viewName = blockData.meta["frame:title"];
@@ -310,7 +331,6 @@ const ConnStatusOverlay = React.memo(
         const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
         const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
-        const blockNum = jotai.useAtomValue(nodeModel.blockNum);
 
         React.useEffect(() => {
             if (width) {
@@ -321,7 +341,7 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(WindowRpcClient, connName, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, { host: connName }, { timeout: 60000 });
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -376,12 +396,24 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const style: React.CSSProperties = {};
     let showBlockMask = false;
-
-    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
-        style.borderColor = blockData.meta["frame:bordercolor"];
-    }
-    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
-        style.borderColor = blockData.meta["frame:bordercolor:focused"];
+    if (isFocused) {
+        const tabData = jotai.useAtomValue(atoms.tabAtom);
+        const tabActiveBorderColor = tabData?.meta?.["bg:activebordercolor"];
+        if (tabActiveBorderColor) {
+            style.borderColor = tabActiveBorderColor;
+        }
+        if (blockData?.meta?.["frame:activebordercolor"]) {
+            style.borderColor = blockData.meta["frame:activebordercolor"];
+        }
+    } else {
+        const tabData = jotai.useAtomValue(atoms.tabAtom);
+        const tabBorderColor = tabData?.meta?.["bg:bordercolor"];
+        if (tabBorderColor) {
+            style.borderColor = tabBorderColor;
+        }
+        if (blockData?.meta?.["frame:bordercolor"]) {
+            style.borderColor = blockData.meta["frame:bordercolor"];
+        }
     }
     let innerElem = null;
     if (isLayoutMode) {
@@ -410,7 +442,12 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
-
+    const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
+    const [magnifiedBlockBlurAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
+    const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
+    const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
+    const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>();
     React.useEffect(() => {
         if (!manageConnection) {
@@ -437,7 +474,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         const connName = blockData?.meta?.connection;
         if (!util.isBlank(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
-            RpcApi.ConnEnsureCommand(WindowRpcClient, connName, { timeout: 60000 }).catch((e) => {
+            RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 }).catch((e) => {
                 console.log("error ensuring connection", nodeModel.blockId, connName, e);
             });
         }
@@ -465,11 +502,19 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 "block-focused": isFocused || preview,
                 "block-preview": preview,
                 "block-no-highlight": numBlocksInTab === 1,
+                ephemeral: isEphemeral,
+                magnified: isMagnified,
             })}
             data-blockid={nodeModel.blockId}
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
+            style={
+                {
+                    "--magnified-block-opacity": magnifiedBlockOpacity,
+                    "--magnified-block-blur": `${magnifiedBlockBlur}px`,
+                } as React.CSSProperties
+            }
         >
             <BlockMask nodeModel={nodeModel} />
             {preview || viewModel == null ? null : (
@@ -521,6 +566,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusAtom = getConnStatusAtom(connection);
         const connStatus = jotai.useAtomValue(connStatusAtom);
         const [connList, setConnList] = React.useState<Array<string>>([]);
+        const [wslList, setWslList] = React.useState<Array<string>>([]);
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
@@ -536,10 +582,22 @@ const ChangeConnectionBlockModal = React.memo(
                 setConnList([]);
                 return;
             }
-            const prtn = RpcApi.ConnListCommand(WindowRpcClient, { timeout: 2000 });
+            const prtn = RpcApi.ConnListCommand(TabRpcClient, { timeout: 2000 });
             prtn.then((newConnList) => {
                 setConnList(newConnList ?? []);
             }).catch((e) => console.log("unable to load conn list from backend. using blank list: ", e));
+            const p2rtn = RpcApi.WslListCommand(TabRpcClient, { timeout: 2000 });
+            p2rtn
+                .then((newWslList) => {
+                    console.log(newWslList);
+                    setWslList(newWslList ?? []);
+                })
+                .catch((e) => {
+                    // removing this log and failing silentyly since it will happen
+                    // if a system isn't using the wsl. and would happen every time the
+                    // typeahead was opened. good candidate for verbose log level.
+                    //console.log("unable to load wsl list from backend. using blank list: ", e)
+                });
         }, [changeConnModalOpen, setConnList]);
 
         const changeConnection = React.useCallback(
@@ -557,12 +615,12 @@ const ChangeConnectionBlockModal = React.memo(
                 } else {
                     newCwd = "~";
                 }
-                await RpcApi.SetMetaCommand(WindowRpcClient, {
+                await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newCwd },
                 });
                 try {
-                    await RpcApi.ConnEnsureCommand(WindowRpcClient, connName, { timeout: 60000 });
+                    await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
                 } catch (e) {
                     console.log("error connecting", blockId, connName, e);
                 }
@@ -571,12 +629,10 @@ const ChangeConnectionBlockModal = React.memo(
         );
 
         let createNew: boolean = true;
-        let showLocal: boolean = true;
         let showReconnect: boolean = true;
         if (connSelected == "") {
             createNew = false;
         } else {
-            showLocal = false;
             showReconnect = false;
         }
         const filteredList: Array<string> = [];
@@ -586,6 +642,15 @@ const ChangeConnectionBlockModal = React.memo(
             }
             if (conn.includes(connSelected)) {
                 filteredList.push(conn);
+            }
+        }
+        const filteredWslList: Array<string> = [];
+        for (const conn of wslList) {
+            if (conn === connSelected) {
+                createNew = false;
+            }
+            if (conn.includes(connSelected)) {
+                filteredWslList.push(conn);
             }
         }
         // priority handles special suggestions when necessary
@@ -608,7 +673,11 @@ const ChangeConnectionBlockModal = React.memo(
             label: `Reconnect to ${connStatus.connection}`,
             value: "",
             onSelect: async (_: string) => {
-                const prtn = RpcApi.ConnConnectCommand(WindowRpcClient, connStatus.connection, { timeout: 60000 });
+                const prtn = RpcApi.ConnConnectCommand(
+                    TabRpcClient,
+                    { host: connStatus.connection },
+                    { timeout: 60000 }
+                );
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };
@@ -628,13 +697,27 @@ const ChangeConnectionBlockModal = React.memo(
             headerText: "Local",
             items: [],
         };
-        if (showLocal) {
+        localSuggestion.items.push({
+            status: "connected",
+            icon: "laptop",
+            iconColor: "var(--grey-text-color)",
+            value: "",
+            label: localName,
+            current: connection == null,
+        });
+        for (const wslConn of filteredWslList) {
+            const connStatus = connStatusMap.get(wslConn);
+            const connColorNum = computeConnColorNum(connStatus);
             localSuggestion.items.push({
                 status: "connected",
-                icon: "laptop",
-                iconColor: "var(--grey-text-color)",
-                value: "",
-                label: localName,
+                icon: "arrow-right-arrow-left",
+                iconColor:
+                    connStatus?.status == "connected"
+                        ? `var(--conn-icon-color-${connColorNum})`
+                        : "var(--grey-text-color)",
+                value: "wsl://" + wslConn,
+                label: "wsl://" + wslConn,
+                current: "wsl://" + wslConn == connection,
             });
         }
         const remoteItems = filteredList.map((connName) => {
@@ -649,6 +732,7 @@ const ChangeConnectionBlockModal = React.memo(
                         : "var(--grey-text-color)",
                 value: connName,
                 label: connName,
+                current: connName == connection,
             };
             return item;
         });
@@ -704,14 +788,16 @@ const ChangeConnectionBlockModal = React.memo(
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
-                    setRowIndex((idx) => Math.min(idx + 1, filteredList.length));
+                    setRowIndex((idx) => Math.min(idx + 1, selectionList.flat().length - 1));
                     return true;
                 }
             },
             [changeConnModalAtom, viewModel, blockId, connSelected, selectionList]
         );
         React.useEffect(() => {
-            setRowIndex((idx) => Math.min(idx, filteredList.length));
+            // this is specifically for the case when the list shrinks due
+            // to a search filter
+            setRowIndex((idx) => Math.min(idx, selectionList.flat().length - 1));
         }, [selectionList, setRowIndex]);
         // this check was also moved to BlockFrame to prevent all the above code from running unnecessarily
         if (!changeConnModalOpen) {

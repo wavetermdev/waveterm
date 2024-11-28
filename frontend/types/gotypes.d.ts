@@ -5,11 +5,50 @@
 
 declare global {
 
+    // wshrpc.ActivityDisplayType
+    type ActivityDisplayType = {
+        width: number;
+        height: number;
+        dpr: number;
+        internal?: boolean;
+    };
+
+    // wshrpc.ActivityUpdate
+    type ActivityUpdate = {
+        fgminutes?: number;
+        activeminutes?: number;
+        openminutes?: number;
+        numtabs?: number;
+        newtab?: number;
+        numblocks?: number;
+        numwindows?: number;
+        numsshconn?: number;
+        numwslconn?: number;
+        nummagnify?: number;
+        numpanics?: number;
+        startup?: number;
+        shutdown?: number;
+        settabtheme?: number;
+        buildtime?: string;
+        displays?: ActivityDisplayType[];
+        renderers?: {[key: string]: number};
+        blocks?: {[key: string]: number};
+        wshcmds?: {[key: string]: number};
+        conn?: {[key: string]: number};
+    };
+
+    // wshrpc.AiMessageData
+    type AiMessageData = {
+        message?: string;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
+        parentoref?: string;
         blockdef: BlockDef;
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
+        subblockids?: string[];
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
@@ -30,7 +69,7 @@ declare global {
         blockid: string;
         tabid: string;
         windowid: string;
-        meta: MetaType;
+        block: Block;
     };
 
     // webcmd.BlockInputWSCommand
@@ -45,6 +84,14 @@ declare global {
         windowids: string[];
         tosagreed?: number;
         hasoldhistory?: boolean;
+        nexttabid?: number;
+        tempoid?: string;
+    };
+
+    // windowservice.CloseTabRtnType
+    type CloseTabRtnType = {
+        closewindow?: boolean;
+        newactivetabid?: string;
     };
 
     // wshrpc.CommandAppendIJsonData
@@ -57,6 +104,7 @@ declare global {
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
         routeid: string;
+        authtoken?: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -89,9 +137,20 @@ declare global {
         magnified?: boolean;
     };
 
+    // wshrpc.CommandCreateSubBlockData
+    type CommandCreateSubBlockData = {
+        parentblockid: string;
+        blockdef: BlockDef;
+    };
+
     // wshrpc.CommandDeleteBlockData
     type CommandDeleteBlockData = {
         blockid: string;
+    };
+
+    // wshrpc.CommandDisposeData
+    type CommandDisposeData = {
+        routeid: string;
     };
 
     // wshrpc.CommandEventReadHistoryData
@@ -101,11 +160,35 @@ declare global {
         maxitems: number;
     };
 
+    // wshrpc.CommandFileCreateData
+    type CommandFileCreateData = {
+        zoneid: string;
+        filename: string;
+        meta?: {[key: string]: any};
+        opts?: FileOptsType;
+    };
+
     // wshrpc.CommandFileData
     type CommandFileData = {
         zoneid: string;
         filename: string;
         data64?: string;
+        at?: CommandFileDataAt;
+    };
+
+    // wshrpc.CommandFileDataAt
+    type CommandFileDataAt = {
+        offset: number;
+        size?: number;
+    };
+
+    // wshrpc.CommandFileListData
+    type CommandFileListData = {
+        zoneid: string;
+        prefix?: string;
+        all?: boolean;
+        offset?: number;
+        limit?: number;
     };
 
     // wshrpc.CommandGetMetaData
@@ -155,6 +238,28 @@ declare global {
         meta: MetaType;
     };
 
+    // wshrpc.CommandVarData
+    type CommandVarData = {
+        key: string;
+        val?: string;
+        remove?: boolean;
+        zoneid: string;
+        filename: string;
+    };
+
+    // wshrpc.CommandVarResponseData
+    type CommandVarResponseData = {
+        key: string;
+        val: string;
+        exists: boolean;
+    };
+
+    // wshrpc.CommandWaitForRouteData
+    type CommandWaitForRouteData = {
+        routeid: string;
+        waitms: number;
+    };
+
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
         windowid: string;
@@ -170,9 +275,36 @@ declare global {
         err: string;
     };
 
+    // wshrpc.ConnKeywords
+    type ConnKeywords = {
+        wshenabled?: boolean;
+        askbeforewshinstall?: boolean;
+        "ssh:user"?: string;
+        "ssh:hostname"?: string;
+        "ssh:port"?: string;
+        "ssh:identityfile"?: string[];
+        "ssh:batchmode"?: boolean;
+        "ssh:pubkeyauthentication"?: boolean;
+        "ssh:passwordauthentication"?: boolean;
+        "ssh:kbdinteractiveauthentication"?: boolean;
+        "ssh:preferredauthentications"?: string[];
+        "ssh:addkeystoagent"?: boolean;
+        "ssh:identityagent"?: string;
+        "ssh:proxyjump"?: string[];
+        "ssh:userknownhostsfile"?: string[];
+        "ssh:globalknownhostsfile"?: string[];
+    };
+
+    // wshrpc.ConnRequest
+    type ConnRequest = {
+        host: string;
+        keywords?: ConnKeywords;
+    };
+
     // wshrpc.ConnStatus
     type ConnStatus = {
         status: string;
+        wshenabled: boolean;
         connection: string;
         connected: boolean;
         hasconnected: boolean;
@@ -184,6 +316,16 @@ declare global {
     type CpuDataRequest = {
         id: string;
         count: number;
+    };
+
+    // vdom.DomRect
+    type DomRect = {
+        top: number;
+        left: number;
+        right: number;
+        bottom: number;
+        width: number;
+        height: number;
     };
 
     // waveobj.FileDef
@@ -226,6 +368,7 @@ declare global {
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
+        connections: {[key: string]: ConnKeywords};
         configerrors: ConfigError[];
     };
 
@@ -278,7 +421,7 @@ declare global {
         "frame:*"?: boolean;
         frame?: boolean;
         "frame:bordercolor"?: string;
-        "frame:bordercolor:focused"?: string;
+        "frame:activebordercolor"?: string;
         "frame:title"?: string;
         "frame:icon"?: string;
         "frame:text"?: string;
@@ -303,6 +446,8 @@ declare global {
         "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
+        "editor:*"?: boolean;
+        "editor:wordwrap"?: boolean;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
@@ -311,6 +456,8 @@ declare global {
         bg?: string;
         "bg:opacity"?: number;
         "bg:blendmode"?: string;
+        "bg:bordercolor"?: string;
+        "bg:activebordercolor"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -319,6 +466,13 @@ declare global {
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
+        "term:vdomblockid"?: string;
+        "term:vdomtoolbarblockid"?: string;
+        "vdom:*"?: boolean;
+        "vdom:initialized"?: boolean;
+        "vdom:correlationid"?: string;
+        "vdom:route"?: string;
+        "vdom:persist"?: boolean;
         count?: number;
     };
 
@@ -397,6 +551,7 @@ declare global {
         resid?: string;
         timeout?: number;
         route?: string;
+        authtoken?: string;
         source?: string;
         cont?: boolean;
         cancel?: boolean;
@@ -473,10 +628,16 @@ declare global {
         "window:showmenubar"?: boolean;
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
+        "window:maxtabcachesize"?: number;
+        "window:magnifiedblockopacity"?: number;
+        "window:magnifiedblocksize"?: number;
+        "window:magnifiedblockblurprimarypx"?: number;
+        "window:magnifiedblockblursecondarypx"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
+        "conn:wshenabled"?: boolean;
     };
 
     // waveobj.StickerClickOptsType
@@ -570,6 +731,8 @@ declare global {
         timeoutms: number;
         checkboxmsg: string;
         publictext: boolean;
+        oklabel?: string;
+        cancellabel?: string;
     };
 
     // userinput.UserInputResponse
@@ -582,27 +745,197 @@ declare global {
         checkboxstat?: boolean;
     };
 
-    // vdom.Elem
+    // vdom.VDomAsyncInitiationRequest
+    type VDomAsyncInitiationRequest = {
+        type: "asyncinitiationrequest";
+        ts: number;
+        blockid?: string;
+    };
+
+    // vdom.VDomBackendOpts
+    type VDomBackendOpts = {
+        closeonctrlc?: boolean;
+        globalkeyboardevents?: boolean;
+        globalstyles?: boolean;
+    };
+
+    // vdom.VDomBackendUpdate
+    type VDomBackendUpdate = {
+        type: "backendupdate";
+        ts: number;
+        blockid: string;
+        opts?: VDomBackendOpts;
+        haswork?: boolean;
+        renderupdates?: VDomRenderUpdate[];
+        transferelems?: VDomTransferElem[];
+        statesync?: VDomStateSync[];
+        refoperations?: VDomRefOperation[];
+        messages?: VDomMessage[];
+    };
+
+    // vdom.VDomBinding
+    type VDomBinding = {
+        type: "binding";
+        bind: string;
+    };
+
+    // vdom.VDomCreateContext
+    type VDomCreateContext = {
+        type: "createcontext";
+        ts: number;
+        meta?: MetaType;
+        target?: VDomTarget;
+        persist?: boolean;
+    };
+
+    // vdom.VDomElem
     type VDomElem = {
-        id?: string;
+        waveid?: string;
         tag: string;
         props?: {[key: string]: any};
         children?: VDomElem[];
         text?: string;
     };
 
-    // vdom.VDomFuncType
-    type VDomFuncType = {
-        #func: string;
-        #stopPropagation?: boolean;
-        #preventDefault?: boolean;
+    // vdom.VDomEvent
+    type VDomEvent = {
+        waveid: string;
+        eventtype: string;
+        globaleventtype?: string;
+        targetvalue?: string;
+        targetchecked?: boolean;
+        targetname?: string;
+        targetid?: string;
+        keydata?: WaveKeyboardEvent;
+        mousedata?: WavePointerData;
+    };
+
+    // vdom.VDomFrontendUpdate
+    type VDomFrontendUpdate = {
+        type: "frontendupdate";
+        ts: number;
+        blockid: string;
+        correlationid?: string;
+        dispose?: boolean;
+        resync?: boolean;
+        rendercontext?: VDomRenderContext;
+        events?: VDomEvent[];
+        statesync?: VDomStateSync[];
+        refupdates?: VDomRefUpdate[];
+        messages?: VDomMessage[];
+    };
+
+    // vdom.VDomFunc
+    type VDomFunc = {
+        type: "func";
+        stoppropagation?: boolean;
+        preventdefault?: boolean;
+        globalevent?: string;
         #keys?: string[];
     };
 
-    // vdom.VDomRefType
-    type VDomRefType = {
-        #ref: string;
-        current: any;
+    // vdom.VDomMessage
+    type VDomMessage = {
+        messagetype: string;
+        message: string;
+        stacktrace?: string;
+        params?: any[];
+    };
+
+    // vdom.VDomRef
+    type VDomRef = {
+        type: "ref";
+        refid: string;
+        trackposition?: boolean;
+        position?: VDomRefPosition;
+        hascurrent?: boolean;
+    };
+
+    // vdom.VDomRefOperation
+    type VDomRefOperation = {
+        refid: string;
+        op: string;
+        params?: any[];
+        outputref?: string;
+    };
+
+    // vdom.VDomRefPosition
+    type VDomRefPosition = {
+        offsetheight: number;
+        offsetwidth: number;
+        scrollheight: number;
+        scrollwidth: number;
+        scrolltop: number;
+        boundingclientrect: DomRect;
+    };
+
+    // vdom.VDomRefUpdate
+    type VDomRefUpdate = {
+        refid: string;
+        hascurrent: boolean;
+        position?: VDomRefPosition;
+    };
+
+    // vdom.VDomRenderContext
+    type VDomRenderContext = {
+        blockid: string;
+        focused: boolean;
+        width: number;
+        height: number;
+        rootrefid: string;
+        background?: boolean;
+    };
+
+    // vdom.VDomRenderUpdate
+    type VDomRenderUpdate = {
+        updatetype: "root"|"append"|"replace"|"remove"|"insert";
+        waveid?: string;
+        vdomwaveid?: string;
+        vdom?: VDomElem;
+        index?: number;
+    };
+
+    // vdom.VDomStateSync
+    type VDomStateSync = {
+        atom: string;
+        value: any;
+    };
+
+    // vdom.VDomTarget
+    type VDomTarget = {
+        newblock?: boolean;
+        magnified?: boolean;
+        toolbar?: VDomTargetToolbar;
+    };
+
+    // vdom.VDomTargetToolbar
+    type VDomTargetToolbar = {
+        toolbar: boolean;
+        height?: string;
+    };
+
+    // vdom.VDomTransferElem
+    type VDomTransferElem = {
+        waveid?: string;
+        tag: string;
+        props?: {[key: string]: any};
+        children?: string[];
+        text?: string;
+    };
+
+    // wshrpc.VDomUrlRequestData
+    type VDomUrlRequestData = {
+        method: string;
+        url: string;
+        headers: {[key: string]: string};
+        body?: string;
+    };
+
+    // wshrpc.VDomUrlRequestResponse
+    type VDomUrlRequestResponse = {
+        statuscode?: number;
+        headers?: {[key: string]: string};
+        body?: string;
     };
 
     type WSCommandType = {
@@ -655,6 +988,42 @@ declare global {
         meta: {[key: string]: any};
     };
 
+    // wshrpc.WaveFileInfo
+    type WaveFileInfo = {
+        zoneid: string;
+        name: string;
+        opts?: FileOptsType;
+        size?: number;
+        createdts?: number;
+        modts?: number;
+        meta?: {[key: string]: any};
+        isdir?: boolean;
+    };
+
+    // wshrpc.WaveInfoData
+    type WaveInfoData = {
+        version: string;
+        clientid: string;
+        buildtime: string;
+        configdir: string;
+        datadir: string;
+    };
+
+    // vdom.WaveKeyboardEvent
+    type WaveKeyboardEvent = {
+        type: "keydown"|"keyup"|"keypress"|"unknown";
+        key: string;
+        code: string;
+        repeat?: boolean;
+        location?: number;
+        shift?: boolean;
+        control?: boolean;
+        alt?: boolean;
+        meta?: boolean;
+        cmd?: boolean;
+        option?: boolean;
+    };
+
     // wshrpc.WaveNotificationOptions
     type WaveNotificationOptions = {
         title?: string;
@@ -676,6 +1045,26 @@ declare global {
         otype: string;
         oid: string;
         obj?: WaveObj;
+    };
+
+    // vdom.WavePointerData
+    type WavePointerData = {
+        button: number;
+        buttons: number;
+        clientx?: number;
+        clienty?: number;
+        pagex?: number;
+        pagey?: number;
+        screenx?: number;
+        screeny?: number;
+        movementx?: number;
+        movementy?: number;
+        shift?: boolean;
+        control?: boolean;
+        alt?: boolean;
+        meta?: boolean;
+        cmd?: boolean;
+        option?: boolean;
     };
 
     // waveobj.Window

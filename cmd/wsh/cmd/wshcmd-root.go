@@ -7,13 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"runtime/debug"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -30,22 +26,12 @@ var (
 	}
 )
 
-var usingHtmlMode bool
 var WrappedStdin io.Reader = os.Stdin
 var RpcClient *wshutil.WshRpc
 var RpcContext wshrpc.RpcContext
 var UsingTermWshMode bool
 var blockArg string
-
-func extraShutdownFn() {
-	if usingHtmlMode {
-		cmd := &wshrpc.CommandSetMetaData{
-			Meta: map[string]any{"term:mode": nil},
-		}
-		RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd, nil)
-		time.Sleep(10 * time.Millisecond)
-	}
-}
+var WshExitCode int
 
 func WriteStderr(fmtStr string, args ...interface{}) {
 	output := fmt.Sprintf(fmtStr, args...)
@@ -69,6 +55,36 @@ func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return nil
+}
+
+func getIsTty() bool {
+	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
+		return true
+	}
+	return false
+}
+
+type RunEFnType = func(*cobra.Command, []string) error
+
+func activityWrap(activityStr string, origRunE RunEFnType) RunEFnType {
+	return func(cmd *cobra.Command, args []string) (rtnErr error) {
+		defer func() {
+			sendActivity(activityStr, rtnErr == nil)
+		}()
+		return origRunE(cmd, args)
+	}
+}
+
+func resolveBlockArg() (*waveobj.ORef, error) {
+	oref := blockArg
+	if oref == "" {
+		oref = "this"
+	}
+	fullORef, err := resolveSimpleId(oref)
+	if err != nil {
+		return nil, fmt.Errorf("resolving blockid: %w", err)
+	}
+	return fullORef, nil
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
@@ -98,47 +114,6 @@ func setupRpcClient(serverImpl wshutil.ServerImpl) error {
 	return nil
 }
 
-func setTermHtmlMode() {
-	wshutil.SetExtraShutdownFunc(extraShutdownFn)
-	cmd := &wshrpc.CommandSetMetaData{
-		Meta: map[string]any{"term:mode": "html"},
-	}
-	err := RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd, nil)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting html mode: %v\r\n", err)
-	}
-	usingHtmlMode = true
-}
-
-var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
-
-func validateEasyORef(oref string) error {
-	if oref == "this" || oref == "tab" {
-		return nil
-	}
-	if num, err := strconv.Atoi(oref); err == nil && num >= 1 {
-		return nil
-	}
-	if strings.Contains(oref, ":") {
-		_, err := waveobj.ParseORef(oref)
-		if err != nil {
-			return fmt.Errorf("invalid ORef: %v", err)
-		}
-		return nil
-	}
-	if len(oref) == 8 {
-		if !oidRe.MatchString(oref) {
-			return fmt.Errorf("invalid short OID format, must only use 0-9a-f: %q", oref)
-		}
-		return nil
-	}
-	_, err := uuid.Parse(oref)
-	if err != nil {
-		return fmt.Errorf("invalid object reference (must be UUID, or a positive integer): %v", err)
-	}
-	return nil
-}
-
 func isFullORef(orefStr string) bool {
 	_, err := waveobj.ParseORef(orefStr)
 	return err == nil
@@ -163,6 +138,23 @@ func resolveSimpleId(id string) (*waveobj.ORef, error) {
 	return &oref, nil
 }
 
+// this will send wsh activity to the client running on *your* local machine (it does not contact any wave cloud infrastructure)
+// if you've turned off telemetry in your local client, this data never gets sent to us
+// no parameters or timestamps are sent, as you can see below, it just sends the name of the command (and if there was an error)
+// (e.g. "wsh ai ..." would send "ai")
+// this helps us understand which commands are actually being used so we know where to concentrate our effort
+func sendActivity(wshCmdName string, success bool) {
+	if RpcClient == nil || wshCmdName == "" {
+		return
+	}
+	dataMap := make(map[string]int)
+	dataMap[wshCmdName] = 1
+	if !success {
+		dataMap[wshCmdName+"#"+"error"] = 1
+	}
+	wshclient.WshActivityCommand(RpcClient, dataMap, nil)
+}
+
 // Execute executes the root command.
 func Execute() {
 	defer func() {
@@ -172,10 +164,10 @@ func Execute() {
 			debug.PrintStack()
 			wshutil.DoShutdown("", 1, true)
 		} else {
-			wshutil.DoShutdown("", 0, false)
+			wshutil.DoShutdown("", WshExitCode, false)
 		}
 	}()
-	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "this", "for commands which require a block id")
+	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "", "for commands which require a block id")
 	err := rootCmd.Execute()
 	if err != nil {
 		wshutil.DoShutdown("", 1, true)

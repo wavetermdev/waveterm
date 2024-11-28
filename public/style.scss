@@ -1,0 +1,61 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+@import "./reset.scss";
+@import "./theme.scss";
+
+body {
+    display: flex;
+    flex-direction: row;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--main-bg-color);
+    color: var(--main-text-color);
+    font: var(--base-font);
+    overflow: hidden;
+}
+
+*::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-background-color) !important;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color) !important;
+    border-radius: 4px;
+    margin: 0 1px 0 1px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover-color) !important;
+}
+
+.flex-spacer {
+    flex-grow: 1;
+}
+
+.text-fixed {
+    font: var(--fixed-font);
+}
+
+#main,
+.mainapp {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+.titlebar {
+    height: 35px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.error-boundary {
+    color: var(--error-color);
+}

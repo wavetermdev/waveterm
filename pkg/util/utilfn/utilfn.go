@@ -28,9 +28,8 @@ import (
 	"strings"
 	"syscall"
 	"text/template"
+	"time"
 	"unicode/utf8"
-
-	"github.com/mitchellh/mapstructure"
 )
 
 var HexDigits = []byte{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'}
@@ -751,27 +750,6 @@ func IndentString(indent string, str string) string {
 	return rtn.String()
 }
 
-func ReUnmarshal(out any, in any) error {
-	barr, err := json.Marshal(in)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(barr, out)
-}
-
-// does a mapstructure using "json" tags
-func DoMapStructure(out any, input any) error {
-	dconfig := &mapstructure.DecoderConfig{
-		Result:  out,
-		TagName: "json",
-	}
-	decoder, err := mapstructure.NewDecoder(dconfig)
-	if err != nil {
-		return err
-	}
-	return decoder.Decode(input)
-}
-
 func SliceIdx[T comparable](arr []T, elem T) int {
 	for idx, e := range arr {
 		if e == elem {
@@ -863,9 +841,9 @@ func AtomicRenameCopy(dstPath string, srcPath string, perms os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer dstFd.Close()
 	_, err = io.Copy(dstFd, srcFd)
 	if err != nil {
+		dstFd.Close()
 		return err
 	}
 	err = dstFd.Close()
@@ -945,4 +923,17 @@ func GetLineColFromOffset(barr []byte, offset int) (int, int) {
 		}
 	}
 	return line, col
+}
+
+func FormatLsTime(t time.Time) string {
+	now := time.Now()
+	sixMonthsAgo := now.AddDate(0, -6, 0)
+
+	if t.After(sixMonthsAgo) {
+		// Recent files: "Nov 18 18:40"
+		return t.Format("Jan _2 15:04")
+	} else {
+		// Older files: "Apr 12  2024"
+		return t.Format("Jan _2  2006")
+	}
 }

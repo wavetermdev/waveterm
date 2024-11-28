@@ -5,15 +5,16 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, getApi, isDev, PLATFORM } from "@/store/global";
+import { atoms, createTab, getApi, isDev, PLATFORM } from "@/store/global";
 import * as services from "@/store/services";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { Tab } from "./tab";
-import "./tabbar.less";
+import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
+import { WorkspaceSwitcher } from "./workspaceswitcher";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
@@ -95,11 +96,6 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
             Config Error
         </Button>
     );
-    return (
-        <div className="config-error" ref={buttonRef as React.RefObject<HTMLDivElement>}>
-            <i className="fa fa-solid fa-exclamation-triangle" />
-        </div>
-    );
 };
 
 const TabBar = React.memo(({ workspace }: TabBarProps) => {
@@ -134,10 +130,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
-
-    const windowData = useAtomValue(atoms.waveWindow);
-    const { activetabid } = windowData;
-
+    const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     const settings = useAtomValue(atoms.settingsAtom);
@@ -255,6 +248,13 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         setSizeAndPosition();
         debounce(100, () => saveTabsPosition())();
     }, [tabIds, newTabId, isFullScreen]);
+
+    const reinitVersion = useAtomValue(atoms.reinitVersion);
+    useEffect(() => {
+        if (reinitVersion > 0) {
+            setSizeAndPosition();
+        }
+    }, [reinitVersion]);
 
     useEffect(() => {
         window.addEventListener("resize", () => handleResizeTabs());
@@ -483,17 +483,12 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
-            services.ObjectService.SetActiveTab(tabId);
+            getApi().setActiveTab(tabId);
         }
     };
 
     const handleAddTab = () => {
-        const newTabName = `T${tabIds.length + 1}`;
-        services.ObjectService.AddTabToWorkspace(newTabName, true).then((tabId) => {
-            setTabIds([...tabIds, tabId]);
-            setNewTabId(tabId);
-        });
-        services.ObjectService.GetObject;
+        createTab();
         tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
@@ -509,7 +504,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        services.WindowService.CloseTab(tabId);
+        getApi().closeTab(tabId);
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutModelForTab(tabId);
     };
@@ -525,7 +520,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     }, []);
 
     const isBeforeActive = (tabId: string) => {
-        return tabIds.indexOf(tabId) === tabIds.indexOf(activetabid) - 1;
+        return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
     };
 
     function onEllipsisClick() {
@@ -544,12 +539,12 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
-
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
+            {isDev() ? <WorkspaceSwitcher></WorkspaceSwitcher> : null}
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
@@ -560,7 +555,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                                 id={tabId}
                                 isFirst={index === 0}
                                 onSelect={() => handleSelectTab(tabId)}
-                                active={activetabid === tabId}
+                                active={activeTabId === tabId}
                                 onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}

@@ -38,7 +38,14 @@ func (bs *BlockService) GetControllerStatus(ctx context.Context, blockId string)
 	return bc.GetRuntimeStatus(), nil
 }
 
-func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, state string, stateType string, ptyOffset int64) error {
+func (*BlockService) SaveTerminalState_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "save the terminal state to a blockfile",
+		ArgNames: []string{"ctx", "blockId", "state", "stateType", "ptyOffset", "termSize"},
+	}
+}
+
+func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, state string, stateType string, ptyOffset int64, termSize waveobj.TermSize) error {
 	_, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return err
@@ -52,7 +59,11 @@ func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, s
 	if err != nil {
 		return fmt.Errorf("cannot save terminal state: %w", err)
 	}
-	err = filestore.WFS.WriteMeta(ctx, blockId, "cache:term:"+stateType, filestore.FileMeta{"ptyoffset": ptyOffset}, true)
+	fileMeta := filestore.FileMeta{
+		"ptyoffset": ptyOffset,
+		"termsize":  termSize,
+	}
+	err = filestore.WFS.WriteMeta(ctx, blockId, "cache:term:"+stateType, fileMeta, true)
 	if err != nil {
 		return fmt.Errorf("cannot save terminal state meta: %w", err)
 	}

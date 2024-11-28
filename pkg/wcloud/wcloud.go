@@ -27,6 +27,9 @@ const WCloudEndpointVarName = "WCLOUD_ENDPOINT"
 const WCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
 const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
 
+var WCloudWSEndpoint_VarCache string
+var WCloudEndpoint_VarCache string
+
 const APIVersion = 1
 const MaxPtyUpdateSize = (128 * 1024)
 const MaxUpdatesPerReq = 10
@@ -43,15 +46,48 @@ const TelemetryUrl = "/telemetry"
 const NoTelemetryUrl = "/no-telemetry"
 const WebShareUpdateUrl = "/auth/web-share-update"
 
+func CacheAndRemoveEnvVars() error {
+	WCloudEndpoint_VarCache = os.Getenv(WCloudEndpointVarName)
+	err := checkEndpointVar(WCloudEndpoint_VarCache, "wcloud endpoint", WCloudEndpointVarName)
+	if err != nil {
+		return err
+	}
+	os.Unsetenv(WCloudEndpointVarName)
+	WCloudWSEndpoint_VarCache = os.Getenv(WCloudWSEndpointVarName)
+	err = checkWSEndpointVar(WCloudWSEndpoint_VarCache, "wcloud ws endpoint", WCloudWSEndpointVarName)
+	if err != nil {
+		return err
+	}
+	os.Unsetenv(WCloudWSEndpointVarName)
+	return nil
+}
+
+func checkEndpointVar(endpoint string, debugName string, varName string) error {
+	if !wavebase.IsDevMode() {
+		return nil
+	}
+	if endpoint == "" || !strings.HasPrefix(endpoint, "https://") {
+		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
+	}
+	return nil
+}
+
+func checkWSEndpointVar(endpoint string, debugName string, varName string) error {
+	if !wavebase.IsDevMode() {
+		return nil
+	}
+	log.Printf("checking endpoint %q\n", endpoint)
+	if endpoint == "" || !strings.HasPrefix(endpoint, "wss://") {
+		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
+	}
+	return nil
+}
+
 func GetEndpoint() string {
 	if !wavebase.IsDevMode() {
 		return WCloudEndpoint
 	}
-	endpoint := os.Getenv(WCloudEndpointVarName)
-	if endpoint == "" || !strings.HasPrefix(endpoint, "https://") {
-		log.Printf("Invalid wcloud dev endpoint, WCLOUD_ENDPOINT not set or invalid\n")
-		return ""
-	}
+	endpoint := WCloudEndpoint_VarCache
 	return endpoint
 }
 
@@ -59,11 +95,7 @@ func GetWSEndpoint() string {
 	if !wavebase.IsDevMode() {
 		return WCloudWSEndpoint
 	}
-	endpoint := os.Getenv(WCloudWSEndpointVarName)
-	if endpoint == "" || !strings.HasPrefix(endpoint, "wss://") {
-		log.Printf("Invalid wcloud ws dev endpoint, WCLOUD_WS_ENDPOINT not set or invalid\n")
-		return ""
-	}
+	endpoint := WCloudWSEndpoint_VarCache
 	return endpoint
 }
 

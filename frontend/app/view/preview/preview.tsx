@@ -1,15 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { WindowRpcClient } from "@/app/store/wshrpcutil";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
-import { NodeModel } from "@/layout/index";
 import { atoms, createBlock, getConnStatusAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
@@ -25,7 +25,7 @@ import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { createRef, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
-import "./preview.less";
+import "./preview.scss";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
@@ -62,6 +62,7 @@ const textApplicationMimetypes = [
     "application/x-latex",
     "application/x-sh",
     "application/x-python",
+    "application/x-awk",
 ];
 
 function isTextFile(mimeType: string): boolean {
@@ -98,7 +99,7 @@ function isStreamingType(mimeType: string): boolean {
 export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
-    nodeModel: NodeModel;
+    nodeModel: BlockNodeModel;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
@@ -141,7 +142,7 @@ export class PreviewModel implements ViewModel {
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
-    constructor(blockId: string, nodeModel: NodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "preview";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
@@ -496,7 +497,7 @@ export class PreviewModel implements ViewModel {
     async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
         const conn = globalStore.get(this.connection);
         try {
-            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
+            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
             return parentFileInfo;
@@ -517,7 +518,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.path, ".."], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
             if (newFileInfo.path != "" && newFileInfo.notfound) {
@@ -600,7 +601,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(WindowRpcClient, [fileInfo.dir, filePath], {
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, filePath], {
                 route: makeConnRoute(conn),
             });
             this.updateOpenFileModalAndError(false);
@@ -619,6 +620,7 @@ export class PreviewModel implements ViewModel {
 
     getSettingsMenuItems(): ContextMenuItem[] {
         const menuItems: ContextMenuItem[] = [];
+        const blockData = globalStore.get(this.blockAtom);
         menuItems.push({
             label: "Copy Full Path",
             click: async () => {
@@ -670,6 +672,18 @@ export class PreviewModel implements ViewModel {
                         click: this.handleFileRevert.bind(this),
                     });
                 }
+                menuItems.push({ type: "separator" });
+                menuItems.push({
+                    label: "Word Wrap",
+                    type: "checkbox",
+                    checked: blockData?.meta?.["editor:wordwrap"] ?? false,
+                    click: () => {
+                        const blockOref = WOS.makeORef("block", this.blockId);
+                        services.ObjectService.UpdateObjectMeta(blockOref, {
+                            "editor:wordwrap": !blockData?.meta?.["editor:wordwrap"],
+                        });
+                    },
+                });
             }
         }
         return menuItems;
@@ -733,7 +747,7 @@ export class PreviewModel implements ViewModel {
     }
 }
 
-function makePreviewModel(blockId: string, nodeModel: NodeModel): PreviewModel {
+function makePreviewModel(blockId: string, nodeModel: BlockNodeModel): PreviewModel {
     const previewModel = new PreviewModel(blockId, nodeModel);
     return previewModel;
 }
@@ -803,13 +817,14 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileName = useAtomValue(model.statFilePath);
+    const blockMeta = useAtomValue(model.blockAtom)?.meta;
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {
             model.setEditMode(false);
             return true;
         }
-        if (checkKeyPressed(e, "Cmd:s")) {
+        if (checkKeyPressed(e, "Cmd:s") || checkKeyPressed(e, "Ctrl:s")) {
             model.handleFileSave();
             return true;
         }
@@ -852,6 +867,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         <CodeEditor
             text={fileContent}
             filename={fileName}
+            meta={blockMeta}
             onChange={(text) => setNewFileContent(text)}
             onMount={onMount}
         />

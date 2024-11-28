@@ -9,38 +9,16 @@ import (
 	"log"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const MaxTzNameLen = 50
-
-// "terminal" should not be in this list
-var allowedRenderers = map[string]bool{
-	"markdown": true,
-	"code":     true,
-	"openai":   true,
-	"csv":      true,
-	"image":    true,
-	"pdf":      true,
-	"media":    true,
-	"mustache": true,
-}
-
-type ActivityUpdate struct {
-	FgMinutes     int
-	ActiveMinutes int
-	OpenMinutes   int
-	NumTabs       int
-	NewTab        int
-	Startup       int
-	Shutdown      int
-	BuildTime     string
-	Renderers     map[string]int
-}
 
 type ActivityType struct {
 	Day           string        `json:"day"`
@@ -55,14 +33,25 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	ActiveMinutes int            `json:"activeminutes"`
-	FgMinutes     int            `json:"fgminutes"`
-	OpenMinutes   int            `json:"openminutes"`
-	NumTabs       int            `json:"numtabs"`
-	NewTab        int            `json:"newtab"`
-	NumStartup    int            `json:"numstartup,omitempty"`
-	NumShutdown   int            `json:"numshutdown,omitempty"`
-	Renderers     map[string]int `json:"renderers,omitempty"`
+	ActiveMinutes int                          `json:"activeminutes"`
+	FgMinutes     int                          `json:"fgminutes"`
+	OpenMinutes   int                          `json:"openminutes"`
+	NumTabs       int                          `json:"numtabs"`
+	NumBlocks     int                          `json:"numblocks,omitempty"`
+	NumWindows    int                          `json:"numwindows,omitempty"`
+	NumSSHConn    int                          `json:"numsshconn,omitempty"`
+	NumWSLConn    int                          `json:"numwslconn,omitempty"`
+	NumMagnify    int                          `json:"nummagnify,omitempty"`
+	NewTab        int                          `json:"newtab"`
+	NumStartup    int                          `json:"numstartup,omitempty"`
+	NumShutdown   int                          `json:"numshutdown,omitempty"`
+	NumPanics     int                          `json:"numpanics,omitempty"`
+	SetTabTheme   int                          `json:"settabtheme,omitempty"`
+	Displays      []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
+	Renderers     map[string]int               `json:"renderers,omitempty"`
+	Blocks        map[string]int               `json:"blocks,omitempty"`
+	WshCmds       map[string]int               `json:"wshcmds,omitempty"`
+	Conn          map[string]int               `json:"conn,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -88,13 +77,10 @@ func AutoUpdateChannel() string {
 	return settings.Settings.AutoUpdateChannel
 }
 
-func IsAllowedRenderer(renderer string) bool {
-	return allowedRenderers[renderer]
-}
-
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
-func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
+func GoUpdateActivityWrap(update wshrpc.ActivityUpdate, debugStr string) {
 	go func() {
+		defer panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap")
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 		err := UpdateActivity(ctx, update)
@@ -105,7 +91,7 @@ func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
 	}()
 }
 
-func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
+func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 	now := time.Now()
 	dayStr := daystr.GetCurDayStr()
 	txErr := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
@@ -127,8 +113,23 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.NewTab += update.NewTab
 		tdata.NumStartup += update.Startup
 		tdata.NumShutdown += update.Shutdown
+		tdata.SetTabTheme += update.SetTabTheme
+		tdata.NumMagnify += update.NumMagnify
+		tdata.NumPanics += update.NumPanics
 		if update.NumTabs > 0 {
 			tdata.NumTabs = update.NumTabs
+		}
+		if update.NumBlocks > 0 {
+			tdata.NumBlocks = update.NumBlocks
+		}
+		if update.NumWindows > 0 {
+			tdata.NumWindows = update.NumWindows
+		}
+		if update.NumSSHConn > 0 && update.NumSSHConn > tdata.NumSSHConn {
+			tdata.NumSSHConn = update.NumSSHConn
+		}
+		if update.NumWSLConn > 0 && update.NumWSLConn > tdata.NumWSLConn {
+			tdata.NumWSLConn = update.NumWSLConn
 		}
 		if len(update.Renderers) > 0 {
 			if tdata.Renderers == nil {
@@ -137,6 +138,28 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 			for key, val := range update.Renderers {
 				tdata.Renderers[key] += val
 			}
+		}
+		if len(update.WshCmds) > 0 {
+			if tdata.WshCmds == nil {
+				tdata.WshCmds = make(map[string]int)
+			}
+			for key, val := range update.WshCmds {
+				tdata.WshCmds[key] += val
+			}
+		}
+		if len(update.Conn) > 0 {
+			if tdata.Conn == nil {
+				tdata.Conn = make(map[string]int)
+			}
+			for key, val := range update.Conn {
+				tdata.Conn[key] += val
+			}
+		}
+		if len(update.Displays) > 0 {
+			tdata.Displays = update.Displays
+		}
+		if len(update.Blocks) > 0 {
+			tdata.Blocks = update.Blocks
 		}
 		query = `UPDATE db_activity
                  SET tdata = ?,

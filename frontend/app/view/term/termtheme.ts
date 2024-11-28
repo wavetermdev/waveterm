@@ -1,41 +1,28 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { TermViewModel } from "@/app/view/term/term";
+import { computeTheme } from "@/app/view/term/termutil";
 import { TermWrap } from "@/app/view/term/termwrap";
-import { atoms, WOS } from "@/store/global";
-import * as util from "@/util/util";
+import { atoms } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 
 interface TermThemeProps {
     blockId: string;
     termRef: React.RefObject<TermWrap>;
+    model: TermViewModel;
 }
 
-const TermThemeUpdater = ({ blockId, termRef }: TermThemeProps) => {
+const TermThemeUpdater = ({ blockId, model, termRef }: TermThemeProps) => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
-    const termthemes = fullConfig?.termthemes;
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    let defaultThemeName = "default-dark";
-    let themeName = blockData.meta?.["term:theme"] ?? "default-dark";
-
-    const defaultTheme: TermThemeType = termthemes?.[defaultThemeName] || ({} as any);
-    const theme: TermThemeType = termthemes?.[themeName] || ({} as any);
-
+    const blockTermTheme = useAtomValue(model.termThemeNameAtom);
+    const [theme, _] = computeTheme(fullConfig, blockTermTheme);
     useEffect(() => {
-        const combinedTheme = { ...defaultTheme };
-        for (const key in theme) {
-            if (!util.isBlank(theme[key])) {
-                combinedTheme[key] = theme[key];
-            }
-        }
         if (termRef.current?.terminal) {
-            let themeCopy = { ...combinedTheme };
-            themeCopy.background = "#00000000";
-            termRef.current.terminal.options.theme = themeCopy;
+            termRef.current.terminal.options.theme = theme;
         }
-    }, [defaultTheme, theme]);
-
+    }, [theme]);
     return null;
 };
 

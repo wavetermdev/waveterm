@@ -10,6 +10,7 @@
 # Wave Terminal
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
+[![waveterm](https://snapcraft.io/waveterm/trending.svg?name=0)](https://snapcraft.io/waveterm)
 
 Wave is an open-source terminal that can launch graphical widgets, controlled and integrated directly with the CLI. It includes a base terminal, directory browser, file previews (images, media, markdown), a graphical editor (for code/text files), a web browser, and integrated AI chat.
 
@@ -21,19 +22,15 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 
 Wave Terminal works on macOS, Linux, and Windows.
 
-Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
+Platform-specific installation instructions can be found [here](https://docs.waveterm.dev/gettingstarted).
 
-Also available as a Homebrew Cask for macOS:
-
-```bash
-brew install --cask wave
-```
+You can also install Wave Terminal directly from: [www.waveterm.dev/download](https://www.waveterm.dev/download).
 
 ### Minimum requirements
 
 Wave Terminal and WSH run on the following platforms:
 
-- macOS 10.15 or later (arm64, x64)
+- macOS 11 or later (arm64, x64)
 - Windows 10 1809 or later (x64)
 - Linux based on glibc-2.28 or later (Debian 10, RHEL 8, Ubuntu 20.04, etc.) (arm64, x64)
 
@@ -58,7 +55,7 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 - [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
 - [Contribution guidelines](CONTRIBUTING.md#before-you-start)
-- [Storybook](https://storybook.waveterm.dev)
+- [Storybook](https://docs.waveterm.dev/storybook)
 
 ### Activity
 

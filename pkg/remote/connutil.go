@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package remote
 
 import (
@@ -13,11 +16,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kevinburke/ssh_config"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"golang.org/x/crypto/ssh"
 )
 
-var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
+var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-zA-Z0-9][a-zA-Z0-9.-]*)(?::([0-9]+))?$`)
 
 func ParseOpts(input string) (*SSHOpts, error) {
 	m := userHostRe.FindStringSubmatch(input)
@@ -286,6 +289,7 @@ func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) erro
 	}
 
 	go func() {
+		defer panichandler.PanicHandler("connutil:CpHostToRemote")
 		io.Copy(installStdin, input)
 		session.Close() // this allows the command to complete for reasons i don't fully understand
 	}()
@@ -336,14 +340,15 @@ func IsPowershell(shellPath string) bool {
 }
 
 func NormalizeConfigPattern(pattern string) string {
-	userName, err := ssh_config.GetStrict(pattern, "User")
+	userName, err := WaveSshConfigUserSettings().GetStrict(pattern, "User")
 	if err != nil {
+		log.Printf("warning: error parsing username of %s for conn dropdown: %v", pattern, err)
 		localUser, err := user.Current()
 		if err == nil {
 			userName = localUser.Username
 		}
 	}
-	port, err := ssh_config.GetStrict(pattern, "Port")
+	port, err := WaveSshConfigUserSettings().GetStrict(pattern, "Port")
 	if err != nil {
 		port = "22"
 	}

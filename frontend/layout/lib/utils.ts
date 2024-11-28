@@ -61,7 +61,8 @@ export function determineDropDirection(dimensions?: Dimensions, offset?: XYCoord
 export function setTransform(
     { top, left, width, height }: Dimensions,
     setSize = true,
-    roundVals = true
+    roundVals = true,
+    zIndex?: number | string
 ): CSSProperties {
     // Replace unitless items with px
     const topRounded = roundVals ? Math.floor(top) : top;
@@ -80,6 +81,7 @@ export function setTransform(
         width: setSize ? `${widthRounded}px` : undefined,
         height: setSize ? `${heightRounded}px` : undefined,
         position: "absolute",
+        zIndex: zIndex,
     };
 }
 

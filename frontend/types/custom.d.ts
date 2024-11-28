@@ -7,16 +7,15 @@ import type * as rxjs from "rxjs";
 
 declare global {
     type GlobalAtomsType = {
-        windowId: jotai.Atom<string>; // readonly
         clientId: jotai.Atom<string>; // readonly
         client: jotai.Atom<Client>; // driven from WOS
-        uiContext: jotai.Atom<UIContext>; // driven from windowId, activetabid, etc.
+        uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
         waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         tabAtom: jotai.Atom<Tab>; // driven from WOS
-        activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
+        staticTabId: jotai.Atom<string>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         prefersReducedMotionAtom: jotai.Atom<boolean>;
@@ -25,6 +24,9 @@ declare global {
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
         flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
+        notifications: jotai.PrimitiveAtom<NotificationType[]>;
+        notificationPopoverMode: jotia.atom<boolean>;
+        reinitVersion: jotai.PrimitiveAtom<number>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -50,6 +52,13 @@ declare global {
         blockId: string;
     };
 
+    type WaveInitOpts = {
+        tabId: string;
+        clientId: string;
+        windowId: string;
+        activate: boolean;
+    };
+
     type ElectronApi = {
         getAuthKey(): string;
         getIsDev(): boolean;
@@ -58,6 +67,8 @@ declare global {
         getEnv: (varName: string) => string;
         getUserName: () => string;
         getHostName: () => string;
+        getDataDir: () => string;
+        getConfigDir: () => string;
         getWebviewPreload: () => string;
         getAboutModalDetails: () => AboutModalDetails;
         getDocsiteUrl: () => string;
@@ -78,7 +89,14 @@ declare global {
         setWebviewFocus: (focusedId: number) => void; // focusedId si the getWebContentsId of the webview
         registerGlobalWebviewKeys: (keys: string[]) => void;
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
+        setActiveTab: (tabId: string) => void;
+        createTab: () => void;
+        closeTab: (tabId: string) => void;
+        setWindowInitStatus: (status: "ready" | "wave-ready") => void;
+        onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
+        sendLog: (log: string) => void;
         onQuicklook: (filePath: string) => void;
+        openNativePath(filePath: string): void;
     };
 
     type ElectronContextMenuItem = {
@@ -117,48 +135,6 @@ declare global {
         key: string;
         keyType: string;
     };
-
-    interface WaveKeyboardEvent {
-        type: "keydown" | "keyup" | "keypress" | "unknown";
-        /**
-         * Equivalent to KeyboardEvent.key.
-         */
-        key: string;
-        /**
-         * Equivalent to KeyboardEvent.code.
-         */
-        code: string;
-        /**
-         * Equivalent to KeyboardEvent.shiftKey.
-         */
-        shift: boolean;
-        /**
-         * Equivalent to KeyboardEvent.controlKey.
-         */
-        control: boolean;
-        /**
-         * Equivalent to KeyboardEvent.altKey.
-         */
-        alt: boolean;
-        /**
-         * Equivalent to KeyboardEvent.metaKey.
-         */
-        meta: boolean;
-        /**
-         * cmd is special, on mac it is meta, on windows it is alt
-         */
-        cmd: boolean;
-        /**
-         * option is special, on mac it is alt, on windows it is meta
-         */
-        option: boolean;
-
-        repeat: boolean;
-        /**
-         * Equivalent to KeyboardEvent.location.
-         */
-        location: number;
-    }
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
@@ -229,6 +205,7 @@ declare global {
 
     type MenuItem = {
         label: string;
+        icon?: string | React.ReactNode;
         subItems?: MenuItem[];
         onClick?: (e: React.MouseEvent<any>) => void;
     };
@@ -254,6 +231,7 @@ declare global {
         endIconButtons?: jotai.Atom<IconButtonDecl[]>;
         blockBg?: jotai.Atom<MetaType>;
         manageConnection?: jotai.Atom<boolean>;
+        noPadding?: jotai.Atom<boolean>;
 
         onBack?: () => void;
         onForward?: () => void;
@@ -262,6 +240,7 @@ declare global {
         getSettingsMenuItems?: () => ContextMenuItem[];
         giveFocus?: () => boolean;
         keyDownHandler?: (e: WaveKeyboardEvent) => boolean;
+        dispose?: () => void;
     }
 
     type UpdaterStatus = "up-to-date" | "checking" | "downloading" | "ready" | "error" | "installing";
@@ -300,6 +279,7 @@ declare global {
         status: ConnStatusType;
         iconColor: string;
         onSelect?: (_: string) => void;
+        current?: boolean;
     }
 
     interface SuggestionConnectionScope {
@@ -322,6 +302,27 @@ declare global {
         expiration: number;
     };
 
+    export type NotificationActionType = {
+        label: string;
+        actionKey: string;
+        rightIcon?: string;
+        color?: "green" | "grey";
+        disabled?: boolean;
+    };
+
+    export type NotificationType = {
+        id?: string;
+        icon: string;
+        title: string;
+        message: string;
+        timestamp: string;
+        expiration?: number;
+        hidden?: boolean;
+        actions?: NotificationActionType[];
+        persistent?: boolean;
+        type?: "error" | "update" | "info" | "warning";
+    };
+
     interface AbstractWshClient {
         recvRpcMessage(msg: RpcMessage): void;
     }
@@ -331,6 +332,28 @@ declare global {
         startTs: number;
         command: string;
         msgFn: (msg: RpcMessage) => void;
+    };
+
+    type WaveBrowserWindow = Electron.BaseWindow & {
+        waveWindowId: string;
+        waveReadyPromise: Promise<void>;
+        allTabViews: Map<string, WaveTabView>;
+        activeTabView: WaveTabView;
+        alreadyClosed: boolean;
+        deleteAllowed: boolean;
+    };
+
+    type WaveTabView = Electron.WebContentsView & {
+        isActiveTab: boolean;
+        waveWindowId: string; // set when showing in an active window
+        waveTabId: string; // always set, WaveTabViews are unique per tab
+        lastUsedTs: number; // ts milliseconds
+        createdTs: number; // ts milliseconds
+        initPromise: Promise<void>;
+        savedInitOpts: WaveInitOpts;
+        waveReadyPromise: Promise<void>;
+        initResolve: () => void;
+        waveReadyResolve: () => void;
     };
 
     type TimeSeriesMeta = {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import "./quickelems.less";
+import "./quickelems.scss";
 
 function CenteredLoadingDiv() {
     return <CenteredDiv>loading...</CenteredDiv>;

@@ -5,7 +5,7 @@ import { Modal } from "@/app/modals/modal";
 import { modalsModel } from "@/app/store/modalmodel";
 
 import { ReactNode } from "react";
-import "./messagemodal.less";
+import "./messagemodal.scss";
 
 const MessageModal = ({ children }: { children: ReactNode }) => {
     function closeModal() {
