@@ -13,11 +13,14 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
+func CreateWorkspace(ctx context.Context, name string, icon string, color string) (*waveobj.Workspace, error) {
 	log.Println("CreateWorkspace")
 	ws := &waveobj.Workspace{
 		OID:    uuid.NewString(),
 		TabIds: []string{},
+		Name:   name,
+		Icon:   icon,
+		Color:  color,
 	}
 	wstore.DBInsert(ctx, ws)
 	return ws, nil

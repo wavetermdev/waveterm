@@ -97,13 +97,17 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		log.Printf("client has windows\n")
 		return nil, false, nil
 	}
-	window, err := CreateWindow(ctx, nil, "")
+	defaultWs, err := CreateWorkspace(ctx, "Default workspace", "circle", "green")
 	if err != nil {
-		return nil, false, fmt.Errorf("error creating window: %w", err)
+		return nil, false, fmt.Errorf("error creating default workspace: %w", err)
 	}
-	_, err = CreateTab(ctx, window.WorkspaceId, "", true)
+	_, err = CreateTab(ctx, defaultWs.OID, "", true)
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating tab: %w", err)
+	}
+	window, err := CreateWindow(ctx, nil, defaultWs.OID)
+	if err != nil {
+		return nil, false, fmt.Errorf("error creating window: %w", err)
 	}
 	return window, firstRun, nil
 }
