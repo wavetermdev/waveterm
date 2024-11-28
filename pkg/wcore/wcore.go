@@ -78,7 +78,7 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		firstRun = true
 	}
 	if client.TempOID == "" {
-		log.Printf("client.TempOID is empty\n")
+		log.Println("client.TempOID is empty")
 		client.TempOID = uuid.NewString()
 		err = wstore.DBUpdate(ctx, client)
 		if err != nil {
@@ -87,16 +87,17 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
-		log.Printf("client has one window\n")
+		log.Println("client has one window")
 		window := CheckAndFixWindow(ctx, client.WindowIds[0])
 		if window != nil {
 			return window, firstRun, nil
 		}
 	}
 	if len(client.WindowIds) > 0 {
-		log.Printf("client has windows\n")
+		log.Println("client has windows")
 		return nil, false, nil
 	}
+	log.Println("client has no windows, creating default workspace")
 	defaultWs, err := CreateWorkspace(ctx, "Default workspace", "circle", "green")
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating default workspace: %w", err)
