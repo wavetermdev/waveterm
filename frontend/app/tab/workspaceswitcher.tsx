@@ -164,7 +164,6 @@ const WorkspaceSwitcher = () => {
         if (!workspaceList) {
             return;
         }
-        console.log(workspaceList);
         const newList: WorkspaceList = [];
         for (const entry of workspaceList) {
             // This just ensures that the atom exists for easier setting of the object
@@ -211,7 +210,6 @@ const WorkspaceSwitcher = () => {
                 className="workspace-switcher-button grey"
                 as="div"
                 onClick={() => {
-                    console.log("onclick");
                     fireAndForget(updateWorkspaceList);
                 }}
             >
@@ -258,7 +256,6 @@ const WorkspaceSwitcherItem = ({
 
     const setWorkspace = useCallback((newWorkspace: Workspace) => {
         fireAndForget(async () => {
-            console.log("setWorkspace", newWorkspace);
             setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
             setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
         });
@@ -285,7 +282,13 @@ const WorkspaceSwitcherItem = ({
 
     return (
         <ExpandableMenuItemGroup key={workspace.oid} isOpen={isOpen} className={clsx({ "is-active": isActive })}>
-            <ExpandableMenuItemGroupTitle onClick={() => getApi().switchWorkspace(workspace.oid)}>
+            <ExpandableMenuItemGroupTitle
+                onClick={() => {
+                    getApi().switchWorkspace(workspace.oid);
+                    // Create a fake escape key event to close the popover
+                    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+                }}
+            >
                 <div
                     className="menu-group-title-wrapper"
                     style={
