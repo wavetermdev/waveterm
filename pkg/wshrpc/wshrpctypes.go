@@ -171,7 +171,7 @@ type WshRpcInterface interface {
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 	FocusWindowCommand(ctx context.Context, windowId string) error
 
-	WorkspaceListCommand(ctx context.Context) (waveobj.WorkspaceList, error)
+	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
@@ -554,6 +554,11 @@ type WaveInfoData struct {
 	BuildTime string `json:"buildtime"`
 	ConfigDir string `json:"configdir"`
 	DataDir   string `json:"datadir"`
+}
+
+type WorkspaceInfoData struct {
+	WindowId      string             `json:"windowid"`
+	WorkspaceData *waveobj.Workspace `json:"workspacedata"`
 }
 
 type AiMessageData struct {

@@ -723,8 +723,23 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 	}, nil
 }
 
-func (ws *WshServer) WorkspaceListCommand(ctx context.Context) (waveobj.WorkspaceList, error) {
-	return wcore.ListWorkspaces(ctx)
+func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.WorkspaceInfoData, error) {
+	workspaceList, err := wcore.ListWorkspaces(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error listing workspaces: %w", err)
+	}
+	var rtn []wshrpc.WorkspaceInfoData
+	for _, workspaceEntry := range workspaceList {
+		workspaceData, err := wcore.GetWorkspace(ctx, workspaceEntry.WorkspaceId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting workspace: %w", err)
+		}
+		rtn = append(rtn, wshrpc.WorkspaceInfoData{
+			WindowId:      workspaceEntry.WindowId,
+			WorkspaceData: workspaceData,
+		})
+	}
+	return rtn, nil
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)

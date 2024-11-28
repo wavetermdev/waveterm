@@ -379,8 +379,8 @@ func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, o
 }
 
 // command "workspacelist", wshserver.WorkspaceListCommand
-func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (waveobj.WorkspaceList, error) {
-	resp, err := sendRpcRequestCallHelper[waveobj.WorkspaceList](w, "workspacelist", nil, opts)
+func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.WorkspaceInfoData, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.WorkspaceInfoData](w, "workspacelist", nil, opts)
 	return resp, err
 }
 

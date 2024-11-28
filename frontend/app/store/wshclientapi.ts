@@ -318,7 +318,7 @@ class RpcApiType {
     }
 
     // command "workspacelist" [call]
-    WorkspaceListCommand(client: WshClient, opts?: RpcOpts): Promise<WorkspaceListEntry[]> {
+    WorkspaceListCommand(client: WshClient, opts?: RpcOpts): Promise<WorkspaceInfoData[]> {
         return client.wshRpcCall("workspacelist", null, opts);
     }
 

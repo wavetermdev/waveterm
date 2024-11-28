@@ -1122,6 +1122,12 @@ declare global {
         activetabid: string;
     };
 
+    // wshrpc.WorkspaceInfoData
+    type WorkspaceInfoData = {
+        windowid: string;
+        workspacedata: Workspace;
+    };
+
     // waveobj.WorkspaceListEntry
     type WorkspaceListEntry = {
         workspaceid: string;
