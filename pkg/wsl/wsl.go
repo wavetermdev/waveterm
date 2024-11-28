@@ -298,13 +298,13 @@ func (conn *WslConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			QueryText:    queryText,
 			Title:        title,
 			Markdown:     true,
-			CheckBoxMsgs: []string{"Don't show me this again"},
+			CheckBoxMsg:  "Don't show me this again",
 		}
 		response, err := userinput.GetUserInput(ctx, request)
 		if err != nil || !response.Confirm {
 			return err
 		}
-		if response.CheckboxStats[0] {
+		if response.CheckboxStat {
 			meta := waveobj.MetaMapType{
 				wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
 			}

@@ -13,7 +13,7 @@ import "./userinputmodal.scss";
 const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = useState("");
     const [countdown, setCountdown] = useState(Math.floor(userInputRequest.timeoutms / 1000));
-    const checkboxRefs = userInputRequest.checkboxmsgs.map(() => useRef<HTMLInputElement>());
+    const checkboxRef = useRef<HTMLInputElement>();
 
     const handleSendErrResponse = useCallback(() => {
         UserInputService.SendUserInputResponse({
@@ -29,10 +29,11 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             type: "userinputresp",
             requestid: userInputRequest.requestid,
             text: responseText,
-            checkboxstats: checkboxRefs.map((boxRef) => boxRef.current?.checked ?? false),
+            checkboxstat: checkboxRef?.current?.checked ?? false,
         });
         modalsModel.popModal();
     }, [responseText, userInputRequest]);
+    console.log("bar");
 
     const handleSendConfirm = useCallback(
         (response: boolean) => {
@@ -40,7 +41,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 type: "userinputresp",
                 requestid: userInputRequest.requestid,
                 confirm: response,
-                checkboxstats: checkboxRefs.map((boxRef) => boxRef.current?.checked ?? false),
+                checkboxstat: checkboxRef?.current?.checked ?? false,
             });
             modalsModel.popModal();
         },
@@ -57,6 +58,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 break;
         }
     }, [handleSendConfirm, handleSendText, userInputRequest.responsetype]);
+    console.log("baz");
 
     const handleKeyDown = useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
@@ -78,6 +80,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
         return <span className="userinput-text">{userInputRequest.querytext}</span>;
     }, [userInputRequest.markdown, userInputRequest.querytext]);
+    console.log("foobarbaz");
 
     const inputBox = useMemo(() => {
         if (userInputRequest.responsetype === "confirm") {
@@ -95,30 +98,27 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             />
         );
     }, [userInputRequest.responsetype, userInputRequest.publictext, responseText, handleKeyDown, setResponseText]);
+    console.log("mem1");
 
     const optionalCheckbox = useMemo(() => {
-        if (userInputRequest.checkboxmsgs.length == 0) {
+        if (userInputRequest.checkboxmsg == "") {
             return <></>;
         }
         return (
             <div className="userinput-checkbox-container">
-                {userInputRequest.checkboxmsgs.map((msg, idx) => (
-                    <div className="userinput-checkbox-row">
-                        <input
-                            type="checkbox"
-                            id={`uicheckbox-${userInputRequest.requestid}`}
-                            className="userinput-checkbox"
-                            ref={checkboxRefs[idx]}
-                            key={crypto.randomUUID()}
-                        />
-                        <label htmlFor={`uicheckbox-${userInputRequest.requestid}}`} key={crypto.randomUUID()}>
-                            {msg}
-                        </label>
-                    </div>
-                ))}
+                <div className="userinput-checkbox-row">
+                    <input
+                        type="checkbox"
+                        id={`uicheckbox-${userInputRequest.requestid}`}
+                        className="userinput-checkbox"
+                        ref={checkboxRef}
+                    />
+                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}}`}>{userInputRequest.checkboxmsg}</label>
+                </div>
             </div>
         );
     }, []);
+    console.log("mem2");
 
     useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
@@ -133,6 +133,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
         return () => clearTimeout(timeout);
     }, [countdown]);
+    console.log("count");
 
     const handleNegativeResponse = useCallback(() => {
         switch (userInputRequest.responsetype) {
@@ -144,6 +145,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 break;
         }
     }, [userInputRequest.responsetype, handleSendErrResponse, handleSendConfirm]);
+    console.log("before end");
 
     return (
         <Modal

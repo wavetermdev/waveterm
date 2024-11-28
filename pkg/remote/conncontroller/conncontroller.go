@@ -332,7 +332,7 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			QueryText:    queryText,
 			Title:        title,
 			Markdown:     true,
-			CheckBoxMsgs: []string{"Automatically install for all connections"},
+			CheckBoxMsg:  "Automatically install for all connections",
 			OkLabel:      "Install wsh",
 			CancelLabel:  "No wsh",
 		}
@@ -349,7 +349,7 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			}
 			return &WshInstallSkipError{}
 		}
-		if response.CheckboxStats[0] {
+		if response.CheckboxStat {
 			meta := waveobj.MetaMapType{
 				wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
 			}

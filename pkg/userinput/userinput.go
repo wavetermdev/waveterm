@@ -17,25 +17,25 @@ import (
 var MainUserInputHandler = UserInputHandler{Channels: make(map[string](chan *UserInputResponse), 1)}
 
 type UserInputRequest struct {
-	RequestId    string   `json:"requestid"`
-	QueryText    string   `json:"querytext"`
-	ResponseType string   `json:"responsetype"`
-	Title        string   `json:"title"`
-	Markdown     bool     `json:"markdown"`
-	TimeoutMs    int      `json:"timeoutms"`
-	CheckBoxMsgs []string `json:"checkboxmsgs"`
-	PublicText   bool     `json:"publictext"`
-	OkLabel      string   `json:"oklabel,omitempty"`
-	CancelLabel  string   `json:"cancellabel,omitempty"`
+	RequestId    string `json:"requestid"`
+	QueryText    string `json:"querytext"`
+	ResponseType string `json:"responsetype"`
+	Title        string `json:"title"`
+	Markdown     bool   `json:"markdown"`
+	TimeoutMs    int    `json:"timeoutms"`
+	CheckBoxMsg  string `json:"checkboxmsg"`
+	PublicText   bool   `json:"publictext"`
+	OkLabel      string `json:"oklabel,omitempty"`
+	CancelLabel  string `json:"cancellabel,omitempty"`
 }
 
 type UserInputResponse struct {
-	Type          string `json:"type"`
-	RequestId     string `json:"requestid"`
-	Text          string `json:"text,omitempty"`
-	Confirm       bool   `json:"confirm,omitempty"`
-	ErrorMsg      string `json:"errormsg,omitempty"`
-	CheckboxStats []bool `json:"checkboxstats,omitempty"`
+	Type         string `json:"type"`
+	RequestId    string `json:"requestid"`
+	Text         string `json:"text,omitempty"`
+	Confirm      bool   `json:"confirm,omitempty"`
+	ErrorMsg     string `json:"errormsg,omitempty"`
+	CheckboxStat bool   `json:"checkboxstat,omitempty"`
 }
 
 type UserInputHandler struct {
