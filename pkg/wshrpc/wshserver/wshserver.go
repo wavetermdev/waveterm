@@ -587,7 +587,7 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 	return events, nil
 }
 
-func (ws *WshServer) SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error {
+func (ws *WshServer) SetConfigCommand(ctx context.Context, data wshrpc.MetaSettingsType) error {
 	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }
@@ -623,14 +623,15 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false)
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
 	return conn.Close()
 }
 
-func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) error {
+func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
+	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(ctx, distroName, false)
@@ -643,11 +644,11 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) er
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false)
+	conn := conncontroller.GetConn(ctx, connOpts, false, &connRequest.Keywords)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
-	return conn.Connect(ctx)
+	return conn.Connect(ctx, &connRequest.Keywords)
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
@@ -663,7 +664,7 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false)
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -753,14 +754,14 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 			delete(data, key)
 		}
 	}
-	activityUpdate := telemetry.ActivityUpdate{
+	activityUpdate := wshrpc.ActivityUpdate{
 		WshCmds: data,
 	}
 	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
 	return nil
 }
 
-func (ws *WshServer) ActivityCommand(ctx context.Context, activity telemetry.ActivityUpdate) error {
+func (ws *WshServer) ActivityCommand(ctx context.Context, activity wshrpc.ActivityUpdate) error {
 	telemetry.GoUpdateActivityWrap(activity, "wshrpc-activity")
 	return nil
 }

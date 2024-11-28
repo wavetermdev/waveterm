@@ -15,7 +15,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [countdown, setCountdown] = useState(Math.floor(userInputRequest.timeoutms / 1000));
     const checkboxRef = useRef<HTMLInputElement>();
 
-    const handleSendCancel = useCallback(() => {
+    const handleSendErrResponse = useCallback(() => {
         UserInputService.SendUserInputResponse({
             type: "userinputresp",
             requestid: userInputRequest.requestid,
@@ -29,20 +29,24 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             type: "userinputresp",
             requestid: userInputRequest.requestid,
             text: responseText,
-            checkboxstat: checkboxRef.current?.checked ?? false,
+            checkboxstat: checkboxRef?.current?.checked ?? false,
         });
         modalsModel.popModal();
     }, [responseText, userInputRequest]);
+    console.log("bar");
 
-    const handleSendConfirm = useCallback(() => {
-        UserInputService.SendUserInputResponse({
-            type: "userinputresp",
-            requestid: userInputRequest.requestid,
-            confirm: true,
-            checkboxstat: checkboxRef.current?.checked ?? false,
-        });
-        modalsModel.popModal();
-    }, [userInputRequest]);
+    const handleSendConfirm = useCallback(
+        (response: boolean) => {
+            UserInputService.SendUserInputResponse({
+                type: "userinputresp",
+                requestid: userInputRequest.requestid,
+                confirm: response,
+                checkboxstat: checkboxRef?.current?.checked ?? false,
+            });
+            modalsModel.popModal();
+        },
+        [userInputRequest]
+    );
 
     const handleSubmit = useCallback(() => {
         switch (userInputRequest.responsetype) {
@@ -50,15 +54,16 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 handleSendText();
                 break;
             case "confirm":
-                handleSendConfirm();
+                handleSendConfirm(true);
                 break;
         }
     }, [handleSendConfirm, handleSendText, userInputRequest.responsetype]);
+    console.log("baz");
 
     const handleKeyDown = useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
             if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
-                handleSendCancel();
+                handleSendErrResponse();
                 return;
             }
             if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
@@ -66,7 +71,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 return true;
             }
         },
-        [handleSendCancel, handleSubmit]
+        [handleSendErrResponse, handleSubmit]
     );
 
     const queryText = useMemo(() => {
@@ -75,6 +80,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
         return <span className="userinput-text">{userInputRequest.querytext}</span>;
     }, [userInputRequest.markdown, userInputRequest.querytext]);
+    console.log("foobarbaz");
 
     const inputBox = useMemo(() => {
         if (userInputRequest.responsetype === "confirm") {
@@ -92,6 +98,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             />
         );
     }, [userInputRequest.responsetype, userInputRequest.publictext, responseText, handleKeyDown, setResponseText]);
+    console.log("mem1");
 
     const optionalCheckbox = useMemo(() => {
         if (userInputRequest.checkboxmsg == "") {
@@ -99,22 +106,25 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
         return (
             <div className="userinput-checkbox-container">
-                <input
-                    type="checkbox"
-                    id={`uicheckbox-${userInputRequest.requestid}`}
-                    className="userinput-checkbox"
-                    ref={checkboxRef}
-                />
-                <label htmlFor={`uicheckbox-${userInputRequest.requestid}}`}>{userInputRequest.checkboxmsg}</label>
+                <div className="userinput-checkbox-row">
+                    <input
+                        type="checkbox"
+                        id={`uicheckbox-${userInputRequest.requestid}`}
+                        className="userinput-checkbox"
+                        ref={checkboxRef}
+                    />
+                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}}`}>{userInputRequest.checkboxmsg}</label>
+                </div>
             </div>
         );
     }, []);
+    console.log("mem2");
 
     useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
         if (countdown <= 0) {
             timeout = setTimeout(() => {
-                handleSendCancel();
+                handleSendErrResponse();
             }, 300);
         } else {
             timeout = setTimeout(() => {
@@ -123,9 +133,28 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
         return () => clearTimeout(timeout);
     }, [countdown]);
+    console.log("count");
+
+    const handleNegativeResponse = useCallback(() => {
+        switch (userInputRequest.responsetype) {
+            case "text":
+                handleSendErrResponse();
+                break;
+            case "confirm":
+                handleSendConfirm(false);
+                break;
+        }
+    }, [userInputRequest.responsetype, handleSendErrResponse, handleSendConfirm]);
+    console.log("before end");
 
     return (
-        <Modal onOk={() => handleSubmit()} onCancel={() => handleSendCancel()} onClose={() => handleSendCancel()}>
+        <Modal
+            onOk={() => handleSubmit()}
+            onCancel={() => handleNegativeResponse()}
+            onClose={() => handleSendErrResponse()}
+            okLabel={userInputRequest.oklabel}
+            cancelLabel={userInputRequest.cancellabel}
+        >
             <div className="userinput-header">{userInputRequest.title + ` (${countdown}s)`}</div>
             <div className="userinput-body">
                 {queryText}

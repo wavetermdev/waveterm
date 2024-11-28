@@ -113,7 +113,7 @@ func telemetryLoop() {
 }
 
 func panicTelemetryHandler() {
-	activity := telemetry.ActivityUpdate{NumPanics: 1}
+	activity := wshrpc.ActivityUpdate{NumPanics: 1}
 	err := telemetry.UpdateActivity(context.Background(), activity)
 	if err != nil {
 		log.Printf("error updating activity (panicTelemetryHandler): %v\n", err)
@@ -137,7 +137,7 @@ func sendTelemetryWrapper() {
 }
 
 func beforeSendActivityUpdate(ctx context.Context) {
-	activity := telemetry.ActivityUpdate{}
+	activity := wshrpc.ActivityUpdate{}
 	activity.NumTabs, _ = wstore.DBGetCount[*waveobj.Tab](ctx)
 	activity.NumBlocks, _ = wstore.DBGetCount[*waveobj.Block](ctx)
 	activity.Blocks, _ = wstore.DBGetBlockViewCounts(ctx)
@@ -153,7 +153,7 @@ func beforeSendActivityUpdate(ctx context.Context) {
 func startupActivityUpdate() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	activity := telemetry.ActivityUpdate{Startup: 1}
+	activity := wshrpc.ActivityUpdate{Startup: 1}
 	err := telemetry.UpdateActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
 	if err != nil {
 		log.Printf("error updating startup activity: %v\n", err)
@@ -163,7 +163,7 @@ func startupActivityUpdate() {
 func shutdownActivityUpdate() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancelFn()
-	activity := telemetry.ActivityUpdate{Shutdown: 1}
+	activity := wshrpc.ActivityUpdate{Shutdown: 1}
 	err := telemetry.UpdateActivity(ctx, activity) // do NOT use the go routine wrap here (this needs to be synchronous)
 	if err != nil {
 		log.Printf("error updating shutdown activity: %v\n", err)

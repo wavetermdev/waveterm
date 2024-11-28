@@ -25,6 +25,8 @@ type UserInputRequest struct {
 	TimeoutMs    int    `json:"timeoutms"`
 	CheckBoxMsg  string `json:"checkboxmsg"`
 	PublicText   bool   `json:"publictext"`
+	OkLabel      string `json:"oklabel,omitempty"`
+	CancelLabel  string `json:"cancellabel,omitempty"`
 }
 
 type UserInputResponse struct {

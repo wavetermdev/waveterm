@@ -5,17 +5,17 @@
 package wshrpc
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
@@ -133,11 +133,11 @@ type WshRpcInterface interface {
 	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
-	SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error
+	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
-	ActivityCommand(ctx context.Context, data telemetry.ActivityUpdate) error
+	ActivityCommand(ctx context.Context, data ActivityUpdate) error
 	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 
@@ -146,7 +146,7 @@ type WshRpcInterface interface {
 	WslStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	ConnEnsureCommand(ctx context.Context, connName string) error
 	ConnReinstallWshCommand(ctx context.Context, connName string) error
-	ConnConnectCommand(ctx context.Context, connName string) error
+	ConnConnectCommand(ctx context.Context, connRequest ConnRequest) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
 	WslListCommand(ctx context.Context) ([]string, error)
@@ -440,6 +440,31 @@ type CommandRemoteWriteFileData struct {
 	CreateMode os.FileMode `json:"createmode,omitempty"`
 }
 
+type ConnKeywords struct {
+	WshEnabled          *bool `json:"wshenabled,omitempty"`
+	AskBeforeWshInstall *bool `json:"askbeforewshinstall,omitempty"`
+
+	SshUser                         string   `json:"ssh:user,omitempty"`
+	SshHostName                     string   `json:"ssh:hostname,omitempty"`
+	SshPort                         string   `json:"ssh:port,omitempty"`
+	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
+	SshBatchMode                    bool     `json:"ssh:batchmode,omitempty"`
+	SshPubkeyAuthentication         bool     `json:"ssh:pubkeyauthentication,omitempty"`
+	SshPasswordAuthentication       bool     `json:"ssh:passwordauthentication,omitempty"`
+	SshKbdInteractiveAuthentication bool     `json:"ssh:kbdinteractiveauthentication,omitempty"`
+	SshPreferredAuthentications     []string `json:"ssh:preferredauthentications,omitempty"`
+	SshAddKeysToAgent               bool     `json:"ssh:addkeystoagent,omitempty"`
+	SshIdentityAgent                string   `json:"ssh:identityagent,omitempty"`
+	SshProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
+	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
+	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
+}
+
+type ConnRequest struct {
+	Host     string       `json:"host"`
+	Keywords ConnKeywords `json:"keywords,omitempty"`
+}
+
 const (
 	TimeSeries_Cpu = "cpu"
 )
@@ -449,8 +474,28 @@ type TimeSeriesData struct {
 	Values map[string]float64 `json:"values"`
 }
 
+type MetaSettingsType struct {
+	waveobj.MetaMapType
+}
+
+func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
+	var metaMap waveobj.MetaMapType
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&metaMap); err != nil {
+		return err
+	}
+	*m = MetaSettingsType{MetaMapType: metaMap}
+	return nil
+}
+
+func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.MetaMapType)
+}
+
 type ConnStatus struct {
 	Status        string `json:"status"`
+	WshEnabled    bool   `json:"wshenabled"`
 	Connection    string `json:"connection"`
 	Connected     bool   `json:"connected"`
 	HasConnected  bool   `json:"hasconnected"` // true if it has *ever* connected successfully
@@ -521,4 +566,34 @@ type CommandVarResponseData struct {
 	Key    string `json:"key"`
 	Val    string `json:"val"`
 	Exists bool   `json:"exists"`
+}
+
+type ActivityDisplayType struct {
+	Width    int     `json:"width"`
+	Height   int     `json:"height"`
+	DPR      float64 `json:"dpr"`
+	Internal bool    `json:"internal,omitempty"`
+}
+
+type ActivityUpdate struct {
+	FgMinutes     int                   `json:"fgminutes,omitempty"`
+	ActiveMinutes int                   `json:"activeminutes,omitempty"`
+	OpenMinutes   int                   `json:"openminutes,omitempty"`
+	NumTabs       int                   `json:"numtabs,omitempty"`
+	NewTab        int                   `json:"newtab,omitempty"`
+	NumBlocks     int                   `json:"numblocks,omitempty"`
+	NumWindows    int                   `json:"numwindows,omitempty"`
+	NumSSHConn    int                   `json:"numsshconn,omitempty"`
+	NumWSLConn    int                   `json:"numwslconn,omitempty"`
+	NumMagnify    int                   `json:"nummagnify,omitempty"`
+	NumPanics     int                   `json:"numpanics,omitempty"`
+	Startup       int                   `json:"startup,omitempty"`
+	Shutdown      int                   `json:"shutdown,omitempty"`
+	SetTabTheme   int                   `json:"settabtheme,omitempty"`
+	BuildTime     string                `json:"buildtime,omitempty"`
+	Displays      []ActivityDisplayType `json:"displays,omitempty"`
+	Renderers     map[string]int        `json:"renderers,omitempty"`
+	Blocks        map[string]int        `json:"blocks,omitempty"`
+	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
+	Conn          map[string]int        `json:"conn,omitempty"`
 }

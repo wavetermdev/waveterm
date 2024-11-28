@@ -5,7 +5,7 @@
 
 declare global {
 
-    // telemetry.ActivityDisplayType
+    // wshrpc.ActivityDisplayType
     type ActivityDisplayType = {
         width: number;
         height: number;
@@ -13,7 +13,7 @@ declare global {
         internal?: boolean;
     };
 
-    // telemetry.ActivityUpdate
+    // wshrpc.ActivityUpdate
     type ActivityUpdate = {
         fgminutes?: number;
         activeminutes?: number;
@@ -275,9 +275,36 @@ declare global {
         err: string;
     };
 
+    // wshrpc.ConnKeywords
+    type ConnKeywords = {
+        wshenabled?: boolean;
+        askbeforewshinstall?: boolean;
+        "ssh:user"?: string;
+        "ssh:hostname"?: string;
+        "ssh:port"?: string;
+        "ssh:identityfile"?: string[];
+        "ssh:batchmode"?: boolean;
+        "ssh:pubkeyauthentication"?: boolean;
+        "ssh:passwordauthentication"?: boolean;
+        "ssh:kbdinteractiveauthentication"?: boolean;
+        "ssh:preferredauthentications"?: string[];
+        "ssh:addkeystoagent"?: boolean;
+        "ssh:identityagent"?: string;
+        "ssh:proxyjump"?: string[];
+        "ssh:userknownhostsfile"?: string[];
+        "ssh:globalknownhostsfile"?: string[];
+    };
+
+    // wshrpc.ConnRequest
+    type ConnRequest = {
+        host: string;
+        keywords?: ConnKeywords;
+    };
+
     // wshrpc.ConnStatus
     type ConnStatus = {
         status: string;
+        wshenabled: boolean;
         connection: string;
         connected: boolean;
         hasconnected: boolean;
@@ -337,9 +364,11 @@ declare global {
     type FullConfigType = {
         settings: SettingsType;
         mimetypes: {[key: string]: MimeTypeConfigType};
+        defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
+        connections: {[key: string]: ConnKeywords};
         configerrors: ConfigError[];
     };
 
@@ -608,6 +637,7 @@ declare global {
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
+        "conn:wshenabled"?: boolean;
     };
 
     // waveobj.StickerClickOptsType
@@ -701,6 +731,8 @@ declare global {
         timeoutms: number;
         checkboxmsg: string;
         publictext: boolean;
+        oklabel?: string;
+        cancellabel?: string;
     };
 
     // userinput.UserInputResponse

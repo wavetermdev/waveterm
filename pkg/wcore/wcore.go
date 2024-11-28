@@ -16,6 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -119,7 +120,7 @@ func CreateTab(ctx context.Context, windowId string, tabName string, activateTab
 			return "", fmt.Errorf("error setting active tab: %w", err)
 		}
 	}
-	telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{NewTab: 1}, "createtab")
+	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")
 	return tab.OID, nil
 }
 
@@ -282,7 +283,7 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		}
 		tctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancelFn()
-		telemetry.UpdateActivity(tctx, telemetry.ActivityUpdate{
+		telemetry.UpdateActivity(tctx, wshrpc.ActivityUpdate{
 			Renderers: map[string]int{blockView: 1},
 		})
 	}()

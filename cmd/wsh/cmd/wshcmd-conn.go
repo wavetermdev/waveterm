@@ -167,7 +167,7 @@ func connConnectRun(cmd *cobra.Command, args []string) error {
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	err := wshclient.ConnConnectCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 60000})
+	err := wshclient.ConnConnectCommand(RpcClient, wshrpc.ConnRequest{Host: connName}, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("connecting connection: %w", err)
 	}
