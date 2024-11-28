@@ -159,6 +159,7 @@ const WorkspaceSwitcher = () => {
     const setWorkspaceList = useSetAtom(workspaceMapAtom);
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const workspaceList = useAtomValue(workspaceSplitAtom);
+    const setEditingWorkspace = useSetAtom(editingWorkspaceAtom);
 
     const updateWorkspaceList = useCallback(async () => {
         const workspaceList = await WorkspaceService.ListWorkspaces();
@@ -206,7 +207,7 @@ const WorkspaceSwitcher = () => {
     const isActiveWorkspaceEphemeral = !activeWorkspace.name || !activeWorkspace.icon;
 
     return (
-        <Popover className="workspace-switcher-popover">
+        <Popover className="workspace-switcher-popover" onDismiss={() => setEditingWorkspace(null)}>
             <PopoverButton
                 className="workspace-switcher-button grey"
                 as="div"
@@ -284,7 +285,11 @@ const WorkspaceSwitcherItem = ({
     const isEditing = editingWorkspace === workspace.oid;
 
     return (
-        <ExpandableMenuItemGroup key={workspace.oid} isOpen={isEditing} className={clsx({ "is-active": isActive })}>
+        <ExpandableMenuItemGroup
+            key={workspace.oid}
+            isOpen={isEditing}
+            className={clsx({ "is-current": isCurrentWorkspace })}
+        >
             <ExpandableMenuItemGroupTitle
                 onClick={() => {
                     getApi().switchWorkspace(workspace.oid);

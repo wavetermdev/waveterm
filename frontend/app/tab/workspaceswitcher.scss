@@ -94,8 +94,6 @@
       width: 100%;
       padding: 5px 8px;
       border-radius: 4px;
-      background-color: rgb(from var(--workspace-color) r g b / 0.1);
-
       .icons {
         display: flex;
         flex-direction: row;
@@ -121,10 +119,8 @@
       border: 1px solid var(--modal-border-color);
     }
 
-    &.is-active {
-      .expandable-menu-item-group-title:hover {
-        background-color: transparent;
-      }
+    &.is-current .menu-group-title-wrapper {
+      background-color: rgb(from var(--workspace-color) r g b / 0.1);
     }
   }
 
