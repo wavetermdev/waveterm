@@ -154,6 +154,7 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 }
 
 func BootstrapNewWorkspaceLayout(ctx context.Context, workspace *waveobj.Workspace) error {
+	log.Printf("BootstrapNewWorkspaceLayout, workspace: %v\n", workspace)
 	tabId := workspace.ActiveTabId
 	newTabLayout := GetNewTabLayout()
 

@@ -78,6 +78,7 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		firstRun = true
 	}
 	if client.NextTabId == 0 {
+		log.Printf("client.NextTabId is 0\n")
 		tabCount, err := wstore.DBGetCount[*waveobj.Tab](ctx)
 		if err != nil {
 			return nil, false, fmt.Errorf("error getting tab count: %w", err)
@@ -89,6 +90,7 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		}
 	}
 	if client.TempOID == "" {
+		log.Printf("client.TempOID is empty\n")
 		client.TempOID = uuid.NewString()
 		err = wstore.DBUpdate(ctx, client)
 		if err != nil {
@@ -97,9 +99,11 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
+		log.Printf("client has one window\n")
 		CheckAndFixWindow(ctx, client.WindowIds[0])
 	}
 	if len(client.WindowIds) > 0 {
+		log.Printf("client has windows\n")
 		return nil, false, nil
 	}
 	window, err := CreateWindow(ctx, nil, "")

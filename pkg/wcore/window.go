@@ -72,6 +72,7 @@ func GetWindow(ctx context.Context, windowId string) (*waveobj.Window, error) {
 }
 
 func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId string) (*waveobj.Window, error) {
+	log.Printf("CreateWindow %v %v\n", winSize, workspaceId)
 	var ws *waveobj.Workspace
 	if workspaceId == "" {
 		ws1, err := CreateWorkspace(ctx)
@@ -122,22 +123,23 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId str
 func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error {
 	log.Printf("CloseWindow %s\n", windowId)
 	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
-	if err != nil {
-		return fmt.Errorf("error getting window: %w", err)
+	if err == nil {
+		log.Printf("got window %s\n", windowId)
+		deleted, err := DeleteWorkspace(ctx, window.WorkspaceId, false)
+		if err != nil {
+			log.Printf("error deleting workspace: %v\n", err)
+		}
+		if deleted {
+			log.Printf("deleted workspace %s\n", window.WorkspaceId)
+		}
+		err = wstore.DBDelete(ctx, waveobj.OType_Window, windowId)
+		if err != nil {
+			return fmt.Errorf("error deleting window: %w", err)
+		}
+		log.Printf("deleted window %s\n", windowId)
+	} else {
+		log.Printf("error getting window %s: %v\n", windowId, err)
 	}
-	log.Printf("got window %s\n", windowId)
-	deleted, err := DeleteWorkspace(ctx, window.WorkspaceId, false)
-	if err != nil {
-		return fmt.Errorf("error deleting workspace: %w", err)
-	}
-	if deleted {
-		log.Printf("deleted workspace %s\n", window.WorkspaceId)
-	}
-	err = wstore.DBDelete(ctx, waveobj.OType_Window, windowId)
-	if err != nil {
-		return fmt.Errorf("error deleting window: %w", err)
-	}
-	log.Printf("deleted window %s\n", windowId)
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
@@ -158,6 +160,7 @@ func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error 
 }
 
 func CheckAndFixWindow(ctx context.Context, windowId string) {
+	log.Printf("CheckAndFixWindow %s\n", windowId)
 	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
 	if err != nil {
 		log.Printf("error getting window %q (in checkAndFixWindow): %v\n", windowId, err)

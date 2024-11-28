@@ -19,15 +19,13 @@ export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindow
 export let focusedWaveWindow = null; // on blur we do not set this to null (but on destroy we do)
 
 export class WaveBrowserWindow extends BaseWindow {
-    baseWindow: BaseWindow;
     waveWindowId: string;
     workspaceId: string;
     waveReadyPromise: Promise<void>;
     allTabViews: Map<string, WaveTabView>;
     activeTabView: WaveTabView;
-    canClose: boolean;
-    alreadyClosed: boolean;
-    deleteAllowed: boolean;
+    private canClose: boolean;
+    private deleteAllowed: boolean;
     private tabSwitchQueue: { tabView: WaveTabView; tabInitialized: boolean }[];
 
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
@@ -110,7 +108,6 @@ export class WaveBrowserWindow extends BaseWindow {
         this.tabSwitchQueue = [];
         this.waveWindowId = waveWindow.oid;
         this.workspaceId = waveWindow.workspaceid;
-        this.alreadyClosed = false;
         this.allTabViews = new Map<string, WaveTabView>();
         const winBoundsPoller = setInterval(() => {
             if (this.isDestroyed()) {
@@ -236,7 +233,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 console.log("win no windows left", this.waveWindowId);
                 return;
             }
-            if (!this.alreadyClosed && this.deleteAllowed) {
+            if (this.deleteAllowed) {
                 console.log("win removing window from backend DB", this.waveWindowId);
                 fireAndForget(async () => await WindowService.CloseWindow(this.waveWindowId, true));
             }
@@ -260,7 +257,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 return;
             } else if (choice === 1) {
                 console.log("user chose open in new window", this.waveWindowId);
-                const [newWin] = await WindowService.CreateWindow(null, workspaceId);
+                const newWin = await WindowService.CreateWindow(null, workspaceId);
                 if (!newWin) {
                     console.log("error creating new window", this.waveWindowId);
                 }
@@ -304,12 +301,19 @@ export class WaveBrowserWindow extends BaseWindow {
         if (tabView) {
             const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
             this.allTabViews.delete(tabId);
-            if (rtn?.closewindow && !this.alreadyClosed) {
+            if (rtn?.closewindow) {
                 this.close();
             } else if (rtn?.newactivetabid) {
                 this.setActiveTab(rtn.newactivetabid);
             }
         }
+    }
+
+    forceClose() {
+        console.log("forceClose window", this.waveWindowId);
+        this.canClose = true;
+        this.deleteAllowed = true;
+        this.close();
     }
 
     async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
@@ -501,10 +505,15 @@ export async function createBrowserWindow(
     fullConfig: FullConfigType,
     opts: WindowOpts
 ): Promise<WaveBrowserWindow> {
-    let workspace: Workspace;
     if (!waveWindow) {
-        [waveWindow, workspace] = await WindowService.CreateWindow(null, "");
-    } else {
+        console.log("createBrowserWindow: no waveWindow");
+        waveWindow = await WindowService.CreateWindow(null, "");
+    }
+    let workspace = await WorkspaceService.GetWorkspace(waveWindow.workspaceid);
+    if (!workspace) {
+        console.log("createBrowserWindow: no workspace, creating new window");
+        await WindowService.CloseWindow(waveWindow.oid, true);
+        waveWindow = await WindowService.CreateWindow(null, "");
         workspace = await WorkspaceService.GetWorkspace(waveWindow.workspaceid);
     }
     const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
@@ -548,4 +557,9 @@ ipcMain.on("delete-workspace", async (event, workspaceId) => {
     const ww = getWaveWindowByWebContentsId(event.sender.id);
     console.log("delete-workspace", workspaceId, ww?.waveWindowId);
     await WorkspaceService.DeleteWorkspace(workspaceId);
+    console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
+    if (ww?.workspaceId == workspaceId) {
+        console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
+        ww.forceClose();
+    }
 });

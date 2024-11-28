@@ -14,6 +14,7 @@ import (
 )
 
 func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
+	log.Println("CreateWorkspace")
 	ws := &waveobj.Workspace{
 		OID:    uuid.NewString(),
 		TabIds: []string{},

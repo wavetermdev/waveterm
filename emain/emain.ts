@@ -107,12 +107,12 @@ function handleWSEvent(evtMsg: WSEventType) {
     fireAndForget(async () => {
         console.log("handleWSEvent", evtMsg?.eventtype);
         if (evtMsg.eventtype == "electron:newwindow") {
+            console.log("electron:newwindow", evtMsg.data);
             const windowId: string = evtMsg.data;
             const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
             if (windowData == null) {
                 return;
             }
-            const clientData = await services.ClientService.GetClientData();
             const fullConfig = await services.FileService.GetFullConfig();
             const newWin = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
             await newWin.waveReadyPromise;
@@ -122,7 +122,6 @@ function handleWSEvent(evtMsg: WSEventType) {
             if (evtMsg.data === undefined) return;
             const ww = getWaveWindowById(evtMsg.data);
             if (ww != null) {
-                ww.alreadyClosed = true;
                 ww.destroy(); // bypass the "are you sure?" dialog
             }
         } else {
@@ -365,11 +364,13 @@ electron.ipcMain.on("open-native-path", (event, filePath: string) => {
 });
 
 async function createNewWaveWindow(): Promise<void> {
+    log("createNewWaveWindow");
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
     let recreatedWindow = false;
     const allWindows = getAllWaveWindows();
     if (allWindows.length === 0 && clientData?.windowids?.length >= 1) {
+        console.log("no windows, but clientData has windowids, recreating first window");
         // reopen the first window
         const existingWindowId = clientData.windowids[0];
         const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
@@ -381,8 +382,10 @@ async function createNewWaveWindow(): Promise<void> {
         }
     }
     if (recreatedWindow) {
+        console.log("recreated window, returning");
         return;
     }
+    console.log("creating new window");
     const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
     await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
@@ -639,6 +642,7 @@ process.on("uncaughtException", (error) => {
 });
 
 async function relaunchBrowserWindows(): Promise<void> {
+    console.log("relaunchBrowserWindows");
     setGlobalIsRelaunching(true);
     const windows = getAllWaveWindows();
     for (const window of windows) {
@@ -651,13 +655,13 @@ async function relaunchBrowserWindows(): Promise<void> {
     const fullConfig = await services.FileService.GetFullConfig();
     const wins: WaveBrowserWindow[] = [];
     for (const windowId of clientData.windowids.slice().reverse()) {
-        const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+        const windowData: WaveWindow = await services.WindowService.GetWindow(windowId);
         if (windowData == null) {
-            services.WindowService.CloseWindow(windowId, true).catch((e) => {
-                /* ignore */
-            });
+            console.log("relaunch -- window data not found, closing window", windowId);
+            await services.WindowService.CloseWindow(windowId, true);
             continue;
         }
+        console.log("relaunch -- creating window", windowId, windowData);
         const win = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
         wins.push(win);
     }

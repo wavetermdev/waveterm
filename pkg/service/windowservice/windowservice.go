@@ -45,30 +45,30 @@ func (svc *WindowService) CreateWindow_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *WindowService) CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId string) (*waveobj.Window, *waveobj.Workspace, error) {
+func (svc *WindowService) CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId string) (*waveobj.Window, error) {
 	window, err := wcore.CreateWindow(ctx, winSize, workspaceId)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error creating window: %w", err)
+		return nil, fmt.Errorf("error creating window: %w", err)
 	}
 	ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error getting workspace: %w", err)
+		return nil, fmt.Errorf("error getting workspace: %w", err)
 	}
 	if len(ws.TabIds) == 0 {
 		_, err = wcore.CreateTab(ctx, ws.OID, "", true)
 		if err != nil {
-			return window, ws, fmt.Errorf("error creating tab: %w", err)
+			return window, fmt.Errorf("error creating tab: %w", err)
 		}
 		ws, err = wcore.GetWorkspace(ctx, window.WorkspaceId)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error getting updated workspace: %w", err)
+			return nil, fmt.Errorf("error getting updated workspace: %w", err)
 		}
 		err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
 		if err != nil {
-			return window, ws, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
+			return window, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
 		}
 	}
-	return window, ws, nil
+	return window, nil
 }
 
 func (svc *WindowService) SetWindowPosAndSize_Meta() tsgenmeta.MethodMeta {
