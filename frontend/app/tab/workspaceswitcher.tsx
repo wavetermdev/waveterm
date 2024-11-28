@@ -271,7 +271,11 @@ const WorkspaceSwitcherItem = ({
         title: "Edit workspace",
         click: (e) => {
             e.stopPropagation();
-            setEditingWorkspace(workspace.oid);
+            if (editingWorkspace === workspace.oid) {
+                setEditingWorkspace(null);
+            } else {
+                setEditingWorkspace(workspace.oid);
+            }
         },
     };
     const windowIconDecl: IconButtonDecl = {
