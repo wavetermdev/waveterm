@@ -389,7 +389,7 @@ func (conn *SSHConn) Reconnect(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return conn.Connect(ctx, &wshrpc.SshKeywords{})
+	return conn.Connect(ctx, &wshrpc.ConnKeywords{})
 }
 
 func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
@@ -417,7 +417,7 @@ func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
 }
 
 // does not return an error since that error is stored inside of SSHConn
-func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.SshKeywords) error {
+func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
 	var connectAllowed bool
 	conn.WithLock(func() {
 		if conn.Status == Status_Connecting || conn.Status == Status_Connected {
@@ -463,7 +463,7 @@ func (conn *SSHConn) WithLock(fn func()) {
 	fn()
 }
 
-func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.SshKeywords) error {
+func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
 	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
@@ -553,7 +553,7 @@ func getConnInternal(opts *remote.SSHOpts) *SSHConn {
 	return rtn
 }
 
-func GetConn(ctx context.Context, opts *remote.SSHOpts, shouldConnect bool, connFlags *wshrpc.SshKeywords) *SSHConn {
+func GetConn(ctx context.Context, opts *remote.SSHOpts, shouldConnect bool, connFlags *wshrpc.ConnKeywords) *SSHConn {
 	conn := getConnInternal(opts)
 	if conn.Client == nil && shouldConnect {
 		conn.Connect(ctx, connFlags)
@@ -570,7 +570,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := GetConn(ctx, connOpts, false, &wshrpc.SshKeywords{})
+	conn := GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -581,7 +581,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	case Status_Connecting:
 		return conn.WaitForConnect(ctx)
 	case Status_Init, Status_Disconnected:
-		return conn.Connect(ctx, &wshrpc.SshKeywords{})
+		return conn.Connect(ctx, &wshrpc.ConnKeywords{})
 	case Status_Error:
 		return fmt.Errorf("connection error: %s", connStatus.Error)
 	default:

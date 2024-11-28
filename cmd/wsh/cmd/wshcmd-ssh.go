@@ -38,11 +38,13 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return fmt.Errorf("cannot determine blockid (not in JWT)")
 	}
 	// first, make a connection independent of the block
-	connOpts := wshrpc.SshKeywords{
-		HostName:     sshArg,
-		IdentityFile: identityFiles,
+	connOpts := wshrpc.ConnRequest{
+		Host: sshArg,
+		Keywords: wshrpc.ConnKeywords{
+			SshIdentityFile: identityFiles,
+		},
 	}
-	wshclient.ConnConnectCommand(RpcClient, &connOpts, nil)
+	wshclient.ConnConnectCommand(RpcClient, connOpts, nil)
 
 	// now, with that made, it will be straightforward to connect
 	data := wshrpc.CommandSetMetaData{

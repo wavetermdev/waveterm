@@ -113,7 +113,7 @@ type FullConfigType struct {
 	Widgets        map[string]WidgetConfigType    `json:"widgets"`
 	Presets        map[string]waveobj.MetaMapType `json:"presets"`
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
-	Connections    map[string]wshrpc.SshKeywords  `json:"connections"`
+	Connections    map[string]wshrpc.ConnKeywords `json:"connections"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 

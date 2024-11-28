@@ -623,15 +623,15 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.SshKeywords{})
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
 	return conn.Close()
 }
 
-func (ws *WshServer) ConnConnectCommand(ctx context.Context, connFlags *wshrpc.SshKeywords) error {
-	connName := connFlags.HostName
+func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
+	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(ctx, distroName, false)
@@ -644,11 +644,11 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connFlags *wshrpc.S
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, connFlags)
+	conn := conncontroller.GetConn(ctx, connOpts, false, &connRequest.Keywords)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
-	return conn.Connect(ctx, connFlags)
+	return conn.Connect(ctx, &connRequest.Keywords)
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
@@ -664,7 +664,7 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.SshKeywords{})
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}

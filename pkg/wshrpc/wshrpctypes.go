@@ -146,7 +146,7 @@ type WshRpcInterface interface {
 	WslStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	ConnEnsureCommand(ctx context.Context, connName string) error
 	ConnReinstallWshCommand(ctx context.Context, connName string) error
-	ConnConnectCommand(ctx context.Context, connFlags *SshKeywords) error
+	ConnConnectCommand(ctx context.Context, connRequest ConnRequest) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
 	WslListCommand(ctx context.Context) ([]string, error)
@@ -440,24 +440,29 @@ type CommandRemoteWriteFileData struct {
 	CreateMode os.FileMode `json:"createmode,omitempty"`
 }
 
-type SshKeywords struct {
+type ConnKeywords struct {
 	WshEnabled          *bool `json:"wshenabled,omitempty"`
 	AskBeforeWshInstall *bool `json:"askbeforewshinstall,omitempty"`
 
-	User                         string   `json:"ssh:user,omitempty"`
-	HostName                     string   `json:"ssh:hostname,omitempty"`
-	Port                         string   `json:"ssh:port,omitempty"`
-	IdentityFile                 []string `json:"ssh:identityfile,omitempty"`
-	BatchMode                    bool     `json:"ssh:batchmode,omitempty"`
-	PubkeyAuthentication         bool     `json:"ssh:pubkeyauthentication,omitempty"`
-	PasswordAuthentication       bool     `json:"ssh:passwordauthentication,omitempty"`
-	KbdInteractiveAuthentication bool     `json:"ssh:kbdinteractiveauthentication,omitempty"`
-	PreferredAuthentications     []string `json:"ssh:preferredauthentications,omitempty"`
-	AddKeysToAgent               bool     `json:"ssh:addkeystoagent,omitempty"`
-	IdentityAgent                string   `json:"ssh:identityagent,omitempty"`
-	ProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
-	UserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
-	GlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
+	SshUser                         string   `json:"ssh:user,omitempty"`
+	SshHostName                     string   `json:"ssh:hostname,omitempty"`
+	SshPort                         string   `json:"ssh:port,omitempty"`
+	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
+	SshBatchMode                    bool     `json:"ssh:batchmode,omitempty"`
+	SshPubkeyAuthentication         bool     `json:"ssh:pubkeyauthentication,omitempty"`
+	SshPasswordAuthentication       bool     `json:"ssh:passwordauthentication,omitempty"`
+	SshKbdInteractiveAuthentication bool     `json:"ssh:kbdinteractiveauthentication,omitempty"`
+	SshPreferredAuthentications     []string `json:"ssh:preferredauthentications,omitempty"`
+	SshAddKeysToAgent               bool     `json:"ssh:addkeystoagent,omitempty"`
+	SshIdentityAgent                string   `json:"ssh:identityagent,omitempty"`
+	SshProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
+	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
+	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
+}
+
+type ConnRequest struct {
+	Host     string       `json:"host"`
+	Keywords ConnKeywords `json:"keywords,omitempty"`
 }
 
 const (

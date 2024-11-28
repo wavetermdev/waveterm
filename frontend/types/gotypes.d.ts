@@ -275,6 +275,32 @@ declare global {
         err: string;
     };
 
+    // wshrpc.ConnKeywords
+    type ConnKeywords = {
+        wshenabled?: boolean;
+        askbeforewshinstall?: boolean;
+        "ssh:user"?: string;
+        "ssh:hostname"?: string;
+        "ssh:port"?: string;
+        "ssh:identityfile"?: string[];
+        "ssh:batchmode"?: boolean;
+        "ssh:pubkeyauthentication"?: boolean;
+        "ssh:passwordauthentication"?: boolean;
+        "ssh:kbdinteractiveauthentication"?: boolean;
+        "ssh:preferredauthentications"?: string[];
+        "ssh:addkeystoagent"?: boolean;
+        "ssh:identityagent"?: string;
+        "ssh:proxyjump"?: string[];
+        "ssh:userknownhostsfile"?: string[];
+        "ssh:globalknownhostsfile"?: string[];
+    };
+
+    // wshrpc.ConnRequest
+    type ConnRequest = {
+        host: string;
+        keywords?: ConnKeywords;
+    };
+
     // wshrpc.ConnStatus
     type ConnStatus = {
         status: string;
@@ -342,7 +368,7 @@ declare global {
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
-        connections: {[key: string]: SshKeywords};
+        connections: {[key: string]: ConnKeywords};
         configerrors: ConfigError[];
     };
 
@@ -612,26 +638,6 @@ declare global {
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshenabled"?: boolean;
-    };
-
-    // wshrpc.SshKeywords
-    type SshKeywords = {
-        wshenabled?: boolean;
-        askbeforewshinstall?: boolean;
-        "ssh:user"?: string;
-        "ssh:hostname"?: string;
-        "ssh:port"?: string;
-        "ssh:identityfile"?: string[];
-        "ssh:batchmode"?: boolean;
-        "ssh:pubkeyauthentication"?: boolean;
-        "ssh:passwordauthentication"?: boolean;
-        "ssh:kbdinteractiveauthentication"?: boolean;
-        "ssh:preferredauthentications"?: string[];
-        "ssh:addkeystoagent"?: boolean;
-        "ssh:identityagent"?: string;
-        "ssh:proxyjump"?: string[];
-        "ssh:userknownhostsfile"?: string[];
-        "ssh:globalknownhostsfile"?: string[];
     };
 
     // waveobj.StickerClickOptsType

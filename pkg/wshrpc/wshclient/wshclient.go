@@ -38,7 +38,7 @@ func BlockInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*ws
 }
 
 // command "connconnect", wshserver.ConnConnectCommand
-func ConnConnectCommand(w *wshutil.WshRpc, data *wshrpc.SshKeywords, opts *wshrpc.RpcOpts) error {
+func ConnConnectCommand(w *wshutil.WshRpc, data wshrpc.ConnRequest, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connconnect", data, opts)
 	return err
 }
