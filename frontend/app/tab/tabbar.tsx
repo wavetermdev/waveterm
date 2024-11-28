@@ -6,11 +6,12 @@ import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, isDev, PLATFORM } from "@/store/global";
-import * as services from "@/store/services";
+import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
-import React, { createRef, useCallback, useEffect, useRef, useState } from "react";
+import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
+import { WorkspaceService } from "../store/services";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
@@ -98,7 +99,7 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
     );
 };
 
-const TabBar = React.memo(({ workspace }: TabBarProps) => {
+const TabBar = memo(({ workspace }: TabBarProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
@@ -439,7 +440,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 // Reset dragging state
                 setDraggingTab(null);
                 // Update workspace tab ids
-                services.WorkspaceService.UpdateTabIds(workspace.oid, tabIds);
+                fireAndForget(async () => await WorkspaceService.UpdateTabIds(workspace.oid, tabIds));
             })();
         } else {
             // Reset styles
