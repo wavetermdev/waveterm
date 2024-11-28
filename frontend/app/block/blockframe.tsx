@@ -6,7 +6,6 @@ import {
     blockViewToName,
     computeConnColorNum,
     ConnectionButton,
-    ControllerStatusIcon,
     getBlockHeaderIcon,
     Input,
 } from "@/app/block/blockutil";
@@ -227,7 +226,6 @@ const BlockFrame_Header = ({
     } else if (Array.isArray(headerTextUnion)) {
         headerTextElems.push(...renderHeaderElements(headerTextUnion, preview));
     }
-    headerTextElems.unshift(<ControllerStatusIcon key="connstatus" blockId={nodeModel.blockId} />);
     if (error != null) {
         const copyHeaderErr = () => {
             navigator.clipboard.writeText(error.message + "\n" + error.stack);
@@ -271,7 +269,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
         return <Input decl={elem} className={clsx("block-frame-input", elem.className)} preview={preview} />;
     } else if (elem.elemtype == "text") {
         return (
-            <div className={clsx("block-frame-text", elem.className)}>
+            <div className={clsx("block-frame-text", elem.className, { "flex-nogrow": elem.noGrow })}>
                 <span ref={preview ? null : elem.ref} onClick={(e) => elem?.onClick(e)}>
                     &lrm;{elem.text}
                 </span>

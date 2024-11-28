@@ -45,6 +45,7 @@ const (
 const (
 	Status_Running = "running"
 	Status_Done    = "done"
+	Status_Init    = "init"
 )
 
 const (
@@ -64,21 +65,23 @@ type BlockInputUnion struct {
 }
 
 type BlockController struct {
-	Lock            *sync.Mutex
-	ControllerType  string
-	TabId           string
-	BlockId         string
-	BlockDef        *waveobj.BlockDef
-	CreatedHtmlFile bool
-	ShellProc       *shellexec.ShellProc
-	ShellInputCh    chan *BlockInputUnion
-	ShellProcStatus string
+	Lock              *sync.Mutex
+	ControllerType    string
+	TabId             string
+	BlockId           string
+	BlockDef          *waveobj.BlockDef
+	CreatedHtmlFile   bool
+	ShellProc         *shellexec.ShellProc
+	ShellInputCh      chan *BlockInputUnion
+	ShellProcStatus   string
+	ShellProcExitCode int
 }
 
 type BlockControllerRuntimeStatus struct {
 	BlockId           string `json:"blockid"`
 	ShellProcStatus   string `json:"shellprocstatus,omitempty"`
 	ShellProcConnName string `json:"shellprocconnname,omitempty"`
+	ShellProcExitCode int    `json:"shellprocexitcode"`
 }
 
 func (bc *BlockController) WithLock(f func()) {
@@ -95,6 +98,7 @@ func (bc *BlockController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 		if bc.ShellProc != nil {
 			rtn.ShellProcConnName = bc.ShellProc.ConnName
 		}
+		rtn.ShellProcExitCode = bc.ShellProcExitCode
 	})
 	return &rtn
 }
@@ -220,7 +224,7 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType) (string,
 	}
 	useShell := blockMeta.GetBool(waveobj.MetaKey_CmdShell, true)
 	if !useShell {
-		if strings.Index(cmdStr, " ") != -1 {
+		if strings.Contains(cmdStr, " ") {
 			return "", nil, fmt.Errorf("cmd should not have spaces if cmd:shell is false (use cmd:args)")
 		}
 		cmdArgs := blockMeta.GetStringList(waveobj.MetaKey_CmdArgs)
@@ -460,18 +464,19 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	go func() {
 		defer panichandler.PanicHandler("blockcontroller:shellproc-wait-loop")
 		// wait for the shell to finish
+		var exitCode int
 		defer func() {
 			wshutil.DefaultRouter.UnregisterRoute(wshutil.MakeControllerRouteId(bc.BlockId))
 			bc.UpdateControllerAndSendUpdate(func() bool {
 				bc.ShellProcStatus = Status_Done
+				bc.ShellProcExitCode = exitCode
 				return true
 			})
 			log.Printf("[shellproc] shell process wait loop done\n")
 		}()
 		waitErr := shellProc.Cmd.Wait()
-		exitCode := shellexec.ExitCodeFromWaitErr(waitErr)
+		exitCode = shellProc.Cmd.ExitCode()
 		termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
-		//HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte("\r\n"))
 		HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte(termMsg))
 		shellProc.SetWaitErrorAndSignalDone(waitErr)
 	}()
@@ -515,7 +520,7 @@ func setTermSize(ctx context.Context, blockId string, termSize waveobj.TermSize)
 	return nil
 }
 
-func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, rtOpts *waveobj.RuntimeOpts) {
+func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, rtOpts *waveobj.RuntimeOpts, force bool) {
 	controllerName := bdata.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
 		log.Printf("unknown controller %q\n", controllerName)
@@ -529,7 +534,7 @@ func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, r
 	}
 	runOnce := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnce, false)
 	runOnStart := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnStart, true)
-	if runOnStart || runOnce {
+	if runOnStart || runOnce || force {
 		if runOnce {
 			ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancelFn()
@@ -634,7 +639,7 @@ func getOrCreateBlockController(tabId string, blockId string, controllerName str
 			ControllerType:  controllerName,
 			TabId:           tabId,
 			BlockId:         blockId,
-			ShellProcStatus: Status_Done,
+			ShellProcStatus: Status_Init,
 		}
 		blockControllerMap[blockId] = bc
 		createdController = true
@@ -642,13 +647,16 @@ func getOrCreateBlockController(tabId string, blockId string, controllerName str
 	return bc
 }
 
-func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts) error {
+func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts, force bool) error {
 	if tabId == "" || blockId == "" {
 		return fmt.Errorf("invalid tabId or blockId passed to ResyncController")
 	}
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
+	}
+	if force {
+		StopBlockController(blockId)
 	}
 	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
 	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
@@ -674,16 +682,16 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		}
 	}
 	if curBc == nil {
-		return startBlockController(ctx, tabId, blockId, rtOpts)
+		return startBlockController(ctx, tabId, blockId, rtOpts, true)
 	}
 	bcStatus := curBc.GetRuntimeStatus()
-	if bcStatus.ShellProcStatus != Status_Running {
-		return startBlockController(ctx, tabId, blockId, rtOpts)
+	if bcStatus.ShellProcStatus == Status_Init || bcStatus.ShellProcStatus == Status_Done {
+		return startBlockController(ctx, tabId, blockId, rtOpts, true)
 	}
 	return nil
 }
 
-func startBlockController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts) error {
+func startBlockController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts, force bool) error {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
@@ -704,8 +712,8 @@ func startBlockController(ctx context.Context, tabId string, blockId string, rtO
 	}
 	bc := getOrCreateBlockController(tabId, blockId, controllerName)
 	bcStatus := bc.GetRuntimeStatus()
-	if bcStatus.ShellProcStatus == Status_Done {
-		go bc.run(blockData, blockData.Meta, rtOpts)
+	if bcStatus.ShellProcStatus == Status_Init || bcStatus.ShellProcStatus == Status_Done {
+		go bc.run(blockData, blockData.Meta, rtOpts, force)
 	}
 	return nil
 }

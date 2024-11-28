@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -19,6 +20,7 @@ type ConnInterface interface {
 	KillGraceful(time.Duration)
 	Wait() error
 	Start() error
+	ExitCode() int
 	StdinPipe() (io.WriteCloser, error)
 	StdoutPipe() (io.ReadCloser, error)
 	StderrPipe() (io.ReadCloser, error)
@@ -37,6 +39,15 @@ func (cw CmdWrap) Kill() {
 
 func (cw CmdWrap) Wait() error {
 	return cw.Cmd.Wait()
+}
+
+// only valid once Wait() has returned (or you know Cmd is done)
+func (cw CmdWrap) ExitCode() int {
+	state := cw.Cmd.ProcessState
+	if state == nil {
+		return -1
+	}
+	return state.ExitCode()
 }
 
 func (cw CmdWrap) KillGraceful(timeout time.Duration) {
@@ -95,6 +106,7 @@ type SessionWrap struct {
 	Session  *ssh.Session
 	StartCmd string
 	Tty      pty.Tty
+	WaitErr  *atomic.Pointer[error]
 	pty.Pty
 }
 
@@ -107,8 +119,22 @@ func (sw SessionWrap) KillGraceful(timeout time.Duration) {
 	sw.Kill()
 }
 
+func (sw SessionWrap) ExitCode() int {
+	waitErrPtr := sw.WaitErr.Load()
+	if waitErrPtr == nil {
+		return -1
+	}
+	waitErr := *waitErrPtr
+	if waitErr == nil {
+		return -1
+	}
+	return ExitCodeFromWaitErr(waitErr)
+}
+
 func (sw SessionWrap) Wait() error {
-	return sw.Session.Wait()
+	waitErr := sw.Session.Wait()
+	sw.WaitErr.Store(&waitErr)
+	return waitErr
 }
 
 func (sw SessionWrap) Start() error {

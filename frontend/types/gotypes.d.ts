@@ -55,6 +55,7 @@ declare global {
         blockid: string;
         shellprocstatus?: string;
         shellprocconnname?: string;
+        shellprocexitcode: number;
     };
 
     // waveobj.BlockDef

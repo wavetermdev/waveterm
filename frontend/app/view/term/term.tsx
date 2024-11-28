@@ -63,8 +63,10 @@ class TermViewModel {
     termThemeNameAtom: jotai.Atom<string>;
     noPadding: jotai.PrimitiveAtom<boolean>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
-    shellProcStatus: jotai.PrimitiveAtom<string>;
+    shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
+    shellProcStatus: jotai.Atom<string>;
     shellProcStatusUnsubFn: () => void;
+    isCmdController: jotai.Atom<boolean>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
@@ -91,6 +93,9 @@ class TermViewModel {
             if (termMode == "vdom") {
                 return "bolt";
             }
+            const isCmd = get(this.isCmdController);
+            if (isCmd) {
+            }
             return "terminal";
         });
         this.viewName = jotai.atom((get) => {
@@ -100,7 +105,7 @@ class TermViewModel {
                 return "Wave App";
             }
             if (blockData?.meta?.controller == "cmd") {
-                return "Command";
+                return "";
             }
             return "Terminal";
         });
@@ -117,25 +122,61 @@ class TermViewModel {
                         },
                     },
                 ];
-            } else {
-                const vdomBlockId = get(this.vdomBlockId);
-                const rtn = [];
-                if (vdomBlockId) {
-                    rtn.push({
-                        elemtype: "iconbutton",
-                        icon: "bolt",
-                        title: "Switch to Wave App",
-                        click: () => {
-                            this.setTermMode("vdom");
-                        },
-                    });
-                }
-                return rtn;
             }
+            const vdomBlockId = get(this.vdomBlockId);
+            const rtn = [];
+            if (vdomBlockId) {
+                rtn.push({
+                    elemtype: "iconbutton",
+                    icon: "bolt",
+                    title: "Switch to Wave App",
+                    click: () => {
+                        this.setTermMode("vdom");
+                    },
+                });
+            }
+            const isCmd = get(this.isCmdController);
+            if (isCmd) {
+                const blockMeta = get(this.blockAtom)?.meta;
+                let cmdText = blockMeta?.["cmd"];
+                let cmdArgs = blockMeta?.["cmd:args"];
+                if (cmdArgs != null && Array.isArray(cmdArgs) && cmdArgs.length > 0) {
+                    cmdText += " " + cmdArgs.join(" ");
+                }
+                rtn.push({
+                    elemtype: "text",
+                    text: cmdText,
+                    noGrow: true,
+                });
+
+                const fullShellProcStatus = get(this.shellProcFullStatus);
+                if (fullShellProcStatus?.shellprocstatus == "done") {
+                    if (fullShellProcStatus?.shellprocexitcode == 0) {
+                        rtn.push({
+                            elemtype: "iconbutton",
+                            icon: "check",
+                            iconColor: "var(--success-color)",
+                            title: "Command Exited Successfully",
+                        });
+                    } else {
+                        rtn.push({
+                            elemtype: "iconbutton",
+                            icon: "xmark-large",
+                            iconColor: "var(--error-color)",
+                            title: "Exit Code: " + fullShellProcStatus?.shellprocexitcode,
+                        });
+                    }
+                }
+            }
+            return rtn;
         });
         this.manageConnection = jotai.atom((get) => {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
+                return false;
+            }
+            const isCmd = get(this.isCmdController);
+            if (isCmd) {
                 return false;
             }
             return true;
@@ -176,33 +217,59 @@ class TermViewModel {
         this.endIconButtons = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const shellProcStatus = get(this.shellProcStatus);
+            const connStatus = get(this.connStatus);
+            const isCmd = get(this.isCmdController);
             if (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done") {
+                return [];
+            }
+            if (connStatus?.status != "connected") {
+                return [];
+            }
+            let iconName: string = null;
+            let title: string = null;
+            const noun = isCmd ? "Command" : "Shell";
+            if (shellProcStatus == "init") {
+                iconName = "play";
+                title = "Click to Start " + noun;
+            } else if (shellProcStatus == "running") {
+                iconName = "refresh";
+                title = noun + " Running. Click to Restart";
+            } else if (shellProcStatus == "done") {
+                iconName = "refresh";
+                title = noun + " Exited. Click to Restart";
+            }
+            if (iconName == null) {
                 return [];
             }
             const buttonDecl: IconButtonDecl = {
                 elemtype: "iconbutton",
-                icon: "refresh",
+                icon: iconName,
                 click: this.forceRestartController.bind(this),
-                title: "Force Restart Controller",
+                title: title,
             };
-            if (shellProcStatus == "done") {
-                buttonDecl.iconColor = "var(--error-color)";
-                buttonDecl.title = "Controller Exited. Click to Restart";
-            }
-            return [buttonDecl];
+            const rtn = [buttonDecl];
+            return rtn;
         });
-        this.shellProcStatus = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+        this.isCmdController = jotai.atom((get) => {
+            const controllerMetaAtom = getBlockMetaKeyAtom(this.blockId, "controller");
+            return get(controllerMetaAtom) == "cmd";
+        });
+        this.shellProcFullStatus = jotai.atom(null) as jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
         const initialShellProcStatus = services.BlockService.GetControllerStatus(blockId);
         initialShellProcStatus.then((rts) => {
-            this.updateShellProcStatus(rts?.shellprocstatus);
+            this.updateShellProcStatus(rts);
         });
         this.shellProcStatusUnsubFn = waveEventSubscribe({
             eventType: "controllerstatus",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
                 let bcRTS: BlockControllerRuntimeStatus = event.data;
-                this.updateShellProcStatus(bcRTS?.shellprocstatus);
+                this.updateShellProcStatus(bcRTS);
             },
+        });
+        this.shellProcStatus = jotai.atom((get) => {
+            const fullStatus = get(this.shellProcFullStatus);
+            return fullStatus?.shellprocstatus ?? "init";
         });
     }
 
@@ -216,15 +283,13 @@ class TermViewModel {
         });
     }
 
-    updateShellProcStatus(status: string) {
-        if (status == null) {
-            return;
-        }
-        globalStore.set(this.shellProcStatus, status);
+    updateShellProcStatus(fullStatus: BlockControllerRuntimeStatus) {
+        globalStore.set(this.shellProcFullStatus, fullStatus);
+        const status = fullStatus?.shellprocstatus ?? "init";
         if (status == "running") {
-            this.termRef.current?.setIsRunning(true);
+            this.termRef.current?.setIsRunning?.(true);
         } else {
-            this.termRef.current?.setIsRunning(false);
+            this.termRef.current?.setIsRunning?.(false);
         }
     }
 
@@ -419,6 +484,62 @@ class TermViewModel {
         fullMenu.push({
             label: "Force Restart Controller",
             click: this.forceRestartController.bind(this),
+        });
+        const isClearOnRestart = blockData?.meta?.["cmd:clearonrestart"];
+        fullMenu.push({
+            label: "Clear Output On Restart",
+            submenu: [
+                {
+                    label: "On",
+                    type: "checkbox",
+                    checked: isClearOnRestart,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "cmd:clearonrestart": true },
+                        });
+                    },
+                },
+                {
+                    label: "Off",
+                    type: "checkbox",
+                    checked: !isClearOnRestart,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "cmd:clearonrestart": false },
+                        });
+                    },
+                },
+            ],
+        });
+        const runOnStart = blockData?.meta?.["cmd:runonstart"];
+        fullMenu.push({
+            label: "Run On Startup",
+            submenu: [
+                {
+                    label: "On",
+                    type: "checkbox",
+                    checked: runOnStart,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "cmd:runonstart": true },
+                        });
+                    },
+                },
+                {
+                    label: "Off",
+                    type: "checkbox",
+                    checked: !runOnStart,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "cmd:runonstart": false },
+                        });
+                    },
+                },
+            ],
         });
         if (blockData?.meta?.["term:vdomtoolbarblockid"]) {
             fullMenu.push({ type: "separator" });

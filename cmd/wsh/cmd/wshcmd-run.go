@@ -98,9 +98,10 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	// Convert to null-terminated format
 	envContent := envutil.MapToEnv(envMap)
 	createMeta := map[string]any{
-		waveobj.MetaKey_View:       "term",
-		waveobj.MetaKey_CmdCwd:     cwd,
-		waveobj.MetaKey_Controller: "cmd",
+		waveobj.MetaKey_View:              "term",
+		waveobj.MetaKey_CmdCwd:            cwd,
+		waveobj.MetaKey_Controller:        "cmd",
+		waveobj.MetaKey_CmdClearOnRestart: true,
 	}
 	createMeta[waveobj.MetaKey_Cmd] = shellCmd
 	createMeta[waveobj.MetaKey_CmdArgs] = cmdArgs
@@ -108,6 +109,7 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if paused {
 		createMeta[waveobj.MetaKey_CmdRunOnStart] = false
 	} else {
+		createMeta[waveobj.MetaKey_CmdRunOnce] = true
 		createMeta[waveobj.MetaKey_CmdRunOnStart] = true
 	}
 	if exit {

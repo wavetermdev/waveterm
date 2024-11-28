@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -341,7 +342,13 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 
-	sessionWrap := SessionWrap{session, cmdCombined, pipePty, pipePty}
+	sessionWrap := SessionWrap{
+		Session:  session,
+		StartCmd: cmdCombined,
+		Tty:      pipePty,
+		WaitErr:  &atomic.Pointer[error]{},
+		Pty:      pipePty,
+	}
 	err = sessionWrap.Start()
 	if err != nil {
 		pipePty.Close()

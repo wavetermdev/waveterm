@@ -170,6 +170,7 @@ declare global {
         text: string;
         ref?: React.MutableRefObject<HTMLDivElement>;
         className?: string;
+        noGrow?: boolean;
         onClick?: (e: React.MouseEvent<any>) => void;
     };
 
