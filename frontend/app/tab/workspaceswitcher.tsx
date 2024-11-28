@@ -181,6 +181,15 @@ const WorkspaceSwitcher = () => {
         fireAndForget(updateWorkspaceList);
     }, []);
 
+    const onDeleteWorkspace = useCallback((workspaceId: string) => {
+        fireAndForget(async () => {
+            getApi().deleteWorkspace(workspaceId);
+            setTimeout(() => {
+                fireAndForget(updateWorkspaceList);
+            }, 10);
+        });
+    }, []);
+
     const workspaceIcon = activeWorkspace.icon ? (
         <i className={makeIconClass(activeWorkspace.icon, false)} style={{ color: activeWorkspace.color }}></i>
     ) : (
@@ -213,7 +222,7 @@ const WorkspaceSwitcher = () => {
                 <OverlayScrollbarsComponent className={"scrollable"} options={{ scrollbars: { autoHide: "leave" } }}>
                     <ExpandableMenu noIndent singleOpen>
                         {workspaceList.map((entry, i) => (
-                            <WorkspaceSwitcherItem key={i} entryAtom={entry} />
+                            <WorkspaceSwitcherItem key={i} entryAtom={entry} onDeleteWorkspace={onDeleteWorkspace} />
                         ))}
                     </ExpandableMenu>
                 </OverlayScrollbarsComponent>
@@ -233,7 +242,13 @@ const WorkspaceSwitcher = () => {
     );
 };
 
-const WorkspaceSwitcherItem = ({ entryAtom }: { entryAtom: PrimitiveAtom<WorkspaceListEntry> }) => {
+const WorkspaceSwitcherItem = ({
+    entryAtom,
+    onDeleteWorkspace,
+}: {
+    entryAtom: PrimitiveAtom<WorkspaceListEntry>;
+    onDeleteWorkspace: (workspaceId: string) => void;
+}) => {
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const [workspaceEntry, setWorkspaceEntry] = useAtom(entryAtom);
     const [isOpen, setIsOpen] = useState(false);
@@ -287,12 +302,10 @@ const WorkspaceSwitcherItem = ({ entryAtom }: { entryAtom: PrimitiveAtom<Workspa
                     </ExpandableMenuItemLeftElement>
                     <div className="label">{workspace.name}</div>
                     <ExpandableMenuItemRightElement>
-                        {isActive ? (
-                            <div className="icons">
-                                <IconButton decl={editIconDecl} />
-                                <IconButton decl={windowIconDecl} />
-                            </div>
-                        ) : null}
+                        <div className="icons">
+                            <IconButton decl={editIconDecl} />
+                            {isActive && <IconButton decl={windowIconDecl} />}
+                        </div>
                     </ExpandableMenuItemRightElement>
                 </div>
             </ExpandableMenuItemGroupTitle>
@@ -305,7 +318,7 @@ const WorkspaceSwitcherItem = ({ entryAtom }: { entryAtom: PrimitiveAtom<Workspa
                     onTitleChange={(title) => setWorkspace({ ...workspace, name: title })}
                     onColorChange={(color) => setWorkspace({ ...workspace, color })}
                     onIconChange={(icon) => setWorkspace({ ...workspace, icon })}
-                    onDeleteWorkspace={() => getApi().deleteWorkspace(workspace.oid)}
+                    onDeleteWorkspace={() => onDeleteWorkspace(workspace.oid)}
                 />
             </ExpandableMenuItem>
         </ExpandableMenuItemGroup>

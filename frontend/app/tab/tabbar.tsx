@@ -439,7 +439,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
                 // Reset dragging state
                 setDraggingTab(null);
                 // Update workspace tab ids
-                services.ObjectService.UpdateWorkspaceTabIds(workspace.oid, tabIds);
+                services.WorkspaceService.UpdateTabIds(workspace.oid, tabIds);
             })();
         } else {
             // Reset styles

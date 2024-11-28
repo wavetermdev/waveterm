@@ -28,8 +28,8 @@ var ServiceMap = map[string]any{
 	"file":      &fileservice.FileService{},
 	"client":    &clientservice.ClientService{},
 	"window":    &windowservice.WindowService{},
-	"userinput": &userinputservice.UserInputService{},
 	"workspace": &workspaceservice.WorkspaceService{},
+	"userinput": &userinputservice.UserInputService{},
 }
 
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
@@ -279,7 +279,6 @@ func convertReturnValues(rtnVals []reflect.Value) *WebReturnType {
 	if len(rtnVals) == 0 {
 		return rtn
 	}
-	rtnData := make([]any, 0)
 	for _, val := range rtnVals {
 		if isNilable(val) && val.IsNil() {
 			continue
@@ -300,15 +299,10 @@ func convertReturnValues(rtnVals []reflect.Value) *WebReturnType {
 				rtn.Error = fmt.Errorf("cannot convert special return value: %v", err).Error()
 				continue
 			}
-			rtnData = append(rtnData, jsonVal)
+			rtn.Data = jsonVal
 			continue
 		}
-		rtnData = append(rtnData, val.Interface())
-	}
-	if len(rtnData) > 1 {
-		rtn.Data = rtnData
-	} else if len(rtnData) == 1 {
-		rtn.Data = rtnData[0]
+		rtn.Data = val.Interface()
 	}
 	if rtn.Error == "" {
 		rtn.Success = true

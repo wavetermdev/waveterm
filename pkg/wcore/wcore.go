@@ -77,18 +77,8 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 		}
 		firstRun = true
 	}
-	if client.NextTabId == 0 {
-		tabCount, err := wstore.DBGetCount[*waveobj.Tab](ctx)
-		if err != nil {
-			return nil, false, fmt.Errorf("error getting tab count: %w", err)
-		}
-		client.NextTabId = tabCount + 1
-		err = wstore.DBUpdate(ctx, client)
-		if err != nil {
-			return nil, false, fmt.Errorf("error updating client: %w", err)
-		}
-	}
 	if client.TempOID == "" {
+		log.Printf("client.TempOID is empty\n")
 		client.TempOID = uuid.NewString()
 		err = wstore.DBUpdate(ctx, client)
 		if err != nil {
@@ -97,14 +87,23 @@ func EnsureInitialData() (*waveobj.Window, bool, error) {
 	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
-		CheckAndFixWindow(ctx, client.WindowIds[0])
+		log.Printf("client has one window\n")
+		window := CheckAndFixWindow(ctx, client.WindowIds[0])
+		if window != nil {
+			return window, firstRun, nil
+		}
 	}
 	if len(client.WindowIds) > 0 {
+		log.Printf("client has windows\n")
 		return nil, false, nil
 	}
 	window, err := CreateWindow(ctx, nil, "")
 	if err != nil {
 		return nil, false, fmt.Errorf("error creating window: %w", err)
+	}
+	_, err = CreateTab(ctx, window.WorkspaceId, "", true)
+	if err != nil {
+		return nil, false, fmt.Errorf("error creating tab: %w", err)
 	}
 	return window, firstRun, nil
 }
@@ -113,7 +112,6 @@ func CreateClient(ctx context.Context) (*waveobj.Client, error) {
 	client := &waveobj.Client{
 		OID:       uuid.NewString(),
 		WindowIds: []string{},
-		NextTabId: 1,
 	}
 	err := wstore.DBInsert(ctx, client)
 	if err != nil {

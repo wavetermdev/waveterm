@@ -14,6 +14,7 @@ import (
 )
 
 func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
+	log.Println("CreateWorkspace")
 	ws := &waveobj.Workspace{
 		OID:    uuid.NewString(),
 		TabIds: []string{},
@@ -85,7 +86,6 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 			return "", fmt.Errorf("workspace not found: %q", workspaceId)
 		}
 		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
-		client.NextTabId++
 		err = wstore.DBUpdate(ctx, client)
 		if err != nil {
 			return "", fmt.Errorf("error updating client: %w", err)
