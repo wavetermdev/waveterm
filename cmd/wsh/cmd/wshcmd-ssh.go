@@ -12,6 +12,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
+var identityFiles []string
+
 var sshCmd = &cobra.Command{
 	Use:     "ssh",
 	Short:   "connect this terminal to a remote host",
@@ -21,6 +23,7 @@ var sshCmd = &cobra.Command{
 }
 
 func init() {
+	sshCmd.Flags().StringArrayVarP(&identityFiles, "identityfile", "i", []string{}, "add an identity file for publickey authentication")
 	rootCmd.AddCommand(sshCmd)
 }
 
@@ -34,6 +37,16 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if blockId == "" {
 		return fmt.Errorf("cannot determine blockid (not in JWT)")
 	}
+	// first, make a connection independent of the block
+	connOpts := wshrpc.ConnRequest{
+		Host: sshArg,
+		Keywords: wshrpc.ConnKeywords{
+			SshIdentityFile: identityFiles,
+		},
+	}
+	wshclient.ConnConnectCommand(RpcClient, connOpts, nil)
+
+	// now, with that made, it will be straightforward to connect
 	data := wshrpc.CommandSetMetaData{
 		ORef: waveobj.MakeORef(waveobj.OType_Block, blockId),
 		Meta: map[string]any{

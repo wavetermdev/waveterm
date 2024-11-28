@@ -71,5 +71,6 @@ const (
 
 	ConfigKey_ConnClear                      = "conn:*"
 	ConfigKey_ConnAskBeforeWshInstall        = "conn:askbeforewshinstall"
+	ConfigKey_ConnWshEnabled                 = "conn:wshenabled"
 )
 

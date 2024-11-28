@@ -28,7 +28,7 @@ class RpcApiType {
     }
 
     // command "connconnect" [call]
-    ConnConnectCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+    ConnConnectCommand(client: WshClient, data: ConnRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connconnect", data, opts);
     }
 

@@ -14,40 +14,11 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const MaxTzNameLen = 50
-
-type ActivityDisplayType struct {
-	Width    int     `json:"width"`
-	Height   int     `json:"height"`
-	DPR      float64 `json:"dpr"`
-	Internal bool    `json:"internal,omitempty"`
-}
-
-type ActivityUpdate struct {
-	FgMinutes     int                   `json:"fgminutes,omitempty"`
-	ActiveMinutes int                   `json:"activeminutes,omitempty"`
-	OpenMinutes   int                   `json:"openminutes,omitempty"`
-	NumTabs       int                   `json:"numtabs,omitempty"`
-	NewTab        int                   `json:"newtab,omitempty"`
-	NumBlocks     int                   `json:"numblocks,omitempty"`
-	NumWindows    int                   `json:"numwindows,omitempty"`
-	NumSSHConn    int                   `json:"numsshconn,omitempty"`
-	NumWSLConn    int                   `json:"numwslconn,omitempty"`
-	NumMagnify    int                   `json:"nummagnify,omitempty"`
-	NumPanics     int                   `json:"numpanics,omitempty"`
-	Startup       int                   `json:"startup,omitempty"`
-	Shutdown      int                   `json:"shutdown,omitempty"`
-	SetTabTheme   int                   `json:"settabtheme,omitempty"`
-	BuildTime     string                `json:"buildtime,omitempty"`
-	Displays      []ActivityDisplayType `json:"displays,omitempty"`
-	Renderers     map[string]int        `json:"renderers,omitempty"`
-	Blocks        map[string]int        `json:"blocks,omitempty"`
-	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
-	Conn          map[string]int        `json:"conn,omitempty"`
-}
 
 type ActivityType struct {
 	Day           string        `json:"day"`
@@ -62,25 +33,25 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	ActiveMinutes int                   `json:"activeminutes"`
-	FgMinutes     int                   `json:"fgminutes"`
-	OpenMinutes   int                   `json:"openminutes"`
-	NumTabs       int                   `json:"numtabs"`
-	NumBlocks     int                   `json:"numblocks,omitempty"`
-	NumWindows    int                   `json:"numwindows,omitempty"`
-	NumSSHConn    int                   `json:"numsshconn,omitempty"`
-	NumWSLConn    int                   `json:"numwslconn,omitempty"`
-	NumMagnify    int                   `json:"nummagnify,omitempty"`
-	NewTab        int                   `json:"newtab"`
-	NumStartup    int                   `json:"numstartup,omitempty"`
-	NumShutdown   int                   `json:"numshutdown,omitempty"`
-	NumPanics     int                   `json:"numpanics,omitempty"`
-	SetTabTheme   int                   `json:"settabtheme,omitempty"`
-	Displays      []ActivityDisplayType `json:"displays,omitempty"`
-	Renderers     map[string]int        `json:"renderers,omitempty"`
-	Blocks        map[string]int        `json:"blocks,omitempty"`
-	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
-	Conn          map[string]int        `json:"conn,omitempty"`
+	ActiveMinutes int                          `json:"activeminutes"`
+	FgMinutes     int                          `json:"fgminutes"`
+	OpenMinutes   int                          `json:"openminutes"`
+	NumTabs       int                          `json:"numtabs"`
+	NumBlocks     int                          `json:"numblocks,omitempty"`
+	NumWindows    int                          `json:"numwindows,omitempty"`
+	NumSSHConn    int                          `json:"numsshconn,omitempty"`
+	NumWSLConn    int                          `json:"numwslconn,omitempty"`
+	NumMagnify    int                          `json:"nummagnify,omitempty"`
+	NewTab        int                          `json:"newtab"`
+	NumStartup    int                          `json:"numstartup,omitempty"`
+	NumShutdown   int                          `json:"numshutdown,omitempty"`
+	NumPanics     int                          `json:"numpanics,omitempty"`
+	SetTabTheme   int                          `json:"settabtheme,omitempty"`
+	Displays      []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
+	Renderers     map[string]int               `json:"renderers,omitempty"`
+	Blocks        map[string]int               `json:"blocks,omitempty"`
+	WshCmds       map[string]int               `json:"wshcmds,omitempty"`
+	Conn          map[string]int               `json:"conn,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -107,7 +78,7 @@ func AutoUpdateChannel() string {
 }
 
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
-func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
+func GoUpdateActivityWrap(update wshrpc.ActivityUpdate, debugStr string) {
 	go func() {
 		defer panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap")
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
@@ -120,7 +91,7 @@ func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
 	}()
 }
 
-func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
+func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 	now := time.Now()
 	dayStr := daystr.GetCurDayStr()
 	txErr := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
