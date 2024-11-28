@@ -401,6 +401,7 @@ declare global {
         "cmd:clearonstart"?: boolean;
         "cmd:clearonrestart"?: boolean;
         "cmd:runonce"?: boolean;
+        "cmd:closeonexit"?: boolean;
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;

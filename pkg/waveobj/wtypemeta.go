@@ -44,6 +44,7 @@ type MetaTSType struct {
 	CmdClearOnStart   bool              `json:"cmd:clearonstart,omitempty"`
 	CmdClearOnRestart bool              `json:"cmd:clearonrestart,omitempty"`
 	CmdRunOnce        bool              `json:"cmd:runonce,omitempty"`
+	CmdCloseOnExit    bool              `json:"cmd:closeonexit,omitempty"`
 	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
 	CmdCwd            string            `json:"cmd:cwd,omitempty"`
 	CmdNoWsh          bool              `json:"cmd:nowsh,omitempty"`
