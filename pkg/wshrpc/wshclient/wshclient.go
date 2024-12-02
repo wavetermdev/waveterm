@@ -205,6 +205,12 @@ func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshr
 	return err
 }
 
+// command "focuswindow", wshserver.FocusWindowCommand
+func FocusWindowCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "focuswindow", data, opts)
+	return err
+}
+
 // command "getmeta", wshserver.GetMetaCommand
 func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wshrpc.RpcOpts) (waveobj.MetaMapType, error) {
 	resp, err := sendRpcRequestCallHelper[waveobj.MetaMapType](w, "getmeta", data, opts)
@@ -369,6 +375,12 @@ func WaveInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.WaveInfoD
 // command "webselector", wshserver.WebSelectorCommand
 func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "webselector", data, opts)
+	return resp, err
+}
+
+// command "workspacelist", wshserver.WorkspaceListCommand
+func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.WorkspaceInfoData, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.WorkspaceInfoData](w, "workspacelist", nil, opts)
 	return resp, err
 }
 

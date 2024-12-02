@@ -5,8 +5,7 @@ import { useOnResize } from "@/app/hook/useDimensions";
 import { atoms, globalStore, WOS } from "@/app/store/global";
 import { fireAndForget } from "@/util/util";
 import { Atom, useAtomValue } from "jotai";
-import { CSSProperties, useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { debounce } from "throttle-debounce";
+import { CSSProperties, useCallback, useEffect, useState } from "react";
 import { withLayoutTreeStateAtomFromTab } from "./layoutAtom";
 import { LayoutModel } from "./layoutModel";
 import { LayoutNode, NodeModel, TileLayoutContents } from "./types";
@@ -74,16 +73,29 @@ export function useDebouncedNodeInnerRect(nodeModel: NodeModel): CSSProperties {
     const isResizing = useAtomValue(nodeModel.isResizing);
     const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
     const [innerRect, setInnerRect] = useState<CSSProperties>();
+    const [innerRectDebounceTimeout, setInnerRectDebounceTimeout] = useState<NodeJS.Timeout>();
 
     const setInnerRectDebounced = useCallback(
-        debounce(animationTimeS * 1000, (nodeInnerRect) => {
-            setInnerRect(nodeInnerRect);
-        }),
+        (nodeInnerRect: CSSProperties) => {
+            clearInnerRectDebounce();
+            setInnerRectDebounceTimeout(
+                setTimeout(() => {
+                    setInnerRect(nodeInnerRect);
+                }, animationTimeS * 1000)
+            );
+        },
         [animationTimeS]
     );
+    const clearInnerRectDebounce = useCallback(() => {
+        if (innerRectDebounceTimeout) {
+            clearTimeout(innerRectDebounceTimeout);
+            setInnerRectDebounceTimeout(undefined);
+        }
+    }, [innerRectDebounceTimeout]);
 
-    useLayoutEffect(() => {
+    useEffect(() => {
         if (prefersReducedMotion || isMagnified || isResizing) {
+            clearInnerRectDebounce();
             setInnerRect(nodeInnerRect);
         } else {
             setInnerRectDebounced(nodeInnerRect);

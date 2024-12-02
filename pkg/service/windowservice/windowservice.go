@@ -9,11 +9,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
@@ -24,6 +22,61 @@ import (
 const DefaultTimeout = 2 * time.Second
 
 type WindowService struct{}
+
+func (svc *WindowService) GetWindow_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"windowId"},
+	}
+}
+
+func (svc *WindowService) GetWindow(windowId string) (*waveobj.Window, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	window, err := wstore.DBGet[*waveobj.Window](ctx, windowId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting window: %w", err)
+	}
+	return window, nil
+}
+
+func (svc *WindowService) CreateWindow_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"ctx", "winSize", "workspaceId"},
+	}
+}
+
+func (svc *WindowService) CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId string) (*waveobj.Window, error) {
+	window, err := wcore.CreateWindow(ctx, winSize, workspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("error creating window: %w", err)
+	}
+	ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting workspace: %w", err)
+	}
+	if len(ws.TabIds) == 0 {
+		_, err = wcore.CreateTab(ctx, ws.OID, "", true)
+		if err != nil {
+			return window, fmt.Errorf("error creating tab: %w", err)
+		}
+		ws, err = wcore.GetWorkspace(ctx, window.WorkspaceId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting updated workspace: %w", err)
+		}
+		err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
+		if err != nil {
+			return window, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
+		}
+	}
+	return window, nil
+}
+
+func (svc *WindowService) SetWindowPosAndSize_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "set window position and size",
+		ArgNames: []string{"ctx", "windowId", "pos", "size"},
+	}
+}
 
 func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId string, pos *waveobj.Point, size *waveobj.WinSize) (waveobj.UpdatesRtnType, error) {
 	if pos == nil && size == nil {
@@ -46,73 +99,6 @@ func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId strin
 		return nil, err
 	}
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
-}
-
-type CloseTabRtnType struct {
-	CloseWindow    bool   `json:"closewindow,omitempty"`
-	NewActiveTabId string `json:"newactivetabid,omitempty"`
-}
-
-// returns the new active tabid
-func (svc *WindowService) CloseTab(ctx context.Context, windowId string, tabId string, fromElectron bool) (*CloseTabRtnType, waveobj.UpdatesRtnType, error) {
-	ctx = waveobj.ContextWithUpdates(ctx)
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error getting window: %w", err)
-	}
-	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error getting tab: %w", err)
-	}
-	ws, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error getting workspace: %w", err)
-	}
-	tabIndex := -1
-	for i, id := range ws.TabIds {
-		if id == tabId {
-			tabIndex = i
-			break
-		}
-	}
-	go func() {
-		defer panichandler.PanicHandler("WindowService:CloseTab:StopBlockControllers")
-		for _, blockId := range tab.BlockIds {
-			blockcontroller.StopBlockController(blockId)
-		}
-	}()
-	if err := wcore.DeleteTab(ctx, window.WorkspaceId, tabId); err != nil {
-		return nil, nil, fmt.Errorf("error closing tab: %w", err)
-	}
-	rtn := &CloseTabRtnType{}
-	if window.ActiveTabId == tabId && tabIndex != -1 {
-		if len(ws.TabIds) == 1 {
-			rtn.CloseWindow = true
-			svc.CloseWindow(ctx, windowId, fromElectron)
-			if !fromElectron {
-				eventbus.SendEventToElectron(eventbus.WSEventType{
-					EventType: eventbus.WSEvent_ElectronCloseWindow,
-					Data:      windowId,
-				})
-			}
-		} else {
-			if tabIndex < len(ws.TabIds)-1 {
-				newActiveTabId := ws.TabIds[tabIndex+1]
-				wstore.SetActiveTab(ctx, windowId, newActiveTabId)
-				rtn.NewActiveTabId = newActiveTabId
-			} else {
-				newActiveTabId := ws.TabIds[tabIndex-1]
-				wstore.SetActiveTab(ctx, windowId, newActiveTabId)
-				rtn.NewActiveTabId = newActiveTabId
-			}
-		}
-	}
-	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	go func() {
-		defer panichandler.PanicHandler("WindowService:CloseTab:SendUpdateEvents")
-		wps.Broker.SendUpdateEvents(updates)
-	}()
-	return rtn, updates, nil
 }
 
 func (svc *WindowService) MoveBlockToNewWindow_Meta() tsgenmeta.MethodMeta {
@@ -140,11 +126,15 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	if !foundBlock {
 		return nil, fmt.Errorf("block not found in current tab")
 	}
-	newWindow, err := wcore.CreateWindow(ctx, nil)
+	newWindow, err := wcore.CreateWindow(ctx, nil, "")
 	if err != nil {
 		return nil, fmt.Errorf("error creating window: %w", err)
 	}
-	err = wstore.MoveBlockToTab(ctx, currentTabId, newWindow.ActiveTabId, blockId)
+	ws, err := wcore.GetWorkspace(ctx, newWindow.WorkspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting workspace: %w", err)
+	}
+	err = wstore.MoveBlockToTab(ctx, currentTabId, ws.ActiveTabId, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error moving block to tab: %w", err)
 	}
@@ -160,7 +150,7 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 		ActionType: wlayout.LayoutActionDataType_Remove,
 		BlockId:    blockId,
 	})
-	wlayout.QueueLayoutActionForTab(ctx, newWindow.ActiveTabId, waveobj.LayoutActionData{
+	wlayout.QueueLayoutActionForTab(ctx, ws.ActiveTabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
 		BlockId:    blockId,
 		Focused:    true,
@@ -168,38 +158,31 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
+func (svc *WindowService) SwitchWorkspace_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"ctx", "windowId", "workspaceId"},
+	}
+}
+
+func (svc *WindowService) SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (*waveobj.Workspace, error) {
+	ctx = waveobj.ContextWithUpdates(ctx)
+	ws, err := wcore.SwitchWorkspace(ctx, windowId, workspaceId)
+
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:SwitchWorkspace:SendUpdateEvents")
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return ws, err
+}
+
+func (svc *WindowService) CloseWindow_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"ctx", "windowId", "fromElectron"},
+	}
+}
+
 func (svc *WindowService) CloseWindow(ctx context.Context, windowId string, fromElectron bool) error {
 	ctx = waveobj.ContextWithUpdates(ctx)
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
-	if err != nil {
-		return fmt.Errorf("error getting window: %w", err)
-	}
-	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
-	if err != nil {
-		return fmt.Errorf("error getting workspace: %w", err)
-	}
-	for _, tabId := range workspace.TabIds {
-		_, _, err := svc.CloseTab(ctx, windowId, tabId, fromElectron)
-		if err != nil {
-			return fmt.Errorf("error closing tab: %w", err)
-		}
-	}
-	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, window.WorkspaceId)
-	if err != nil {
-		return fmt.Errorf("error deleting workspace: %w", err)
-	}
-	err = wstore.DBDelete(ctx, waveobj.OType_Window, windowId)
-	if err != nil {
-		return fmt.Errorf("error deleting window: %w", err)
-	}
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return fmt.Errorf("error getting client: %w", err)
-	}
-	client.WindowIds = utilfn.RemoveElemFromSlice(client.WindowIds, windowId)
-	err = wstore.DBUpdate(ctx, client)
-	if err != nil {
-		return fmt.Errorf("error updating client: %w", err)
-	}
-	return nil
+	return wcore.CloseWindow(ctx, windowId, fromElectron)
 }

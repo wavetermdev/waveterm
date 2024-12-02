@@ -80,8 +80,11 @@ const (
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
 
+	Command_WorkspaceList = "workspacelist"
+
 	Command_WebSelector      = "webselector"
 	Command_Notify           = "notify"
+	Command_FocusWindow      = "focuswindow"
 	Command_GetUpdateChannel = "getupdatechannel"
 
 	Command_VDomCreateContext   = "vdomcreatecontext"
@@ -166,6 +169,9 @@ type WshRpcInterface interface {
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+	FocusWindowCommand(ctx context.Context, windowId string) error
+
+	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
@@ -509,18 +515,18 @@ type WebSelectorOpts struct {
 }
 
 type CommandWebSelectorData struct {
-	WindowId string           `json:"windowid"`
-	BlockId  string           `json:"blockid" wshcontext:"BlockId"`
-	TabId    string           `json:"tabid" wshcontext:"TabId"`
-	Selector string           `json:"selector"`
-	Opts     *WebSelectorOpts `json:"opts,omitempty"`
+	WorkspaceId string           `json:"workspaceid"`
+	BlockId     string           `json:"blockid" wshcontext:"BlockId"`
+	TabId       string           `json:"tabid" wshcontext:"TabId"`
+	Selector    string           `json:"selector"`
+	Opts        *WebSelectorOpts `json:"opts,omitempty"`
 }
 
 type BlockInfoData struct {
-	BlockId  string         `json:"blockid"`
-	TabId    string         `json:"tabid"`
-	WindowId string         `json:"windowid"`
-	Block    *waveobj.Block `json:"block"`
+	BlockId     string         `json:"blockid"`
+	TabId       string         `json:"tabid"`
+	WorkspaceId string         `json:"workspaceid"`
+	Block       *waveobj.Block `json:"block"`
 }
 
 type WaveNotificationOptions struct {
@@ -548,6 +554,11 @@ type WaveInfoData struct {
 	BuildTime string `json:"buildtime"`
 	ConfigDir string `json:"configdir"`
 	DataDir   string `json:"datadir"`
+}
+
+type WorkspaceInfoData struct {
+	WindowId      string             `json:"windowid"`
+	WorkspaceData *waveobj.Workspace `json:"workspacedata"`
 }
 
 type AiMessageData struct {

@@ -30,20 +30,17 @@ import {
     setWasActive,
     setWasInFg,
 } from "./emain-activity";
+import { ensureHotSpareTab, getWaveTabViewByWebContentsId, setMaxTabCacheSize } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
+import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
 import {
     createBrowserWindow,
-    ensureHotSpareTab,
+    focusedWaveWindow,
     getAllWaveWindows,
-    getFocusedWaveWindow,
-    getLastFocusedWaveWindow,
-    getWaveTabViewByWebContentsId,
     getWaveWindowById,
     getWaveWindowByWebContentsId,
-    setActiveTab,
-    setMaxTabCacheSize,
-} from "./emain-viewmgr";
-import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
+    WaveBrowserWindow,
+} from "./emain-window";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { getAppMenu } from "./menu";
@@ -106,29 +103,31 @@ if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
 
-async function handleWSEvent(evtMsg: WSEventType) {
-    console.log("handleWSEvent", evtMsg?.eventtype);
-    if (evtMsg.eventtype == "electron:newwindow") {
-        const windowId: string = evtMsg.data;
-        const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
-        if (windowData == null) {
-            return;
+function handleWSEvent(evtMsg: WSEventType) {
+    fireAndForget(async () => {
+        console.log("handleWSEvent", evtMsg?.eventtype);
+        if (evtMsg.eventtype == "electron:newwindow") {
+            console.log("electron:newwindow", evtMsg.data);
+            const windowId: string = evtMsg.data;
+            const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+            if (windowData == null) {
+                return;
+            }
+            const fullConfig = await services.FileService.GetFullConfig();
+            const newWin = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
+            await newWin.waveReadyPromise;
+            newWin.show();
+        } else if (evtMsg.eventtype == "electron:closewindow") {
+            console.log("electron:closewindow", evtMsg.data);
+            if (evtMsg.data === undefined) return;
+            const ww = getWaveWindowById(evtMsg.data);
+            if (ww != null) {
+                ww.destroy(); // bypass the "are you sure?" dialog
+            }
+        } else {
+            console.log("unhandled electron ws eventtype", evtMsg.eventtype);
         }
-        const clientData = await services.ClientService.GetClientData();
-        const fullConfig = await services.FileService.GetFullConfig();
-        const newWin = createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
-        await newWin.waveReadyPromise;
-        newWin.show();
-    } else if (evtMsg.eventtype == "electron:closewindow") {
-        if (evtMsg.data === undefined) return;
-        const ww = getWaveWindowById(evtMsg.data);
-        if (ww != null) {
-            ww.alreadyClosed = true;
-            ww.destroy(); // bypass the "are you sure?" dialog
-        }
-    } else {
-        console.log("unhandled electron ws eventtype", evtMsg.eventtype);
-    }
+    });
 }
 
 // Listen for the open-external event from the renderer process
@@ -251,50 +250,6 @@ electron.ipcMain.on("download", (event, payload) => {
     event.sender.downloadURL(streamingUrl);
 });
 
-electron.ipcMain.on("set-active-tab", async (event, tabId) => {
-    const ww = getWaveWindowByWebContentsId(event.sender.id);
-    console.log("set-active-tab", tabId, ww?.waveWindowId);
-    await setActiveTab(ww, tabId);
-});
-
-electron.ipcMain.on("create-tab", async (event, opts) => {
-    const senderWc = event.sender;
-    const tabView = getWaveTabViewByWebContentsId(senderWc.id);
-    if (tabView == null) {
-        return;
-    }
-    const waveWindowId = tabView.waveWindowId;
-    const waveWindow = (await services.ObjectService.GetObject("window:" + waveWindowId)) as WaveWindow;
-    if (waveWindow == null) {
-        return;
-    }
-    const newTabId = await services.ObjectService.AddTabToWorkspace(waveWindowId, null, true);
-    const ww = getWaveWindowById(waveWindowId);
-    if (ww == null) {
-        return;
-    }
-    await setActiveTab(ww, newTabId);
-    event.returnValue = true;
-    return null;
-});
-
-electron.ipcMain.on("close-tab", async (event, tabId) => {
-    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
-    if (tabView == null) {
-        return;
-    }
-    const rtn = await services.WindowService.CloseTab(tabView.waveWindowId, tabId, true);
-    if (rtn?.closewindow) {
-        const ww = getWaveWindowById(tabView.waveWindowId);
-        ww.alreadyClosed = true;
-        ww?.destroy(); // bypass the "are you sure?" dialog
-    } else if (rtn?.newactivetabid) {
-        setActiveTab(getWaveWindowById(tabView.waveWindowId), rtn.newactivetabid);
-    }
-    event.returnValue = true;
-    return null;
-});
-
 electron.ipcMain.on("get-cursor-point", (event) => {
     const tabView = getWaveTabViewByWebContentsId(event.sender.id);
     if (tabView == null) {
@@ -409,30 +364,34 @@ electron.ipcMain.on("open-native-path", (event, filePath: string) => {
 });
 
 async function createNewWaveWindow(): Promise<void> {
+    log("createNewWaveWindow");
     const clientData = await services.ClientService.GetClientData();
     const fullConfig = await services.FileService.GetFullConfig();
     let recreatedWindow = false;
     const allWindows = getAllWaveWindows();
     if (allWindows.length === 0 && clientData?.windowids?.length >= 1) {
+        console.log("no windows, but clientData has windowids, recreating first window");
         // reopen the first window
         const existingWindowId = clientData.windowids[0];
         const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
-            const win = createBrowserWindow(clientData.oid, existingWindowData, fullConfig, { unamePlatform });
+            const win = await createBrowserWindow(existingWindowData, fullConfig, { unamePlatform });
             await win.waveReadyPromise;
             win.show();
             recreatedWindow = true;
         }
     }
     if (recreatedWindow) {
+        console.log("recreated window, returning");
         return;
     }
-    const newWindow = await services.ClientService.MakeWindow();
-    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow, fullConfig, { unamePlatform });
+    console.log("creating new window");
+    const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
     await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
 }
 
+// Here's where init is not getting fired
 electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-ready") => {
     const tabView = getWaveTabViewByWebContentsId(event.sender.id);
     if (tabView == null || tabView.initResolve == null) {
@@ -442,7 +401,10 @@ electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-re
         console.log("initResolve");
         tabView.initResolve();
         if (tabView.savedInitOpts) {
+            console.log("savedInitOpts");
             tabView.webContents.send("wave-init", tabView.savedInitOpts);
+        } else {
+            console.log("no-savedInitOpts");
         }
     } else if (status === "wave-ready") {
         console.log("waveReadyResolve");
@@ -458,7 +420,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
     if (defaultFileName == null || defaultFileName == "") {
         defaultFileName = "image";
     }
-    const ww = getFocusedWaveWindow();
+    const ww = focusedWaveWindow;
     const mimeToExtension: { [key: string]: string } = {
         "image/png": "png",
         "image/jpeg": "jpg",
@@ -539,26 +501,28 @@ function getActivityDisplays(): ActivityDisplayType[] {
     return rtn;
 }
 
-async function logActiveState() {
-    const astate = getActivityState();
-    const activity: ActivityUpdate = { openminutes: 1 };
-    if (astate.wasInFg) {
-        activity.fgminutes = 1;
-    }
-    if (astate.wasActive) {
-        activity.activeminutes = 1;
-    }
-    activity.displays = getActivityDisplays();
-    try {
-        RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
-    } catch (e) {
-        console.log("error logging active state", e);
-    } finally {
-        // for next iteration
-        const ww = getFocusedWaveWindow();
-        setWasInFg(ww?.isFocused() ?? false);
-        setWasActive(false);
-    }
+function logActiveState() {
+    fireAndForget(async () => {
+        const astate = getActivityState();
+        const activity: ActivityUpdate = { openminutes: 1 };
+        if (astate.wasInFg) {
+            activity.fgminutes = 1;
+        }
+        if (astate.wasActive) {
+            activity.activeminutes = 1;
+        }
+        activity.displays = getActivityDisplays();
+        try {
+            await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
+        } catch (e) {
+            console.log("error logging active state", e);
+        } finally {
+            // for next iteration
+            const ww = focusedWaveWindow;
+            setWasInFg(ww?.isFocused() ?? false);
+            setWasActive(false);
+        }
+    });
 }
 
 // this isn't perfect, but gets the job done without being complicated
@@ -593,7 +557,6 @@ function instantiateAppMenu(): electron.Menu {
     return getAppMenu({
         createNewWaveWindow,
         relaunchBrowserWindows,
-        getLastFocusedWaveWindow: getLastFocusedWaveWindow,
     });
 }
 
@@ -679,6 +642,7 @@ process.on("uncaughtException", (error) => {
 });
 
 async function relaunchBrowserWindows(): Promise<void> {
+    console.log("relaunchBrowserWindows");
     setGlobalIsRelaunching(true);
     const windows = getAllWaveWindows();
     for (const window of windows) {
@@ -691,14 +655,14 @@ async function relaunchBrowserWindows(): Promise<void> {
     const fullConfig = await services.FileService.GetFullConfig();
     const wins: WaveBrowserWindow[] = [];
     for (const windowId of clientData.windowids.slice().reverse()) {
-        const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+        const windowData: WaveWindow = await services.WindowService.GetWindow(windowId);
         if (windowData == null) {
-            services.WindowService.CloseWindow(windowId, true).catch((e) => {
-                /* ignore */
-            });
+            console.log("relaunch -- window data not found, closing window", windowId);
+            await services.WindowService.CloseWindow(windowId, true);
             continue;
         }
-        const win = createBrowserWindow(clientData.oid, windowData, fullConfig, { unamePlatform });
+        console.log("relaunch -- creating window", windowId, windowData);
+        const win = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
         wins.push(win);
     }
     for (const win of wins) {
@@ -749,10 +713,10 @@ async function appMain() {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
     }
 
-    electronApp.on("activate", async () => {
+    electronApp.on("activate", () => {
         const allWindows = getAllWaveWindows();
         if (allWindows.length === 0) {
-            await createNewWaveWindow();
+            fireAndForget(createNewWaveWindow);
         }
     });
 }

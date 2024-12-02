@@ -89,6 +89,8 @@ declare global {
         setWebviewFocus: (focusedId: number) => void; // focusedId si the getWebContentsId of the webview
         registerGlobalWebviewKeys: (keys: string[]) => void;
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
+        switchWorkspace: (workspaceId: string) => void;
+        deleteWorkspace: (workspaceId: string) => void;
         setActiveTab: (tabId: string) => void;
         createTab: () => void;
         closeTab: (tabId: string) => void;
@@ -332,28 +334,6 @@ declare global {
         startTs: number;
         command: string;
         msgFn: (msg: RpcMessage) => void;
-    };
-
-    type WaveBrowserWindow = Electron.BaseWindow & {
-        waveWindowId: string;
-        waveReadyPromise: Promise<void>;
-        allTabViews: Map<string, WaveTabView>;
-        activeTabView: WaveTabView;
-        alreadyClosed: boolean;
-        deleteAllowed: boolean;
-    };
-
-    type WaveTabView = Electron.WebContentsView & {
-        isActiveTab: boolean;
-        waveWindowId: string; // set when showing in an active window
-        waveTabId: string; // always set, WaveTabViews are unique per tab
-        lastUsedTs: number; // ts milliseconds
-        createdTs: number; // ts milliseconds
-        initPromise: Promise<void>;
-        savedInitOpts: WaveInitOpts;
-        waveReadyPromise: Promise<void>;
-        initResolve: () => void;
-        waveReadyResolve: () => void;
     };
 
     type TimeSeriesMeta = {

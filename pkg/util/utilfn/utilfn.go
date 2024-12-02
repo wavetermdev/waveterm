@@ -925,6 +925,15 @@ func GetLineColFromOffset(barr []byte, offset int) (int, int) {
 	return line, col
 }
 
+func FindStringInSlice(slice []string, val string) int {
+	for idx, v := range slice {
+		if v == val {
+			return idx
+		}
+	}
+	return -1
+}
+
 func FormatLsTime(t time.Time) string {
 	now := time.Now()
 	sixMonthsAgo := now.AddDate(0, -6, 0)

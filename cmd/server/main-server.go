@@ -296,7 +296,12 @@ func main() {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancelFn()
 		if !firstRun {
-			err = wlayout.BootstrapNewWindowLayout(ctx, window)
+			ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
+			if err != nil {
+				log.Printf("error getting workspace: %v\n", err)
+				return
+			}
+			err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
 			if err != nil {
 				log.Panicf("error applying new window layout: %v\n", err)
 				return

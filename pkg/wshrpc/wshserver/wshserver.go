@@ -180,13 +180,6 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
-	if err != nil {
-		return nil, fmt.Errorf("error finding window for tab: %w", err)
-	}
-	if windowId == "" {
-		return nil, fmt.Errorf("no window found for tab")
-	}
 	err = wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
 		BlockId:    blockData.OID,
@@ -512,13 +505,6 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if tabId == "" {
 		return fmt.Errorf("no tab found for block")
 	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
-	if err != nil {
-		return fmt.Errorf("error finding window for tab: %w", err)
-	}
-	if windowId == "" {
-		return fmt.Errorf("no window found for tab")
-	}
 	err = wcore.DeleteBlock(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
@@ -711,15 +697,15 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	if err != nil {
 		return nil, fmt.Errorf("error finding tab for block: %w", err)
 	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error finding window for tab: %w", err)
 	}
 	return &wshrpc.BlockInfoData{
-		BlockId:  blockId,
-		TabId:    tabId,
-		WindowId: windowId,
-		Block:    blockData,
+		BlockId:     blockId,
+		TabId:       tabId,
+		WorkspaceId: workspaceId,
+		Block:       blockData,
 	}, nil
 }
 
@@ -735,6 +721,25 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 		ConfigDir: wavebase.GetWaveConfigDir(),
 		DataDir:   wavebase.GetWaveDataDir(),
 	}, nil
+}
+
+func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.WorkspaceInfoData, error) {
+	workspaceList, err := wcore.ListWorkspaces(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error listing workspaces: %w", err)
+	}
+	var rtn []wshrpc.WorkspaceInfoData
+	for _, workspaceEntry := range workspaceList {
+		workspaceData, err := wcore.GetWorkspace(ctx, workspaceEntry.WorkspaceId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting workspace: %w", err)
+		}
+		rtn = append(rtn, wshrpc.WorkspaceInfoData{
+			WindowId:      workspaceEntry.WindowId,
+			WorkspaceData: workspaceData,
+		})
+	}
+	return rtn, nil
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)

@@ -167,6 +167,11 @@ class RpcApiType {
         return client.wshRpcCall("filewrite", data, opts);
     }
 
+    // command "focuswindow" [call]
+    FocusWindowCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("focuswindow", data, opts);
+    }
+
     // command "getmeta" [call]
     GetMetaCommand(client: WshClient, data: CommandGetMetaData, opts?: RpcOpts): Promise<MetaType> {
         return client.wshRpcCall("getmeta", data, opts);
@@ -310,6 +315,11 @@ class RpcApiType {
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
+    }
+
+    // command "workspacelist" [call]
+    WorkspaceListCommand(client: WshClient, opts?: RpcOpts): Promise<WorkspaceInfoData[]> {
+        return client.wshRpcCall("workspacelist", null, opts);
     }
 
     // command "wshactivity" [call]
