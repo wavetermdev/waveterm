@@ -170,7 +170,7 @@ func (svc *WindowService) SwitchWorkspace(ctx context.Context, windowId string, 
 
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:SwitchWorkspace:SendUpdateEvents")
+		defer panichandler.PanicHandler("WindowService:SwitchWorkspace:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return ws, err
