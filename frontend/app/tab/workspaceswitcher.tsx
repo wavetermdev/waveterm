@@ -191,7 +191,9 @@ const WorkspaceSwitcher = () => {
         });
     }, []);
 
-    const workspaceIcon = activeWorkspace.icon ? (
+    const isActiveWorkspaceSaved = !!(activeWorkspace.name && activeWorkspace.icon);
+
+    const workspaceIcon = isActiveWorkspaceSaved ? (
         <i className={makeIconClass(activeWorkspace.icon, false)} style={{ color: activeWorkspace.color }}></i>
     ) : (
         <WorkspaceSVG />
@@ -203,8 +205,6 @@ const WorkspaceSwitcher = () => {
             fireAndForget(updateWorkspaceList);
         }, 10);
     };
-
-    const isActiveWorkspaceEphemeral = !activeWorkspace.name || !activeWorkspace.icon;
 
     return (
         <Popover className="workspace-switcher-popover" onDismiss={() => setEditingWorkspace(null)}>
@@ -218,7 +218,7 @@ const WorkspaceSwitcher = () => {
                 <span className="workspace-icon">{workspaceIcon}</span>
             </PopoverButton>
             <PopoverContent className="workspace-switcher-content">
-                <div className="title">Switch workspace</div>
+                <div className="title">{isActiveWorkspaceSaved ? "Switch workspace" : "Open workspace"}</div>
                 <OverlayScrollbarsComponent className={"scrollable"} options={{ scrollbars: { autoHide: "leave" } }}>
                     <ExpandableMenu noIndent singleOpen>
                         {workspaceList.map((entry, i) => (
@@ -227,7 +227,7 @@ const WorkspaceSwitcher = () => {
                     </ExpandableMenu>
                 </OverlayScrollbarsComponent>
 
-                {isActiveWorkspaceEphemeral && (
+                {!isActiveWorkspaceSaved && (
                     <div className="actions">
                         <ExpandableMenuItem onClick={() => saveWorkspace()}>
                             <ExpandableMenuItemLeftElement>
