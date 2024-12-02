@@ -85,7 +85,6 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		if err != nil {
 			return "", fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 		}
-		log.Printf("ws: %v\n", ws)
 		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
 	}
 	tab, err := createTabObj(ctx, workspaceId, tabName)
