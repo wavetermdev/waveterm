@@ -29,7 +29,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/web"
-	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
@@ -276,7 +275,7 @@ func main() {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
 		}
 	}()
-	window, firstRun, err := wcore.EnsureInitialData()
+	err = wcore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
@@ -286,28 +285,7 @@ func main() {
 		log.Printf("error clearing temp files: %v\n", err)
 		return
 	}
-	if firstRun {
-		migrateErr := wstore.TryMigrateOldHistory()
-		if migrateErr != nil {
-			log.Printf("error migrating old history: %v\n", migrateErr)
-		}
-	}
-	if window != nil {
-		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancelFn()
-		if !firstRun {
-			ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
-			if err != nil {
-				log.Printf("error getting workspace: %v\n", err)
-				return
-			}
-			err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
-			if err != nil {
-				log.Panicf("error applying new window layout: %v\n", err)
-				return
-			}
-		}
-	}
+
 	createMainWshClient()
 	installShutdownSignalHandlers()
 	startupActivityUpdate()
