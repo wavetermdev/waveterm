@@ -29,7 +29,6 @@ func EnsureInitialData() error {
 	// does not need to run in a transaction since it is called on startup
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	firstRun := false
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err == wstore.ErrNotFound {
 		client, err = CreateClient(ctx)
@@ -40,7 +39,6 @@ func EnsureInitialData() error {
 		if migrateErr != nil {
 			log.Printf("error migrating old history: %v\n", migrateErr)
 		}
-		firstRun = true
 	}
 	if client.TempOID == "" {
 		log.Println("client.TempOID is empty")
@@ -69,20 +67,13 @@ func EnsureInitialData() error {
 	if err != nil {
 		return fmt.Errorf("error creating tab: %w", err)
 	}
-	window, err := CreateWindow(ctx, nil, defaultWs.OID)
+	_, err = CreateWindow(ctx, nil, defaultWs.OID)
 	if err != nil {
 		return fmt.Errorf("error creating window: %w", err)
 	}
-	if window != nil && !firstRun {
-		ws, err := GetWorkspace(ctx, window.WorkspaceId)
-		if err != nil {
-			return fmt.Errorf("error getting workspace: %w", err)
-		}
-		err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
-		if err != nil {
-			return fmt.Errorf("error bootstrapping new workspace layout: %w", err)
-		}
-
+	err = wlayout.BootstrapNewWorkspaceLayout(ctx, defaultWs)
+	if err != nil {
+		return fmt.Errorf("error bootstrapping new workspace layout: %w", err)
 	}
 	return nil
 }
