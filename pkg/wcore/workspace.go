@@ -140,7 +140,6 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 }
 
 func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
-	log.Printf("SetActiveTab %s %s\n", workspaceId, tabId)
 	workspace, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
 	if workspace == nil {
 		return fmt.Errorf("workspace not found: %q", workspaceId)
