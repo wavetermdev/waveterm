@@ -108,7 +108,7 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId str
 	if err != nil {
 		return nil, fmt.Errorf("error inserting window: %w", err)
 	}
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	client, err := GetClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting client: %w", err)
 	}
@@ -117,12 +117,12 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId str
 	if err != nil {
 		return nil, fmt.Errorf("error updating client: %w", err)
 	}
-	return wstore.DBMustGet[*waveobj.Window](ctx, windowId)
+	return GetWindow(ctx, windowId)
 }
 
 func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error {
 	log.Printf("CloseWindow %s\n", windowId)
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
+	window, err := GetWindow(ctx, windowId)
 	if err == nil {
 		log.Printf("got window %s\n", windowId)
 		deleted, err := DeleteWorkspace(ctx, window.WorkspaceId, false)

@@ -282,10 +282,11 @@ export class WaveBrowserWindow extends BaseWindow {
         await this.queueTabSwitch(tabView, tabInitialized);
     }
 
-    async setActiveTab(tabId: string) {
-        console.log("setActiveTab", this);
-        const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-        await WorkspaceService.SetActiveTab(workspace.oid, tabId);
+    async setActiveTab(tabId: string, setInBackend: boolean) {
+        console.log("setActiveTab", tabId, this.waveWindowId, this.workspaceId, setInBackend);
+        if (setInBackend) {
+            await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
+        }
         const fullConfig = await FileService.GetFullConfig();
         const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, tabId);
         await this.queueTabSwitch(tabView, tabInitialized);
@@ -293,19 +294,20 @@ export class WaveBrowserWindow extends BaseWindow {
 
     async createTab() {
         const tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true);
-        this.setActiveTab(tabId);
+        await this.setActiveTab(tabId, false);
     }
 
     async closeTab(tabId: string) {
+        console.log("closeTab", tabId, this.waveWindowId, this.workspaceId);
         const tabView = this.allTabViews.get(tabId);
         if (tabView) {
             const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
-            this.allTabViews.delete(tabId);
             if (rtn?.closewindow) {
                 this.close();
             } else if (rtn?.newactivetabid) {
-                this.setActiveTab(rtn.newactivetabid);
+                await this.setActiveTab(rtn.newactivetabid, false);
             }
+            this.allTabViews.delete(tabId);
         }
     }
 
@@ -519,7 +521,7 @@ export async function createBrowserWindow(
     console.log("createBrowserWindow", waveWindow.oid, workspace.oid, workspace);
     const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
     if (workspace.activetabid) {
-        await bwin.setActiveTab(workspace.activetabid);
+        await bwin.setActiveTab(workspace.activetabid, false);
     }
     return bwin;
 }
@@ -527,7 +529,7 @@ export async function createBrowserWindow(
 ipcMain.on("set-active-tab", async (event, tabId) => {
     const ww = getWaveWindowByWebContentsId(event.sender.id);
     console.log("set-active-tab", tabId, ww?.waveWindowId);
-    await ww?.setActiveTab(tabId);
+    await ww?.setActiveTab(tabId, true);
 });
 
 ipcMain.on("create-tab", async (event, opts) => {
