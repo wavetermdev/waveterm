@@ -61,11 +61,16 @@ const (
 	ConfigKey_WindowNativeTitleBar           = "window:nativetitlebar"
 	ConfigKey_WindowDisableHardwareAcceleration = "window:disablehardwareacceleration"
 	ConfigKey_WindowMaxTabCacheSize          = "window:maxtabcachesize"
+	ConfigKey_WindowMagnifiedBlockOpacity    = "window:magnifiedblockopacity"
+	ConfigKey_WindowMagnifiedBlockSize       = "window:magnifiedblocksize"
+	ConfigKey_WindowMagnifiedBlockBlurPrimaryPx = "window:magnifiedblockblurprimarypx"
+	ConfigKey_WindowMagnifiedBlockBlurSecondaryPx = "window:magnifiedblockblursecondarypx"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
 
 	ConfigKey_ConnClear                      = "conn:*"
 	ConfigKey_ConnAskBeforeWshInstall        = "conn:askbeforewshinstall"
+	ConfigKey_ConnWshEnabled                 = "conn:wshenabled"
 )
 

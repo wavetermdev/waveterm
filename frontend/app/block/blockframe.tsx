@@ -180,9 +180,16 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
-    const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
+    const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+
+    React.useEffect(() => {
+        if (!magnified || preview || prevMagifiedState.current) {
+            return;
+        }
+        RpcApi.ActivityCommand(TabRpcClient, { nummagnify: 1 });
+    }, [magnified]);
 
     if (blockData?.meta?.["frame:title"]) {
         viewName = blockData.meta["frame:title"];
@@ -236,12 +243,7 @@ const BlockFrame_Header = ({
     }
 
     return (
-        <div
-            className="block-frame-default-header"
-            ref={dragHandleRef}
-            onContextMenu={onContextMenu}
-            draggable={!(preview || magnified || ephemeral)}
-        >
+        <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}
@@ -339,7 +341,7 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, connName, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, { host: connName }, { timeout: 60000 });
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -442,7 +444,10 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
     const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
-
+    const [magnifiedBlockBlurAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
+    const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
+    const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
+    const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>();
     React.useEffect(() => {
         if (!manageConnection) {
@@ -504,6 +509,12 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
+            style={
+                {
+                    "--magnified-block-opacity": magnifiedBlockOpacity,
+                    "--magnified-block-blur": `${magnifiedBlockBlur}px`,
+                } as React.CSSProperties
+            }
         >
             <BlockMask nodeModel={nodeModel} />
             {preview || viewModel == null ? null : (
@@ -662,7 +673,11 @@ const ChangeConnectionBlockModal = React.memo(
             label: `Reconnect to ${connStatus.connection}`,
             value: "",
             onSelect: async (_: string) => {
-                const prtn = RpcApi.ConnConnectCommand(TabRpcClient, connStatus.connection, { timeout: 60000 });
+                const prtn = RpcApi.ConnConnectCommand(
+                    TabRpcClient,
+                    { host: connStatus.connection },
+                    { timeout: 60000 }
+                );
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };

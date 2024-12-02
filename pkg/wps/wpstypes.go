@@ -33,6 +33,8 @@ type SubscriptionRequest struct {
 }
 
 const (
+	FileOp_Create     = "create"
+	FileOp_Delete     = "delete"
 	FileOp_Append     = "append"
 	FileOp_Truncate   = "truncate"
 	FileOp_Invalidate = "invalidate"

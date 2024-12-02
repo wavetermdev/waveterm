@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -91,6 +92,7 @@ func noRouteErr(routeId string) error {
 }
 
 func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
+	defer panichandler.PanicHandler("WshRouter.SendEvent")
 	rpc := router.GetRpc(routeId)
 	if rpc == nil {
 		return
@@ -296,6 +298,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 	}
 	router.RouteMap[routeId] = rpc
 	go func() {
+		defer panichandler.PanicHandler("WshRouter:registerRoute:recvloop")
 		// announce
 		if shouldAnnounce && !alreadyExists && router.GetUpstreamClient() != nil {
 			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
@@ -341,6 +344,7 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 		}
 	}
 	go func() {
+		defer panichandler.PanicHandler("WshRouter:unregisterRoute:routegone")
 		wps.Broker.UnsubscribeAll(routeId)
 		wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
 	}()

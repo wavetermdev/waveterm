@@ -16,27 +16,22 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-const SimpleId_This = "this"
-const SimpleId_Tab = "tab"
+const (
+	SimpleId_This      = "this"
+	SimpleId_Block     = "block"
+	SimpleId_Tab       = "tab"
+	SimpleId_Ws        = "ws"
+	SimpleId_Workspace = "workspace"
+	SimpleId_Client    = "client"
+	SimpleId_Global    = "global"
+	SimpleId_Temp      = "temp"
+)
 
 var (
 	simpleTabNumRe = regexp.MustCompile(`^tab:(\d{1,3})$`)
 	shortUUIDRe    = regexp.MustCompile(`^[0-9a-f]{8}$`)
 	viewBlockRe    = regexp.MustCompile(`^([a-z]+)(?::(\d+))?$`) // Matches "ai" or "ai:2"
 )
-
-// Helper function to validate UUIDs or 8-char UUIDs format
-func isValidSimpleUUID(s string) bool {
-	// Try parsing as full UUID
-	_, err := uuid.Parse(s)
-	if err == nil {
-		return true
-	}
-
-	// Check if it's an 8-char hex prefix
-	shortUUIDPattern := regexp.MustCompile(`^[0-9a-f]{8}$`)
-	return shortUUIDPattern.MatchString(strings.ToLower(s))
-}
 
 // First function: detect/choose discriminator
 func parseSimpleId(simpleId string) (discriminator string, value string, err error) {
@@ -46,7 +41,9 @@ func parseSimpleId(simpleId string) (discriminator string, value string, err err
 	}
 
 	// Handle special keywords
-	if simpleId == SimpleId_This || simpleId == SimpleId_Tab {
+	if simpleId == SimpleId_This || simpleId == SimpleId_Block || simpleId == SimpleId_Tab ||
+		simpleId == SimpleId_Ws || simpleId == SimpleId_Workspace ||
+		simpleId == SimpleId_Client || simpleId == SimpleId_Global || simpleId == SimpleId_Temp {
 		return "this", simpleId, nil
 	}
 
@@ -87,7 +84,7 @@ func resolveThis(ctx context.Context, data wshrpc.CommandResolveIdsData, value s
 		return nil, fmt.Errorf("no blockid in request")
 	}
 
-	if value == SimpleId_This {
+	if value == SimpleId_This || value == SimpleId_Block {
 		return &waveobj.ORef{OType: waveobj.OType_Block, OID: data.BlockId}, nil
 	}
 	if value == SimpleId_Tab {
@@ -97,10 +94,35 @@ func resolveThis(ctx context.Context, data wshrpc.CommandResolveIdsData, value s
 		}
 		return &waveobj.ORef{OType: waveobj.OType_Tab, OID: tabId}, nil
 	}
+	if value == SimpleId_Ws || value == SimpleId_Workspace {
+		tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+		if err != nil {
+			return nil, fmt.Errorf("error finding tab: %v", err)
+		}
+		wsId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+		if err != nil {
+			return nil, fmt.Errorf("error finding workspace: %v", err)
+		}
+		return &waveobj.ORef{OType: waveobj.OType_Workspace, OID: wsId}, nil
+	}
+	if value == SimpleId_Client || value == SimpleId_Global {
+		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting client: %v", err)
+		}
+		return &waveobj.ORef{OType: waveobj.OType_Client, OID: client.OID}, nil
+	}
+	if value == SimpleId_Temp {
+		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting client: %v", err)
+		}
+		return &waveobj.ORef{OType: "temp", OID: client.TempOID}, nil
+	}
 	return nil, fmt.Errorf("invalid value for 'this' resolver: %s", value)
 }
 
-func resolveORef(ctx context.Context, value string) (*waveobj.ORef, error) {
+func resolveORef(_ context.Context, value string) (*waveobj.ORef, error) {
 	parsedORef, err := waveobj.ParseORef(value)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing oref: %v", err)

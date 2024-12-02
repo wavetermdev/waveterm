@@ -28,6 +28,7 @@ const (
 	OType_Tab         = "tab"
 	OType_LayoutState = "layout"
 	OType_Block       = "block"
+	OType_Temp        = "temp"
 )
 
 var ValidOTypes = map[string]bool{
@@ -37,6 +38,7 @@ var ValidOTypes = map[string]bool{
 	OType_Tab:         true,
 	OType_LayoutState: true,
 	OType_Block:       true,
+	OType_Temp:        true,
 }
 
 type WaveObjUpdate struct {
@@ -127,20 +129,18 @@ type Client struct {
 	Meta          MetaMapType `json:"meta"`
 	TosAgreed     int64       `json:"tosagreed,omitempty"`
 	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
-	NextTabId     int         `json:"nexttabid,omitempty"`
+	TempOID       string      `json:"tempoid,omitempty"`
 }
 
 func (*Client) GetOType() string {
 	return OType_Client
 }
 
-// stores the ui-context of the window
-// workspaceid, active tab, active block within each tab, window size, etc.
+// stores the ui-context of the window, points to a workspace containing the actual data being displayed in the window
 type Window struct {
 	OID         string      `json:"oid"`
 	Version     int         `json:"version"`
 	WorkspaceId string      `json:"workspaceid"`
-	ActiveTabId string      `json:"activetabid"`
 	IsNew       bool        `json:"isnew,omitempty"` // set when a window is created on the backend so the FE can size it properly.  cleared on first resize
 	Pos         Point       `json:"pos"`
 	WinSize     WinSize     `json:"winsize"`
@@ -152,12 +152,22 @@ func (*Window) GetOType() string {
 	return OType_Window
 }
 
+type WorkspaceListEntry struct {
+	WorkspaceId string `json:"workspaceid"`
+	WindowId    string `json:"windowid"`
+}
+
+type WorkspaceList []*WorkspaceListEntry
+
 type Workspace struct {
-	OID     string      `json:"oid"`
-	Version int         `json:"version"`
-	Name    string      `json:"name"`
-	TabIds  []string    `json:"tabids"`
-	Meta    MetaMapType `json:"meta"`
+	OID         string      `json:"oid"`
+	Version     int         `json:"version"`
+	Name        string      `json:"name"`
+	Icon        string      `json:"icon"`
+	Color       string      `json:"color"`
+	TabIds      []string    `json:"tabids"`
+	ActiveTabId string      `json:"activetabid"`
+	Meta        MetaMapType `json:"meta"`
 }
 
 func (*Workspace) GetOType() string {

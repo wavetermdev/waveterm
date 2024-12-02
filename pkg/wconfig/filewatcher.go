@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
@@ -64,6 +65,7 @@ func (w *Watcher) Start() {
 	w.sendInitialValues()
 
 	go func() {
+		defer panichandler.PanicHandler("filewatcher:Start")
 		for {
 			select {
 			case event, ok := <-w.watcher.Events:
@@ -139,7 +141,7 @@ func isValidSubSettingsFileName(fileName string) bool {
 	return validFileRe.MatchString(baseName)
 }
 
-func (w *Watcher) handleSettingsFileEvent(event fsnotify.Event, fileName string) {
+func (w *Watcher) handleSettingsFileEvent(_ fsnotify.Event, _ string) {
 	fullConfig := ReadFullConfig()
 	w.fullConfig = fullConfig
 	w.broadcast(WatcherUpdate{FullConfig: w.fullConfig})

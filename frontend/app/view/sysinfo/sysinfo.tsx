@@ -16,7 +16,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms } from "@/store/global";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import "./sysinfo.less";
+import "./sysinfo.scss";
 
 const DefaultNumPoints = 120;
 

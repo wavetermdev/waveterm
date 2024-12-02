@@ -2,7 +2,7 @@ import { Button } from "@/element/button";
 import { atoms, getApi } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useState } from "react";
-import "./updatebanner.less";
+import "./updatebanner.scss";
 
 const UpdateStatusBannerComponent = ({ buttonRef }: { buttonRef: React.RefObject<HTMLButtonElement> }) => {
     const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);

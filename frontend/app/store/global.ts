@@ -140,6 +140,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return connStatuses;
     });
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
+    const notificationsAtom = atom<NotificationType[]>([]);
+    const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
@@ -160,6 +162,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
+        notifications: notificationsAtom,
+        notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
     };
 }
@@ -242,7 +246,7 @@ function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
 
 const settingsAtomCache = new Map<string, Atom<any>>();
 
-function makeOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): Atom<SettingsType[T]> {
+function getOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): Atom<SettingsType[T]> {
     const blockCache = getSingleBlockAtomCache(blockId);
     const overrideAtomName = "#settingsoverride-" + key;
     let overrideAtom = blockCache.get(overrideAtomName);
@@ -267,7 +271,7 @@ function makeOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, k
 }
 
 function useOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): SettingsType[T] {
-    return useAtomValue(makeOverrideConfigAtom(blockId, key));
+    return useAtomValue(getOverrideConfigAtom(blockId, key));
 }
 
 function getSettingsKeyAtom<T extends keyof SettingsType>(key: T): Atom<SettingsType[T]> {
@@ -579,9 +583,38 @@ function pushFlashError(ferr: FlashErrorType) {
     });
 }
 
+function addOrUpdateNotification(notif: NotificationType) {
+    globalStore.set(atoms.notifications, (prevNotifications) => {
+        // Remove any existing notification with the same ID
+        const notificationsWithoutThisId = prevNotifications.filter((n) => n.id !== notif.id);
+        // Add the new notification
+        return [...notificationsWithoutThisId, notif];
+    });
+}
+
+function pushNotification(notif: NotificationType) {
+    if (!notif.id && notif.persistent) {
+        return;
+    }
+    notif.id = notif.id ?? crypto.randomUUID();
+    addOrUpdateNotification(notif);
+}
+
+function removeNotificationById(id: string) {
+    globalStore.set(atoms.notifications, (prev) => {
+        return prev.filter((notif) => notif.id !== id);
+    });
+}
+
 function removeFlashError(id: string) {
     globalStore.set(atoms.flashErrors, (prev) => {
         return prev.filter((ferr) => ferr.id !== id);
+    });
+}
+
+function removeNotification(id: string) {
+    globalStore.set(atoms.notifications, (prev) => {
+        return prev.filter((notif) => notif.id !== id);
     });
 }
 
@@ -603,6 +636,7 @@ export {
     getConnStatusAtom,
     getHostName,
     getObjectId,
+    getOverrideConfigAtom,
     getSettingsKeyAtom,
     getUserName,
     globalStore,
@@ -610,13 +644,15 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
-    makeOverrideConfigAtom,
     openLink,
     PLATFORM,
     pushFlashError,
+    pushNotification,
     refocusNode,
     registerBlockComponentModel,
     removeFlashError,
+    removeNotification,
+    removeNotificationById,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,

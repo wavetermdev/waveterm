@@ -7,7 +7,7 @@ import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
 import * as React from "react";
 
-import "./plotview.less";
+import "./plotview.scss";
 
 function PlotWindow() {
     return <div className="plot-window"></div>;

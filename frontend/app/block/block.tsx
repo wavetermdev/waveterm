@@ -34,7 +34,7 @@ import { WebView, WebViewModel, makeWebViewModel } from "@/view/webview/webview"
 import clsx from "clsx";
 import { atom, useAtomValue } from "jotai";
 import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import "./block.less";
+import "./block.scss";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 

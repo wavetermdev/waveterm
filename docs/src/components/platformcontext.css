@@ -18,12 +18,16 @@
         background-color 0.2s ease,
         color 0.2s ease;
     outline: none;
+    font-weight: bold;
+
+    &:not(:first-of-type) {
+        border-left: 1px solid var(--ifm-scrollbar-thumb-background-color);
+    }
 }
 
 .pill-option.active {
     background-color: var(--ifm-color-primary);
     color: var(--ifm-color-secondary-contrast-background);
-    font-weight: bold;
 }
 
 .pill-option:not(.active):hover {

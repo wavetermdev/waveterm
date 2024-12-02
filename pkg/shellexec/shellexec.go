@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -51,6 +52,7 @@ type ShellProc struct {
 func (sp *ShellProc) Close() {
 	sp.Cmd.KillGraceful(DefaultGracefulKillWait)
 	go func() {
+		defer panichandler.PanicHandler("ShellProc.Close")
 		waitErr := sp.Cmd.Wait()
 		sp.SetWaitErrorAndSignalDone(waitErr)
 
@@ -235,6 +237,47 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 
 func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	client := conn.GetClient()
+	if !conn.WshEnabled.Load() {
+		// no wsh code
+		session, err := client.NewSession()
+		if err != nil {
+			return nil, err
+		}
+
+		remoteStdinRead, remoteStdinWriteOurs, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
+
+		remoteStdoutReadOurs, remoteStdoutWrite, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
+
+		pipePty := &PipePty{
+			remoteStdinWrite: remoteStdinWriteOurs,
+			remoteStdoutRead: remoteStdoutReadOurs,
+		}
+		if termSize.Rows == 0 || termSize.Cols == 0 {
+			termSize.Rows = shellutil.DefaultTermRows
+			termSize.Cols = shellutil.DefaultTermCols
+		}
+		if termSize.Rows <= 0 || termSize.Cols <= 0 {
+			return nil, fmt.Errorf("invalid term size: %v", termSize)
+		}
+		session.Stdin = remoteStdinRead
+		session.Stdout = remoteStdoutWrite
+		session.Stderr = remoteStdoutWrite
+
+		session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
+		sessionWrap := SessionWrap{session, "", pipePty, pipePty}
+		err = session.Shell()
+		if err != nil {
+			pipePty.Close()
+			return nil, err
+		}
+		return &ShellProc{Cmd: sessionWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	}
 	shellPath := cmdOpts.ShellPath
 	if shellPath == "" {
 		remoteShellPath, err := remote.DetectShell(client)
@@ -450,6 +493,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error
 	ioDone := make(chan bool)
 	var outputBuf bytes.Buffer
 	go func() {
+		panichandler.PanicHandler("RunSimpleCmdInPty:ioCopy")
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer close(ioDone)
 		io.Copy(&outputBuf, cmdPty)

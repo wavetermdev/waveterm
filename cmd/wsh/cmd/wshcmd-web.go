@@ -51,11 +51,7 @@ func init() {
 }
 
 func webGetRun(cmd *cobra.Command, args []string) error {
-	oref := blockArg
-	if oref == "" {
-		return fmt.Errorf("blockid not specified")
-	}
-	fullORef, err := resolveSimpleId(oref)
+	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return fmt.Errorf("resolving blockid: %w", err)
 	}
@@ -67,10 +63,10 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("block %s is not a web block", fullORef.OID)
 	}
 	data := wshrpc.CommandWebSelectorData{
-		WindowId: blockInfo.WindowId,
-		BlockId:  fullORef.OID,
-		TabId:    blockInfo.TabId,
-		Selector: args[0],
+		WorkspaceId: blockInfo.WorkspaceId,
+		BlockId:     fullORef.OID,
+		TabId:       blockInfo.TabId,
+		Selector:    args[0],
 		Opts: &wshrpc.WebSelectorOpts{
 			Inner: webGetInner,
 			All:   webGetAll,
@@ -97,7 +93,11 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func webOpenRun(cmd *cobra.Command, args []string) error {
+func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("web", rtnErr == nil)
+	}()
+
 	wshCmd := wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]any{

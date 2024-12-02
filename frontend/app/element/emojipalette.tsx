@@ -8,7 +8,7 @@ import { Button } from "./button";
 import { Input, InputGroup, InputLeftElement } from "./input";
 import { Popover, PopoverButton, PopoverContent } from "./popover";
 
-import "./emojipalette.less";
+import "./emojipalette.scss";
 
 type EmojiItem = { emoji: string; name: string };
 

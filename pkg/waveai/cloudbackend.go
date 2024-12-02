@@ -11,6 +11,7 @@ import (
 	"log"
 
 	"github.com/gorilla/websocket"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -37,7 +38,13 @@ func (WaveAICloudBackend) StreamCompletion(ctx context.Context, request wshrpc.O
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
 	wsEndpoint := wcloud.GetWSEndpoint()
 	go func() {
-		defer close(rtn)
+		defer func() {
+			panicErr := panichandler.PanicHandler("WaveAICloudBackend.StreamCompletion")
+			if panicErr != nil {
+				rtn <- makeAIError(panicErr)
+			}
+			close(rtn)
+		}()
 		if wsEndpoint == "" {
 			rtn <- makeAIError(fmt.Errorf("no cloud ws endpoint found"))
 			return

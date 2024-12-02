@@ -19,9 +19,11 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const SettingsFile = "settings.json"
+const ConnectionsFile = "connections.json"
 
 const AnySchema = `
 {
@@ -29,25 +31,6 @@ const AnySchema = `
   "additionalProperties": true
 }
 `
-
-type MetaSettingsType struct {
-	waveobj.MetaMapType
-}
-
-func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
-	var metaMap waveobj.MetaMapType
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	if err := decoder.Decode(&metaMap); err != nil {
-		return err
-	}
-	*m = MetaSettingsType{MetaMapType: metaMap}
-	return nil
-}
-
-func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(m.MetaMapType)
-}
 
 type SettingsType struct {
 	AiClear      bool    `json:"ai:*,omitempty"`
@@ -94,23 +77,28 @@ type SettingsType struct {
 	WidgetClear    bool  `json:"widget:*,omitempty"`
 	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`
 
-	WindowClear                       bool     `json:"window:*,omitempty"`
-	WindowTransparent                 bool     `json:"window:transparent,omitempty"`
-	WindowBlur                        bool     `json:"window:blur,omitempty"`
-	WindowOpacity                     *float64 `json:"window:opacity,omitempty"`
-	WindowBgColor                     string   `json:"window:bgcolor,omitempty"`
-	WindowReducedMotion               bool     `json:"window:reducedmotion,omitempty"`
-	WindowTileGapSize                 *int64   `json:"window:tilegapsize,omitempty"`
-	WindowShowMenuBar                 bool     `json:"window:showmenubar,omitempty"`
-	WindowNativeTitleBar              bool     `json:"window:nativetitlebar,omitempty"`
-	WindowDisableHardwareAcceleration bool     `json:"window:disablehardwareacceleration,omitempty"`
-	WindowMaxTabCacheSize             int      `json:"window:maxtabcachesize,omitempty"`
+	WindowClear                         bool     `json:"window:*,omitempty"`
+	WindowTransparent                   bool     `json:"window:transparent,omitempty"`
+	WindowBlur                          bool     `json:"window:blur,omitempty"`
+	WindowOpacity                       *float64 `json:"window:opacity,omitempty"`
+	WindowBgColor                       string   `json:"window:bgcolor,omitempty"`
+	WindowReducedMotion                 bool     `json:"window:reducedmotion,omitempty"`
+	WindowTileGapSize                   *int64   `json:"window:tilegapsize,omitempty"`
+	WindowShowMenuBar                   bool     `json:"window:showmenubar,omitempty"`
+	WindowNativeTitleBar                bool     `json:"window:nativetitlebar,omitempty"`
+	WindowDisableHardwareAcceleration   bool     `json:"window:disablehardwareacceleration,omitempty"`
+	WindowMaxTabCacheSize               int      `json:"window:maxtabcachesize,omitempty"`
+	WindowMagnifiedBlockOpacity         *float64 `json:"window:magnifiedblockopacity,omitempty"`
+	WindowMagnifiedBlockSize            *float64 `json:"window:magnifiedblocksize,omitempty"`
+	WindowMagnifiedBlockBlurPrimaryPx   *int64   `json:"window:magnifiedblockblurprimarypx,omitempty"`
+	WindowMagnifiedBlockBlurSecondaryPx *int64   `json:"window:magnifiedblockblursecondarypx,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
 
 	ConnClear               bool `json:"conn:*,omitempty"`
 	ConnAskBeforeWshInstall bool `json:"conn:askbeforewshinstall,omitempty"`
+	ConnWshEnabled          bool `json:"conn:wshenabled,omitempty"`
 }
 
 type ConfigError struct {
@@ -119,12 +107,14 @@ type ConfigError struct {
 }
 
 type FullConfigType struct {
-	Settings     SettingsType                   `json:"settings" merge:"meta"`
-	MimeTypes    map[string]MimeTypeConfigType  `json:"mimetypes"`
-	Widgets      map[string]WidgetConfigType    `json:"widgets"`
-	Presets      map[string]waveobj.MetaMapType `json:"presets"`
-	TermThemes   map[string]TermThemeType       `json:"termthemes"`
-	ConfigErrors []ConfigError                  `json:"configerrors" configfile:"-"`
+	Settings       SettingsType                   `json:"settings" merge:"meta"`
+	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
+	DefaultWidgets map[string]WidgetConfigType    `json:"defaultwidgets"`
+	Widgets        map[string]WidgetConfigType    `json:"widgets"`
+	Presets        map[string]waveobj.MetaMapType `json:"presets"`
+	TermThemes     map[string]TermThemeType       `json:"termthemes"`
+	Connections    map[string]wshrpc.ConnKeywords `json:"connections"`
+	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 
 func goBackWS(barr []byte, offset int) int {
@@ -185,6 +175,10 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 
 func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
 	barr, readErr := fs.ReadFile(fsys, fileName)
+	if readErr != nil {
+		// If we get an error, we may be using the wrong path separator for the given FS interface. Try switching the separator.
+		barr, readErr = fs.ReadFile(fsys, filepath.ToSlash(fileName))
+	}
 	return readConfigHelper(logPrefix+fileName, barr, readErr)
 }
 
@@ -393,12 +387,12 @@ func reindentJson(barr []byte, indentStr string) []byte {
 	if barr[0] != '{' && barr[0] != '[' {
 		return barr
 	}
-	if bytes.Contains(barr, []byte("\n")) {
+	if !bytes.Contains(barr, []byte("\n")) {
 		return barr
 	}
 	outputLines := bytes.Split(barr, []byte("\n"))
 	for i, line := range outputLines {
-		if i == 0 || i == len(outputLines)-1 {
+		if i == 0 {
 			continue
 		}
 		outputLines[i] = append([]byte(indentStr), line...)
@@ -499,6 +493,25 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 		}
 	}
 	return WriteWaveHomeConfigFile(SettingsFile, m)
+}
+
+func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) error {
+	m, cerrs := ReadWaveHomeConfigFile(ConnectionsFile)
+	if len(cerrs) > 0 {
+		return fmt.Errorf("error reading config file: %v", cerrs[0])
+	}
+	if m == nil {
+		m = make(waveobj.MetaMapType)
+	}
+	connData := m.GetMap(connName)
+	if connData == nil {
+		connData = make(waveobj.MetaMapType)
+	}
+	for configKey, val := range toMerge {
+		connData[configKey] = val
+	}
+	m[connName] = connData
+	return WriteWaveHomeConfigFile(ConnectionsFile, m)
 }
 
 type WidgetConfigType struct {

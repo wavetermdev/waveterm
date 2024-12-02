@@ -12,12 +12,12 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 )
 
 const (
@@ -514,12 +514,7 @@ func (s *FileStore) runFlushWithNewContext() (FlushStats, error) {
 }
 
 func (s *FileStore) runFlusher() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("panic in filestore flusher: %v\n", r)
-			debug.PrintStack()
-		}
-	}()
+	defer panichandler.PanicHandler("filestore flusher")
 	for {
 		stats, err := s.runFlushWithNewContext()
 		if err != nil || stats.NumDirtyEntries > 0 {

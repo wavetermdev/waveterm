@@ -27,7 +27,7 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
-import "./directorypreview.less";
+import "./directorypreview.scss";
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {

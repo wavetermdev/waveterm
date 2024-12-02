@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getSettingsKeyAtom } from "@/app/store/global";
 import clsx from "clsx";
 import { toPng } from "html-to-image";
 import { Atom, useAtomValue, useSetAtom } from "jotai";
@@ -20,7 +21,7 @@ import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
 import { LayoutModel } from "./layoutModel";
 import { useNodeModel, useTileLayout } from "./layoutModelHooks";
-import "./tilelayout.less";
+import "./tilelayout.scss";
 import {
     LayoutNode,
     LayoutTreeActionType,
@@ -133,6 +134,8 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
 export const TileLayout = memo(TileLayoutComponent) as typeof TileLayoutComponent;
 
 function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
+    const [blockBlurAtom] = useState(() => getSettingsKeyAtom("window:magnifiedblockblursecondarypx"));
+    const blockBlur = useAtomValue(blockBlurAtom);
     const ephemeralNode = useAtomValue(layoutModel.ephemeralNode);
     const magnifiedNodeId = useAtomValue(layoutModel.treeStateAtom).magnifiedNodeId;
 
@@ -159,6 +162,8 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
         }
     }, [ephemeralNode, magnifiedNodeId]);
 
+    const blockBlurStr = `${blockBlur}px`;
+
     return (
         <>
             {showMagnifiedBackdrop && (
@@ -167,6 +172,7 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
                     onClick={() => {
                         layoutModel.magnifyNodeToggle(magnifiedNodeId);
                     }}
+                    style={{ "--block-blur": blockBlurStr } as CSSProperties}
                 />
             )}
             {showEphemeralBackdrop && (
@@ -175,6 +181,7 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
                     onClick={() => {
                         layoutModel.closeNode(ephemeralNode?.id);
                     }}
+                    style={{ "--block-blur": blockBlurStr } as CSSProperties}
                 />
             )}
         </>
@@ -219,16 +226,19 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
     const previewRef = useRef<HTMLDivElement>(null);
     const addlProps = useAtomValue(nodeModel.additionalProps);
     const devicePixelRatio = useDevicePixelRatio();
+    const isEphemeral = useAtomValue(nodeModel.isEphemeral);
+    const isMagnified = useAtomValue(nodeModel.isMagnified);
 
     const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({
             type: dragItemType,
+            canDrag: () => !(isEphemeral || isMagnified),
             item: () => node,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
         }),
-        [node, addlProps]
+        [node, addlProps, isEphemeral, isMagnified]
     );
 
     const [previewElementGeneration, setPreviewElementGeneration] = useState(0);

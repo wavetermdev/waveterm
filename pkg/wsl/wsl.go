@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -66,6 +68,19 @@ func GetAllConnStatus() []wshrpc.ConnStatus {
 		connStatuses = append(connStatuses, conn.DeriveConnStatus())
 	}
 	return connStatuses
+}
+
+func GetNumWSLHasConnected() int {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+
+	var connectedCount int
+	for _, conn := range clientControllerMap {
+		if conn.LastConnectTime > 0 {
+			connectedCount++
+		}
+	}
+	return connectedCount
 }
 
 func (conn *WslConn) DeriveConnStatus() wshrpc.ConnStatus {
@@ -220,6 +235,7 @@ func (conn *WslConn) StartConnServer() error {
 	})
 	// service the I/O
 	go func() {
+		defer panichandler.PanicHandler("wsl:StartConnServer:wait")
 		// wait for termination, clear the controller
 		defer conn.WithLock(func() {
 			conn.ConnController = nil
@@ -228,6 +244,7 @@ func (conn *WslConn) StartConnServer() error {
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
+		defer panichandler.PanicHandler("wsl:StartConnServer:handleStdIOClient")
 		logName := fmt.Sprintf("conncontroller:%s", conn.GetName())
 		wshutil.HandleStdIOClient(logName, pipeRead, inputPipeWrite)
 	}()
@@ -377,12 +394,18 @@ func (conn *WslConn) Connect(ctx context.Context) error {
 			conn.Status = Status_Error
 			conn.Error = err.Error()
 			conn.close_nolock()
+			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
+				Conn: map[string]int{"wsl:connecterror": 1},
+			}, "wsl-connconnect")
 		} else {
 			conn.Status = Status_Connected
 			conn.LastConnectTime = time.Now().UnixMilli()
 			if conn.ActiveConnNum == 0 {
 				conn.ActiveConnNum = int(activeConnCounter.Add(1))
 			}
+			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
+				Conn: map[string]int{"wsl:connect": 1},
+			}, "wsl-connconnect")
 		}
 	})
 	conn.FireConnChangeEvent()

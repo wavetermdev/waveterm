@@ -5,6 +5,38 @@
 
 declare global {
 
+    // wshrpc.ActivityDisplayType
+    type ActivityDisplayType = {
+        width: number;
+        height: number;
+        dpr: number;
+        internal?: boolean;
+    };
+
+    // wshrpc.ActivityUpdate
+    type ActivityUpdate = {
+        fgminutes?: number;
+        activeminutes?: number;
+        openminutes?: number;
+        numtabs?: number;
+        newtab?: number;
+        numblocks?: number;
+        numwindows?: number;
+        numsshconn?: number;
+        numwslconn?: number;
+        nummagnify?: number;
+        numpanics?: number;
+        startup?: number;
+        shutdown?: number;
+        settabtheme?: number;
+        buildtime?: string;
+        displays?: ActivityDisplayType[];
+        renderers?: {[key: string]: number};
+        blocks?: {[key: string]: number};
+        wshcmds?: {[key: string]: number};
+        conn?: {[key: string]: number};
+    };
+
     // wshrpc.AiMessageData
     type AiMessageData = {
         message?: string;
@@ -36,7 +68,7 @@ declare global {
     type BlockInfoData = {
         blockid: string;
         tabid: string;
-        windowid: string;
+        workspaceid: string;
         block: Block;
     };
 
@@ -52,10 +84,10 @@ declare global {
         windowids: string[];
         tosagreed?: number;
         hasoldhistory?: boolean;
-        nexttabid?: number;
+        tempoid?: string;
     };
 
-    // windowservice.CloseTabRtnType
+    // workspaceservice.CloseTabRtnType
     type CloseTabRtnType = {
         closewindow?: boolean;
         newactivetabid?: string;
@@ -127,11 +159,35 @@ declare global {
         maxitems: number;
     };
 
+    // wshrpc.CommandFileCreateData
+    type CommandFileCreateData = {
+        zoneid: string;
+        filename: string;
+        meta?: {[key: string]: any};
+        opts?: FileOptsType;
+    };
+
     // wshrpc.CommandFileData
     type CommandFileData = {
         zoneid: string;
         filename: string;
         data64?: string;
+        at?: CommandFileDataAt;
+    };
+
+    // wshrpc.CommandFileDataAt
+    type CommandFileDataAt = {
+        offset: number;
+        size?: number;
+    };
+
+    // wshrpc.CommandFileListData
+    type CommandFileListData = {
+        zoneid: string;
+        prefix?: string;
+        all?: boolean;
+        offset?: number;
+        limit?: number;
     };
 
     // wshrpc.CommandGetMetaData
@@ -181,6 +237,22 @@ declare global {
         meta: MetaType;
     };
 
+    // wshrpc.CommandVarData
+    type CommandVarData = {
+        key: string;
+        val?: string;
+        remove?: boolean;
+        zoneid: string;
+        filename: string;
+    };
+
+    // wshrpc.CommandVarResponseData
+    type CommandVarResponseData = {
+        key: string;
+        val: string;
+        exists: boolean;
+    };
+
     // wshrpc.CommandWaitForRouteData
     type CommandWaitForRouteData = {
         routeid: string;
@@ -189,7 +261,7 @@ declare global {
 
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
-        windowid: string;
+        workspaceid: string;
         blockid: string;
         tabid: string;
         selector: string;
@@ -202,9 +274,36 @@ declare global {
         err: string;
     };
 
+    // wshrpc.ConnKeywords
+    type ConnKeywords = {
+        wshenabled?: boolean;
+        askbeforewshinstall?: boolean;
+        "ssh:user"?: string;
+        "ssh:hostname"?: string;
+        "ssh:port"?: string;
+        "ssh:identityfile"?: string[];
+        "ssh:batchmode"?: boolean;
+        "ssh:pubkeyauthentication"?: boolean;
+        "ssh:passwordauthentication"?: boolean;
+        "ssh:kbdinteractiveauthentication"?: boolean;
+        "ssh:preferredauthentications"?: string[];
+        "ssh:addkeystoagent"?: boolean;
+        "ssh:identityagent"?: string;
+        "ssh:proxyjump"?: string[];
+        "ssh:userknownhostsfile"?: string[];
+        "ssh:globalknownhostsfile"?: string[];
+    };
+
+    // wshrpc.ConnRequest
+    type ConnRequest = {
+        host: string;
+        keywords?: ConnKeywords;
+    };
+
     // wshrpc.ConnStatus
     type ConnStatus = {
         status: string;
+        wshenabled: boolean;
         connection: string;
         connected: boolean;
         hasconnected: boolean;
@@ -264,9 +363,11 @@ declare global {
     type FullConfigType = {
         settings: SettingsType;
         mimetypes: {[key: string]: MimeTypeConfigType};
+        defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
+        connections: {[key: string]: ConnKeywords};
         configerrors: ConfigError[];
     };
 
@@ -527,10 +628,15 @@ declare global {
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
         "window:maxtabcachesize"?: number;
+        "window:magnifiedblockopacity"?: number;
+        "window:magnifiedblocksize"?: number;
+        "window:magnifiedblockblurprimarypx"?: number;
+        "window:magnifiedblockblursecondarypx"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
+        "conn:wshenabled"?: boolean;
     };
 
     // waveobj.StickerClickOptsType
@@ -624,6 +730,8 @@ declare global {
         timeoutms: number;
         checkboxmsg: string;
         publictext: boolean;
+        oklabel?: string;
+        cancellabel?: string;
     };
 
     // userinput.UserInputResponse
@@ -879,6 +987,18 @@ declare global {
         meta: {[key: string]: any};
     };
 
+    // wshrpc.WaveFileInfo
+    type WaveFileInfo = {
+        zoneid: string;
+        name: string;
+        opts?: FileOptsType;
+        size?: number;
+        createdts?: number;
+        modts?: number;
+        meta?: {[key: string]: any};
+        isdir?: boolean;
+    };
+
     // wshrpc.WaveInfoData
     type WaveInfoData = {
         version: string;
@@ -949,7 +1069,6 @@ declare global {
     // waveobj.Window
     type WaveWindow = WaveObj & {
         workspaceid: string;
-        activetabid: string;
         isnew?: boolean;
         pos: Point;
         winsize: WinSize;
@@ -997,7 +1116,22 @@ declare global {
     // waveobj.Workspace
     type Workspace = WaveObj & {
         name: string;
+        icon: string;
+        color: string;
         tabids: string[];
+        activetabid: string;
+    };
+
+    // wshrpc.WorkspaceInfoData
+    type WorkspaceInfoData = {
+        windowid: string;
+        workspacedata: Workspace;
+    };
+
+    // waveobj.WorkspaceListEntry
+    type WorkspaceListEntry = {
+        workspaceid: string;
+        windowid: string;
     };
 
     // wshrpc.WshServerCommandMeta

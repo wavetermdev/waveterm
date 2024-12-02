@@ -68,7 +68,7 @@ Download and install Go via your package manager or directly from the website: h
 
 ### NodeJS
 
-Make sure you have a NodeJS 20 LTS installed.
+Make sure you have a NodeJS 22 LTS installed.
 
 See NodeJS's website for platform-specific instructions: https://nodejs.org/en/download
 

@@ -3,7 +3,7 @@
 
 import clsx from "clsx";
 import React, { memo, useState } from "react";
-import "./collapsiblemenu.less";
+import "./collapsiblemenu.scss";
 
 interface VerticalNavProps {
     items: MenuItem[];

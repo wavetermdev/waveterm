@@ -11,14 +11,16 @@ import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import {
-    WOS,
     atoms,
     getBlockComponentModel,
+    getBlockMetaKeyAtom,
     getConnStatusAtom,
+    getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
     useBlockAtom,
     useSettingsPrefixAtom,
+    WOS,
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
@@ -28,7 +30,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
-import { computeTheme } from "./termutil";
+import { computeTheme, DefaultTermTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
 import "./xterm.css";
 
@@ -138,16 +140,17 @@ class TermViewModel {
             }
             return true;
         });
+        this.termThemeNameAtom = useBlockAtom(blockId, "termthemeatom", () => {
+            return jotai.atom<string>((get) => {
+                return get(getOverrideConfigAtom(this.blockId, "term:theme")) ?? DefaultTermTheme;
+            });
+        });
         this.blockBg = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
             const fullConfig = get(atoms.fullConfigAtom);
-            let themeName: string = get(getSettingsKeyAtom("term:theme"));
-            if (blockData?.meta?.["term:theme"]) {
-                themeName = blockData.meta["term:theme"];
-            }
-            const theme = computeTheme(fullConfig, themeName);
-            if (theme != null && theme.background != null) {
-                return { bg: theme.background };
+            const themeName = get(this.termThemeNameAtom);
+            const [_, bgcolor] = computeTheme(fullConfig, themeName);
+            if (bgcolor != null) {
+                return { bg: bgcolor };
             }
             return null;
         });
@@ -167,13 +170,6 @@ class TermViewModel {
                     return 12;
                 }
                 return rtnFontSize;
-            });
-        });
-        this.termThemeNameAtom = useBlockAtom(blockId, "termthemeatom", () => {
-            return jotai.atom<string>((get) => {
-                const blockData = get(this.blockAtom);
-                const settingsKeyAtom = getSettingsKeyAtom("term:theme");
-                return blockData?.meta?.["term:theme"] ?? get(settingsKeyAtom) ?? "default-dark";
             });
         });
         this.noPadding = jotai.atom(true);
@@ -329,7 +325,7 @@ class TermViewModel {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
         const termThemeKeys = Object.keys(termThemes);
-        const curThemeName = globalStore.get(this.termThemeNameAtom);
+        const curThemeName = globalStore.get(getBlockMetaKeyAtom(this.blockId, "term:theme"));
         const defaultFontSize = globalStore.get(getSettingsKeyAtom("term:fontsize")) ?? 12;
         const blockData = globalStore.get(this.blockAtom);
         const overrideFontSize = blockData?.meta?.["term:fontsize"];
@@ -345,6 +341,12 @@ class TermViewModel {
                 checked: curThemeName == themeName,
                 click: () => this.setTerminalTheme(themeName),
             };
+        });
+        submenu.unshift({
+            label: "Default",
+            type: "checkbox",
+            checked: curThemeName == null,
+            click: () => this.setTerminalTheme(null),
         });
         const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
             (fontSize: number) => {
@@ -551,9 +553,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
 
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
-        const termTheme = computeTheme(fullConfig, blockData?.meta?.["term:theme"]);
-        const themeCopy = { ...termTheme };
-        themeCopy.background = "#00000000";
+        const termThemeName = globalStore.get(model.termThemeNameAtom);
+        const [termTheme, _] = computeTheme(fullConfig, termThemeName);
         let termScrollback = 1000;
         if (termSettings?.["term:scrollback"]) {
             termScrollback = Math.floor(termSettings["term:scrollback"]);
@@ -572,7 +573,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             blockId,
             connectElemRef.current,
             {
-                theme: themeCopy,
+                theme: termTheme,
                 fontSize: termFontSize,
                 fontFamily: termSettings?.["term:fontfamily"] ?? "Hack",
                 drawBoldTextInBrightColors: false,
@@ -650,7 +651,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
             <TermResyncHandler blockId={blockId} model={model} />
-            <TermThemeUpdater blockId={blockId} termRef={termRef} />
+            <TermThemeUpdater blockId={blockId} model={model} termRef={termRef} />
             <TermStickers config={stickerConfig} />
             <TermToolbarVDomNode key="vdom-toolbar" blockId={blockId} model={model} />
             <TermVDomNode key="vdom" blockId={blockId} model={model} />
@@ -659,4 +660,4 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     );
 };
 
-export { TermViewModel, TerminalView, makeTerminalModel };
+export { makeTerminalModel, TerminalView, TermViewModel };

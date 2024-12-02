@@ -10,7 +10,9 @@ import * as React from "react";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import { atoms, globalStore, refocusNode } from "@/app/store/global";
-import "./tab.less";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import "./tab.scss";
 
 interface TabProps {
     id: string;
@@ -171,6 +173,7 @@ const Tab = React.memo(
                             label: preset["display:name"] ?? presetName,
                             click: () => {
                                 services.ObjectService.UpdateObjectMeta(oref, preset);
+                                RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
                             },
                         });
                     }
