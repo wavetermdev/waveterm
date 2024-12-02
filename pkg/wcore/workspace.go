@@ -39,7 +39,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	}
 	for _, tabId := range workspace.TabIds {
 		log.Printf("deleting tab %s\n", tabId)
-		err := DeleteTab(ctx, workspaceId, tabId)
+		_, err := DeleteTab(ctx, workspaceId, tabId)
 		if err != nil {
 			return false, fmt.Errorf("error closing tab: %w", err)
 		}
@@ -57,9 +57,9 @@ func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) 
 }
 
 func createTabObj(ctx context.Context, workspaceId string, name string) (*waveobj.Tab, error) {
-	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
-	if ws == nil {
-		return nil, fmt.Errorf("workspace not found: %q", workspaceId)
+	ws, err := GetWorkspace(ctx, workspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 	}
 	layoutStateId := uuid.NewString()
 	tab := &waveobj.Tab{
@@ -81,19 +81,11 @@ func createTabObj(ctx context.Context, workspaceId string, name string) (*waveob
 // returns tabid
 func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool) (string, error) {
 	if tabName == "" {
-		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		ws, err := GetWorkspace(ctx, workspaceId)
 		if err != nil {
-			return "", fmt.Errorf("error getting client: %w", err)
-		}
-		ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
-		if ws == nil {
-			return "", fmt.Errorf("workspace not found: %q", workspaceId)
+			return "", fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 		}
 		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
-		err = wstore.DBUpdate(ctx, client)
-		if err != nil {
-			return "", fmt.Errorf("error updating client: %w", err)
-		}
 	}
 	tab, err := createTabObj(ctx, workspaceId, tabName)
 	if err != nil {
@@ -109,49 +101,60 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	return tab.OID, nil
 }
 
-// must delete all blocks individually first
-// also deletes LayoutState
-func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
+// Must delete all blocks individually first.
+// Also deletes LayoutState.
+// Returns new active tab id, error.
+func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, error) {
 	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
 	if ws == nil {
-		return fmt.Errorf("workspace not found: %q", workspaceId)
+		return "", fmt.Errorf("workspace not found: %q", workspaceId)
 	}
 	tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
 	if tab == nil {
-		return fmt.Errorf("tab not found: %q", tabId)
+		return "", fmt.Errorf("tab not found: %q", tabId)
 	}
 
 	// close blocks (sends events + stops block controllers)
 	for _, blockId := range tab.BlockIds {
 		err := DeleteBlock(ctx, blockId)
 		if err != nil {
-			return fmt.Errorf("error deleting block %s: %w", blockId, err)
+			return "", fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
 	}
 	tabIdx := utilfn.FindStringInSlice(ws.TabIds, tabId)
 	if tabIdx == -1 {
-		return nil
+		return "", nil
 	}
 	ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
+	newActiveTabId := ws.ActiveTabId
+	if len(ws.TabIds) > 0 {
+		if ws.ActiveTabId == tabId {
+			newActiveTabId = ws.TabIds[max(0, min(tabIdx-1, len(ws.TabIds)-1))]
+		}
+	} else {
+		newActiveTabId = ""
+	}
+	ws.ActiveTabId = newActiveTabId
+
 	wstore.DBUpdate(ctx, ws)
 	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
 	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
-	return nil
+	return newActiveTabId, nil
 }
 
 func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
-	workspace, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
-	if workspace == nil {
-		return fmt.Errorf("workspace not found: %q", workspaceId)
-	}
 	if tabId != "" {
+		workspace, err := GetWorkspace(ctx, workspaceId)
+		if err != nil {
+			return fmt.Errorf("workspace %s not found: %w", workspaceId, err)
+		}
 		tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
 		if tab == nil {
 			return fmt.Errorf("tab not found: %q", tabId)
 		}
+		workspace.ActiveTabId = tabId
+		wstore.DBUpdate(ctx, workspace)
 	}
-	workspace.ActiveTabId = tabId
-	wstore.DBUpdate(ctx, workspace)
 	return nil
 }
 
