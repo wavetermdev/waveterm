@@ -243,6 +243,7 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async switchWorkspace(workspaceId: string) {
+        console.log("switchWorkspace", workspaceId, this.waveWindowId);
         const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
         if (curWorkspace.tabids.length > 1 && (!curWorkspace.name || !curWorkspace.icon)) {
             const choice = dialog.showMessageBoxSync(this, {
@@ -270,16 +271,16 @@ export class WaveBrowserWindow extends BaseWindow {
         if (!newWs) {
             return;
         }
+        console.log("switchWorkspace newWs", newWs);
         if (this.allTabViews.size) {
             for (const tab of this.allTabViews.values()) {
                 tab?.destroy();
             }
         }
+        console.log("destroyed all tabs", this.waveWindowId);
         this.workspaceId = workspaceId;
         this.allTabViews = new Map();
-        const fullConfig = await FileService.GetFullConfig();
-        const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, newWs.activetabid);
-        await this.queueTabSwitch(tabView, tabInitialized);
+        await this.setActiveTab(newWs.activetabid, false);
     }
 
     async setActiveTab(tabId: string, setInBackend: boolean) {
