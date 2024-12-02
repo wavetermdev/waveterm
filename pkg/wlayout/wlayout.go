@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
+	"github.com/wavetermdev/waveterm/pkg/wblock"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -131,7 +131,7 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 	for i := 0; i < len(layout); i++ {
 		layoutAction := layout[i]
 
-		blockData, err := wcore.CreateBlock(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{})
+		blockData, err := wblock.CreateBlock(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{})
 		if err != nil {
 			return fmt.Errorf("unable to create block to apply portable layout to tab %s: %w", tabId, err)
 		}

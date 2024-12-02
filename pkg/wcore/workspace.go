@@ -10,6 +10,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wblock"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -123,7 +124,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 
 	// close blocks (sends events + stops block controllers)
 	for _, blockId := range tab.BlockIds {
-		err := DeleteBlock(ctx, blockId)
+		err := wblock.DeleteBlock(ctx, blockId)
 		if err != nil {
 			return fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
