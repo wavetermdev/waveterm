@@ -27,7 +27,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wblock"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wlayout"
@@ -177,7 +176,7 @@ func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandR
 func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.CommandCreateBlockData) (*waveobj.ORef, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId := data.TabId
-	blockData, err := wblock.CreateBlock(ctx, tabId, data.BlockDef, data.RtOpts)
+	blockData, err := wcore.CreateBlock(ctx, tabId, data.BlockDef, data.RtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
@@ -197,7 +196,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 
 func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.CommandCreateSubBlockData) (*waveobj.ORef, error) {
 	parentBlockId := data.ParentBlockId
-	blockData, err := wblock.CreateSubBlock(ctx, parentBlockId, data.BlockDef)
+	blockData, err := wcore.CreateSubBlock(ctx, parentBlockId, data.BlockDef)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
@@ -490,7 +489,7 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 }
 
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
-	err := wblock.DeleteBlock(ctx, data.BlockId)
+	err := wcore.DeleteBlock(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
@@ -506,7 +505,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if tabId == "" {
 		return fmt.Errorf("no tab found for block")
 	}
-	err = wblock.DeleteBlock(ctx, data.BlockId)
+	err = wcore.DeleteBlock(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}

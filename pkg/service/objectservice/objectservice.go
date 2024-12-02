@@ -11,7 +11,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wblock"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -103,7 +103,7 @@ func (svc *ObjectService) CreateBlock(uiContext waveobj.UIContext, blockDef *wav
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
 
-	blockData, err := wblock.CreateBlock(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
+	blockData, err := wcore.CreateBlock(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
 	if err != nil {
 		return "", nil, err
 	}
@@ -121,7 +121,7 @@ func (svc *ObjectService) DeleteBlock(uiContext waveobj.UIContext, blockId strin
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wblock.DeleteBlock(ctx, blockId)
+	err := wcore.DeleteBlock(ctx, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting block: %w", err)
 	}

@@ -1,4 +1,4 @@
-package wblock
+package wcore
 
 import (
 	"context"

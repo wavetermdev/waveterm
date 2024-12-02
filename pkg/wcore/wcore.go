@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -70,10 +69,6 @@ func EnsureInitialData() error {
 	_, err = CreateWindow(ctx, nil, defaultWs.OID)
 	if err != nil {
 		return fmt.Errorf("error creating window: %w", err)
-	}
-	err = wlayout.BootstrapNewWorkspaceLayout(ctx, defaultWs)
-	if err != nil {
-		return fmt.Errorf("error bootstrapping new workspace layout: %w", err)
 	}
 	return nil
 }
