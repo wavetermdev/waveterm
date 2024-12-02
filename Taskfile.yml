@@ -327,7 +327,7 @@ tasks:
         cmd: 'rm -rf ~/Library/Application\ Support/waveterm-dev'
 
     yarn:
-        desc: Runs `yarn`
+        desc: Runs `yarn install`
         internal: true
         generates:
             - node_modules/**/*
@@ -337,7 +337,7 @@ tasks:
             - yarn.lock
             - package.json
             - .yarnrc.yml
-        cmd: yarn
+        cmd: yarn install
 
     go:mod:tidy:
         desc: Runs `go mod tidy`
