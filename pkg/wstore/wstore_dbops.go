@@ -353,8 +353,9 @@ func DBFindWorkspaceForTabId(ctx context.Context, tabId string) (string, error) 
 	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
 		query := `
 			SELECT w.oid
-			FROM db_workspace w, json_each(data->'tabids') je
-			WHERE je.value = ?`
+			FROM db_workspace w, json_each(data->'tabids') tje
+			FROM db_workspace w, json_each(data->'pinnedtabids') pje
+			WHERE tje.value = ? OR pje.value = ?`
 		return tx.GetString(query, tabId), nil
 	})
 }

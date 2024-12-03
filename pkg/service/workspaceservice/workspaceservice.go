@@ -73,11 +73,11 @@ func (svc *WorkspaceService) CreateTab_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
+func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activateTab bool, pinned bool) (string, waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab)
+	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, pinned)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}
@@ -99,11 +99,11 @@ func (svc *WorkspaceService) UpdateTabIds_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *WorkspaceService) UpdateTabIds(uiContext waveobj.UIContext, workspaceId string, tabIds []string) (waveobj.UpdatesRtnType, error) {
+func (svc *WorkspaceService) UpdateTabIds(uiContext waveobj.UIContext, workspaceId string, tabIds []string, pinnedTabIds []string) (waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
+	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds, pinnedTabIds)
 	if err != nil {
 		return nil, fmt.Errorf("error updating workspace tab ids: %w", err)
 	}
