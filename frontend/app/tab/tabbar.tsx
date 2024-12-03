@@ -104,8 +104,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
-    // const [scrollable, setScrollable] = useState(false);
-    // const [tabWidth, setTabWidth] = useState(TAB_DEFAULT_WIDTH);
     const [newTabId, setNewTabId] = useState<string | null>(null);
 
     const tabbarWrapperRef = useRef<HTMLDivElement>(null);
@@ -126,6 +124,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const osInstanceRef = useRef<OverlayScrollbars>(null);
     const draggerRightRef = useRef<HTMLDivElement>(null);
     const draggerLeftRef = useRef<HTMLDivElement>(null);
+    const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
+    const devLabelRef = useRef<HTMLDivElement>(null);
+    const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
@@ -185,33 +186,31 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
         const updateStatusLabelWidth = updateStatusButtonRef.current?.getBoundingClientRect().width ?? 0;
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
-        const spaceForTabs =
-            tabbarWrapperWidth -
-            (windowDragLeftWidth + DRAGGER_RIGHT_MIN_WIDTH + addBtnWidth + updateStatusLabelWidth + configErrorWidth);
+        const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
+        const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
+        const devLabelWidth = devLabelRef.current?.getBoundingClientRect().width ?? 0;
+
+        const nonTabElementsWidth =
+            windowDragLeftWidth +
+            DRAGGER_RIGHT_MIN_WIDTH +
+            addBtnWidth +
+            updateStatusLabelWidth +
+            configErrorWidth +
+            appMenuButtonWidth +
+            workspaceSwitcherWidth +
+            devLabelWidth;
+        const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
         const numberOfTabs = tabIds.length;
-        const totalDefaultTabWidth = numberOfTabs * TAB_DEFAULT_WIDTH;
-        const minTotalTabWidth = numberOfTabs * TAB_MIN_WIDTH;
-        const tabWidth = tabWidthRef.current;
-        const scrollable = scrollableRef.current;
-        let newTabWidth = tabWidth;
-        let newScrollable = scrollable;
 
-        if (spaceForTabs < totalDefaultTabWidth && spaceForTabs > minTotalTabWidth) {
-            newTabWidth = TAB_MIN_WIDTH;
-        } else if (minTotalTabWidth > spaceForTabs) {
-            // Case where tabs cannot shrink further, make the tab bar scrollable
-            newTabWidth = TAB_MIN_WIDTH;
-            newScrollable = true;
-        } else if (totalDefaultTabWidth > spaceForTabs) {
-            // Case where resizing is needed due to limited container width
-            newTabWidth = spaceForTabs / numberOfTabs;
-            newScrollable = false;
-        } else {
-            // Case where tabs were previously shrunk or there is enough space for default width tabs
-            newTabWidth = TAB_DEFAULT_WIDTH;
-            newScrollable = false;
-        }
+        // Compute the ideal width per tab by dividing the available space by the number of tabs
+        let idealTabWidth = spaceForTabs / numberOfTabs;
+
+        // Apply min/max constraints
+        idealTabWidth = Math.max(TAB_MIN_WIDTH, Math.min(idealTabWidth, TAB_DEFAULT_WIDTH));
+
+        // Determine if the tab bar needs to be scrollable
+        const newScrollable = idealTabWidth * numberOfTabs > spaceForTabs;
 
         // Apply the calculated width and position to all tabs
         tabRefs.current.forEach((ref, index) => {
@@ -221,20 +220,22 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 } else {
                     ref.current.classList.remove("animate");
                 }
-                ref.current.style.width = `${newTabWidth}px`;
-                ref.current.style.transform = `translate3d(${index * newTabWidth}px,0,0)`;
+                ref.current.style.width = `${idealTabWidth}px`;
+                ref.current.style.transform = `translate3d(${index * idealTabWidth}px,0,0)`;
                 ref.current.style.opacity = "1";
             }
         });
 
         // Update the state with the new tab width if it has changed
-        if (newTabWidth !== tabWidth) {
-            tabWidthRef.current = newTabWidth;
+        if (idealTabWidth !== tabWidthRef.current) {
+            tabWidthRef.current = idealTabWidth;
         }
+
         // Update the state with the new scrollable state if it has changed
-        if (newScrollable !== scrollable) {
+        if (newScrollable !== scrollableRef.current) {
             scrollableRef.current = newScrollable;
         }
+
         // Initialize/destroy overlay scrollbars
         if (newScrollable) {
             osInstanceRef.current = OverlayScrollbars(tabBarRef.current, { ...(OS_OPTIONS as any) });
@@ -530,13 +531,13 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
     const devLabel = isDev() ? (
-        <div className="dev-label">
+        <div ref={devLabelRef} className="dev-label">
             <i className="fa fa-brands fa-dev fa-fw" />
         </div>
     ) : undefined;
     const appMenuButton =
         PLATFORM !== "darwin" && !settings["window:showmenubar"] ? (
-            <div className="app-menu-button" onClick={onEllipsisClick}>
+            <div ref={appMenuButtonRef} className="app-menu-button" onClick={onEllipsisClick}>
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
@@ -545,7 +546,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
-            <WorkspaceSwitcher></WorkspaceSwitcher>
+            <WorkspaceSwitcher />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
@@ -572,7 +573,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <div ref={addBtnRef} className="add-tab-btn" onClick={handleAddTab}>
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>
-            <WindowDrag ref={draggerRightRef} className="right" />
+            <WindowDrag ref={draggerRightRef} className="right" style={{ minWidth: DRAGGER_RIGHT_MIN_WIDTH }} />
             <UpdateStatusBanner buttonRef={updateStatusButtonRef} />
             <ConfigErrorIcon buttonRef={configErrorButtonRef} />
         </div>
