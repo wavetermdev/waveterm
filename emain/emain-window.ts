@@ -274,6 +274,7 @@ export class WaveBrowserWindow extends BaseWindow {
         console.log("switchWorkspace newWs", newWs);
         if (this.allTabViews.size) {
             for (const tab of this.allTabViews.values()) {
+                this.contentView.removeChildView(tab);
                 tab?.destroy();
             }
         }
