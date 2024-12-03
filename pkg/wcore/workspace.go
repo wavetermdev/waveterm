@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -139,6 +140,17 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, e
 	wstore.DBUpdate(ctx, ws)
 	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
 	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
+
+	if newActiveTabId == "" {
+		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
+		if err != nil {
+			return newActiveTabId, fmt.Errorf("unable to find window for workspace id %v: %w", workspaceId, err)
+		}
+		err = CloseWindow(ctx, windowId, false)
+		if err != nil {
+			return newActiveTabId, err
+		}
+	}
 	return newActiveTabId, nil
 }
 
@@ -156,6 +168,13 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 		wstore.DBUpdate(ctx, workspace)
 	}
 	return nil
+}
+
+func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId string) {
+	eventbus.SendEventToElectron(eventbus.WSEventType{
+		EventType: eventbus.WSEvent_ElectronUpdateActiveTab,
+		Data:      &waveobj.ActiveTabUpdate{WorkspaceId: workspaceId, NewActiveTabId: newActiveTabId},
+	})
 }
 
 func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {

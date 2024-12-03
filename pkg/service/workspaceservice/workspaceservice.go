@@ -175,15 +175,7 @@ func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, t
 	}
 	rtn := &CloseTabRtnType{}
 	if newActiveTabId == "" {
-		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
-		if err != nil {
-			return rtn, nil, fmt.Errorf("unable to find window for workspace id %v: %w", workspaceId, err)
-		}
 		rtn.CloseWindow = true
-		err = wcore.CloseWindow(ctx, windowId, fromElectron)
-		if err != nil {
-			return rtn, nil, err
-		}
 	} else {
 		rtn.NewActiveTabId = newActiveTabId
 	}
