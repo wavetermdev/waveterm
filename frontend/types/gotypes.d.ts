@@ -278,6 +278,7 @@ declare global {
     type ConnKeywords = {
         wshenabled?: boolean;
         askbeforewshinstall?: boolean;
+        hidden?: boolean;
         "ssh:user"?: string;
         "ssh:hostname"?: string;
         "ssh:port"?: string;

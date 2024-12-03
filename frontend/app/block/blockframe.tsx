@@ -570,6 +570,8 @@ const ChangeConnectionBlockModal = React.memo(
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
+        const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+        const connectionsConfig = fullConfig.connections;
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
             if (conn.activeconnnum > maxActiveConnNum) {
@@ -640,7 +642,7 @@ const ChangeConnectionBlockModal = React.memo(
             if (conn === connSelected) {
                 createNew = false;
             }
-            if (conn.includes(connSelected)) {
+            if (conn.includes(connSelected) && connectionsConfig[conn]?.hidden != true) {
                 filteredList.push(conn);
             }
         }
@@ -649,7 +651,7 @@ const ChangeConnectionBlockModal = React.memo(
             if (conn === connSelected) {
                 createNew = false;
             }
-            if (conn.includes(connSelected)) {
+            if (conn.includes(connSelected) && connectionsConfig[conn]?.hidden != true) {
                 filteredWslList.push(conn);
             }
         }
