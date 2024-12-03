@@ -274,6 +274,7 @@ export class WaveBrowserWindow extends BaseWindow {
         console.log("switchWorkspace newWs", newWs);
         if (this.allTabViews.size) {
             for (const tab of this.allTabViews.values()) {
+                this.contentView.removeChildView(tab);
                 tab?.destroy();
             }
         }
@@ -320,6 +321,7 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
+        console.log("setTabViewIntoWindow", tabView.waveTabId, this.waveWindowId);
         const clientData = await ClientService.GetClientData();
         if (this.activeTabView == tabView) {
             return;
@@ -333,8 +335,19 @@ export class WaveBrowserWindow extends BaseWindow {
         this.allTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
             console.log("initializing a new tab");
-            await tabView.initPromise;
-            this.contentView.addChildView(tabView);
+            try {
+                await tabView.initPromise;
+            } catch (e) {
+                console.error("error waiting for tabView.initPromise", e);
+                throw e;
+            }
+
+            try {
+                this.contentView.addChildView(tabView);
+            } catch (e) {
+                console.error("error adding child view", e);
+                throw e;
+            }
             const initOpts = {
                 tabId: tabView.waveTabId,
                 clientId: clientData.oid,
