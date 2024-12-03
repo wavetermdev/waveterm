@@ -271,7 +271,13 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		session.Stderr = remoteStdoutWrite
 
 		session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
-		sessionWrap := SessionWrap{session, "", pipePty, pipePty}
+		sessionWrap := SessionWrap{
+			Session:  session,
+			StartCmd: "",
+			Tty:      pipePty,
+			WaitErr:  &atomic.Pointer[error]{},
+			Pty:      pipePty,
+		}
 		err = session.Shell()
 		if err != nil {
 			pipePty.Close()
