@@ -159,6 +159,11 @@ type WorkspaceListEntry struct {
 
 type WorkspaceList []*WorkspaceListEntry
 
+type ActiveTabUpdate struct {
+	WorkspaceId    string `json:"workspaceid"`
+	NewActiveTabId string `json:"newactivetabid"`
+}
+
 type Workspace struct {
 	OID         string      `json:"oid"`
 	Version     int         `json:"version"`
