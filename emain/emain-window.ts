@@ -333,6 +333,7 @@ export class WaveBrowserWindow extends BaseWindow {
         this.activeTabView = tabView;
         this.allTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
+            console.log("initializing a new tab");
             await tabView.initPromise;
             this.contentView.addChildView(tabView);
             const initOpts = {
