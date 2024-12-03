@@ -24,6 +24,7 @@ interface TabProps {
     tabWidth: number;
     isNew: boolean;
     tabIndicesMovedAtom: Atom<number[]>;
+    tabIds: string[];
     onSelect: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -42,6 +43,7 @@ const Tab = React.memo(
                 tabWidth,
                 isNew,
                 tabIndicesMovedAtom,
+                tabIds,
                 onLoaded,
                 onSelect,
                 onClose,
@@ -61,6 +63,7 @@ const Tab = React.memo(
             const tabIndicesMoved = useAtomValue(tabIndicesMovedAtom);
 
             console.log("tabIndicesMoved", tabIndicesMoved);
+            console.log("tabIds", tabIds);
 
             useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 

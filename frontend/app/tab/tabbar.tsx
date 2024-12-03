@@ -114,7 +114,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const [draggingTab, setDraggingTab] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
     const [newTabId, setNewTabId] = useState<string | null>(null);
-    const [test, setTest] = useState("");
 
     const tabbarWrapperRef = useRef<HTMLDivElement>(null);
     const tabBarRef = useRef<HTMLDivElement>(null);
@@ -329,8 +328,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         return newTabIndex;
     };
 
-    console.log("test::::::::::::::::", test);
-
     const handleMouseMove = (event: MouseEvent) => {
         const { tabId, ref, tabStartX } = draggingTabDataRef.current;
 
@@ -429,7 +426,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             if (getDragDirection(currentX) === "+") {
                 setTabIndicesMoved([tabIndex, newTabIndex, newTabIndex + 1]);
             } else if (getDragDirection(currentX) === "-") {
-                setTabIndicesMoved([newTabIndex, tabIndex, tabIndex + 1]);
+                setTabIndicesMoved([newTabIndex - 1, newTabIndex, newTabIndex + 1]);
             }
 
             tabIds.splice(newTabIndex, 0, tabId);
@@ -593,7 +590,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             </div>
         ) : undefined;
 
-    console.log("draggingTAb==========", draggingTab);
+    // console.log("tabIds==========", tabIds);
 
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
@@ -620,6 +617,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}
                                 tabIndicesMovedAtom={tabIndicesMovedAtom}
+                                tabIds={tabIds}
                             />
                         );
                     })}
