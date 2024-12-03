@@ -35,7 +35,10 @@ export type TermWrapOptions = {
     useWebGl?: boolean;
     useWebLinksAddon?: boolean;
     useSerializeAddon?: boolean;
-    termTheme: Atom<TermTypes.ITheme>;
+    termThemeAtom: Atom<TermTypes.ITheme>;
+    termFontSize: Atom<number>;
+    termFontFamily: Atom<string>;
+    termScrollback: Atom<number>;
     onOpenLink?: (uri: string) => void;
     onCwdChange?: (newCwd: string) => void;
     handleInputData?: (data: string) => void;
@@ -212,18 +215,27 @@ export class TermWrap {
 export const TermElem = (props: { termOpts: TermWrapOptions }) => {
     const connectElemRef = useRef<HTMLDivElement>(null);
     const termWrapRef = useRef<TermWrap>(null);
-    const termTheme = useAtomValueSafe(props.termOpts.termTheme);
+    const termTheme = useAtomValueSafe(props.termOpts.termThemeAtom);
+    const termFontSize = useAtomValueSafe(props.termOpts.termFontSize) ?? 12;
+    const termFontFamily = useAtomValueSafe(props.termOpts.termFontFamily) ?? "Hack";
+    const termScrollback = useAtomValueSafe(props.termOpts.termScrollback) ?? 1000;
     useEffect(() => {
         if (termWrapRef.current == null || termTheme == null) {
             return;
         }
         termWrapRef.current.terminal.options.theme = termTheme;
-    }, [termTheme]);
+        termWrapRef.current.terminal.options.fontSize = termFontSize;
+        termWrapRef.current.terminal.options.fontFamily = termFontFamily;
+        termWrapRef.current.terminal.options.scrollback = termScrollback;
+    }, [termTheme, termFontSize, termFontFamily, termScrollback]);
     useEffect(() => {
         termWrapRef.current = new TermWrap(props.termOpts);
         if (termTheme != null) {
             termWrapRef.current.terminal.options.theme = termTheme;
         }
+        termWrapRef.current.terminal.options.fontSize = termFontSize;
+        termWrapRef.current.terminal.options.fontFamily = termFontFamily;
+        termWrapRef.current.terminal.options.scrollback = termScrollback;
         termWrapRef.current.initTerminal(connectElemRef.current);
         return () => {
             termWrapRef.current.dispose();

@@ -3,6 +3,7 @@
 
 import { Block, SubBlock } from "@/app/block/block";
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { TermWrapOptions } from "@/app/element/termelem/termelem";
 import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -17,13 +18,14 @@ import {
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
+    getSettingsPrefixAtom,
     globalStore,
     useBlockAtom,
-    useSettingsPrefixAtom,
     WOS,
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
+import * as TermTypes from "@xterm/xterm";
 import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -64,6 +66,7 @@ class TermViewModel {
     termThemeNameAtom: jotai.Atom<string>;
     noPadding: jotai.PrimitiveAtom<boolean>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
+    termThemeAtom: jotai.Atom<TermTypes.ITheme>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
@@ -187,6 +190,32 @@ class TermViewModel {
                 },
             ];
         });
+        this.termThemeAtom = jotai.atom((get) => {
+            const fullConfig = get(atoms.fullConfigAtom);
+            const termThemeName = get(this.termThemeNameAtom);
+            const [theme, _] = computeTheme(fullConfig, termThemeName);
+            return theme;
+        });
+    }
+
+    getTermScrollback(): number {
+        const settingsPrefixAtom = getSettingsPrefixAtom("term");
+        const termSettings = globalStore.get(settingsPrefixAtom);
+        const blockData = globalStore.get(this.blockAtom);
+        let termScrollback = 1000;
+        if (termSettings?.["term:scrollback"]) {
+            termScrollback = Math.floor(termSettings["term:scrollback"]);
+        }
+        if (blockData?.meta?.["term:scrollback"]) {
+            termScrollback = Math.floor(blockData.meta["term:scrollback"]);
+        }
+        if (termScrollback < 0) {
+            termScrollback = 0;
+        }
+        if (termScrollback > 10000) {
+            termScrollback = 10000;
+        }
+        return termScrollback;
     }
 
     setTermMode(mode: "term" | "vdom") {
@@ -541,7 +570,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const spstatusRef = React.useRef<string>(null);
     model.shellProcStatusRef = spstatusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const termSettingsAtom = useSettingsPrefixAtom("term");
+    const termSettingsAtom = getSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
     let termMode = blockData?.meta?.["term:mode"] ?? "term";
     if (termMode != "term" && termMode != "vdom") {
@@ -549,7 +578,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     }
     const termModeRef = React.useRef(termMode);
 
-    const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
 
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
@@ -648,6 +676,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         cols: termRef.current?.terminal.cols ?? 80,
         blockId: blockId,
     };
+    
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
             <TermResyncHandler blockId={blockId} model={model} />

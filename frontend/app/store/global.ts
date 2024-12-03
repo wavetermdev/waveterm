@@ -293,7 +293,7 @@ function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): SettingsType[
     return useAtomValue(getSettingsKeyAtom(key));
 }
 
-function useSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
+function getSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
     // TODO: use a shallow equal here to make this more efficient
     let settingsPrefixAtom = settingsAtomCache.get(prefix + ":") as Atom<SettingsType>;
     if (settingsPrefixAtom == null) {
@@ -638,6 +638,7 @@ export {
     getObjectId,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
+    getSettingsPrefixAtom,
     getUserName,
     globalStore,
     initGlobal,
@@ -663,6 +664,5 @@ export {
     useBlockMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,
-    useSettingsPrefixAtom,
     WOS,
 };
