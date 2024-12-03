@@ -92,6 +92,7 @@ console.log = log;
 console.log(
     sprintf(
         "waveterm-app starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s",
+        waveDataDir,
         waveConfigDir,
         getElectronAppBasePath(),
         getElectronAppUnpackedBasePath(),
