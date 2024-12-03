@@ -68,7 +68,7 @@ declare global {
     type BlockInfoData = {
         blockid: string;
         tabid: string;
-        windowid: string;
+        workspaceid: string;
         block: Block;
         files: WaveFile[];
     };
@@ -85,11 +85,10 @@ declare global {
         windowids: string[];
         tosagreed?: number;
         hasoldhistory?: boolean;
-        nexttabid?: number;
         tempoid?: string;
     };
 
-    // windowservice.CloseTabRtnType
+    // workspaceservice.CloseTabRtnType
     type CloseTabRtnType = {
         closewindow?: boolean;
         newactivetabid?: string;
@@ -263,7 +262,7 @@ declare global {
 
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
-        windowid: string;
+        workspaceid: string;
         blockid: string;
         tabid: string;
         selector: string;
@@ -1072,7 +1071,6 @@ declare global {
     // waveobj.Window
     type WaveWindow = WaveObj & {
         workspaceid: string;
-        activetabid: string;
         isnew?: boolean;
         pos: Point;
         winsize: WinSize;
@@ -1120,7 +1118,22 @@ declare global {
     // waveobj.Workspace
     type Workspace = WaveObj & {
         name: string;
+        icon: string;
+        color: string;
         tabids: string[];
+        activetabid: string;
+    };
+
+    // wshrpc.WorkspaceInfoData
+    type WorkspaceInfoData = {
+        windowid: string;
+        workspacedata: Workspace;
+    };
+
+    // waveobj.WorkspaceListEntry
+    type WorkspaceListEntry = {
+        workspaceid: string;
+        windowid: string;
     };
 
     // wshrpc.WshServerCommandMeta

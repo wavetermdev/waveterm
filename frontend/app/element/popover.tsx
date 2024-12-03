@@ -5,6 +5,7 @@ import { Button } from "@/element/button";
 import {
     autoUpdate,
     FloatingPortal,
+    Middleware,
     offset as offsetMiddleware,
     useClick,
     useDismiss,
@@ -34,6 +35,7 @@ interface PopoverProps {
     placement?: Placement;
     offset?: OffsetOptions;
     onDismiss?: () => void;
+    middleware?: Middleware[];
 }
 
 const isPopoverButton = (
@@ -48,54 +50,71 @@ const isPopoverContent = (
     return element.type === PopoverContent;
 };
 
-const Popover = memo(({ children, className, placement = "bottom-start", offset = 3, onDismiss }: PopoverProps) => {
-    const [isOpen, setIsOpen] = useState(false);
+const Popover = memo(
+    forwardRef<HTMLDivElement, PopoverProps>(
+        ({ children, className, placement = "bottom-start", offset = 3, onDismiss, middleware }, ref) => {
+            const [isOpen, setIsOpen] = useState(false);
 
-    const handleOpenChange = (open: boolean) => {
-        setIsOpen(open);
-        if (!open && onDismiss) {
-            onDismiss();
-        }
-    };
+            const handleOpenChange = (open: boolean) => {
+                setIsOpen(open);
+                if (!open && onDismiss) {
+                    onDismiss();
+                }
+            };
 
-    const { refs, floatingStyles, context } = useFloating({
-        placement,
-        open: isOpen,
-        onOpenChange: handleOpenChange,
-        middleware: [offsetMiddleware(offset)],
-        whileElementsMounted: autoUpdate,
-    });
-
-    const click = useClick(context);
-    const dismiss = useDismiss(context);
-    const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss]);
-
-    const renderChildren = Children.map(children, (child) => {
-        if (isValidElement(child)) {
-            if (isPopoverButton(child)) {
-                return cloneElement(child as any, {
-                    isActive: isOpen,
-                    ref: refs.setReference,
-                    getReferenceProps,
-                    // Do not overwrite onClick
-                });
+            if (offset === undefined) {
+                offset = 3;
             }
 
-            if (isPopoverContent(child)) {
-                return isOpen
-                    ? cloneElement(child as any, {
-                          ref: refs.setFloating,
-                          style: floatingStyles,
-                          getFloatingProps,
-                      })
-                    : null;
-            }
-        }
-        return child;
-    });
+            middleware ??= [];
+            middleware.push(offsetMiddleware(offset));
 
-    return <div className={clsx("popover", className)}>{renderChildren}</div>;
-});
+            const { refs, floatingStyles, context } = useFloating({
+                placement,
+                open: isOpen,
+                onOpenChange: handleOpenChange,
+                middleware: middleware,
+                whileElementsMounted: autoUpdate,
+            });
+
+            const click = useClick(context);
+            const dismiss = useDismiss(context);
+            const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss]);
+
+            const renderChildren = Children.map(children, (child) => {
+                if (isValidElement(child)) {
+                    if (isPopoverButton(child)) {
+                        return cloneElement(child as any, {
+                            isActive: isOpen,
+                            ref: refs.setReference,
+                            getReferenceProps,
+                            // Do not overwrite onClick
+                        });
+                    }
+
+                    if (isPopoverContent(child)) {
+                        return isOpen
+                            ? cloneElement(child as any, {
+                                  ref: refs.setFloating,
+                                  style: floatingStyles,
+                                  getFloatingProps,
+                              })
+                            : null;
+                    }
+                }
+                return child;
+            });
+
+            return (
+                <div ref={ref} className={clsx("popover", className)}>
+                    {renderChildren}
+                </div>
+            );
+        }
+    )
+);
+
+Popover.displayName = "Popover";
 
 interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     isActive?: boolean;

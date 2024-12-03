@@ -167,6 +167,11 @@ class RpcApiType {
         return client.wshRpcCall("filewrite", data, opts);
     }
 
+    // command "focuswindow" [call]
+    FocusWindowCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("focuswindow", data, opts);
+    }
+
     // command "getmeta" [call]
     GetMetaCommand(client: WshClient, data: CommandGetMetaData, opts?: RpcOpts): Promise<MetaType> {
         return client.wshRpcCall("getmeta", data, opts);
@@ -205,6 +210,21 @@ class RpcApiType {
     // command "remotefilejoin" [call]
     RemoteFileJoinCommand(client: WshClient, data: string[], opts?: RpcOpts): Promise<FileInfo> {
         return client.wshRpcCall("remotefilejoin", data, opts);
+    }
+
+    // command "remotefilerename" [call]
+    RemoteFileRenameCommand(client: WshClient, data: string[], opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotefilerename", data, opts);
+    }
+
+    // command "remotefiletouch" [call]
+    RemoteFileTouchCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotefiletouch", data, opts);
+    }
+
+    // command "remotemkdir" [call]
+    RemoteMkdirCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotemkdir", data, opts);
     }
 
     // command "remotestreamcpudata" [responsestream]
@@ -310,6 +330,11 @@ class RpcApiType {
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
+    }
+
+    // command "workspacelist" [call]
+    WorkspaceListCommand(client: WshClient, opts?: RpcOpts): Promise<WorkspaceInfoData[]> {
+        return client.wshRpcCall("workspacelist", null, opts);
     }
 
     // command "wshactivity" [call]

@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
@@ -16,69 +15,6 @@ func init() {
 	for _, rtype := range waveobj.AllWaveObjTypes() {
 		waveobj.RegisterType(rtype)
 	}
-}
-
-func CreateTab(ctx context.Context, workspaceId string, name string) (*waveobj.Tab, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.Tab, error) {
-		ws, _ := DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if ws == nil {
-			return nil, fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		layoutStateId := uuid.NewString()
-		tab := &waveobj.Tab{
-			OID:         uuid.NewString(),
-			Name:        name,
-			BlockIds:    []string{},
-			LayoutState: layoutStateId,
-		}
-		layoutState := &waveobj.LayoutState{
-			OID: layoutStateId,
-		}
-		ws.TabIds = append(ws.TabIds, tab.OID)
-		DBInsert(tx.Context(), tab)
-		DBInsert(tx.Context(), layoutState)
-		DBUpdate(tx.Context(), ws)
-		return tab, nil
-	})
-}
-
-func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
-	ws := &waveobj.Workspace{
-		OID:    uuid.NewString(),
-		TabIds: []string{},
-	}
-	DBInsert(ctx, ws)
-	return ws, nil
-}
-
-func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		ws, _ := DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if ws == nil {
-			return fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		ws.TabIds = tabIds
-		DBUpdate(tx.Context(), ws)
-		return nil
-	})
-}
-
-func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		window, _ := DBGet[*waveobj.Window](tx.Context(), windowId)
-		if window == nil {
-			return fmt.Errorf("window not found: %q", windowId)
-		}
-		if tabId != "" {
-			tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
-			if tab == nil {
-				return fmt.Errorf("tab not found: %q", tabId)
-			}
-		}
-		window.ActiveTabId = tabId
-		DBUpdate(tx.Context(), window)
-		return nil
-	})
 }
 
 func UpdateTabName(ctx context.Context, tabId, name string) error {
@@ -91,88 +27,6 @@ func UpdateTabName(ctx context.Context, tabId, name string) error {
 			tab.Name = name
 			DBUpdate(tx.Context(), tab)
 		}
-		return nil
-	})
-}
-
-func CreateSubBlock(ctx context.Context, parentBlockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.Block, error) {
-		parentBlock, _ := DBGet[*waveobj.Block](tx.Context(), parentBlockId)
-		if parentBlock == nil {
-			return nil, fmt.Errorf("parent block not found: %q", parentBlockId)
-		}
-		blockId := uuid.NewString()
-		blockData := &waveobj.Block{
-			OID:         blockId,
-			ParentORef:  waveobj.MakeORef(waveobj.OType_Block, parentBlockId).String(),
-			RuntimeOpts: nil,
-			Meta:        blockDef.Meta,
-		}
-		DBInsert(tx.Context(), blockData)
-		parentBlock.SubBlockIds = append(parentBlock.SubBlockIds, blockId)
-		DBUpdate(tx.Context(), parentBlock)
-		return blockData, nil
-	})
-}
-
-func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.Block, error) {
-		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
-		if tab == nil {
-			return nil, fmt.Errorf("tab not found: %q", tabId)
-		}
-		blockId := uuid.NewString()
-		blockData := &waveobj.Block{
-			OID:         blockId,
-			ParentORef:  waveobj.MakeORef(waveobj.OType_Tab, tabId).String(),
-			RuntimeOpts: rtOpts,
-			Meta:        blockDef.Meta,
-		}
-		DBInsert(tx.Context(), blockData)
-		tab.BlockIds = append(tab.BlockIds, blockId)
-		DBUpdate(tx.Context(), tab)
-		return blockData, nil
-	})
-}
-
-func findStringInSlice(slice []string, val string) int {
-	for idx, v := range slice {
-		if v == val {
-			return idx
-		}
-	}
-	return -1
-}
-
-func DeleteBlock(ctx context.Context, blockId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		block, err := DBGet[*waveobj.Block](tx.Context(), blockId)
-		if err != nil {
-			return fmt.Errorf("error getting block: %w", err)
-		}
-		if block == nil {
-			return nil
-		}
-		if len(block.SubBlockIds) > 0 {
-			return fmt.Errorf("block has subblocks, must delete subblocks first")
-		}
-		parentORef := waveobj.ParseORefNoErr(block.ParentORef)
-		if parentORef != nil {
-			if parentORef.OType == waveobj.OType_Tab {
-				tab, _ := DBGet[*waveobj.Tab](tx.Context(), parentORef.OID)
-				if tab != nil {
-					tab.BlockIds = utilfn.RemoveElemFromSlice(tab.BlockIds, blockId)
-					DBUpdate(tx.Context(), tab)
-				}
-			} else if parentORef.OType == waveobj.OType_Block {
-				parentBlock, _ := DBGet[*waveobj.Block](tx.Context(), parentORef.OID)
-				if parentBlock != nil {
-					parentBlock.SubBlockIds = utilfn.RemoveElemFromSlice(parentBlock.SubBlockIds, blockId)
-					DBUpdate(tx.Context(), parentBlock)
-				}
-			}
-		}
-		DBDelete(tx.Context(), waveobj.OType_Block, blockId)
 		return nil
 	})
 }
@@ -233,7 +87,7 @@ func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, b
 		if newTab == nil {
 			return fmt.Errorf("new tab not found: %q", newTabId)
 		}
-		blockIdx := findStringInSlice(currentTab.BlockIds, blockId)
+		blockIdx := utilfn.FindStringInSlice(currentTab.BlockIds, blockId)
 		if blockIdx == -1 {
 			return fmt.Errorf("block not found in current tab: %q", blockId)
 		}

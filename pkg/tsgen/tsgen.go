@@ -362,7 +362,7 @@ func GenerateMethodSignature(serviceName string, method reflect.Method, meta tsg
 		wroteArg = true
 	}
 	sb.WriteString("): ")
-	wroteRtn := false
+	rtnTypes := []string{}
 	for idx := 0; idx < method.Type.NumOut(); idx++ {
 		outType := method.Type.Out(idx)
 		if outType == errorRType {
@@ -372,11 +372,14 @@ func GenerateMethodSignature(serviceName string, method reflect.Method, meta tsg
 			continue
 		}
 		tsTypeName, _ := TypeToTSType(outType, tsTypesMap)
-		sb.WriteString(fmt.Sprintf("Promise<%s>", tsTypeName))
-		wroteRtn = true
+		rtnTypes = append(rtnTypes, tsTypeName)
 	}
-	if !wroteRtn {
+	if len(rtnTypes) == 0 {
 		sb.WriteString("Promise<void>")
+	} else if len(rtnTypes) == 1 {
+		sb.WriteString(fmt.Sprintf("Promise<%s>", rtnTypes[0]))
+	} else {
+		sb.WriteString(fmt.Sprintf("Promise<[%s]>", strings.Join(rtnTypes, ", ")))
 	}
 	sb.WriteString(" {\n")
 	return sb.String()

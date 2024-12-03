@@ -205,6 +205,12 @@ func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshr
 	return err
 }
 
+// command "focuswindow", wshserver.FocusWindowCommand
+func FocusWindowCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "focuswindow", data, opts)
+	return err
+}
+
 // command "getmeta", wshserver.GetMetaCommand
 func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wshrpc.RpcOpts) (waveobj.MetaMapType, error) {
 	resp, err := sendRpcRequestCallHelper[waveobj.MetaMapType](w, "getmeta", data, opts)
@@ -251,6 +257,24 @@ func RemoteFileInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts)
 func RemoteFileJoinCommand(w *wshutil.WshRpc, data []string, opts *wshrpc.RpcOpts) (*wshrpc.FileInfo, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.FileInfo](w, "remotefilejoin", data, opts)
 	return resp, err
+}
+
+// command "remotefilerename", wshserver.RemoteFileRenameCommand
+func RemoteFileRenameCommand(w *wshutil.WshRpc, data [2]string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remotefilerename", data, opts)
+	return err
+}
+
+// command "remotefiletouch", wshserver.RemoteFileTouchCommand
+func RemoteFileTouchCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remotefiletouch", data, opts)
+	return err
+}
+
+// command "remotemkdir", wshserver.RemoteMkdirCommand
+func RemoteMkdirCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remotemkdir", data, opts)
+	return err
 }
 
 // command "remotestreamcpudata", wshserver.RemoteStreamCpuDataCommand
@@ -369,6 +393,12 @@ func WaveInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.WaveInfoD
 // command "webselector", wshserver.WebSelectorCommand
 func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "webselector", data, opts)
+	return resp, err
+}
+
+// command "workspacelist", wshserver.WorkspaceListCommand
+func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.WorkspaceInfoData, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.WorkspaceInfoData](w, "workspacelist", nil, opts)
 	return resp, err
 }
 

@@ -61,6 +61,7 @@ const (
 	Command_Test              = "test"
 	Command_RemoteStreamFile  = "remotestreamfile"
 	Command_RemoteFileInfo    = "remotefileinfo"
+	Command_RemoteFileTouch   = "remotefiletouch"
 	Command_RemoteWriteFile   = "remotewritefile"
 	Command_RemoteFileDelete  = "remotefiledelete"
 	Command_RemoteFileJoin    = "remotefilejoin"
@@ -69,6 +70,7 @@ const (
 	Command_Activity          = "activity"
 	Command_GetVar            = "getvar"
 	Command_SetVar            = "setvar"
+	Command_RemoteMkdir       = "remotemkdir"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -80,8 +82,11 @@ const (
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
 
+	Command_WorkspaceList = "workspacelist"
+
 	Command_WebSelector      = "webselector"
 	Command_Notify           = "notify"
+	Command_FocusWindow      = "focuswindow"
 	Command_GetUpdateChannel = "getupdatechannel"
 
 	Command_VDomCreateContext   = "vdomcreatecontext"
@@ -158,14 +163,20 @@ type WshRpcInterface interface {
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[CommandRemoteStreamFileRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
+	RemoteFileTouchCommand(ctx context.Context, path string) error
+	RemoteFileRenameCommand(ctx context.Context, pathTuple [2]string) error
 	RemoteFileDeleteCommand(ctx context.Context, path string) error
 	RemoteWriteFileCommand(ctx context.Context, data CommandRemoteWriteFileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
+	RemoteMkdirCommand(ctx context.Context, path string) error
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+	FocusWindowCommand(ctx context.Context, windowId string) error
+
+	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
@@ -509,19 +520,19 @@ type WebSelectorOpts struct {
 }
 
 type CommandWebSelectorData struct {
-	WindowId string           `json:"windowid"`
-	BlockId  string           `json:"blockid" wshcontext:"BlockId"`
-	TabId    string           `json:"tabid" wshcontext:"TabId"`
-	Selector string           `json:"selector"`
-	Opts     *WebSelectorOpts `json:"opts,omitempty"`
+	WorkspaceId string           `json:"workspaceid"`
+	BlockId     string           `json:"blockid" wshcontext:"BlockId"`
+	TabId       string           `json:"tabid" wshcontext:"TabId"`
+	Selector    string           `json:"selector"`
+	Opts        *WebSelectorOpts `json:"opts,omitempty"`
 }
 
 type BlockInfoData struct {
-	BlockId  string                `json:"blockid"`
-	TabId    string                `json:"tabid"`
-	WindowId string                `json:"windowid"`
-	Block    *waveobj.Block        `json:"block"`
-	Files    []*filestore.WaveFile `json:"files"`
+	BlockId     string                `json:"blockid"`
+	TabId       string                `json:"tabid"`
+	WorkspaceId string                `json:"workspaceid"`
+	Block       *waveobj.Block        `json:"block"`
+	Files       []*filestore.WaveFile `json:"files"`
 }
 
 type WaveNotificationOptions struct {
@@ -549,6 +560,11 @@ type WaveInfoData struct {
 	BuildTime string `json:"buildtime"`
 	ConfigDir string `json:"configdir"`
 	DataDir   string `json:"datadir"`
+}
+
+type WorkspaceInfoData struct {
+	WindowId      string             `json:"windowid"`
+	WorkspaceData *waveobj.Workspace `json:"workspacedata"`
 }
 
 type AiMessageData struct {
