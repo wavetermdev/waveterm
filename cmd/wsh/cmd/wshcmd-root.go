@@ -57,6 +57,13 @@ func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func getIsTty() bool {
+	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
+		return true
+	}
+	return false
+}
+
 type RunEFnType = func(*cobra.Command, []string) error
 
 func activityWrap(activityStr string, origRunE RunEFnType) RunEFnType {

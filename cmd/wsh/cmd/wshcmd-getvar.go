@@ -30,6 +30,8 @@ var (
 	getVarAllVars       bool
 	getVarNullTerminate bool
 	getVarLocal         bool
+	getVarFlagNL        bool
+	getVarFlagNoNL      bool
 )
 
 func init() {
@@ -38,6 +40,19 @@ func init() {
 	getVarCmd.Flags().BoolVar(&getVarAllVars, "all", false, "get all variables")
 	getVarCmd.Flags().BoolVarP(&getVarNullTerminate, "null", "0", false, "use null terminators in output")
 	getVarCmd.Flags().BoolVarP(&getVarLocal, "local", "l", false, "get variables local to block")
+	getVarCmd.Flags().BoolVarP(&getVarFlagNL, "newline", "n", false, "print newline after output")
+	getVarCmd.Flags().BoolVarP(&getVarFlagNoNL, "no-newline", "N", false, "do not print newline after output")
+}
+
+func shouldPrintNewline() bool {
+	isTty := getIsTty()
+	if getVarFlagNL {
+		return true
+	}
+	if getVarFlagNoNL {
+		return false
+	}
+	return isTty
 }
 
 func getVarRun(cmd *cobra.Command, args []string) error {
@@ -87,7 +102,11 @@ func getVarRun(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	WriteStdout("%s\n", resp.Val)
+	WriteStdout("%s", resp.Val)
+	if shouldPrintNewline() {
+		WriteStdout("\n")
+	}
+
 	return nil
 }
 

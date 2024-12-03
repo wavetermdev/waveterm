@@ -11,7 +11,7 @@ import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { isDev } from "../frontend/util/isdev";
 import { fireAndForget } from "../frontend/util/util";
 import { delay } from "./emain-util";
-import { getAllWaveWindows, getFocusedWaveWindow } from "./emain-viewmgr";
+import { focusedWaveWindow, getAllWaveWindows } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
 
 export let updater: Updater;
@@ -164,7 +164,7 @@ export class Updater {
                     type: "info",
                     message: "There are currently no updates available.",
                 };
-                dialog.showMessageBox(getFocusedWaveWindow(), dialogOpts);
+                dialog.showMessageBox(focusedWaveWindow, dialogOpts);
             }
 
             // Only update the last check time if this is an automatic check. This ensures the interval remains consistent.
@@ -186,8 +186,7 @@ export class Updater {
 
         const allWindows = getAllWaveWindows();
         if (allWindows.length > 0) {
-            const focusedWindow = getFocusedWaveWindow();
-            await dialog.showMessageBox(focusedWindow ?? allWindows[0], dialogOpts).then(({ response }) => {
+            await dialog.showMessageBox(focusedWaveWindow ?? allWindows[0], dialogOpts).then(({ response }) => {
                 if (response === 0) {
                     fireAndForget(async () => this.installUpdate());
                 }

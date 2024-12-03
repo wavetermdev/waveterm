@@ -52,6 +52,7 @@ var activeConnCounter = &atomic.Int32{}
 type SSHConn struct {
 	Lock               *sync.Mutex
 	Status             string
+	WshEnabled         *atomic.Bool
 	Opts               *remote.SSHOpts
 	Client             *ssh.Client
 	SockName           string
@@ -290,6 +291,12 @@ type WshInstallOpts struct {
 	NoUserPrompt bool
 }
 
+type WshInstallSkipError struct{}
+
+func (wise *WshInstallSkipError) Error() string {
+	return "skipping wsh installation"
+}
+
 func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName string, opts *WshInstallOpts) error {
 	if opts == nil {
 		opts = &WshInstallOpts{}
@@ -325,11 +332,22 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 			QueryText:    queryText,
 			Title:        title,
 			Markdown:     true,
-			CheckBoxMsg:  "Don't show me this again",
+			CheckBoxMsg:  "Automatically install for all connections",
+			OkLabel:      "Install wsh",
+			CancelLabel:  "No wsh",
 		}
 		response, err := userinput.GetUserInput(ctx, request)
-		if err != nil || !response.Confirm {
+		if err != nil {
 			return err
+		}
+		if !response.Confirm {
+			meta := make(map[string]any)
+			meta["wshenabled"] = false
+			err = wconfig.SetConnectionsConfigValue(conn.GetName(), meta)
+			if err != nil {
+				log.Printf("warning: error writing to connections file: %v", err)
+			}
+			return &WshInstallSkipError{}
 		}
 		if response.CheckboxStat {
 			meta := waveobj.MetaMapType{
@@ -371,7 +389,7 @@ func (conn *SSHConn) Reconnect(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return conn.Connect(ctx)
+	return conn.Connect(ctx, &wshrpc.ConnKeywords{})
 }
 
 func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
@@ -399,7 +417,7 @@ func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
 }
 
 // does not return an error since that error is stored inside of SSHConn
-func (conn *SSHConn) Connect(ctx context.Context) error {
+func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
 	var connectAllowed bool
 	conn.WithLock(func() {
 		if conn.Status == Status_Connecting || conn.Status == Status_Connected {
@@ -415,13 +433,13 @@ func (conn *SSHConn) Connect(ctx context.Context) error {
 		return fmt.Errorf("cannot connect to %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	conn.FireConnChangeEvent()
-	err := conn.connectInternal(ctx)
+	err := conn.connectInternal(ctx, connFlags)
 	conn.WithLock(func() {
 		if err != nil {
 			conn.Status = Status_Error
 			conn.Error = err.Error()
 			conn.close_nolock()
-			telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{
+			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
 				Conn: map[string]int{"ssh:connecterror": 1},
 			}, "ssh-connconnect")
 		} else {
@@ -430,7 +448,7 @@ func (conn *SSHConn) Connect(ctx context.Context) error {
 			if conn.ActiveConnNum == 0 {
 				conn.ActiveConnNum = int(activeConnCounter.Add(1))
 			}
-			telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{
+			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
 				Conn: map[string]int{"ssh:connect": 1},
 			}, "ssh-connconnect")
 		}
@@ -445,8 +463,8 @@ func (conn *SSHConn) WithLock(fn func()) {
 	fn()
 }
 
-func (conn *SSHConn) connectInternal(ctx context.Context) error {
-	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0)
+func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
+	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
 		return err
@@ -462,15 +480,40 @@ func (conn *SSHConn) connectInternal(ctx context.Context) error {
 		return err
 	}
 	config := wconfig.ReadFullConfig()
-	installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !config.Settings.ConnAskBeforeWshInstall})
-	if installErr != nil {
-		log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
-		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
+	enableWsh := config.Settings.ConnWshEnabled
+	askBeforeInstall := config.Settings.ConnAskBeforeWshInstall
+	connSettings, ok := config.Connections[conn.GetName()]
+	if ok {
+		if connSettings.WshEnabled != nil {
+			enableWsh = *connSettings.WshEnabled
+		}
+		if connSettings.AskBeforeWshInstall != nil {
+			askBeforeInstall = *connSettings.AskBeforeWshInstall
+		}
 	}
-	csErr := conn.StartConnServer()
-	if csErr != nil {
-		log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
-		return fmt.Errorf("conncontroller %s start wsh connserver error: %v", conn.GetName(), csErr)
+	if enableWsh {
+		installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !askBeforeInstall})
+		if errors.Is(installErr, &WshInstallSkipError{}) {
+			// skips are not true errors
+			conn.WithLock(func() {
+				conn.WshEnabled.Store(false)
+			})
+		} else if installErr != nil {
+			log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
+			return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
+		} else {
+			conn.WshEnabled.Store(true)
+		}
+
+		if conn.WshEnabled.Load() {
+			csErr := conn.StartConnServer()
+			if csErr != nil {
+				log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
+				return fmt.Errorf("conncontroller %s start wsh connserver error: %v", conn.GetName(), csErr)
+			}
+		}
+	} else {
+		conn.WshEnabled.Store(false)
 	}
 	conn.HasWaiter.Store(true)
 	go conn.waitForDisconnect()
@@ -504,16 +547,16 @@ func getConnInternal(opts *remote.SSHOpts) *SSHConn {
 	defer globalLock.Unlock()
 	rtn := clientControllerMap[*opts]
 	if rtn == nil {
-		rtn = &SSHConn{Lock: &sync.Mutex{}, Status: Status_Init, Opts: opts, HasWaiter: &atomic.Bool{}}
+		rtn = &SSHConn{Lock: &sync.Mutex{}, Status: Status_Init, WshEnabled: &atomic.Bool{}, Opts: opts, HasWaiter: &atomic.Bool{}}
 		clientControllerMap[*opts] = rtn
 	}
 	return rtn
 }
 
-func GetConn(ctx context.Context, opts *remote.SSHOpts, shouldConnect bool) *SSHConn {
+func GetConn(ctx context.Context, opts *remote.SSHOpts, shouldConnect bool, connFlags *wshrpc.ConnKeywords) *SSHConn {
 	conn := getConnInternal(opts)
 	if conn.Client == nil && shouldConnect {
-		conn.Connect(ctx)
+		conn.Connect(ctx, connFlags)
 	}
 	return conn
 }
@@ -527,7 +570,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := GetConn(ctx, connOpts, false)
+	conn := GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -538,7 +581,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	case Status_Connecting:
 		return conn.WaitForConnect(ctx)
 	case Status_Init, Status_Disconnected:
-		return conn.Connect(ctx)
+		return conn.Connect(ctx, &wshrpc.ConnKeywords{})
 	case Status_Error:
 		return fmt.Errorf("connection error: %s", connStatus.Error)
 	default:

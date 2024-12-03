@@ -180,13 +180,6 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
-	if err != nil {
-		return nil, fmt.Errorf("error finding window for tab: %w", err)
-	}
-	if windowId == "" {
-		return nil, fmt.Errorf("no window found for tab")
-	}
 	err = wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
 		ActionType: wlayout.LayoutActionDataType_Insert,
 		BlockId:    blockData.OID,
@@ -512,13 +505,6 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if tabId == "" {
 		return fmt.Errorf("no tab found for block")
 	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
-	if err != nil {
-		return fmt.Errorf("error finding window for tab: %w", err)
-	}
-	if windowId == "" {
-		return fmt.Errorf("no window found for tab")
-	}
 	err = wcore.DeleteBlock(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
@@ -587,7 +573,7 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 	return events, nil
 }
 
-func (ws *WshServer) SetConfigCommand(ctx context.Context, data wconfig.MetaSettingsType) error {
+func (ws *WshServer) SetConfigCommand(ctx context.Context, data wshrpc.MetaSettingsType) error {
 	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }
@@ -623,14 +609,15 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false)
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
 	return conn.Close()
 }
 
-func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) error {
+func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
+	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(ctx, distroName, false)
@@ -643,11 +630,11 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connName string) er
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false)
+	conn := conncontroller.GetConn(ctx, connOpts, false, &connRequest.Keywords)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
-	return conn.Connect(ctx)
+	return conn.Connect(ctx, &connRequest.Keywords)
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
@@ -663,7 +650,7 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false)
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -710,15 +697,15 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	if err != nil {
 		return nil, fmt.Errorf("error finding tab for block: %w", err)
 	}
-	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error finding window for tab: %w", err)
 	}
 	return &wshrpc.BlockInfoData{
-		BlockId:  blockId,
-		TabId:    tabId,
-		WindowId: windowId,
-		Block:    blockData,
+		BlockId:     blockId,
+		TabId:       tabId,
+		WorkspaceId: workspaceId,
+		Block:       blockData,
 	}, nil
 }
 
@@ -734,6 +721,25 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 		ConfigDir: wavebase.GetWaveConfigDir(),
 		DataDir:   wavebase.GetWaveDataDir(),
 	}, nil
+}
+
+func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.WorkspaceInfoData, error) {
+	workspaceList, err := wcore.ListWorkspaces(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error listing workspaces: %w", err)
+	}
+	var rtn []wshrpc.WorkspaceInfoData
+	for _, workspaceEntry := range workspaceList {
+		workspaceData, err := wcore.GetWorkspace(ctx, workspaceEntry.WorkspaceId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting workspace: %w", err)
+		}
+		rtn = append(rtn, wshrpc.WorkspaceInfoData{
+			WindowId:      workspaceEntry.WindowId,
+			WorkspaceData: workspaceData,
+		})
+	}
+	return rtn, nil
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
@@ -753,14 +759,14 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 			delete(data, key)
 		}
 	}
-	activityUpdate := telemetry.ActivityUpdate{
+	activityUpdate := wshrpc.ActivityUpdate{
 		WshCmds: data,
 	}
 	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
 	return nil
 }
 
-func (ws *WshServer) ActivityCommand(ctx context.Context, activity telemetry.ActivityUpdate) error {
+func (ws *WshServer) ActivityCommand(ctx context.Context, activity wshrpc.ActivityUpdate) error {
 	telemetry.GoUpdateActivityWrap(activity, "wshrpc-activity")
 	return nil
 }

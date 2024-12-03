@@ -63,10 +63,10 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("block %s is not a web block", fullORef.OID)
 	}
 	data := wshrpc.CommandWebSelectorData{
-		WindowId: blockInfo.WindowId,
-		BlockId:  fullORef.OID,
-		TabId:    blockInfo.TabId,
-		Selector: args[0],
+		WorkspaceId: blockInfo.WorkspaceId,
+		BlockId:     fullORef.OID,
+		TabId:       blockInfo.TabId,
+		Selector:    args[0],
 		Opts: &wshrpc.WebSelectorOpts{
 			Inner: webGetInner,
 			All:   webGetAll,

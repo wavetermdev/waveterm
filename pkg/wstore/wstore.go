@@ -18,69 +18,6 @@ func init() {
 	}
 }
 
-func CreateTab(ctx context.Context, workspaceId string, name string) (*waveobj.Tab, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.Tab, error) {
-		ws, _ := DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if ws == nil {
-			return nil, fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		layoutStateId := uuid.NewString()
-		tab := &waveobj.Tab{
-			OID:         uuid.NewString(),
-			Name:        name,
-			BlockIds:    []string{},
-			LayoutState: layoutStateId,
-		}
-		layoutState := &waveobj.LayoutState{
-			OID: layoutStateId,
-		}
-		ws.TabIds = append(ws.TabIds, tab.OID)
-		DBInsert(tx.Context(), tab)
-		DBInsert(tx.Context(), layoutState)
-		DBUpdate(tx.Context(), ws)
-		return tab, nil
-	})
-}
-
-func CreateWorkspace(ctx context.Context) (*waveobj.Workspace, error) {
-	ws := &waveobj.Workspace{
-		OID:    uuid.NewString(),
-		TabIds: []string{},
-	}
-	DBInsert(ctx, ws)
-	return ws, nil
-}
-
-func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		ws, _ := DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
-		if ws == nil {
-			return fmt.Errorf("workspace not found: %q", workspaceId)
-		}
-		ws.TabIds = tabIds
-		DBUpdate(tx.Context(), ws)
-		return nil
-	})
-}
-
-func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		window, _ := DBGet[*waveobj.Window](tx.Context(), windowId)
-		if window == nil {
-			return fmt.Errorf("window not found: %q", windowId)
-		}
-		if tabId != "" {
-			tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
-			if tab == nil {
-				return fmt.Errorf("tab not found: %q", tabId)
-			}
-		}
-		window.ActiveTabId = tabId
-		DBUpdate(tx.Context(), window)
-		return nil
-	})
-}
-
 func UpdateTabName(ctx context.Context, tabId, name string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
@@ -135,15 +72,6 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		DBUpdate(tx.Context(), tab)
 		return blockData, nil
 	})
-}
-
-func findStringInSlice(slice []string, val string) int {
-	for idx, v := range slice {
-		if v == val {
-			return idx
-		}
-	}
-	return -1
 }
 
 func DeleteBlock(ctx context.Context, blockId string) error {
@@ -235,7 +163,7 @@ func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, b
 		if newTab == nil {
 			return fmt.Errorf("new tab not found: %q", newTabId)
 		}
-		blockIdx := findStringInSlice(currentTab.BlockIds, blockId)
+		blockIdx := utilfn.FindStringInSlice(currentTab.BlockIds, blockId)
 		if blockIdx == -1 {
 			return fmt.Errorf("block not found in current tab: %q", blockId)
 		}
