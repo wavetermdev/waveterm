@@ -7,7 +7,7 @@ import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, isDev, PLATFORM } from "@/store/global";
 import { fireAndForget } from "@/util/util";
-import { useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -16,6 +16,12 @@ import { Tab } from "./tab";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
+
+// export class TabBarModel {
+// 	draggedTabIndex: PrimitiveAtom<number>;
+
+// 	constructor
+// }
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
@@ -36,6 +42,9 @@ const OS_OPTIONS = {
         pointers: ["mouse", "touch", "pen"],
     },
 };
+
+const tabIndicesMovedAtom = atom<number[]>([]);
+const tabIdsAtom = atom<string[]>([]);
 
 interface TabBarProps {
     workspace: Workspace;
@@ -100,11 +109,12 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
 };
 
 const TabBar = memo(({ workspace }: TabBarProps) => {
-    const [tabIds, setTabIds] = useState<string[]>([]);
+    // const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
     const [newTabId, setNewTabId] = useState<string | null>(null);
+    const [test, setTest] = useState("");
 
     const tabbarWrapperRef = useRef<HTMLDivElement>(null);
     const tabBarRef = useRef<HTMLDivElement>(null);
@@ -134,11 +144,13 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
-
     const settings = useAtomValue(atoms.settingsAtom);
+    const [tabIds, setTabIds] = useAtom(tabIdsAtom);
+    const setTabIndicesMoved = useSetAtom(tabIndicesMovedAtom);
 
     let prevDelta: number;
     let prevDragDirection: string;
+    let prevRightAdjacentIndex: number | null = null; // Track the previous right-adjacent tab index
 
     // Update refs when tabIds change
     useEffect(() => {
@@ -299,7 +311,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             for (let i = tabIndex + 1; i < tabIds.length; i++) {
                 const otherTabStart = dragStartPositions[i];
                 if (currentX + tabWidth > otherTabStart + tabWidth / 2) {
+                    // setTest("switching right");
                     newTabIndex = i;
+                    console.log("newTabIndex===", newTabIndex, tabRefs.current);
                 }
             }
         } else {
@@ -307,12 +321,15 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             for (let i = tabIndex - 1; i >= 0; i--) {
                 const otherTabEnd = dragStartPositions[i] + tabWidth;
                 if (currentX < otherTabEnd - tabWidth / 2) {
+                    // setTest("switching left");
                     newTabIndex = i;
                 }
             }
         }
         return newTabIndex;
     };
+
+    console.log("test::::::::::::::::", test);
 
     const handleMouseMove = (event: MouseEvent) => {
         const { tabId, ref, tabStartX } = draggingTabDataRef.current;
@@ -387,6 +404,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         ref.current!.style.zIndex = "100";
 
         const tabIndex = draggingTabDataRef.current.tabIndex;
+
         const newTabIndex = getNewTabIndex(currentX, tabIndex, dragDirection);
 
         if (newTabIndex !== tabIndex) {
@@ -399,10 +417,21 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             // Find current index of the dragged tab in tempTabs
             const currentIndexOfDraggingTab = tabIds.indexOf(tabId);
 
+            console.log("currentIndexOfDraggingTab", currentIndexOfDraggingTab);
+            console.log("tabIndex", tabIndex);
+
             // Move the dragged tab to its new position
             if (currentIndexOfDraggingTab !== -1) {
-                tabIds.splice(currentIndexOfDraggingTab, 1);
+                tabIds.splice(tabIndex, 1);
             }
+            console.log("tabIndex=====", tabIndex);
+            console.log("newTabIndex=====", newTabIndex);
+            if (getDragDirection(currentX) === "+") {
+                setTabIndicesMoved([tabIndex, newTabIndex, newTabIndex + 1]);
+            } else if (getDragDirection(currentX) === "-") {
+                setTabIndicesMoved([newTabIndex, tabIndex, tabIndex + 1]);
+            }
+
             tabIds.splice(newTabIndex, 0, tabId);
 
             // Update visual positions of the tabs
@@ -414,6 +443,22 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 }
             });
 
+            // debounce(30, () => {
+            //     const prevRightAdjacentTab = tabRefs.current[draggingTabDataRef.current.rightAdjacentTabIndex]?.current;
+            //     // prevRightAdjacentTab.style.setProperty("--hide-separator", "1");
+            //     // prevRightAdjacentTab.style.borderColor = "rgb(from var(--main-text-color) r g b / 0.2)";
+            // })();
+
+            // // Handle right adjacent tab's separator
+            // const rightAdjacentIndex = newTabIndex + 1;
+            // if (rightAdjacentIndex < tabIds.length) {
+            //     const rightAdjacentTab = tabRefs.current[rightAdjacentIndex]?.current;
+            //     if (rightAdjacentTab) {
+            //         rightAdjacentTab.style.borderColor = "transparent";
+            //     }
+            // }
+
+            // draggingTabDataRef.current.rightAdjacentTabIndex = rightAdjacentIndex;
             draggingTabDataRef.current.tabIndex = newTabIndex;
         }
     };
@@ -453,6 +498,12 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             setDraggingTab(null);
         }
 
+        // const rightAdjacentTab = tabRefs.current[draggingTabDataRef.current.rightAdjacentTabIndex]?.current;
+        // //  console.log("prevRightAdjacentTab=======", prevRightAdjacentTab);
+        // // if (prevRightAdjacentTab) {
+        // rightAdjacentTab.style.removeProperty("--hide-separator");
+        // }
+
         document.removeEventListener("mouseup", handleMouseUp);
         document.removeEventListener("mousemove", handleMouseMove);
         draggingRemovedRef.current = false;
@@ -467,7 +518,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
             if (ref.current) {
                 draggingTabDataRef.current = {
-                    tabId: ref.current.dataset.tabId,
+                    tabId,
                     ref,
                     tabStartX,
                     tabIndex,
@@ -541,6 +592,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
+
+    console.log("draggingTAb==========", draggingTab);
+
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
@@ -565,6 +619,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 isDragging={draggingTab === tabId}
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}
+                                tabIndicesMovedAtom={tabIndicesMovedAtom}
                             />
                         );
                     })}

@@ -6,6 +6,7 @@ import { ContextMenuModel } from "@/store/contextmenu";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
+import { Atom, useAtomValue } from "jotai";
 import * as React from "react";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
@@ -22,6 +23,7 @@ interface TabProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
+    tabIndicesMovedAtom: Atom<number[]>;
     onSelect: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -39,6 +41,7 @@ const Tab = React.memo(
                 isDragging,
                 tabWidth,
                 isNew,
+                tabIndicesMovedAtom,
                 onLoaded,
                 onSelect,
                 onClose,
@@ -54,6 +57,10 @@ const Tab = React.memo(
             const editableTimeoutRef = useRef<NodeJS.Timeout>();
             const loadedRef = useRef(false);
             const tabRef = useRef<HTMLDivElement>(null);
+
+            const tabIndicesMoved = useAtomValue(tabIndicesMovedAtom);
+
+            console.log("tabIndicesMoved", tabIndicesMoved);
 
             useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 
@@ -214,6 +221,7 @@ const Tab = React.memo(
                             <i className="fa fa-solid fa-xmark" />
                         </Button>
                     </div>
+                    <div className="separator"></div>
                 </div>
             );
         }

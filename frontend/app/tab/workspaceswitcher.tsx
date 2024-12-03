@@ -207,7 +207,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement, {}>(({}, ref) => {
     };
 
     return (
-        <Popover className="workspace-switcher-popover" onDismiss={() => setEditingWorkspace(null)}>
+        <Popover ref={ref} className="workspace-switcher-popover" onDismiss={() => setEditingWorkspace(null)}>
             <PopoverButton
                 className="workspace-switcher-button grey"
                 as="div"

@@ -14,13 +14,14 @@
 	align-items: center; 
 	justify-content: center; 
 
-	&::after {
-		content: "";
+	.separator {
 		position: absolute;
-		left: 0;
+		right: 0;
 		width: 1px;
 		height: 14px;
-		border-right: 1px solid rgb(from var(--main-text-color) r g b / 0.2);
+		border-right-width: 1px;
+		border-right-style: solid;
+		border-color: rgb(from var(--main-text-color) r g b / 0.2);
 	}
 
     .tab-inner {
@@ -32,10 +33,10 @@
     }
 
 	&:hover {
-		& + .tab::after,
-		&::after {
-			content: none;
-		}
+		// & + .tab::after,
+		// &::after {
+		// 	content: none;
+		// }
 
 		.tab-inner {
 			border-color: transparent;
@@ -60,15 +61,15 @@
             color: var(--main-text-color);
         }
 
-		&+.tab::after,
-		&::after {
-			content: none;
-		}
+		// &+.tab::after,
+		// &::after {
+		// 	content: none;
+		// }
     }
 
-	&:first-child::after {
-		content: none;
-	}
+	// &:first-child::after {
+	// 	content: none;
+	// }
 
     .name {
         position: absolute;
