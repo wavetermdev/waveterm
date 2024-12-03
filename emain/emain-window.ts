@@ -321,7 +321,6 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
-        console.log("setTabViewIntoWindow", tabView.waveTabId, this.waveWindowId);
         const clientData = await ClientService.GetClientData();
         if (this.activeTabView == tabView) {
             return;
@@ -334,20 +333,8 @@ export class WaveBrowserWindow extends BaseWindow {
         this.activeTabView = tabView;
         this.allTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
-            console.log("initializing a new tab");
-            try {
-                await tabView.initPromise;
-            } catch (e) {
-                console.error("error waiting for tabView.initPromise", e);
-                throw e;
-            }
-
-            try {
-                this.contentView.addChildView(tabView);
-            } catch (e) {
-                console.error("error adding child view", e);
-                throw e;
-            }
+            await tabView.initPromise;
+            this.contentView.addChildView(tabView);
             const initOpts = {
                 tabId: tabView.waveTabId,
                 clientId: clientData.oid,

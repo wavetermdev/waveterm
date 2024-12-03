@@ -674,8 +674,6 @@ async function relaunchBrowserWindows(): Promise<void> {
 }
 
 async function appMain() {
-    console.log(electron.app.getPath("crashDumps"));
-    electron.crashReporter.start({ submitURL: "", uploadToServer: false });
     // Set disableHardwareAcceleration as early as possible, if required.
     const launchSettings = getLaunchSettings();
     if (launchSettings?.["window:disablehardwareacceleration"]) {
