@@ -212,6 +212,21 @@ class RpcApiType {
         return client.wshRpcCall("remotefilejoin", data, opts);
     }
 
+    // command "remotefilerename" [call]
+    RemoteFileRenameCommand(client: WshClient, data: string[], opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotefilerename", data, opts);
+    }
+
+    // command "remotefiletouch" [call]
+    RemoteFileTouchCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotefiletouch", data, opts);
+    }
+
+    // command "remotemkdir" [call]
+    RemoteMkdirCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotemkdir", data, opts);
+    }
+
     // command "remotestreamcpudata" [responsestream]
 	RemoteStreamCpuDataCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
         return client.wshRpcStream("remotestreamcpudata", null, opts);
