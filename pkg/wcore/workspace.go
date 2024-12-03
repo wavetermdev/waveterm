@@ -123,7 +123,9 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, e
 	tabIdxPinned := utilfn.FindStringInSlice(ws.PinnedTabIds, tabId)
 	if tabIdx != -1 {
 		ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
-	} else if tabIdxPinned == -1 {
+	} else if tabIdxPinned != -1 {
+		ws.PinnedTabIds = append(ws.PinnedTabIds[:tabIdxPinned], ws.PinnedTabIds[tabIdxPinned+1:]...)
+	} else {
 		return "", fmt.Errorf("tab %s not found in workspace %s", tabId, workspaceId)
 	}
 
