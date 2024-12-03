@@ -524,16 +524,6 @@ function TableBody({
                     type: "separator",
                 },
                 {
-                    label: "Delete",
-                    click: async () => {
-                        await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
-                        setRefreshVersion((current) => current + 1);
-                    },
-                },
-                {
-                    type: "separator",
-                },
-                {
                     label: "Copy File Name",
                     click: () => navigator.clipboard.writeText(fileName),
                 },
@@ -599,6 +589,18 @@ function TableBody({
                     },
                 });
             }
+            menu.push(
+                {
+                    type: "separator",
+                },
+                {
+                    label: "Delete",
+                    click: async () => {
+                        await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
+                        setRefreshVersion((current) => current + 1);
+                    },
+                }
+            );
             ContextMenuModel.showContextMenu(menu, e);
         },
         [setRefreshVersion, conn]
