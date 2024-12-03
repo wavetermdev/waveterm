@@ -546,7 +546,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
-            <WorkspaceSwitcher ref={workspaceSwitcherRef}></WorkspaceSwitcher>
+            <WorkspaceSwitcher />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
