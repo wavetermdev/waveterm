@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
@@ -28,81 +27,6 @@ func UpdateTabName(ctx context.Context, tabId, name string) error {
 			tab.Name = name
 			DBUpdate(tx.Context(), tab)
 		}
-		return nil
-	})
-}
-
-func CreateSubBlock(ctx context.Context, parentBlockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.Block, error) {
-		parentBlock, _ := DBGet[*waveobj.Block](tx.Context(), parentBlockId)
-		if parentBlock == nil {
-			return nil, fmt.Errorf("parent block not found: %q", parentBlockId)
-		}
-		blockId := uuid.NewString()
-		blockData := &waveobj.Block{
-			OID:         blockId,
-			ParentORef:  waveobj.MakeORef(waveobj.OType_Block, parentBlockId).String(),
-			BlockDef:    blockDef,
-			RuntimeOpts: nil,
-			Meta:        blockDef.Meta,
-		}
-		DBInsert(tx.Context(), blockData)
-		parentBlock.SubBlockIds = append(parentBlock.SubBlockIds, blockId)
-		DBUpdate(tx.Context(), parentBlock)
-		return blockData, nil
-	})
-}
-
-func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.Block, error) {
-		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
-		if tab == nil {
-			return nil, fmt.Errorf("tab not found: %q", tabId)
-		}
-		blockId := uuid.NewString()
-		blockData := &waveobj.Block{
-			OID:         blockId,
-			ParentORef:  waveobj.MakeORef(waveobj.OType_Tab, tabId).String(),
-			BlockDef:    blockDef,
-			RuntimeOpts: rtOpts,
-			Meta:        blockDef.Meta,
-		}
-		DBInsert(tx.Context(), blockData)
-		tab.BlockIds = append(tab.BlockIds, blockId)
-		DBUpdate(tx.Context(), tab)
-		return blockData, nil
-	})
-}
-
-func DeleteBlock(ctx context.Context, blockId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		block, err := DBGet[*waveobj.Block](tx.Context(), blockId)
-		if err != nil {
-			return fmt.Errorf("error getting block: %w", err)
-		}
-		if block == nil {
-			return nil
-		}
-		if len(block.SubBlockIds) > 0 {
-			return fmt.Errorf("block has subblocks, must delete subblocks first")
-		}
-		parentORef := waveobj.ParseORefNoErr(block.ParentORef)
-		if parentORef != nil {
-			if parentORef.OType == waveobj.OType_Tab {
-				tab, _ := DBGet[*waveobj.Tab](tx.Context(), parentORef.OID)
-				if tab != nil {
-					tab.BlockIds = utilfn.RemoveElemFromSlice(tab.BlockIds, blockId)
-					DBUpdate(tx.Context(), tab)
-				}
-			} else if parentORef.OType == waveobj.OType_Block {
-				parentBlock, _ := DBGet[*waveobj.Block](tx.Context(), parentORef.OID)
-				if parentBlock != nil {
-					parentBlock.SubBlockIds = utilfn.RemoveElemFromSlice(parentBlock.SubBlockIds, blockId)
-					DBUpdate(tx.Context(), parentBlock)
-				}
-			}
-		}
-		DBDelete(tx.Context(), waveobj.OType_Block, blockId)
 		return nil
 	})
 }

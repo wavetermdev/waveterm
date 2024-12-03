@@ -39,6 +39,7 @@ import {
     getAllWaveWindows,
     getWaveWindowById,
     getWaveWindowByWebContentsId,
+    getWaveWindowByWorkspaceId,
     WaveBrowserWindow,
 } from "./emain-window";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
@@ -125,6 +126,14 @@ function handleWSEvent(evtMsg: WSEventType) {
             if (ww != null) {
                 ww.destroy(); // bypass the "are you sure?" dialog
             }
+        } else if (evtMsg.eventtype == "electron:updateactivetab") {
+            const activeTabUpdate: { workspaceid: string; newactivetabid: string } = evtMsg.data;
+            console.log("electron:updateactivetab", activeTabUpdate);
+            const ww = getWaveWindowByWorkspaceId(activeTabUpdate.workspaceid);
+            if (ww == null) {
+                return;
+            }
+            await ww.setActiveTab(activeTabUpdate.newactivetabid, false);
         } else {
             console.log("unhandled electron ws eventtype", evtMsg.eventtype);
         }
@@ -359,9 +368,11 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
 
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
-    electron.shell.openPath(filePath).catch((err) => {
-        console.error(`Failed to open path ${filePath}:`, err);
-    });
+    fireAndForget(async () =>
+        electron.shell.openPath(filePath).then((excuse) => {
+            if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
+        })
+    );
 });
 
 async function createNewWaveWindow(): Promise<void> {

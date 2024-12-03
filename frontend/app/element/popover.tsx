@@ -5,6 +5,7 @@ import { Button } from "@/element/button";
 import {
     autoUpdate,
     FloatingPortal,
+    Middleware,
     offset as offsetMiddleware,
     useClick,
     useDismiss,
@@ -34,6 +35,7 @@ interface PopoverProps {
     placement?: Placement;
     offset?: OffsetOptions;
     onDismiss?: () => void;
+    middleware?: Middleware[];
 }
 
 const isPopoverButton = (
@@ -50,7 +52,7 @@ const isPopoverContent = (
 
 const Popover = memo(
     forwardRef<HTMLDivElement, PopoverProps>(
-        ({ children, className, placement = "bottom-start", offset = 3, onDismiss }, ref) => {
+        ({ children, className, placement = "bottom-start", offset = 3, onDismiss, middleware }, ref) => {
             const [isOpen, setIsOpen] = useState(false);
 
             const handleOpenChange = (open: boolean) => {
@@ -60,11 +62,18 @@ const Popover = memo(
                 }
             };
 
+            if (offset === undefined) {
+                offset = 3;
+            }
+
+            middleware ??= [];
+            middleware.push(offsetMiddleware(offset));
+
             const { refs, floatingStyles, context } = useFloating({
                 placement,
                 open: isOpen,
                 onOpenChange: handleOpenChange,
-                middleware: [offsetMiddleware(offset)],
+                middleware: middleware,
                 whileElementsMounted: autoUpdate,
             });
 
