@@ -361,7 +361,7 @@ electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
     fireAndForget(async () =>
         electron.shell.openPath(filePath).then((excuse) => {
-            console.log("open-native-path-excuse", excuse);
+            if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
         })
     );
 });
