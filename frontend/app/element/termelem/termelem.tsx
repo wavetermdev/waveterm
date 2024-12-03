@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { PLATFORM } from "@/store/global";
+import { useAtomValueSafe } from "@/util/util";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import * as TermTypes from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
+import { Atom } from "jotai";
 import { useEffect, useRef } from "react";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
@@ -33,6 +35,7 @@ export type TermWrapOptions = {
     useWebGl?: boolean;
     useWebLinksAddon?: boolean;
     useSerializeAddon?: boolean;
+    termTheme: Atom<TermTypes.ITheme>;
     onOpenLink?: (uri: string) => void;
     onCwdChange?: (newCwd: string) => void;
     handleInputData?: (data: string) => void;
@@ -209,8 +212,18 @@ export class TermWrap {
 export const TermElem = (props: { termOpts: TermWrapOptions }) => {
     const connectElemRef = useRef<HTMLDivElement>(null);
     const termWrapRef = useRef<TermWrap>(null);
+    const termTheme = useAtomValueSafe(props.termOpts.termTheme);
+    useEffect(() => {
+        if (termWrapRef.current == null || termTheme == null) {
+            return;
+        }
+        termWrapRef.current.terminal.options.theme = termTheme;
+    }, [termTheme]);
     useEffect(() => {
         termWrapRef.current = new TermWrap(props.termOpts);
+        if (termTheme != null) {
+            termWrapRef.current.terminal.options.theme = termTheme;
+        }
         termWrapRef.current.initTerminal(connectElemRef.current);
         return () => {
             termWrapRef.current.dispose();
