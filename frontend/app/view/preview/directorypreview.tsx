@@ -521,6 +521,9 @@ function TableBody({
                     },
                 },
                 {
+                    type: "separator",
+                },
+                {
                     label: "Delete",
                     click: async () => {
                         await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
