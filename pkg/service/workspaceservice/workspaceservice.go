@@ -68,7 +68,7 @@ func (svg *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
 
 func (svc *WorkspaceService) CreateTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames:   []string{"workspaceId", "tabName", "activateTab"},
+		ArgNames:   []string{"workspaceId", "tabName", "activateTab", "pinned"},
 		ReturnDesc: "tabId",
 	}
 }
@@ -95,7 +95,7 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 
 func (svc *WorkspaceService) UpdateTabIds_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"uiContext", "workspaceId", "tabIds"},
+		ArgNames: []string{"uiContext", "workspaceId", "tabIds", "pinnedTabIds"},
 	}
 }
 

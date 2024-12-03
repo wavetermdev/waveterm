@@ -174,7 +174,7 @@ class WorkspaceServiceType {
     }
 
     // @returns tabId (and object updates)
-    CreateTab(workspaceId: string, tabName: string, activateTab: boolean, arg4: boolean): Promise<string> {
+    CreateTab(workspaceId: string, tabName: string, activateTab: boolean, pinned: boolean): Promise<string> {
         return WOS.callBackendService("workspace", "CreateTab", Array.from(arguments))
     }
 
@@ -195,7 +195,7 @@ class WorkspaceServiceType {
     }
 
     // @returns object updates
-    UpdateTabIds(workspaceId: string, tabIds: string[], arg4: string[]): Promise<void> {
+    UpdateTabIds(workspaceId: string, tabIds: string[], pinnedTabIds: string[]): Promise<void> {
         return WOS.callBackendService("workspace", "UpdateTabIds", Array.from(arguments))
     }
 }
