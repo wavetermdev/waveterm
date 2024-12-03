@@ -47,6 +47,8 @@ interface DirectoryTableProps {
     setSelectedPath: (_: string) => void;
     setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
     entryManagerOverlayPropsAtom: PrimitiveAtom<EntryManagerOverlayProps>;
+    newFile: () => void;
+    newDirectory: () => void;
 }
 
 const columnHelper = createColumnHelper<FileInfo>();
@@ -183,6 +185,8 @@ function DirectoryTable({
     setSelectedPath,
     setRefreshVersion,
     entryManagerOverlayPropsAtom,
+    newFile,
+    newDirectory,
 }: DirectoryTableProps) {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const getIconFromMimeType = useCallback(
@@ -259,7 +263,6 @@ function DirectoryTable({
     );
 
     const setEntryManagerProps = useSetAtom(entryManagerOverlayPropsAtom);
-    const dirPath = useAtomValue(model.metaFilePath);
 
     const updateName = useCallback((path: string) => {
         const fileName = path.split("/").at(-1);
@@ -280,32 +283,6 @@ function DirectoryTable({
             },
         });
     }, []);
-    const newFile = useCallback(() => {
-        setEntryManagerProps({
-            entryManagerType: EntryManagerType.NewFile,
-            onSave: (newName: string) => {
-                console.log(`newFile: ${newName}`);
-                fireAndForget(async () => {
-                    await FileService.TouchFile(globalStore.get(model.connection), `${dirPath}/${newName}`);
-                    model.refreshCallback();
-                });
-                setEntryManagerProps(undefined);
-            },
-        });
-    }, [dirPath]);
-    const newDirectory = useCallback(() => {
-        setEntryManagerProps({
-            entryManagerType: EntryManagerType.NewDirectory,
-            onSave: (newName: string) => {
-                console.log(`newDirectory: ${newName}`);
-                fireAndForget(async () => {
-                    await FileService.Mkdir(globalStore.get(model.connection), `${dirPath}/${newName}`);
-                    model.refreshCallback();
-                });
-                setEntryManagerProps(undefined);
-            },
-        });
-    }, [dirPath]);
 
     const table = useReactTable({
         data,
@@ -465,8 +442,6 @@ interface TableBodyProps {
     osRef: OverlayScrollbarsComponentRef;
 }
 
-type CreateOperation = "file" | "folder" | null;
-
 function TableBody({
     bodyRef,
     model,
@@ -583,6 +558,7 @@ function TableBody({
                 {
                     type: "separator",
                 },
+                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
                 {
                     label: openNativeLabel,
                     click: async () => {
@@ -689,12 +665,12 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
     const [filteredData, setFilteredData] = useState<FileInfo[]>([]);
-    const fileName = useAtomValue(model.metaFilePath);
     const showHiddenFiles = useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
+    const dirPath = useAtomValue(model.normFilePath);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -707,13 +683,13 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await FileService.ReadFile(conn, fileName);
+            const file = await FileService.ReadFile(conn, dirPath);
             const serializedContent = base64ToString(file?.data64);
             const content: FileInfo[] = JSON.parse(serializedContent);
             setUnfilteredData(content);
         };
         getContent();
-    }, [conn, fileName, refreshVersion]);
+    }, [conn, dirPath, refreshVersion]);
 
     useEffect(() => {
         const filtered = unfilteredData.filter((fileInfo) => {
@@ -795,6 +771,87 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const dismiss = useDismiss(context);
     const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
 
+    const newFile = useCallback(() => {
+        setEntryManagerProps({
+            entryManagerType: EntryManagerType.NewFile,
+            onSave: (newName: string) => {
+                console.log(`newFile: ${newName}`);
+                fireAndForget(async () => {
+                    await FileService.TouchFile(globalStore.get(model.connection), `${dirPath}/${newName}`);
+                    model.refreshCallback();
+                });
+                setEntryManagerProps(undefined);
+            },
+        });
+    }, [dirPath]);
+    const newDirectory = useCallback(() => {
+        setEntryManagerProps({
+            entryManagerType: EntryManagerType.NewDirectory,
+            onSave: (newName: string) => {
+                console.log(`newDirectory: ${newName}`);
+                fireAndForget(async () => {
+                    await FileService.Mkdir(globalStore.get(model.connection), `${dirPath}/${newName}`);
+                    model.refreshCallback();
+                });
+                setEntryManagerProps(undefined);
+            },
+        });
+    }, [dirPath]);
+
+    const handleFileContextMenu = useCallback(
+        (e: any) => {
+            e.preventDefault();
+            e.stopPropagation();
+            let openNativeLabel = "Open Directory in File Manager";
+            if (PLATFORM == "darwin") {
+                openNativeLabel = "Open Directory in Finder";
+            } else if (PLATFORM == "win32") {
+                openNativeLabel = "Open Directory in Explorer";
+            }
+            const menu: ContextMenuItem[] = [
+                {
+                    label: "New File",
+                    click: () => {
+                        newFile();
+                    },
+                },
+                {
+                    label: "New Folder",
+                    click: () => {
+                        newDirectory();
+                    },
+                },
+                {
+                    type: "separator",
+                },
+                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
+                {
+                    label: openNativeLabel,
+                    click: () => {
+                        console.log(`opening ${dirPath}`);
+                        getApi().openNativePath(dirPath);
+                    },
+                },
+            ];
+            menu.push({
+                label: "Open Terminal in New Block",
+                click: async () => {
+                    const termBlockDef: BlockDef = {
+                        meta: {
+                            controller: "shell",
+                            view: "term",
+                            "cmd:cwd": dirPath,
+                        },
+                    };
+                    await createBlock(termBlockDef);
+                },
+            });
+
+            ContextMenuModel.showContextMenu(menu, e);
+        },
+        [setRefreshVersion, conn, newFile, newDirectory, dirPath]
+    );
+
     return (
         <Fragment>
             <div
@@ -807,6 +864,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     }
                 }}
                 {...getReferenceProps()}
+                onContextMenu={(e) => handleFileContextMenu(e)}
             >
                 <DirectoryTable
                     model={model}
@@ -818,6 +876,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     setSelectedPath={setSelectedPath}
                     setRefreshVersion={setRefreshVersion}
                     entryManagerOverlayPropsAtom={entryManagerPropsAtom}
+                    newFile={newFile}
+                    newDirectory={newDirectory}
                 />
             </div>
             {entryManagerProps && (
