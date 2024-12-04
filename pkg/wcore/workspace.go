@@ -28,6 +28,8 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 	return ws, nil
 }
 
+// If force is true, it will delete even if workspace is named.
+// Returns true if workspace was deleted, false if it was not deleted.
 func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, error) {
 	log.Printf("DeleteWorkspace %s\n", workspaceId)
 	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
@@ -40,7 +42,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	}
 	for _, tabId := range workspace.TabIds {
 		log.Printf("deleting tab %s\n", tabId)
-		_, err := DeleteTab(ctx, workspaceId, tabId)
+		_, err := DeleteTab(ctx, workspaceId, tabId, false)
 		if err != nil {
 			return false, fmt.Errorf("error closing tab: %w", err)
 		}
@@ -104,8 +106,9 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 
 // Must delete all blocks individually first.
 // Also deletes LayoutState.
+// cascadeClose: if true, will close parent window/workspace if no blocks left.
 // Returns new active tab id, error.
-func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, error) {
+func DeleteTab(ctx context.Context, workspaceId string, tabId string, cascadeClose bool) (string, error) {
 	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
 	if ws == nil {
 		return "", fmt.Errorf("workspace not found: %q", workspaceId)
@@ -117,7 +120,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, e
 
 	// close blocks (sends events + stops block controllers)
 	for _, blockId := range tab.BlockIds {
-		err := DeleteBlock(ctx, blockId)
+		err := DeleteBlock(ctx, blockId, false)
 		if err != nil {
 			return "", fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
@@ -141,12 +144,12 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, e
 	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
 	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
 
-	if newActiveTabId == "" {
+	if newActiveTabId == "" && cascadeClose {
 		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 		if err != nil {
 			return newActiveTabId, fmt.Errorf("unable to find window for workspace id %v: %w", workspaceId, err)
 		}
-		err = CloseWindow(ctx, windowId, false)
+		err = CloseWindow(ctx, windowId, false, true)
 		if err != nil {
 			return newActiveTabId, err
 		}

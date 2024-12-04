@@ -184,5 +184,5 @@ func (svc *WindowService) CloseWindow_Meta() tsgenmeta.MethodMeta {
 
 func (svc *WindowService) CloseWindow(ctx context.Context, windowId string, fromElectron bool) error {
 	ctx = waveobj.ContextWithUpdates(ctx)
-	return wcore.CloseWindow(ctx, windowId, fromElectron)
+	return wcore.CloseWindow(ctx, windowId, fromElectron, false)
 }
