@@ -620,8 +620,13 @@ function removeNotification(id: string) {
     });
 }
 
-async function createTab(): Promise<void> {
-    await getApi().createTab();
+function createTab() {
+    getApi().createTab();
+}
+
+function setActiveTab(tabId: string) {
+    document.body.classList.add("nohover");
+    getApi().setActiveTab(tabId);
 }
 
 export {
@@ -655,6 +660,7 @@ export {
     removeFlashError,
     removeNotification,
     removeNotificationById,
+    setActiveTab,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,
