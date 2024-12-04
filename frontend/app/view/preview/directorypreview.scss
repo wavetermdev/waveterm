@@ -243,4 +243,10 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: #212121;
   box-shadow: 0px 8px 24px 0px rgba(0, 0, 0, 0.3);
+
+  .entry-manager-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+  }
 }
