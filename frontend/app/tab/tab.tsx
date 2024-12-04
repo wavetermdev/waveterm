@@ -50,7 +50,7 @@ const Tab = React.memo(
             },
             ref
         ) => {
-            const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", id));
+            const [tabData, _] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
 
@@ -150,7 +150,7 @@ const Tab = React.memo(
             function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
                 e.preventDefault();
                 let menu: ContextMenuItem[] = [
-                    { label: isPinned ? "Unpin Tab" : "Pin Tab", click: () => onPinChange() },
+                    { label: isPinned ? "Unpin Tab" : "Pin Tab", click: onPinChange },
                     { label: "Rename Tab", click: () => handleRenameTab(null) },
                     { label: "Copy TabId", click: () => navigator.clipboard.writeText(id) },
                     { type: "separator" },
@@ -216,7 +216,13 @@ const Tab = React.memo(
                             {tabData?.name}
                         </div>
                         {isPinned ? (
-                            <Button className="ghost grey pin" onClick={onPinChange}>
+                            <Button
+                                className="ghost grey pin"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPinChange();
+                                }}
+                            >
                                 <i className="fa fa-solid fa-thumbtack" />
                             </Button>
                         ) : (
