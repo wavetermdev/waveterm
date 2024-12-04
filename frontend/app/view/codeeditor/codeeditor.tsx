@@ -1,10 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms } from "@/app/store/global";
+import { useOverrideConfigAtom } from "@/app/store/global";
 import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
-import { atom, useAtomValue } from "jotai";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { configureMonacoYaml } from "monaco-yaml";
 import React, { useMemo, useRef } from "react";
@@ -108,6 +107,7 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
 }
 
 interface CodeEditorProps {
+    blockId: string;
     text: string;
     filename: string;
     language?: string;
@@ -116,21 +116,12 @@ interface CodeEditorProps {
     onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
 
-const minimapEnabledAtom = atom((get) => {
-    const settings = get(atoms.settingsAtom);
-    return settings["editor:minimapenabled"] ?? false;
-});
-
-const stickyScrollEnabledAtom = atom((get) => {
-    const settings = get(atoms.settingsAtom);
-    return settings["editor:stickyscrollenabled"] ?? false;
-});
-
-export function CodeEditor({ text, language, filename, meta, onChange, onMount }: CodeEditorProps) {
+export function CodeEditor({ blockId, text, language, filename, meta, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
-    const minimapEnabled = useAtomValue(minimapEnabledAtom);
-    const stickyScrollEnabled = useAtomValue(stickyScrollEnabledAtom);
+    const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
+    const stickyScrollEnabled = useOverrideConfigAtom(blockId, "editor:stickyscrollenabled") ?? false;
+    const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
     const theme = "wave-theme-dark";
 
     React.useEffect(() => {
@@ -158,9 +149,9 @@ export function CodeEditor({ text, language, filename, meta, onChange, onMount }
         const opts = defaultEditorOptions();
         opts.minimap.enabled = minimapEnabled;
         opts.stickyScroll.enabled = stickyScrollEnabled;
-        opts.wordWrap = meta?.["editor:wordwrap"] ? "on" : "off";
+        opts.wordWrap = wordWrap ? "on" : "off";
         return opts;
-    }, [minimapEnabled, stickyScrollEnabled, meta?.["editor:wordwrap"]]);
+    }, [minimapEnabled, stickyScrollEnabled, wordWrap]);
 
     return (
         <div className="code-editor-wrapper">

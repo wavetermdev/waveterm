@@ -10,7 +10,15 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
-import { atoms, createBlock, getConnStatusAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
+import {
+    atoms,
+    createBlock,
+    getConnStatusAtom,
+    getOverrideConfigAtom,
+    getSettingsKeyAtom,
+    globalStore,
+    refocusNode,
+} from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -659,6 +667,8 @@ export class PreviewModel implements ViewModel {
             });
         }
         const loadableSV = globalStore.get(this.loadableSpecializedView);
+        const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
+        const wordWrap = globalStore.get(wordWrapAtom) ?? false;
         if (loadableSV.state == "hasData") {
             if (loadableSV.data.specializedView == "codeedit") {
                 if (globalStore.get(this.newFileContent) != null) {
@@ -676,11 +686,11 @@ export class PreviewModel implements ViewModel {
                 menuItems.push({
                     label: "Word Wrap",
                     type: "checkbox",
-                    checked: blockData?.meta?.["editor:wordwrap"] ?? false,
+                    checked: wordWrap,
                     click: () => {
                         const blockOref = WOS.makeORef("block", this.blockId);
                         services.ObjectService.UpdateObjectMeta(blockOref, {
-                            "editor:wordwrap": !blockData?.meta?.["editor:wordwrap"],
+                            "editor:wordwrap": !wordWrap,
                         });
                     },
                 });
@@ -865,6 +875,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 
     return (
         <CodeEditor
+            blockId={model.blockId}
             text={fileContent}
             filename={fileName}
             meta={blockMeta}
