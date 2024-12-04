@@ -6,7 +6,7 @@ import { ContextMenuModel } from "@/store/contextmenu";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
-import { Atom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import { atoms, globalStore, refocusNode } from "@/app/store/global";
@@ -16,13 +16,12 @@ import "./tab.scss";
 
 interface TabProps {
     id: string;
-    active: boolean;
+    isActive: boolean;
     isFirst: boolean;
     isBeforeActive: boolean;
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
-    tabIndicesMovedAtom: Atom<number[]>;
     tabIds: string[];
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
@@ -37,13 +36,12 @@ const Tab = memo(
         (
             {
                 id,
-                active,
+                isActive,
                 isFirst,
                 isBeforeActive,
                 isDragging,
                 tabWidth,
                 isNew,
-                tabIndicesMovedAtom,
                 tabIds,
                 onLoaded,
                 onClick,
@@ -63,10 +61,7 @@ const Tab = memo(
             const loadedRef = useRef(false);
             const tabRef = useRef<HTMLDivElement>(null);
 
-            const tabIndicesMoved = useAtomValue(tabIndicesMovedAtom);
-
-            console.log("tabIndicesMoved", tabIndicesMoved);
-            console.log("tabIds", tabIds);
+            const tabIndicesMoved = useAtomValue<number[]>(atoms.tabIndicesMoved);
 
             useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 
@@ -205,16 +200,14 @@ const Tab = memo(
                     const found = tabIndicesMoved.find((i, ii) => ii !== 0 && i === idx) === undefined;
                     return found;
                 },
-                [tabIndicesMoved, isFirst, active]
+                [isFirst, tabIndicesMoved]
             );
-
-            console.log("showSeparator(id)=====", id, showSeparator(id));
 
             return (
                 <div
                     ref={tabRef}
                     className={clsx("tab", {
-                        active,
+                        active: isActive,
                         isDragging,
                         "before-active": isBeforeActive,
                         "new-tab": isNew,

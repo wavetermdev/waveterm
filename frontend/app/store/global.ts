@@ -143,6 +143,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const notificationsAtom = atom<NotificationType[]>([]);
     const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
+    const tabIndicesMovedAtom = atom<number[]>([]);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         clientId: clientIdAtom,
@@ -165,6 +166,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
+        tabIndicesMoved: tabIndicesMovedAtom,
     };
 }
 

@@ -22,6 +22,7 @@
 		border-right-width: 1px;
 		border-right-style: solid;
 		border-color: rgb(from var(--main-text-color) r g b / 0.2);
+		opacity: 1;
 	}
 
     .tab-inner {
@@ -55,6 +56,11 @@
         .name {
             color: var(--main-text-color);
         }
+
+		& + .tab .separator,
+		.separator {
+			opacity: 0;
+		}
     }
 
     .name {

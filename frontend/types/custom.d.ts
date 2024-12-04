@@ -27,6 +27,7 @@ declare global {
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
         notificationPopoverMode: jotia.atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
+        tabIndicesMoved: jotai.atom<number[]>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;

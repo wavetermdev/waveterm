@@ -7,7 +7,7 @@ import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, isDev, PLATFORM } from "@/store/global";
 import { fireAndForget } from "@/util/util";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -36,9 +36,6 @@ const OS_OPTIONS = {
         pointers: ["mouse", "touch", "pen"],
     },
 };
-
-const tabIndicesMovedAtom = atom<number[]>([]);
-const tabIdsAtom = atom<string[]>([]);
 
 interface TabBarProps {
     workspace: Workspace;
@@ -103,6 +100,7 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
 };
 
 const TabBar = memo(({ workspace }: TabBarProps) => {
+    const [tabIds, setTabIds] = useState([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
@@ -137,8 +135,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
     const settings = useAtomValue(atoms.settingsAtom);
-    const [tabIds, setTabIds] = useAtom(tabIdsAtom);
-    const setTabIndicesMoved = useSetAtom(tabIndicesMovedAtom);
+    const setTabIndicesMoved = useSetAtom(atoms.tabIndicesMoved);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -584,7 +581,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 id={tabId}
                                 isFirst={index === 0}
                                 onClick={() => handleSelectTab(tabId)}
-                                active={activeTabId === tabId}
+                                isActive={activeTabId === tabId}
                                 onMouseDown={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}
@@ -592,7 +589,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 isDragging={draggingTab === tabId}
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}
-                                tabIndicesMovedAtom={tabIndicesMovedAtom}
                                 tabIds={tabIds}
                                 onMouseEnter={() => handleMouseEnterTab(index)}
                                 onMouseLeave={() => handleMouseLeaveTab(index)}
