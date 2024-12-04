@@ -16,6 +16,8 @@ import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import {
     atoms,
+    createBlock,
+    getApi,
     getBlockComponentModel,
     getConnStatusAtom,
     getHostName,
@@ -738,9 +740,28 @@ const ChangeConnectionBlockModal = React.memo(
             };
             return item;
         });
+        const connectionsEditItem: SuggestionConnectionItem = {
+            status: "disconnected",
+            icon: "gear",
+            iconColor: "var(--grey-text-color",
+            value: "Edit Connections",
+            label: "Edit Connections",
+            onSelect: () => {
+                util.fireAndForget(async () => {
+                    const path = `${getApi().getConfigDir()}/connections.json`;
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "preview",
+                            file: path,
+                        },
+                    };
+                    await createBlock(blockDef, false, true);
+                });
+            },
+        };
         const remoteSuggestions: SuggestionConnectionScope = {
             headerText: "Remote",
-            items: remoteItems,
+            items: [...remoteItems, connectionsEditItem],
         };
 
         let suggestions: Array<SuggestionsType> = [];
