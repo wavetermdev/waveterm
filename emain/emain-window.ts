@@ -380,6 +380,11 @@ export class WaveBrowserWindow extends BaseWindow {
             return;
         }
         if (activeTabView.isOnScreen()) {
+            activeTabView.webContents.sendInputEvent({
+                type: "mouseEnter",
+                x: 0,
+                y: 0,
+            });
             activeTabView.setBounds({
                 x: 0,
                 y: 0,

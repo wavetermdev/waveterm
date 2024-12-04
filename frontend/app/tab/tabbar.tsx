@@ -5,7 +5,7 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, isDev, PLATFORM } from "@/store/global";
+import { atoms, createTab, getApi, isDev, PLATFORM, setActiveTab } from "@/store/global";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -485,7 +485,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
-            getApi().setActiveTab(tabId);
+            setActiveTab(tabId);
         }
     };
 
