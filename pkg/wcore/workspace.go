@@ -70,7 +70,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		if err != nil {
 			return "", fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 		}
-		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
+		tabName = "T" + fmt.Sprint(len(ws.TabIds)+len(ws.PinnedTabIds)+1)
 	}
 	tab, err := createTabObj(ctx, workspaceId, tabName, pinned)
 	if err != nil {
