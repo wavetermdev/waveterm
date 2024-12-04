@@ -412,6 +412,9 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		defer func() {
 			log.Printf("[shellproc] pty-read loop done\n")
 			shellProc.Close()
+			cmdStatus := bc.GetRuntimeStatus()
+			termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", cmdStatus.ShellProcExitCode)
+			HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte(termMsg))
 			bc.WithLock(func() {
 				// so no other events are sent
 				bc.ShellInputCh = nil
@@ -484,8 +487,6 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		}()
 		waitErr := shellProc.Cmd.Wait()
 		exitCode = shellProc.Cmd.ExitCode()
-		termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
-		HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte(termMsg))
 		shellProc.SetWaitErrorAndSignalDone(waitErr)
 	}()
 	return nil
