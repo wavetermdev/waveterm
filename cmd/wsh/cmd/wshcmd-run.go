@@ -30,7 +30,7 @@ func init() {
 	flags.StringP("command", "c", "", "run command string in shell")
 	flags.BoolP("exit", "x", false, "close block if command exits successfully (will stay open if there was an error)")
 	flags.BoolP("forceexit", "X", false, "close block when command exits, regardless of exit status")
-	flags.IntP("delay", "", 2000, "if -x, delay in milliseconds before closing block (default is 2000ms)")
+	flags.IntP("delay", "", 2000, "if -x, delay in milliseconds before closing block")
 	flags.BoolP("paused", "p", false, "create block in paused state")
 	flags.String("cwd", "", "set working directory for command")
 	rootCmd.AddCommand(runCmd)
