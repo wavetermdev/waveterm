@@ -230,8 +230,8 @@ const Tab = memo(
                             onKeyDown={handleKeyDown}
                             suppressContentEditableWarning={true}
                         >
-                            {/* {tabData?.name} */}
-                            {id.substring(id.length - 3)}
+                            {tabData?.name}
+                            {/* {id.substring(id.length - 3)} */}
                         </div>
                         <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
                             <i className="fa fa-solid fa-xmark" />
