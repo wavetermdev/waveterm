@@ -555,6 +555,7 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
                 status: "connected",
                 hasconnected: true,
                 activeconnnum: 0,
+                wshenabled: false,
             };
             rtn = atom(connStatus);
         } else {
@@ -565,6 +566,7 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
                 status: "disconnected",
                 hasconnected: false,
                 activeconnnum: 0,
+                wshenabled: false,
             };
             rtn = atom(connStatus);
         }
