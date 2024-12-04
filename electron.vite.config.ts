@@ -5,7 +5,6 @@ import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "electron-vite";
 import flow from "rollup-plugin-flow";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
-import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -21,7 +20,7 @@ export default defineConfig({
             },
             outDir: "dist/main",
         },
-        plugins: [tsconfigPaths(), flow(), nodePolyfills()],
+        plugins: [tsconfigPaths(), flow()],
         resolve: {
             alias: {
                 "@": "frontend",
