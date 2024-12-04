@@ -67,6 +67,7 @@ class TermViewModel {
     shellProcStatus: jotai.Atom<string>;
     shellProcStatusUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
+    isRestarting: jotai.PrimitiveAtom<boolean>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
@@ -88,6 +89,7 @@ class TermViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:mode"] ?? "term";
         });
+        this.isRestarting = jotai.atom(false);
         this.viewIcon = jotai.atom((get) => {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
@@ -148,23 +150,33 @@ class TermViewModel {
                     text: cmdText,
                     noGrow: true,
                 });
-
-                const fullShellProcStatus = get(this.shellProcFullStatus);
-                if (fullShellProcStatus?.shellprocstatus == "done") {
-                    if (fullShellProcStatus?.shellprocexitcode == 0) {
-                        rtn.push({
-                            elemtype: "iconbutton",
-                            icon: "check",
-                            iconColor: "var(--success-color)",
-                            title: "Command Exited Successfully",
-                        });
-                    } else {
-                        rtn.push({
-                            elemtype: "iconbutton",
-                            icon: "xmark-large",
-                            iconColor: "var(--error-color)",
-                            title: "Exit Code: " + fullShellProcStatus?.shellprocexitcode,
-                        });
+                const isRestarting = get(this.isRestarting);
+                if (isRestarting) {
+                    rtn.push({
+                        elemtype: "iconbutton",
+                        icon: "refresh",
+                        iconColor: "var(--success-color)",
+                        iconSpin: true,
+                        title: "Restarting Command",
+                    });
+                } else {
+                    const fullShellProcStatus = get(this.shellProcFullStatus);
+                    if (fullShellProcStatus?.shellprocstatus == "done") {
+                        if (fullShellProcStatus?.shellprocexitcode == 0) {
+                            rtn.push({
+                                elemtype: "iconbutton",
+                                icon: "check",
+                                iconColor: "var(--success-color)",
+                                title: "Command Exited Successfully",
+                            });
+                        } else {
+                            rtn.push({
+                                elemtype: "iconbutton",
+                                icon: "xmark-large",
+                                iconColor: "var(--error-color)",
+                                title: "Exit Code: " + fullShellProcStatus?.shellprocexitcode,
+                            });
+                        }
                     }
                 }
             }
@@ -283,6 +295,13 @@ class TermViewModel {
         });
     }
 
+    triggerRestartAtom() {
+        globalStore.set(this.isRestarting, true);
+        setTimeout(() => {
+            globalStore.set(this.isRestarting, false);
+        }, 300);
+    }
+
     updateShellProcStatus(fullStatus: BlockControllerRuntimeStatus) {
         globalStore.set(this.shellProcFullStatus, fullStatus);
         const status = fullStatus?.shellprocstatus ?? "init";
@@ -383,6 +402,10 @@ class TermViewModel {
         }
         const shellProcStatus = globalStore.get(this.shellProcStatus);
         if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
+            if (globalStore.get(this.isRestarting)) {
+                return;
+            }
+            this.triggerRestartAtom();
             // restart
             const tabId = globalStore.get(atoms.staticTabId);
             const termsize = {

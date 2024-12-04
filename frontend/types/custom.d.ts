@@ -153,6 +153,7 @@ declare global {
         elemtype: "iconbutton";
         icon: string | React.ReactNode;
         iconColor?: string;
+        iconSpin?: boolean;
         className?: string;
         title?: string;
         click?: (e: React.MouseEvent<any>) => void;
