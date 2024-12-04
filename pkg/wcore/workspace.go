@@ -29,6 +29,7 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 }
 
 // If force is true, it will delete even if workspace is named.
+// If workspace is empty, it will be deleted, even if it is named.
 // Returns true if workspace was deleted, false if it was not deleted.
 func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, error) {
 	log.Printf("DeleteWorkspace %s\n", workspaceId)
@@ -36,7 +37,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	if err != nil {
 		return false, fmt.Errorf("error getting workspace: %w", err)
 	}
-	if workspace.Name != "" && workspace.Icon != "" && !force {
+	if workspace.Name != "" && workspace.Icon != "" && !force && len(workspace.TabIds) > 0 {
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 		return false, nil
 	}
@@ -149,7 +150,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 		if err != nil {
 			return newActiveTabId, fmt.Errorf("unable to find window for workspace id %v: %w", workspaceId, err)
 		}
-		err = CloseWindow(ctx, windowId, false, true)
+		err = CloseWindow(ctx, windowId, false)
 		if err != nil {
 			return newActiveTabId, err
 		}
