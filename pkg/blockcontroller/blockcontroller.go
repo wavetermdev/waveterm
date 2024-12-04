@@ -529,6 +529,7 @@ func setTermSize(ctx context.Context, blockId string, termSize waveobj.TermSize)
 }
 
 func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, rtOpts *waveobj.RuntimeOpts, force bool) {
+	curStatus := bc.GetRuntimeStatus()
 	controllerName := bdata.Meta.GetString(waveobj.MetaKey_Controller, "")
 	if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
 		log.Printf("unknown controller %q\n", controllerName)
@@ -542,7 +543,7 @@ func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, r
 	}
 	runOnce := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnce, false)
 	runOnStart := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnStart, true)
-	if runOnStart || runOnce || force {
+	if ((runOnStart || runOnce) && curStatus.ShellProcStatus == Status_Init) || force {
 		if runOnce {
 			ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancelFn()

@@ -382,10 +382,19 @@ class TermViewModel {
             return false;
         }
         const shellProcStatus = globalStore.get(this.shellProcStatus);
-        if (shellProcStatus == "done" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
+        if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
             // restart
             const tabId = globalStore.get(atoms.staticTabId);
-            const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, { tabid: tabId, blockid: this.blockId });
+            const termsize = {
+                rows: this.termRef.current?.terminal?.rows,
+                cols: this.termRef.current?.terminal?.cols,
+            };
+            const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
+                tabid: tabId,
+                blockid: this.blockId,
+                forcerestart: true,
+                rtopts: { termsize: termsize },
+            });
             prtn.catch((e) => console.log("error controller resync (enter)", this.blockId, e));
             return false;
         }
