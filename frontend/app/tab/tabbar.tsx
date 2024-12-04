@@ -254,9 +254,14 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     };
 
+    const saveTabsPositionDebounced = useCallback(
+        debounce(100, () => saveTabsPosition()),
+        [saveTabsPosition]
+    );
+
     const handleResizeTabs = useCallback(() => {
         setSizeAndPosition();
-        debounce(100, () => saveTabsPosition())();
+        saveTabsPositionDebounced();
     }, [tabIds, newTabId, isFullScreen]);
 
     const reinitVersion = useAtomValue(atoms.reinitVersion);
@@ -426,6 +431,43 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     };
 
+    const setUpdatedTabsDebounced = useCallback(
+        debounce(300, (tabIndex: number, tabIds: string[], pinnedTabCount: number) => {
+            console.log(
+                "setting updated tabs",
+                tabIds,
+                tabIndex,
+                pinnedTabCount,
+                draggingTabDataRef.current.tabStartIndex
+            );
+            // Reset styles
+            tabRefs.current.forEach((ref) => {
+                ref.current.style.zIndex = "0";
+                ref.current.classList.remove("animate");
+            });
+            let newPinnedTabCount = pinnedTabCount;
+            if (tabIndex <= pinnedTabCount && draggingTabDataRef.current.tabStartIndex > pinnedTabCount) {
+                newPinnedTabCount++;
+                setPinnedTabCount(newPinnedTabCount);
+            } else if (tabIndex > pinnedTabCount && draggingTabDataRef.current.tabStartIndex <= pinnedTabCount) {
+                newPinnedTabCount--;
+                setPinnedTabCount(newPinnedTabCount);
+            }
+            // Reset dragging state
+            setDraggingTab(null);
+            // Update workspace tab ids
+            fireAndForget(
+                async () =>
+                    await WorkspaceService.UpdateTabIds(
+                        workspace.oid,
+                        tabIds.slice(newPinnedTabCount),
+                        tabIds.slice(0, newPinnedTabCount)
+                    )
+            );
+        }),
+        []
+    );
+
     const handleMouseUp = (event: MouseEvent) => {
         const { tabIndex, dragged } = draggingTabDataRef.current;
 
@@ -440,39 +482,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
 
         if (dragged) {
-            debounce(300, () => {
-                console.log(
-                    "setting updated tabs",
-                    tabIds,
-                    tabIndex,
-                    pinnedTabCount,
-                    draggingTabDataRef.current.tabStartIndex
-                );
-                // Reset styles
-                tabRefs.current.forEach((ref) => {
-                    ref.current.style.zIndex = "0";
-                    ref.current.classList.remove("animate");
-                });
-                let newPinnedTabCount = pinnedTabCount;
-                if (tabIndex <= pinnedTabCount && draggingTabDataRef.current.tabStartIndex > pinnedTabCount) {
-                    newPinnedTabCount++;
-                    setPinnedTabCount(newPinnedTabCount);
-                } else if (tabIndex > pinnedTabCount && draggingTabDataRef.current.tabStartIndex <= pinnedTabCount) {
-                    newPinnedTabCount--;
-                    setPinnedTabCount(newPinnedTabCount);
-                }
-                // Reset dragging state
-                setDraggingTab(null);
-                // Update workspace tab ids
-                fireAndForget(
-                    async () =>
-                        await WorkspaceService.UpdateTabIds(
-                            workspace.oid,
-                            tabIds.slice(newPinnedTabCount),
-                            tabIds.slice(0, newPinnedTabCount)
-                        )
-                );
-            })();
+            setUpdatedTabsDebounced(tabIndex, tabIds, pinnedTabCount);
         } else {
             // Reset styles
             tabRefs.current.forEach((ref) => {
@@ -521,19 +531,31 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     };
 
-    const handleAddTab = () => {
-        createTab();
-        tabsWrapperRef.current.style.transition;
-        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
-
+    const updateScrollDebounced = useCallback(
         debounce(30, () => {
             if (scrollableRef.current) {
                 const { viewport } = osInstanceRef.current.elements();
                 viewport.scrollLeft = tabIds.length * tabWidthRef.current;
             }
-        })();
+        }),
+        [tabIds]
+    );
 
-        debounce(100, () => setNewTabId(null))();
+    const setNewTabIdDebounced = useCallback(
+        debounce(100, (tabId: string) => {
+            setNewTabId(tabId);
+        }),
+        []
+    );
+
+    const handleAddTab = () => {
+        createTab();
+        tabsWrapperRef.current.style.transition;
+        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+
+        updateScrollDebounced();
+
+        setNewTabIdDebounced(null);
     };
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
