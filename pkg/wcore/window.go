@@ -120,6 +120,8 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId str
 	return GetWindow(ctx, windowId)
 }
 
+// CloseWindow closes a window and deletes its workspace if it is empty and not named.
+// If fromElectron is true, it does not send an event to Electron.
 func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error {
 	log.Printf("CloseWindow %s\n", windowId)
 	window, err := GetWindow(ctx, windowId)
