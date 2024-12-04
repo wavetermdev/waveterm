@@ -279,6 +279,10 @@ declare global {
         wshenabled?: boolean;
         askbeforewshinstall?: boolean;
         hidden?: boolean;
+        "term:*"?: boolean;
+        "term:fontsize"?: number;
+        "term:fontfamily"?: string;
+        "term:theme"?: string;
         "ssh:user"?: string;
         "ssh:hostname"?: string;
         "ssh:port"?: string;

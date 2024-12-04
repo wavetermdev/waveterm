@@ -456,6 +456,11 @@ type ConnKeywords struct {
 	AskBeforeWshInstall *bool `json:"askbeforewshinstall,omitempty"`
 	Hidden              *bool `json:"hidden,omitempty"`
 
+	TermClear      bool    `json:"term:*,omitempty"`
+	TermFontSize   float64 `json:"term:fontsize,omitempty"`
+	TermFontFamily string  `json:"term:fontfamily,omitempty"`
+	TermTheme      string  `json:"term:theme,omitempty"`
+
 	SshUser                         string   `json:"ssh:user,omitempty"`
 	SshHostName                     string   `json:"ssh:hostname,omitempty"`
 	SshPort                         string   `json:"ssh:port,omitempty"`
