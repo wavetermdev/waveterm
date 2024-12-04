@@ -1,17 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/element/button";
-import { ContextMenuModel } from "@/store/contextmenu";
-import * as services from "@/store/services";
-import * as WOS from "@/store/wos";
-import { clsx } from "clsx";
-import * as React from "react";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-
 import { atoms, globalStore, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { Button } from "@/element/button";
+import { ContextMenuModel } from "@/store/contextmenu";
+import { clsx } from "clsx";
+import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ObjectService } from "../store/services";
+import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
 
 interface TabProps {
@@ -22,19 +20,21 @@ interface TabProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
+    isPinned: boolean;
     onSelect: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
+    onPinChange: () => void;
 }
 
-const Tab = React.memo(
+const Tab = memo(
     forwardRef<HTMLDivElement, TabProps>(
         (
             {
                 id,
                 active,
-                isFirst,
+                isPinned,
                 isBeforeActive,
                 isDragging,
                 tabWidth,
@@ -43,10 +43,11 @@ const Tab = React.memo(
                 onSelect,
                 onClose,
                 onDragStart,
+                onPinChange,
             },
             ref
         ) => {
-            const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", id));
+            const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
 
@@ -87,7 +88,7 @@ const Tab = React.memo(
                 newText = newText || originalName;
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
-                services.ObjectService.UpdateTabName(id, newText);
+                ObjectService.UpdateTabName(id, newText);
                 setTimeout(() => refocusNode(null), 10);
             };
 
@@ -145,7 +146,12 @@ const Tab = React.memo(
 
             function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
                 e.preventDefault();
-                let menu: ContextMenuItem[] = [];
+                let menu: ContextMenuItem[] = [
+                    { label: isPinned ? "Unpin Tab" : "Pin Tab", click: onPinChange },
+                    { label: "Rename Tab", click: () => handleRenameTab(null) },
+                    { label: "Copy TabId", click: () => navigator.clipboard.writeText(id) },
+                    { type: "separator" },
+                ];
                 const fullConfig = globalStore.get(atoms.fullConfigAtom);
                 const bgPresets: string[] = [];
                 for (const key in fullConfig?.presets ?? {}) {
@@ -158,12 +164,9 @@ const Tab = React.memo(
                     const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
                     return aOrder - bOrder;
                 });
-                menu.push({ label: "Rename Tab", click: () => handleRenameTab(null) });
-                menu.push({ label: "Copy TabId", click: () => navigator.clipboard.writeText(id) });
-                menu.push({ type: "separator" });
                 if (bgPresets.length > 0) {
                     const submenu: ContextMenuItem[] = [];
-                    const oref = WOS.makeORef("tab", id);
+                    const oref = makeORef("tab", id);
                     for (const presetName of bgPresets) {
                         const preset = fullConfig.presets[presetName];
                         if (preset == null) {
@@ -172,13 +175,12 @@ const Tab = React.memo(
                         submenu.push({
                             label: preset["display:name"] ?? presetName,
                             click: () => {
-                                services.ObjectService.UpdateObjectMeta(oref, preset);
+                                ObjectService.UpdateObjectMeta(oref, preset);
                                 RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
                             },
                         });
                     }
-                    menu.push({ label: "Backgrounds", type: "submenu", submenu });
-                    menu.push({ type: "separator" });
+                    menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
                 }
                 menu.push({ label: "Close Tab", click: () => onClose(null) });
                 ContextMenuModel.showContextMenu(menu, e);
@@ -210,9 +212,21 @@ const Tab = React.memo(
                         >
                             {tabData?.name}
                         </div>
-                        <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
-                            <i className="fa fa-solid fa-xmark" />
-                        </Button>
+                        {isPinned ? (
+                            <Button
+                                className="ghost grey pin"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPinChange();
+                                }}
+                            >
+                                <i className="fa fa-solid fa-thumbtack" />
+                            </Button>
+                        ) : (
+                            <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
+                                <i className="fa fa-solid fa-xmark" />
+                            </Button>
+                        )}
                     </div>
                 </div>
             );

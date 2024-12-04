@@ -3,6 +3,7 @@ package workspaceservice
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
@@ -68,16 +69,16 @@ func (svg *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
 
 func (svc *WorkspaceService) CreateTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames:   []string{"workspaceId", "tabName", "activateTab"},
+		ArgNames:   []string{"workspaceId", "tabName", "activateTab", "pinned"},
 		ReturnDesc: "tabId",
 	}
 }
 
-func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
+func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activateTab bool, pinned bool) (string, waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab)
+	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, pinned)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}
@@ -93,17 +94,39 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 	return tabId, updates, nil
 }
 
-func (svc *WorkspaceService) UpdateTabIds_Meta() tsgenmeta.MethodMeta {
+func (svc *WorkspaceService) ChangeTabPinning_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"uiContext", "workspaceId", "tabIds"},
+		ArgNames: []string{"ctx", "workspaceId", "tabId", "pinned"},
 	}
 }
 
-func (svc *WorkspaceService) UpdateTabIds(uiContext waveobj.UIContext, workspaceId string, tabIds []string) (waveobj.UpdatesRtnType, error) {
+func (svc *WorkspaceService) ChangeTabPinning(ctx context.Context, workspaceId string, tabId string, pinned bool) (waveobj.UpdatesRtnType, error) {
+	log.Printf("ChangeTabPinning %s %s %v\n", workspaceId, tabId, pinned)
+	ctx = waveobj.ContextWithUpdates(ctx)
+	err := wcore.ChangeTabPinning(ctx, workspaceId, tabId, pinned)
+	if err != nil {
+		return nil, fmt.Errorf("error toggling tab pinning: %w", err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:ChangeTabPinning:SendUpdateEvents")
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
+}
+
+func (svc *WorkspaceService) UpdateTabIds_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"uiContext", "workspaceId", "tabIds", "pinnedTabIds"},
+	}
+}
+
+func (svc *WorkspaceService) UpdateTabIds(uiContext waveobj.UIContext, workspaceId string, tabIds []string, pinnedTabIds []string) (waveobj.UpdatesRtnType, error) {
+	log.Printf("UpdateTabIds %s %v %v\n", workspaceId, tabIds, pinnedTabIds)
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
+	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds, pinnedTabIds)
 	if err != nil {
 		return nil, fmt.Errorf("error updating workspace tab ids: %w", err)
 	}

@@ -1,15 +1,15 @@
 .menubutton {
-  overflow: hidden;
-  .menu-anchor {
-    width: 100%;
-    .button {
-      width: 100%;
-      div {
-        max-width: 100%;
-        text-overflow: ellipsis;
-        overflow: hidden;
-        flex-shrink: 1;
-      }
+    overflow: hidden;
+    .menu-anchor {
+        width: 100%;
+        .button {
+            width: 100%;
+            div {
+                max-width: 100%;
+                text-overflow: ellipsis;
+                overflow: hidden;
+                flex-shrink: 1;
+            }
+        }
     }
-  }
 }

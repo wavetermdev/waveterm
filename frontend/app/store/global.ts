@@ -625,6 +625,7 @@ function createTab() {
 }
 
 function setActiveTab(tabId: string) {
+    // We use this hack to prevent a flicker in the tab bar when switching to a new tab. This class is unset in reinitWave in wave.ts. See tab.scss for where this class is used.
     document.body.classList.add("nohover");
     getApi().setActiveTab(tabId);
 }
