@@ -33,6 +33,7 @@ func init() {
 	flags.IntP("delay", "", 2000, "if -x, delay in milliseconds before closing block")
 	flags.BoolP("paused", "p", false, "create block in paused state")
 	flags.String("cwd", "", "set working directory for command")
+	flags.BoolP("append", "a", false, "append output on restart instead of clearing")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -49,6 +50,7 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	paused, _ := flags.GetBool("paused")
 	cwd, _ := flags.GetString("cwd")
 	delayMs, _ := flags.GetInt("delay")
+	appendOutput, _ := flags.GetBool("append")
 	var cmdArgs []string
 	var useShell bool
 	var shellCmd string
@@ -102,10 +104,10 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	// Convert to null-terminated format
 	envContent := envutil.MapToEnv(envMap)
 	createMeta := map[string]any{
-		waveobj.MetaKey_View:              "term",
-		waveobj.MetaKey_CmdCwd:            cwd,
-		waveobj.MetaKey_Controller:        "cmd",
-		waveobj.MetaKey_CmdClearOnRestart: true,
+		waveobj.MetaKey_View:            "term",
+		waveobj.MetaKey_CmdCwd:          cwd,
+		waveobj.MetaKey_Controller:      "cmd",
+		waveobj.MetaKey_CmdClearOnStart: true,
 	}
 	createMeta[waveobj.MetaKey_Cmd] = shellCmd
 	createMeta[waveobj.MetaKey_CmdArgs] = cmdArgs
@@ -122,6 +124,9 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		createMeta[waveobj.MetaKey_CmdCloseOnExit] = true
 	}
 	createMeta[waveobj.MetaKey_CmdCloseOnExitDelay] = float64(delayMs)
+	if appendOutput {
+		createMeta[waveobj.MetaKey_CmdClearOnStart] = false
+	}
 
 	if RpcContext.Conn != "" {
 		createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn

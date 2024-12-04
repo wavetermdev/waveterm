@@ -508,29 +508,29 @@ class TermViewModel {
             label: "Force Restart Controller",
             click: this.forceRestartController.bind(this),
         });
-        const isClearOnRestart = blockData?.meta?.["cmd:clearonrestart"];
+        const isClearOnStart = blockData?.meta?.["cmd:clearonstart"];
         fullMenu.push({
             label: "Clear Output On Restart",
             submenu: [
                 {
                     label: "On",
                     type: "checkbox",
-                    checked: isClearOnRestart,
+                    checked: isClearOnStart,
                     click: () => {
                         RpcApi.SetMetaCommand(TabRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
-                            meta: { "cmd:clearonrestart": true },
+                            meta: { "cmd:clearonstart": true },
                         });
                     },
                 },
                 {
                     label: "Off",
                     type: "checkbox",
-                    checked: !isClearOnRestart,
+                    checked: !isClearOnStart,
                     click: () => {
                         RpcApi.SetMetaCommand(TabRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
-                            meta: { "cmd:clearonrestart": false },
+                            meta: { "cmd:clearonstart": false },
                         });
                     },
                 },

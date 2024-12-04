@@ -428,7 +428,6 @@ declare global {
         "cmd:login"?: boolean;
         "cmd:runonstart"?: boolean;
         "cmd:clearonstart"?: boolean;
-        "cmd:clearonrestart"?: boolean;
         "cmd:runonce"?: boolean;
         "cmd:closeonexit"?: boolean;
         "cmd:closeonexitforce"?: boolean;

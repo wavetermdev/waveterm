@@ -43,7 +43,6 @@ const (
 	MetaKey_CmdLogin                         = "cmd:login"
 	MetaKey_CmdRunOnStart                    = "cmd:runonstart"
 	MetaKey_CmdClearOnStart                  = "cmd:clearonstart"
-	MetaKey_CmdClearOnRestart                = "cmd:clearonrestart"
 	MetaKey_CmdRunOnce                       = "cmd:runonce"
 	MetaKey_CmdCloseOnExit                   = "cmd:closeonexit"
 	MetaKey_CmdCloseOnExitForce              = "cmd:closeonexitforce"

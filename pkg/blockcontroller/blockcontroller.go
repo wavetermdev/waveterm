@@ -189,16 +189,8 @@ func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 func (bc *BlockController) resetTerminalState() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	var shouldTruncate bool
-	blockData, getBlockDataErr := wstore.DBMustGet[*waveobj.Block](ctx, bc.BlockId)
-	if getBlockDataErr == nil {
-		shouldTruncate = blockData.Meta.GetBool(waveobj.MetaKey_CmdClearOnRestart, false)
-	}
-	if shouldTruncate {
-		err := HandleTruncateBlockFile(bc.BlockId)
-		if err != nil {
-			log.Printf("error truncating term blockfile: %v\n", err)
-		}
+	wfile, statErr := filestore.WFS.Stat(ctx, bc.BlockId, BlockFile_Term)
+	if statErr == fs.ErrNotExist || wfile.Size == 0 {
 		return
 	}
 	// controller type = "shell"
@@ -564,15 +556,15 @@ func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, r
 		log.Printf("unknown controller %q\n", controllerName)
 		return
 	}
-	if getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdClearOnStart, false) {
-		err := HandleTruncateBlockFile(bc.BlockId)
-		if err != nil {
-			log.Printf("error truncating term blockfile: %v\n", err)
-		}
-	}
 	runOnce := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnce, false)
 	runOnStart := getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdRunOnStart, true)
 	if ((runOnStart || runOnce) && curStatus.ShellProcStatus == Status_Init) || force {
+		if getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdClearOnStart, false) {
+			err := HandleTruncateBlockFile(bc.BlockId)
+			if err != nil {
+				log.Printf("error truncating term blockfile: %v\n", err)
+			}
+		}
 		if runOnce {
 			ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancelFn()
