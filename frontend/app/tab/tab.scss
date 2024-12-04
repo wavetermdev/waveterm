@@ -16,7 +16,7 @@
 
 	.separator {
 		position: absolute;
-		right: 0;
+		left: 0px;
 		width: 1px;
 		height: 14px;
 		border-right-width: 1px;
@@ -33,11 +33,6 @@
     }
 
 	&:hover {
-		// & + .tab::after,
-		// &::after {
-		// 	content: none;
-		// }
-
 		.tab-inner {
 			border-color: transparent;
 			background: rgb(from var(--main-text-color) r g b / 0.07);
@@ -60,16 +55,7 @@
         .name {
             color: var(--main-text-color);
         }
-
-		// &+.tab::after,
-		// &::after {
-		// 	content: none;
-		// }
     }
-
-	// &:first-child::after {
-	// 	content: none;
-	// }
 
     .name {
         position: absolute;

@@ -7,8 +7,7 @@ import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
 import { Atom, useAtomValue } from "jotai";
-import * as React from "react";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import { atoms, globalStore, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -31,7 +30,7 @@ interface TabProps {
     onLoaded: () => void;
 }
 
-const Tab = React.memo(
+const Tab = memo(
     forwardRef<HTMLDivElement, TabProps>(
         (
             {
@@ -194,6 +193,18 @@ const Tab = React.memo(
                 ContextMenuModel.showContextMenu(menu, e);
             }
 
+            const showSeparator = useCallback(
+                (id) => {
+                    const idx = tabIds.indexOf(id);
+                    const found = tabIndicesMoved.find((i, ii) => ii !== 0 && i === idx) === undefined;
+                    console.log("idx", id, ":", idx, ":", found);
+                    return found;
+                },
+                [tabIndicesMoved]
+            );
+
+            console.log("showSeparator(id)=====", id, showSeparator(id));
+
             return (
                 <div
                     ref={tabRef}
@@ -208,6 +219,7 @@ const Tab = React.memo(
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
+                    {!isFirst && showSeparator(id) && <div className="separator"></div>}
                     <div className="tab-inner">
                         <div
                             ref={editableRef}
@@ -218,13 +230,13 @@ const Tab = React.memo(
                             onKeyDown={handleKeyDown}
                             suppressContentEditableWarning={true}
                         >
-                            {tabData?.name}
+                            {/* {tabData?.name} */}
+                            {id.substring(id.length - 3)}
                         </div>
                         <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
                             <i className="fa fa-solid fa-xmark" />
                         </Button>
                     </div>
-                    <div className="separator"></div>
                 </div>
             );
         }

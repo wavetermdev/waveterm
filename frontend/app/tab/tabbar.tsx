@@ -17,12 +17,6 @@ import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
 
-// export class TabBarModel {
-// 	draggedTabIndex: PrimitiveAtom<number>;
-
-// 	constructor
-// }
-
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
 const DRAGGER_RIGHT_MIN_WIDTH = 74;
@@ -109,7 +103,6 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
 };
 
 const TabBar = memo(({ workspace }: TabBarProps) => {
-    // const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
@@ -421,8 +414,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             if (currentIndexOfDraggingTab !== -1) {
                 tabIds.splice(tabIndex, 1);
             }
-            console.log("tabIndex=====", tabIndex);
-            console.log("newTabIndex=====", newTabIndex);
+
+            // Track indices that have been moved
             if (getDragDirection(currentX) === "+") {
                 setTabIndicesMoved([tabIndex, newTabIndex, newTabIndex + 1]);
             } else if (getDragDirection(currentX) === "-") {
@@ -440,22 +433,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 }
             });
 
-            // debounce(30, () => {
-            //     const prevRightAdjacentTab = tabRefs.current[draggingTabDataRef.current.rightAdjacentTabIndex]?.current;
-            //     // prevRightAdjacentTab.style.setProperty("--hide-separator", "1");
-            //     // prevRightAdjacentTab.style.borderColor = "rgb(from var(--main-text-color) r g b / 0.2)";
-            // })();
-
-            // // Handle right adjacent tab's separator
-            // const rightAdjacentIndex = newTabIndex + 1;
-            // if (rightAdjacentIndex < tabIds.length) {
-            //     const rightAdjacentTab = tabRefs.current[rightAdjacentIndex]?.current;
-            //     if (rightAdjacentTab) {
-            //         rightAdjacentTab.style.borderColor = "transparent";
-            //     }
-            // }
-
-            // draggingTabDataRef.current.rightAdjacentTabIndex = rightAdjacentIndex;
             draggingTabDataRef.current.tabIndex = newTabIndex;
         }
     };
@@ -494,12 +471,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             // Reset dragging state
             setDraggingTab(null);
         }
-
-        // const rightAdjacentTab = tabRefs.current[draggingTabDataRef.current.rightAdjacentTabIndex]?.current;
-        // //  console.log("prevRightAdjacentTab=======", prevRightAdjacentTab);
-        // // if (prevRightAdjacentTab) {
-        // rightAdjacentTab.style.removeProperty("--hide-separator");
-        // }
 
         document.removeEventListener("mouseup", handleMouseUp);
         document.removeEventListener("mousemove", handleMouseMove);
@@ -589,8 +560,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
-
-    // console.log("tabIds==========", tabIds);
 
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
