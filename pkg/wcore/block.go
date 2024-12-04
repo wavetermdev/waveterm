@@ -101,9 +101,9 @@ func createBlockObj(ctx context.Context, tabId string, blockDef *waveobj.BlockDe
 
 // Must delete all blocks individually first.
 // Also deletes LayoutState.
-// cascadeClose: if true, will close parent tab if no blocks left, will cascade to close parent window/workspace of tab if no tabs left.
+// recursive: if true, will recursively close parent tab, window, workspace, if they are empty.
 // Returns new active tab id, error.
-func DeleteBlock(ctx context.Context, blockId string, cascadeClose bool) error {
+func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
@@ -113,7 +113,7 @@ func DeleteBlock(ctx context.Context, blockId string, cascadeClose bool) error {
 	}
 	if len(block.SubBlockIds) > 0 {
 		for _, subBlockId := range block.SubBlockIds {
-			err := DeleteBlock(ctx, subBlockId, cascadeClose)
+			err := DeleteBlock(ctx, subBlockId, recursive)
 			if err != nil {
 				return fmt.Errorf("error deleting subblock %s: %w", subBlockId, err)
 			}
@@ -127,7 +127,7 @@ func DeleteBlock(ctx context.Context, blockId string, cascadeClose bool) error {
 	parentORef := waveobj.ParseORefNoErr(block.ParentORef)
 
 	if parentORef.OType == waveobj.OType_Tab {
-		if parentBlockCount == 0 && cascadeClose {
+		if parentBlockCount == 0 && recursive {
 			// if parent tab has no blocks, delete the tab
 			log.Printf("DeleteBlock: parent tab has no blocks, deleting tab %s", parentORef.OID)
 			parentWorkspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, parentORef.OID)

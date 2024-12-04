@@ -106,9 +106,9 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 
 // Must delete all blocks individually first.
 // Also deletes LayoutState.
-// cascadeClose: if true, will close parent window/workspace if no blocks left.
+// recursive: if true, will recursively close parent window, workspace, if they are empty.
 // Returns new active tab id, error.
-func DeleteTab(ctx context.Context, workspaceId string, tabId string, cascadeClose bool) (string, error) {
+func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive bool) (string, error) {
 	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
 	if ws == nil {
 		return "", fmt.Errorf("workspace not found: %q", workspaceId)
@@ -144,7 +144,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, cascadeClo
 	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
 	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
 
-	if newActiveTabId == "" && cascadeClose {
+	if newActiveTabId == "" && recursive {
 		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 		if err != nil {
 			return newActiveTabId, fmt.Errorf("unable to find window for workspace id %v: %w", workspaceId, err)
