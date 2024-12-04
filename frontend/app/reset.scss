@@ -4,16 +4,16 @@
 *,
 *::before,
 *::after {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 * {
-    margin: 0;
+  margin: 0;
 }
 
 body {
-    line-height: 1.2;
-    -webkit-font-smoothing: antialiased;
+  line-height: 1.2;
+  -webkit-font-smoothing: antialiased;
 }
 
 img,
@@ -21,12 +21,12 @@ picture,
 video,
 canvas,
 svg {
-    display: block;
+  display: block;
 }
 
 input,
 button,
 textarea,
 select {
-    font: inherit;
+  font: inherit;
 }
