@@ -4,90 +4,90 @@
 @use "../mixins.scss";
 
 .input {
-  width: 100%;
-  border: none;
-  font-size: 12px;
-  outline: none;
-  background-color: transparent;
-  color: var(--form-element-text-color);
-  background: var(--form-element-bg-color);
-  border: 2px solid var(--form-element-border-color);
-  border-radius: 6px;
-  padding: 4px 7px;
+    width: 100%;
+    border: none;
+    font-size: 12px;
+    outline: none;
+    background-color: transparent;
+    color: var(--form-element-text-color);
+    background: var(--form-element-bg-color);
+    border: 2px solid var(--form-element-border-color);
+    border-radius: 6px;
+    padding: 4px 7px;
 
-  &:focus {
-    border-color: var(--form-element-primary-color);
-  }
+    &:focus {
+        border-color: var(--form-element-primary-color);
+    }
 
-  &.disabled {
-    opacity: 0.75;
-  }
+    &.disabled {
+        opacity: 0.75;
+    }
 
-  &.error {
-    border-color: var(--form-element-error-color);
-  }
+    &.error {
+        border-color: var(--form-element-error-color);
+    }
 
-  // Include mixins
-  @include mixins.border-radius-mixin();
-  @include mixins.vertical-padding-mixin();
-  @include mixins.horizontal-padding-mixin();
-  @include mixins.font-size-mixin();
-  @include mixins.font-weight-mixin();
+    // Include mixins
+    @include mixins.border-radius-mixin();
+    @include mixins.vertical-padding-mixin();
+    @include mixins.horizontal-padding-mixin();
+    @include mixins.font-size-mixin();
+    @include mixins.font-weight-mixin();
 }
 
 /* Styles when an InputGroup is present */
 .input-group {
-  display: flex;
-  align-items: center;
-  border-radius: 6px;
-  position: relative;
-  width: 100%;
-  border: 2px solid var(--form-element-border-color);
-  background: var(--form-element-bg-color);
-
-  /* Focus style for InputGroup */
-  &.focused {
-    border-color: var(--form-element-primary-color);
-  }
-
-  /* Error state for InputGroup */
-  &.error {
-    border-color: var(--form-element-error-color);
-  }
-
-  /* Disabled state for InputGroup */
-  &.disabled {
-    opacity: 0.75;
-  }
-
-  &:hover {
-    cursor: text;
-  }
-
-  .input-left-element,
-  .input-right-element {
-    padding: 0 5px;
     display: flex;
     align-items: center;
-    justify-content: center;
-  }
+    border-radius: 6px;
+    position: relative;
+    width: 100%;
+    border: 2px solid var(--form-element-border-color);
+    background: var(--form-element-bg-color);
 
-  .input {
-    border: none;
-    flex-grow: 1;
-    border-radius: none;
-
-    &:focus {
-      border-color: transparent;
+    /* Focus style for InputGroup */
+    &.focused {
+        border-color: var(--form-element-primary-color);
     }
 
+    /* Error state for InputGroup */
     &.error {
-      border-color: transparent;
+        border-color: var(--form-element-error-color);
     }
-  }
 
-  // Include mixins
-  @include mixins.border-radius-mixin();
-  @include mixins.font-size-mixin();
-  @include mixins.font-weight-mixin();
+    /* Disabled state for InputGroup */
+    &.disabled {
+        opacity: 0.75;
+    }
+
+    &:hover {
+        cursor: text;
+    }
+
+    .input-left-element,
+    .input-right-element {
+        padding: 0 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .input {
+        border: none;
+        flex-grow: 1;
+        border-radius: none;
+
+        &:focus {
+            border-color: transparent;
+        }
+
+        &.error {
+            border-color: transparent;
+        }
+    }
+
+    // Include mixins
+    @include mixins.border-radius-mixin();
+    @include mixins.font-size-mixin();
+    @include mixins.font-weight-mixin();
 }

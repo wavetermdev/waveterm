@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .copy-button {
-  &.copied {
-    opacity: 1;
-    i {
-      color: var(--success-color);
+    &.copied {
+        opacity: 1;
+        i {
+            color: var(--success-color);
+        }
     }
-  }
 }

@@ -4,93 +4,93 @@
 @use "../../mixins.scss";
 
 .csv-view {
-  opacity: 0; /* Start with an opacity of 0, meaning it's invisible */
+    opacity: 0; /* Start with an opacity of 0, meaning it's invisible */
 
-  @include mixins.ellipsis();
+    @include mixins.ellipsis();
 
-  overflow-x: auto;
-  overflow-y: hidden;
-
-  .cursor-pointer {
-    cursor: pointer;
-  }
-
-  .select-none {
-    user-select: none;
-  }
-
-  table.probe {
-    position: absolute;
-    visibility: hidden;
-  }
-
-  table {
-    border-collapse: collapse;
     overflow-x: auto;
-    border: 1px solid var(--scrollbar-thumb-hover-color);
+    overflow-y: hidden;
 
-    thead {
-      position: relative;
-      display: block;
-      width: 100%;
-      overflow-y: scroll;
+    .cursor-pointer {
+        cursor: pointer;
+    }
 
-      tr {
-        border-bottom: 1px solid var(--scrollbar-thumb-hover-color);
+    .select-none {
+        user-select: none;
+    }
 
-        th {
-          color: var(--main-text-color);
-          border-right: 1px solid var(--scrollbar-thumb-hover-color);
-          border-bottom: none;
-          padding: 2px 10px;
-          flex-basis: 100%;
-          flex-grow: 2;
-          display: block;
-          text-align: left;
-          position: relative;
+    table.probe {
+        position: absolute;
+        visibility: hidden;
+    }
 
-          .inner {
-            text-align: left;
-            padding-right: 15px;
+    table {
+        border-collapse: collapse;
+        overflow-x: auto;
+        border: 1px solid var(--scrollbar-thumb-hover-color);
+
+        thead {
             position: relative;
-            @include mixins.ellipsis();
+            display: block;
+            width: 100%;
+            overflow-y: scroll;
 
-            .sort-icon {
-              position: absolute;
-              right: 0px;
-              top: 2px;
-              width: 9px;
+            tr {
+                border-bottom: 1px solid var(--scrollbar-thumb-hover-color);
+
+                th {
+                    color: var(--main-text-color);
+                    border-right: 1px solid var(--scrollbar-thumb-hover-color);
+                    border-bottom: none;
+                    padding: 2px 10px;
+                    flex-basis: 100%;
+                    flex-grow: 2;
+                    display: block;
+                    text-align: left;
+                    position: relative;
+
+                    .inner {
+                        text-align: left;
+                        padding-right: 15px;
+                        position: relative;
+                        @include mixins.ellipsis();
+
+                        .sort-icon {
+                            position: absolute;
+                            right: 0px;
+                            top: 2px;
+                            width: 9px;
+                        }
+                    }
+                }
             }
-          }
         }
-      }
-    }
 
-    tbody {
-      display: block;
-      position: relative;
-      overflow-y: scroll;
-      overscroll-behavior: contain;
-    }
+        tbody {
+            display: block;
+            position: relative;
+            overflow-y: scroll;
+            overscroll-behavior: contain;
+        }
 
-    tr {
-      width: 100%;
-      display: flex;
+        tr {
+            width: 100%;
+            display: flex;
 
-      td {
-        border-right: 1px solid var(--scrollbar-thumb-hover-color);
-        border-left: 1px solid var(--scrollbar-thumb-hover-color);
-        padding: 3px 10px;
-        flex-basis: 100%;
-        flex-grow: 2;
-        display: block;
-        text-align: left;
-        @include mixins.ellipsis();
-      }
+            td {
+                border-right: 1px solid var(--scrollbar-thumb-hover-color);
+                border-left: 1px solid var(--scrollbar-thumb-hover-color);
+                padding: 3px 10px;
+                flex-basis: 100%;
+                flex-grow: 2;
+                display: block;
+                text-align: left;
+                @include mixins.ellipsis();
+            }
+        }
     }
-  }
 }
 
 .csv-view.show {
-  opacity: 1;
+    opacity: 1;
 }

@@ -2,118 +2,118 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .notification {
-  .notification-title {
-    font-size: 13px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: 18px;
-    margin-bottom: 3px;
+    .notification-title {
+        font-size: 13px;
+        font-style: normal;
+        font-weight: 500;
+        line-height: 18px;
+        margin-bottom: 3px;
 
-    &.green {
-      color: var(--success-color);
+        &.green {
+            color: var(--success-color);
+        }
+
+        &.red {
+            color: var(--error-color);
+        }
+
+        &.yellow {
+            color: var(--warning-color);
+        }
     }
 
-    &.red {
-      color: var(--error-color);
+    .notification-message {
+        font-size: 13px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 18px;
+        opacity: 0.7;
     }
 
-    &.yellow {
-      color: var(--warning-color);
-    }
-  }
+    .notification-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 10px;
 
-  .notification-message {
-    font-size: 13px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 18px;
-    opacity: 0.7;
-  }
-
-  .notification-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-
-    i {
-      margin-left: 3px;
-      font-size: 11px;
-    }
-  }
-
-  .close-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-  }
-
-  .lock-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    padding: 10px 8px;
-    font-size: 11px;
-    color: rgb(from var(--main-text-color) r g b / 0.5);
-  }
-
-  .notification {
-    width: 100%;
-    color: var(--main-text-color);
-    padding: 12px 10px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-  }
-
-  .notification-bubble {
-    position: relative;
-    display: flex;
-    width: 380px;
-    padding: 16px 24px 16px 16px;
-    align-items: flex-start;
-    gap: 12px;
-    border-radius: 8px;
-    border: 0.5px solid rgba(255, 255, 255, 0.12);
-    background: #232323;
-    box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
-  }
-
-  .notification-inner {
-    display: flex;
-    align-items: flex-start;
-    column-gap: 6px;
-
-    .notification-icon {
-      margin-right: 5px;
-      margin-top: 1px;
-
-      i {
-        font-size: 16px;
-      }
-
-      i.green {
-        color: var(--success-color);
-      }
-
-      i.red {
-        color: var(--error-color);
-      }
-
-      i.yellow {
-        color: var(--warning-color);
-      }
+        i {
+            margin-left: 3px;
+            font-size: 11px;
+        }
     }
 
-    .notification-timestamp {
-      font-size: 12px;
-      font-weight: 400;
-      line-height: 18px;
-      opacity: 0.5;
-      margin-bottom: 7px;
+    .close-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
     }
-  }
-  &.hovered {
-    background: #292929;
-  }
+
+    .lock-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        padding: 10px 8px;
+        font-size: 11px;
+        color: rgb(from var(--main-text-color) r g b / 0.5);
+    }
+
+    .notification {
+        width: 100%;
+        color: var(--main-text-color);
+        padding: 12px 10px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    .notification-bubble {
+        position: relative;
+        display: flex;
+        width: 380px;
+        padding: 16px 24px 16px 16px;
+        align-items: flex-start;
+        gap: 12px;
+        border-radius: 8px;
+        border: 0.5px solid rgba(255, 255, 255, 0.12);
+        background: #232323;
+        box-shadow: 0px 8px 32px 0px rgba(0, 0, 0, 0.25);
+    }
+
+    .notification-inner {
+        display: flex;
+        align-items: flex-start;
+        column-gap: 6px;
+
+        .notification-icon {
+            margin-right: 5px;
+            margin-top: 1px;
+
+            i {
+                font-size: 16px;
+            }
+
+            i.green {
+                color: var(--success-color);
+            }
+
+            i.red {
+                color: var(--error-color);
+            }
+
+            i.yellow {
+                color: var(--warning-color);
+            }
+        }
+
+        .notification-timestamp {
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 18px;
+            opacity: 0.5;
+            margin-bottom: 7px;
+        }
+    }
+    &.hovered {
+        background: #292929;
+    }
 }

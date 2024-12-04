@@ -1,11 +1,11 @@
 .update-available-button {
-  height: 80%;
-  margin: auto 4px;
-  color: black;
-  background-color: var(--accent-color);
-  flex: 0 0 fit-content;
+    height: 80%;
+    margin: auto 4px;
+    color: black;
+    background-color: var(--accent-color);
+    flex: 0 0 fit-content;
 
-  &:disabled {
-    opacity: unset !important;
-  }
+    &:disabled {
+        opacity: unset !important;
+    }
 }
