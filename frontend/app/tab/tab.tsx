@@ -24,10 +24,12 @@ interface TabProps {
     isNew: boolean;
     tabIndicesMovedAtom: Atom<number[]>;
     tabIds: string[];
-    onSelect: () => void;
+    onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
-    onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseDown: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
+    onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseLeave: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
 }
 
 const Tab = memo(
@@ -44,9 +46,11 @@ const Tab = memo(
                 tabIndicesMovedAtom,
                 tabIds,
                 onLoaded,
-                onSelect,
+                onClick,
                 onClose,
-                onDragStart,
+                onMouseDown,
+                onMouseEnter,
+                onMouseLeave,
             },
             ref
         ) => {
@@ -195,12 +199,13 @@ const Tab = memo(
 
             const showSeparator = useCallback(
                 (id) => {
+                    if (isFirst) return false;
+
                     const idx = tabIds.indexOf(id);
                     const found = tabIndicesMoved.find((i, ii) => ii !== 0 && i === idx) === undefined;
-                    console.log("idx", id, ":", idx, ":", found);
                     return found;
                 },
-                [tabIndicesMoved]
+                [tabIndicesMoved, isFirst, active]
             );
 
             console.log("showSeparator(id)=====", id, showSeparator(id));
@@ -214,12 +219,14 @@ const Tab = memo(
                         "before-active": isBeforeActive,
                         "new-tab": isNew,
                     })}
-                    onMouseDown={onDragStart}
-                    onClick={onSelect}
+                    onMouseDown={onMouseDown}
+                    onClick={onClick}
                     onContextMenu={handleContextMenu}
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
                     data-tab-id={id}
                 >
-                    {!isFirst && showSeparator(id) && <div className="separator"></div>}
+                    {showSeparator(id) && <div className="separator"></div>}
                     <div className="tab-inner">
                         <div
                             ref={editableRef}

@@ -142,7 +142,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     let prevDelta: number;
     let prevDragDirection: string;
-    let prevRightAdjacentIndex: number | null = null; // Track the previous right-adjacent tab index
 
     // Update refs when tabIds change
     useEffect(() => {
@@ -540,6 +539,14 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         });
     }, []);
 
+    const handleMouseEnterTab = (index: number) => {
+        setTabIndicesMoved([index - 1, index, index + 1]);
+    };
+
+    const handleMouseLeaveTab = (index: number) => {
+        setTabIndicesMoved([]);
+    };
+
     const isBeforeActive = (tabId: string) => {
         return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
     };
@@ -576,9 +583,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 ref={tabRefs.current[index]}
                                 id={tabId}
                                 isFirst={index === 0}
-                                onSelect={() => handleSelectTab(tabId)}
+                                onClick={() => handleSelectTab(tabId)}
                                 active={activeTabId === tabId}
-                                onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
+                                onMouseDown={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}
                                 isBeforeActive={isBeforeActive(tabId)}
@@ -587,6 +594,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 isNew={tabId === newTabId}
                                 tabIndicesMovedAtom={tabIndicesMovedAtom}
                                 tabIds={tabIds}
+                                onMouseEnter={() => handleMouseEnterTab(index)}
+                                onMouseLeave={() => handleMouseLeaveTab(index)}
                             />
                         );
                     })}
