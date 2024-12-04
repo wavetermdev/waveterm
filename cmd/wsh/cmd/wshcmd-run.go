@@ -28,7 +28,9 @@ func init() {
 	flags := runCmd.Flags()
 	flags.BoolP("magnified", "m", false, "open view in magnified mode")
 	flags.StringP("command", "c", "", "run command string in shell")
-	flags.BoolP("exit", "x", false, "close block when command exits")
+	flags.BoolP("exit", "x", false, "close block if command exits successfully (will stay open if there was an error)")
+	flags.BoolP("forceexit", "X", false, "close block when command exits, regardless of exit status")
+	flags.IntP("delay", "", 2000, "if -x, delay in milliseconds before closing block (default is 2000ms)")
 	flags.BoolP("paused", "p", false, "create block in paused state")
 	flags.String("cwd", "", "set working directory for command")
 	rootCmd.AddCommand(runCmd)
@@ -43,8 +45,10 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	magnified, _ := flags.GetBool("magnified")
 	commandArg, _ := flags.GetString("command")
 	exit, _ := flags.GetBool("exit")
+	forceExit, _ := flags.GetBool("forceexit")
 	paused, _ := flags.GetBool("paused")
 	cwd, _ := flags.GetString("cwd")
+	delayMs, _ := flags.GetInt("delay")
 	var cmdArgs []string
 	var useShell bool
 	var shellCmd string
@@ -112,9 +116,12 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		createMeta[waveobj.MetaKey_CmdRunOnce] = true
 		createMeta[waveobj.MetaKey_CmdRunOnStart] = true
 	}
-	if exit {
+	if forceExit {
+		createMeta[waveobj.MetaKey_CmdCloseOnExitForce] = true
+	} else if exit {
 		createMeta[waveobj.MetaKey_CmdCloseOnExit] = true
 	}
+	createMeta[waveobj.MetaKey_CmdCloseOnExitDelay] = float64(delayMs)
 
 	if RpcContext.Conn != "" {
 		createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn

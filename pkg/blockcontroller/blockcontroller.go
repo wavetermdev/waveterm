@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -412,13 +413,14 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		defer func() {
 			log.Printf("[shellproc] pty-read loop done\n")
 			shellProc.Close()
-			cmdStatus := bc.GetRuntimeStatus()
-			termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", cmdStatus.ShellProcExitCode)
-			HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte(termMsg))
 			bc.WithLock(func() {
 				// so no other events are sent
 				bc.ShellInputCh = nil
 			})
+			shellProc.Cmd.Wait()
+			exitCode := shellProc.Cmd.ExitCode()
+			termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
+			HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte(termMsg))
 			// to stop the inputCh loop
 			time.Sleep(100 * time.Millisecond)
 			close(shellInputCh) // don't use bc.ShellInputCh (it's nil)
@@ -488,8 +490,34 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		waitErr := shellProc.Cmd.Wait()
 		exitCode = shellProc.Cmd.ExitCode()
 		shellProc.SetWaitErrorAndSignalDone(waitErr)
+		go checkCloseOnExit(bc.BlockId, exitCode)
 	}()
 	return nil
+}
+
+func checkCloseOnExit(blockId string, exitCode int) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		log.Printf("error getting block data: %v\n", err)
+		return
+	}
+	closeOnExit := blockData.Meta.GetBool(waveobj.MetaKey_CmdCloseOnExit, false)
+	closeOnExitForce := blockData.Meta.GetBool(waveobj.MetaKey_CmdCloseOnExitForce, false)
+	if !closeOnExitForce && !(closeOnExit && exitCode == 0) {
+		return
+	}
+	delayMs := blockData.Meta.GetFloat(waveobj.MetaKey_CmdCloseOnExitDelay, 2000)
+	if delayMs < 0 {
+		delayMs = 0
+	}
+	time.Sleep(time.Duration(delayMs) * time.Millisecond)
+	rpcClient := wshclient.GetBareRpcClient()
+	err = wshclient.DeleteBlockCommand(rpcClient, wshrpc.CommandDeleteBlockData{BlockId: blockId}, nil)
+	if err != nil {
+		log.Printf("error deleting block data (close on exit): %v\n", err)
+	}
 }
 
 func getBoolFromMeta(meta map[string]any, key string, def bool) bool {

@@ -431,6 +431,8 @@ declare global {
         "cmd:clearonrestart"?: boolean;
         "cmd:runonce"?: boolean;
         "cmd:closeonexit"?: boolean;
+        "cmd:closeonexitforce"?: boolean;
+        "cmd:closeonexitdelay"?: number;
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
@@ -448,6 +450,8 @@ declare global {
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
         "editor:*"?: boolean;
+        "editor:minimapenabled"?: boolean;
+        "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
@@ -605,6 +609,7 @@ declare global {
         "term:copyonselect"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
+        "editor:wordwrap"?: boolean;
         "web:*"?: boolean;
         "web:openlinksinternally"?: boolean;
         "web:defaulturl"?: string;
