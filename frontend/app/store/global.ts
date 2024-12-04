@@ -618,8 +618,8 @@ function removeNotification(id: string) {
     });
 }
 
-async function createTab(): Promise<void> {
-    await getApi().createTab();
+function createTab() {
+    getApi().createTab();
 }
 
 export {

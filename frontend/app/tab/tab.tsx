@@ -22,10 +22,12 @@ interface TabProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
+    isPinned: boolean;
     onSelect: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
+    onPinChange: () => void;
 }
 
 const Tab = React.memo(
@@ -35,6 +37,7 @@ const Tab = React.memo(
                 id,
                 active,
                 isFirst,
+                isPinned,
                 isBeforeActive,
                 isDragging,
                 tabWidth,
@@ -43,6 +46,7 @@ const Tab = React.memo(
                 onSelect,
                 onClose,
                 onDragStart,
+                onPinChange,
             },
             ref
         ) => {
@@ -145,7 +149,12 @@ const Tab = React.memo(
 
             function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
                 e.preventDefault();
-                let menu: ContextMenuItem[] = [];
+                let menu: ContextMenuItem[] = [
+                    { label: isPinned ? "Unpin Tab" : "Pin Tab", click: () => onPinChange() },
+                    { label: "Rename Tab", click: () => handleRenameTab(null) },
+                    { label: "Copy TabId", click: () => navigator.clipboard.writeText(id) },
+                    { type: "separator" },
+                ];
                 const fullConfig = globalStore.get(atoms.fullConfigAtom);
                 const bgPresets: string[] = [];
                 for (const key in fullConfig?.presets ?? {}) {
@@ -158,9 +167,6 @@ const Tab = React.memo(
                     const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
                     return aOrder - bOrder;
                 });
-                menu.push({ label: "Rename Tab", click: () => handleRenameTab(null) });
-                menu.push({ label: "Copy TabId", click: () => navigator.clipboard.writeText(id) });
-                menu.push({ type: "separator" });
                 if (bgPresets.length > 0) {
                     const submenu: ContextMenuItem[] = [];
                     const oref = WOS.makeORef("tab", id);
@@ -177,8 +183,7 @@ const Tab = React.memo(
                             },
                         });
                     }
-                    menu.push({ label: "Backgrounds", type: "submenu", submenu });
-                    menu.push({ type: "separator" });
+                    menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
                 }
                 menu.push({ label: "Close Tab", click: () => onClose(null) });
                 ContextMenuModel.showContextMenu(menu, e);
@@ -210,9 +215,15 @@ const Tab = React.memo(
                         >
                             {tabData?.name}
                         </div>
-                        <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
-                            <i className="fa fa-solid fa-xmark" />
-                        </Button>
+                        {isPinned ? (
+                            <Button className="ghost grey pin" onClick={onPinChange}>
+                                <i className="fa fa-solid fa-pin" />
+                            </Button>
+                        ) : (
+                            <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
+                                <i className="fa fa-solid fa-xmark" />
+                            </Button>
+                        )}
                     </div>
                 </div>
             );

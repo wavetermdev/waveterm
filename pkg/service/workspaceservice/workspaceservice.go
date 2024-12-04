@@ -3,6 +3,7 @@ package workspaceservice
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
@@ -91,6 +92,27 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return tabId, updates, nil
+}
+
+func (svc *WorkspaceService) ChangeTabPinning_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"ctx", "workspaceId", "tabId", "pinned"},
+	}
+}
+
+func (svc *WorkspaceService) ChangeTabPinning(ctx context.Context, workspaceId string, tabId string, pinned bool) (waveobj.UpdatesRtnType, error) {
+	log.Printf("ChangeTabPinning %s %s %v\n", workspaceId, tabId, pinned)
+	ctx = waveobj.ContextWithUpdates(ctx)
+	err := wcore.ChangeTabPinning(ctx, workspaceId, tabId, pinned)
+	if err != nil {
+		return nil, fmt.Errorf("error toggling tab pinning: %w", err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:ChangeTabPinning:SendUpdateEvents")
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
 }
 
 func (svc *WorkspaceService) UpdateTabIds_Meta() tsgenmeta.MethodMeta {

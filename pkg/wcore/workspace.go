@@ -188,7 +188,7 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 	return nil
 }
 
-func ToggleTabPinning(ctx context.Context, workspaceId string, tabId string, pinned bool) error {
+func ChangeTabPinning(ctx context.Context, workspaceId string, tabId string, pinned bool) error {
 	if tabId != "" && workspaceId != "" {
 		workspace, err := GetWorkspace(ctx, workspaceId)
 		if err != nil {
@@ -205,8 +205,9 @@ func ToggleTabPinning(ctx context.Context, workspaceId string, tabId string, pin
 				return fmt.Errorf("tab %s not found in workspace %s", tabId, workspaceId)
 			}
 			workspace.PinnedTabIds = utilfn.RemoveElemFromSlice(workspace.PinnedTabIds, tabId)
-			workspace.TabIds = append(workspace.TabIds, tabId)
+			workspace.TabIds = append([]string{tabId}, workspace.TabIds...)
 		}
+		wstore.DBUpdate(ctx, workspace)
 	}
 	return nil
 }
