@@ -38,8 +38,9 @@ const (
 )
 
 const (
-	BlockFile_Term = "term" // used for main pty output
-	BlockFile_VDom = "vdom" // used for alt html layout
+	BlockFile_Term  = "term"            // used for main pty output
+	BlockFile_Cache = "cache:term:full" // for cached block
+	BlockFile_VDom  = "vdom"            // used for alt html layout
 )
 
 const (
@@ -132,22 +133,29 @@ func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
 	}
 }
 
-func HandleTruncateBlockFile(blockId string, blockFile string) error {
+func HandleTruncateBlockFile(blockId string) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	err := filestore.WFS.WriteFile(ctx, blockId, blockFile, nil)
+	err := filestore.WFS.WriteFile(ctx, blockId, BlockFile_Term, nil)
 	if err == fs.ErrNotExist {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("error truncating blockfile: %w", err)
 	}
+	err = filestore.WFS.DeleteFile(ctx, blockId, BlockFile_Cache)
+	if err == fs.ErrNotExist {
+		err = nil
+	}
+	if err != nil {
+		log.Printf("error deleting cache file (continuing): %v\n", err)
+	}
 	wps.Broker.Publish(wps.WaveEvent{
 		Event:  wps.Event_BlockFile,
 		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, blockId).String()},
 		Data: &wps.WSFileEventData{
 			ZoneId:   blockId,
-			FileName: blockFile,
+			FileName: BlockFile_Term,
 			FileOp:   wps.FileOp_Truncate,
 		},
 	})
@@ -186,7 +194,7 @@ func (bc *BlockController) resetTerminalState() {
 		shouldTruncate = blockData.Meta.GetBool(waveobj.MetaKey_CmdClearOnRestart, false)
 	}
 	if shouldTruncate {
-		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Term)
+		err := HandleTruncateBlockFile(bc.BlockId)
 		if err != nil {
 			log.Printf("error truncating term blockfile: %v\n", err)
 		}
@@ -397,13 +405,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 	wshProxy := wshutil.MakeRpcProxy()
 	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
 	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeControllerRouteId(bc.BlockId), wshProxy, true)
-	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Cmd, wshProxy.FromRemoteCh)
+	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, shellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer panichandler.PanicHandler("blockcontroller:shellproc-pty-read-loop")
 		defer func() {
 			log.Printf("[shellproc] pty-read loop done\n")
-			bc.ShellProc.Close()
+			shellProc.Close()
 			bc.WithLock(func() {
 				// so no other events are sent
 				bc.ShellInputCh = nil
@@ -436,14 +444,14 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		defer panichandler.PanicHandler("blockcontroller:shellproc-input-loop")
 		for ic := range shellInputCh {
 			if len(ic.InputData) > 0 {
-				bc.ShellProc.Cmd.Write(ic.InputData)
+				shellProc.Cmd.Write(ic.InputData)
 			}
 			if ic.TermSize != nil {
 				err = setTermSize(ctx, bc.BlockId, *ic.TermSize)
 				if err != nil {
 					log.Printf("error setting pty size: %v\n", err)
 				}
-				err = bc.ShellProc.Cmd.SetSize(ic.TermSize.Rows, ic.TermSize.Cols)
+				err = shellProc.Cmd.SetSize(ic.TermSize.Rows, ic.TermSize.Cols)
 				if err != nil {
 					log.Printf("error setting pty size: %v\n", err)
 				}
@@ -527,7 +535,7 @@ func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, r
 		return
 	}
 	if getBoolFromMeta(blockMeta, waveobj.MetaKey_CmdClearOnStart, false) {
-		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Term)
+		err := HandleTruncateBlockFile(bc.BlockId)
 		if err != nil {
 			log.Printf("error truncating term blockfile: %v\n", err)
 		}

@@ -15,7 +15,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -233,7 +232,8 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	if err != nil {
 		return nil, err
 	}
-	return &ShellProc{Cmd: CmdWrap{ecmd, cmdPty}, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	cmdWrap := MakeCmdWrap(ecmd, cmdPty)
+	return &ShellProc{Cmd: cmdWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
@@ -271,13 +271,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		session.Stderr = remoteStdoutWrite
 
 		session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
-		sessionWrap := SessionWrap{
-			Session:  session,
-			StartCmd: "",
-			Tty:      pipePty,
-			WaitErr:  &atomic.Pointer[error]{},
-			Pty:      pipePty,
-		}
+		sessionWrap := MakeSessionWrap(session, "", pipePty)
 		err = session.Shell()
 		if err != nil {
 			pipePty.Close()
@@ -388,14 +382,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 	}
 
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
-
-	sessionWrap := SessionWrap{
-		Session:  session,
-		StartCmd: cmdCombined,
-		Tty:      pipePty,
-		WaitErr:  &atomic.Pointer[error]{},
-		Pty:      pipePty,
-	}
+	sessionWrap := MakeSessionWrap(session, cmdCombined, pipePty)
 	err = sessionWrap.Start()
 	if err != nil {
 		pipePty.Close()
@@ -482,7 +469,8 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 	if err != nil {
 		return nil, err
 	}
-	return &ShellProc{Cmd: CmdWrap{ecmd, cmdPty}, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	cmdWrap := MakeCmdWrap(ecmd, cmdPty)
+	return &ShellProc{Cmd: cmdWrap, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error) {
