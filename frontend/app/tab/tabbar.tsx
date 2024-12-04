@@ -151,21 +151,21 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         if (workspace) {
             // Compare current tabIds with new workspace.tabids
             console.log("tabbar workspace", workspace);
-            const currentTabIds = new Set(tabIds);
             const newTabIds = new Set([...(workspace.pinnedtabids ?? []), ...(workspace.tabids ?? [])]);
+            const newPinnedTabIds = workspace.pinnedtabids ?? [];
 
             const areEqual =
-                currentTabIds.size === newTabIds.size &&
-                [...currentTabIds].every((id) => newTabIds.has(id)) &&
-                (workspace.pinnedtabids?.length ?? 0) === pinnedTabIds.size;
+                tabIds.length === newTabIds.size &&
+                tabIds.every((id) => newTabIds.has(id)) &&
+                newPinnedTabIds.length === pinnedTabIds.size;
 
             if (!areEqual) {
-                const newPinnedTabIds = new Set(workspace.pinnedtabids);
+                const newPinnedTabIdSet = new Set(newPinnedTabIds);
                 console.log("newPinnedTabIds", newPinnedTabIds);
-                const newTabIdList = [...newPinnedTabIds, ...[...newTabIds].filter((id) => !newPinnedTabIds.has(id))]; // Corrects for any duplicates between the two lists
+                const newTabIdList = newPinnedTabIds.concat([...newTabIds].filter((id) => !newPinnedTabIdSet.has(id))); // Corrects for any duplicates between the two lists
                 console.log("newTabIdList", newTabIdList);
                 setTabIds(newTabIdList);
-                setPinnedTabIds(newPinnedTabIds);
+                setPinnedTabIds(newPinnedTabIdSet);
             }
         }
     }, [workspace, tabIds, pinnedTabIds]);
@@ -452,9 +452,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             let pinnedTabCount = pinnedTabIds.size;
             const draggedTabId = draggingTabDataRef.current.tabId;
             const isPinned = pinnedTabIds.has(draggedTabId);
-            if (tabIndex <= pinnedTabCount && !isPinned) {
+            if (pinnedTabIds.has(tabIds[tabIndex + 1]) && !isPinned) {
                 pinnedTabIds.add(draggedTabId);
-            } else if ((tabIndex > pinnedTabCount || (tabIndex === 1 && pinnedTabCount === 1)) && isPinned) {
+            } else if (!pinnedTabIds.has(tabIds[tabIndex - 1]) && isPinned) {
                 pinnedTabIds.delete(draggedTabId);
             }
             if (pinnedTabCount != pinnedTabIds.size) {
