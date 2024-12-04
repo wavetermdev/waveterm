@@ -621,7 +621,6 @@ function removeNotification(id: string) {
 }
 
 function createTab() {
-    document.body.classList.add("nohover");
     getApi().createTab();
 }
 
