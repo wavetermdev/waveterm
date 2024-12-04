@@ -74,6 +74,13 @@ func (c *WslCmd) Wait() (err error) {
 	}
 	return c.waitErr
 }
+func (c *WslCmd) ExitCode() int {
+	state := c.c.ProcessState
+	if state == nil {
+		return -1
+	}
+	return state.ExitCode()
+}
 func (c *WslCmd) GetProcess() *os.Process {
 	return c.c.Process
 }

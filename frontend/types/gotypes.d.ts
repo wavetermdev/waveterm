@@ -45,7 +45,6 @@ declare global {
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
-        blockdef: BlockDef;
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
         subblockids?: string[];
@@ -56,6 +55,7 @@ declare global {
         blockid: string;
         shellprocstatus?: string;
         shellprocconnname?: string;
+        shellprocexitcode: number;
     };
 
     // waveobj.BlockDef
@@ -70,6 +70,7 @@ declare global {
         tabid: string;
         workspaceid: string;
         block: Block;
+        files: WaveFile[];
     };
 
     // webcmd.BlockInputWSCommand
@@ -329,9 +330,6 @@ declare global {
 
     // waveobj.FileDef
     type FileDef = {
-        filetype?: string;
-        path?: string;
-        url?: string;
         content?: string;
         meta?: {[key: string]: any};
     };
@@ -430,10 +428,15 @@ declare global {
         "cmd:login"?: boolean;
         "cmd:runonstart"?: boolean;
         "cmd:clearonstart"?: boolean;
-        "cmd:clearonrestart"?: boolean;
+        "cmd:runonce"?: boolean;
+        "cmd:closeonexit"?: boolean;
+        "cmd:closeonexitforce"?: boolean;
+        "cmd:closeonexitdelay"?: number;
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
+        "cmd:args"?: string[];
+        "cmd:shell"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -446,6 +449,8 @@ declare global {
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
         "editor:*"?: boolean;
+        "editor:minimapenabled"?: boolean;
+        "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
@@ -603,6 +608,7 @@ declare global {
         "term:copyonselect"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
+        "editor:wordwrap"?: boolean;
         "web:*"?: boolean;
         "web:openlinksinternally"?: boolean;
         "web:defaulturl"?: string;

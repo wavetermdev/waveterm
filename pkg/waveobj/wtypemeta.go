@@ -36,16 +36,21 @@ type MetaTSType struct {
 	FrameIcon              string `json:"frame:icon,omitempty"`
 	FrameText              string `json:"frame:text,omitempty"`
 
-	CmdClear          bool              `json:"cmd:*,omitempty"`
-	Cmd               string            `json:"cmd,omitempty"`
-	CmdInteractive    bool              `json:"cmd:interactive,omitempty"`
-	CmdLogin          bool              `json:"cmd:login,omitempty"`
-	CmdRunOnStart     bool              `json:"cmd:runonstart,omitempty"`
-	CmdClearOnStart   bool              `json:"cmd:clearonstart,omitempty"`
-	CmdClearOnRestart bool              `json:"cmd:clearonrestart,omitempty"`
-	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
-	CmdCwd            string            `json:"cmd:cwd,omitempty"`
-	CmdNoWsh          bool              `json:"cmd:nowsh,omitempty"`
+	CmdClear            bool              `json:"cmd:*,omitempty"`
+	Cmd                 string            `json:"cmd,omitempty"`
+	CmdInteractive      bool              `json:"cmd:interactive,omitempty"`
+	CmdLogin            bool              `json:"cmd:login,omitempty"`
+	CmdRunOnStart       bool              `json:"cmd:runonstart,omitempty"`
+	CmdClearOnStart     bool              `json:"cmd:clearonstart,omitempty"`
+	CmdRunOnce          bool              `json:"cmd:runonce,omitempty"`
+	CmdCloseOnExit      bool              `json:"cmd:closeonexit,omitempty"`
+	CmdCloseOnExitForce bool              `json:"cmd:closeonexitforce,omitempty"`
+	CmdCloseOnExitDelay float64           `json:"cmd:closeonexitdelay,omitempty"`
+	CmdEnv              map[string]string `json:"cmd:env,omitempty"`
+	CmdCwd              string            `json:"cmd:cwd,omitempty"`
+	CmdNoWsh            bool              `json:"cmd:nowsh,omitempty"`
+	CmdArgs             []string          `json:"cmd:args,omitempty"`  // args for cmd (only if cmd:shell is false)
+	CmdShell            bool              `json:"cmd:shell,omitempty"` // shell expansion for cmd+args (defaults to true)
 
 	// AI options match settings
 	AiClear      bool    `json:"ai:*,omitempty"`
@@ -60,8 +65,10 @@ type MetaTSType struct {
 	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
 
-	EditorClear    bool `json:"editor:*,omitempty"`
-	EditorWordWrap bool `json:"editor:wordwrap,omitempty"`
+	EditorClear               bool `json:"editor:*,omitempty"`
+	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
+	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
+	EditorWordWrap            bool `json:"editor:wordwrap,omitempty"`
 
 	GraphClear     bool     `json:"graph:*,omitempty"`
 	GraphNumPoints int      `json:"graph:numpoints,omitempty"`

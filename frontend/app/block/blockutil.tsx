@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { NumActiveConnColors } from "@/app/block/blockframe";
-import { getConnStatusAtom, WOS } from "@/app/store/global";
-import * as services from "@/app/store/services";
-import { makeORef } from "@/app/store/wos";
-import { waveEventSubscribe } from "@/store/wps";
+import { getConnStatusAtom } from "@/app/store/global";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -149,52 +146,6 @@ interface ConnectionButtonProps {
     connection: string;
     changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
 }
-
-export const ControllerStatusIcon = React.memo(({ blockId }: { blockId: string }) => {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const hasController = !util.isBlank(blockData?.meta?.controller);
-    const [controllerStatus, setControllerStatus] = React.useState<BlockControllerRuntimeStatus>(null);
-    const [gotInitialStatus, setGotInitialStatus] = React.useState(false);
-    const connection = blockData?.meta?.connection ?? "local";
-    const connStatusAtom = getConnStatusAtom(connection);
-    const connStatus = jotai.useAtomValue(connStatusAtom);
-    React.useEffect(() => {
-        if (!hasController) {
-            return;
-        }
-        const initialRTStatus = services.BlockService.GetControllerStatus(blockId);
-        initialRTStatus.then((rts) => {
-            setGotInitialStatus(true);
-            setControllerStatus(rts);
-        });
-        const unsubFn = waveEventSubscribe({
-            eventType: "controllerstatus",
-            scope: makeORef("block", blockId),
-            handler: (event) => {
-                const cstatus: BlockControllerRuntimeStatus = event.data;
-                setControllerStatus(cstatus);
-            },
-        });
-        return () => {
-            unsubFn();
-        };
-    }, [hasController]);
-    if (!hasController || !gotInitialStatus) {
-        return null;
-    }
-    if (controllerStatus?.shellprocstatus == "running") {
-        return null;
-    }
-    if (connStatus?.status != "connected") {
-        return null;
-    }
-    const controllerStatusElem = (
-        <div className="iconbutton disabled" key="controller-status">
-            <i className="fa-sharp fa-solid fa-triangle-exclamation" title="Shell Process Is Not Running" />
-        </div>
-    );
-    return controllerStatusElem;
-});
 
 export function computeConnColorNum(connStatus: ConnStatus): number {
     // activeconnnum is 1-indexed, so we need to adjust for when mod is 0

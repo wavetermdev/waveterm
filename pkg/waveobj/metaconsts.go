@@ -43,10 +43,15 @@ const (
 	MetaKey_CmdLogin                         = "cmd:login"
 	MetaKey_CmdRunOnStart                    = "cmd:runonstart"
 	MetaKey_CmdClearOnStart                  = "cmd:clearonstart"
-	MetaKey_CmdClearOnRestart                = "cmd:clearonrestart"
+	MetaKey_CmdRunOnce                       = "cmd:runonce"
+	MetaKey_CmdCloseOnExit                   = "cmd:closeonexit"
+	MetaKey_CmdCloseOnExitForce              = "cmd:closeonexitforce"
+	MetaKey_CmdCloseOnExitDelay              = "cmd:closeonexitdelay"
 	MetaKey_CmdEnv                           = "cmd:env"
 	MetaKey_CmdCwd                           = "cmd:cwd"
 	MetaKey_CmdNoWsh                         = "cmd:nowsh"
+	MetaKey_CmdArgs                          = "cmd:args"
+	MetaKey_CmdShell                         = "cmd:shell"
 
 	MetaKey_AiClear                          = "ai:*"
 	MetaKey_AiPresetKey                      = "ai:preset"
@@ -61,6 +66,8 @@ const (
 	MetaKey_AiTimeoutMs                      = "ai:timeoutms"
 
 	MetaKey_EditorClear                      = "editor:*"
+	MetaKey_EditorMinimapEnabled             = "editor:minimapenabled"
+	MetaKey_EditorStickyScrollEnabled        = "editor:stickyscrollenabled"
 	MetaKey_EditorWordWrap                   = "editor:wordwrap"
 
 	MetaKey_GraphClear                       = "graph:*"

@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"runtime/debug"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -27,26 +26,58 @@ var (
 )
 
 var WrappedStdin io.Reader = os.Stdin
+var WrappedStdout io.Writer = &WrappedWriter{dest: os.Stdout}
+var WrappedStderr io.Writer = &WrappedWriter{dest: os.Stderr}
 var RpcClient *wshutil.WshRpc
 var RpcContext wshrpc.RpcContext
 var UsingTermWshMode bool
 var blockArg string
 var WshExitCode int
 
-func WriteStderr(fmtStr string, args ...interface{}) {
-	output := fmt.Sprintf(fmtStr, args...)
-	if UsingTermWshMode {
-		output = strings.ReplaceAll(output, "\n", "\r\n")
+type WrappedWriter struct {
+	dest io.Writer
+}
+
+func (w *WrappedWriter) Write(p []byte) (n int, err error) {
+	if !UsingTermWshMode {
+		return w.dest.Write(p)
 	}
-	fmt.Fprint(os.Stderr, output)
+	count := 0
+	for _, b := range p {
+		if b == '\n' {
+			count++
+		}
+	}
+	if count == 0 {
+		return w.dest.Write(p)
+	}
+	buf := make([]byte, len(p)+count) // Each '\n' adds one extra byte for '\r'
+	writeIdx := 0
+	for _, b := range p {
+		if b == '\n' {
+			buf[writeIdx] = '\r'
+			buf[writeIdx+1] = '\n'
+			writeIdx += 2
+		} else {
+			buf[writeIdx] = b
+			writeIdx++
+		}
+	}
+	return w.dest.Write(buf)
+}
+
+func WriteStderr(fmtStr string, args ...interface{}) {
+	WrappedStderr.Write([]byte(fmt.Sprintf(fmtStr, args...)))
 }
 
 func WriteStdout(fmtStr string, args ...interface{}) {
-	output := fmt.Sprintf(fmtStr, args...)
-	if UsingTermWshMode {
-		output = strings.ReplaceAll(output, "\n", "\r\n")
-	}
-	fmt.Print(output)
+	WrappedStdout.Write([]byte(fmt.Sprintf(fmtStr, args...)))
+}
+
+func OutputHelpMessage(cmd *cobra.Command) {
+	cmd.SetOutput(WrappedStderr)
+	cmd.Help()
+	WriteStderr("\n")
 }
 
 func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
@@ -62,6 +93,15 @@ func getIsTty() bool {
 		return true
 	}
 	return false
+}
+
+func getThisBlockMeta() (waveobj.MetaMapType, error) {
+	blockORef := waveobj.ORef{OType: waveobj.OType_Block, OID: RpcContext.BlockId}
+	resp, err := wshclient.GetMetaCommand(RpcClient, wshrpc.CommandGetMetaData{ORef: blockORef}, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return nil, fmt.Errorf("getting metadata: %w", err)
+	}
+	return resp, nil
 }
 
 type RunEFnType = func(*cobra.Command, []string) error

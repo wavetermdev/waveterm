@@ -46,6 +46,10 @@ func (wc *WslCmd) GetProcessState() *os.ProcessState {
 	return nil
 }
 
+func (wc *WslCmd) ExitCode() int {
+	return -1
+}
+
 func (c *WslCmd) SetStdin(stdin io.Reader) {
 	c.Stdin = stdin
 }
