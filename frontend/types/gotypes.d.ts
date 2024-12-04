@@ -1125,6 +1125,7 @@ declare global {
         icon: string;
         color: string;
         tabids: string[];
+        pinnedtabids: string[];
         activetabid: string;
     };
 

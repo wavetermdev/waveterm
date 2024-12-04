@@ -169,12 +169,17 @@ export const WindowService = new WindowServiceType();
 // workspaceservice.WorkspaceService (workspace)
 class WorkspaceServiceType {
     // @returns object updates
+    ChangeTabPinning(workspaceId: string, tabId: string, pinned: boolean): Promise<void> {
+        return WOS.callBackendService("workspace", "ChangeTabPinning", Array.from(arguments))
+    }
+
+    // @returns object updates
     CloseTab(workspaceId: string, tabId: string, fromElectron: boolean): Promise<CloseTabRtnType> {
         return WOS.callBackendService("workspace", "CloseTab", Array.from(arguments))
     }
 
     // @returns tabId (and object updates)
-    CreateTab(workspaceId: string, tabName: string, activateTab: boolean): Promise<string> {
+    CreateTab(workspaceId: string, tabName: string, activateTab: boolean, pinned: boolean): Promise<string> {
         return WOS.callBackendService("workspace", "CreateTab", Array.from(arguments))
     }
 
@@ -195,7 +200,7 @@ class WorkspaceServiceType {
     }
 
     // @returns object updates
-    UpdateTabIds(workspaceId: string, tabIds: string[]): Promise<void> {
+    UpdateTabIds(workspaceId: string, tabIds: string[], pinnedTabIds: string[]): Promise<void> {
         return WOS.callBackendService("workspace", "UpdateTabIds", Array.from(arguments))
     }
 }

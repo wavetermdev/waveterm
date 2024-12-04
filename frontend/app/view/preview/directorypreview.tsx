@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Button } from "@/app/element/button";
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
@@ -146,12 +147,21 @@ type EntryManagerOverlayProps = {
     entryManagerType: EntryManagerType;
     startingValue?: string;
     onSave: (newValue: string) => void;
+    onCancel?: () => void;
     style?: React.CSSProperties;
     getReferenceProps?: () => any;
 };
 
 const EntryManagerOverlay = memo(
-    ({ entryManagerType, startingValue, onSave, forwardRef, style, getReferenceProps }: EntryManagerOverlayProps) => {
+    ({
+        entryManagerType,
+        startingValue,
+        onSave,
+        onCancel,
+        forwardRef,
+        style,
+        getReferenceProps,
+    }: EntryManagerOverlayProps) => {
         const [value, setValue] = useState(startingValue);
         return (
             <div className="entry-manager-overlay" ref={forwardRef} style={style} {...getReferenceProps()}>
@@ -168,7 +178,15 @@ const EntryManagerOverlay = memo(
                                 onSave(value);
                             }
                         }}
-                    ></Input>
+                    />
+                </div>
+                <div className="entry-manager-buttons">
+                    <Button className="vertical-padding-4" onClick={() => onSave(value)}>
+                        Save
+                    </Button>
+                    <Button className="vertical-padding-4 red outlined" onClick={onCancel}>
+                        Cancel
+                    </Button>
                 </div>
             </div>
         );
@@ -870,6 +888,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 }}
                 {...getReferenceProps()}
                 onContextMenu={(e) => handleFileContextMenu(e)}
+                onClick={() => setEntryManagerProps(undefined)}
             >
                 <DirectoryTable
                     model={model}
@@ -891,6 +910,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     forwardRef={refs.setFloating}
                     style={floatingStyles}
                     getReferenceProps={getFloatingProps}
+                    onCancel={() => setEntryManagerProps(undefined)}
                 />
             )}
         </Fragment>

@@ -350,12 +350,28 @@ func DBFindTabForBlockId(ctx context.Context, blockId string) (string, error) {
 }
 
 func DBFindWorkspaceForTabId(ctx context.Context, tabId string) (string, error) {
+	log.Printf("DBFindWorkspaceForTabId tabId: %s\n", tabId)
 	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
 		query := `
+			WITH variable(value) AS (
+				SELECT ?
+			)
 			SELECT w.oid
-			FROM db_workspace w, json_each(data->'tabids') je
-			WHERE je.value = ?`
-		return tx.GetString(query, tabId), nil
+			FROM db_workspace w, variable
+			WHERE EXISTS (
+				SELECT 1
+				FROM json_each(w.data, '$.tabids') AS je
+				WHERE je.value = variable.value
+			)
+			OR EXISTS (
+				SELECT 1
+				FROM json_each(w.data, '$.pinnedtabids') AS je
+				WHERE je.value = variable.value
+			);
+			`
+		wsId := tx.GetString(query, tabId)
+		log.Printf("DBFindWorkspaceForTabId wsId: %s\n", wsId)
+		return wsId, nil
 	})
 }
 
