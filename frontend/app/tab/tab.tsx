@@ -217,7 +217,7 @@ const Tab = React.memo(
                         </div>
                         {isPinned ? (
                             <Button className="ghost grey pin" onClick={onPinChange}>
-                                <i className="fa fa-solid fa-pin" />
+                                <i className="fa fa-solid fa-thumbtack" />
                             </Button>
                         ) : (
                             <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>

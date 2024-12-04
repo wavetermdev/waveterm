@@ -122,6 +122,7 @@ func (svc *WorkspaceService) UpdateTabIds_Meta() tsgenmeta.MethodMeta {
 }
 
 func (svc *WorkspaceService) UpdateTabIds(uiContext waveobj.UIContext, workspaceId string, tabIds []string, pinnedTabIds []string) (waveobj.UpdatesRtnType, error) {
+	log.Printf("UpdateTabIds %s %v %v\n", workspaceId, tabIds, pinnedTabIds)
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)

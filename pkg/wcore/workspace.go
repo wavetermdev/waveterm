@@ -160,6 +160,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, e
 
 	// if no tabs remaining, close window
 	if newActiveTabId == "" {
+		log.Printf("no tabs remaining in workspace %s, closing window\n", workspaceId)
 		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 		if err != nil {
 			return newActiveTabId, fmt.Errorf("unable to find window for workspace id %v: %w", workspaceId, err)
