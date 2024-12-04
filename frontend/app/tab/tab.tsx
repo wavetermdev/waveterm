@@ -1,17 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/element/button";
-import { ContextMenuModel } from "@/store/contextmenu";
-import * as services from "@/store/services";
-import * as WOS from "@/store/wos";
-import { clsx } from "clsx";
-import * as React from "react";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-
 import { atoms, globalStore, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { Button } from "@/element/button";
+import { ContextMenuModel } from "@/store/contextmenu";
+import { clsx } from "clsx";
+import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ObjectService } from "../store/services";
+import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
 
 interface TabProps {
@@ -30,13 +28,12 @@ interface TabProps {
     onPinChange: () => void;
 }
 
-const Tab = React.memo(
+const Tab = memo(
     forwardRef<HTMLDivElement, TabProps>(
         (
             {
                 id,
                 active,
-                isFirst,
                 isPinned,
                 isBeforeActive,
                 isDragging,
@@ -50,7 +47,7 @@ const Tab = React.memo(
             },
             ref
         ) => {
-            const [tabData, _] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", id));
+            const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
 
@@ -91,7 +88,7 @@ const Tab = React.memo(
                 newText = newText || originalName;
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
-                services.ObjectService.UpdateTabName(id, newText);
+                ObjectService.UpdateTabName(id, newText);
                 setTimeout(() => refocusNode(null), 10);
             };
 
@@ -169,7 +166,7 @@ const Tab = React.memo(
                 });
                 if (bgPresets.length > 0) {
                     const submenu: ContextMenuItem[] = [];
-                    const oref = WOS.makeORef("tab", id);
+                    const oref = makeORef("tab", id);
                     for (const presetName of bgPresets) {
                         const preset = fullConfig.presets[presetName];
                         if (preset == null) {
@@ -178,7 +175,7 @@ const Tab = React.memo(
                         submenu.push({
                             label: preset["display:name"] ?? presetName,
                             click: () => {
-                                services.ObjectService.UpdateObjectMeta(oref, preset);
+                                ObjectService.UpdateObjectMeta(oref, preset);
                                 RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
                             },
                         });
