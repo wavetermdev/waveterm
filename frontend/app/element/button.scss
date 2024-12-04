@@ -4,163 +4,163 @@
 @use "../mixins.scss";
 
 .button {
-    // override default button appearance
-    border: 1px solid transparent;
-    outline: 1px solid transparent;
-    border: 1px solid transparent;
+  // override default button appearance
+  border: 1px solid transparent;
+  outline: 1px solid transparent;
+  border: 1px solid transparent;
 
-    cursor: pointer;
-    display: flex;
+  cursor: pointer;
+  display: flex;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 20px;
+  padding-right: 20px;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  height: auto;
+  line-height: 16px;
+  white-space: nowrap;
+  user-select: none;
+  font-size: 14px;
+  font-weight: normal;
+  transition: all 0.3s ease;
+
+  &.solid {
+    &.green {
+      color: var(--button-text-color);
+      background-color: var(--accent-color);
+      border: 1px solid var(--button-green-border-color);
+      &:hover {
+        color: var(--button-text-color);
+        background-color: var(--button-green-border-color);
+      }
+    }
+
+    &.grey {
+      background-color: var(--button-grey-bg);
+      border: 1px solid var(--button-grey-bg);
+      color: var(--main-text-color);
+      &:hover {
+        color: var(--main-text-color);
+        background-color: var(--button-grey-hover-bg);
+      }
+    }
+
+    &.red {
+      background-color: var(--button-red-bg);
+      border: 1px solid var(--button-red-border-color);
+      color: var(--main-text-color);
+      &:hover {
+        background-color: var(--button-red-hover-bg);
+      }
+    }
+
+    &.yellow {
+      color: var(--button-text-color);
+      background-color: var(--button-yellow-bg);
+      border: 1px solid var(--button-yellow-hover-bg);
+      &:hover {
+        color: var(--button-text-color);
+        background-color: var(--button-yellow-hover-bg);
+      }
+    }
+  }
+
+  &.outlined {
+    background-color: transparent;
+    &.green {
+      color: var(--accent-color);
+      border: 1px solid var(--accent-color);
+      &:hover {
+        color: var(--button-green-border-color);
+        border: 1px solid var(--button-green-border-color);
+      }
+    }
+
+    &.grey {
+      border: 1px solid var(--button-grey-outlined-color);
+      color: var(--button-grey-outlined-color);
+      &:hover {
+        color: var(--main-text-color);
+        border: 1px solid var(--main-text-color);
+      }
+    }
+
+    &.red {
+      border: 1px solid var(--button-red-bg);
+      color: var(--button-red-bg);
+      &:hover {
+        color: var(--button-red-outlined-color);
+        border: 1px solid var(--button-red-outlined-color);
+      }
+    }
+
+    &.yellow {
+      color: var(--button-yellow-bg);
+      border: 1px solid var(--button-yellow-bg);
+      &:hover {
+        color: var(--button-yellow-hover-bg);
+        border: 1px solid var(--button-yellow-hover-bg);
+      }
+    }
+  }
+
+  &.ghost {
+    background-color: transparent;
     padding-top: 8px;
     padding-bottom: 8px;
-    padding-left: 20px;
-    padding-right: 20px;
-    align-items: center;
-    gap: 4px;
-    border-radius: 6px;
-    height: auto;
-    line-height: 16px;
-    white-space: nowrap;
-    user-select: none;
-    font-size: 14px;
-    font-weight: normal;
-    transition: all 0.3s ease;
+    padding-left: 8px;
+    padding-right: 8px;
 
-    &.solid {
-        &.green {
-            color: var(--button-text-color);
-            background-color: var(--accent-color);
-            border: 1px solid var(--button-green-border-color);
-            &:hover {
-                color: var(--button-text-color);
-                background-color: var(--button-green-border-color);
-            }
-        }
-
-        &.grey {
-            background-color: var(--button-grey-bg);
-            border: 1px solid var(--button-grey-bg);
-            color: var(--main-text-color);
-            &:hover {
-                color: var(--main-text-color);
-                background-color: var(--button-grey-hover-bg);
-            }
-        }
-
-        &.red {
-            background-color: var(--button-red-bg);
-            border: 1px solid var(--button-red-border-color);
-            color: var(--main-text-color);
-            &:hover {
-                background-color: var(--button-red-hover-bg);
-            }
-        }
-
-        &.yellow {
-            color: var(--button-text-color);
-            background-color: var(--button-yellow-bg);
-            border: 1px solid var(--button-yellow-hover-bg);
-            &:hover {
-                color: var(--button-text-color);
-                background-color: var(--button-yellow-hover-bg);
-            }
-        }
+    &.green {
+      border: none;
+      color: var(--accent-color);
+      &:hover {
+        color: var(--button-green-border-color);
+      }
     }
 
-    &.outlined {
-        background-color: transparent;
-        &.green {
-            color: var(--accent-color);
-            border: 1px solid var(--accent-color);
-            &:hover {
-                color: var(--button-green-border-color);
-                border: 1px solid var(--button-green-border-color);
-            }
-        }
-
-        &.grey {
-            border: 1px solid var(--button-grey-outlined-color);
-            color: var(--button-grey-outlined-color);
-            &:hover {
-                color: var(--main-text-color);
-                border: 1px solid var(--main-text-color);
-            }
-        }
-
-        &.red {
-            border: 1px solid var(--button-red-bg);
-            color: var(--button-red-bg);
-            &:hover {
-                color: var(--button-red-outlined-color);
-                border: 1px solid var(--button-red-outlined-color);
-            }
-        }
-
-        &.yellow {
-            color: var(--button-yellow-bg);
-            border: 1px solid var(--button-yellow-bg);
-            &:hover {
-                color: var(--button-yellow-hover-bg);
-                border: 1px solid var(--button-yellow-hover-bg);
-            }
-        }
+    &.grey {
+      border: none;
+      color: var(--button-grey-outlined-color);
+      &:hover {
+        color: var(--main-text-color);
+      }
     }
 
-    &.ghost {
-        background-color: transparent;
-        padding-top: 8px;
-        padding-bottom: 8px;
-        padding-left: 8px;
-        padding-right: 8px;
-
-        &.green {
-            border: none;
-            color: var(--accent-color);
-            &:hover {
-                color: var(--button-green-border-color);
-            }
-        }
-
-        &.grey {
-            border: none;
-            color: var(--button-grey-outlined-color);
-            &:hover {
-                color: var(--main-text-color);
-            }
-        }
-
-        &.red {
-            border: none;
-            color: var(--button-red-bg);
-            &:hover {
-                color: var(--button-red-border-color);
-            }
-        }
-
-        &.yellow {
-            border: none;
-            color: var(--button-yellow-bg);
-            &:hover {
-                color: var(--button-yellow-hover-bg);
-            }
-        }
+    &.red {
+      border: none;
+      color: var(--button-red-bg);
+      &:hover {
+        color: var(--button-red-border-color);
+      }
     }
 
-    &:disabled {
-        cursor: default;
-        opacity: 0.5;
-        pointer-events: none;
+    &.yellow {
+      border: none;
+      color: var(--button-yellow-bg);
+      &:hover {
+        color: var(--button-yellow-hover-bg);
+      }
     }
+  }
 
-    &:focus-visible {
-        outline: 1px solid var(--success-color);
-        outline-offset: 2px;
-    }
+  &:disabled {
+    cursor: default;
+    opacity: 0.5;
+    pointer-events: none;
+  }
 
-    // Include mixins
-    @include mixins.border-radius-mixin();
-    @include mixins.vertical-padding-mixin();
-    @include mixins.horizontal-padding-mixin();
-    @include mixins.font-size-mixin();
-    @include mixins.font-weight-mixin();
+  &:focus-visible {
+    outline: 1px solid var(--success-color);
+    outline-offset: 2px;
+  }
+
+  // Include mixins
+  @include mixins.border-radius-mixin();
+  @include mixins.vertical-padding-mixin();
+  @include mixins.horizontal-padding-mixin();
+  @include mixins.font-size-mixin();
+  @include mixins.font-weight-mixin();
 }

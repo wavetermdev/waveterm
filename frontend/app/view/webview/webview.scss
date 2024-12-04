@@ -2,48 +2,48 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .webview {
-    height: 100%;
-    width: 100%;
-    border: none !important;
-    outline: none !important;
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-    user-select: none;
+  height: 100%;
+  width: 100%;
+  border: none !important;
+  outline: none !important;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  user-select: none;
 
-    // try to force pixel alignment to prevent
-    // subpixel rendering artifacts
-    transform: translate3d(0, 0, 0);
-    will-change: transform;
+  // try to force pixel alignment to prevent
+  // subpixel rendering artifacts
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .webview-error {
+  display: flex;
+  position: absolute;
+  background-color: black;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 100;
+  div {
+    font-size: x-large;
+    color: var(--error-color);
     display: flex;
-    position: absolute;
-    background-color: black;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    z-index: 100;
-    div {
-        font-size: x-large;
-        color: var(--error-color);
-        display: flex;
-        margin: auto;
-        padding: 30px;
-    }
+    margin: auto;
+    padding: 30px;
+  }
 }
 
 .block-frame-div-url {
-    background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
 
-    input {
-        opacity: 1;
-    }
+  input {
+    opacity: 1;
+  }
 
-    .iconbutton {
-        width: fit-content !important;
-        margin-right: 5px;
-    }
+  .iconbutton {
+    width: fit-content !important;
+    margin-right: 5px;
+  }
 }

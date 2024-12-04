@@ -2,115 +2,115 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .tab-bar-wrapper {
-    --default-indent: 10px;
-    --darwin-not-fullscreen-indent: 74px;
+  --default-indent: 10px;
+  --darwin-not-fullscreen-indent: 74px;
 }
 
 .darwin:not(.fullscreen) .tab-bar-wrapper {
-    .window-drag.left {
-        width: var(--darwin-not-fullscreen-indent);
-    }
+  .window-drag.left {
+    width: var(--darwin-not-fullscreen-indent);
+  }
 }
 
 .config-error-message {
-    max-width: 500px;
+  max-width: 500px;
 
-    h3 {
-        margin-bottom: 10px;
-    }
+  h3 {
+    margin-bottom: 10px;
+  }
 
-    margin-bottom: 20px;
+  margin-bottom: 20px;
 }
 
 .tab-bar-wrapper {
-    position: relative;
+  position: relative;
+  user-select: none;
+  display: flex;
+  flex-direction: row;
+  width: env(titlebar-area-width);
+
+  .tabs-wrapper {
+    transition: var(--tabs-wrapper-transition);
+    height: 32px;
+  }
+
+  .tab-bar {
+    position: relative; // Needed for absolute positioning of child tabs
+    height: 33px;
+  }
+
+  .dev-label,
+  .app-menu-button {
+    font-size: 26px;
     user-select: none;
     display: flex;
-    flex-direction: row;
-    width: env(titlebar-area-width);
+    align-items: center;
+    justify-content: center;
+    margin: 6px 6px 0 0;
+  }
 
-    .tabs-wrapper {
-        transition: var(--tabs-wrapper-transition);
-        height: 32px;
+  .app-menu-button {
+    cursor: pointer;
+    color: var(--secondary-text-color);
+
+    &:hover {
+      color: var(--main-text-color);
+    }
+  }
+
+  .dev-label {
+    color: var(--accent-color);
+  }
+
+  .config-error-button {
+    height: 80%;
+    margin: auto 4px;
+    color: black;
+    flex: 0 0 fit-content;
+  }
+
+  .add-tab-btn {
+    width: 22px;
+    height: 100%;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: center;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+
+    &:hover {
+      opacity: 1;
     }
 
-    .tab-bar {
-        position: relative; // Needed for absolute positioning of child tabs
-        height: 33px;
+    i {
+      overflow: hidden;
+      margin-top: 5px;
+      font-size: 11px;
     }
+  }
 
-    .dev-label,
-    .app-menu-button {
-        font-size: 26px;
-        user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 6px 6px 0 0;
+  .window-drag {
+    height: 100%;
+    width: var(--default-indent);
+    flex-shrink: 0;
+
+    &.right {
+      flex-grow: 1;
     }
+  }
 
-    .app-menu-button {
-        cursor: pointer;
-        color: var(--secondary-text-color);
-
-        &:hover {
-            color: var(--main-text-color);
-        }
-    }
-
-    .dev-label {
-        color: var(--accent-color);
-    }
-
-    .config-error-button {
-        height: 80%;
-        margin: auto 4px;
-        color: black;
-        flex: 0 0 fit-content;
-    }
-
-    .add-tab-btn {
-        width: 22px;
-        height: 100%;
-        cursor: pointer;
-        font-size: 14px;
-        text-align: center;
-        user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.5;
-
-        &:hover {
-            opacity: 1;
-        }
-
-        i {
-            overflow: hidden;
-            margin-top: 5px;
-            font-size: 11px;
-        }
-    }
-
-    .window-drag {
-        height: 100%;
-        width: var(--default-indent);
-        flex-shrink: 0;
-
-        &.right {
-            flex-grow: 1;
-        }
-    }
-
-    // Customize scrollbar styles
-    .os-theme-dark,
-    .os-theme-light {
-        box-sizing: border-box;
-        --os-size: 2px;
-        --os-padding-perpendicular: 0px;
-        --os-padding-axis: 0px;
-        --os-track-border-radius: 2px;
-        --os-handle-interactive-area-offset: 0px;
-        --os-handle-border-radius: 2px;
-    }
+  // Customize scrollbar styles
+  .os-theme-dark,
+  .os-theme-light {
+    box-sizing: border-box;
+    --os-size: 2px;
+    --os-padding-perpendicular: 0px;
+    --os-padding-axis: 0px;
+    --os-track-border-radius: 2px;
+    --os-handle-interactive-area-offset: 0px;
+    --os-handle-border-radius: 2px;
+  }
 }

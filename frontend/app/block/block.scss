@@ -4,423 +4,423 @@
 @use "../mixins.scss";
 
 .block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  min-height: 0;
+  border-radius: var(--block-border-radius);
+
+  .block-frame-icon {
+    margin-right: 0.5em;
+  }
+
+  .block-content {
+    position: relative;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    flex-grow: 1;
     width: 100%;
-    height: 100%;
     overflow: hidden;
     min-height: 0;
-    border-radius: var(--block-border-radius);
+    padding: 5px;
 
-    .block-frame-icon {
-        margin-right: 0.5em;
+    &.block-no-padding {
+      padding: 0;
     }
+  }
 
-    .block-content {
-        position: relative;
+  .block-focuselem {
+    height: 0;
+    width: 0;
+    input {
+      width: 0;
+      height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+
+  .block-header-animation-wrap {
+    max-height: 0;
+    transition:
+      max-height 0.3s ease-out,
+      opacity 0.3s ease-out;
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 30px;
+    z-index: var(--zindex-header-hover);
+
+    &.is-showing {
+      max-height: 30px;
+    }
+  }
+
+  &.block-preview.block-frame-default .block-frame-default-inner .block-frame-default-header {
+    background-color: rgb(from var(--block-bg-color) r g b / 70%);
+  }
+
+  &.block-frame-default {
+    position: relative;
+    padding: 1px;
+
+    .block-frame-default-inner {
+      background-color: var(--block-bg-color);
+      width: 100%;
+      height: 100%;
+      border-radius: var(--block-border-radius);
+      display: flex;
+      flex-direction: column;
+
+      .block-frame-default-header {
+        max-height: var(--header-height);
+        min-height: var(--header-height);
         display: flex;
-        flex-grow: 1;
-        width: 100%;
-        overflow: hidden;
-        min-height: 0;
-        padding: 5px;
+        padding: 4px 5px 4px 10px;
+        align-items: center;
+        gap: 8px;
+        font: var(--header-font);
+        border-bottom: 1px solid var(--border-color);
+        border-radius: var(--block-border-radius) var(--block-border-radius) 0 0;
 
-        &.block-no-padding {
-            padding: 0;
+        .block-frame-default-header-iconview {
+          display: flex;
+          flex-shrink: 3;
+          min-width: 17px;
+          align-items: center;
+          gap: 8px;
+          overflow-x: hidden;
+
+          .block-frame-view-icon {
+            font-size: var(--header-icon-size);
+            opacity: 0.5;
+            width: var(--header-icon-width);
+            i {
+              margin-right: 0;
+            }
+          }
+
+          .block-frame-view-type {
+            overflow-x: hidden;
+            text-wrap: nowrap;
+            text-overflow: ellipsis;
+            flex-shrink: 1;
+            min-width: 0;
+          }
+
+          .block-frame-blockid {
+            opacity: 0.5;
+          }
         }
-    }
 
-    .block-focuselem {
-        height: 0;
-        width: 0;
-        input {
-            width: 0;
-            height: 0;
-            opacity: 0;
-            pointer-events: none;
+        .block-frame-text {
+          @include mixins.ellipsis();
+          font: var(--fixed-font);
+          font-size: 11px;
+          opacity: 0.7;
+          flex-grow: 1;
+
+          &.preview-filename {
+            direction: rtl;
+            text-align: left;
+            span {
+              cursor: pointer;
+
+              &:hover {
+                background: var(--highlight-bg-color);
+              }
+            }
+          }
         }
-    }
 
-    .block-header-animation-wrap {
-        max-height: 0;
-        transition:
-            max-height 0.3s ease-out,
-            opacity 0.3s ease-out;
-        overflow: hidden;
-        position: absolute;
-        top: 0;
-        width: 100%;
-        height: 30px;
-        z-index: var(--zindex-header-hover);
+        .connection-button {
+          display: flex;
+          align-items: center;
+          flex-wrap: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          min-width: 0;
+          font-weight: 400;
+          color: var(--main-text-color);
+          border-radius: 2px;
+          padding: auto;
 
-        &.is-showing {
-            max-height: 30px;
+          &:hover {
+            background-color: var(--highlight-bg-color);
+          }
+
+          .connection-icon-box {
+            flex: 1 1 auto;
+            overflow: hidden;
+          }
+
+          .connection-name {
+            flex: 1 2 auto;
+            overflow: hidden;
+            padding-right: 4px;
+          }
+
+          .connecting-svg {
+            position: relative;
+            top: 5px;
+            left: 9px;
+            svg {
+              fill: var(--warning-color);
+            }
+          }
         }
-    }
 
-    &.block-preview.block-frame-default .block-frame-default-inner .block-frame-default-header {
-        background-color: rgb(from var(--block-bg-color) r g b / 70%);
-    }
+        .block-frame-textelems-wrapper {
+          display: flex;
+          flex: 1 2 auto;
+          min-width: 0;
+          gap: 8px;
+          align-items: center;
 
-    &.block-frame-default {
-        position: relative;
-        padding: 1px;
-
-        .block-frame-default-inner {
-            background-color: var(--block-bg-color);
+          .block-frame-div {
+            display: flex;
             width: 100%;
             height: 100%;
-            border-radius: var(--block-border-radius);
-            display: flex;
-            flex-direction: column;
-
-            .block-frame-default-header {
-                max-height: var(--header-height);
-                min-height: var(--header-height);
-                display: flex;
-                padding: 4px 5px 4px 10px;
-                align-items: center;
-                gap: 8px;
-                font: var(--header-font);
-                border-bottom: 1px solid var(--border-color);
-                border-radius: var(--block-border-radius) var(--block-border-radius) 0 0;
-
-                .block-frame-default-header-iconview {
-                    display: flex;
-                    flex-shrink: 3;
-                    min-width: 17px;
-                    align-items: center;
-                    gap: 8px;
-                    overflow-x: hidden;
-
-                    .block-frame-view-icon {
-                        font-size: var(--header-icon-size);
-                        opacity: 0.5;
-                        width: var(--header-icon-width);
-                        i {
-                            margin-right: 0;
-                        }
-                    }
-
-                    .block-frame-view-type {
-                        overflow-x: hidden;
-                        text-wrap: nowrap;
-                        text-overflow: ellipsis;
-                        flex-shrink: 1;
-                        min-width: 0;
-                    }
-
-                    .block-frame-blockid {
-                        opacity: 0.5;
-                    }
-                }
-
-                .block-frame-text {
-                    @include mixins.ellipsis();
-                    font: var(--fixed-font);
-                    font-size: 11px;
-                    opacity: 0.7;
-                    flex-grow: 1;
-
-                    &.preview-filename {
-                        direction: rtl;
-                        text-align: left;
-                        span {
-                            cursor: pointer;
-
-                            &:hover {
-                                background: var(--highlight-bg-color);
-                            }
-                        }
-                    }
-                }
-
-                .connection-button {
-                    display: flex;
-                    align-items: center;
-                    flex-wrap: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    min-width: 0;
-                    font-weight: 400;
-                    color: var(--main-text-color);
-                    border-radius: 2px;
-                    padding: auto;
-
-                    &:hover {
-                        background-color: var(--highlight-bg-color);
-                    }
-
-                    .connection-icon-box {
-                        flex: 1 1 auto;
-                        overflow: hidden;
-                    }
-
-                    .connection-name {
-                        flex: 1 2 auto;
-                        overflow: hidden;
-                        padding-right: 4px;
-                    }
-
-                    .connecting-svg {
-                        position: relative;
-                        top: 5px;
-                        left: 9px;
-                        svg {
-                            fill: var(--warning-color);
-                        }
-                    }
-                }
-
-                .block-frame-textelems-wrapper {
-                    display: flex;
-                    flex: 1 2 auto;
-                    min-width: 0;
-                    gap: 8px;
-                    align-items: center;
-
-                    .block-frame-div {
-                        display: flex;
-                        width: 100%;
-                        height: 100%;
-                        justify-content: space-between;
-                        align-items: center;
-
-                        .input-wrapper {
-                            flex-grow: 1;
-
-                            input {
-                                background-color: transparent;
-                                outline: none;
-                                border: none;
-                                color: var(--main-text-color);
-                                width: 100%;
-                                white-space: nowrap;
-                                overflow: hidden;
-                                text-overflow: ellipsis;
-                                box-sizing: border-box;
-                                opacity: 0.7;
-                                font-weight: 500;
-                            }
-                        }
-
-                        .button {
-                            margin-left: 3px;
-                        }
-
-                        // webview specific. for refresh button
-                        .iconbutton {
-                            height: 100%;
-                            width: 27px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                        }
-                    }
-
-                    .menubutton {
-                        .button {
-                            font-size: 11px;
-                        }
-                    }
-                }
-
-                .block-frame-end-icons {
-                    display: flex;
-                    flex-shrink: 0;
-
-                    .iconbutton {
-                        display: flex;
-                        width: 24px;
-                        padding: 4px 6px;
-                        align-items: center;
-                    }
-
-                    .block-frame-magnify {
-                        justify-content: center;
-                        align-items: center;
-                        padding: 0;
-
-                        svg {
-                            #arrow1,
-                            #arrow2 {
-                                fill: var(--main-text-color);
-                            }
-                        }
-                    }
-                }
-            }
-
-            .block-frame-preview {
-                background-color: rgb(from var(--block-bg-color) r g b / 70%);
-                width: 100%;
-                flex-grow: 1;
-                border-bottom-left-radius: var(--block-border-radius);
-                border-bottom-right-radius: var(--block-border-radius);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-
-                .iconbutton {
-                    opacity: 0.7;
-                    font-size: 45px;
-                    margin: -30px 0 0 0;
-                }
-            }
-        }
-
-        --magnified-block-opacity: 0.6;
-        --magnified-block-blur: 10px;
-
-        &.magnified,
-        &.ephemeral {
-            background-color: rgb(from var(--block-bg-color) r g b / var(--magnified-block-opacity));
-            backdrop-filter: blur(var(--magnified-block-blur));
-        }
-
-        .connstatus-overlay {
-            position: absolute;
-            top: calc(var(--header-height) + 6px);
-            left: 6px;
-            right: 6px;
-            z-index: var(--zindex-block-mask-inner);
-            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: flex-start;
-            flex-direction: column;
-            overflow: hidden;
-            background: var(--conn-status-overlay-bg-color);
-            backdrop-filter: blur(50px);
-            border-radius: 6px;
-            box-shadow: 0px 13px 16px 0px rgb(from var(--block-bg-color) r g b / 40%);
 
-            .connstatus-content {
-                display: flex;
-                flex-direction: row;
-                justify-content: space-between;
-                padding: 10px 8px 10px 12px;
+            .input-wrapper {
+              flex-grow: 1;
+
+              input {
+                background-color: transparent;
+                outline: none;
+                border: none;
+                color: var(--main-text-color);
                 width: 100%;
-                font: var(--base-font);
-                color: var(--secondary-text-color);
-                gap: 12px;
-
-                .connstatus-status-icon-wrapper {
-                    display: flex;
-                    flex-direction: row;
-                    align-items: center;
-                    gap: 12px;
-                    flex-grow: 1;
-                    min-width: 0;
-
-                    &.has-error {
-                        align-items: flex-start;
-                    }
-
-                    > i {
-                        color: #e6ba1e;
-                        font-size: 16px;
-                    }
-
-                    .connstatus-status {
-                        @include mixins.ellipsis();
-                        display: flex;
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 4px;
-                        flex-grow: 1;
-                        width: 100%;
-
-                        .connstatus-status-text {
-                            @include mixins.ellipsis();
-                            max-width: 100%;
-                            font-size: 11px;
-                            font-style: normal;
-                            font-weight: 600;
-                            line-height: 16px;
-                            letter-spacing: 0.11px;
-                            color: white;
-                        }
-
-                        .connstatus-error {
-                            @include mixins.ellipsis();
-                            width: 94%;
-                            font-size: 11px;
-                            font-style: normal;
-                            font-weight: 400;
-                            line-height: 15px;
-                            letter-spacing: 0.11px;
-                        }
-                    }
-                }
-
-                .connstatus-actions {
-                    display: flex;
-                    align-items: flex-start;
-                    justify-content: center;
-                    gap: 6px;
-
-                    button {
-                        i {
-                            font-size: 11px;
-                            opacity: 0.7;
-                        }
-                    }
-
-                    .button:last-child {
-                        margin-top: 1.5px;
-                    }
-                }
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                box-sizing: border-box;
+                opacity: 0.7;
+                font-weight: 500;
+              }
             }
+
+            .button {
+              margin-left: 3px;
+            }
+
+            // webview specific. for refresh button
+            .iconbutton {
+              height: 100%;
+              width: 27px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+          }
+
+          .menubutton {
+            .button {
+              font-size: 11px;
+            }
+          }
         }
 
-        .block-mask {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border: 2px solid transparent;
-            pointer-events: none;
-            padding: 2px;
-            border-radius: calc(var(--block-border-radius) + 2px);
-            z-index: var(--zindex-block-mask-inner);
+        .block-frame-end-icons {
+          display: flex;
+          flex-shrink: 0;
 
-            &.show-block-mask {
-                user-select: none;
-                pointer-events: auto;
+          .iconbutton {
+            display: flex;
+            width: 24px;
+            padding: 4px 6px;
+            align-items: center;
+          }
+
+          .block-frame-magnify {
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+
+            svg {
+              #arrow1,
+              #arrow2 {
+                fill: var(--main-text-color);
+              }
             }
-
-            &.show-block-mask .block-mask-inner {
-                margin-top: var(--header-height); // TODO fix this magic
-                background-color: rgb(from var(--block-bg-color) r g b / 50%);
-                height: calc(100% - var(--header-height));
-                width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-
-                .bignum {
-                    margin-top: -15%;
-                    font-size: 60px;
-                    font-weight: bold;
-                    opacity: 0.7;
-                }
-            }
+          }
         }
+      }
 
-        &.block-focused {
-            .block-mask {
-                border: 2px solid var(--accent-color);
-            }
+      .block-frame-preview {
+        background-color: rgb(from var(--block-bg-color) r g b / 70%);
+        width: 100%;
+        flex-grow: 1;
+        border-bottom-left-radius: var(--block-border-radius);
+        border-bottom-right-radius: var(--block-border-radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
-            &.block-no-highlight,
-            &.block-preview {
-                .block-mask {
-                    border: 2px solid rgb(from var(--border-color) r g b / 10%) !important;
-                }
-            }
+        .iconbutton {
+          opacity: 0.7;
+          font-size: 45px;
+          margin: -30px 0 0 0;
         }
+      }
     }
+
+    --magnified-block-opacity: 0.6;
+    --magnified-block-blur: 10px;
+
+    &.magnified,
+    &.ephemeral {
+      background-color: rgb(from var(--block-bg-color) r g b / var(--magnified-block-opacity));
+      backdrop-filter: blur(var(--magnified-block-blur));
+    }
+
+    .connstatus-overlay {
+      position: absolute;
+      top: calc(var(--header-height) + 6px);
+      left: 6px;
+      right: 6px;
+      z-index: var(--zindex-block-mask-inner);
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--conn-status-overlay-bg-color);
+      backdrop-filter: blur(50px);
+      border-radius: 6px;
+      box-shadow: 0px 13px 16px 0px rgb(from var(--block-bg-color) r g b / 40%);
+
+      .connstatus-content {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 10px 8px 10px 12px;
+        width: 100%;
+        font: var(--base-font);
+        color: var(--secondary-text-color);
+        gap: 12px;
+
+        .connstatus-status-icon-wrapper {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
+          flex-grow: 1;
+          min-width: 0;
+
+          &.has-error {
+            align-items: flex-start;
+          }
+
+          > i {
+            color: #e6ba1e;
+            font-size: 16px;
+          }
+
+          .connstatus-status {
+            @include mixins.ellipsis();
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            flex-grow: 1;
+            width: 100%;
+
+            .connstatus-status-text {
+              @include mixins.ellipsis();
+              max-width: 100%;
+              font-size: 11px;
+              font-style: normal;
+              font-weight: 600;
+              line-height: 16px;
+              letter-spacing: 0.11px;
+              color: white;
+            }
+
+            .connstatus-error {
+              @include mixins.ellipsis();
+              width: 94%;
+              font-size: 11px;
+              font-style: normal;
+              font-weight: 400;
+              line-height: 15px;
+              letter-spacing: 0.11px;
+            }
+          }
+        }
+
+        .connstatus-actions {
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          gap: 6px;
+
+          button {
+            i {
+              font-size: 11px;
+              opacity: 0.7;
+            }
+          }
+
+          .button:last-child {
+            margin-top: 1.5px;
+          }
+        }
+      }
+    }
+
+    .block-mask {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: 2px solid transparent;
+      pointer-events: none;
+      padding: 2px;
+      border-radius: calc(var(--block-border-radius) + 2px);
+      z-index: var(--zindex-block-mask-inner);
+
+      &.show-block-mask {
+        user-select: none;
+        pointer-events: auto;
+      }
+
+      &.show-block-mask .block-mask-inner {
+        margin-top: var(--header-height); // TODO fix this magic
+        background-color: rgb(from var(--block-bg-color) r g b / 50%);
+        height: calc(100% - var(--header-height));
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .bignum {
+          margin-top: -15%;
+          font-size: 60px;
+          font-weight: bold;
+          opacity: 0.7;
+        }
+      }
+    }
+
+    &.block-focused {
+      .block-mask {
+        border: 2px solid var(--accent-color);
+      }
+
+      &.block-no-highlight,
+      &.block-preview {
+        .block-mask {
+          border: 2px solid rgb(from var(--border-color) r g b / 10%) !important;
+        }
+      }
+    }
+  }
 }

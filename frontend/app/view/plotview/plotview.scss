@@ -2,21 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .plot-view {
+  width: 100%;
+
+  .plot-window {
+    display: flex;
+    justify-content: center;
+  }
+
+  .plot-config {
     width: 100%;
-
-    .plot-window {
-        display: flex;
-        justify-content: center;
-    }
-
-    .plot-config {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        resize: none;
-        height: 50vh;
-        background-color: var(--panel-bg-color);
-        color: var(--main-text-color);
-        font: var(--fixed-font);
-    }
+    margin: 0;
+    padding: 0;
+    resize: none;
+    height: 50vh;
+    background-color: var(--panel-bg-color);
+    color: var(--main-text-color);
+    font: var(--fixed-font);
+  }
 }
