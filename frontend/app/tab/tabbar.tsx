@@ -155,7 +155,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             const newTabIds = new Set([...(workspace.pinnedtabids ?? []), ...(workspace.tabids ?? [])]);
 
             const areEqual =
-                currentTabIds.size === newTabIds.size && [...currentTabIds].every((id) => newTabIds.has(id));
+                currentTabIds.size === newTabIds.size &&
+                [...currentTabIds].every((id) => newTabIds.has(id)) &&
+                (workspace.pinnedtabids?.length ?? 0) === pinnedTabCount;
 
             if (!areEqual) {
                 const newPinnedTabIds = new Set(workspace.pinnedtabids);
@@ -166,7 +168,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 setPinnedTabCount(newPinnedTabIds.size);
             }
         }
-    }, [workspace, tabIds]);
+    }, [workspace, tabIds, pinnedTabCount]);
 
     const saveTabsPosition = useCallback(() => {
         const tabs = tabRefs.current;
