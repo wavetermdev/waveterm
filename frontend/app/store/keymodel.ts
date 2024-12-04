@@ -246,7 +246,10 @@ function registerGlobalKeys() {
     });
     globalKeyMap.set("Cmd:w", () => {
         const tabId = globalStore.get(atoms.staticTabId);
-        genericClose(tabId);
+        const ws = globalStore.get(atoms.workspace);
+        if (!ws.pinnedtabids?.includes(tabId)) {
+            genericClose(tabId);
+        }
         return true;
     });
     globalKeyMap.set("Cmd:m", () => {
