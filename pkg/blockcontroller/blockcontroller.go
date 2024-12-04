@@ -690,11 +690,11 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		}
 	}
 	if curBc == nil {
-		return startBlockController(ctx, tabId, blockId, rtOpts, true)
+		return startBlockController(ctx, tabId, blockId, rtOpts, force)
 	}
 	bcStatus := curBc.GetRuntimeStatus()
 	if bcStatus.ShellProcStatus == Status_Init || bcStatus.ShellProcStatus == Status_Done {
-		return startBlockController(ctx, tabId, blockId, rtOpts, true)
+		return startBlockController(ctx, tabId, blockId, rtOpts, force)
 	}
 	return nil
 }
