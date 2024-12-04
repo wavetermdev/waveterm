@@ -33,13 +33,6 @@
 		border-radius: 6px;
     }
 
-	&:hover {
-		.tab-inner {
-			border-color: transparent;
-			background: rgb(from var(--main-text-color) r g b / 0.07);
-		}
-	}
-
     &.animate {
         transition:
             transform 0.3s ease,
@@ -87,19 +80,20 @@
     }
 
     .close {
-        visibility: hidden;
-        position: absolute;
-        top: 50%;
-        right: 4px;
-        transform: translate3d(0, -50%, 0);
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: var(--zindex-tab-name);
-        padding: 1px 2px;
+		visibility: hidden;
+		position: absolute;
+		top: 50%;
+		right: 4px;
+		transform: translate3d(0, -50%, 0);
+		width: 20px;
+		height: 20px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		z-index: var(--zindex-tab-name);
+		padding: 1px 2px;
+		transition: none !important;
     }
 
     &:hover .close {
@@ -110,6 +104,20 @@
             color: var(--main-text-color);
         }
     }
+}
+
+body:not(.nohover) .tab:hover {
+	.tab-inner {
+		border-color: transparent;
+		background: rgb(from var(--main-text-color) r g b / 0.07);
+	}
+
+	.close {
+		visibility: visible;
+		&:hover {
+			color: var(--main-text-color);
+		}
+	}
 }
 
 @keyframes expandWidthAndFadeIn {

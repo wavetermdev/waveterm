@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	WSEvent_ElectronNewWindow   = "electron:newwindow"
-	WSEvent_ElectronCloseWindow = "electron:closewindow"
-	WSEvent_Rpc                 = "rpc"
+	WSEvent_ElectronNewWindow       = "electron:newwindow"
+	WSEvent_ElectronCloseWindow     = "electron:closewindow"
+	WSEvent_ElectronUpdateActiveTab = "electron:updateactivetab"
+	WSEvent_Rpc                     = "rpc"
 )
 
 type WSEventType struct {

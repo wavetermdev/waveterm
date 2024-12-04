@@ -1,15 +1,18 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { PLATFORM, atoms, createBlock, getApi } from "@/app/store/global";
+import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { FileService } from "@/app/store/services";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { base64ToString, isBlank } from "@/util/util";
+import { base64ToString, fireAndForget, isBlank } from "@/util/util";
+import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
     Row,
+    RowData,
     Table,
     createColumnHelper,
     flexRender,
@@ -19,12 +22,20 @@ import {
 } from "@tanstack/react-table";
 import clsx from "clsx";
 import dayjs from "dayjs";
-import { useAtom, useAtomValue } from "jotai";
+import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
+
+declare module "@tanstack/react-table" {
+    interface TableMeta<TData extends RowData> {
+        updateName: (path: string) => void;
+        newFile: () => void;
+        newDirectory: () => void;
+    }
+}
 
 interface DirectoryTableProps {
     model: PreviewModel;
@@ -35,6 +46,9 @@ interface DirectoryTableProps {
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
     setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
+    entryManagerOverlayPropsAtom: PrimitiveAtom<EntryManagerOverlayProps>;
+    newFile: () => void;
+    newDirectory: () => void;
 }
 
 const columnHelper = createColumnHelper<FileInfo>();
@@ -121,6 +135,46 @@ function cleanMimetype(input: string): string {
     return truncated.trim();
 }
 
+enum EntryManagerType {
+    NewFile = "New File",
+    NewDirectory = "New Folder",
+    EditName = "Rename",
+}
+
+type EntryManagerOverlayProps = {
+    forwardRef?: React.Ref<HTMLDivElement>;
+    entryManagerType: EntryManagerType;
+    startingValue?: string;
+    onSave: (newValue: string) => void;
+    style?: React.CSSProperties;
+    getReferenceProps?: () => any;
+};
+
+const EntryManagerOverlay = memo(
+    ({ entryManagerType, startingValue, onSave, forwardRef, style, getReferenceProps }: EntryManagerOverlayProps) => {
+        const [value, setValue] = useState(startingValue);
+        return (
+            <div className="entry-manager-overlay" ref={forwardRef} style={style} {...getReferenceProps()}>
+                <div className="entry-manager-type">{entryManagerType}</div>
+                <div className="entry-manager-input">
+                    <Input
+                        value={value}
+                        onChange={setValue}
+                        autoFocus={true}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onSave(value);
+                            }
+                        }}
+                    ></Input>
+                </div>
+            </div>
+        );
+    }
+);
+
 function DirectoryTable({
     model,
     data,
@@ -130,6 +184,9 @@ function DirectoryTable({
     setSearch,
     setSelectedPath,
     setRefreshVersion,
+    entryManagerOverlayPropsAtom,
+    newFile,
+    newDirectory,
 }: DirectoryTableProps) {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const getIconFromMimeType = useCallback(
@@ -205,6 +262,28 @@ function DirectoryTable({
         [fullConfig]
     );
 
+    const setEntryManagerProps = useSetAtom(entryManagerOverlayPropsAtom);
+
+    const updateName = useCallback((path: string) => {
+        const fileName = path.split("/").at(-1);
+        setEntryManagerProps({
+            entryManagerType: EntryManagerType.EditName,
+            startingValue: fileName,
+            onSave: (newName: string) => {
+                let newPath: string;
+                if (newName !== fileName) {
+                    newPath = path.replace(fileName, newName);
+                    console.log(`replacing ${fileName} with ${newName}: ${path}`);
+                    fireAndForget(async () => {
+                        await FileService.Rename(globalStore.get(model.connection), path, newPath);
+                        model.refreshCallback();
+                    });
+                }
+                setEntryManagerProps(undefined);
+            },
+        });
+    }, []);
+
     const table = useReactTable({
         data,
         columns,
@@ -229,6 +308,11 @@ function DirectoryTable({
         },
         enableMultiSort: false,
         enableSortingRemoval: false,
+        meta: {
+            updateName,
+            newFile,
+            newDirectory,
+        },
     });
 
     useEffect(() => {
@@ -419,6 +503,27 @@ function TableBody({
             }
             const menu: ContextMenuItem[] = [
                 {
+                    label: "New File",
+                    click: () => {
+                        table.options.meta.newFile();
+                    },
+                },
+                {
+                    label: "New Folder",
+                    click: () => {
+                        table.options.meta.newDirectory();
+                    },
+                },
+                {
+                    label: "Rename",
+                    click: () => {
+                        table.options.meta.updateName(finfo.path);
+                    },
+                },
+                {
+                    type: "separator",
+                },
+                {
                     label: "Copy File Name",
                     click: () => navigator.clipboard.writeText(fileName),
                 },
@@ -446,6 +551,7 @@ function TableBody({
                 {
                     type: "separator",
                 },
+                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
                 {
                     label: openNativeLabel,
                     click: async () => {
@@ -483,14 +589,18 @@ function TableBody({
                     },
                 });
             }
-            menu.push({ type: "separator" });
-            menu.push({
-                label: "Delete File",
-                click: async () => {
-                    await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
-                    setRefreshVersion((current) => current + 1);
+            menu.push(
+                {
+                    type: "separator",
                 },
-            });
+                {
+                    label: "Delete",
+                    click: async () => {
+                        await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
+                        setRefreshVersion((current) => current + 1);
+                    },
+                }
+            );
             ContextMenuModel.showContextMenu(menu, e);
         },
         [setRefreshVersion, conn]
@@ -560,12 +670,12 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
     const [filteredData, setFilteredData] = useState<FileInfo[]>([]);
-    const fileName = useAtomValue(model.metaFilePath);
     const showHiddenFiles = useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
+    const dirPath = useAtomValue(model.normFilePath);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -578,13 +688,13 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await FileService.ReadFile(conn, fileName);
+            const file = await FileService.ReadFile(conn, dirPath);
             const serializedContent = base64ToString(file?.data64);
             const content: FileInfo[] = JSON.parse(serializedContent);
             setUnfilteredData(content);
         };
         getContent();
-    }, [conn, fileName, refreshVersion]);
+    }, [conn, dirPath, refreshVersion]);
 
     useEffect(() => {
         const filtered = unfilteredData.filter((fileInfo) => {
@@ -652,26 +762,138 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         }
     }, [filteredData]);
 
+    const entryManagerPropsAtom = useState(
+        atom<EntryManagerOverlayProps>(null) as PrimitiveAtom<EntryManagerOverlayProps>
+    )[0];
+    const [entryManagerProps, setEntryManagerProps] = useAtom(entryManagerPropsAtom);
+
+    const { refs, floatingStyles, context } = useFloating({
+        open: !!entryManagerProps,
+        onOpenChange: () => setEntryManagerProps(undefined),
+        middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
+    });
+
+    const dismiss = useDismiss(context);
+    const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
+
+    const newFile = useCallback(() => {
+        setEntryManagerProps({
+            entryManagerType: EntryManagerType.NewFile,
+            onSave: (newName: string) => {
+                console.log(`newFile: ${newName}`);
+                fireAndForget(async () => {
+                    await FileService.TouchFile(globalStore.get(model.connection), `${dirPath}/${newName}`);
+                    model.refreshCallback();
+                });
+                setEntryManagerProps(undefined);
+            },
+        });
+    }, [dirPath]);
+    const newDirectory = useCallback(() => {
+        setEntryManagerProps({
+            entryManagerType: EntryManagerType.NewDirectory,
+            onSave: (newName: string) => {
+                console.log(`newDirectory: ${newName}`);
+                fireAndForget(async () => {
+                    await FileService.Mkdir(globalStore.get(model.connection), `${dirPath}/${newName}`);
+                    model.refreshCallback();
+                });
+                setEntryManagerProps(undefined);
+            },
+        });
+    }, [dirPath]);
+
+    const handleFileContextMenu = useCallback(
+        (e: any) => {
+            e.preventDefault();
+            e.stopPropagation();
+            let openNativeLabel = "Open Directory in File Manager";
+            if (PLATFORM == "darwin") {
+                openNativeLabel = "Open Directory in Finder";
+            } else if (PLATFORM == "win32") {
+                openNativeLabel = "Open Directory in Explorer";
+            }
+            const menu: ContextMenuItem[] = [
+                {
+                    label: "New File",
+                    click: () => {
+                        newFile();
+                    },
+                },
+                {
+                    label: "New Folder",
+                    click: () => {
+                        newDirectory();
+                    },
+                },
+                {
+                    type: "separator",
+                },
+                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
+                {
+                    label: openNativeLabel,
+                    click: () => {
+                        console.log(`opening ${dirPath}`);
+                        getApi().openNativePath(dirPath);
+                    },
+                },
+            ];
+            menu.push({
+                label: "Open Terminal in New Block",
+                click: async () => {
+                    const termBlockDef: BlockDef = {
+                        meta: {
+                            controller: "shell",
+                            view: "term",
+                            "cmd:cwd": dirPath,
+                        },
+                    };
+                    await createBlock(termBlockDef);
+                },
+            });
+
+            ContextMenuModel.showContextMenu(menu, e);
+        },
+        [setRefreshVersion, conn, newFile, newDirectory, dirPath]
+    );
+
     return (
-        <div
-            className="dir-table-container"
-            onChangeCapture={(e) => {
-                const event = e as React.ChangeEvent<HTMLInputElement>;
-                setSearchText(event.target.value.toLowerCase());
-            }}
-            // onFocusCapture={() => document.getSelection().collapseToEnd()}
-        >
-            <DirectoryTable
-                model={model}
-                data={filteredData}
-                search={searchText}
-                focusIndex={focusIndex}
-                setFocusIndex={setFocusIndex}
-                setSearch={setSearchText}
-                setSelectedPath={setSelectedPath}
-                setRefreshVersion={setRefreshVersion}
-            />
-        </div>
+        <Fragment>
+            <div
+                ref={refs.setReference}
+                className="dir-table-container"
+                onChangeCapture={(e) => {
+                    const event = e as React.ChangeEvent<HTMLInputElement>;
+                    if (!entryManagerProps) {
+                        setSearchText(event.target.value.toLowerCase());
+                    }
+                }}
+                {...getReferenceProps()}
+                onContextMenu={(e) => handleFileContextMenu(e)}
+            >
+                <DirectoryTable
+                    model={model}
+                    data={filteredData}
+                    search={searchText}
+                    focusIndex={focusIndex}
+                    setFocusIndex={setFocusIndex}
+                    setSearch={setSearchText}
+                    setSelectedPath={setSelectedPath}
+                    setRefreshVersion={setRefreshVersion}
+                    entryManagerOverlayPropsAtom={entryManagerPropsAtom}
+                    newFile={newFile}
+                    newDirectory={newDirectory}
+                />
+            </div>
+            {entryManagerProps && (
+                <EntryManagerOverlay
+                    {...entryManagerProps}
+                    forwardRef={refs.setFloating}
+                    style={floatingStyles}
+                    getReferenceProps={getFloatingProps}
+                />
+            )}
+        </Fragment>
     );
 }
 

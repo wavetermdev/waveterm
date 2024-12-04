@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -27,19 +28,22 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 	return ws, nil
 }
 
+// If force is true, it will delete even if workspace is named.
+// If workspace is empty, it will be deleted, even if it is named.
+// Returns true if workspace was deleted, false if it was not deleted.
 func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, error) {
 	log.Printf("DeleteWorkspace %s\n", workspaceId)
 	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
 	if err != nil {
 		return false, fmt.Errorf("error getting workspace: %w", err)
 	}
-	if workspace.Name != "" && workspace.Icon != "" && !force {
+	if workspace.Name != "" && workspace.Icon != "" && !force && len(workspace.TabIds) > 0 {
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 		return false, nil
 	}
 	for _, tabId := range workspace.TabIds {
 		log.Printf("deleting tab %s\n", tabId)
-		_, err := DeleteTab(ctx, workspaceId, tabId)
+		_, err := DeleteTab(ctx, workspaceId, tabId, false)
 		if err != nil {
 			return false, fmt.Errorf("error closing tab: %w", err)
 		}
@@ -103,8 +107,9 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 
 // Must delete all blocks individually first.
 // Also deletes LayoutState.
+// recursive: if true, will recursively close parent window, workspace, if they are empty.
 // Returns new active tab id, error.
-func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, error) {
+func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive bool) (string, error) {
 	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
 	if ws == nil {
 		return "", fmt.Errorf("workspace not found: %q", workspaceId)
@@ -116,7 +121,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, e
 
 	// close blocks (sends events + stops block controllers)
 	for _, blockId := range tab.BlockIds {
-		err := DeleteBlock(ctx, blockId)
+		err := DeleteBlock(ctx, blockId, false)
 		if err != nil {
 			return "", fmt.Errorf("error deleting block %s: %w", blockId, err)
 		}
@@ -139,6 +144,17 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) (string, e
 	wstore.DBUpdate(ctx, ws)
 	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
 	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
+
+	if newActiveTabId == "" && recursive {
+		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
+		if err != nil {
+			return newActiveTabId, fmt.Errorf("unable to find window for workspace id %v: %w", workspaceId, err)
+		}
+		err = CloseWindow(ctx, windowId, false)
+		if err != nil {
+			return newActiveTabId, err
+		}
+	}
 	return newActiveTabId, nil
 }
 
@@ -156,6 +172,13 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 		wstore.DBUpdate(ctx, workspace)
 	}
 	return nil
+}
+
+func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId string) {
+	eventbus.SendEventToElectron(eventbus.WSEventType{
+		EventType: eventbus.WSEvent_ElectronUpdateActiveTab,
+		Data:      &waveobj.ActiveTabUpdate{WorkspaceId: workspaceId, NewActiveTabId: newActiveTabId},
+	})
 }
 
 func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {

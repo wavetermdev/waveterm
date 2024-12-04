@@ -5,6 +5,7 @@ import { Button } from "@/element/button";
 import {
     autoUpdate,
     FloatingPortal,
+    Middleware,
     offset as offsetMiddleware,
     useClick,
     useDismiss,
@@ -34,6 +35,7 @@ interface PopoverProps {
     placement?: Placement;
     offset?: OffsetOptions;
     onDismiss?: () => void;
+    middleware?: Middleware[];
 }
 
 const isPopoverButton = (

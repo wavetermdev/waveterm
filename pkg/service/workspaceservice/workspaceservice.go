@@ -169,21 +169,13 @@ func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, t
 			blockcontroller.StopBlockController(blockId)
 		}
 	}()
-	newActiveTabId, err := wcore.DeleteTab(ctx, workspaceId, tabId)
+	newActiveTabId, err := wcore.DeleteTab(ctx, workspaceId, tabId, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error closing tab: %w", err)
 	}
 	rtn := &CloseTabRtnType{}
 	if newActiveTabId == "" {
-		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
-		if err != nil {
-			return rtn, nil, fmt.Errorf("unable to find window for workspace id %v: %w", workspaceId, err)
-		}
 		rtn.CloseWindow = true
-		err = wcore.CloseWindow(ctx, windowId, fromElectron)
-		if err != nil {
-			return rtn, nil, err
-		}
 	} else {
 		rtn.NewActiveTabId = newActiveTabId
 	}

@@ -121,7 +121,7 @@ func (svc *ObjectService) DeleteBlock(uiContext waveobj.UIContext, blockId strin
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wcore.DeleteBlock(ctx, blockId)
+	err := wcore.DeleteBlock(ctx, blockId, true)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting block: %w", err)
 	}
