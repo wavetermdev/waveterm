@@ -285,7 +285,7 @@ const WorkspaceSwitcherItem = ({
     const windowIconDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         className: "window",
-        disabled: true,
+        noAction: true,
         icon: isCurrentWorkspace ? "check" : "window",
         title: isCurrentWorkspace ? "This is your current workspace" : "This workspace is open",
     };

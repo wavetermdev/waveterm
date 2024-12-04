@@ -158,6 +158,7 @@ class TermViewModel {
                         iconColor: "var(--success-color)",
                         iconSpin: true,
                         title: "Restarting Command",
+                        noAction: true,
                     });
                 } else {
                     const fullShellProcStatus = get(this.shellProcFullStatus);
@@ -168,6 +169,7 @@ class TermViewModel {
                                 icon: "check",
                                 iconColor: "var(--success-color)",
                                 title: "Command Exited Successfully",
+                                noAction: true,
                             });
                         } else {
                             rtn.push({
@@ -175,6 +177,7 @@ class TermViewModel {
                                 icon: "xmark-large",
                                 iconColor: "var(--error-color)",
                                 title: "Exit Code: " + fullShellProcStatus?.shellprocexitcode,
+                                noAction: true,
                             });
                         }
                     }

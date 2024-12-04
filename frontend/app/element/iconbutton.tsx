@@ -14,7 +14,10 @@ export const IconButton = memo(({ decl, className }: { decl: IconButtonDecl; cla
     return (
         <div
             ref={buttonRef}
-            className={clsx("iconbutton", className, decl.className, { disabled: decl.disabled })}
+            className={clsx("iconbutton", className, decl.className, {
+                disabled: decl.disabled,
+                "no-action": decl.noAction,
+            })}
             title={decl.title}
             style={{ color: decl.iconColor ?? "inherit" }}
         >
