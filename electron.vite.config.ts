@@ -21,7 +21,7 @@ export default defineConfig({
             },
             outDir: "dist/main",
         },
-        plugins: [tsconfigPaths(), flow(), nodePolyfills({ include: ["string_decoder"] })],
+        plugins: [tsconfigPaths(), flow(), nodePolyfills()],
         resolve: {
             alias: {
                 "@": "frontend",
@@ -83,6 +83,7 @@ export default defineConfig({
             viteStaticCopy({
                 targets: [{ src: "node_modules/monaco-editor/min/vs/*", dest: "monaco" }],
             }),
+            nodePolyfills(),
         ],
         css: {
             preprocessorOptions: {
