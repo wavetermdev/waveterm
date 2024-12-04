@@ -83,7 +83,6 @@ export default defineConfig({
             viteStaticCopy({
                 targets: [{ src: "node_modules/monaco-editor/min/vs/*", dest: "monaco" }],
             }),
-            nodePolyfills(),
         ],
         css: {
             preprocessorOptions: {
