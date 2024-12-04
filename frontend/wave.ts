@@ -90,7 +90,7 @@ async function reinitWave() {
     requestAnimationFrame(() => {
         setTimeout(() => {
             document.body.classList.remove("nohover");
-        }, 50);
+        }, 100);
     });
     const client = await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedInitOpts.clientId));
     const waveWindow = await WOS.reloadWaveObject<WaveWindow>(WOS.makeORef("window", savedInitOpts.windowId));
