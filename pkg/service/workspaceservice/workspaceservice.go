@@ -169,7 +169,7 @@ func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, t
 			blockcontroller.StopBlockController(blockId)
 		}
 	}()
-	newActiveTabId, err := wcore.DeleteTab(ctx, workspaceId, tabId)
+	newActiveTabId, err := wcore.DeleteTab(ctx, workspaceId, tabId, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error closing tab: %w", err)
 	}
