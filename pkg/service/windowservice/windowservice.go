@@ -55,7 +55,7 @@ func (svc *WindowService) CreateWindow(ctx context.Context, winSize *waveobj.Win
 		return nil, fmt.Errorf("error getting workspace: %w", err)
 	}
 	if len(ws.TabIds) == 0 {
-		_, err = wcore.CreateTab(ctx, ws.OID, "", true)
+		_, err = wcore.CreateTab(ctx, ws.OID, "", true, false)
 		if err != nil {
 			return window, fmt.Errorf("error creating tab: %w", err)
 		}

@@ -81,8 +81,7 @@
     }
   }
 
-  .close {
-    visibility: hidden;
+  .button {
     position: absolute;
     top: 50%;
     right: 4px;
@@ -96,6 +95,10 @@
     z-index: var(--zindex-tab-name);
     padding: 1px 2px;
     transition: none !important;
+  }
+
+  .close {
+    visibility: hidden;
   }
 }
 

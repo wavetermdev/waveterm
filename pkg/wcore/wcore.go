@@ -62,7 +62,7 @@ func EnsureInitialData() error {
 	if err != nil {
 		return fmt.Errorf("error creating default workspace: %w", err)
 	}
-	_, err = CreateTab(ctx, defaultWs.OID, "", true)
+	_, err = CreateTab(ctx, defaultWs.OID, "", true, true)
 	if err != nil {
 		return fmt.Errorf("error creating tab: %w", err)
 	}

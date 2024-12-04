@@ -36,7 +36,16 @@
 
   .tab-bar {
     position: relative; // Needed for absolute positioning of child tabs
+    display: flex;
+    flex-direction: row;
     height: 33px;
+  }
+
+  .pinned-tab-spacer {
+    display: block;
+    height: 100%;
+    margin: 2px;
+    border: 1px solid var(--border-color);
   }
 
   .dev-label,
