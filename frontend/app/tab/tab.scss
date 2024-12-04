@@ -31,18 +31,6 @@
     border-radius: 6px;
   }
 
-  &:hover {
-    & + .tab::after,
-    &::after {
-      content: none;
-    }
-
-    .tab-inner {
-      border-color: transparent;
-      background: rgb(from var(--main-text-color) r g b / 0.07);
-    }
-  }
-
   &.animate {
     transition:
       transform 0.3s ease,
@@ -106,18 +94,25 @@
     cursor: pointer;
     z-index: var(--zindex-tab-name);
     padding: 1px 2px;
-    opacity: 1;
-    transition: opacity 0.1s ease;
   }
 
   .close {
-    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+body:not(.nohover) .tab:hover {
+  & + .tab::after,
+  &::after {
+    content: none;
   }
 
-  &:hover .close {
-    opacity: 1;
-    backdrop-filter: blur(3px);
-
+  .tab-inner {
+    border-color: transparent;
+    background: rgb(from var(--main-text-color) r g b / 0.07);
+  }
+  .close {
+    visibility: visible;
     &:hover {
       color: var(--main-text-color);
     }

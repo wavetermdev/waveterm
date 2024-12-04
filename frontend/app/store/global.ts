@@ -624,6 +624,11 @@ function createTab() {
     getApi().createTab();
 }
 
+function setActiveTab(tabId: string) {
+    document.body.classList.add("nohover");
+    getApi().setActiveTab(tabId);
+}
+
 export {
     atoms,
     counterInc,
@@ -655,6 +660,7 @@ export {
     removeFlashError,
     removeNotification,
     removeNotificationById,
+    setActiveTab,
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,
