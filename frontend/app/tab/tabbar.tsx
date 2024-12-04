@@ -433,6 +433,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     };
 
+    //            } else if ((tabIndex > pinnedTabCount || (tabIndex === 1 && pinnedTabCount === 1)) && isPinned) {
+
     const setUpdatedTabsDebounced = useCallback(
         debounce(300, (tabIndex: number, tabIds: string[], pinnedTabIds: Set<string>) => {
             console.log(
@@ -452,12 +454,14 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             const isPinned = pinnedTabIds.has(draggedTabId);
             if (tabIndex <= pinnedTabCount && !isPinned) {
                 pinnedTabIds.add(draggedTabId);
-            } else if (tabIndex > pinnedTabCount && isPinned) {
+            } else if ((tabIndex > pinnedTabCount || (tabIndex === 1 && pinnedTabCount === 1)) && isPinned) {
                 pinnedTabIds.delete(draggedTabId);
             }
-            pinnedTabCount = pinnedTabIds.size;
-            console.log("updated pinnedTabIds", pinnedTabIds, tabIds);
-            setPinnedTabIds(pinnedTabIds);
+            if (pinnedTabCount != pinnedTabIds.size) {
+                console.log("updated pinnedTabIds", pinnedTabIds, tabIds);
+                setPinnedTabIds(pinnedTabIds);
+                pinnedTabCount = pinnedTabIds.size;
+            }
             // Reset dragging state
             setDraggingTab(null);
             // Update workspace tab ids
