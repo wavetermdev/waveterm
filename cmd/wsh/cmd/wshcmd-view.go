@@ -88,7 +88,7 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 			Magnified: viewMagnified,
 		}
-		if cmd.Use == "edit" {
+		if cmdName == "edit" {
 			wshCmd.BlockDef.Meta[waveobj.MetaKey_Edit] = true
 		}
 		if conn != "" {
