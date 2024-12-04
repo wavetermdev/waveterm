@@ -454,7 +454,39 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords
 		}
 	})
 	conn.FireConnChangeEvent()
-	return err
+	if err != nil {
+		return err
+	}
+
+	// logic for saving connection and potential flags (we only save once a connection has been made successfully)
+	// at the moment, identity files is the only saved flag
+	var identityFiles []string
+	existingConfig := wconfig.ReadFullConfig()
+	existingConnection, ok := existingConfig.Connections[conn.GetName()]
+	if ok {
+		identityFiles = existingConnection.SshIdentityFile
+	}
+	if err != nil {
+		// i do not consider this a critical failure
+		log.Printf("config read error: unable to save connection %s: %v", conn.GetName(), err)
+	}
+
+	meta := make(map[string]any)
+	if connFlags.SshIdentityFile != nil {
+		for _, identityFile := range connFlags.SshIdentityFile {
+			if utilfn.ContainsStr(identityFiles, identityFile) {
+				continue
+			}
+			identityFiles = append(identityFiles, connFlags.SshIdentityFile...)
+		}
+		meta["ssh:identityfile"] = identityFiles
+	}
+	err = wconfig.SetConnectionsConfigValue(conn.GetName(), meta)
+	if err != nil {
+		// i do not consider this a critical failure
+		log.Printf("config write error: unable to save connection %s: %v", conn.GetName(), err)
+	}
+	return nil
 }
 
 func (conn *SSHConn) WithLock(fn func()) {
@@ -661,6 +693,9 @@ func GetConnectionsList() ([]string, error) {
 			hasConnected = append(hasConnected, stat.Connection)
 		}
 	}
+
+	fromInternal := GetConnectionsFromInternalConfig()
+
 	fromConfig, err := GetConnectionsFromConfig()
 	if err != nil {
 		return nil, err
@@ -670,7 +705,7 @@ func GetConnectionsList() ([]string, error) {
 	alreadyUsed := make(map[string]struct{})
 	var connList []string
 
-	for _, subList := range [][]string{currentlyRunning, hasConnected, fromConfig} {
+	for _, subList := range [][]string{currentlyRunning, hasConnected, fromInternal, fromConfig} {
 		for _, pattern := range subList {
 			if _, used := alreadyUsed[pattern]; !used {
 				connList = append(connList, pattern)
@@ -680,6 +715,15 @@ func GetConnectionsList() ([]string, error) {
 	}
 
 	return connList, nil
+}
+
+func GetConnectionsFromInternalConfig() []string {
+	var internalNames []string
+	config := wconfig.ReadFullConfig()
+	for internalName := range config.Connections {
+		internalNames = append(internalNames, internalName)
+	}
+	return internalNames
 }
 
 func GetConnectionsFromConfig() ([]string, error) {
