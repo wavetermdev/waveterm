@@ -110,7 +110,13 @@ const ColorAndIconSelector = memo(
 
         return (
             <div className="color-icon-selector">
-                <Input ref={inputRef} className="vertical-padding-3" onChange={onTitleChange} value={title} autoFocus />
+                <Input
+                    ref={inputRef}
+                    className={clsx("vertical-padding-3", { error: title === "" })}
+                    onChange={onTitleChange}
+                    value={title}
+                    autoFocus
+                />
                 <ColorSelector
                     selectedColor={color}
                     colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
@@ -262,7 +268,9 @@ const WorkspaceSwitcherItem = ({
 
     const setWorkspace = useCallback((newWorkspace: Workspace) => {
         fireAndForget(async () => {
-            setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
+            if (newWorkspace.name != "") {
+                setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
+            }
             setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
         });
     }, []);

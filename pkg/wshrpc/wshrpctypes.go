@@ -608,10 +608,13 @@ type ActivityUpdate struct {
 	NewTab        int                   `json:"newtab,omitempty"`
 	NumBlocks     int                   `json:"numblocks,omitempty"`
 	NumWindows    int                   `json:"numwindows,omitempty"`
+	NumWS         int                   `json:"numws,omitempty"`
+	NumWSNamed    int                   `json:"numwsnamed,omitempty"`
 	NumSSHConn    int                   `json:"numsshconn,omitempty"`
 	NumWSLConn    int                   `json:"numwslconn,omitempty"`
 	NumMagnify    int                   `json:"nummagnify,omitempty"`
 	NumPanics     int                   `json:"numpanics,omitempty"`
+	NumAIReqs     int                   `json:"numaireqs,omitempty"`
 	Startup       int                   `json:"startup,omitempty"`
 	Shutdown      int                   `json:"shutdown,omitempty"`
 	SetTabTheme   int                   `json:"settabtheme,omitempty"`

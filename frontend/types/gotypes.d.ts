@@ -22,10 +22,13 @@ declare global {
         newtab?: number;
         numblocks?: number;
         numwindows?: number;
+        numws?: number;
+        numwsnamed?: number;
         numsshconn?: number;
         numwslconn?: number;
         nummagnify?: number;
         numpanics?: number;
+        numaireqs?: number;
         startup?: number;
         shutdown?: number;
         settabtheme?: number;
@@ -1127,9 +1130,9 @@ declare global {
 
     // waveobj.Workspace
     type Workspace = WaveObj & {
-        name: string;
-        icon: string;
-        color: string;
+        name?: string;
+        icon?: string;
+        color?: string;
         tabids: string[];
         pinnedtabids: string[];
         activetabid: string;
