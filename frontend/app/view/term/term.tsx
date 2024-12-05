@@ -718,21 +718,17 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
-    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
-    const connName = blockData.meta?.connection;
-    const connConfig = fullConfig.connections;
-    const globalFontSize = jotai.useAtomValue(model.fontSizeAtom);
-    const globalTermThemeName = jotai.useAtomValue(model.termThemeNameAtom);
-    const termFontSize = connConfig[connName]?.["term:fontsize"] ?? globalFontSize;
-    const termThemeName = connConfig[connName]?.["term:theme"] ?? globalTermThemeName;
     let termMode = blockData?.meta?.["term:mode"] ?? "term";
     if (termMode != "term" && termMode != "vdom") {
         termMode = "term";
     }
     const termModeRef = React.useRef(termMode);
 
+    const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
+
     React.useEffect(() => {
-        const termFontFamily = connConfig[connName]?.["term:fontfamily"] ?? termSettings?.["term:fontfamily"] ?? "Hack";
+        const fullConfig = globalStore.get(atoms.fullConfigAtom);
+        const termThemeName = globalStore.get(model.termThemeNameAtom);
         const [termTheme, _] = computeTheme(fullConfig, termThemeName);
         let termScrollback = 1000;
         if (termSettings?.["term:scrollback"]) {
@@ -754,7 +750,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             {
                 theme: termTheme,
                 fontSize: termFontSize,
-                fontFamily: termFontFamily,
+                fontFamily: termSettings?.["term:fontfamily"] ?? "Hack",
                 drawBoldTextInBrightColors: false,
                 fontWeight: "normal",
                 fontWeightBold: "bold",
@@ -788,7 +784,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             termWrap.dispose();
             rszObs.disconnect();
         };
-    }, [blockId, termSettings, connName, fullConfig, termFontSize, termThemeName]);
+    }, [blockId, termSettings, termFontSize]);
 
     React.useEffect(() => {
         if (termModeRef.current == "vdom" && termMode == "term") {
