@@ -18,6 +18,10 @@
         opacity: 1;
     }
 
+	&.no-action {
+		cursor: default;
+	}
+
     &.disabled {
         cursor: default;
         opacity: 0.45 !important;

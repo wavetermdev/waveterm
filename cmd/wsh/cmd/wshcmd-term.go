@@ -55,18 +55,19 @@ func termRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if err != nil {
 		return fmt.Errorf("getting absolute path: %w", err)
 	}
-	createBlockData := wshrpc.CommandCreateBlockData{
-		BlockDef: &waveobj.BlockDef{
-			Meta: map[string]interface{}{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_CmdCwd:     cwd,
-				waveobj.MetaKey_Controller: "shell",
-			},
-		},
-		Magnified: termMagnified,
+	createMeta := map[string]any{
+		waveobj.MetaKey_View:       "term",
+		waveobj.MetaKey_CmdCwd:     cwd,
+		waveobj.MetaKey_Controller: "shell",
 	}
 	if RpcContext.Conn != "" {
-		createBlockData.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn
+		createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn
+	}
+	createBlockData := wshrpc.CommandCreateBlockData{
+		BlockDef: &waveobj.BlockDef{
+			Meta: createMeta,
+		},
+		Magnified: termMagnified,
 	}
 	oref, err := wshclient.CreateBlockCommand(RpcClient, createBlockData, nil)
 	if err != nil {

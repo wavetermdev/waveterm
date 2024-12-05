@@ -20,7 +20,6 @@ var viewMagnified bool
 var viewCmd = &cobra.Command{
 	Use:     "view {file|directory|URL}",
 	Short:   "preview/edit a file or directory",
-	Args:    cobra.ExactArgs(1),
 	RunE:    viewRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -28,7 +27,6 @@ var viewCmd = &cobra.Command{
 var editCmd = &cobra.Command{
 	Use:     "edit {file}",
 	Short:   "edit a file",
-	Args:    cobra.ExactArgs(1),
 	RunE:    viewRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -40,9 +38,18 @@ func init() {
 }
 
 func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	cmdName := cmd.Name()
 	defer func() {
-		sendActivity("view", rtnErr == nil)
+		sendActivity(cmdName, rtnErr == nil)
 	}()
+	if len(args) == 0 {
+		OutputHelpMessage(cmd)
+		return fmt.Errorf("no arguments.  wsh %s requires a file or URL as an argument argument", cmdName)
+	}
+	if len(args) > 1 {
+		OutputHelpMessage(cmd)
+		return fmt.Errorf("too many arguments.  wsh %s requires exactly one argument", cmdName)
+	}
 	fileArg := args[0]
 	conn := RpcContext.Conn
 	var wshCmd *wshrpc.CommandCreateBlockData
@@ -81,7 +88,7 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 			Magnified: viewMagnified,
 		}
-		if cmd.Use == "edit" {
+		if cmdName == "edit" {
 			wshCmd.BlockDef.Meta[waveobj.MetaKey_Edit] = true
 		}
 		if conn != "" {

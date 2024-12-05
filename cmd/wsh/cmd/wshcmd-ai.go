@@ -19,7 +19,6 @@ import (
 var aiCmd = &cobra.Command{
 	Use:                   "ai [-] [message...]",
 	Short:                 "Send a message to an AI block",
-	Args:                  cobra.MinimumNArgs(1),
 	RunE:                  aiRun,
 	PreRunE:               preRunSetupRpcClient,
 	DisableFlagsInUseLine: true,
@@ -52,6 +51,11 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("ai", rtnErr == nil)
 	}()
+
+	if len(args) == 0 {
+		OutputHelpMessage(cmd)
+		return fmt.Errorf("no message provided")
+	}
 
 	var stdinUsed bool
 	var message strings.Builder

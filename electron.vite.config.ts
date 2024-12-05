@@ -30,13 +30,6 @@ export default defineConfig({
             "process.env.WS_NO_BUFFER_UTIL": "true",
             "process.env.WS_NO_UTF_8_VALIDATE": "true",
         },
-        css: {
-            preprocessorOptions: {
-                scss: {
-                    api: "modern-compiler", // or "modern"
-                },
-            },
-        },
     },
     preload: {
         root: ".",

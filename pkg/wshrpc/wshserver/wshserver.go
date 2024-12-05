@@ -231,10 +231,7 @@ func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) 
 }
 
 func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.CommandControllerResyncData) error {
-	if data.ForceRestart {
-		blockcontroller.StopBlockController(data.BlockId)
-	}
-	return blockcontroller.ResyncController(ctx, data.TabId, data.BlockId, data.RtOpts)
+	return blockcontroller.ResyncController(ctx, data.TabId, data.BlockId, data.RtOpts, data.ForceRestart)
 }
 
 func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
@@ -701,11 +698,16 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	if err != nil {
 		return nil, fmt.Errorf("error finding window for tab: %w", err)
 	}
+	fileList, err := filestore.WFS.ListFiles(ctx, blockId)
+	if err != nil {
+		return nil, fmt.Errorf("error listing blockfiles: %w", err)
+	}
 	return &wshrpc.BlockInfoData{
 		BlockId:     blockId,
 		TabId:       tabId,
 		WorkspaceId: workspaceId,
 		Block:       blockData,
+		Files:       fileList,
 	}, nil
 }
 
