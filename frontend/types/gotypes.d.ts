@@ -280,6 +280,7 @@ declare global {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "display:hidden"?: boolean;
+        "display:order"?: number;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;

@@ -455,7 +455,8 @@ type ConnKeywords struct {
 	ConnWshEnabled          *bool `json:"conn:wshenabled,omitempty"`
 	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
 
-	Hidden *bool `json:"display:hidden,omitempty"`
+	DisplayHidden *bool   `json:"display:hidden,omitempty"`
+	DisplayOrder  float32 `json:"display:order,omitempty"`
 
 	TermClear      bool    `json:"term:*,omitempty"`
 	TermFontSize   float64 `json:"term:fontsize,omitempty"`

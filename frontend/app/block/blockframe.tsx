@@ -781,9 +781,18 @@ const ChangeConnectionBlockModal = React.memo(
                 });
             },
         };
+        const sortedRemoteItems = remoteItems.sort(
+            (itemA: SuggestionConnectionItem, itemB: SuggestionConnectionItem) => {
+                const connNameA = itemA.value;
+                const connNameB = itemB.value;
+                const valueA = connectionsConfig[connNameA]?.["display:order"] ?? 0;
+                const valueB = connectionsConfig[connNameB]?.["display:order"] ?? 0;
+                return valueA - valueB;
+            }
+        );
         const remoteSuggestions: SuggestionConnectionScope = {
             headerText: "Remote",
-            items: [...remoteItems, connectionsEditItem],
+            items: [...sortedRemoteItems, connectionsEditItem],
         };
 
         let suggestions: Array<SuggestionsType> = [];
