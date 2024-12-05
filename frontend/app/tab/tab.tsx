@@ -7,7 +7,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { clsx } from "clsx";
-import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
@@ -144,47 +144,50 @@ const Tab = memo(
                 event.stopPropagation();
             };
 
-            function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-                e.preventDefault();
-                let menu: ContextMenuItem[] = [
-                    { label: isPinned ? "Unpin Tab" : "Pin Tab", click: onPinChange },
-                    { label: "Rename Tab", click: () => handleRenameTab(null) },
-                    { label: "Copy TabId", click: () => navigator.clipboard.writeText(id) },
-                    { type: "separator" },
-                ];
-                const fullConfig = globalStore.get(atoms.fullConfigAtom);
-                const bgPresets: string[] = [];
-                for (const key in fullConfig?.presets ?? {}) {
-                    if (key.startsWith("bg@")) {
-                        bgPresets.push(key);
-                    }
-                }
-                bgPresets.sort((a, b) => {
-                    const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
-                    const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
-                    return aOrder - bOrder;
-                });
-                if (bgPresets.length > 0) {
-                    const submenu: ContextMenuItem[] = [];
-                    const oref = makeORef("tab", id);
-                    for (const presetName of bgPresets) {
-                        const preset = fullConfig.presets[presetName];
-                        if (preset == null) {
-                            continue;
+            const handleContextMenu = useCallback(
+                (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+                    e.preventDefault();
+                    let menu: ContextMenuItem[] = [
+                        { label: isPinned ? "Unpin Tab" : "Pin Tab", click: () => onPinChange() },
+                        { label: "Rename Tab", click: () => handleRenameTab(null) },
+                        { label: "Copy TabId", click: () => navigator.clipboard.writeText(id) },
+                        { type: "separator" },
+                    ];
+                    const fullConfig = globalStore.get(atoms.fullConfigAtom);
+                    const bgPresets: string[] = [];
+                    for (const key in fullConfig?.presets ?? {}) {
+                        if (key.startsWith("bg@")) {
+                            bgPresets.push(key);
                         }
-                        submenu.push({
-                            label: preset["display:name"] ?? presetName,
-                            click: () => {
-                                ObjectService.UpdateObjectMeta(oref, preset);
-                                RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
-                            },
-                        });
                     }
-                    menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
-                }
-                menu.push({ label: "Close Tab", click: () => onClose(null) });
-                ContextMenuModel.showContextMenu(menu, e);
-            }
+                    bgPresets.sort((a, b) => {
+                        const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
+                        const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
+                        return aOrder - bOrder;
+                    });
+                    if (bgPresets.length > 0) {
+                        const submenu: ContextMenuItem[] = [];
+                        const oref = makeORef("tab", id);
+                        for (const presetName of bgPresets) {
+                            const preset = fullConfig.presets[presetName];
+                            if (preset == null) {
+                                continue;
+                            }
+                            submenu.push({
+                                label: preset["display:name"] ?? presetName,
+                                click: () => {
+                                    ObjectService.UpdateObjectMeta(oref, preset);
+                                    RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
+                                },
+                            });
+                        }
+                        menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
+                    }
+                    menu.push({ label: "Close Tab", click: () => onClose(null) });
+                    ContextMenuModel.showContextMenu(menu, e);
+                },
+                [onPinChange, handleRenameTab, id, onClose, isPinned]
+            );
 
             return (
                 <div
