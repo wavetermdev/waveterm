@@ -574,12 +574,15 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         deleteLayoutModelForTab(tabId);
     };
 
-    const handlePinChange = (tabId: string, pinned: boolean) => {
-        console.log("handlePinChange", tabId, pinned);
-        fireAndForget(async () => {
-            await WorkspaceService.ChangeTabPinning(workspace.oid, tabId, pinned);
-        });
-    };
+    const handlePinChange = useCallback(
+        (tabId: string, pinned: boolean) => {
+            console.log("handlePinChange", tabId, pinned);
+            fireAndForget(async () => {
+                await WorkspaceService.ChangeTabPinning(workspace.oid, tabId, pinned);
+            });
+        },
+        [workspace]
+    );
 
     const handleTabLoaded = useCallback((tabId: string) => {
         setTabsLoaded((prev) => {
