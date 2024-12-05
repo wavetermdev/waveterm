@@ -41,7 +41,7 @@ type InitialLoadDataType = {
     heldData: Uint8Array[];
 };
 
-class TermViewModel {
+class TermViewModel implements ViewModel {
     viewType: string;
     nodeModel: BlockNodeModel;
     connected: boolean;
@@ -54,6 +54,7 @@ class TermViewModel {
     viewText: jotai.Atom<HeaderElem[]>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
+    filterOutNowsh?: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
     termWshClient: TermWshClient;
     vdomBlockId: jotai.Atom<string>;
@@ -196,6 +197,7 @@ class TermViewModel {
             }
             return true;
         });
+        this.filterOutNowsh = jotai.atom(false);
         this.termThemeNameAtom = useBlockAtom(blockId, "termthemeatom", () => {
             return jotai.atom<string>((get) => {
                 return get(getOverrideConfigAtom(this.blockId, "term:theme")) ?? DefaultTermTheme;

@@ -583,6 +583,8 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusMap = new Map<string, ConnStatus>();
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
         const connectionsConfig = fullConfig.connections;
+        let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) || true;
+
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
             if (conn.activeconnnum > maxActiveConnNum) {
@@ -653,7 +655,12 @@ const ChangeConnectionBlockModal = React.memo(
             if (conn === connSelected) {
                 createNew = false;
             }
-            if (conn.includes(connSelected) && connectionsConfig[conn]?.["display:hidden"] != true) {
+            if (
+                conn.includes(connSelected) &&
+                connectionsConfig[conn]?.["display:hidden"] != true &&
+                (connectionsConfig[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
+                // != false is necessary because of defaults
+            ) {
                 filteredList.push(conn);
             }
         }
@@ -662,7 +669,12 @@ const ChangeConnectionBlockModal = React.memo(
             if (conn === connSelected) {
                 createNew = false;
             }
-            if (conn.includes(connSelected) && connectionsConfig[conn]?.["display:hidden"] != true) {
+            if (
+                conn.includes(connSelected) &&
+                connectionsConfig[conn]?.["display:hidden"] != true &&
+                (connectionsConfig[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
+                // != false is necessary because of defaults
+            ) {
                 filteredWslList.push(conn);
             }
         }

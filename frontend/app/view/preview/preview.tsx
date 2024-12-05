@@ -121,6 +121,7 @@ export class PreviewModel implements ViewModel {
     loadableSpecializedView: Atom<Loadable<{ specializedView?: string; errorStr?: string }>>;
     manageConnection: Atom<boolean>;
     connStatus: Atom<ConnStatus>;
+    filterOutNowsh?: Atom<boolean>;
 
     metaFilePath: Atom<string>;
     statFilePath: Atom<Promise<string>>;
@@ -164,6 +165,7 @@ export class PreviewModel implements ViewModel {
         this.manageConnection = atom(true);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.markdownShowToc = atom(false);
+        this.filterOutNowsh = atom(true);
         this.monacoRef = createRef();
         this.viewIcon = atom((get) => {
             const blockData = get(this.blockAtom);
