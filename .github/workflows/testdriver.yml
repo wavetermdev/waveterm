@@ -23,7 +23,7 @@ on:
     workflow_dispatch: null
 
 env:
-    GO_VERSION: "1.22"
+    GO_VERSION: "1.23"
     NODE_VERSION: 22
 
 permissions:
