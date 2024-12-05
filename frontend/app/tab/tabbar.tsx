@@ -452,9 +452,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             let pinnedTabCount = pinnedTabIds.size;
             const draggedTabId = draggingTabDataRef.current.tabId;
             const isPinned = pinnedTabIds.has(draggedTabId);
-            if (pinnedTabIds.has(tabIds[tabIndex + 1]) && !isPinned) {
+            const nextTabId = tabIds[tabIndex + 1];
+            const prevTabId = tabIds[tabIndex - 1];
+            if (!isPinned && nextTabId && pinnedTabIds.has(nextTabId)) {
                 pinnedTabIds.add(draggedTabId);
-            } else if (!pinnedTabIds.has(tabIds[tabIndex - 1]) && isPinned) {
+            } else if (isPinned && prevTabId && !pinnedTabIds.has(prevTabId)) {
                 pinnedTabIds.delete(draggedTabId);
             }
             if (pinnedTabCount != pinnedTabIds.size) {
