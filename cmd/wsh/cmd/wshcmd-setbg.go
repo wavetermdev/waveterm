@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,8 +18,12 @@ import (
 )
 
 var setBgCmd = &cobra.Command{
-	Use:     "setbg [--opacity value] [--tile] image-path",
-	Short:   "set background image for a tab",
+	Use:   "setbg [--opacity value] [--tile] (image-path|\"#color\"|color-name)",
+	Short: "set background image or color for a tab",
+	Long: `Set a background image or color for a tab. Colors can be specified as:
+  - A quoted hex value like "#ff0000" (quotes required to prevent # being interpreted as a shell comment)
+  - A CSS color name like "blue" or "forestgreen"
+Or provide a path to a supported image file (jpg, png, gif, webp, or svg).`,
 	RunE:    setBgRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -34,6 +39,21 @@ func init() {
 	setBgCmd.Flags().BoolVar(&setBgTile, "tile", false, "tile the background image instead of cover")
 }
 
+func validateHexColor(color string) error {
+	if !strings.HasPrefix(color, "#") {
+		return fmt.Errorf("color must start with #")
+	}
+	colorHex := color[1:]
+	if len(colorHex) != 6 && len(colorHex) != 8 {
+		return fmt.Errorf("color must be in #RRGGBB or #RRGGBBAA format")
+	}
+	_, err := hex.DecodeString(colorHex)
+	if err != nil {
+		return fmt.Errorf("invalid hex color: %v", err)
+	}
+	return nil
+}
+
 func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("setbg", rtnErr == nil)
@@ -41,45 +61,56 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	if len(args) != 1 {
 		OutputHelpMessage(cmd)
-		return fmt.Errorf("setbg requires a path to an image file")
+		return fmt.Errorf("setbg requires an image path or color value")
 	}
 
 	if setBgOpacity < 0 || setBgOpacity > 1 {
 		return fmt.Errorf("opacity must be between 0.0 and 1.0")
 	}
 
-	// Get absolute path and escape it for URL
-	imgPath := args[0]
-	absPath, err := filepath.Abs(wavebase.ExpandHomeDirSafe(imgPath))
-	if err != nil {
-		return fmt.Errorf("resolving image path: %v", err)
-	}
+	var bgStyle string
+	input := args[0]
 
-	fileInfo, err := os.Stat(absPath)
-	if err != nil {
-		return fmt.Errorf("cannot access image file: %v", err)
-	}
-	if fileInfo.IsDir() {
-		return fmt.Errorf("path is a directory, not an image file")
-	}
-
-	mimeType := utilfn.DetectMimeType(absPath, fileInfo, true)
-	switch mimeType {
-	case "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml":
-		// Valid image type
-	default:
-		return fmt.Errorf("file does not appear to be a valid image (detected type: %s)", mimeType)
-	}
-
-	// Create URL-safe path
-	escapedPath := strings.ReplaceAll(absPath, "'", "\\'")
-
-	// Construct background style
-	bgStyle := fmt.Sprintf("url('%s')", escapedPath)
-	if setBgTile {
-		bgStyle += " repeat"
+	// Check for hex color
+	if strings.HasPrefix(input, "#") {
+		if err := validateHexColor(input); err != nil {
+			return err
+		}
+		bgStyle = input
+	} else if CssColorNames[strings.ToLower(input)] {
+		// Handle CSS color name
+		bgStyle = strings.ToLower(input)
 	} else {
-		bgStyle += " center/cover no-repeat"
+		// Handle image input
+		absPath, err := filepath.Abs(wavebase.ExpandHomeDirSafe(input))
+		if err != nil {
+			return fmt.Errorf("resolving image path: %v", err)
+		}
+
+		fileInfo, err := os.Stat(absPath)
+		if err != nil {
+			return fmt.Errorf("cannot access image file: %v", err)
+		}
+		if fileInfo.IsDir() {
+			return fmt.Errorf("path is a directory, not an image file")
+		}
+
+		mimeType := utilfn.DetectMimeType(absPath, fileInfo, true)
+		switch mimeType {
+		case "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml":
+			// Valid image type
+		default:
+			return fmt.Errorf("file does not appear to be a valid image (detected type: %s)", mimeType)
+		}
+
+		// Create URL-safe path
+		escapedPath := strings.ReplaceAll(absPath, "'", "\\'")
+		bgStyle = fmt.Sprintf("url('%s')", escapedPath)
+		if setBgTile {
+			bgStyle += " repeat"
+		} else {
+			bgStyle += " center/cover no-repeat"
+		}
 	}
 
 	// Create metadata
