@@ -15,6 +15,8 @@ import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import {
     atoms,
+    createBlock,
+    getApi,
     getBlockComponentModel,
     getConnStatusAtom,
     getHostName,
@@ -182,6 +184,9 @@ const BlockFrame_Header = ({
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+    const connName = blockData?.meta?.connection;
+    const allSettings = jotai.useAtomValue(atoms.fullConfigAtom);
+    const wshEnabled = allSettings?.connections?.[connName]?.["conn:wshenabled"] ?? true;
 
     React.useEffect(() => {
         if (!magnified || preview || prevMagifiedState.current) {
@@ -239,6 +244,11 @@ const BlockFrame_Header = ({
             </div>
         );
     }
+    const wshInstallButton: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: "link-slash",
+        title: "wsh is not installed for this connection",
+    };
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
@@ -255,6 +265,9 @@ const BlockFrame_Header = ({
                     connection={blockData?.meta?.connection}
                     changeConnModalAtom={changeConnModalAtom}
                 />
+            )}
+            {manageConnection && !wshEnabled && (
+                <IconButton decl={wshInstallButton} className="block-frame-header-iconbutton" />
             )}
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
             <div className="block-frame-end-icons">{endIconsElem}</div>
@@ -568,6 +581,10 @@ const ChangeConnectionBlockModal = React.memo(
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
+        const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+        const connectionsConfig = fullConfig.connections;
+        let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) || true;
+
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
             if (conn.activeconnnum > maxActiveConnNum) {
@@ -638,7 +655,12 @@ const ChangeConnectionBlockModal = React.memo(
             if (conn === connSelected) {
                 createNew = false;
             }
-            if (conn.includes(connSelected)) {
+            if (
+                conn.includes(connSelected) &&
+                connectionsConfig[conn]?.["display:hidden"] != true &&
+                (connectionsConfig[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
+                // != false is necessary because of defaults
+            ) {
                 filteredList.push(conn);
             }
         }
@@ -647,7 +669,12 @@ const ChangeConnectionBlockModal = React.memo(
             if (conn === connSelected) {
                 createNew = false;
             }
-            if (conn.includes(connSelected)) {
+            if (
+                conn.includes(connSelected) &&
+                connectionsConfig[conn]?.["display:hidden"] != true &&
+                (connectionsConfig[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
+                // != false is necessary because of defaults
+            ) {
                 filteredWslList.push(conn);
             }
         }
@@ -734,9 +761,38 @@ const ChangeConnectionBlockModal = React.memo(
             };
             return item;
         });
+        const connectionsEditItem: SuggestionConnectionItem = {
+            status: "disconnected",
+            icon: "gear",
+            iconColor: "var(--grey-text-color",
+            value: "Edit Connections",
+            label: "Edit Connections",
+            onSelect: () => {
+                util.fireAndForget(async () => {
+                    globalStore.set(changeConnModalAtom, false);
+                    const path = `${getApi().getConfigDir()}/connections.json`;
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "preview",
+                            file: path,
+                        },
+                    };
+                    await createBlock(blockDef, false, true);
+                });
+            },
+        };
+        const sortedRemoteItems = remoteItems.sort(
+            (itemA: SuggestionConnectionItem, itemB: SuggestionConnectionItem) => {
+                const connNameA = itemA.value;
+                const connNameB = itemB.value;
+                const valueA = connectionsConfig[connNameA]?.["display:order"] ?? 0;
+                const valueB = connectionsConfig[connNameB]?.["display:order"] ?? 0;
+                return valueA - valueB;
+            }
+        );
         const remoteSuggestions: SuggestionConnectionScope = {
             headerText: "Remote",
-            items: remoteItems,
+            items: [...sortedRemoteItems, connectionsEditItem],
         };
 
         let suggestions: Array<SuggestionsType> = [];

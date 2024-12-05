@@ -246,6 +246,21 @@ function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
     return useAtomValue(getBlockMetaKeyAtom(blockId, key));
 }
 
+function getConnConfigKeyAtom<T extends keyof ConnKeywords>(connName: string, key: T): Atom<ConnKeywords[T]> {
+    let connCache = getSingleConnAtomCache(connName);
+    const keyAtomName = "#conn-" + key;
+    let keyAtom = connCache.get(keyAtomName);
+    if (keyAtom != null) {
+        return keyAtom;
+    }
+    keyAtom = atom((get) => {
+        let fullConfig = get(atoms.fullConfigAtom);
+        return fullConfig.connections[connName]?.[key];
+    });
+    connCache.set(keyAtomName, keyAtom);
+    return keyAtom;
+}
+
 const settingsAtomCache = new Map<string, Atom<any>>();
 
 function getOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): Atom<SettingsType[T]> {
@@ -260,6 +275,13 @@ function getOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, ke
         const metaKeyVal = get(blockMetaKeyAtom);
         if (metaKeyVal != null) {
             return metaKeyVal;
+        }
+        const connNameAtom = getBlockMetaKeyAtom(blockId, "connection");
+        const connName = get(connNameAtom);
+        const connConfigKeyAtom = getConnConfigKeyAtom(connName, key as any);
+        const connConfigKeyVal = get(connConfigKeyAtom);
+        if (connConfigKeyVal != null) {
+            return connConfigKeyVal;
         }
         const settingsKeyAtom = getSettingsKeyAtom(key);
         const settingsVal = get(settingsKeyAtom);
@@ -318,6 +340,15 @@ function getSingleBlockAtomCache(blockId: string): Map<string, Atom<any>> {
     if (blockCache == null) {
         blockCache = new Map<string, Atom<any>>();
         blockAtomCache.set(blockId, blockCache);
+    }
+    return blockCache;
+}
+
+function getSingleConnAtomCache(connName: string): Map<string, Atom<any>> {
+    let blockCache = blockAtomCache.get(connName);
+    if (blockCache == null) {
+        blockCache = new Map<string, Atom<any>>();
+        blockAtomCache.set(connName, blockCache);
     }
     return blockCache;
 }

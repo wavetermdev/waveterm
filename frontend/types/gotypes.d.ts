@@ -277,8 +277,14 @@ declare global {
 
     // wshrpc.ConnKeywords
     type ConnKeywords = {
-        wshenabled?: boolean;
-        askbeforewshinstall?: boolean;
+        "conn:wshenabled"?: boolean;
+        "conn:askbeforewshinstall"?: boolean;
+        "display:hidden"?: boolean;
+        "display:order"?: number;
+        "term:*"?: boolean;
+        "term:fontsize"?: number;
+        "term:fontfamily"?: string;
+        "term:theme"?: string;
         "ssh:user"?: string;
         "ssh:hostname"?: string;
         "ssh:port"?: string;

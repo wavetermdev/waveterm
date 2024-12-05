@@ -91,7 +91,7 @@ function convertWaveEventToDataItem(event: WaveEvent): DataItem {
     return dataItem;
 }
 
-class SysinfoViewModel {
+class SysinfoViewModel implements ViewModel {
     viewType: string;
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
@@ -109,6 +109,7 @@ class SysinfoViewModel {
     metrics: jotai.Atom<string[]>;
     connection: jotai.Atom<string>;
     manageConnection: jotai.Atom<boolean>;
+    filterOutNowsh: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
     plotMetaAtom: jotai.PrimitiveAtom<Map<string, TimeSeriesMeta>>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
@@ -176,6 +177,7 @@ class SysinfoViewModel {
         });
         this.plotMetaAtom = jotai.atom(new Map(Object.entries(DefaultPlotMeta)));
         this.manageConnection = jotai.atom(true);
+        this.filterOutNowsh = jotai.atom(true);
         this.loadingAtom = jotai.atom(true);
         this.numPoints = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
