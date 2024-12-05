@@ -45,6 +45,22 @@ func DBGetCount[T waveobj.WaveObj](ctx context.Context) (int, error) {
 	})
 }
 
+// returns (num named workespaces, num total workspaces, error)
+func DBGetWSCounts(ctx context.Context) (int, int, error) {
+	var named, total int
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT count(*) FROM db_workspace WHERE COALESCE(json_extract(data, '$.name'), '') <> ''`
+		named = tx.GetInt(query)
+		query = `SELECT count(*) FROM db_workspace`
+		total = tx.GetInt(query)
+		return nil
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	return named, total, nil
+}
+
 var viewRe = regexp.MustCompile(`^[a-z0-9]{1,20}$`)
 
 func DBGetBlockViewCounts(ctx context.Context) (map[string]int, error) {

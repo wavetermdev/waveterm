@@ -39,6 +39,8 @@ type TelemetryData struct {
 	NumTabs       int                          `json:"numtabs"`
 	NumBlocks     int                          `json:"numblocks,omitempty"`
 	NumWindows    int                          `json:"numwindows,omitempty"`
+	NumWS         int                          `json:"numws,omitempty"`
+	NumWSNamed    int                          `json:"numwsnamed,omitempty"`
 	NumSSHConn    int                          `json:"numsshconn,omitempty"`
 	NumWSLConn    int                          `json:"numwslconn,omitempty"`
 	NumMagnify    int                          `json:"nummagnify,omitempty"`
@@ -46,6 +48,7 @@ type TelemetryData struct {
 	NumStartup    int                          `json:"numstartup,omitempty"`
 	NumShutdown   int                          `json:"numshutdown,omitempty"`
 	NumPanics     int                          `json:"numpanics,omitempty"`
+	NumAIReqs     int                          `json:"numaireqs,omitempty"`
 	SetTabTheme   int                          `json:"settabtheme,omitempty"`
 	Displays      []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
 	Renderers     map[string]int               `json:"renderers,omitempty"`
@@ -116,6 +119,7 @@ func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 		tdata.SetTabTheme += update.SetTabTheme
 		tdata.NumMagnify += update.NumMagnify
 		tdata.NumPanics += update.NumPanics
+		tdata.NumAIReqs += update.NumAIReqs
 		if update.NumTabs > 0 {
 			tdata.NumTabs = update.NumTabs
 		}
@@ -124,6 +128,12 @@ func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 		}
 		if update.NumWindows > 0 {
 			tdata.NumWindows = update.NumWindows
+		}
+		if update.NumWS > 0 {
+			tdata.NumWS = update.NumWS
+		}
+		if update.NumWSNamed > 0 {
+			tdata.NumWSNamed = update.NumWSNamed
 		}
 		if update.NumSSHConn > 0 && update.NumSSHConn > tdata.NumSSHConn {
 			tdata.NumSSHConn = update.NumSSHConn
