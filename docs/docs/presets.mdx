@@ -181,6 +181,30 @@ Replace image URLs with your own assets. All examples use reduced opacity to wor
 Background images can be specified using URLs or local file paths. While URLs are supported, it's recommended to download and serve images locally for better reliability. For local files, you must use absolute paths or paths starting with `~` (e.g. `~/Downloads/background.png`). The system will automatically rewrite local paths to ensure proper access. We support all common web image formats: PNG, JPEG/JPG, WebP, GIF, and SVG.
 :::
 
+:::tip
+You can use `wsh setbg --print` to help generate the JSON for your background presets. For example:
+
+```bash
+# Preview the metadata for a gradient background
+ wsh setbg --print "#ff0000"
+{
+  "bg:*": true,
+  "bg": "#ff0000",
+  "bg:opacity": 0.5
+}
+
+# Preview a centered logo configuration
+wsh setbg --print --center --opacity 0.3 ~/logo.png
+{
+  "bg:*": true,
+  "bg": "url('/absolute/path/to/logo.png') no-repeat center/auto",
+  "bg:opacity": 0.3
+}
+```
+
+Copy the output and use it as a starting point for your preset configuration, just add the required `display:name` field!
+:::
+
 #### Unset a default value
 
 To unset a default value in a preset, add an override that sets it to an empty string, like `""`.

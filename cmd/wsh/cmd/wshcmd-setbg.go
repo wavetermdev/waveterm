@@ -50,7 +50,7 @@ func init() {
 	setBgCmd.Flags().Float64Var(&setBgOpacity, "opacity", 0.5, "background opacity (0.0-1.0)")
 	setBgCmd.Flags().BoolVar(&setBgTile, "tile", false, "tile the background image")
 	setBgCmd.Flags().BoolVar(&setBgCenter, "center", false, "center the image without scaling")
-	setBgCmd.Flags().StringVar(&setBgSize, "size", "auto", "scale factor for centered images (px, %, or auto)")
+	setBgCmd.Flags().StringVar(&setBgSize, "size", "auto", "size for centered images (px, %, or auto)")
 	setBgCmd.Flags().BoolVar(&setBgClear, "clear", false, "clear the background")
 	setBgCmd.Flags().BoolVar(&setBgPrint, "print", false, "print the metadata without applying it")
 
