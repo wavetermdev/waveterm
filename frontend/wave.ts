@@ -87,11 +87,14 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
 async function reinitWave() {
     console.log("Reinit Wave");
     getApi().sendLog("Reinit Wave");
+
+    // We use this hack to prevent a flicker in the tab bar when switching to a new tab. This class is set in setActiveTab in global.ts. See tab.scss for where this class is used.
     requestAnimationFrame(() => {
         setTimeout(() => {
             document.body.classList.remove("nohover");
-        }, 50);
+        }, 100);
     });
+
     const client = await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedInitOpts.clientId));
     const waveWindow = await WOS.reloadWaveObject<WaveWindow>(WOS.makeORef("window", savedInitOpts.windowId));
     const ws = await WOS.reloadWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));

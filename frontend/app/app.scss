@@ -75,6 +75,10 @@ a.plain-link {
     color: var(--error-color);
 }
 
+.error-color {
+	color: var(--error-color);
+}
+
 /* OverlayScrollbars styling */
 .os-scrollbar {
     --os-handle-bg: var(--scrollbar-thumb-color);

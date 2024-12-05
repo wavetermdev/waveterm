@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 	"syscall"
 	"time"
 
@@ -19,6 +20,7 @@ type ConnInterface interface {
 	KillGraceful(time.Duration)
 	Wait() error
 	Start() error
+	ExitCode() int
 	StdinPipe() (io.WriteCloser, error)
 	StdoutPipe() (io.ReadCloser, error)
 	StderrPipe() (io.ReadCloser, error)
@@ -27,8 +29,18 @@ type ConnInterface interface {
 }
 
 type CmdWrap struct {
-	Cmd *exec.Cmd
+	Cmd      *exec.Cmd
+	WaitOnce *sync.Once
+	WaitErr  error
 	pty.Pty
+}
+
+func MakeCmdWrap(cmd *exec.Cmd, cmdPty pty.Pty) CmdWrap {
+	return CmdWrap{
+		Cmd:      cmd,
+		WaitOnce: &sync.Once{},
+		Pty:      cmdPty,
+	}
 }
 
 func (cw CmdWrap) Kill() {
@@ -36,7 +48,19 @@ func (cw CmdWrap) Kill() {
 }
 
 func (cw CmdWrap) Wait() error {
-	return cw.Cmd.Wait()
+	cw.WaitOnce.Do(func() {
+		cw.WaitErr = cw.Cmd.Wait()
+	})
+	return cw.WaitErr
+}
+
+// only valid once Wait() has returned (or you know Cmd is done)
+func (cw CmdWrap) ExitCode() int {
+	state := cw.Cmd.ProcessState
+	if state == nil {
+		return -1
+	}
+	return state.ExitCode()
 }
 
 func (cw CmdWrap) KillGraceful(timeout time.Duration) {
@@ -95,7 +119,19 @@ type SessionWrap struct {
 	Session  *ssh.Session
 	StartCmd string
 	Tty      pty.Tty
+	WaitOnce *sync.Once
+	WaitErr  error
 	pty.Pty
+}
+
+func MakeSessionWrap(session *ssh.Session, startCmd string, sessionPty pty.Pty) SessionWrap {
+	return SessionWrap{
+		Session:  session,
+		StartCmd: startCmd,
+		Tty:      sessionPty,
+		WaitOnce: &sync.Once{},
+		Pty:      sessionPty,
+	}
 }
 
 func (sw SessionWrap) Kill() {
@@ -107,8 +143,19 @@ func (sw SessionWrap) KillGraceful(timeout time.Duration) {
 	sw.Kill()
 }
 
+func (sw SessionWrap) ExitCode() int {
+	waitErr := sw.WaitErr
+	if waitErr == nil {
+		return -1
+	}
+	return ExitCodeFromWaitErr(waitErr)
+}
+
 func (sw SessionWrap) Wait() error {
-	return sw.Session.Wait()
+	sw.WaitOnce.Do(func() {
+		sw.WaitErr = sw.Session.Wait()
+	})
+	return sw.WaitErr
 }
 
 func (sw SessionWrap) Start() error {

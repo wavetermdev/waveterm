@@ -124,6 +124,10 @@
                     opacity: 0.7;
                     flex-grow: 1;
 
+					&.flex-nogrow {
+						flex-grow: 0;
+					}
+
                     &.preview-filename {
                         direction: rtl;
                         text-align: left;

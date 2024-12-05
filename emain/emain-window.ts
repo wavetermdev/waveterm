@@ -294,8 +294,8 @@ export class WaveBrowserWindow extends BaseWindow {
         await this.queueTabSwitch(tabView, tabInitialized);
     }
 
-    async createTab() {
-        const tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true);
+    async createTab(pinned = false) {
+        const tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true, pinned);
         await this.setActiveTab(tabId, false);
     }
 

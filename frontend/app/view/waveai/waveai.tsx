@@ -186,14 +186,14 @@ export class WaveAiModel implements ViewModel {
                     elemtype: "iconbutton",
                     icon: "globe",
                     title: "Using Remote Antropic API (" + modelName + ")",
-                    disabled: true,
+                    noAction: true,
                 });
             } else if (isCloud) {
                 viewTextChildren.push({
                     elemtype: "iconbutton",
                     icon: "cloud",
                     title: "Using Wave's AI Proxy (gpt-4o-mini)",
-                    disabled: true,
+                    noAction: true,
                 });
             } else {
                 const baseUrl = aiOpts.baseurl ?? "OpenAI Default Endpoint";
@@ -203,14 +203,14 @@ export class WaveAiModel implements ViewModel {
                         elemtype: "iconbutton",
                         icon: "location-dot",
                         title: "Using Local Model @ " + baseUrl + " (" + modelName + ")",
-                        disabled: true,
+                        noAction: true,
                     });
                 } else {
                     viewTextChildren.push({
                         elemtype: "iconbutton",
                         icon: "globe",
                         title: "Using Remote Model @ " + baseUrl + " (" + modelName + ")",
-                        disabled: true,
+                        noAction: true,
                     });
                 }
             }

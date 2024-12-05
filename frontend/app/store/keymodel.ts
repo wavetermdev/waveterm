@@ -99,15 +99,19 @@ function switchBlockInDirection(tabId: string, direction: NavigateDirection) {
     layoutModel.switchNodeFocusInDirection(direction);
 }
 
+function getAllTabs(ws: Workspace): string[] {
+    return [...(ws.pinnedtabids ?? []), ...(ws.tabids ?? [])];
+}
+
 function switchTabAbs(index: number) {
     console.log("switchTabAbs", index);
     const ws = globalStore.get(atoms.workspace);
-    const waveWindow = globalStore.get(atoms.waveWindow);
     const newTabIdx = index - 1;
-    if (newTabIdx < 0 || newTabIdx >= ws.tabids.length) {
+    const tabids = getAllTabs(ws);
+    if (newTabIdx < 0 || newTabIdx >= tabids.length) {
         return;
     }
-    const newActiveTabId = ws.tabids[newTabIdx];
+    const newActiveTabId = tabids[newTabIdx];
     getApi().setActiveTab(newActiveTabId);
 }
 
@@ -116,8 +120,9 @@ function switchTab(offset: number) {
     const ws = globalStore.get(atoms.workspace);
     const curTabId = globalStore.get(atoms.staticTabId);
     let tabIdx = -1;
-    for (let i = 0; i < ws.tabids.length; i++) {
-        if (ws.tabids[i] == curTabId) {
+    const tabids = getAllTabs(ws);
+    for (let i = 0; i < tabids.length; i++) {
+        if (tabids[i] == curTabId) {
             tabIdx = i;
             break;
         }
@@ -125,8 +130,8 @@ function switchTab(offset: number) {
     if (tabIdx == -1) {
         return;
     }
-    const newTabIdx = (tabIdx + offset + ws.tabids.length) % ws.tabids.length;
-    const newActiveTabId = ws.tabids[newTabIdx];
+    const newTabIdx = (tabIdx + offset + tabids.length) % tabids.length;
+    const newActiveTabId = tabids[newTabIdx];
     getApi().setActiveTab(newActiveTabId);
 }
 
@@ -241,7 +246,10 @@ function registerGlobalKeys() {
     });
     globalKeyMap.set("Cmd:w", () => {
         const tabId = globalStore.get(atoms.staticTabId);
-        genericClose(tabId);
+        const ws = globalStore.get(atoms.workspace);
+        if (!ws.pinnedtabids?.includes(tabId)) {
+            genericClose(tabId);
+        }
         return true;
     });
     globalKeyMap.set("Cmd:m", () => {

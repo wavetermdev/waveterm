@@ -21,13 +21,12 @@ var editMagnified bool
 var editorCmd = &cobra.Command{
 	Use:     "editor",
 	Short:   "edit a file (blocks until editor is closed)",
-	Args:    cobra.ExactArgs(1),
 	RunE:    editorRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
 func init() {
-	editCmd.Flags().BoolVarP(&editMagnified, "magnified", "m", false, "open view in magnified mode")
+	editorCmd.Flags().BoolVarP(&editMagnified, "magnified", "m", false, "open view in magnified mode")
 	rootCmd.AddCommand(editorCmd)
 }
 
@@ -35,7 +34,14 @@ func editorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("editor", rtnErr == nil)
 	}()
-
+	if len(args) == 0 {
+		OutputHelpMessage(cmd)
+		return fmt.Errorf("no arguments.  wsh editor requires a file or URL as an argument argument")
+	}
+	if len(args) > 1 {
+		OutputHelpMessage(cmd)
+		return fmt.Errorf("too many arguments.  wsh editor requires exactly one argument")
+	}
 	fileArg := args[0]
 	absFile, err := filepath.Abs(fileArg)
 	if err != nil {

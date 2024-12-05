@@ -145,6 +145,75 @@ wsh editconfig widgets.json
 
 ---
 
+## run
+
+The `run` command creates a new terminal command block and executes a specified command within it. The command can be provided either as arguments after `--` or using the `-c` flag. Unless the `-x` or `-X` flags are passed, commands can be re-executed by pressing `Enter` once the command has finished running.
+
+```bash
+# Run a command specified after --
+wsh run -- ls -la
+
+# Run a command using -c flag
+wsh run -c "ls -la"
+
+# Run with working directory specified
+wsh run --cwd /path/to/dir -- ./script.sh
+
+# Run in magnified mode
+wsh run -m -- make build
+
+# Run and auto-close on successful completion
+wsh run -x -- npm test
+
+# Run and auto-close regardless of exit status
+wsh run -X -- ./long-running-task.sh
+```
+
+The command inherits the current environment variables and working directory by default.
+
+Flags:
+
+- `-m, --magnified` - open the block in magnified mode
+- `-c, --command string` - run a command string in _shell_
+- `-x, --exit` - close block if command exits successfully (stays open if there was an error)
+- `-X, --forceexit` - close block when command exits, regardless of exit status
+- `--delay int` - if using -x/-X, delay in milliseconds before closing block (default 2000)
+- `-p, --paused` - create block in paused state
+- `-a, --append` - append output on command restart instead of clearing
+- `--cwd string` - set working directory for command
+
+Examples:
+
+```bash
+# Run a build command in magnified mode
+wsh run -m -- npm run build
+
+# Execute a script and auto-close after success
+wsh run -x -- ./backup-script.sh
+
+# Run a command in a specific directory
+wsh run --cwd ./project -- make test
+
+# Run a shell command and force close after completion
+wsh run -X -c "find . -name '*.log' -delete"
+
+# Start a command in paused state
+wsh run -p -- ./server --dev
+
+# Run with custom close delay
+wsh run -x --delay 5000 -- ./deployment.sh
+```
+
+When using the `-x` or `-X` flags, the block will automatically close after the command completes. The `-x` flag only closes on successful completion (exit code 0), while `-X` closes regardless of exit status. The `--delay` flag controls how long to wait before closing (default 2000ms).
+
+The `-p` flag creates the block in a paused state, allowing you to review the command before execution.
+
+:::tip
+You can use either `--` followed by your command and arguments, or the `-c` flag with a quoted command string. The `--` method is preferred when you want to preserve argument handling, while `-c` is useful for shell commands with pipes or redirections.
+:::
+
+---
+
 ## deleteblock
 
 ```

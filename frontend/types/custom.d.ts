@@ -154,11 +154,13 @@ declare global {
         elemtype: "iconbutton";
         icon: string | React.ReactNode;
         iconColor?: string;
+        iconSpin?: boolean;
         className?: string;
         title?: string;
         click?: (e: React.MouseEvent<any>) => void;
         longClick?: (e: React.MouseEvent<any>) => void;
         disabled?: boolean;
+        noAction?: boolean;
     };
 
     type HeaderTextButton = {
@@ -173,6 +175,7 @@ declare global {
         text: string;
         ref?: React.MutableRefObject<HTMLDivElement>;
         className?: string;
+        noGrow?: boolean;
         onClick?: (e: React.MouseEvent<any>) => void;
     };
 

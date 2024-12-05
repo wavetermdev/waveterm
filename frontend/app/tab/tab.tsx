@@ -3,8 +3,6 @@
 
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
-import * as services from "@/store/services";
-import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
@@ -12,6 +10,8 @@ import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, 
 import { atoms, globalStore, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { ObjectService } from "../store/services";
+import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
 
 interface TabProps {
@@ -22,11 +22,13 @@ interface TabProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
+    isPinned: boolean;
     tabIds: string[];
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onMouseDown: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
+    onPinChange: () => void;
     onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onMouseLeave: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
 }
@@ -38,6 +40,7 @@ const Tab = memo(
                 id,
                 isActive,
                 isFirst,
+                isPinned,
                 isBeforeActive,
                 isDragging,
                 tabWidth,
@@ -49,10 +52,11 @@ const Tab = memo(
                 onMouseDown,
                 onMouseEnter,
                 onMouseLeave,
+                onPinChange,
             },
             ref
         ) => {
-            const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", id));
+            const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
 
@@ -95,7 +99,7 @@ const Tab = memo(
                 newText = newText || originalName;
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
-                services.ObjectService.UpdateTabName(id, newText);
+                ObjectService.UpdateTabName(id, newText);
                 setTimeout(() => refocusNode(null), 10);
             };
 
@@ -153,7 +157,12 @@ const Tab = memo(
 
             function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
                 e.preventDefault();
-                let menu: ContextMenuItem[] = [];
+                let menu: ContextMenuItem[] = [
+                    { label: isPinned ? "Unpin Tab" : "Pin Tab", click: onPinChange },
+                    { label: "Rename Tab", click: () => handleRenameTab(null) },
+                    { label: "Copy TabId", click: () => navigator.clipboard.writeText(id) },
+                    { type: "separator" },
+                ];
                 const fullConfig = globalStore.get(atoms.fullConfigAtom);
                 const bgPresets: string[] = [];
                 for (const key in fullConfig?.presets ?? {}) {
@@ -166,12 +175,9 @@ const Tab = memo(
                     const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
                     return aOrder - bOrder;
                 });
-                menu.push({ label: "Rename Tab", click: () => handleRenameTab(null) });
-                menu.push({ label: "Copy TabId", click: () => navigator.clipboard.writeText(id) });
-                menu.push({ type: "separator" });
                 if (bgPresets.length > 0) {
                     const submenu: ContextMenuItem[] = [];
-                    const oref = WOS.makeORef("tab", id);
+                    const oref = makeORef("tab", id);
                     for (const presetName of bgPresets) {
                         const preset = fullConfig.presets[presetName];
                         if (preset == null) {
@@ -180,13 +186,12 @@ const Tab = memo(
                         submenu.push({
                             label: preset["display:name"] ?? presetName,
                             click: () => {
-                                services.ObjectService.UpdateObjectMeta(oref, preset);
+                                ObjectService.UpdateObjectMeta(oref, preset);
                                 RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
                             },
                         });
                     }
-                    menu.push({ label: "Backgrounds", type: "submenu", submenu });
-                    menu.push({ type: "separator" });
+                    menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
                 }
                 menu.push({ label: "Close Tab", click: () => onClose(null) });
                 ContextMenuModel.showContextMenu(menu, e);
@@ -233,9 +238,21 @@ const Tab = memo(
                             {tabData?.name}
                             {/* {id.substring(id.length - 3)} */}
                         </div>
-                        <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
-                            <i className="fa fa-solid fa-xmark" />
-                        </Button>
+                        {isPinned ? (
+                            <Button
+                                className="ghost grey pin"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPinChange();
+                                }}
+                            >
+                                <i className="fa fa-solid fa-thumbtack" />
+                            </Button>
+                        ) : (
+                            <Button className="ghost grey close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
+                                <i className="fa fa-solid fa-xmark" />
+                            </Button>
+                        )}
                     </div>
                 </div>
             );

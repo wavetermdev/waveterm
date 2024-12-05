@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -62,7 +63,7 @@ func EnsureInitialData() error {
 	if err != nil {
 		return fmt.Errorf("error creating default workspace: %w", err)
 	}
-	_, err = CreateTab(ctx, defaultWs.OID, "", true)
+	_, err = CreateTab(ctx, defaultWs.OID, "", true, true)
 	if err != nil {
 		return fmt.Errorf("error creating tab: %w", err)
 	}
@@ -90,6 +91,5 @@ func GetClientData(ctx context.Context) (*waveobj.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting client data: %w", err)
 	}
-	log.Printf("clientData: %v\n", clientData)
 	return clientData, nil
 }
