@@ -18,7 +18,7 @@ wsh editconfig presets.json
 
 :::
 
-### File format
+## File format
 
 Presets follow the following format:
 
@@ -61,7 +61,7 @@ A complete example of a preset for an AI model is the following:
 }
 ```
 
-### Preset type
+## Preset Types
 
 The type of the preset determines where it can be discovered in the app. Currently, the two types that will be discovered in the app are `bg` and `ai`.
 
@@ -90,7 +90,7 @@ Configs in a preset are applied in order to override the default config values, 
 
 :::
 
-#### AI configurations
+## AI Configurations
 
 | Key Name      | Type   | Function                                                                                           |
 | ------------- | ------ | -------------------------------------------------------------------------------------------------- |
@@ -106,15 +106,104 @@ Configs in a preset are applied in order to override the default config values, 
 | ai:maxtokens  | int    | max tokens to pass to API                                                                          |
 | ai:timeoutms  | int    | timeout (in milliseconds) for AI calls                                                             |
 
-#### Background configurations
+<a name="background-configurations" />
 
-| Key Name             | Type   | Function                                                                                        |
-| -------------------- | ------ | ----------------------------------------------------------------------------------------------- |
-| bg:\*                | bool   | reset all existing bg keys                                                                      |
-| bg:opacity           | float  | the opacity of the background                                                                   |
-| bg:blendmode         | string | the [blend mode](https://developer.mozilla.org/en-US/docs/Web/CSS/blend-mode) of the background |
-| bg:bordercolor       | string | the color of the border                                                                         |
-| bg:activebordercolor | string | the color of the border when a block is active                                                  |
+## Background Configurations
+
+Wave's background system harnesses the full power of CSS backgrounds, letting you create rich visual effects through the "background" attribute. You can apply solid colors, gradients (both linear and radial), images, and even blend multiple elements together. The system offers preset configurations while maintaining the flexibility of pure CSS, making it both powerful and easy to use.
+
+| Key Name             | Type   | Function                                                                                                |
+| -------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| bg:\*                | bool   | reset all existing bg keys (recommended to prevent any existing background settings from carrying over) |
+| bg                   | string | CSS `background` attribute for the tab (supports colors, gradients images, etc.)                        |
+| bg:opacity           | float  | the opacity of the background (defaults to 0.5)                                                         |
+| bg:blendmode         | string | the [blend mode](https://developer.mozilla.org/en-US/docs/Web/CSS/blend-mode) of the background         |
+| bg:bordercolor       | string | the color of the border when a block is not active (rarely used)                                        |
+| bg:activebordercolor | string | the color of the border when a block is active                                                          |
+
+### Simple solid color with opacity:
+
+```json
+{
+  "bg@blue": {
+    "display:name": "Blue",
+    "bg:*": true,
+    "bg": "blue",
+    "bg:opacity": 0.3,
+    "bg:activebordercolor": "rgba(0, 0, 255, 1.0)"
+  }
+}
+```
+
+### Complex gradient combining multiple effects:
+
+```json
+{
+  "bg@duskhorizon": {
+    "display:name": "Dusk Horizon",
+    "bg:*": true,
+    "bg": "linear-gradient(0deg, rgba(128,0,0,1) 0%, rgba(204,85,0,0.7) 20%, rgba(255,140,0,0.6) 45%, rgba(160,90,160,0.5) 65%, rgba(60,60,120,1) 100%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), transparent 60%), radial-gradient(circle at 70% 70%, rgba(255,255,255,0.05), transparent 70%)",
+    "bg:opacity": 0.9,
+    "bg:blendmode": "overlay"
+  }
+}
+```
+
+### Repeating pattern background:
+
+```json
+{
+  "bg@pattern": {
+    "display:name": "Diamond Pattern",
+    "bg:*": true,
+    "bg": "url('/path/to/pattern.png') repeat",
+    "bg:opacity": 0.15
+  }
+}
+```
+
+### Full-cover background image:
+
+```json
+{
+  "bg@cover": {
+    "display:name": "Ocean Scene",
+    "bg:*": true,
+    "bg": "url('/path/to/ocean.jpg') center/cover no-repeat",
+    "bg:opacity": 0.2
+  }
+}
+```
+
+Replace image URLs with your own assets. All examples use reduced opacity to work well with dark themes.
+
+:::info
+Background images can be specified using URLs or local file paths. While URLs are supported, it's recommended to download and serve images locally for better reliability. For local files, you must use absolute paths or paths starting with `~` (e.g. `~/Downloads/background.png`). The system will automatically rewrite local paths to ensure proper access. We support all common web image formats: PNG, JPEG/JPG, WebP, GIF, and SVG.
+:::
+
+:::tip
+You can use `wsh setbg --print` to help generate the JSON for your background presets. For example:
+
+```bash
+# Preview the metadata for a gradient background
+ wsh setbg --print "#ff0000"
+{
+  "bg:*": true,
+  "bg": "#ff0000",
+  "bg:opacity": 0.5
+}
+
+# Preview a centered logo configuration
+wsh setbg --print --center --opacity 0.3 ~/logo.png
+{
+  "bg:*": true,
+  "bg": "url('/absolute/path/to/logo.png') no-repeat center/auto",
+  "bg:opacity": 0.3
+}
+```
+
+Copy the output and use it as a starting point for your preset configuration, just add the required `display:name` field!
+:::
 
 #### Unset a default value
 
