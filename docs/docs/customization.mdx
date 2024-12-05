@@ -67,7 +67,26 @@ You can also suppress the help widgets in the bottom right by setting the config
 
 ## Tab Backgrounds
 
-Wave supports powerful custom backgrounds for your tabs using images, patterns, gradients, and colors. You can add your own image backgrounds by creating a background preset. See our [Background Configuration](/presets#background-configurations) documentation for examples and detailed setup instructions.
+Wave supports powerful custom backgrounds for your tabs using images, patterns, gradients, and colors. The quickest way to set an image background is using the `wsh setbg` command:
+
+```bash
+# Set a background image with 50% opacity (default)
+wsh setbg ~/pictures/background.jpg
+
+# Set a more transparent background
+wsh setbg --opacity 0.3 ~/pictures/light-pattern.png
+
+# Create a tiled pattern background
+wsh setbg --tile --opacity 0.2 ~/pictures/texture.png
+```
+
+You can use any JPEG, PNG, GIF, WebP, or SVG image as your background. To remove a background, clear the background metadata:
+
+```bash
+wsh setmeta -b tab "bg:*=true"
+```
+
+For more advanced customization options including gradients, colors, and saving your own background presets, check out our [Background Configuration](/presets#background-configurations) documentation.
 
 ## Presets
 
