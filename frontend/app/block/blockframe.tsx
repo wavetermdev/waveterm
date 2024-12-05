@@ -184,6 +184,9 @@ const BlockFrame_Header = ({
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+    const connName = blockData?.meta?.connection;
+    const allSettings = jotai.useAtomValue(atoms.fullConfigAtom);
+    const wshEnabled = allSettings?.connections?.[connName]?.wshenabled ?? true;
 
     React.useEffect(() => {
         if (!magnified || preview || prevMagifiedState.current) {
@@ -241,6 +244,11 @@ const BlockFrame_Header = ({
             </div>
         );
     }
+    const wshInstallButton: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: "link-slash",
+        title: "wsh is not installed for this connection",
+    };
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
@@ -257,6 +265,9 @@ const BlockFrame_Header = ({
                     connection={blockData?.meta?.connection}
                     changeConnModalAtom={changeConnModalAtom}
                 />
+            )}
+            {manageConnection && !wshEnabled && (
+                <IconButton decl={wshInstallButton} className="block-frame-header-iconbutton" />
             )}
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
             <div className="block-frame-end-icons">{endIconsElem}</div>
