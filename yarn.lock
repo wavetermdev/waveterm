@@ -3710,17 +3710,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/js@npm:9.16.0":
+"@eslint/js@npm:9.16.0, @eslint/js@npm:^9.16.0":
   version: 9.16.0
   resolution: "@eslint/js@npm:9.16.0"
   checksum: 10c0/a55846a4ddade720662d36682f3eaaf38eac06eeee12c83bb837bba2b7d550dadcb3445b104219f0bc1da2e09b4fe5fb5ba123b8338c8c787bcfbd540878df75
-  languageName: node
-  linkType: hard
-
-"@eslint/js@npm:^9.15.0":
-  version: 9.15.0
-  resolution: "@eslint/js@npm:9.15.0"
-  checksum: 10c0/56552966ab1aa95332f70d0e006db5746b511c5f8b5e0c6a9b2d6764ff6d964e0b2622731877cbc4e3f0e74c5b39191290d5f48147be19175292575130d499ab
   languageName: node
   linkType: hard
 
@@ -21909,7 +21902,7 @@ __metadata:
     "@docusaurus/theme-search-algolia": "npm:^3.6.3"
     "@docusaurus/tsconfig": "npm:3.6.3"
     "@docusaurus/types": "npm:3.6.3"
-    "@eslint/js": "npm:^9.15.0"
+    "@eslint/js": "npm:^9.16.0"
     "@mdx-js/react": "npm:^3.0.0"
     "@mdx-js/typescript-plugin": "npm:^0.0.6"
     "@types/eslint": "npm:^9.6.1"
@@ -21944,7 +21937,7 @@ __metadata:
   resolution: "waveterm@workspace:."
   dependencies:
     "@chromatic-com/storybook": "npm:^3.2.2"
-    "@eslint/js": "npm:^9.15.0"
+    "@eslint/js": "npm:^9.16.0"
     "@floating-ui/react": "npm:^0.26.28"
     "@monaco-editor/loader": "npm:^1.4.0"
     "@monaco-editor/react": "npm:^4.6.0"

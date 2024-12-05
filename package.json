@@ -28,7 +28,7 @@
     },
     "devDependencies": {
         "@chromatic-com/storybook": "^3.2.2",
-        "@eslint/js": "^9.15.0",
+        "@eslint/js": "^9.16.0",
         "@rollup/plugin-node-resolve": "^15.3.0",
         "@storybook/addon-essentials": "^8.4.6",
         "@storybook/addon-interactions": "^8.4.6",

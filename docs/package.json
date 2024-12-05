@@ -36,7 +36,7 @@
         "@docusaurus/module-type-aliases": "3.6.3",
         "@docusaurus/tsconfig": "3.6.3",
         "@docusaurus/types": "3.6.3",
-        "@eslint/js": "^9.15.0",
+        "@eslint/js": "^9.16.0",
         "@mdx-js/typescript-plugin": "^0.0.6",
         "@types/eslint": "^9.6.1",
         "@types/eslint-config-prettier": "^6.11.3",
