@@ -572,24 +572,33 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
             model.textAreaRef = textAreaRef;
         }, []);
 
-        const adjustTextAreaHeight = () => {
-            if (textAreaRef.current == null) {
-                return;
-            }
-            // Adjust the height of the textarea to fit the text
-            const textAreaMaxLines = 100;
-            const textAreaLineHeight = termFontSize * 1.5;
-            const textAreaMinHeight = textAreaLineHeight;
-            const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
+        const adjustTextAreaHeight = useCallback(
+            (value: string) => {
+                if (textAreaRef.current == null) {
+                    return;
+                }
 
-            textAreaRef.current.style.height = "1px";
-            const scrollHeight = textAreaRef.current.scrollHeight;
-            const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
-            textAreaRef.current.style.height = newHeight + "px";
-        };
+                // Adjust the height of the textarea to fit the text
+                const textAreaMaxLines = 5;
+                const textAreaLineHeight = termFontSize * 1.5;
+                const textAreaMinHeight = textAreaLineHeight;
+                const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
+
+                if (value === "") {
+                    textAreaRef.current.style.height = `${textAreaLineHeight}px`;
+                    return;
+                }
+
+                textAreaRef.current.style.height = `${textAreaLineHeight}px`;
+                const scrollHeight = textAreaRef.current.scrollHeight;
+                const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
+                textAreaRef.current.style.height = newHeight + "px";
+            },
+            [termFontSize]
+        );
 
         useEffect(() => {
-            adjustTextAreaHeight();
+            adjustTextAreaHeight(value);
         }, [value]);
 
         return (
