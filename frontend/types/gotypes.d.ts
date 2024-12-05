@@ -277,9 +277,9 @@ declare global {
 
     // wshrpc.ConnKeywords
     type ConnKeywords = {
-        wshenabled?: boolean;
-        askbeforewshinstall?: boolean;
-        hidden?: boolean;
+        "conn:wshenabled"?: boolean;
+        "conn:askbeforewshinstall"?: boolean;
+        "display:hidden"?: boolean;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;

@@ -186,7 +186,7 @@ const BlockFrame_Header = ({
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
     const connName = blockData?.meta?.connection;
     const allSettings = jotai.useAtomValue(atoms.fullConfigAtom);
-    const wshEnabled = allSettings?.connections?.[connName]?.wshenabled ?? true;
+    const wshEnabled = allSettings?.connections?.[connName]?.["conn:wshenabled"] ?? true;
 
     React.useEffect(() => {
         if (!magnified || preview || prevMagifiedState.current) {
@@ -653,7 +653,7 @@ const ChangeConnectionBlockModal = React.memo(
             if (conn === connSelected) {
                 createNew = false;
             }
-            if (conn.includes(connSelected) && connectionsConfig[conn]?.hidden != true) {
+            if (conn.includes(connSelected) && connectionsConfig[conn]?.["display:hidden"] != true) {
                 filteredList.push(conn);
             }
         }
@@ -662,7 +662,7 @@ const ChangeConnectionBlockModal = React.memo(
             if (conn === connSelected) {
                 createNew = false;
             }
-            if (conn.includes(connSelected) && connectionsConfig[conn]?.hidden != true) {
+            if (conn.includes(connSelected) && connectionsConfig[conn]?.["display:hidden"] != true) {
                 filteredWslList.push(conn);
             }
         }

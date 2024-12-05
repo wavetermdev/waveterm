@@ -342,7 +342,7 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		}
 		if !response.Confirm {
 			meta := make(map[string]any)
-			meta["wshenabled"] = false
+			meta["conn:wshenabled"] = false
 			err = wconfig.SetConnectionsConfigValue(conn.GetName(), meta)
 			if err != nil {
 				log.Printf("warning: error writing to connections file: %v", err)
@@ -516,11 +516,11 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 	askBeforeInstall := config.Settings.ConnAskBeforeWshInstall
 	connSettings, ok := config.Connections[conn.GetName()]
 	if ok {
-		if connSettings.WshEnabled != nil {
-			enableWsh = *connSettings.WshEnabled
+		if connSettings.ConnWshEnabled != nil {
+			enableWsh = *connSettings.ConnWshEnabled
 		}
-		if connSettings.AskBeforeWshInstall != nil {
-			askBeforeInstall = *connSettings.AskBeforeWshInstall
+		if connSettings.ConnAskBeforeWshInstall != nil {
+			askBeforeInstall = *connSettings.ConnAskBeforeWshInstall
 		}
 	}
 	if enableWsh {
