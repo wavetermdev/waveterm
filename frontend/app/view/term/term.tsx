@@ -41,7 +41,7 @@ type InitialLoadDataType = {
     heldData: Uint8Array[];
 };
 
-class TermViewModel {
+class TermViewModel implements ViewModel {
     viewType: string;
     nodeModel: BlockNodeModel;
     connected: boolean;
@@ -54,6 +54,7 @@ class TermViewModel {
     viewText: jotai.Atom<HeaderElem[]>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
+    filterOutNowsh?: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
     termWshClient: TermWshClient;
     vdomBlockId: jotai.Atom<string>;
@@ -196,6 +197,7 @@ class TermViewModel {
             }
             return true;
         });
+        this.filterOutNowsh = jotai.atom(false);
         this.termThemeNameAtom = useBlockAtom(blockId, "termthemeatom", () => {
             return jotai.atom<string>((get) => {
                 return get(getOverrideConfigAtom(this.blockId, "term:theme")) ?? DefaultTermTheme;
@@ -221,7 +223,10 @@ class TermViewModel {
                 const blockData = get(this.blockAtom);
                 const fsSettingsAtom = getSettingsKeyAtom("term:fontsize");
                 const settingsFontSize = get(fsSettingsAtom);
-                const rtnFontSize = blockData?.meta?.["term:fontsize"] ?? settingsFontSize ?? 12;
+                const connName = blockData?.meta?.connection;
+                const fullConfig = get(atoms.fullConfigAtom);
+                const connFontSize = fullConfig?.connections?.[connName]?.["term:fontsize"];
+                const rtnFontSize = blockData?.meta?.["term:fontsize"] ?? connFontSize ?? settingsFontSize ?? 12;
                 if (typeof rtnFontSize != "number" || isNaN(rtnFontSize) || rtnFontSize < 4 || rtnFontSize > 64) {
                     return 12;
                 }
@@ -725,6 +730,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const termModeRef = React.useRef(termMode);
 
     const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
+    const fullConfig = globalStore.get(atoms.fullConfigAtom);
+    const connFontFamily = fullConfig.connections?.[blockData?.meta?.connection]?.["term:fontfamily"];
 
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
@@ -750,7 +757,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             {
                 theme: termTheme,
                 fontSize: termFontSize,
-                fontFamily: termSettings?.["term:fontfamily"] ?? "Hack",
+                fontFamily: termSettings?.["term:fontfamily"] ?? connFontFamily ?? "Hack",
                 drawBoldTextInBrightColors: false,
                 fontWeight: "normal",
                 fontWeightBold: "bold",
@@ -784,7 +791,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             termWrap.dispose();
             rszObs.disconnect();
         };
-    }, [blockId, termSettings, termFontSize]);
+    }, [blockId, termSettings, termFontSize, connFontFamily]);
 
     React.useEffect(() => {
         if (termModeRef.current == "vdom" && termMode == "term") {

@@ -452,8 +452,16 @@ type CommandRemoteWriteFileData struct {
 }
 
 type ConnKeywords struct {
-	WshEnabled          *bool `json:"wshenabled,omitempty"`
-	AskBeforeWshInstall *bool `json:"askbeforewshinstall,omitempty"`
+	ConnWshEnabled          *bool `json:"conn:wshenabled,omitempty"`
+	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
+
+	DisplayHidden *bool   `json:"display:hidden,omitempty"`
+	DisplayOrder  float32 `json:"display:order,omitempty"`
+
+	TermClear      bool    `json:"term:*,omitempty"`
+	TermFontSize   float64 `json:"term:fontsize,omitempty"`
+	TermFontFamily string  `json:"term:fontfamily,omitempty"`
+	TermTheme      string  `json:"term:theme,omitempty"`
 
 	SshUser                         string   `json:"ssh:user,omitempty"`
 	SshHostName                     string   `json:"ssh:hostname,omitempty"`

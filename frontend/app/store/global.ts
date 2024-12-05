@@ -43,6 +43,9 @@ function setPlatform(platform: NodeJS.Platform) {
     PLATFORM = platform;
 }
 
+// Used to override the tab id when switching tabs to prevent flicker in the tab bar.
+const overrideStaticTabAtom = atom(null) as PrimitiveAtom<string>;
+
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
     const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
@@ -100,9 +103,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const tabAtom: Atom<Tab> = atom((get) => {
         return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
     });
-    const staticTabIdAtom: Atom<string> = atom((get) => {
-        return initOpts.tabId;
-    });
+    // This atom is used to determine the tab id to use for the static tab. It is set to the overrideStaticTabAtom value if it is not null, otherwise it is set to the initOpts.tabId value.
+    const staticTabIdAtom: Atom<string> = atom((get) => get(overrideStaticTabAtom) ?? initOpts.tabId);
     const controlShiftDelayAtom = atom(false);
     const updaterStatusAtom = atom<UpdaterStatus>("up-to-date") as PrimitiveAtom<UpdaterStatus>;
     try {
@@ -244,6 +246,21 @@ function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
     return useAtomValue(getBlockMetaKeyAtom(blockId, key));
 }
 
+function getConnConfigKeyAtom<T extends keyof ConnKeywords>(connName: string, key: T): Atom<ConnKeywords[T]> {
+    let connCache = getSingleConnAtomCache(connName);
+    const keyAtomName = "#conn-" + key;
+    let keyAtom = connCache.get(keyAtomName);
+    if (keyAtom != null) {
+        return keyAtom;
+    }
+    keyAtom = atom((get) => {
+        let fullConfig = get(atoms.fullConfigAtom);
+        return fullConfig.connections[connName]?.[key];
+    });
+    connCache.set(keyAtomName, keyAtom);
+    return keyAtom;
+}
+
 const settingsAtomCache = new Map<string, Atom<any>>();
 
 function getOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): Atom<SettingsType[T]> {
@@ -258,6 +275,13 @@ function getOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, ke
         const metaKeyVal = get(blockMetaKeyAtom);
         if (metaKeyVal != null) {
             return metaKeyVal;
+        }
+        const connNameAtom = getBlockMetaKeyAtom(blockId, "connection");
+        const connName = get(connNameAtom);
+        const connConfigKeyAtom = getConnConfigKeyAtom(connName, key as any);
+        const connConfigKeyVal = get(connConfigKeyAtom);
+        if (connConfigKeyVal != null) {
+            return connConfigKeyVal;
         }
         const settingsKeyAtom = getSettingsKeyAtom(key);
         const settingsVal = get(settingsKeyAtom);
@@ -316,6 +340,15 @@ function getSingleBlockAtomCache(blockId: string): Map<string, Atom<any>> {
     if (blockCache == null) {
         blockCache = new Map<string, Atom<any>>();
         blockAtomCache.set(blockId, blockCache);
+    }
+    return blockCache;
+}
+
+function getSingleConnAtomCache(connName: string): Map<string, Atom<any>> {
+    let blockCache = blockAtomCache.get(connName);
+    if (blockCache == null) {
+        blockCache = new Map<string, Atom<any>>();
+        blockAtomCache.set(connName, blockCache);
     }
     return blockCache;
 }
@@ -625,7 +658,9 @@ function createTab() {
 }
 
 function setActiveTab(tabId: string) {
-    // We use this hack to prevent a flicker in the tab bar when switching to a new tab. This class is unset in reinitWave in wave.ts. See tab.scss for where this class is used.
+    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active. This class is set in setActiveTab in global.ts. See tab.scss for where this class is used.
+    // Also overrides the staticTabAtom to the new tab id so that the active tab is set correctly.
+    globalStore.set(overrideStaticTabAtom, tabId);
     document.body.classList.add("nohover");
     getApi().setActiveTab(tabId);
 }
@@ -653,6 +688,7 @@ export {
     isDev,
     loadConnStatus,
     openLink,
+    overrideStaticTabAtom,
     PLATFORM,
     pushFlashError,
     pushNotification,
