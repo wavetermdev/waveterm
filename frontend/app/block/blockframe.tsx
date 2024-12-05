@@ -746,6 +746,7 @@ const ChangeConnectionBlockModal = React.memo(
             label: "Edit Connections",
             onSelect: () => {
                 util.fireAndForget(async () => {
+                    globalStore.set(changeConnModalAtom, false);
                     const path = `${getApi().getConfigDir()}/connections.json`;
                     const blockDef: BlockDef = {
                         meta: {
