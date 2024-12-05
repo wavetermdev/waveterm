@@ -143,6 +143,7 @@ func beforeSendActivityUpdate(ctx context.Context) {
 	activity.NumWindows, _ = wstore.DBGetCount[*waveobj.Window](ctx)
 	activity.NumSSHConn = conncontroller.GetNumSSHHasConnected()
 	activity.NumWSLConn = wsl.GetNumWSLHasConnected()
+	activity.NumWSNamed, activity.NumWS, _ = wstore.DBGetWSCounts(ctx)
 	err := telemetry.UpdateActivity(ctx, activity)
 	if err != nil {
 		log.Printf("error updating before activity: %v\n", err)

@@ -65,6 +65,41 @@ You can also suppress the help widgets in the bottom right by setting the config
 
 <div style={{ clear: "both" }} />
 
+## Tab Backgrounds
+
+Wave supports powerful custom backgrounds for your tabs using images, patterns, gradients, and colors. The quickest way to set an image background is using the `wsh setbg` command:
+
+```bash
+# Set an image background with 50% opacity (default)
+wsh setbg ~/pictures/background.jpg
+
+# Set a color background (use quotes to prevent # being interpreted as a shell comment)
+wsh setbg "#ff0000"          # hex color
+wsh setbg forestgreen        # CSS color name
+
+# Adjust opacity
+wsh setbg --opacity 0.3 ~/pictures/light-pattern.png
+wsh setbg --opacity 0.7      # change only opacity of current background
+
+# Image positioning options
+wsh setbg --tile ~/pictures/texture.png          # create tiled pattern
+wsh setbg --center ~/pictures/logo.png           # center without scaling
+wsh setbg --center --size 200px ~/pictures/logo.png  # center with specific size (px, %, auto)
+
+# Remove background
+wsh setbg --clear
+```
+
+You can use any JPEG, PNG, GIF, WebP, or SVG image as your background. The `--center` option is particularly useful for logos or icons where you want to maintain the original size.
+
+To preview the metadata for any background without applying it, use the `--print` flag:
+
+```bash
+wsh setbg --print "#ff0000"
+```
+
+For more advanced customization options including gradients, colors, and saving your own background presets, check out our [Background Configuration](/presets#background-configurations) documentation.
+
 ## Presets
 
 For more advanced customization, to set up multiple AI models, and your own tab backgrounds, check out our [Presets Documentation](./presets).

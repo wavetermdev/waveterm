@@ -452,8 +452,16 @@ type CommandRemoteWriteFileData struct {
 }
 
 type ConnKeywords struct {
-	WshEnabled          *bool `json:"wshenabled,omitempty"`
-	AskBeforeWshInstall *bool `json:"askbeforewshinstall,omitempty"`
+	ConnWshEnabled          *bool `json:"conn:wshenabled,omitempty"`
+	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
+
+	DisplayHidden *bool   `json:"display:hidden,omitempty"`
+	DisplayOrder  float32 `json:"display:order,omitempty"`
+
+	TermClear      bool    `json:"term:*,omitempty"`
+	TermFontSize   float64 `json:"term:fontsize,omitempty"`
+	TermFontFamily string  `json:"term:fontfamily,omitempty"`
+	TermTheme      string  `json:"term:theme,omitempty"`
 
 	SshUser                         string   `json:"ssh:user,omitempty"`
 	SshHostName                     string   `json:"ssh:hostname,omitempty"`
@@ -600,10 +608,13 @@ type ActivityUpdate struct {
 	NewTab        int                   `json:"newtab,omitempty"`
 	NumBlocks     int                   `json:"numblocks,omitempty"`
 	NumWindows    int                   `json:"numwindows,omitempty"`
+	NumWS         int                   `json:"numws,omitempty"`
+	NumWSNamed    int                   `json:"numwsnamed,omitempty"`
 	NumSSHConn    int                   `json:"numsshconn,omitempty"`
 	NumWSLConn    int                   `json:"numwslconn,omitempty"`
 	NumMagnify    int                   `json:"nummagnify,omitempty"`
 	NumPanics     int                   `json:"numpanics,omitempty"`
+	NumAIReqs     int                   `json:"numaireqs,omitempty"`
 	Startup       int                   `json:"startup,omitempty"`
 	Shutdown      int                   `json:"shutdown,omitempty"`
 	SetTabTheme   int                   `json:"settabtheme,omitempty"`

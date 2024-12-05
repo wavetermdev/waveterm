@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -649,7 +650,13 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	connFlags.SshHostName = opts.SSHHost
 	connFlags.SshPort = fmt.Sprintf("%d", opts.SSHPort)
 
-	sshKeywords, err := combineSshKeywords(connFlags, sshConfigKeywords)
+	rawName := opts.String()
+	savedKeywords, ok := wconfig.ReadFullConfig().Connections[rawName]
+	if !ok {
+		savedKeywords = wshrpc.ConnKeywords{}
+	}
+
+	sshKeywords, err := combineSshKeywords(connFlags, sshConfigKeywords, &savedKeywords)
 	if err != nil {
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
@@ -685,7 +692,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	return client, debugInfo.JumpNum, nil
 }
 
-func combineSshKeywords(userProvidedOpts *wshrpc.ConnKeywords, configKeywords *wshrpc.ConnKeywords) (*wshrpc.ConnKeywords, error) {
+func combineSshKeywords(userProvidedOpts *wshrpc.ConnKeywords, configKeywords *wshrpc.ConnKeywords, savedKeywords *wshrpc.ConnKeywords) (*wshrpc.ConnKeywords, error) {
 	sshKeywords := &wshrpc.ConnKeywords{}
 
 	if userProvidedOpts.SshUser != "" {
@@ -716,7 +723,13 @@ func combineSshKeywords(userProvidedOpts *wshrpc.ConnKeywords, configKeywords *w
 		sshKeywords.SshPort = "22"
 	}
 
-	sshKeywords.SshIdentityFile = append(userProvidedOpts.SshIdentityFile, configKeywords.SshIdentityFile...)
+	// use internal config ones
+	if savedKeywords != nil {
+		sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, savedKeywords.SshIdentityFile...)
+	}
+
+	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, userProvidedOpts.SshIdentityFile...)
+	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, configKeywords.SshIdentityFile...)
 
 	// these are not officially supported in the waveterm frontend but can be configured
 	// in ssh config files
