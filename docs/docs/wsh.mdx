@@ -145,6 +145,47 @@ wsh editconfig widgets.json
 
 ---
 
+## setbg
+
+The `setbg` command allows you to set a background image for the current tab with customizable opacity and tiling options.
+
+```bash
+wsh setbg [--opacity value] [--tile] image-path
+```
+
+The command accepts a path to an image file and will set it as the background for the current tab. The image can be displayed either as a cover (default) or tiled, and you can adjust its opacity.
+
+Flags:
+
+- `--opacity value` - set the background opacity (0.0-1.0, default 0.5)
+- `--tile` - tile the background image instead of using cover mode
+
+Supported image formats: JPEG, PNG, GIF, WebP, and SVG.
+
+Examples:
+
+```bash
+# Set a background image with default settings
+wsh setbg ~/pictures/background.jpg
+
+# Set a background with custom opacity
+wsh setbg --opacity 0.3 ~/pictures/light-pattern.png
+
+# Set a tiled background
+wsh setbg --tile --opacity 0.2 ~/pictures/texture.png
+
+# Set a vector background
+wsh setbg ~/pictures/pattern.svg
+```
+
+The command will validate that:
+
+- The provided path points to an accessible image file
+- The file is a supported image format
+- The opacity value is between 0.0 and 1.0
+
+---
+
 ## run
 
 The `run` command creates a new terminal command block and executes a specified command within it. The command can be provided either as arguments after `--` or using the `-c` flag. Unless the `-x` or `-X` flags are passed, commands can be re-executed by pressing `Enter` once the command has finished running.
