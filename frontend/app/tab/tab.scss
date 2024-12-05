@@ -102,7 +102,7 @@
     }
 }
 
-// Only apply hover effects when not in nohover mode
+// Only apply hover effects when not in nohover mode. This prevents the previously-hovered tab from remaining hovered while a tab view is not mounted.
 body:not(.nohover) .tab:hover {
     & + .tab::after,
     &::after {
@@ -121,7 +121,7 @@ body:not(.nohover) .tab:hover {
     }
 }
 
-// When in nohover mode, always show the close button on the active tab. This prevents the close button from flickering when nohover is toggled.
+// When in nohover mode, always show the close button on the active tab. This prevents the close button of the active tab from flickering when nohover is toggled.
 body.nohover .tab.active .close {
     visibility: visible;
 }
