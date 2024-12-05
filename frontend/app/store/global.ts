@@ -627,8 +627,9 @@ function createTab() {
 }
 
 function setActiveTab(tabId: string) {
-    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active. This class is unset in reinitWave in wave.ts. See tab.scss for where this class is used.
+    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active. This class is set in setActiveTab in global.ts. See tab.scss for where this class is used.
     // Also overrides the staticTabAtom to the new tab id so that the active tab is set correctly.
+    globalStore.set(overrideStaticTabAtom, tabId);
     document.body.classList.add("nohover");
     getApi().setActiveTab(tabId);
 }
