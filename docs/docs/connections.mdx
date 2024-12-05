@@ -20,7 +20,12 @@ The easiest way to access connections is to click the <i className="fa-sharp fa-
 
 ## Add a New Connection to the Dropdown
 
-The SSH values that are loaded into the dropdown by default are obtained by parsing your `~/.ssh/config` and `/etc/ssh/ssh_config` files. Adding a new connection is as simple as adding a new `Host` to one of these files, typically the `~/.ssh/config` file.
+The SSH values that are loaded into the dropdown by default are obtained by parsing the internal `config/connections.json` file in addition to your `~/.ssh/config` and `/etc/ssh/ssh_config` files. Adding a new connection can be added in a couple ways:
+
+- adding a new `Host` to one of your ssh config files, typically the `~/.ssh/config` file
+- adding a new entry in the internal `config/connections.json` file
+- manually typing your connection into the connection box (if this successfully connects, the connection will be added to the internal `config/connections.json` file)
+- use `wsh ssh [user]@[host]` in your terminal (if this successfully connects, the connection will be added to the internal `config/connections.json` file)
 
 WSL values are added by searching the installed WSL distributions as they appear in the Windows Registry.
 
@@ -54,6 +59,20 @@ Host myhost
 ```
 
 You would then be able to access this connection with `myhost` or `username@myhost`. And if you wanted to manually specify a port such as port 2222, you could do that by either adding `Port 2222` to the config file or connecting to `username@myhost:2222`.
+
+## Internal SSH Configuration
+
+In addition to the regular ssh config file, wave also has its own config file to manage separate variables. These include
+| Keyword | Description |
+|---------|-------------|
+| conn:wshenabled | This boolean allows wsh to be used for your connection, if it is set to `false`, `wsh` will never be used for that connection. It defaults to `true`.|
+| conn:askbeforewshinstall | This boolean is used to prompt the user before installing wsh. If it is set to false, `wsh` will automatically be installed instead without prompting. It defaults to `true`.|
+| display:hidden | This boolean hides the connection from the dropdown list. It defaults to `false` |
+| display:order | This float determines the order of connections in the connection dropdown. It defaults to `0`.|
+| term:fontsize | This int can be used to override the terminal font size for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
+| term:fontfamily | This string can be used to specify a terminal font family for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
+| term:theme | This string can be used to specify a terminal theme for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
+| ssh:identityfile | A list of strings containing the paths to identity files that will be used. If a `wsh ssh` command using the `-i` flag is successful, the identity file will automatically be added here. |
 
 ## Managing Connections with the CLI
 
