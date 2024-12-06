@@ -330,8 +330,26 @@ export class WaveBrowserWindow extends BaseWindow {
         this.allLoadedTabViews.delete(tabId);
     }
 
-    async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
+    async initializeTab(tabView: WaveTabView) {
         const clientId = await getClientId();
+        await tabView.initPromise;
+        this.contentView.addChildView(tabView);
+        const initOpts = {
+            tabId: tabView.waveTabId,
+            clientId: clientId,
+            windowId: this.waveWindowId,
+            activate: true,
+        };
+        tabView.savedInitOpts = { ...initOpts };
+        tabView.savedInitOpts.activate = false;
+        let startTime = Date.now();
+        console.log("before wave ready, init tab, sending wave-init", tabView.waveTabId);
+        tabView.webContents.send("wave-init", initOpts);
+        await tabView.waveReadyPromise;
+        console.log("wave-ready init time", Date.now() - startTime + "ms");
+    }
+
+    async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
         if (this.activeTabView == tabView) {
             return;
         }
@@ -344,26 +362,11 @@ export class WaveBrowserWindow extends BaseWindow {
         this.allLoadedTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
             console.log("initializing a new tab");
-            await tabView.initPromise;
-            this.contentView.addChildView(tabView);
-            const initOpts = {
-                tabId: tabView.waveTabId,
-                clientId: clientId,
-                windowId: this.waveWindowId,
-                activate: true,
-            };
-            tabView.savedInitOpts = { ...initOpts };
-            tabView.savedInitOpts.activate = false;
-            let startTime = Date.now();
-            tabView.webContents.send("wave-init", initOpts);
-            console.log("before wave ready");
-            await tabView.waveReadyPromise;
-            // positionTabOnScreen(tabView, this.getContentBounds());
-            console.log("wave-ready init time", Date.now() - startTime + "ms");
-            // positionTabOffScreen(oldActiveView, this.getContentBounds());
-            await this.repositionTabsSlowly(100);
+            const p1 = this.initializeTab(tabView);
+            const p2 = this.repositionTabsSlowly(100);
+            await Promise.all([p1, p2]);
         } else {
-            console.log("reusing an existing tab");
+            console.log("reusing an existing tab, calling wave-init", tabView.waveTabId);
             const p1 = this.repositionTabsSlowly(35);
             const p2 = tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
             await Promise.all([p1, p2]);
