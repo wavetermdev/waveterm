@@ -145,6 +145,74 @@ wsh editconfig widgets.json
 
 ---
 
+## setbg
+
+The `setbg` command allows you to set a background image or color for the current tab with various customization options.
+
+```bash
+wsh setbg [--opacity value] [--tile|--center] [--size value] (image-path|"#color"|color-name)
+```
+
+You can set a background using:
+
+- An image file (displayed as cover, tiled, or centered)
+- A hex color (must be quoted like "#ff0000")
+- A CSS color name (like "blue" or "forestgreen")
+
+Flags:
+
+- `--opacity value` - set the background opacity (0.0-1.0, default 0.5)
+- `--tile` - tile the background image instead of using cover mode
+- `--center` - center the image without scaling (good for logos)
+- `--size` - size for centered images (px, %, or auto)
+- `--clear` - remove the background
+- `--print` - show the metadata without applying it
+
+Supported image formats: JPEG, PNG, GIF, WebP, and SVG.
+
+Examples:
+
+```bash
+# Set an image background with default settings
+wsh setbg ~/pictures/background.jpg
+
+# Set a background with custom opacity
+wsh setbg --opacity 0.3 ~/pictures/light-pattern.png
+
+# Set a tiled background
+wsh setbg --tile --opacity 0.2 ~/pictures/texture.png
+
+# Center an image (good for logos)
+wsh setbg --center ~/pictures/logo.png
+wsh setbg --center --size 200px ~/pictures/logo.png
+
+# Set color backgrounds
+wsh setbg "#ff0000"          # hex color (requires quotes)
+wsh setbg forestgreen        # CSS color name
+
+# Change just the opacity of current background
+wsh setbg --opacity 0.7
+
+# Remove background
+wsh setbg --clear
+
+# Preview the metadata
+wsh setbg --print "#ff0000"
+```
+
+The command validates that:
+
+- Color values are valid hex codes or CSS color names
+- Image paths point to accessible, supported image files
+- The opacity value is between 0.0 and 1.0
+- The center and tile options are not used together
+
+:::tip
+Use `--print` to preview the metadata for any background configuration without applying it. You can then copy this JSON representation to use as a [Background Preset](/presets#background-configurations)
+:::
+
+---
+
 ## run
 
 The `run` command creates a new terminal command block and executes a specified command within it. The command can be provided either as arguments after `--` or using the `-c` flag. Unless the `-x` or `-X` flags are passed, commands can be re-executed by pressing `Enter` once the command has finished running.

@@ -167,9 +167,9 @@ type ActiveTabUpdate struct {
 type Workspace struct {
 	OID          string      `json:"oid"`
 	Version      int         `json:"version"`
-	Name         string      `json:"name"`
-	Icon         string      `json:"icon"`
-	Color        string      `json:"color"`
+	Name         string      `json:"name,omitempty"`
+	Icon         string      `json:"icon,omitempty"`
+	Color        string      `json:"color,omitempty"`
 	TabIds       []string    `json:"tabids"`
 	PinnedTabIds []string    `json:"pinnedtabids"`
 	ActiveTabId  string      `json:"activetabid"`

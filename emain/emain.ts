@@ -410,7 +410,6 @@ electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-re
         return;
     }
     if (status === "ready") {
-        console.log("initResolve");
         tabView.initResolve();
         if (tabView.savedInitOpts) {
             console.log("savedInitOpts");
@@ -419,7 +418,6 @@ electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-re
             console.log("no-savedInitOpts");
         }
     } else if (status === "wave-ready") {
-        console.log("waveReadyResolve");
         tabView.waveReadyResolve();
     }
 });

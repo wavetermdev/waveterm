@@ -8,6 +8,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -63,6 +64,7 @@ func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
 }
 
 func RunAICommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
+	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NumAIReqs: 1}, "RunAICommand")
 	if request.Opts.APIType == ApiType_Anthropic {
 		endpoint := request.Opts.BaseURL
 		if endpoint == "" {

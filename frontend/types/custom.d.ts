@@ -238,6 +238,7 @@ declare global {
         blockBg?: jotai.Atom<MetaType>;
         manageConnection?: jotai.Atom<boolean>;
         noPadding?: jotai.Atom<boolean>;
+        filterOutNowsh?: jotai.Atom<boolean>;
 
         onBack?: () => void;
         onForward?: () => void;

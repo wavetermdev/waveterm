@@ -22,10 +22,13 @@ declare global {
         newtab?: number;
         numblocks?: number;
         numwindows?: number;
+        numws?: number;
+        numwsnamed?: number;
         numsshconn?: number;
         numwslconn?: number;
         nummagnify?: number;
         numpanics?: number;
+        numaireqs?: number;
         startup?: number;
         shutdown?: number;
         settabtheme?: number;
@@ -277,8 +280,14 @@ declare global {
 
     // wshrpc.ConnKeywords
     type ConnKeywords = {
-        wshenabled?: boolean;
-        askbeforewshinstall?: boolean;
+        "conn:wshenabled"?: boolean;
+        "conn:askbeforewshinstall"?: boolean;
+        "display:hidden"?: boolean;
+        "display:order"?: number;
+        "term:*"?: boolean;
+        "term:fontsize"?: number;
+        "term:fontfamily"?: string;
+        "term:theme"?: string;
         "ssh:user"?: string;
         "ssh:hostname"?: string;
         "ssh:port"?: string;
@@ -1121,9 +1130,9 @@ declare global {
 
     // waveobj.Workspace
     type Workspace = WaveObj & {
-        name: string;
-        icon: string;
-        color: string;
+        name?: string;
+        icon?: string;
+        color?: string;
         tabids: string[];
         pinnedtabids: string[];
         activetabid: string;
