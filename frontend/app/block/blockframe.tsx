@@ -714,8 +714,8 @@ const ChangeConnectionBlockModal = React.memo(
             }
             if (
                 conn.includes(connSelected) &&
-                connectionsConfig[conn]?.["display:hidden"] != true &&
-                (connectionsConfig[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
+                connectionsConfig?.[conn]?.["display:hidden"] != true &&
+                (connectionsConfig?.[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
                 // != false is necessary because of defaults
             ) {
                 filteredList.push(conn);
@@ -728,8 +728,8 @@ const ChangeConnectionBlockModal = React.memo(
             }
             if (
                 conn.includes(connSelected) &&
-                connectionsConfig[conn]?.["display:hidden"] != true &&
-                (connectionsConfig[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
+                connectionsConfig?.[conn]?.["display:hidden"] != true &&
+                (connectionsConfig?.[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
                 // != false is necessary because of defaults
             ) {
                 filteredWslList.push(conn);
@@ -842,8 +842,8 @@ const ChangeConnectionBlockModal = React.memo(
             (itemA: SuggestionConnectionItem, itemB: SuggestionConnectionItem) => {
                 const connNameA = itemA.value;
                 const connNameB = itemB.value;
-                const valueA = connectionsConfig[connNameA]?.["display:order"] ?? 0;
-                const valueB = connectionsConfig[connNameB]?.["display:order"] ?? 0;
+                const valueA = connectionsConfig?.[connNameA]?.["display:order"] ?? 0;
+                const valueB = connectionsConfig?.[connNameB]?.["display:order"] ?? 0;
                 return valueA - valueB;
             }
         );

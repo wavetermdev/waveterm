@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -173,6 +174,10 @@ func (svc *ObjectService) UpdateObject(uiContext waveobj.UIContext, waveObj wave
 	err = wstore.DBUpdate(ctx, waveObj)
 	if err != nil {
 		return nil, fmt.Errorf("error updating object: %w", err)
+	}
+	if (waveObj.GetOType() == waveobj.OType_Workspace) && (waveObj.(*waveobj.Workspace).Name != "") {
+		wps.Broker.Publish(wps.WaveEvent{
+			Event: wps.Event_WorkspaceUpdate})
 	}
 	if returnUpdates {
 		return waveobj.ContextGetUpdatesRtn(ctx), nil

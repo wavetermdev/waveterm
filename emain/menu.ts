@@ -1,10 +1,19 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { waveEventSubscribe } from "@/app/store/wps";
+import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
 import { clearTabCache } from "./emain-tabview";
-import { focusedWaveWindow, WaveBrowserWindow } from "./emain-window";
+import {
+    createNewWaveWindow,
+    createWorkspace,
+    focusedWaveWindow,
+    relaunchBrowserWindows,
+    WaveBrowserWindow,
+} from "./emain-window";
+import { ElectronWshClient } from "./emain-wsh";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
 
@@ -27,7 +36,35 @@ function getWindowWebContents(window: electron.BaseWindow): electron.WebContents
     return null;
 }
 
-function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
+async function getWorkspaceMenu(): Promise<Electron.MenuItemConstructorOptions[]> {
+    const workspaceList = await RpcApi.WorkspaceListCommand(ElectronWshClient);
+    console.log("workspaceList:", workspaceList);
+    const workspaceMenu: Electron.MenuItemConstructorOptions[] = [
+        {
+            label: "Create New Workspace",
+            click: (_, window) => {
+                const ww = window as WaveBrowserWindow;
+                fireAndForget(() => createWorkspace(ww));
+            },
+        },
+    ];
+    workspaceList?.length &&
+        workspaceMenu.push(
+            { type: "separator" },
+            ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace) => {
+                return {
+                    label: `Switch to ${workspace.workspacedata.name} (${workspace.workspacedata.oid.slice(0, 5)})`,
+                    click: (_, window) => {
+                        const ww = window as WaveBrowserWindow;
+                        ww.switchWorkspace(workspace.workspacedata.oid);
+                    },
+                };
+            })
+        );
+    return workspaceMenu;
+}
+
+async function getAppMenu(callbacks: AppMenuCallbacks): Promise<Electron.Menu> {
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "New Window",
@@ -224,6 +261,9 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             role: "togglefullscreen",
         },
     ];
+
+    const workspaceMenu = await getWorkspaceMenu();
+
     const windowMenu: Electron.MenuItemConstructorOptions[] = [
         { role: "minimize", accelerator: "" },
         { role: "zoom" },
@@ -250,11 +290,35 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             submenu: viewMenu,
         },
         {
+            label: "Workspace",
+            id: "workspace-menu",
+            submenu: workspaceMenu,
+        },
+        {
             role: "windowMenu",
             submenu: windowMenu,
         },
     ];
     return electron.Menu.buildFromTemplate(menuTemplate);
 }
+
+export function instantiateAppMenu(): Promise<electron.Menu> {
+    return getAppMenu({
+        createNewWaveWindow,
+        relaunchBrowserWindows,
+    });
+}
+
+export function makeAppMenu() {
+    fireAndForget(async () => {
+        const menu = await instantiateAppMenu();
+        electron.Menu.setApplicationMenu(menu);
+    });
+}
+
+waveEventSubscribe({
+    eventType: "workspace:update",
+    handler: makeAppMenu,
+});
 
 export { getAppMenu };

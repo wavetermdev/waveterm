@@ -55,6 +55,16 @@ export class ElectronWshClientType extends WshClient {
         }
         ww.focus();
     }
+
+    // async handle_workspaceupdate(rh: RpcResponseHelper) {
+    //     console.log("workspaceupdate");
+    //     fireAndForget(async () => {
+    //         console.log("workspace menu clicked");
+    //         const updatedWorkspaceMenu = await getWorkspaceMenu();
+    //         const workspaceMenu = Menu.getApplicationMenu().getMenuItemById("workspace-menu");
+    //         workspaceMenu.submenu = Menu.buildFromTemplate(updatedWorkspaceMenu);
+    //     });
+    // }
 }
 
 export let ElectronWshClient: ElectronWshClientType;
