@@ -21,8 +21,8 @@ import (
 
 // TODO bring Tx infra into wcore
 
-const StarterTimeout = 2 * time.Second
-const StarterActivateBlockTimeout = 60 * time.Second
+const DefaultTimeout = 2 * time.Second
+const DefaultActivateBlockTimeout = 60 * time.Second
 
 // Ensures that the initial data is present in the store, creates an initial window if needed
 func EnsureInitialData() error {
