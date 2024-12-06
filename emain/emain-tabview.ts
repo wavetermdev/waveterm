@@ -32,14 +32,17 @@ export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabVie
 export class WaveTabView extends WebContentsView {
     isActiveTab: boolean;
     waveWindowId: string; // set when showing in an active window
-    waveTabId: string; // always set, WaveTabViews are unique per tab
+    private _waveTabId: string; // always set, WaveTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
     createdTs: number; // ts milliseconds
     initPromise: Promise<void>;
+    initResolve: () => void;
     savedInitOpts: WaveInitOpts;
     waveReadyPromise: Promise<void>;
-    initResolve: () => void;
     waveReadyResolve: () => void;
+
+    // used to destroy the tab if it is not initialized within a certain time after being assigned a tabId
+    private destroyTabTimeout: NodeJS.Timeout;
 
     constructor(fullConfig: FullConfigType) {
         console.log("createBareTabView");
@@ -60,6 +63,13 @@ export class WaveTabView extends WebContentsView {
         this.waveReadyPromise = new Promise((resolve, _) => {
             this.waveReadyResolve = resolve;
         });
+
+        // Once the frontend is ready, we can cancel the destroyTabTimeout, assuming the tab hasn't been destroyed yet
+        // Only after a tab is ready will we add it to the wcvCache
+        this.waveReadyPromise.then(() => {
+            clearTimeout(this.destroyTabTimeout);
+            setWaveTabView(this.waveTabId, this);
+        });
         wcIdToWaveTabMap.set(this.webContents.id, this);
         if (isDevVite) {
             this.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html}`);
@@ -71,6 +81,17 @@ export class WaveTabView extends WebContentsView {
             removeWaveTabView(this.waveTabId);
         });
         this.setBackgroundColor(computeBgColor(fullConfig));
+    }
+
+    get waveTabId(): string {
+        return this._waveTabId;
+    }
+
+    set waveTabId(waveTabId: string) {
+        this._waveTabId = waveTabId;
+        this.destroyTabTimeout = setTimeout(() => {
+            this.destroy();
+        }, 1000);
     }
 
     positionTabOnScreen(winBounds: Rectangle) {
@@ -102,7 +123,7 @@ export class WaveTabView extends WebContentsView {
 
     destroy() {
         console.log("destroy tab", this.waveTabId);
-        this.webContents.close();
+        this.webContents?.close();
         removeWaveTabView(this.waveTabId);
 
         // TODO: circuitous
@@ -171,7 +192,6 @@ export function getOrCreateWebViewForTab(fullConfig: FullConfigType, tabId: stri
     tabView = getSpareTab(fullConfig);
     tabView.lastUsedTs = Date.now();
     tabView.waveTabId = tabId;
-    setWaveTabView(tabId, tabView);
     tabView.webContents.on("will-navigate", shNavHandler);
     tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
     tabView.webContents.on("did-attach-webview", (event, wc) => {
