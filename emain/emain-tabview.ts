@@ -4,6 +4,7 @@
 import { FileService } from "@/app/store/services";
 import { adaptFromElectronKeyEvent } from "@/util/keyutil";
 import { Rectangle, shell, WebContentsView } from "electron";
+import { getWaveWindowById } from "emain/emain-window";
 import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
@@ -27,13 +28,6 @@ const wcIdToWaveTabMap = new Map<number, WaveTabView>();
 
 export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabView {
     return wcIdToWaveTabMap.get(webContentsId);
-}
-
-export function destroyTabViewIfExists(tabId: string) {
-    const tabView = getWaveTabView(tabId);
-    if (tabView) {
-        tabView.destroy();
-    }
 }
 
 export class WaveTabView extends WebContentsView {
@@ -149,6 +143,31 @@ export function getWaveTabView(waveTabId: string): WaveTabView | undefined {
     return rtn;
 }
 
+function tryEvictEntry(waveTabId: string): boolean {
+    const tabView = wcvCache.get(waveTabId);
+    if (!tabView) {
+        return false;
+    }
+    if (tabView.isActiveTab) {
+        return false;
+    }
+    const lastUsedDiff = Date.now() - tabView.lastUsedTs;
+    if (lastUsedDiff < 1000) {
+        return false;
+    }
+    const ww = getWaveWindowById(tabView.waveWindowId);
+    if (!ww) {
+        // this shouldn't happen, but if it does, just destroy the tabview
+        console.log("[error] WaveWindow not found for WaveTabView", tabView.waveTabId);
+        tabView.destroy();
+        return true;
+    } else {
+        // will trigger a destroy on the tabview
+        ww.removeTabView(tabView.waveTabId, false);
+        return true;
+    }
+}
+
 function checkAndEvictCache(): void {
     if (wcvCache.size <= MaxCacheSize) {
         return;
@@ -163,17 +182,7 @@ function checkAndEvictCache(): void {
     });
     const now = Date.now();
     for (let i = 0; i < sorted.length - MaxCacheSize; i++) {
-        if (sorted[i].isActiveTab) {
-            // don't evict WaveTabViews that are currently showing in a window
-            continue;
-        }
-        const lastUsedDiff = now - sorted[i].lastUsedTs;
-        if (lastUsedDiff < 1000) {
-            // don't evict WaveTabViews that were just created/used
-            continue;
-        }
-        const tabView = sorted[i];
-        tabView?.destroy();
+        tryEvictEntry(sorted[i].waveTabId);
     }
 }
 
@@ -181,10 +190,7 @@ export function clearTabCache() {
     const wcVals = Array.from(wcvCache.values());
     for (let i = 0; i < wcVals.length; i++) {
         const tabView = wcVals[i];
-        if (tabView.isActiveTab) {
-            continue;
-        }
-        tabView?.destroy();
+        tryEvictEntry(tabView.waveTabId);
     }
 }
 
@@ -233,11 +239,17 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
 }
 
 export function setWaveTabView(waveTabId: string, wcv: WaveTabView): void {
+    if (waveTabId == null) {
+        return;
+    }
     wcvCache.set(waveTabId, wcv);
     checkAndEvictCache();
 }
 
 function removeWaveTabView(waveTabId: string): void {
+    if (waveTabId == null) {
+        return;
+    }
     wcvCache.delete(waveTabId);
 }
 
