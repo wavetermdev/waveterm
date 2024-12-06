@@ -21,8 +21,8 @@ import (
 
 // TODO bring Tx infra into wcore
 
-const DefaultTimeout = 2 * time.Second
-const DefaultActivateBlockTimeout = 60 * time.Second
+const StarterTimeout = 2 * time.Second
+const StarterActivateBlockTimeout = 60 * time.Second
 
 // Ensures that the initial data is present in the store, creates an initial window if needed
 func EnsureInitialData() error {
@@ -58,16 +58,16 @@ func EnsureInitialData() error {
 		log.Println("client has windows")
 		return nil
 	}
-	log.Println("client has no windows, creating default workspace")
-	defaultWs, err := CreateWorkspace(ctx, "Default workspace", "circle", "green")
+	log.Println("client has no windows, creating starter workspace")
+	starterWs, err := CreateWorkspace(ctx, "Starter workspace", "circle", "green")
 	if err != nil {
-		return fmt.Errorf("error creating default workspace: %w", err)
+		return fmt.Errorf("error creating starter workspace: %w", err)
 	}
-	_, err = CreateTab(ctx, defaultWs.OID, "", true, true)
+	_, err = CreateTab(ctx, starterWs.OID, "", true, true)
 	if err != nil {
 		return fmt.Errorf("error creating tab: %w", err)
 	}
-	_, err = CreateWindow(ctx, nil, defaultWs.OID)
+	_, err = CreateWindow(ctx, nil, starterWs.OID)
 	if err != nil {
 		return fmt.Errorf("error creating window: %w", err)
 	}
