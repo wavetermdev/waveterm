@@ -424,27 +424,27 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async queueTabSwitch(tabView: WaveTabView, tabInitialized: boolean) {
-        if (this.tabSwitchQueue.length == 2) {
+        if (this.tabSwitchQueue.length >= 2) {
             this.tabSwitchQueue[1] = { tabView, tabInitialized };
             return;
         }
+        const wasEmpty = this.tabSwitchQueue.length === 0;
         this.tabSwitchQueue.push({ tabView, tabInitialized });
-        if (this.tabSwitchQueue.length == 1) {
+        if (wasEmpty) {
             await this.processTabSwitchQueue();
         }
     }
 
     async processTabSwitchQueue() {
-        if (this.tabSwitchQueue.length == 0) {
-            this.tabSwitchQueue = [];
-            return;
-        }
-        try {
-            const { tabView, tabInitialized } = this.tabSwitchQueue[0];
-            await this.setTabViewIntoWindow(tabView, tabInitialized);
-        } finally {
-            this.tabSwitchQueue.shift();
-            await this.processTabSwitchQueue();
+        while (this.tabSwitchQueue.length > 0) {
+            try {
+                const { tabView, tabInitialized } = this.tabSwitchQueue[0];
+                await this.setTabViewIntoWindow(tabView, tabInitialized);
+            } catch (e) {
+                console.log("error caught in processTabSwitchQueue", e);
+            } finally {
+                this.tabSwitchQueue.shift();
+            }
         }
     }
 
