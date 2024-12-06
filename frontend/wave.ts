@@ -88,7 +88,7 @@ async function reinitWave() {
     console.log("Reinit Wave");
     getApi().sendLog("Reinit Wave");
 
-    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active. This class is set in setActiveTab in global.ts. See tab.scss for where this class is used.
+    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active.
     document.body.classList.add("nohover");
     requestAnimationFrame(() =>
         setTimeout(() => {
