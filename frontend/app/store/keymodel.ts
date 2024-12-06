@@ -19,6 +19,7 @@ import {
 } from "@/layout/index";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import * as keyutil from "@/util/keyutil";
+import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 
 const simpleControlShiftAtom = jotai.atom(false);
@@ -88,7 +89,7 @@ function genericClose(tabId: string) {
         return;
     }
     const layoutModel = getLayoutModelForTab(tabAtom);
-    layoutModel.closeFocusedNode();
+    fireAndForget(layoutModel.closeFocusedNode.bind(layoutModel));
 }
 
 function switchBlockByBlockNum(index: number) {

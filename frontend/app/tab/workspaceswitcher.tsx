@@ -189,12 +189,10 @@ const WorkspaceSwitcher = () => {
     }, []);
 
     const onDeleteWorkspace = useCallback((workspaceId: string) => {
-        fireAndForget(async () => {
-            getApi().deleteWorkspace(workspaceId);
-            setTimeout(() => {
-                fireAndForget(updateWorkspaceList);
-            }, 10);
-        });
+        getApi().deleteWorkspace(workspaceId);
+        setTimeout(() => {
+            fireAndForget(updateWorkspaceList);
+        }, 10);
     }, []);
 
     const isActiveWorkspaceSaved = !!(activeWorkspace.name && activeWorkspace.icon);
@@ -267,12 +265,10 @@ const WorkspaceSwitcherItem = ({
     const isCurrentWorkspace = activeWorkspace.oid === workspace.oid;
 
     const setWorkspace = useCallback((newWorkspace: Workspace) => {
-        fireAndForget(async () => {
-            if (newWorkspace.name != "") {
-                setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
-            }
-            setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
-        });
+        if (newWorkspace.name != "") {
+            setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
+        }
+        setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
     }, []);
 
     const isActive = !!workspaceEntry.windowId;

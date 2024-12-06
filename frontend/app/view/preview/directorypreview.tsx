@@ -543,26 +543,26 @@ function TableBody({
                 },
                 {
                     label: "Copy File Name",
-                    click: () => navigator.clipboard.writeText(fileName),
+                    click: () => fireAndForget(() => navigator.clipboard.writeText(fileName)),
                 },
                 {
                     label: "Copy Full File Name",
-                    click: () => navigator.clipboard.writeText(finfo.path),
+                    click: () => fireAndForget(() => navigator.clipboard.writeText(finfo.path)),
                 },
                 {
                     label: "Copy File Name (Shell Quoted)",
-                    click: () => navigator.clipboard.writeText(shellQuote([fileName])),
+                    click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([fileName]))),
                 },
                 {
                     label: "Copy Full File Name (Shell Quoted)",
-                    click: () => navigator.clipboard.writeText(shellQuote([finfo.path])),
+                    click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([finfo.path]))),
                 },
                 {
                     type: "separator",
                 },
                 {
                     label: "Download File",
-                    click: async () => {
+                    click: () => {
                         getApi().downloadFile(normPath);
                     },
                 },
@@ -572,7 +572,7 @@ function TableBody({
                 // TODO: Only show this option for local files, resolve correct host path if connection is WSL
                 {
                     label: openNativeLabel,
-                    click: async () => {
+                    click: () => {
                         getApi().openNativePath(normPath);
                     },
                 },
@@ -581,30 +581,32 @@ function TableBody({
                 },
                 {
                     label: "Open Preview in New Block",
-                    click: async () => {
-                        const blockDef: BlockDef = {
-                            meta: {
-                                view: "preview",
-                                file: finfo.path,
-                            },
-                        };
-                        await createBlock(blockDef);
-                    },
+                    click: () =>
+                        fireAndForget(async () => {
+                            const blockDef: BlockDef = {
+                                meta: {
+                                    view: "preview",
+                                    file: finfo.path,
+                                },
+                            };
+                            await createBlock(blockDef);
+                        }),
                 },
             ];
             if (finfo.mimetype == "directory") {
                 menu.push({
                     label: "Open Terminal in New Block",
-                    click: async () => {
-                        const termBlockDef: BlockDef = {
-                            meta: {
-                                controller: "shell",
-                                view: "term",
-                                "cmd:cwd": finfo.path,
-                            },
-                        };
-                        await createBlock(termBlockDef);
-                    },
+                    click: () =>
+                        fireAndForget(async () => {
+                            const termBlockDef: BlockDef = {
+                                meta: {
+                                    controller: "shell",
+                                    view: "term",
+                                    "cmd:cwd": finfo.path,
+                                },
+                            };
+                            await createBlock(termBlockDef);
+                        }),
                 });
             }
             menu.push(
@@ -613,9 +615,11 @@ function TableBody({
                 },
                 {
                     label: "Delete",
-                    click: async () => {
-                        await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
-                        setRefreshVersion((current) => current + 1);
+                    click: () => {
+                        fireAndForget(async () => {
+                            await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
+                            setRefreshVersion((current) => current + 1);
+                        });
                     },
                 }
             );

@@ -24,7 +24,7 @@ import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { base64ToString, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
+import { base64ToString, fireAndForget, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
 import { Atom, atom, Getter, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
@@ -257,7 +257,7 @@ export class PreviewModel implements ViewModel {
                     className: clsx(
                         `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
                     ),
-                    onClick: this.handleFileSave.bind(this),
+                    onClick: () => fireAndForget(this.handleFileSave.bind(this)),
                 });
                 if (get(this.canPreview)) {
                     viewTextChildren.push({
@@ -265,7 +265,7 @@ export class PreviewModel implements ViewModel {
                         text: "Preview",
                         className:
                             "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
-                        onClick: () => this.setEditMode(false),
+                        onClick: () => fireAndForget(() => this.setEditMode(false)),
                     });
                 }
             } else if (get(this.canPreview)) {
@@ -274,7 +274,7 @@ export class PreviewModel implements ViewModel {
                     text: "Edit",
                     className:
                         "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
-                    onClick: () => this.setEditMode(true),
+                    onClick: () => fireAndForget(() => this.setEditMode(true)),
                 });
             }
             return [
@@ -497,7 +497,7 @@ export class PreviewModel implements ViewModel {
             return;
         }
         const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
 
         // Clear the saved file buffers
         globalStore.set(this.fileContentSaved, null);
@@ -538,7 +538,7 @@ export class PreviewModel implements ViewModel {
             }
             console.log(newFileInfo.path);
             this.updateOpenFileModalAndError(false);
-            this.goHistory(newFileInfo.path);
+            await this.goHistory(newFileInfo.path);
             refocusNode(this.blockId);
         } catch (e) {
             globalStore.set(this.openFileError, e.message);
@@ -546,7 +546,7 @@ export class PreviewModel implements ViewModel {
         }
     }
 
-    goHistoryBack() {
+    async goHistoryBack() {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const curPath = globalStore.get(this.metaFilePath);
         const updateMeta = goHistoryBack("file", curPath, blockMeta, true);
@@ -555,10 +555,10 @@ export class PreviewModel implements ViewModel {
         }
         updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
-    goHistoryForward() {
+    async goHistoryForward() {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const curPath = globalStore.get(this.metaFilePath);
         const updateMeta = goHistoryForward("file", curPath, blockMeta);
@@ -567,13 +567,13 @@ export class PreviewModel implements ViewModel {
         }
         updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
-    setEditMode(edit: boolean) {
+    async setEditMode(edit: boolean) {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const blockOref = WOS.makeORef("block", this.blockId);
-        services.ObjectService.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
+        await services.ObjectService.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
     }
 
     async handleFileSave() {
@@ -588,7 +588,7 @@ export class PreviewModel implements ViewModel {
         }
         const conn = globalStore.get(this.connection) ?? "";
         try {
-            services.FileService.SaveFile(conn, filePath, stringToBase64(newFileContent));
+            await services.FileService.SaveFile(conn, filePath, stringToBase64(newFileContent));
             globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
@@ -630,42 +630,44 @@ export class PreviewModel implements ViewModel {
 
     getSettingsMenuItems(): ContextMenuItem[] {
         const menuItems: ContextMenuItem[] = [];
-        const blockData = globalStore.get(this.blockAtom);
         menuItems.push({
             label: "Copy Full Path",
-            click: async () => {
-                const filePath = await globalStore.get(this.normFilePath);
-                if (filePath == null) {
-                    return;
-                }
-                navigator.clipboard.writeText(filePath);
-            },
+            click: () =>
+                fireAndForget(async () => {
+                    const filePath = await globalStore.get(this.normFilePath);
+                    if (filePath == null) {
+                        return;
+                    }
+                    await navigator.clipboard.writeText(filePath);
+                }),
         });
         menuItems.push({
             label: "Copy File Name",
-            click: async () => {
-                const fileInfo = await globalStore.get(this.statFile);
-                if (fileInfo == null || fileInfo.name == null) {
-                    return;
-                }
-                navigator.clipboard.writeText(fileInfo.name);
-            },
+            click: () =>
+                fireAndForget(async () => {
+                    const fileInfo = await globalStore.get(this.statFile);
+                    if (fileInfo == null || fileInfo.name == null) {
+                        return;
+                    }
+                    await navigator.clipboard.writeText(fileInfo.name);
+                }),
         });
         const mimeType = jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
         if (mimeType == "directory") {
             menuItems.push({
                 label: "Open Terminal in New Block",
-                click: async () => {
-                    const fileInfo = await globalStore.get(this.statFile);
-                    const termBlockDef: BlockDef = {
-                        meta: {
-                            view: "term",
-                            controller: "shell",
-                            "cmd:cwd": fileInfo.dir,
-                        },
-                    };
-                    await createBlock(termBlockDef);
-                },
+                click: () =>
+                    fireAndForget(async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        const termBlockDef: BlockDef = {
+                            meta: {
+                                view: "term",
+                                controller: "shell",
+                                "cmd:cwd": fileInfo.dir,
+                            },
+                        };
+                        await createBlock(termBlockDef);
+                    }),
             });
         }
         const loadableSV = globalStore.get(this.loadableSpecializedView);
@@ -677,11 +679,11 @@ export class PreviewModel implements ViewModel {
                     menuItems.push({ type: "separator" });
                     menuItems.push({
                         label: "Save File",
-                        click: this.handleFileSave.bind(this),
+                        click: () => fireAndForget(this.handleFileSave.bind(this)),
                     });
                     menuItems.push({
                         label: "Revert File",
-                        click: this.handleFileRevert.bind(this),
+                        click: () => fireAndForget(this.handleFileRevert.bind(this)),
                     });
                 }
                 menuItems.push({ type: "separator" });
@@ -689,12 +691,13 @@ export class PreviewModel implements ViewModel {
                     label: "Word Wrap",
                     type: "checkbox",
                     checked: wordWrap,
-                    click: () => {
-                        const blockOref = WOS.makeORef("block", this.blockId);
-                        services.ObjectService.UpdateObjectMeta(blockOref, {
-                            "editor:wordwrap": !wordWrap,
-                        });
-                    },
+                    click: () =>
+                        fireAndForget(async () => {
+                            const blockOref = WOS.makeORef("block", this.blockId);
+                            await services.ObjectService.UpdateObjectMeta(blockOref, {
+                                "editor:wordwrap": !wordWrap,
+                            });
+                        }),
                 });
             }
         }
@@ -716,16 +719,16 @@ export class PreviewModel implements ViewModel {
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:ArrowLeft")) {
-            this.goHistoryBack();
+            fireAndForget(this.goHistoryBack.bind(this));
             return true;
         }
         if (checkKeyPressed(e, "Cmd:ArrowRight")) {
-            this.goHistoryForward();
+            fireAndForget(this.goHistoryForward.bind(this));
             return true;
         }
         if (checkKeyPressed(e, "Cmd:ArrowUp")) {
             // handle up directory
-            this.goParentDirectory({});
+            fireAndForget(() => this.goParentDirectory({}));
             return true;
         }
         const openModalOpen = globalStore.get(this.openFileModal);
@@ -739,7 +742,7 @@ export class PreviewModel implements ViewModel {
         if (canPreview) {
             if (checkKeyPressed(e, "Cmd:e")) {
                 const editMode = globalStore.get(this.editMode);
-                this.setEditMode(!editMode);
+                fireAndForget(() => this.setEditMode(!editMode));
                 return true;
             }
         }
@@ -833,15 +836,15 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {
-            model.setEditMode(false);
+            fireAndForget(() => model.setEditMode(false));
             return true;
         }
         if (checkKeyPressed(e, "Cmd:s") || checkKeyPressed(e, "Ctrl:s")) {
-            model.handleFileSave();
+            fireAndForget(model.handleFileSave.bind(model));
             return true;
         }
         if (checkKeyPressed(e, "Cmd:r")) {
-            model.handleFileRevert();
+            fireAndForget(model.handleFileRevert.bind(model));
             return true;
         }
         return false;
@@ -990,7 +993,7 @@ const OpenFileModal = memo(
 
                 const handleCommandOperations = async () => {
                     if (checkKeyPressed(waveEvent, "Enter")) {
-                        model.handleOpenFile(filePath);
+                        await model.handleOpenFile(filePath);
                         return true;
                     }
                     return false;

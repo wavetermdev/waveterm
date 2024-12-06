@@ -6,6 +6,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
+import { fireAndForget } from "@/util/util";
 import { clsx } from "clsx";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
@@ -72,14 +73,21 @@ const Tab = memo(
                 };
             }, []);
 
-            const handleRenameTab = (event) => {
+            const selectEditableText = useCallback(() => {
+                if (editableRef.current) {
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    range.selectNodeContents(editableRef.current);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }, []);
+
+            const handleRenameTab: React.MouseEventHandler<HTMLDivElement> = (event) => {
                 event?.stopPropagation();
                 setIsEditable(true);
                 editableTimeoutRef.current = setTimeout(() => {
-                    if (editableRef.current) {
-                        editableRef.current.focus();
-                        document.execCommand("selectAll", false);
-                    }
+                    selectEditableText();
                 }, 0);
             };
 
@@ -88,20 +96,14 @@ const Tab = memo(
                 newText = newText || originalName;
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
-                ObjectService.UpdateTabName(id, newText);
+                fireAndForget(() => ObjectService.UpdateTabName(id, newText));
                 setTimeout(() => refocusNode(null), 10);
             };
 
-            const handleKeyDown = (event) => {
+            const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (event) => {
                 if ((event.metaKey || event.ctrlKey) && event.key === "a") {
                     event.preventDefault();
-                    if (editableRef.current) {
-                        const range = document.createRange();
-                        const selection = window.getSelection();
-                        range.selectNodeContents(editableRef.current);
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                    }
+                    selectEditableText();
                     return;
                 }
                 // this counts glyphs, not characters
@@ -150,7 +152,10 @@ const Tab = memo(
                     let menu: ContextMenuItem[] = [
                         { label: isPinned ? "Unpin Tab" : "Pin Tab", click: () => onPinChange() },
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
-                        { label: "Copy TabId", click: () => navigator.clipboard.writeText(id) },
+                        {
+                            label: "Copy TabId",
+                            click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
+                        },
                         { type: "separator" },
                     ];
                     const fullConfig = globalStore.get(atoms.fullConfigAtom);
@@ -175,10 +180,11 @@ const Tab = memo(
                             }
                             submenu.push({
                                 label: preset["display:name"] ?? presetName,
-                                click: () => {
-                                    ObjectService.UpdateObjectMeta(oref, preset);
-                                    RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
-                                },
+                                click: () =>
+                                    fireAndForget(async () => {
+                                        await ObjectService.UpdateObjectMeta(oref, preset);
+                                        await RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
+                                    }),
                             });
                         }
                         menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });

@@ -452,9 +452,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             let pinnedTabCount = pinnedTabIds.size;
             const draggedTabId = draggingTabDataRef.current.tabId;
             const isPinned = pinnedTabIds.has(draggedTabId);
-            if (pinnedTabIds.has(tabIds[tabIndex + 1]) && !isPinned) {
+            const nextTabId = tabIds[tabIndex + 1];
+            const prevTabId = tabIds[tabIndex - 1];
+            if (!isPinned && nextTabId && pinnedTabIds.has(nextTabId)) {
                 pinnedTabIds.add(draggedTabId);
-            } else if (!pinnedTabIds.has(tabIds[tabIndex - 1]) && isPinned) {
+            } else if (isPinned && prevTabId && !pinnedTabIds.has(prevTabId)) {
                 pinnedTabIds.delete(draggedTabId);
             }
             if (pinnedTabCount != pinnedTabIds.size) {
@@ -465,13 +467,12 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             // Reset dragging state
             setDraggingTab(null);
             // Update workspace tab ids
-            fireAndForget(
-                async () =>
-                    await WorkspaceService.UpdateTabIds(
-                        workspace.oid,
-                        tabIds.slice(pinnedTabCount),
-                        tabIds.slice(0, pinnedTabCount)
-                    )
+            fireAndForget(() =>
+                WorkspaceService.UpdateTabIds(
+                    workspace.oid,
+                    tabIds.slice(pinnedTabCount),
+                    tabIds.slice(0, pinnedTabCount)
+                )
             );
         }),
         []
@@ -578,9 +579,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const handlePinChange = useCallback(
         (tabId: string, pinned: boolean) => {
             console.log("handlePinChange", tabId, pinned);
-            fireAndForget(async () => {
-                await WorkspaceService.ChangeTabPinning(workspace.oid, tabId, pinned);
-            });
+            fireAndForget(() => WorkspaceService.ChangeTabPinning(workspace.oid, tabId, pinned));
         },
         [workspace]
     );

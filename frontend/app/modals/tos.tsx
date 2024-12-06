@@ -12,6 +12,7 @@ import { FlexiModal } from "./modal";
 import { QuickTips } from "@/app/element/quicktips";
 import { atoms, getApi } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
+import { fireAndForget } from "@/util/util";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import "./tos.scss";
 
@@ -20,25 +21,22 @@ const pageNumAtom: PrimitiveAtom<number> = atom<number>(1);
 const ModalPage1 = () => {
     const settings = useAtomValue(atoms.settingsAtom);
     const clientData = useAtomValue(atoms.client);
-    const [tosOpen, setTosOpen] = useAtom(modalsModel.tosOpen);
     const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings["telemetry:enabled"]);
     const setPageNum = useSetAtom(pageNumAtom);
 
     const acceptTos = () => {
         if (!clientData.tosagreed) {
-            services.ClientService.AgreeTos();
+            fireAndForget(services.ClientService.AgreeTos);
         }
         setPageNum(2);
     };
 
     const setTelemetry = (value: boolean) => {
-        services.ClientService.TelemetryUpdate(value)
-            .then(() => {
+        fireAndForget(() =>
+            services.ClientService.TelemetryUpdate(value).then(() => {
                 setTelemetryEnabled(value);
             })
-            .catch((error) => {
-                console.error("failed to set telemetry:", error);
-            });
+        );
     };
 
     const label = telemetryEnabled ? "Telemetry Enabled" : "Telemetry Disabled";

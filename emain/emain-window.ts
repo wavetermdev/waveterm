@@ -165,7 +165,7 @@ export class WaveBrowserWindow extends BaseWindow {
             }
             focusedWaveWindow = this;
             console.log("focus win", this.waveWindowId);
-            fireAndForget(async () => await ClientService.FocusWindow(this.waveWindowId));
+            fireAndForget(() => ClientService.FocusWindow(this.waveWindowId));
             setWasInFg(true);
             setWasActive(true);
         });
@@ -235,9 +235,15 @@ export class WaveBrowserWindow extends BaseWindow {
             }
             if (this.deleteAllowed) {
                 console.log("win removing window from backend DB", this.waveWindowId);
-                fireAndForget(async () => await WindowService.CloseWindow(this.waveWindowId, true));
+                fireAndForget(() => WindowService.CloseWindow(this.waveWindowId, true));
             }
-            this.destroy();
+            for (const tabView of this.allLoadedTabViews.values()) {
+                tabView?.destroy();
+            }
+            waveWindowMap.delete(this.waveWindowId);
+            if (focusedWaveWindow == this) {
+                focusedWaveWindow = null;
+            }
         });
         waveWindowMap.set(waveWindow.oid, this);
     }
@@ -316,13 +322,6 @@ export class WaveBrowserWindow extends BaseWindow {
         }
         await this.setActiveTab(rtn.newactivetabid, false);
         this.allLoadedTabViews.delete(tabId);
-    }
-
-    forceClose() {
-        console.log("forceClose window", this.waveWindowId);
-        this.canClose = true;
-        this.deleteAllowed = true;
-        this.close();
     }
 
     async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
@@ -464,13 +463,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     destroy() {
         console.log("destroy win", this.waveWindowId);
-        for (const tabView of this.allLoadedTabViews.values()) {
-            tabView?.destroy();
-        }
-        waveWindowMap.delete(this.waveWindowId);
-        if (focusedWaveWindow == this) {
-            focusedWaveWindow = null;
-        }
+        this.deleteAllowed = true;
         super.destroy();
     }
 }
@@ -575,6 +568,6 @@ ipcMain.on("delete-workspace", async (event, workspaceId) => {
     console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
     if (ww?.workspaceId == workspaceId) {
         console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-        ww.forceClose();
+        ww.destroy();
     }
 });
