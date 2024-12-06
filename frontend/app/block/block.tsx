@@ -26,6 +26,7 @@ import {
 import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
+import { Background, BackgroundModel, makeBackgroundModel } from "@/view/background/background";
 import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
 import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
 import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
@@ -60,6 +61,9 @@ function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeM
     }
     if (blockView === "help") {
         return makeHelpViewModel(blockId, nodeModel);
+    }
+    if (blockView === "background") {
+        return makeBackgroundModel(blockId, nodeModel);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -109,6 +113,9 @@ function getViewElem(
     }
     if (blockView == "vdom") {
         return <VDomView key={blockId} blockId={blockId} model={viewModel as VDomModel} />;
+    }
+    if (blockView == "background") {
+        return <Background key={blockId} model={viewModel as BackgroundModel} />;
     }
     return <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
 }
