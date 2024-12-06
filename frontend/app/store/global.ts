@@ -103,8 +103,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const tabAtom: Atom<Tab> = atom((get) => {
         return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
     });
-    // This atom is used to determine the tab id to use for the static tab. It is set to the overrideStaticTabAtom value if it is not null, otherwise it is set to the initOpts.tabId value.
-    const staticTabIdAtom: Atom<string> = atom((get) => get(overrideStaticTabAtom) ?? initOpts.tabId);
+    // this is *the* tab that this tabview represents.  it should never change.
+    const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
     const controlShiftDelayAtom = atom(false);
     const updaterStatusAtom = atom<UpdaterStatus>("up-to-date") as PrimitiveAtom<UpdaterStatus>;
     try {
