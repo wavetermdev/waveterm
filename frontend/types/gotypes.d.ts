@@ -278,6 +278,12 @@ declare global {
         err: string;
     };
 
+    // wshrpc.ConnConfigRequest
+    type ConnConfigRequest = {
+        host: string;
+        metamaptype: MetaType;
+    };
+
     // wshrpc.ConnKeywords
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
@@ -319,6 +325,7 @@ declare global {
         hasconnected: boolean;
         activeconnnum: number;
         error?: string;
+        wsherror?: string;
     };
 
     // wshrpc.CpuDataRequest

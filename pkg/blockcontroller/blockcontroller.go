@@ -362,16 +362,17 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		} else {
 			shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, conn)
 			if err != nil {
+				conn.WithLock(func() {
+					conn.WshError = err.Error()
+				})
+				conn.WshEnabled.Store(false)
 				log.Printf("error starting remote shell proc with wsh: %v", err)
 				log.Print("attempting install without wsh")
 				shellProc, err = shellexec.StartRemoteShellProcNoWsh(rc.TermSize, cmdStr, cmdOpts, conn)
 				if err != nil {
 					return err
-				} else {
-					// print warning that wsh isn't running
 				}
 			}
-
 		}
 		if err != nil {
 			return err
