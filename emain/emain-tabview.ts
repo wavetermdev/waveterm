@@ -44,9 +44,6 @@ export class WaveTabView extends WebContentsView {
     isInitialized: boolean = false;
     isWaveReady: boolean = false;
 
-    // used to destroy the tab if it is not initialized within a certain time after being assigned a tabId
-    private destroyTabTimeout: NodeJS.Timeout;
-
     constructor(fullConfig: FullConfigType) {
         console.log("createBareTabView");
         super({
@@ -72,7 +69,6 @@ export class WaveTabView extends WebContentsView {
         // Only after a tab is ready will we add it to the wcvCache
         this.waveReadyPromise.then(() => {
             this.isWaveReady = true;
-            clearTimeout(this.destroyTabTimeout);
             setWaveTabView(this.waveTabId, this);
         });
         wcIdToWaveTabMap.set(this.webContents.id, this);
@@ -94,9 +90,6 @@ export class WaveTabView extends WebContentsView {
 
     set waveTabId(waveTabId: string) {
         this._waveTabId = waveTabId;
-        this.destroyTabTimeout = setTimeout(() => {
-            this.destroy();
-        }, 1000);
     }
 
     positionTabOnScreen(winBounds: Rectangle) {
