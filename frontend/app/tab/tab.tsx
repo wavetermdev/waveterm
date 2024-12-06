@@ -202,7 +202,7 @@ const Tab = memo(
 
             const showSeparator = useCallback(
                 (id) => {
-                    if (isFirst) return false;
+                    // if (isFirst) return false;
 
                     const idx = tabIds.indexOf(id);
                     const found = tabIndicesMoved.find((i, ii) => ii !== 0 && i === idx) === undefined;
