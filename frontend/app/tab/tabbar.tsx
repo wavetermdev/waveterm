@@ -9,7 +9,7 @@ import { atoms, createTab, getApi, globalStore, isDev, PLATFORM, setActiveTab } 
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
-import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
+import { createRef, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { WorkspaceService } from "../store/services";
 import { Tab } from "./tab";
@@ -134,13 +134,19 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
-    const activeTabId = useAtomValue(atoms.staticTabId);
+    const [selectedTabId, setSelectedTabId] = useState<string>();
+    const staticTabId = useAtomValue(atoms.staticTabId);
+    const activeTabId = selectedTabId ?? staticTabId;
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     const settings = useAtomValue(atoms.settingsAtom);
 
     let prevDelta: number;
     let prevDragDirection: string;
+
+    useLayoutEffect(() => {
+        setSelectedTabId(workspace.activetabid);
+    }, [workspace.activetabid]);
 
     // Update refs when tabIds change
     useEffect(() => {
@@ -537,6 +543,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
+            setSelectedTabId(tabId);
             setActiveTab(tabId);
         }
     };
