@@ -41,7 +41,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	if err != nil {
 		return false, fmt.Errorf("error getting workspace: %w", err)
 	}
-	if workspace.Name != "" && workspace.Icon != "" && !force && len(workspace.TabIds) > 0 && len(workspace.PinnedTabIds) > 0 {
+	if workspace.Name != "" && workspace.Icon != "" && !force && (len(workspace.TabIds) > 0 || len(workspace.PinnedTabIds) > 0) {
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 		return false, nil
 	}
@@ -168,7 +168,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
 
 	// if no tabs remaining, close window
-	if newActiveTabId == "" && recursive {
+	if recursive && newActiveTabId == "" {
 		log.Printf("no tabs remaining in workspace %s, closing window\n", workspaceId)
 		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 		if err != nil {
