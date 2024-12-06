@@ -165,7 +165,7 @@ export class WaveBrowserWindow extends BaseWindow {
             }
             focusedWaveWindow = this;
             console.log("focus win", this.waveWindowId);
-            fireAndForget(async () => await ClientService.FocusWindow(this.waveWindowId));
+            fireAndForget(() => ClientService.FocusWindow(this.waveWindowId));
             setWasInFg(true);
             setWasActive(true);
         });
@@ -235,7 +235,7 @@ export class WaveBrowserWindow extends BaseWindow {
             }
             if (this.deleteAllowed) {
                 console.log("win removing window from backend DB", this.waveWindowId);
-                fireAndForget(async () => await WindowService.CloseWindow(this.waveWindowId, true));
+                fireAndForget(() => WindowService.CloseWindow(this.waveWindowId, true));
             }
             for (const tabView of this.allTabViews.values()) {
                 tabView?.destroy();

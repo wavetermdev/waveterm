@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getSettingsKeyAtom } from "@/app/store/global";
-import { atomWithThrottle, boundNumber } from "@/util/util";
+import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { createRef, CSSProperties } from "react";
@@ -852,7 +852,7 @@ export class LayoutModel {
                 animationTimeS: this.animationTimeS,
                 ready: this.ready,
                 disablePointerEvents: this.activeDrag,
-                onClose: async () => await this.closeNode(nodeid),
+                onClose: () => fireAndForget(() => this.closeNode(nodeid)),
                 toggleMagnify: () => this.magnifyNodeToggle(nodeid),
                 focusNode: () => this.focusNode(nodeid),
                 dragHandleRef: createRef(),

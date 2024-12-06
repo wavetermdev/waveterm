@@ -221,12 +221,12 @@ export class WaveAiModel implements ViewModel {
                         ({
                             label: preset[1]["display:name"],
                             onClick: () =>
-                                fireAndForget(async () => {
-                                    await ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
+                                fireAndForget(() =>
+                                    ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
                                         ...preset[1],
                                         "ai:preset": preset[0],
-                                    });
-                                }),
+                                    })
+                                ),
                         }) as MenuItem
                 );
             dropdownItems.push({
@@ -386,7 +386,7 @@ export class WaveAiModel implements ViewModel {
             this.setLocked(false);
             this.cancel = false;
         };
-        handleAiStreamingResponse();
+        fireAndForget(handleAiStreamingResponse);
     }
 
     useWaveAi() {
@@ -404,14 +404,14 @@ export class WaveAiModel implements ViewModel {
 
     keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(waveEvent, "Cmd:l")) {
-            this.clearMessages();
+            fireAndForget(this.clearMessages.bind(this));
             return true;
         }
         return false;
     }
 }
 
-function makeWaveAiViewModel(blockId): WaveAiModel {
+function makeWaveAiViewModel(blockId: string): WaveAiModel {
     const waveAiModel = new WaveAiModel(blockId);
     return waveAiModel;
 }
@@ -634,7 +634,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
 
     // a weird workaround to initialize ansynchronously
     useEffect(() => {
-        model.populateMessages();
+        fireAndForget(model.populateMessages.bind(model));
     }, []);
 
     const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

@@ -293,7 +293,7 @@ export class WebViewModel implements ViewModel {
      * @param url The URL that has been navigated to.
      */
     handleNavigate(url: string) {
-        ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url });
+        fireAndForget(() => ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
         globalStore.set(this.url, url);
     }
 
@@ -432,22 +432,18 @@ export class WebViewModel implements ViewModel {
         return [
             {
                 label: "Set Block Homepage",
-                click: async () => {
-                    await this.setHomepageUrl(this.getUrl(), "block");
-                },
+                click: () => fireAndForget(() => this.setHomepageUrl(this.getUrl(), "block")),
             },
             {
                 label: "Set Default Homepage",
-                click: async () => {
-                    await this.setHomepageUrl(this.getUrl(), "global");
-                },
+                click: () => fireAndForget(() => this.setHomepageUrl(this.getUrl(), "global")),
             },
             {
                 type: "separator",
             },
             {
                 label: this.webviewRef.current?.isDevToolsOpened() ? "Close DevTools" : "Open DevTools",
-                click: async () => {
+                click: () => {
                     if (this.webviewRef.current) {
                         if (this.webviewRef.current.isDevToolsOpened()) {
                             this.webviewRef.current.closeDevTools();
