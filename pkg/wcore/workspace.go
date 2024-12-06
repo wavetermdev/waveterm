@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -25,7 +26,21 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 		Icon:         icon,
 		Color:        color,
 	}
-	wstore.DBInsert(ctx, ws)
+	err := wstore.DBInsert(ctx, ws)
+	if err != nil {
+		return nil, fmt.Errorf("error inserting workspace: %w", err)
+	}
+
+	_, err = CreateTab(ctx, ws.OID, "", true, false)
+	if err != nil {
+		return nil, fmt.Errorf("error creating tab: %w", err)
+	}
+	ws, err = GetWorkspace(ctx, ws.OID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting updated workspace: %w", err)
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_WorkspaceUpdate})
 	return ws, nil
 }
 
@@ -38,7 +53,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	if err != nil {
 		return false, fmt.Errorf("error getting workspace: %w", err)
 	}
-	if workspace.Name != "" && workspace.Icon != "" && !force && len(workspace.TabIds) > 0 && len(workspace.PinnedTabIds) > 0 {
+	if workspace.Name != "" && workspace.Icon != "" && !force && (len(workspace.TabIds) > 0 || len(workspace.PinnedTabIds) > 0) {
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 		return false, nil
 	}
@@ -56,6 +71,8 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 		return false, fmt.Errorf("error deleting workspace: %w", err)
 	}
 	log.Printf("deleted workspace %s\n", workspaceId)
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_WorkspaceUpdate})
 	return true, nil
 }
 
@@ -163,7 +180,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
 
 	// if no tabs remaining, close window
-	if newActiveTabId == "" && recursive {
+	if recursive && newActiveTabId == "" {
 		log.Printf("no tabs remaining in workspace %s, closing window\n", workspaceId)
 		windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 		if err != nil {

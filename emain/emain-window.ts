@@ -1,14 +1,21 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ClientService, FileService, WindowService, WorkspaceService } from "@/app/store/services";
+import { ClientService, FileService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
 import { fireAndForget } from "@/util/util";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, ipcMain, screen } from "electron";
 import path from "path";
 import { debounce } from "throttle-debounce";
-import { getGlobalIsQuitting, getGlobalIsRelaunching, setWasActive, setWasInFg } from "./emain-activity";
+import {
+    getGlobalIsQuitting,
+    getGlobalIsRelaunching,
+    setGlobalIsRelaunching,
+    setWasActive,
+    setWasInFg,
+} from "./emain-activity";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
 import { delay, ensureBoundsAreVisible } from "./emain-util";
+import { log } from "./log";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
 export type WindowOpts = {
@@ -272,6 +279,10 @@ export class WaveBrowserWindow extends BaseWindow {
 
     async switchWorkspace(workspaceId: string) {
         console.log("switchWorkspace", workspaceId, this.waveWindowId);
+        if (workspaceId == this.workspaceId) {
+            console.log("switchWorkspace already on this workspace", this.waveWindowId);
+            return;
+        }
         const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
         if (curWorkspace.tabids.length > 1 && (!curWorkspace.name || !curWorkspace.icon)) {
             const choice = dialog.showMessageBoxSync(this, {
@@ -603,19 +614,100 @@ ipcMain.on("close-tab", async (event, workspaceId, tabId) => {
     return null;
 });
 
-ipcMain.on("switch-workspace", async (event, workspaceId) => {
-    const ww = getWaveWindowByWebContentsId(event.sender.id);
-    console.log("switch-workspace", workspaceId, ww?.waveWindowId);
-    await ww?.switchWorkspace(workspaceId);
+ipcMain.on("switch-workspace", (event, workspaceId) => {
+    fireAndForget(async () => {
+        const ww = getWaveWindowByWebContentsId(event.sender.id);
+        console.log("switch-workspace", workspaceId, ww?.waveWindowId);
+        await ww?.switchWorkspace(workspaceId);
+    });
 });
 
-ipcMain.on("delete-workspace", async (event, workspaceId) => {
-    const ww = getWaveWindowByWebContentsId(event.sender.id);
-    console.log("delete-workspace", workspaceId, ww?.waveWindowId);
-    await WorkspaceService.DeleteWorkspace(workspaceId);
-    console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
-    if (ww?.workspaceId == workspaceId) {
-        console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-        ww.destroy();
+export async function createWorkspace(window: WaveBrowserWindow) {
+    if (!window) {
+        return;
     }
+    const newWsId = await WorkspaceService.CreateWorkspace();
+    if (newWsId) {
+        await window.switchWorkspace(newWsId);
+    }
+}
+
+ipcMain.on("create-workspace", (event) => {
+    fireAndForget(async () => {
+        const ww = getWaveWindowByWebContentsId(event.sender.id);
+        console.log("create-workspace", ww?.waveWindowId);
+        await createWorkspace(ww);
+    });
 });
+
+ipcMain.on("delete-workspace", (event, workspaceId) => {
+    fireAndForget(async () => {
+        const ww = getWaveWindowByWebContentsId(event.sender.id);
+        console.log("delete-workspace", workspaceId, ww?.waveWindowId);
+        await WorkspaceService.DeleteWorkspace(workspaceId);
+        console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
+        if (ww?.workspaceId == workspaceId) {
+            console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
+            ww.destroy();
+        }
+    });
+});
+
+export async function createNewWaveWindow() {
+    log("createNewWaveWindow");
+    const clientData = await ClientService.GetClientData();
+    const fullConfig = await FileService.GetFullConfig();
+    let recreatedWindow = false;
+    const allWindows = getAllWaveWindows();
+    if (allWindows.length === 0 && clientData?.windowids?.length >= 1) {
+        console.log("no windows, but clientData has windowids, recreating first window");
+        // reopen the first window
+        const existingWindowId = clientData.windowids[0];
+        const existingWindowData = (await ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
+        if (existingWindowData != null) {
+            const win = await createBrowserWindow(existingWindowData, fullConfig, { unamePlatform });
+            await win.waveReadyPromise;
+            win.show();
+            recreatedWindow = true;
+        }
+    }
+    if (recreatedWindow) {
+        console.log("recreated window, returning");
+        return;
+    }
+    console.log("creating new window");
+    const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
+    await newBrowserWindow.waveReadyPromise;
+    newBrowserWindow.show();
+}
+
+export async function relaunchBrowserWindows() {
+    console.log("relaunchBrowserWindows");
+    setGlobalIsRelaunching(true);
+    const windows = getAllWaveWindows();
+    for (const window of windows) {
+        console.log("relaunch -- closing window", window.waveWindowId);
+        window.close();
+    }
+    setGlobalIsRelaunching(false);
+
+    const clientData = await ClientService.GetClientData();
+    const fullConfig = await FileService.GetFullConfig();
+    const wins: WaveBrowserWindow[] = [];
+    for (const windowId of clientData.windowids.slice().reverse()) {
+        const windowData: WaveWindow = await WindowService.GetWindow(windowId);
+        if (windowData == null) {
+            console.log("relaunch -- window data not found, closing window", windowId);
+            await WindowService.CloseWindow(windowId, true);
+            continue;
+        }
+        console.log("relaunch -- creating window", windowId, windowData);
+        const win = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
+        wins.push(win);
+    }
+    for (const win of wins) {
+        await win.waveReadyPromise;
+        console.log("show window", win.waveWindowId);
+        win.show();
+    }
+}

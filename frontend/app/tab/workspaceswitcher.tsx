@@ -235,16 +235,23 @@ const WorkspaceSwitcher = () => {
                     </ExpandableMenu>
                 </OverlayScrollbarsComponent>
 
-                {!isActiveWorkspaceSaved && (
-                    <div className="actions">
+                <div className="actions">
+                    {isActiveWorkspaceSaved ? (
+                        <ExpandableMenuItem onClick={() => getApi().createWorkspace()}>
+                            <ExpandableMenuItemLeftElement>
+                                <i className="fa-sharp fa-solid fa-plus"></i>
+                            </ExpandableMenuItemLeftElement>
+                            <div className="content">Create new workspace</div>
+                        </ExpandableMenuItem>
+                    ) : (
                         <ExpandableMenuItem onClick={() => saveWorkspace()}>
                             <ExpandableMenuItemLeftElement>
                                 <i className="fa-sharp fa-solid fa-floppy-disk"></i>
                             </ExpandableMenuItemLeftElement>
                             <div className="content">Save workspace</div>
                         </ExpandableMenuItem>
-                    </div>
-                )}
+                    )}
+                </div>
             </PopoverContent>
         </Popover>
     );

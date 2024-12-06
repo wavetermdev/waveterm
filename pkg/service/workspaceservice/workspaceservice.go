@@ -20,6 +20,25 @@ const DefaultTimeout = 2 * time.Second
 
 type WorkspaceService struct{}
 
+func (svc *WorkspaceService) CreateWorkspace_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ReturnDesc: "workspaceId",
+	}
+}
+
+func (svc *WorkspaceService) CreateWorkspace(ctx context.Context) (string, error) {
+	newWS, err := wcore.CreateWorkspace(ctx, "", "", "")
+	if err != nil {
+		return "", fmt.Errorf("error creating workspace: %w", err)
+	}
+
+	err = wlayout.BootstrapNewWorkspaceLayout(ctx, newWS)
+	if err != nil {
+		return newWS.OID, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
+	}
+	return newWS.OID, nil
+}
+
 func (svc *WorkspaceService) GetWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"workspaceId"},
