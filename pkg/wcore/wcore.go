@@ -19,11 +19,6 @@ import (
 // the wcore package coordinates actions across the storage layer
 // orchestrating the wave object store, the wave pubsub system, and the wave rpc system
 
-// TODO bring Tx infra into wcore
-
-const StarterTimeout = 2 * time.Second
-const StarterActivateBlockTimeout = 60 * time.Second
-
 // Ensures that the initial data is present in the store, creates an initial window if needed
 func EnsureInitialData() error {
 	// does not need to run in a transaction since it is called on startup
