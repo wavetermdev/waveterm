@@ -96,7 +96,7 @@ const Tab = memo(
                 newText = newText || originalName;
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
-                fireAndForget(async () => await ObjectService.UpdateTabName(id, newText));
+                fireAndForget(() => ObjectService.UpdateTabName(id, newText));
                 setTimeout(() => refocusNode(null), 10);
             };
 
@@ -154,7 +154,7 @@ const Tab = memo(
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
                         {
                             label: "Copy TabId",
-                            click: () => fireAndForget(async () => await navigator.clipboard.writeText(id)),
+                            click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
                         },
                         { type: "separator" },
                     ];

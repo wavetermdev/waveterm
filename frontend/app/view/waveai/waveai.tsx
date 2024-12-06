@@ -221,12 +221,12 @@ export class WaveAiModel implements ViewModel {
                         ({
                             label: preset[1]["display:name"],
                             onClick: () =>
-                                fireAndForget(async () => {
-                                    await ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
+                                fireAndForget(() =>
+                                    ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
                                         ...preset[1],
                                         "ai:preset": preset[0],
-                                    });
-                                }),
+                                    })
+                                ),
                         }) as MenuItem
                 );
             dropdownItems.push({

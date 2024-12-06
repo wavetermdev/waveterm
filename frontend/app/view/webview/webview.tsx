@@ -293,7 +293,7 @@ export class WebViewModel implements ViewModel {
      * @param url The URL that has been navigated to.
      */
     handleNavigate(url: string) {
-        fireAndForget(async () => await ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
+        fireAndForget(() => ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
         globalStore.set(this.url, url);
     }
 
@@ -432,11 +432,11 @@ export class WebViewModel implements ViewModel {
         return [
             {
                 label: "Set Block Homepage",
-                click: () => fireAndForget(async () => await this.setHomepageUrl(this.getUrl(), "block")),
+                click: () => fireAndForget(() => this.setHomepageUrl(this.getUrl(), "block")),
             },
             {
                 label: "Set Default Homepage",
-                click: () => fireAndForget(async () => await this.setHomepageUrl(this.getUrl(), "global")),
+                click: () => fireAndForget(() => this.setHomepageUrl(this.getUrl(), "global")),
             },
             {
                 type: "separator",
@@ -539,7 +539,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             e.preventDefault();
             const newUrl = e.detail.url;
             console.log("webview new-window event:", newUrl);
-            fireAndForget(async () => await openLink(newUrl, true));
+            fireAndForget(() => openLink(newUrl, true));
         };
         const startLoadingHandler = () => {
             model.setRefreshIcon("xmark-large");

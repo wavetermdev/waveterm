@@ -52,7 +52,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         {
             label: "Check for Updates",
             click: () => {
-                fireAndForget(async () => await updater?.checkForUpdates(true));
+                fireAndForget(() => updater?.checkForUpdates(true));
             },
         },
         {

@@ -56,7 +56,7 @@ export function useTileLayout(tabAtom: Atom<Tab>, tileContent: TileLayoutContent
     useOnResize(layoutModel?.displayContainerRef, layoutModel?.onContainerResize);
 
     // Once the TileLayout is mounted, re-run the state update to get all the nodes to flow in the layout.
-    useEffect(() => fireAndForget(async () => await layoutModel.onTreeStateAtomUpdated(true)), []);
+    useEffect(() => fireAndForget(() => layoutModel.onTreeStateAtomUpdated(true)), []);
 
     useEffect(() => layoutModel.registerTileLayout(tileContent), [tileContent]);
     return layoutModel;

@@ -126,7 +126,7 @@ export class Updater {
         if (this.autoCheckEnabled) {
             console.log("starting updater");
             this.autoCheckInterval = setInterval(() => {
-                fireAndForget(async () => await this.checkForUpdates(false));
+                fireAndForget(() => this.checkForUpdates(false));
             }, 600000); // intervals are unreliable when an app is suspended so we will check every 10 mins if the interval has passed.
             await this.checkForUpdates(false);
         }

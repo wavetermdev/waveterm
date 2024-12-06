@@ -32,11 +32,10 @@ const ModalPage1 = () => {
     };
 
     const setTelemetry = (value: boolean) => {
-        fireAndForget(
-            async () =>
-                await services.ClientService.TelemetryUpdate(value).then(() => {
-                    setTelemetryEnabled(value);
-                })
+        fireAndForget(() =>
+            services.ClientService.TelemetryUpdate(value).then(() => {
+                setTelemetryEnabled(value);
+            })
         );
     };
 

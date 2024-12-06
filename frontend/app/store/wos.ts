@@ -302,7 +302,7 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: Setter, pushToServe
     }
     setFn(wov.dataAtom, { value: value, loading: false });
     if (pushToServer) {
-        fireAndForget(async () => await ObjectService.UpdateObject(value, false));
+        fireAndForget(() => ObjectService.UpdateObject(value, false));
     }
 }
 

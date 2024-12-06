@@ -543,20 +543,19 @@ function TableBody({
                 },
                 {
                     label: "Copy File Name",
-                    click: () => fireAndForget(async () => await navigator.clipboard.writeText(fileName)),
+                    click: () => fireAndForget(() => navigator.clipboard.writeText(fileName)),
                 },
                 {
                     label: "Copy Full File Name",
-                    click: () => fireAndForget(async () => await navigator.clipboard.writeText(finfo.path)),
+                    click: () => fireAndForget(() => navigator.clipboard.writeText(finfo.path)),
                 },
                 {
                     label: "Copy File Name (Shell Quoted)",
-                    click: () => fireAndForget(async () => await navigator.clipboard.writeText(shellQuote([fileName]))),
+                    click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([fileName]))),
                 },
                 {
                     label: "Copy Full File Name (Shell Quoted)",
-                    click: () =>
-                        fireAndForget(async () => await navigator.clipboard.writeText(shellQuote([finfo.path]))),
+                    click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([finfo.path]))),
                 },
                 {
                     type: "separator",

@@ -265,7 +265,7 @@ export class PreviewModel implements ViewModel {
                         text: "Preview",
                         className:
                             "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
-                        onClick: () => fireAndForget(async () => await this.setEditMode(false)),
+                        onClick: () => fireAndForget(() => this.setEditMode(false)),
                     });
                 }
             } else if (get(this.canPreview)) {
@@ -274,7 +274,7 @@ export class PreviewModel implements ViewModel {
                     text: "Edit",
                     className:
                         "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
-                    onClick: () => fireAndForget(async () => await this.setEditMode(true)),
+                    onClick: () => fireAndForget(() => this.setEditMode(true)),
                 });
             }
             return [
@@ -728,7 +728,7 @@ export class PreviewModel implements ViewModel {
         }
         if (checkKeyPressed(e, "Cmd:ArrowUp")) {
             // handle up directory
-            fireAndForget(async () => await this.goParentDirectory({}));
+            fireAndForget(() => this.goParentDirectory({}));
             return true;
         }
         const openModalOpen = globalStore.get(this.openFileModal);
@@ -742,7 +742,7 @@ export class PreviewModel implements ViewModel {
         if (canPreview) {
             if (checkKeyPressed(e, "Cmd:e")) {
                 const editMode = globalStore.get(this.editMode);
-                fireAndForget(async () => await this.setEditMode(!editMode));
+                fireAndForget(() => this.setEditMode(!editMode));
                 return true;
             }
         }
@@ -836,7 +836,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {
-            fireAndForget(async () => await model.setEditMode(false));
+            fireAndForget(() => model.setEditMode(false));
             return true;
         }
         if (checkKeyPressed(e, "Cmd:s") || checkKeyPressed(e, "Ctrl:s")) {

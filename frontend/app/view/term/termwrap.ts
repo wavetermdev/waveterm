@@ -81,12 +81,12 @@ export class TermWrap {
                 switch (PLATFORM) {
                     case "darwin":
                         if (e.metaKey) {
-                            fireAndForget(async () => await openLink(uri));
+                            fireAndForget(() => openLink(uri));
                         }
                         break;
                     default:
                         if (e.ctrlKey) {
-                            fireAndForget(async () => await openLink(uri));
+                            fireAndForget(() => openLink(uri));
                         }
                         break;
                 }
@@ -119,11 +119,10 @@ export class TermWrap {
                 data = data.substring(nextSlashIdx);
             }
             setTimeout(() => {
-                fireAndForget(
-                    async () =>
-                        await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
-                            "cmd:cwd": data,
-                        })
+                fireAndForget(() =>
+                    services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
+                        "cmd:cwd": data,
+                    })
                 );
             }, 0);
             return true;
@@ -289,15 +288,8 @@ export class TermWrap {
         const serializedOutput = this.serializeAddon.serialize();
         const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
         console.log("idle timeout term", this.dataBytesProcessed, serializedOutput.length, termSize);
-        fireAndForget(
-            async () =>
-                await services.BlockService.SaveTerminalState(
-                    this.blockId,
-                    serializedOutput,
-                    "full",
-                    this.ptyOffset,
-                    termSize
-                )
+        fireAndForget(() =>
+            services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset, termSize)
         );
         this.dataBytesProcessed = 0;
     }

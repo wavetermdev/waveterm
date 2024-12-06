@@ -852,7 +852,7 @@ export class LayoutModel {
                 animationTimeS: this.animationTimeS,
                 ready: this.ready,
                 disablePointerEvents: this.activeDrag,
-                onClose: () => fireAndForget(async () => await this.closeNode(nodeid)),
+                onClose: () => fireAndForget(() => this.closeNode(nodeid)),
                 toggleMagnify: () => this.magnifyNodeToggle(nodeid),
                 focusNode: () => this.focusNode(nodeid),
                 dragHandleRef: createRef(),
