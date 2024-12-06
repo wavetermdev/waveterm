@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -26,6 +27,8 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 		Color:        color,
 	}
 	wstore.DBInsert(ctx, ws)
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_WorkspaceUpdate})
 	return ws, nil
 }
 
@@ -56,6 +59,8 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 		return false, fmt.Errorf("error deleting workspace: %w", err)
 	}
 	log.Printf("deleted workspace %s\n", workspaceId)
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_WorkspaceUpdate})
 	return true, nil
 }
 

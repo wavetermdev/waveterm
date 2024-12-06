@@ -12,6 +12,7 @@ const (
 	Event_Config           = "config"
 	Event_UserInput        = "userinput"
 	Event_RouteGone        = "route:gone"
+	Event_WorkspaceUpdate  = "workspace:update"
 )
 
 type WaveEvent struct {
