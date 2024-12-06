@@ -38,13 +38,17 @@ async function getClientId() {
 
 type TabSwitchQueueEntry =
     | {
-          createTab: false;
+          op: "switch";
           tabId: string;
           setInBackend: boolean;
       }
     | {
-          createTab: true;
+          op: "create";
           pinned: boolean;
+      }
+    | {
+          op: "close";
+          tabId: string;
       };
 
 export class WaveBrowserWindow extends BaseWindow {
@@ -252,6 +256,11 @@ export class WaveBrowserWindow extends BaseWindow {
                 console.log("win quitting or updating", this.waveWindowId);
                 return;
             }
+            waveWindowMap.delete(this.waveWindowId);
+            if (focusedWaveWindow == this) {
+                focusedWaveWindow = null;
+            }
+            this.removeAllChildViews();
             if (getGlobalIsRelaunching()) {
                 console.log("win relaunching", this.waveWindowId);
                 this.destroy();
@@ -266,15 +275,17 @@ export class WaveBrowserWindow extends BaseWindow {
                 console.log("win removing window from backend DB", this.waveWindowId);
                 fireAndForget(() => WindowService.CloseWindow(this.waveWindowId, true));
             }
-            for (const tabView of this.allLoadedTabViews.values()) {
-                tabView?.destroy();
-            }
-            waveWindowMap.delete(this.waveWindowId);
-            if (focusedWaveWindow == this) {
-                focusedWaveWindow = null;
-            }
         });
         waveWindowMap.set(waveWindow.oid, this);
+    }
+
+    removeAllChildViews() {
+        for (const tabView of this.allLoadedTabViews.values()) {
+            if (!this.isDestroyed()) {
+                this.contentView.removeChildView(tabView);
+            }
+            tabView?.destroy();
+        }
     }
 
     async switchWorkspace(workspaceId: string) {
@@ -311,12 +322,7 @@ export class WaveBrowserWindow extends BaseWindow {
             return;
         }
         console.log("switchWorkspace newWs", newWs);
-        if (this.allLoadedTabViews.size) {
-            for (const tab of this.allLoadedTabViews.values()) {
-                this.contentView.removeChildView(tab);
-                tab?.destroy();
-            }
-        }
+        this.removeAllChildViews();
         console.log("destroyed all tabs", this.waveWindowId);
         this.workspaceId = workspaceId;
         this.allLoadedTabViews = new Map();
@@ -329,22 +335,7 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async closeTab(tabId: string) {
-        console.log(`closeTab tabid=${tabId} ws=${this.workspaceId} window=${this.waveWindowId}`);
-        const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
-        if (rtn == null) {
-            console.log("[error] closeTab: no return value", tabId, this.workspaceId, this.waveWindowId);
-            return;
-        }
-        if (rtn.closewindow) {
-            this.close();
-            return;
-        }
-        if (!rtn.newactivetabid) {
-            console.log("[error] closeTab, no new active tab", tabId, this.workspaceId, this.waveWindowId);
-            return;
-        }
-        await this.setActiveTab(rtn.newactivetabid, false);
-        this.allLoadedTabViews.delete(tabId);
+        await this.queueCloseTab(tabId);
     }
 
     async initializeTab(tabView: WaveTabView) {
@@ -447,11 +438,15 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async queueTabSwitch(tabId: string, setInBackend: boolean) {
-        await this._queueTabSwitchInternal({ createTab: false, tabId, setInBackend });
+        await this._queueTabSwitchInternal({ op: "switch", tabId, setInBackend });
     }
 
     async queueCreateTab(pinned = false) {
-        await this._queueTabSwitchInternal({ createTab: true, pinned });
+        await this._queueTabSwitchInternal({ op: "create", pinned });
+    }
+
+    async queueCloseTab(tabId: string) {
+        await this._queueTabSwitchInternal({ op: "close", tabId });
     }
 
     async _queueTabSwitchInternal(entry: TabSwitchQueueEntry) {
@@ -466,6 +461,12 @@ export class WaveBrowserWindow extends BaseWindow {
         }
     }
 
+    removeTabViewLater(tabId: string, delayMs: number) {
+        setTimeout(() => {
+            this.removeTabView(tabId, false);
+        }, 1000);
+    }
+
     // the queue and this function are used to serialize tab switches
     // [0] => the tab that is currently being switched to
     // [1] => the tab that will be switched to next
@@ -478,10 +479,10 @@ export class WaveBrowserWindow extends BaseWindow {
                 const entry = this.tabSwitchQueue[0];
                 let tabId: string = null;
                 // have to use "===" here to get the typechecker to work :/
-                if (entry.createTab === true) {
+                if (entry.op === "create") {
                     const { pinned } = entry;
                     tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true, pinned);
-                } else if (entry.createTab === false) {
+                } else if (entry.op === "switch") {
                     let setInBackend: boolean = false;
                     ({ tabId, setInBackend } = entry);
                     if (this.activeTabView?.waveTabId == tabId) {
@@ -490,11 +491,28 @@ export class WaveBrowserWindow extends BaseWindow {
                     if (setInBackend) {
                         await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
                     }
+                } else if (entry.op === "close") {
+                    console.log("processTabSwitchQueue closeTab", entry.tabId);
+                    tabId = entry.tabId;
+                    const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
+                    if (rtn == null) {
+                        console.log("[error] closeTab: no return value", tabId, this.workspaceId, this.waveWindowId);
+                        return;
+                    }
+                    this.removeTabViewLater(tabId, 1000);
+                    if (rtn.closewindow) {
+                        this.close();
+                        return;
+                    }
+                    if (!rtn.newactivetabid) {
+                        return;
+                    }
+                    tabId = rtn.newactivetabid;
                 }
                 if (tabId == null) {
                     return;
                 }
-                const [tabView, tabInitialized] = await getOrCreateWebViewForTab(tabId);
+                const [tabView, tabInitialized] = await getOrCreateWebViewForTab(this.waveWindowId, tabId);
                 await this.setTabViewIntoWindow(tabView, tabInitialized);
             } catch (e) {
                 console.log("error caught in processTabSwitchQueue", e);
@@ -518,6 +536,22 @@ export class WaveBrowserWindow extends BaseWindow {
         } catch (e) {
             console.log("error sending new window bounds to backend", e);
         }
+    }
+
+    removeTabView(tabId: string, force: boolean) {
+        if (!force && this.activeTabView?.waveTabId == tabId) {
+            console.log("cannot remove active tab", tabId, this.waveWindowId);
+            return;
+        }
+        const tabView = this.allLoadedTabViews.get(tabId);
+        if (tabView == null) {
+            console.log("removeTabView -- tabView not found", tabId, this.waveWindowId);
+            // the tab was never loaded, so just return
+            return;
+        }
+        this.contentView.removeChildView(tabView);
+        this.allLoadedTabViews.delete(tabId);
+        tabView.destroy();
     }
 
     destroy() {
@@ -607,9 +641,7 @@ ipcMain.on("close-tab", async (event, workspaceId, tabId) => {
         console.log(`close-tab: no window found for workspace ws=${workspaceId} tab=${tabId}`);
         return;
     }
-    if (ww != null) {
-        await ww.closeTab(tabId);
-    }
+    await ww.queueCloseTab(tabId);
     event.returnValue = true;
     return null;
 });
@@ -685,9 +717,12 @@ export async function relaunchBrowserWindows() {
     console.log("relaunchBrowserWindows");
     setGlobalIsRelaunching(true);
     const windows = getAllWaveWindows();
-    for (const window of windows) {
-        console.log("relaunch -- closing window", window.waveWindowId);
-        window.close();
+    if (windows.length > 0) {
+        for (const window of windows) {
+            console.log("relaunch -- closing window", window.waveWindowId);
+            window.close();
+        }
+        await delay(1200);
     }
     setGlobalIsRelaunching(false);
 
