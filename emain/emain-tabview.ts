@@ -71,12 +71,8 @@ export class WaveTabView extends WebContentsView {
         this.waveReadyPromise = new Promise((resolve, _) => {
             this.waveReadyResolve = resolve;
         });
-
-        // Once the frontend is ready, we can cancel the destroyTabTimeout, assuming the tab hasn't been destroyed yet
-        // Only after a tab is ready will we add it to the wcvCache
         this.waveReadyPromise.then(() => {
             this.isWaveReady = true;
-            setWaveTabView(this.waveTabId, this);
         });
         wcIdToWaveTabMap.set(this.webContents.id, this);
         if (isDevVite) {
@@ -165,9 +161,15 @@ function checkAndEvictCache(): void {
         // Otherwise, sort by lastUsedTs
         return a.lastUsedTs - b.lastUsedTs;
     });
+    const now = Date.now();
     for (let i = 0; i < sorted.length - MaxCacheSize; i++) {
         if (sorted[i].isActiveTab) {
             // don't evict WaveTabViews that are currently showing in a window
+            continue;
+        }
+        const lastUsedDiff = now - sorted[i].lastUsedTs;
+        if (lastUsedDiff < 1000) {
+            // don't evict WaveTabViews that were just created/used
             continue;
         }
         const tabView = sorted[i];
@@ -196,6 +198,7 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
     tabView = getSpareTab(fullConfig);
     tabView.waveWindowId = waveWindowId;
     tabView.lastUsedTs = Date.now();
+    setWaveTabView(tabId, tabView);
     tabView.waveTabId = tabId;
     tabView.webContents.on("will-navigate", shNavHandler);
     tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
