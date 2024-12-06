@@ -26,7 +26,7 @@ export class WaveBrowserWindow extends BaseWindow {
     activeTabView: WaveTabView;
     private canClose: boolean;
     private deleteAllowed: boolean;
-    private tabSwitchQueue: { tabView: WaveTabView; tabInitialized: boolean }[];
+    private tabSwitchQueue: { tabId: string; setInBackend: boolean }[];
 
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
         console.log("create win", waveWindow.oid);
@@ -292,15 +292,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     async setActiveTab(tabId: string, setInBackend: boolean) {
         console.log("setActiveTab", tabId, this.waveWindowId, this.workspaceId, setInBackend);
-        if (this.activeTabView?.waveTabId == tabId) {
-            return;
-        }
-        if (setInBackend) {
-            await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
-        }
-        const fullConfig = await FileService.GetFullConfig();
-        const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, tabId);
-        await this.queueTabSwitch(tabView, tabInitialized);
+        await this.queueTabSwitch(tabId, setInBackend);
     }
 
     async createTab(pinned = false) {
@@ -423,22 +415,31 @@ export class WaveBrowserWindow extends BaseWindow {
         }
     }
 
-    async queueTabSwitch(tabView: WaveTabView, tabInitialized: boolean) {
+    async queueTabSwitch(tabId: string, setInBackend: boolean) {
         if (this.tabSwitchQueue.length >= 2) {
-            this.tabSwitchQueue[1] = { tabView, tabInitialized };
+            this.tabSwitchQueue[1] = { tabId, setInBackend };
             return;
         }
         const wasEmpty = this.tabSwitchQueue.length === 0;
-        this.tabSwitchQueue.push({ tabView, tabInitialized });
+        this.tabSwitchQueue.push({ tabId, setInBackend });
         if (wasEmpty) {
             await this.processTabSwitchQueue();
         }
     }
 
+    // the queue and this function are used to serialize tab switches
     async processTabSwitchQueue() {
         while (this.tabSwitchQueue.length > 0) {
             try {
-                const { tabView, tabInitialized } = this.tabSwitchQueue[0];
+                const { tabId, setInBackend } = this.tabSwitchQueue[0];
+                if (this.activeTabView?.waveTabId == tabId) {
+                    continue;
+                }
+                if (setInBackend) {
+                    await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
+                }
+                const fullConfig = await FileService.GetFullConfig();
+                const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, tabId);
                 await this.setTabViewIntoWindow(tabView, tabInitialized);
             } catch (e) {
                 console.log("error caught in processTabSwitchQueue", e);
