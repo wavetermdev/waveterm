@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { FileService } from "@/app/store/services";
 import { adaptFromElectronKeyEvent } from "@/util/keyutil";
 import { Rectangle, shell, WebContentsView } from "electron";
 import path from "path";
@@ -188,11 +189,12 @@ export function clearTabCache() {
 }
 
 // returns [tabview, initialized]
-export function getOrCreateWebViewForTab(fullConfig: FullConfigType, tabId: string): [WaveTabView, boolean] {
+export async function getOrCreateWebViewForTab(tabId: string): Promise<[WaveTabView, boolean]> {
     let tabView = getWaveTabView(tabId);
     if (tabView) {
         return [tabView, true];
     }
+    const fullConfig = await FileService.GetFullConfig();
     tabView = getSpareTab(fullConfig);
     tabView.lastUsedTs = Date.now();
     tabView.waveTabId = tabId;
