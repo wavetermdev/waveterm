@@ -7,7 +7,7 @@ import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, isDev, PLATFORM, setActiveTab } from "@/store/global";
 import { fireAndForget } from "@/util/util";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -100,7 +100,7 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
 };
 
 const TabBar = memo(({ workspace }: TabBarProps) => {
-    const [tabIds, setTabIds] = useState<string[]>([]);
+    const [tabIds, setTabIds] = useState([]);
     const [pinnedTabIds, setPinnedTabIds] = useState<Set<string>>(new Set());
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
@@ -136,8 +136,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
-
     const settings = useAtomValue(atoms.settingsAtom);
+    const setTabIndicesMoved = useSetAtom(atoms.tabIndicesMoved);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -314,7 +314,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             for (let i = tabIndex + 1; i < tabIds.length; i++) {
                 const otherTabStart = dragStartPositions[i];
                 if (currentX + tabWidth > otherTabStart + tabWidth / 2) {
+                    // setTest("switching right");
                     newTabIndex = i;
+                    console.log("newTabIndex===", newTabIndex, tabRefs.current);
                 }
             }
         } else {
@@ -322,6 +324,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             for (let i = tabIndex - 1; i >= 0; i--) {
                 const otherTabEnd = dragStartPositions[i] + tabWidth;
                 if (currentX < otherTabEnd - tabWidth / 2) {
+                    // setTest("switching left");
                     newTabIndex = i;
                 }
             }
@@ -402,6 +405,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         ref.current!.style.zIndex = "100";
 
         const tabIndex = draggingTabDataRef.current.tabIndex;
+
         const newTabIndex = getNewTabIndex(currentX, tabIndex, dragDirection);
 
         if (newTabIndex !== tabIndex) {
@@ -414,10 +418,21 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             // Find current index of the dragged tab in tempTabs
             const currentIndexOfDraggingTab = tabIds.indexOf(tabId);
 
+            console.log("currentIndexOfDraggingTab", currentIndexOfDraggingTab);
+            console.log("tabIndex", tabIndex);
+
             // Move the dragged tab to its new position
             if (currentIndexOfDraggingTab !== -1) {
-                tabIds.splice(currentIndexOfDraggingTab, 1);
+                tabIds.splice(tabIndex, 1);
             }
+
+            // Track indices that have been moved
+            if (getDragDirection(currentX) === "+") {
+                setTabIndicesMoved([tabIndex, newTabIndex, newTabIndex + 1]);
+            } else if (getDragDirection(currentX) === "-") {
+                setTabIndicesMoved([newTabIndex - 1, newTabIndex, newTabIndex + 1]);
+            }
+
             tabIds.splice(newTabIndex, 0, tabId);
 
             // Update visual positions of the tabs
@@ -519,7 +534,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             console.log("handleDragStart", tabId, tabIndex, tabStartX);
             if (ref.current) {
                 draggingTabDataRef.current = {
-                    tabId: ref.current.dataset.tabId,
+                    tabId,
                     ref,
                     tabStartX,
                     tabIndex,
@@ -596,6 +611,14 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         });
     }, []);
 
+    const handleMouseEnterTab = (index: number) => {
+        setTabIndicesMoved([index - 1, index, index + 1]);
+    };
+
+    const handleMouseLeaveTab = (index: number) => {
+        setTabIndicesMoved([]);
+    };
+
     const isBeforeActive = (tabId: string) => {
         return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
     };
@@ -616,12 +639,13 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
+
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
-            <WorkspaceSwitcher />
+            <WorkspaceSwitcher ref={workspaceSwitcherRef}></WorkspaceSwitcher>
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
@@ -633,9 +657,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 id={tabId}
                                 isFirst={index === 0}
                                 isPinned={isPinned}
-                                onSelect={() => handleSelectTab(tabId)}
-                                active={activeTabId === tabId}
-                                onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
+                                onClick={() => handleSelectTab(tabId)}
+                                isActive={activeTabId === tabId}
+                                onMouseDown={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}
                                 onPinChange={() => handlePinChange(tabId, !isPinned)}
@@ -643,6 +667,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 isDragging={draggingTab === tabId}
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}
+                                tabIds={tabIds}
+                                onMouseEnter={() => handleMouseEnterTab(index)}
+                                onMouseLeave={() => handleMouseLeaveTab(index)}
                             />
                         );
                     })}

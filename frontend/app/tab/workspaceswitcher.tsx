@@ -17,7 +17,7 @@ import clsx from "clsx";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { CSSProperties, memo, useCallback, useEffect, useRef } from "react";
+import { CSSProperties, forwardRef, memo, useCallback, useEffect, useRef } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
 import { atoms, getApi } from "../store/global";
@@ -161,7 +161,7 @@ type WorkspaceList = WorkspaceListEntry[];
 const workspaceMapAtom = atom<WorkspaceList>([]);
 const workspaceSplitAtom = splitAtom(workspaceMapAtom);
 const editingWorkspaceAtom = atom<string>();
-const WorkspaceSwitcher = () => {
+const WorkspaceSwitcher = forwardRef<HTMLDivElement, {}>(({}, ref) => {
     const setWorkspaceList = useSetAtom(workspaceMapAtom);
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const workspaceList = useAtomValue(workspaceSplitAtom);
@@ -213,11 +213,7 @@ const WorkspaceSwitcher = () => {
     };
 
     return (
-        <Popover
-            className="workspace-switcher-popover"
-            placement="bottom-start"
-            onDismiss={() => setEditingWorkspace(null)}
-        >
+        <Popover ref={ref} className="workspace-switcher-popover" placement="bottom-start" onDismiss={() => setEditingWorkspace(null)}>
             <PopoverButton
                 className="workspace-switcher-button grey"
                 as="div"
@@ -250,7 +246,7 @@ const WorkspaceSwitcher = () => {
             </PopoverContent>
         </Popover>
     );
-};
+});
 
 const WorkspaceSwitcherItem = ({
     entryAtom,

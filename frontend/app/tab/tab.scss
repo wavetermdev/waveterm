@@ -10,25 +10,27 @@
     font-weight: bold;
     color: var(--secondary-text-color);
     opacity: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+	display: flex;
+	align-items: center; 
+	justify-content: center; 
 
-    &::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        width: 1px;
-        height: 14px;
-        border-right: 1px solid rgb(from var(--main-text-color) r g b / 0.2);
-    }
+	.separator {
+		position: absolute;
+		left: 0px;
+		width: 1px;
+		height: 14px;
+		border-right-width: 1px;
+		border-right-style: solid;
+		border-color: rgb(from var(--main-text-color) r g b / 0.2);
+		opacity: 1;
+	}
 
     .tab-inner {
         position: relative;
-        width: calc(100% - 6px);
+        width: calc(100% - 6px); 
         height: 100%;
         white-space: nowrap;
-        border-radius: 6px;
+		border-radius: 6px;
     }
 
     &.animate {
@@ -48,14 +50,10 @@
             color: var(--main-text-color);
         }
 
-        & + .tab::after,
-        &::after {
-            content: none;
-        }
-    }
-
-    &:first-child::after {
-        content: none;
+		& + .tab .separator,
+		.separator {
+			opacity: 0;
+		}
     }
 
     .name {

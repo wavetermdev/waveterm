@@ -1,31 +1,36 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, globalStore, refocusNode } from "@/app/store/global";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { clsx } from "clsx";
+import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+
+import { atoms, globalStore, refocusNode } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
 
 interface TabProps {
     id: string;
-    active: boolean;
+    isActive: boolean;
     isFirst: boolean;
     isBeforeActive: boolean;
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
     isPinned: boolean;
-    onSelect: () => void;
+    tabIds: string[];
+    onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
-    onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseDown: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
     onPinChange: () => void;
+    onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseLeave: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
 }
 
 const Tab = memo(
@@ -33,16 +38,20 @@ const Tab = memo(
         (
             {
                 id,
-                active,
+                isActive,
+                isFirst,
                 isPinned,
                 isBeforeActive,
                 isDragging,
                 tabWidth,
                 isNew,
+                tabIds,
                 onLoaded,
-                onSelect,
+                onClick,
                 onClose,
-                onDragStart,
+                onMouseDown,
+                onMouseEnter,
+                onMouseLeave,
                 onPinChange,
             },
             ref
@@ -55,6 +64,8 @@ const Tab = memo(
             const editableTimeoutRef = useRef<NodeJS.Timeout>();
             const loadedRef = useRef(false);
             const tabRef = useRef<HTMLDivElement>(null);
+
+            const tabIndicesMoved = useAtomValue<number[]>(atoms.tabIndicesMoved);
 
             useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 
@@ -189,20 +200,34 @@ const Tab = memo(
                 [onPinChange, handleRenameTab, id, onClose, isPinned]
             );
 
+            const showSeparator = useCallback(
+                (id) => {
+                    // if (isFirst) return false;
+
+                    const idx = tabIds.indexOf(id);
+                    const found = tabIndicesMoved.find((i, ii) => ii !== 0 && i === idx) === undefined;
+                    return found;
+                },
+                [isFirst, tabIndicesMoved]
+            );
+
             return (
                 <div
                     ref={tabRef}
                     className={clsx("tab", {
-                        active,
+                        active: isActive,
                         isDragging,
                         "before-active": isBeforeActive,
                         "new-tab": isNew,
                     })}
-                    onMouseDown={onDragStart}
-                    onClick={onSelect}
+                    onMouseDown={onMouseDown}
+                    onClick={onClick}
                     onContextMenu={handleContextMenu}
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
                     data-tab-id={id}
                 >
+                    {showSeparator(id) && <div className="separator"></div>}
                     <div className="tab-inner">
                         <div
                             ref={editableRef}
@@ -214,6 +239,7 @@ const Tab = memo(
                             suppressContentEditableWarning={true}
                         >
                             {tabData?.name}
+                            {/* {id.substring(id.length - 3)} */}
                         </div>
                         {isPinned ? (
                             <Button

@@ -52,7 +52,7 @@ const isPopoverContent = (
 
 const Popover = memo(
     forwardRef<HTMLDivElement, PopoverProps>(
-        ({ children, className, placement = "bottom-start", offset = 3, onDismiss, middleware }, ref) => {
+        ({ children, className, placement = "bottom-start", offset = 3, onDismiss }, ref) => {
             const [isOpen, setIsOpen] = useState(false);
 
             const handleOpenChange = (open: boolean) => {
@@ -62,18 +62,11 @@ const Popover = memo(
                 }
             };
 
-            if (offset === undefined) {
-                offset = 3;
-            }
-
-            middleware ??= [];
-            middleware.push(offsetMiddleware(offset));
-
             const { refs, floatingStyles, context } = useFloating({
                 placement,
                 open: isOpen,
                 onOpenChange: handleOpenChange,
-                middleware: middleware,
+                middleware: [offsetMiddleware(offset)],
                 whileElementsMounted: autoUpdate,
             });
 
