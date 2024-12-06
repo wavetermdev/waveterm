@@ -292,6 +292,9 @@ export class WaveBrowserWindow extends BaseWindow {
 
     async setActiveTab(tabId: string, setInBackend: boolean) {
         console.log("setActiveTab", tabId, this.waveWindowId, this.workspaceId, setInBackend);
+        if (this.activeTabView?.waveTabId == tabId) {
+            return;
+        }
         if (setInBackend) {
             await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
         }
