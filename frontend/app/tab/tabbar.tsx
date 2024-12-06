@@ -134,19 +134,22 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
+    const isFullScreen = useAtomValue(atoms.isFullScreen);
+    const settings = useAtomValue(atoms.settingsAtom);
+
+    // Logic to update the highlighted tab. This is eventually consistent with the workspace's active tab.
+    // When a user selects a new tab to switch to, the local state is updated immediately. Once the workspace
+    // object gets updated, the local state is updated to reflect the workspace's active tab. This prevents
+    // the previously-active tab from being highlighted when switching tabs.
     const [selectedTabId, setSelectedTabId] = useState<string>();
     const staticTabId = useAtomValue(atoms.staticTabId);
     const activeTabId = selectedTabId ?? staticTabId;
-    const isFullScreen = useAtomValue(atoms.isFullScreen);
-
-    const settings = useAtomValue(atoms.settingsAtom);
-
-    let prevDelta: number;
-    let prevDragDirection: string;
-
     useLayoutEffect(() => {
         setSelectedTabId(workspace.activetabid);
     }, [workspace.activetabid]);
+
+    let prevDelta: number;
+    let prevDragDirection: string;
 
     // Update refs when tabIds change
     useEffect(() => {
