@@ -255,7 +255,7 @@ function getConnConfigKeyAtom<T extends keyof ConnKeywords>(connName: string, ke
     }
     keyAtom = atom((get) => {
         let fullConfig = get(atoms.fullConfigAtom);
-        return fullConfig.connections[connName]?.[key];
+        return fullConfig.connections?.[connName]?.[key];
     });
     connCache.set(keyAtomName, keyAtom);
     return keyAtom;

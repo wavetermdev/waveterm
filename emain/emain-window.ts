@@ -22,7 +22,7 @@ export class WaveBrowserWindow extends BaseWindow {
     waveWindowId: string;
     workspaceId: string;
     waveReadyPromise: Promise<void>;
-    allTabViews: Map<string, WaveTabView>;
+    allLoadedTabViews: Map<string, WaveTabView>;
     activeTabView: WaveTabView;
     private canClose: boolean;
     private deleteAllowed: boolean;
@@ -108,7 +108,7 @@ export class WaveBrowserWindow extends BaseWindow {
         this.tabSwitchQueue = [];
         this.waveWindowId = waveWindow.oid;
         this.workspaceId = waveWindow.workspaceid;
-        this.allTabViews = new Map<string, WaveTabView>();
+        this.allLoadedTabViews = new Map<string, WaveTabView>();
         const winBoundsPoller = setInterval(() => {
             if (this.isDestroyed()) {
                 clearInterval(winBoundsPoller);
@@ -165,7 +165,7 @@ export class WaveBrowserWindow extends BaseWindow {
             }
             focusedWaveWindow = this;
             console.log("focus win", this.waveWindowId);
-            fireAndForget(async () => await ClientService.FocusWindow(this.waveWindowId));
+            fireAndForget(() => ClientService.FocusWindow(this.waveWindowId));
             setWasInFg(true);
             setWasActive(true);
         });
@@ -235,9 +235,15 @@ export class WaveBrowserWindow extends BaseWindow {
             }
             if (this.deleteAllowed) {
                 console.log("win removing window from backend DB", this.waveWindowId);
-                fireAndForget(async () => await WindowService.CloseWindow(this.waveWindowId, true));
+                fireAndForget(() => WindowService.CloseWindow(this.waveWindowId, true));
             }
-            this.destroy();
+            for (const tabView of this.allLoadedTabViews.values()) {
+                tabView?.destroy();
+            }
+            waveWindowMap.delete(this.waveWindowId);
+            if (focusedWaveWindow == this) {
+                focusedWaveWindow = null;
+            }
         });
         waveWindowMap.set(waveWindow.oid, this);
     }
@@ -272,20 +278,23 @@ export class WaveBrowserWindow extends BaseWindow {
             return;
         }
         console.log("switchWorkspace newWs", newWs);
-        if (this.allTabViews.size) {
-            for (const tab of this.allTabViews.values()) {
+        if (this.allLoadedTabViews.size) {
+            for (const tab of this.allLoadedTabViews.values()) {
                 this.contentView.removeChildView(tab);
                 tab?.destroy();
             }
         }
         console.log("destroyed all tabs", this.waveWindowId);
         this.workspaceId = workspaceId;
-        this.allTabViews = new Map();
+        this.allLoadedTabViews = new Map();
         await this.setActiveTab(newWs.activetabid, false);
     }
 
     async setActiveTab(tabId: string, setInBackend: boolean) {
         console.log("setActiveTab", tabId, this.waveWindowId, this.workspaceId, setInBackend);
+        if (this.activeTabView?.waveTabId == tabId) {
+            return;
+        }
         if (setInBackend) {
             await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
         }
@@ -300,24 +309,22 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async closeTab(tabId: string) {
-        console.log("closeTab", tabId, this.waveWindowId, this.workspaceId);
-        const tabView = this.allTabViews.get(tabId);
-        if (tabView) {
-            const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
-            if (rtn?.closewindow) {
-                this.close();
-            } else if (rtn?.newactivetabid) {
-                await this.setActiveTab(rtn.newactivetabid, false);
-            }
-            this.allTabViews.delete(tabId);
+        console.log(`closeTab tabid=${tabId} ws=${this.workspaceId} window=${this.waveWindowId}`);
+        const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
+        if (rtn == null) {
+            console.log("[error] closeTab: no return value", tabId, this.workspaceId, this.waveWindowId);
+            return;
         }
-    }
-
-    forceClose() {
-        console.log("forceClose window", this.waveWindowId);
-        this.canClose = true;
-        this.deleteAllowed = true;
-        this.close();
+        if (rtn.closewindow) {
+            this.close();
+            return;
+        }
+        if (!rtn.newactivetabid) {
+            console.log("[error] closeTab, no new active tab", tabId, this.workspaceId, this.waveWindowId);
+            return;
+        }
+        await this.setActiveTab(rtn.newactivetabid, false);
+        this.allLoadedTabViews.delete(tabId);
     }
 
     async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
@@ -331,7 +338,7 @@ export class WaveBrowserWindow extends BaseWindow {
             oldActiveView.isActiveTab = false;
         }
         this.activeTabView = tabView;
-        this.allTabViews.set(tabView.waveTabId, tabView);
+        this.allLoadedTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
             console.log("initializing a new tab");
             await tabView.initPromise;
@@ -408,7 +415,7 @@ export class WaveBrowserWindow extends BaseWindow {
         }
         const curBounds = this.getContentBounds();
         this.activeTabView?.positionTabOnScreen(curBounds);
-        for (const tabView of this.allTabViews.values()) {
+        for (const tabView of this.allLoadedTabViews.values()) {
             if (tabView == this.activeTabView) {
                 continue;
             }
@@ -459,20 +466,14 @@ export class WaveBrowserWindow extends BaseWindow {
 
     destroy() {
         console.log("destroy win", this.waveWindowId);
-        for (const tabView of this.allTabViews.values()) {
-            tabView?.destroy();
-        }
-        waveWindowMap.delete(this.waveWindowId);
-        if (focusedWaveWindow == this) {
-            focusedWaveWindow = null;
-        }
+        this.deleteAllowed = true;
         super.destroy();
     }
 }
 
 export function getWaveWindowByTabId(tabId: string): WaveBrowserWindow {
     for (const ww of waveWindowMap.values()) {
-        if (ww.allTabViews.has(tabId)) {
+        if (ww.allLoadedTabViews.has(tabId)) {
             return ww;
         }
     }
@@ -537,17 +538,22 @@ ipcMain.on("set-active-tab", async (event, tabId) => {
 ipcMain.on("create-tab", async (event, opts) => {
     const senderWc = event.sender;
     const ww = getWaveWindowByWebContentsId(senderWc.id);
-    if (!ww) {
-        return;
+    if (ww != null) {
+        await ww.createTab();
     }
-    await ww.createTab();
     event.returnValue = true;
     return null;
 });
 
-ipcMain.on("close-tab", async (event, tabId) => {
-    const ww = getWaveWindowByTabId(tabId);
-    await ww.closeTab(tabId);
+ipcMain.on("close-tab", async (event, workspaceId, tabId) => {
+    const ww = getWaveWindowByWorkspaceId(workspaceId);
+    if (ww == null) {
+        console.log(`close-tab: no window found for workspace ws=${workspaceId} tab=${tabId}`);
+        return;
+    }
+    if (ww != null) {
+        await ww.closeTab(tabId);
+    }
     event.returnValue = true;
     return null;
 });
@@ -565,6 +571,6 @@ ipcMain.on("delete-workspace", async (event, workspaceId) => {
     console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
     if (ww?.workspaceId == workspaceId) {
         console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-        ww.forceClose();
+        ww.destroy();
     }
 });

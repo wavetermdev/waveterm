@@ -93,7 +93,7 @@ declare global {
         deleteWorkspace: (workspaceId: string) => void;
         setActiveTab: (tabId: string) => void;
         createTab: () => void;
-        closeTab: (tabId: string) => void;
+        closeTab: (workspaceId: string, tabId: string) => void;
         setWindowInitStatus: (status: "ready" | "wave-ready") => void;
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
         sendLog: (log: string) => void;

@@ -119,7 +119,11 @@ export class TermWrap {
                 data = data.substring(nextSlashIdx);
             }
             setTimeout(() => {
-                services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { "cmd:cwd": data });
+                fireAndForget(() =>
+                    services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
+                        "cmd:cwd": data,
+                    })
+                );
             }, 0);
             return true;
         });
@@ -284,7 +288,9 @@ export class TermWrap {
         const serializedOutput = this.serializeAddon.serialize();
         const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
         console.log("idle timeout term", this.dataBytesProcessed, serializedOutput.length, termSize);
-        services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset, termSize);
+        fireAndForget(() =>
+            services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset, termSize)
+        );
         this.dataBytesProcessed = 0;
     }
 
