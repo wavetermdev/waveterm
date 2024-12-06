@@ -8,7 +8,6 @@ import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
 import { handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
-import { waveWindowMap } from "./emain-window";
 import { getElectronAppBasePath, isDevVite } from "./platform";
 
 function computeBgColor(fullConfig: FullConfigType): string {
@@ -30,9 +29,15 @@ export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabVie
     return wcIdToWaveTabMap.get(webContentsId);
 }
 
+export function destroyTabViewIfExists(tabId: string) {
+    const tabView = getWaveTabView(tabId);
+    if (tabView) {
+        tabView.destroy();
+    }
+}
+
 export class WaveTabView extends WebContentsView {
     isActiveTab: boolean;
-    waveWindowId: string; // set when showing in an active window
     private _waveTabId: string; // always set, WaveTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
     createdTs: number; // ts milliseconds
@@ -43,6 +48,7 @@ export class WaveTabView extends WebContentsView {
     waveReadyResolve: () => void;
     isInitialized: boolean = false;
     isWaveReady: boolean = false;
+    isDestroyed: boolean = false;
 
     constructor(fullConfig: FullConfigType) {
         console.log("createBareTabView");
@@ -80,6 +86,7 @@ export class WaveTabView extends WebContentsView {
         this.webContents.on("destroyed", () => {
             wcIdToWaveTabMap.delete(this.webContents.id);
             removeWaveTabView(this.waveTabId);
+            this.isDestroyed = true;
         });
         this.setBackgroundColor(computeBgColor(fullConfig));
     }
@@ -121,14 +128,11 @@ export class WaveTabView extends WebContentsView {
 
     destroy() {
         console.log("destroy tab", this.waveTabId);
-        this.webContents?.close();
         removeWaveTabView(this.waveTabId);
-
-        // TODO: circuitous
-        const waveWindow = waveWindowMap.get(this.waveWindowId);
-        if (waveWindow) {
-            waveWindow.allLoadedTabViews.delete(this.waveTabId);
+        if (!this.isDestroyed) {
+            this.webContents?.close();
         }
+        this.isDestroyed = true;
     }
 }
 
