@@ -300,17 +300,22 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async closeTab(tabId: string) {
-        console.log("closeTab", tabId, this.waveWindowId, this.workspaceId);
-        const tabView = this.allLoadedTabViews.get(tabId);
-        if (tabView) {
-            const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
-            if (rtn?.closewindow) {
-                this.close();
-            } else if (rtn?.newactivetabid) {
-                await this.setActiveTab(rtn.newactivetabid, false);
-            }
-            this.allLoadedTabViews.delete(tabId);
+        console.log(`closeTab tabid=${tabId} ws=${this.workspaceId} window=${this.waveWindowId}`);
+        const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
+        if (rtn == null) {
+            console.log("[error] closeTab: no return value", tabId, this.workspaceId, this.waveWindowId);
+            return;
         }
+        if (rtn.closewindow) {
+            this.close();
+            return;
+        }
+        if (!rtn.newactivetabid) {
+            console.log("[error] closeTab, no new active tab", tabId, this.workspaceId, this.waveWindowId);
+            return;
+        }
+        await this.setActiveTab(rtn.newactivetabid, false);
+        this.allLoadedTabViews.delete(tabId);
     }
 
     forceClose() {
@@ -544,8 +549,12 @@ ipcMain.on("create-tab", async (event, opts) => {
     return null;
 });
 
-ipcMain.on("close-tab", async (event, tabId) => {
-    const ww = getWaveWindowByTabId(tabId);
+ipcMain.on("close-tab", async (event, workspaceId, tabId) => {
+    const ww = getWaveWindowByWorkspaceId(workspaceId);
+    if (ww == null) {
+        console.log(`close-tab: no window found for workspace ws=${workspaceId} tab=${tabId}`);
+        return;
+    }
     if (ww != null) {
         await ww.closeTab(tabId);
     }
