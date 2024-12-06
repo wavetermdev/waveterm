@@ -71,15 +71,20 @@ function shouldDispatchToBlock(e: WaveKeyboardEvent): boolean {
 }
 
 function genericClose(tabId: string) {
+    const ws = globalStore.get(atoms.workspace);
     const tabORef = WOS.makeORef("tab", tabId);
     const tabAtom = WOS.getWaveObjectAtom<Tab>(tabORef);
     const tabData = globalStore.get(tabAtom);
     if (tabData == null) {
         return;
     }
+    if (ws.pinnedtabids?.includes(tabId) && tabData.blockids?.length == 1) {
+        // don't allow closing the last block in a pinned tab
+        return;
+    }
     if (tabData.blockids == null || tabData.blockids.length == 0) {
         // close tab
-        getApi().closeTab(tabId);
+        getApi().closeTab(ws.oid, tabId);
         deleteLayoutModelForTab(tabId);
         return;
     }
@@ -247,10 +252,20 @@ function registerGlobalKeys() {
     });
     globalKeyMap.set("Cmd:w", () => {
         const tabId = globalStore.get(atoms.staticTabId);
+        genericClose(tabId);
+        return true;
+    });
+    globalKeyMap.set("Cmd:Shift:w", () => {
+        const tabId = globalStore.get(atoms.staticTabId);
         const ws = globalStore.get(atoms.workspace);
-        if (!ws.pinnedtabids?.includes(tabId)) {
-            genericClose(tabId);
+        if (ws.pinnedtabids?.includes(tabId)) {
+            // switch to first unpinned tab if it exists (for close spamming)
+            if (ws.tabids != null && ws.tabids.length > 0) {
+                getApi().setActiveTab(ws.tabids[0]);
+            }
+            return true;
         }
+        getApi().closeTab(ws.oid, tabId);
         return true;
     });
     globalKeyMap.set("Cmd:m", () => {

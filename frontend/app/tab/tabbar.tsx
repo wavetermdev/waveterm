@@ -5,7 +5,7 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, isDev, PLATFORM, setActiveTab } from "@/store/global";
+import { atoms, createTab, getApi, globalStore, isDev, PLATFORM, setActiveTab } from "@/store/global";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -570,7 +570,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        getApi().closeTab(tabId);
+        const ws = globalStore.get(atoms.workspace);
+        getApi().closeTab(ws.oid, tabId);
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutModelForTab(tabId);
     };
