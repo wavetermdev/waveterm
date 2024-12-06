@@ -7,7 +7,12 @@ import { BaseWindow, BaseWindowConstructorOptions, dialog, ipcMain, screen } fro
 import path from "path";
 import { debounce } from "throttle-debounce";
 import { getGlobalIsQuitting, getGlobalIsRelaunching, setWasActive, setWasInFg } from "./emain-activity";
-import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
+import {
+    destroyTabViewIfExists,
+    getOrCreateWebViewForTab,
+    getWaveTabViewByWebContentsId,
+    WaveTabView,
+} from "./emain-tabview";
 import { delay, ensureBoundsAreVisible } from "./emain-util";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
@@ -31,13 +36,17 @@ async function getClientId() {
 
 type TabSwitchQueueEntry =
     | {
-          createTab: false;
+          op: "switch";
           tabId: string;
           setInBackend: boolean;
       }
     | {
-          createTab: true;
+          op: "create";
           pinned: boolean;
+      }
+    | {
+          op: "close";
+          tabId: string;
       };
 
 export class WaveBrowserWindow extends BaseWindow {
@@ -318,6 +327,8 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async closeTab(tabId: string) {
+        await this.queueCloseTab(tabId);
+
         console.log(`closeTab tabid=${tabId} ws=${this.workspaceId} window=${this.waveWindowId}`);
         const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
         if (rtn == null) {
@@ -436,11 +447,15 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async queueTabSwitch(tabId: string, setInBackend: boolean) {
-        await this._queueTabSwitchInternal({ createTab: false, tabId, setInBackend });
+        await this._queueTabSwitchInternal({ op: "switch", tabId, setInBackend });
     }
 
     async queueCreateTab(pinned = false) {
-        await this._queueTabSwitchInternal({ createTab: true, pinned });
+        await this._queueTabSwitchInternal({ op: "create", pinned });
+    }
+
+    async queueCloseTab(tabId: string) {
+        await this._queueTabSwitchInternal({ op: "close", tabId });
     }
 
     async _queueTabSwitchInternal(entry: TabSwitchQueueEntry) {
@@ -467,10 +482,10 @@ export class WaveBrowserWindow extends BaseWindow {
                 const entry = this.tabSwitchQueue[0];
                 let tabId: string = null;
                 // have to use "===" here to get the typechecker to work :/
-                if (entry.createTab === true) {
+                if (entry.op === "create") {
                     const { pinned } = entry;
                     tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true, pinned);
-                } else if (entry.createTab === false) {
+                } else if (entry.op === "switch") {
                     let setInBackend: boolean = false;
                     ({ tabId, setInBackend } = entry);
                     if (this.activeTabView?.waveTabId == tabId) {
@@ -479,11 +494,28 @@ export class WaveBrowserWindow extends BaseWindow {
                     if (setInBackend) {
                         await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
                     }
+                } else if (entry.op === "close") {
+                    const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
+                    if (rtn == null) {
+                        console.log("[error] closeTab: no return value", tabId, this.workspaceId, this.waveWindowId);
+                        return;
+                    }
+                    setTimeout(() => {
+                        destroyTabViewIfExists(tabId);
+                    }, 1000);
+                    if (rtn.closewindow) {
+                        this.close();
+                        return;
+                    }
+                    if (!rtn.newactivetabid) {
+                        return;
+                    }
+                    tabId = rtn.newactivetabid;
                 }
                 if (tabId == null) {
                     return;
                 }
-                const [tabView, tabInitialized] = await getOrCreateWebViewForTab(tabId);
+                const [tabView, tabInitialized] = await getOrCreateWebViewForTab(this.waveWindowId, tabId);
                 await this.setTabViewIntoWindow(tabView, tabInitialized);
             } catch (e) {
                 console.log("error caught in processTabSwitchQueue", e);
@@ -596,9 +628,7 @@ ipcMain.on("close-tab", async (event, workspaceId, tabId) => {
         console.log(`close-tab: no window found for workspace ws=${workspaceId} tab=${tabId}`);
         return;
     }
-    if (ww != null) {
-        await ww.closeTab(tabId);
-    }
+    await ww.queueCloseTab(tabId);
     event.returnValue = true;
     return null;
 });

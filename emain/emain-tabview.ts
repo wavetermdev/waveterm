@@ -37,6 +37,7 @@ export function destroyTabViewIfExists(tabId: string) {
 }
 
 export class WaveTabView extends WebContentsView {
+    waveWindowId: string; // this will be set for any tabviews that are initialized. (unset for the hot spare)
     isActiveTab: boolean;
     private _waveTabId: string; // always set, WaveTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
@@ -186,13 +187,14 @@ export function clearTabCache() {
 }
 
 // returns [tabview, initialized]
-export async function getOrCreateWebViewForTab(tabId: string): Promise<[WaveTabView, boolean]> {
+export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: string): Promise<[WaveTabView, boolean]> {
     let tabView = getWaveTabView(tabId);
     if (tabView) {
         return [tabView, true];
     }
     const fullConfig = await FileService.GetFullConfig();
     tabView = getSpareTab(fullConfig);
+    tabView.waveWindowId = waveWindowId;
     tabView.lastUsedTs = Date.now();
     tabView.waveTabId = tabId;
     tabView.webContents.on("will-navigate", shNavHandler);
