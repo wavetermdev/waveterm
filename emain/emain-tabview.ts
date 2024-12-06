@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { FileService } from "@/app/store/services";
 import { adaptFromElectronKeyEvent } from "@/util/keyutil";
 import { Rectangle, shell, WebContentsView } from "electron";
 import path from "path";
@@ -40,6 +41,8 @@ export class WaveTabView extends WebContentsView {
     savedInitOpts: WaveInitOpts;
     waveReadyPromise: Promise<void>;
     waveReadyResolve: () => void;
+    isInitialized: boolean = false;
+    isWaveReady: boolean = false;
 
     // used to destroy the tab if it is not initialized within a certain time after being assigned a tabId
     private destroyTabTimeout: NodeJS.Timeout;
@@ -58,6 +61,7 @@ export class WaveTabView extends WebContentsView {
             this.initResolve = resolve;
         });
         this.initPromise.then(() => {
+            this.isInitialized = true;
             console.log("tabview init", Date.now() - this.createdTs + "ms");
         });
         this.waveReadyPromise = new Promise((resolve, _) => {
@@ -67,6 +71,7 @@ export class WaveTabView extends WebContentsView {
         // Once the frontend is ready, we can cancel the destroyTabTimeout, assuming the tab hasn't been destroyed yet
         // Only after a tab is ready will we add it to the wcvCache
         this.waveReadyPromise.then(() => {
+            this.isWaveReady = true;
             clearTimeout(this.destroyTabTimeout);
             setWaveTabView(this.waveTabId, this);
         });
@@ -184,11 +189,12 @@ export function clearTabCache() {
 }
 
 // returns [tabview, initialized]
-export function getOrCreateWebViewForTab(fullConfig: FullConfigType, tabId: string): [WaveTabView, boolean] {
+export async function getOrCreateWebViewForTab(tabId: string): Promise<[WaveTabView, boolean]> {
     let tabView = getWaveTabView(tabId);
     if (tabView) {
         return [tabView, true];
     }
+    const fullConfig = await FileService.GetFullConfig();
     tabView = getSpareTab(fullConfig);
     tabView.lastUsedTs = Date.now();
     tabView.waveTabId = tabId;

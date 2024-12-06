@@ -18,6 +18,17 @@ export type WindowOpts = {
 export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> WaveBrowserWindow
 export let focusedWaveWindow = null; // on blur we do not set this to null (but on destroy we do)
 
+let cachedClientId: string = null;
+
+async function getClientId() {
+    if (cachedClientId != null) {
+        return cachedClientId;
+    }
+    const clientData = await ClientService.GetClientData();
+    cachedClientId = clientData?.oid;
+    return cachedClientId;
+}
+
 export class WaveBrowserWindow extends BaseWindow {
     waveWindowId: string;
     workspaceId: string;
@@ -26,7 +37,7 @@ export class WaveBrowserWindow extends BaseWindow {
     activeTabView: WaveTabView;
     private canClose: boolean;
     private deleteAllowed: boolean;
-    private tabSwitchQueue: { tabView: WaveTabView; tabInitialized: boolean }[];
+    private tabSwitchQueue: { tabId: string; setInBackend: boolean }[];
 
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
         console.log("create win", waveWindow.oid);
@@ -292,15 +303,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     async setActiveTab(tabId: string, setInBackend: boolean) {
         console.log("setActiveTab", tabId, this.waveWindowId, this.workspaceId, setInBackend);
-        if (this.activeTabView?.waveTabId == tabId) {
-            return;
-        }
-        if (setInBackend) {
-            await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
-        }
-        const fullConfig = await FileService.GetFullConfig();
-        const [tabView, tabInitialized] = getOrCreateWebViewForTab(fullConfig, tabId);
-        await this.queueTabSwitch(tabView, tabInitialized);
+        await this.queueTabSwitch(tabId, setInBackend);
     }
 
     async createTab(pinned = false) {
@@ -327,8 +330,26 @@ export class WaveBrowserWindow extends BaseWindow {
         this.allLoadedTabViews.delete(tabId);
     }
 
+    async initializeTab(tabView: WaveTabView) {
+        const clientId = await getClientId();
+        await tabView.initPromise;
+        this.contentView.addChildView(tabView);
+        const initOpts = {
+            tabId: tabView.waveTabId,
+            clientId: clientId,
+            windowId: this.waveWindowId,
+            activate: true,
+        };
+        tabView.savedInitOpts = { ...initOpts };
+        tabView.savedInitOpts.activate = false;
+        let startTime = Date.now();
+        console.log("before wave ready, init tab, sending wave-init", tabView.waveTabId);
+        tabView.webContents.send("wave-init", initOpts);
+        await tabView.waveReadyPromise;
+        console.log("wave-ready init time", Date.now() - startTime + "ms");
+    }
+
     async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
-        const clientData = await ClientService.GetClientData();
         if (this.activeTabView == tabView) {
             return;
         }
@@ -341,26 +362,11 @@ export class WaveBrowserWindow extends BaseWindow {
         this.allLoadedTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
             console.log("initializing a new tab");
-            await tabView.initPromise;
-            this.contentView.addChildView(tabView);
-            const initOpts = {
-                tabId: tabView.waveTabId,
-                clientId: clientData.oid,
-                windowId: this.waveWindowId,
-                activate: true,
-            };
-            tabView.savedInitOpts = { ...initOpts };
-            tabView.savedInitOpts.activate = false;
-            let startTime = Date.now();
-            tabView.webContents.send("wave-init", initOpts);
-            console.log("before wave ready");
-            await tabView.waveReadyPromise;
-            // positionTabOnScreen(tabView, this.getContentBounds());
-            console.log("wave-ready init time", Date.now() - startTime + "ms");
-            // positionTabOffScreen(oldActiveView, this.getContentBounds());
-            await this.repositionTabsSlowly(100);
+            const p1 = this.initializeTab(tabView);
+            const p2 = this.repositionTabsSlowly(100);
+            await Promise.all([p1, p2]);
         } else {
-            console.log("reusing an existing tab");
+            console.log("reusing an existing tab, calling wave-init", tabView.waveTabId);
             const p1 = this.repositionTabsSlowly(35);
             const p2 = tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
             await Promise.all([p1, p2]);
@@ -423,28 +429,41 @@ export class WaveBrowserWindow extends BaseWindow {
         }
     }
 
-    async queueTabSwitch(tabView: WaveTabView, tabInitialized: boolean) {
-        if (this.tabSwitchQueue.length == 2) {
-            this.tabSwitchQueue[1] = { tabView, tabInitialized };
+    async queueTabSwitch(tabId: string, setInBackend: boolean) {
+        if (this.tabSwitchQueue.length >= 2) {
+            this.tabSwitchQueue[1] = { tabId, setInBackend };
             return;
         }
-        this.tabSwitchQueue.push({ tabView, tabInitialized });
-        if (this.tabSwitchQueue.length == 1) {
+        const wasEmpty = this.tabSwitchQueue.length === 0;
+        this.tabSwitchQueue.push({ tabId, setInBackend });
+        if (wasEmpty) {
             await this.processTabSwitchQueue();
         }
     }
 
+    // the queue and this function are used to serialize tab switches
+    // [0] => the tab that is currently being switched to
+    // [1] => the tab that will be switched to next
+    // queueTabSwitch will replace [1] if it is already set
+    // we don't mess with [0] because it is "in process"
+    // we replace [1] because there is no point to switching to a tab that will be switched out of immediately
     async processTabSwitchQueue() {
-        if (this.tabSwitchQueue.length == 0) {
-            this.tabSwitchQueue = [];
-            return;
-        }
-        try {
-            const { tabView, tabInitialized } = this.tabSwitchQueue[0];
-            await this.setTabViewIntoWindow(tabView, tabInitialized);
-        } finally {
-            this.tabSwitchQueue.shift();
-            await this.processTabSwitchQueue();
+        while (this.tabSwitchQueue.length > 0) {
+            try {
+                const { tabId, setInBackend } = this.tabSwitchQueue[0];
+                if (this.activeTabView?.waveTabId == tabId) {
+                    continue;
+                }
+                if (setInBackend) {
+                    await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
+                }
+                const [tabView, tabInitialized] = await getOrCreateWebViewForTab(tabId);
+                await this.setTabViewIntoWindow(tabView, tabInitialized);
+            } catch (e) {
+                console.log("error caught in processTabSwitchQueue", e);
+            } finally {
+                this.tabSwitchQueue.shift();
+            }
         }
     }
 
