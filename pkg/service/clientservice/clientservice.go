@@ -49,7 +49,6 @@ func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnSta
 
 // moves the window to the front of the windowId stack
 func (cs *ClientService) FocusWindow(ctx context.Context, windowId string) error {
-	log.Printf("FocusWindow %s\n", windowId)
 	return wcore.FocusWindow(ctx, windowId)
 }
 
