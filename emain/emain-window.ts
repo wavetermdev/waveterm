@@ -29,6 +29,17 @@ async function getClientId() {
     return cachedClientId;
 }
 
+type TabSwitchQueueEntry =
+    | {
+          createTab: false;
+          tabId: string;
+          setInBackend: boolean;
+      }
+    | {
+          createTab: true;
+          pinned: boolean;
+      };
+
 export class WaveBrowserWindow extends BaseWindow {
     waveWindowId: string;
     workspaceId: string;
@@ -37,7 +48,7 @@ export class WaveBrowserWindow extends BaseWindow {
     activeTabView: WaveTabView;
     private canClose: boolean;
     private deleteAllowed: boolean;
-    private tabSwitchQueue: { tabId: string; setInBackend: boolean }[];
+    private tabSwitchQueue: TabSwitchQueueEntry[];
 
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
         console.log("create win", waveWindow.oid);
@@ -306,11 +317,6 @@ export class WaveBrowserWindow extends BaseWindow {
         await this.queueTabSwitch(tabId, setInBackend);
     }
 
-    async createTab(pinned = false) {
-        const tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true, pinned);
-        await this.setActiveTab(tabId, false);
-    }
-
     async closeTab(tabId: string) {
         console.log(`closeTab tabid=${tabId} ws=${this.workspaceId} window=${this.waveWindowId}`);
         const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
@@ -430,12 +436,20 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     async queueTabSwitch(tabId: string, setInBackend: boolean) {
+        await this._queueTabSwitchInternal({ createTab: false, tabId, setInBackend });
+    }
+
+    async queueCreateTab(pinned = false) {
+        await this._queueTabSwitchInternal({ createTab: true, pinned });
+    }
+
+    async _queueTabSwitchInternal(entry: TabSwitchQueueEntry) {
         if (this.tabSwitchQueue.length >= 2) {
-            this.tabSwitchQueue[1] = { tabId, setInBackend };
+            this.tabSwitchQueue[1] = entry;
             return;
         }
         const wasEmpty = this.tabSwitchQueue.length === 0;
-        this.tabSwitchQueue.push({ tabId, setInBackend });
+        this.tabSwitchQueue.push(entry);
         if (wasEmpty) {
             await this.processTabSwitchQueue();
         }
@@ -450,12 +464,24 @@ export class WaveBrowserWindow extends BaseWindow {
     async processTabSwitchQueue() {
         while (this.tabSwitchQueue.length > 0) {
             try {
-                const { tabId, setInBackend } = this.tabSwitchQueue[0];
-                if (this.activeTabView?.waveTabId == tabId) {
-                    continue;
+                const entry = this.tabSwitchQueue[0];
+                let tabId: string = null;
+                // have to use "===" here to get the typechecker to work :/
+                if (entry.createTab === true) {
+                    const { pinned } = entry;
+                    tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true, pinned);
+                } else if (entry.createTab === false) {
+                    let setInBackend: boolean = false;
+                    ({ tabId, setInBackend } = entry);
+                    if (this.activeTabView?.waveTabId == tabId) {
+                        continue;
+                    }
+                    if (setInBackend) {
+                        await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
+                    }
                 }
-                if (setInBackend) {
-                    await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
+                if (tabId == null) {
+                    return;
                 }
                 const [tabView, tabInitialized] = await getOrCreateWebViewForTab(tabId);
                 await this.setTabViewIntoWindow(tabView, tabInitialized);
@@ -558,7 +584,7 @@ ipcMain.on("create-tab", async (event, opts) => {
     const senderWc = event.sender;
     const ww = getWaveWindowByWebContentsId(senderWc.id);
     if (ww != null) {
-        await ww.createTab();
+        await ww.queueCreateTab();
     }
     event.returnValue = true;
     return null;
