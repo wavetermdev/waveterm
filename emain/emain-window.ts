@@ -717,9 +717,12 @@ export async function relaunchBrowserWindows() {
     console.log("relaunchBrowserWindows");
     setGlobalIsRelaunching(true);
     const windows = getAllWaveWindows();
-    for (const window of windows) {
-        console.log("relaunch -- closing window", window.waveWindowId);
-        window.close();
+    if (windows.length > 0) {
+        for (const window of windows) {
+            console.log("relaunch -- closing window", window.waveWindowId);
+            window.close();
+        }
+        await delay(1200);
     }
     setGlobalIsRelaunching(false);
 
