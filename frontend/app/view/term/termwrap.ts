@@ -119,7 +119,12 @@ export class TermWrap {
                 data = data.substring(nextSlashIdx);
             }
             setTimeout(() => {
-                services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { "cmd:cwd": data });
+                fireAndForget(
+                    async () =>
+                        await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
+                            "cmd:cwd": data,
+                        })
+                );
             }, 0);
             return true;
         });

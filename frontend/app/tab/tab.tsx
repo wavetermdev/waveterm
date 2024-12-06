@@ -73,14 +73,21 @@ const Tab = memo(
                 };
             }, []);
 
-            const handleRenameTab = (event) => {
+            const selectEditableText = useCallback(() => {
+                if (editableRef.current) {
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    range.selectNodeContents(editableRef.current);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }, []);
+
+            const handleRenameTab: React.MouseEventHandler<HTMLDivElement> = (event) => {
                 event?.stopPropagation();
                 setIsEditable(true);
                 editableTimeoutRef.current = setTimeout(() => {
-                    if (editableRef.current) {
-                        editableRef.current.focus();
-                        document.execCommand("selectAll", false);
-                    }
+                    selectEditableText();
                 }, 0);
             };
 
@@ -89,20 +96,14 @@ const Tab = memo(
                 newText = newText || originalName;
                 editableRef.current.innerText = newText;
                 setIsEditable(false);
-                ObjectService.UpdateTabName(id, newText);
+                fireAndForget(async () => await ObjectService.UpdateTabName(id, newText));
                 setTimeout(() => refocusNode(null), 10);
             };
 
-            const handleKeyDown = (event) => {
+            const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (event) => {
                 if ((event.metaKey || event.ctrlKey) && event.key === "a") {
                     event.preventDefault();
-                    if (editableRef.current) {
-                        const range = document.createRange();
-                        const selection = window.getSelection();
-                        range.selectNodeContents(editableRef.current);
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                    }
+                    selectEditableText();
                     return;
                 }
                 // this counts glyphs, not characters
@@ -151,7 +152,10 @@ const Tab = memo(
                     let menu: ContextMenuItem[] = [
                         { label: isPinned ? "Unpin Tab" : "Pin Tab", click: () => onPinChange() },
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
-                        { label: "Copy TabId", click: () => navigator.clipboard.writeText(id) },
+                        {
+                            label: "Copy TabId",
+                            click: () => fireAndForget(async () => await navigator.clipboard.writeText(id)),
+                        },
                         { type: "separator" },
                     ];
                     const fullConfig = globalStore.get(atoms.fullConfigAtom);

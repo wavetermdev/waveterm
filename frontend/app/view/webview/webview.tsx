@@ -293,7 +293,7 @@ export class WebViewModel implements ViewModel {
      * @param url The URL that has been navigated to.
      */
     handleNavigate(url: string) {
-        ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url });
+        fireAndForget(async () => await ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
         globalStore.set(this.url, url);
     }
 
