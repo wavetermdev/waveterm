@@ -96,7 +96,7 @@ export class Updater {
                 body: "A new version of Wave Terminal is ready to install.",
             });
             updateNotification.on("click", () => {
-                fireAndForget(() => this.promptToInstallUpdate());
+                fireAndForget(this.promptToInstallUpdate.bind(this));
             });
             updateNotification.show();
         });
@@ -126,7 +126,7 @@ export class Updater {
         if (this.autoCheckEnabled) {
             console.log("starting updater");
             this.autoCheckInterval = setInterval(() => {
-                fireAndForget(() => this.checkForUpdates(false));
+                fireAndForget(async () => await this.checkForUpdates(false));
             }, 600000); // intervals are unreliable when an app is suspended so we will check every 10 mins if the interval has passed.
             await this.checkForUpdates(false);
         }
@@ -188,7 +188,7 @@ export class Updater {
         if (allWindows.length > 0) {
             await dialog.showMessageBox(focusedWaveWindow ?? allWindows[0], dialogOpts).then(({ response }) => {
                 if (response === 0) {
-                    fireAndForget(async () => this.installUpdate());
+                    fireAndForget(this.installUpdate.bind(this));
                 }
             });
         }
@@ -210,7 +210,7 @@ export function getResolvedUpdateChannel(): string {
     return isDev() ? "dev" : (autoUpdater.channel ?? "latest");
 }
 
-ipcMain.on("install-app-update", () => fireAndForget(() => updater?.promptToInstallUpdate()));
+ipcMain.on("install-app-update", () => fireAndForget(updater?.promptToInstallUpdate.bind(updater)));
 ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = updater?.status;
 });

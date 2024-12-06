@@ -432,22 +432,18 @@ export class WebViewModel implements ViewModel {
         return [
             {
                 label: "Set Block Homepage",
-                click: async () => {
-                    await this.setHomepageUrl(this.getUrl(), "block");
-                },
+                click: () => fireAndForget(async () => await this.setHomepageUrl(this.getUrl(), "block")),
             },
             {
                 label: "Set Default Homepage",
-                click: async () => {
-                    await this.setHomepageUrl(this.getUrl(), "global");
-                },
+                click: () => fireAndForget(async () => await this.setHomepageUrl(this.getUrl(), "global")),
             },
             {
                 type: "separator",
             },
             {
                 label: this.webviewRef.current?.isDevToolsOpened() ? "Close DevTools" : "Open DevTools",
-                click: async () => {
+                click: () => {
                     if (this.webviewRef.current) {
                         if (this.webviewRef.current.isDevToolsOpened()) {
                             this.webviewRef.current.closeDevTools();
@@ -543,7 +539,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             e.preventDefault();
             const newUrl = e.detail.url;
             console.log("webview new-window event:", newUrl);
-            fireAndForget(() => openLink(newUrl, true));
+            fireAndForget(async () => await openLink(newUrl, true));
         };
         const startLoadingHandler = () => {
             model.setRefreshIcon("xmark-large");

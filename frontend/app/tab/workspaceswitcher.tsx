@@ -189,12 +189,10 @@ const WorkspaceSwitcher = () => {
     }, []);
 
     const onDeleteWorkspace = useCallback((workspaceId: string) => {
-        fireAndForget(async () => {
-            getApi().deleteWorkspace(workspaceId);
-            setTimeout(() => {
-                fireAndForget(updateWorkspaceList);
-            }, 10);
-        });
+        getApi().deleteWorkspace(workspaceId);
+        setTimeout(() => {
+            fireAndForget(updateWorkspaceList);
+        }, 10);
     }, []);
 
     const isActiveWorkspaceSaved = !!(activeWorkspace.name && activeWorkspace.icon);

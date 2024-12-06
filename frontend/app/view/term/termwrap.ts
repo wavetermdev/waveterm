@@ -81,12 +81,12 @@ export class TermWrap {
                 switch (PLATFORM) {
                     case "darwin":
                         if (e.metaKey) {
-                            fireAndForget(() => openLink(uri));
+                            fireAndForget(async () => await openLink(uri));
                         }
                         break;
                     default:
                         if (e.ctrlKey) {
-                            fireAndForget(() => openLink(uri));
+                            fireAndForget(async () => await openLink(uri));
                         }
                         break;
                 }
@@ -284,7 +284,16 @@ export class TermWrap {
         const serializedOutput = this.serializeAddon.serialize();
         const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
         console.log("idle timeout term", this.dataBytesProcessed, serializedOutput.length, termSize);
-        services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset, termSize);
+        fireAndForget(
+            async () =>
+                await services.BlockService.SaveTerminalState(
+                    this.blockId,
+                    serializedOutput,
+                    "full",
+                    this.ptyOffset,
+                    termSize
+                )
+        );
         this.dataBytesProcessed = 0;
     }
 

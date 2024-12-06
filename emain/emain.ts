@@ -368,10 +368,11 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
 
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
-    fireAndForget(async () =>
-        electron.shell.openPath(filePath).then((excuse) => {
-            if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
-        })
+    fireAndForget(
+        async () =>
+            await electron.shell.openPath(filePath).then((excuse) => {
+                if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
+            })
     );
 });
 

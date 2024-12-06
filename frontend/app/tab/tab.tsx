@@ -6,6 +6,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
+import { fireAndForget } from "@/util/util";
 import { clsx } from "clsx";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
@@ -175,10 +176,11 @@ const Tab = memo(
                             }
                             submenu.push({
                                 label: preset["display:name"] ?? presetName,
-                                click: () => {
-                                    ObjectService.UpdateObjectMeta(oref, preset);
-                                    RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
-                                },
+                                click: () =>
+                                    fireAndForget(async () => {
+                                        await ObjectService.UpdateObjectMeta(oref, preset);
+                                        await RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
+                                    }),
                             });
                         }
                         menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
