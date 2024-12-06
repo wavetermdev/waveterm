@@ -95,6 +95,7 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	return wshrpc.ConnStatus{
 		Status:        conn.Status,
 		Connected:     conn.Status == Status_Connected,
+		WshEnabled:    conn.WshEnabled.Load(),
 		Connection:    conn.Opts.String(),
 		HasConnected:  (conn.LastConnectTime > 0),
 		ActiveConnNum: conn.ActiveConnNum,

@@ -186,6 +186,10 @@ const BlockFrame_Header = ({
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
     const connName = blockData?.meta?.connection;
     const connStatus = util.useAtomValueSafe(getConnStatusAtom(connName));
+    const wshEnabled =
+        (connName &&
+            (connStatus?.status == "connecting" || (connStatus?.wshenabled && connStatus?.status == "connected"))) ??
+        true;
 
     React.useEffect(() => {
         if (!magnified || preview || prevMagifiedState.current) {
@@ -265,7 +269,7 @@ const BlockFrame_Header = ({
                     changeConnModalAtom={changeConnModalAtom}
                 />
             )}
-            {manageConnection && !connStatus.wshenabled && (
+            {manageConnection && !wshEnabled && (
                 <IconButton decl={wshInstallButton} className="block-frame-header-iconbutton" />
             )}
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
