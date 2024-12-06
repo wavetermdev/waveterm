@@ -22,7 +22,7 @@ export class WaveBrowserWindow extends BaseWindow {
     waveWindowId: string;
     workspaceId: string;
     waveReadyPromise: Promise<void>;
-    allTabViews: Map<string, WaveTabView>;
+    allLoadedTabViews: Map<string, WaveTabView>;
     activeTabView: WaveTabView;
     private canClose: boolean;
     private deleteAllowed: boolean;
@@ -108,7 +108,7 @@ export class WaveBrowserWindow extends BaseWindow {
         this.tabSwitchQueue = [];
         this.waveWindowId = waveWindow.oid;
         this.workspaceId = waveWindow.workspaceid;
-        this.allTabViews = new Map<string, WaveTabView>();
+        this.allLoadedTabViews = new Map<string, WaveTabView>();
         const winBoundsPoller = setInterval(() => {
             if (this.isDestroyed()) {
                 clearInterval(winBoundsPoller);
@@ -272,15 +272,15 @@ export class WaveBrowserWindow extends BaseWindow {
             return;
         }
         console.log("switchWorkspace newWs", newWs);
-        if (this.allTabViews.size) {
-            for (const tab of this.allTabViews.values()) {
+        if (this.allLoadedTabViews.size) {
+            for (const tab of this.allLoadedTabViews.values()) {
                 this.contentView.removeChildView(tab);
                 tab?.destroy();
             }
         }
         console.log("destroyed all tabs", this.waveWindowId);
         this.workspaceId = workspaceId;
-        this.allTabViews = new Map();
+        this.allLoadedTabViews = new Map();
         await this.setActiveTab(newWs.activetabid, false);
     }
 
@@ -301,7 +301,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     async closeTab(tabId: string) {
         console.log("closeTab", tabId, this.waveWindowId, this.workspaceId);
-        const tabView = this.allTabViews.get(tabId);
+        const tabView = this.allLoadedTabViews.get(tabId);
         if (tabView) {
             const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
             if (rtn?.closewindow) {
@@ -309,7 +309,7 @@ export class WaveBrowserWindow extends BaseWindow {
             } else if (rtn?.newactivetabid) {
                 await this.setActiveTab(rtn.newactivetabid, false);
             }
-            this.allTabViews.delete(tabId);
+            this.allLoadedTabViews.delete(tabId);
         }
     }
 
@@ -331,7 +331,7 @@ export class WaveBrowserWindow extends BaseWindow {
             oldActiveView.isActiveTab = false;
         }
         this.activeTabView = tabView;
-        this.allTabViews.set(tabView.waveTabId, tabView);
+        this.allLoadedTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
             console.log("initializing a new tab");
             await tabView.initPromise;
@@ -408,7 +408,7 @@ export class WaveBrowserWindow extends BaseWindow {
         }
         const curBounds = this.getContentBounds();
         this.activeTabView?.positionTabOnScreen(curBounds);
-        for (const tabView of this.allTabViews.values()) {
+        for (const tabView of this.allLoadedTabViews.values()) {
             if (tabView == this.activeTabView) {
                 continue;
             }
@@ -459,7 +459,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     destroy() {
         console.log("destroy win", this.waveWindowId);
-        for (const tabView of this.allTabViews.values()) {
+        for (const tabView of this.allLoadedTabViews.values()) {
             tabView?.destroy();
         }
         waveWindowMap.delete(this.waveWindowId);
@@ -472,7 +472,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
 export function getWaveWindowByTabId(tabId: string): WaveBrowserWindow {
     for (const ww of waveWindowMap.values()) {
-        if (ww.allTabViews.has(tabId)) {
+        if (ww.allLoadedTabViews.has(tabId)) {
             return ww;
         }
     }
@@ -537,17 +537,18 @@ ipcMain.on("set-active-tab", async (event, tabId) => {
 ipcMain.on("create-tab", async (event, opts) => {
     const senderWc = event.sender;
     const ww = getWaveWindowByWebContentsId(senderWc.id);
-    if (!ww) {
-        return;
+    if (ww != null) {
+        await ww.createTab();
     }
-    await ww.createTab();
     event.returnValue = true;
     return null;
 });
 
 ipcMain.on("close-tab", async (event, tabId) => {
     const ww = getWaveWindowByTabId(tabId);
-    await ww.closeTab(tabId);
+    if (ww != null) {
+        await ww.closeTab(tabId);
+    }
     event.returnValue = true;
     return null;
 });

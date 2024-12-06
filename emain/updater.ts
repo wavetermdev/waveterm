@@ -112,7 +112,7 @@ export class Updater {
     private set status(value: UpdaterStatus) {
         this._status = value;
         getAllWaveWindows().forEach((window) => {
-            const allTabs = Array.from(window.allTabViews.values());
+            const allTabs = Array.from(window.allLoadedTabViews.values());
             allTabs.forEach((tab) => {
                 tab.webContents.send("app-update-status", value);
             });
