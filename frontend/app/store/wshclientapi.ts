@@ -92,6 +92,11 @@ class RpcApiType {
         return client.wshRpcCall("deletesubblock", data, opts);
     }
 
+    // command "dismisswshfail" [call]
+    DismissWshFailCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("dismisswshfail", data, opts);
+    }
+
     // command "dispose" [call]
     DisposeCommand(client: WshClient, data: CommandDisposeData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("dispose", data, opts);
@@ -260,6 +265,11 @@ class RpcApiType {
     // command "setconfig" [call]
     SetConfigCommand(client: WshClient, data: SettingsType, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setconfig", data, opts);
+    }
+
+    // command "setconnectionsconfig" [call]
+    SetConnectionsConfigCommand(client: WshClient, data: ConnConfigRequest, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setconnectionsconfig", data, opts);
     }
 
     // command "setmeta" [call]

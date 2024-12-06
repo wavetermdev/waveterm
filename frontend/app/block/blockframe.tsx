@@ -185,8 +185,11 @@ const BlockFrame_Header = ({
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
     const connName = blockData?.meta?.connection;
-    const allSettings = jotai.useAtomValue(atoms.fullConfigAtom);
-    const wshEnabled = allSettings?.connections?.[connName]?.["conn:wshenabled"] ?? true;
+    const connStatus = util.useAtomValueSafe(getConnStatusAtom(connName));
+    const wshEnabled =
+        (connName &&
+            (connStatus?.status == "connecting" || (connStatus?.wshenabled && connStatus?.status == "connected"))) ??
+        true;
 
     React.useEffect(() => {
         if (!magnified || preview || prevMagifiedState.current) {
@@ -342,6 +345,8 @@ const ConnStatusOverlay = React.memo(
         const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
         const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
+        const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+        const [showWshError, setShowWshError] = React.useState(false);
 
         React.useEffect(() => {
             if (width) {
@@ -356,10 +361,38 @@ const ConnStatusOverlay = React.memo(
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
+        const handleDisableWsh = React.useCallback(async () => {
+            // using unknown is a hack. we need proper types for the
+            // connection config on the frontend
+            const metamaptype: unknown = {
+                "conn:wshenabled": false,
+            };
+            const data: ConnConfigRequest = {
+                host: connName,
+                metamaptype: metamaptype,
+            };
+            try {
+                await RpcApi.SetConnectionsConfigCommand(TabRpcClient, data);
+            } catch (e) {
+                console.log("problem setting connection config: ", e);
+            }
+        }, [connName]);
+
+        const handleRemoveWshError = React.useCallback(async () => {
+            try {
+                await RpcApi.DismissWshFailCommand(TabRpcClient, connName);
+            } catch (e) {
+                console.log("unable to dismiss wsh error: ", e);
+            }
+        }, [connName]);
+
         let statusText = `Disconnected from "${connName}"`;
         let showReconnect = true;
         if (connStatus.status == "connecting") {
             statusText = `Connecting to "${connName}"...`;
+            showReconnect = false;
+        }
+        if (connStatus.status == "connected") {
             showReconnect = false;
         }
         let reconDisplay = null;
@@ -373,18 +406,37 @@ const ConnStatusOverlay = React.memo(
         }
         const showIcon = connStatus.status != "connecting";
 
-        if (isLayoutMode || connStatus.status == "connected" || connModalOpen) {
+        const wshConfigEnabled = fullConfig?.connections?.[connName]?.["conn:wshenabled"] ?? true;
+        React.useEffect(() => {
+            const showWshErrorTemp =
+                connStatus.status == "connected" &&
+                connStatus.wsherror &&
+                connStatus.wsherror != "" &&
+                wshConfigEnabled;
+
+            setShowWshError(showWshErrorTemp);
+        }, [connStatus, wshConfigEnabled]);
+
+        if (!showWshError && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
 
         return (
             <div className="connstatus-overlay" ref={overlayRefCallback}>
                 <div className="connstatus-content">
-                    <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError })}>
+                    <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError || showWshError })}>
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
                         <div className="connstatus-status">
                             <div className="connstatus-status-text">{statusText}</div>
                             {showError ? <div className="connstatus-error">error: {connStatus.error}</div> : null}
+                            {showWshError ? (
+                                <div className="connstatus-error">unable to use wsh: {connStatus.wsherror}</div>
+                            ) : null}
+                            {showWshError && (
+                                <Button className={reconClassName} onClick={handleDisableWsh}>
+                                    always disable wsh
+                                </Button>
+                            )}
                         </div>
                     </div>
                     {showReconnect ? (
@@ -392,6 +444,11 @@ const ConnStatusOverlay = React.memo(
                             <Button className={reconClassName} onClick={handleTryReconnect}>
                                 {reconDisplay}
                             </Button>
+                        </div>
+                    ) : null}
+                    {showWshError ? (
+                        <div className="connstatus-actions">
+                            <Button className={`fa-xmark fa-solid ${reconClassName}`} onClick={handleRemoveWshError} />
                         </div>
                     ) : null}
                 </div>

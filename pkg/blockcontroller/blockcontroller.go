@@ -354,7 +354,26 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 			}
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
-		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, conn)
+		if !conn.WshEnabled.Load() {
+			shellProc, err = shellexec.StartRemoteShellProcNoWsh(rc.TermSize, cmdStr, cmdOpts, conn)
+			if err != nil {
+				return err
+			}
+		} else {
+			shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, conn)
+			if err != nil {
+				conn.WithLock(func() {
+					conn.WshError = err.Error()
+				})
+				conn.WshEnabled.Store(false)
+				log.Printf("error starting remote shell proc with wsh: %v", err)
+				log.Print("attempting install without wsh")
+				shellProc, err = shellexec.StartRemoteShellProcNoWsh(rc.TermSize, cmdStr, cmdOpts, conn)
+				if err != nil {
+					return err
+				}
+			}
+		}
 		if err != nil {
 			return err
 		}

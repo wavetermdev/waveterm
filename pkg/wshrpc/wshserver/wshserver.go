@@ -575,6 +575,11 @@ func (ws *WshServer) SetConfigCommand(ctx context.Context, data wshrpc.MetaSetti
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }
 
+func (ws *WshServer) SetConnectionsConfigCommand(ctx context.Context, data wshrpc.ConnConfigRequest) error {
+	log.Printf("SET CONNECTIONS CONFIG: %v\n", data)
+	return wconfig.SetConnectionsConfigValue(data.Host, data.MetaMapType)
+}
+
 func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
 	rtn := conncontroller.GetAllConnStatus()
 	return rtn, nil
@@ -683,6 +688,25 @@ func (ws *WshServer) WslDefaultDistroCommand(ctx context.Context) (string, error
 		return "", fmt.Errorf("unable to determine default distro")
 	}
 	return distro.Name(), nil
+}
+
+/**
+ * Dismisses the WshFail Command in runtime memory on the backend
+ */
+func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string) error {
+	opts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return err
+	}
+	conn := conncontroller.GetConn(ctx, opts, false, nil)
+	if conn == nil {
+		return fmt.Errorf("connection %s not found", connName)
+	}
+	conn.WithLock(func() {
+		conn.WshError = ""
+	})
+	conn.FireConnChangeEvent()
+	return nil
 }
 
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
