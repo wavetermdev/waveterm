@@ -24,7 +24,7 @@ export function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
     }
     const layoutTreeStateAtom = withLayoutTreeStateAtomFromTab(tabAtom);
     const layoutModel = new LayoutModel(layoutTreeStateAtom, globalStore.get, globalStore.set);
-    globalStore.sub(layoutTreeStateAtom, () => fireAndForget(async () => await layoutModel.onTreeStateAtomUpdated()));
+    globalStore.sub(layoutTreeStateAtom, () => fireAndForget(layoutModel.onTreeStateAtomUpdated.bind(layoutModel)));
     layoutModelMap.set(tabId, layoutModel);
     return layoutModel;
 }

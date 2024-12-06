@@ -582,7 +582,7 @@ function TableBody({
                 },
                 {
                     label: "Open Preview in New Block",
-                    click: async () =>
+                    click: () =>
                         fireAndForget(async () => {
                             const blockDef: BlockDef = {
                                 meta: {
