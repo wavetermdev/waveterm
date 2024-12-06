@@ -351,9 +351,7 @@ export class WaveBrowserWindow extends BaseWindow {
             let startTime = Date.now();
             tabView.webContents.send("wave-init", initOpts);
             console.log("before wave ready");
-
             await tabView.waveReadyPromise;
-
             // positionTabOnScreen(tabView, this.getContentBounds());
             console.log("wave-ready init time", Date.now() - startTime + "ms");
             // positionTabOffScreen(oldActiveView, this.getContentBounds());
