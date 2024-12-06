@@ -614,21 +614,43 @@ ipcMain.on("close-tab", async (event, workspaceId, tabId) => {
     return null;
 });
 
-ipcMain.on("switch-workspace", async (event, workspaceId) => {
-    const ww = getWaveWindowByWebContentsId(event.sender.id);
-    console.log("switch-workspace", workspaceId, ww?.waveWindowId);
-    await ww?.switchWorkspace(workspaceId);
+ipcMain.on("switch-workspace", (event, workspaceId) => {
+    fireAndForget(async () => {
+        const ww = getWaveWindowByWebContentsId(event.sender.id);
+        console.log("switch-workspace", workspaceId, ww?.waveWindowId);
+        await ww?.switchWorkspace(workspaceId);
+    });
 });
 
-ipcMain.on("delete-workspace", async (event, workspaceId) => {
-    const ww = getWaveWindowByWebContentsId(event.sender.id);
-    console.log("delete-workspace", workspaceId, ww?.waveWindowId);
-    await WorkspaceService.DeleteWorkspace(workspaceId);
-    console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
-    if (ww?.workspaceId == workspaceId) {
-        console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-        ww.destroy();
+export async function createWorkspace(window: WaveBrowserWindow) {
+    if (!window) {
+        return;
     }
+    const newWsId = await WorkspaceService.CreateWorkspace();
+    if (newWsId) {
+        await window.switchWorkspace(newWsId);
+    }
+}
+
+ipcMain.on("create-workspace", (event) => {
+    fireAndForget(async () => {
+        const ww = getWaveWindowByWebContentsId(event.sender.id);
+        console.log("create-workspace", ww?.waveWindowId);
+        await createWorkspace(ww);
+    });
+});
+
+ipcMain.on("delete-workspace", (event, workspaceId) => {
+    fireAndForget(async () => {
+        const ww = getWaveWindowByWebContentsId(event.sender.id);
+        console.log("delete-workspace", workspaceId, ww?.waveWindowId);
+        await WorkspaceService.DeleteWorkspace(workspaceId);
+        console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
+        if (ww?.workspaceId == workspaceId) {
+            console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
+            ww.destroy();
+        }
+    });
 });
 
 export async function createNewWaveWindow() {

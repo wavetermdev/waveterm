@@ -6,7 +6,13 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
 import { clearTabCache } from "./emain-tabview";
-import { createNewWaveWindow, focusedWaveWindow, relaunchBrowserWindows, WaveBrowserWindow } from "./emain-window";
+import {
+    createNewWaveWindow,
+    createWorkspace,
+    focusedWaveWindow,
+    relaunchBrowserWindows,
+    WaveBrowserWindow,
+} from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
@@ -33,15 +39,28 @@ function getWindowWebContents(window: electron.BaseWindow): electron.WebContents
 async function getWorkspaceMenu(): Promise<Electron.MenuItemConstructorOptions[]> {
     const workspaceList = await RpcApi.WorkspaceListCommand(ElectronWshClient);
     console.log("workspaceList:", workspaceList);
-    const workspaceMenu: Electron.MenuItemConstructorOptions[] = workspaceList.map((workspace) => {
-        return {
-            label: `Switch to ${workspace.workspacedata.name} (${workspace.workspacedata.oid.slice(0, 5)})`,
+    const workspaceMenu: Electron.MenuItemConstructorOptions[] = [
+        {
+            label: "Create New Workspace",
             click: (_, window) => {
                 const ww = window as WaveBrowserWindow;
-                ww.switchWorkspace(workspace.workspacedata.oid);
+                fireAndForget(() => createWorkspace(ww));
             },
-        };
-    });
+        },
+    ];
+    workspaceList?.length &&
+        workspaceMenu.push(
+            { type: "separator" },
+            ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace) => {
+                return {
+                    label: `Switch to ${workspace.workspacedata.name} (${workspace.workspacedata.oid.slice(0, 5)})`,
+                    click: (_, window) => {
+                        const ww = window as WaveBrowserWindow;
+                        ww.switchWorkspace(workspace.workspacedata.oid);
+                    },
+                };
+            })
+        );
     return workspaceMenu;
 }
 

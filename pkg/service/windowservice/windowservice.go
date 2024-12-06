@@ -50,23 +50,14 @@ func (svc *WindowService) CreateWindow(ctx context.Context, winSize *waveobj.Win
 	if err != nil {
 		return nil, fmt.Errorf("error creating window: %w", err)
 	}
+
 	ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
 	if err != nil {
-		return nil, fmt.Errorf("error getting workspace: %w", err)
+		return window, fmt.Errorf("error getting workspace: %w", err)
 	}
-	if len(ws.TabIds) == 0 {
-		_, err = wcore.CreateTab(ctx, ws.OID, "", true, false)
-		if err != nil {
-			return window, fmt.Errorf("error creating tab: %w", err)
-		}
-		ws, err = wcore.GetWorkspace(ctx, window.WorkspaceId)
-		if err != nil {
-			return nil, fmt.Errorf("error getting updated workspace: %w", err)
-		}
-		err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
-		if err != nil {
-			return window, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
-		}
+	err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
+	if err != nil {
+		return window, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
 	}
 	return window, nil
 }

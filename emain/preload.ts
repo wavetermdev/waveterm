@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld("api", {
     registerGlobalWebviewKeys: (keys) => ipcRenderer.send("register-global-webview-keys", keys),
     onControlShiftStateUpdate: (callback) =>
         ipcRenderer.on("control-shift-state-update", (_event, state) => callback(state)),
+    createWorkspace: () => ipcRenderer.send("create-workspace"),
     switchWorkspace: (workspaceId) => ipcRenderer.send("switch-workspace", workspaceId),
     deleteWorkspace: (workspaceId) => ipcRenderer.send("delete-workspace", workspaceId),
     setActiveTab: (tabId) => ipcRenderer.send("set-active-tab", tabId),

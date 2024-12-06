@@ -26,7 +26,19 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 		Icon:         icon,
 		Color:        color,
 	}
-	wstore.DBInsert(ctx, ws)
+	err := wstore.DBInsert(ctx, ws)
+	if err != nil {
+		return nil, fmt.Errorf("error inserting workspace: %w", err)
+	}
+
+	_, err = CreateTab(ctx, ws.OID, "", true, false)
+	if err != nil {
+		return nil, fmt.Errorf("error creating tab: %w", err)
+	}
+	ws, err = GetWorkspace(ctx, ws.OID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting updated workspace: %w", err)
+	}
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_WorkspaceUpdate})
 	return ws, nil
