@@ -89,6 +89,7 @@ func (conn *WslConn) DeriveConnStatus() wshrpc.ConnStatus {
 	return wshrpc.ConnStatus{
 		Status:        conn.Status,
 		Connected:     conn.Status == Status_Connected,
+		WshEnabled:    true, // always use wsh for wsl connections (temporary)
 		Connection:    conn.GetName(),
 		HasConnected:  (conn.LastConnectTime > 0),
 		ActiveConnNum: conn.ActiveConnNum,
