@@ -63,7 +63,8 @@ const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(
                             </div>
                         );
                     }
-                    return renderItem(item as SuggestionBaseItem, index);
+                    fullIndex += 1;
+                    return renderItem(item as SuggestionBaseItem, fullIndex);
                 })}
             </div>
         );

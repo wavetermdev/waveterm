@@ -740,7 +740,7 @@ const ChangeConnectionBlockModal = React.memo(
         const newConnectionSuggestion: SuggestionConnectionItem = {
             status: "connected",
             icon: "plus",
-            iconColor: "var(--conn-icon-color)",
+            iconColor: "var(--grey-text-color)",
             label: `${connSelected} (New Connection)`,
             value: "",
             onSelect: (_: string) => {
@@ -763,30 +763,24 @@ const ChangeConnectionBlockModal = React.memo(
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };
-        const priorityItems: Array<SuggestionConnectionItem> = [];
-        if (createNew) {
-            priorityItems.push(newConnectionSuggestion);
-        }
-        if (showReconnect && (connStatus.status == "disconnected" || connStatus.status == "error")) {
-            priorityItems.push(reconnectSuggestion);
-        }
-        const prioritySuggestions: SuggestionConnectionScope = {
-            headerText: "",
-            items: priorityItems,
-        };
         const localName = getUserName() + "@" + getHostName();
         const localSuggestion: SuggestionConnectionScope = {
             headerText: "Local",
             items: [],
         };
-        localSuggestion.items.push({
-            status: "connected",
-            icon: "laptop",
-            iconColor: "var(--grey-text-color)",
-            value: "",
-            label: localName,
-            current: connection == null,
-        });
+        if (localName.includes(connSelected)) {
+            localSuggestion.items.push({
+                status: "connected",
+                icon: "laptop",
+                iconColor: "var(--grey-text-color)",
+                value: "",
+                label: localName,
+                current: connection == null,
+            });
+        }
+        if (localName == connSelected) {
+            createNew = false;
+        }
         for (const wslConn of filteredWslList) {
             const connStatus = connStatusMap.get(wslConn);
             const connColorNum = computeConnColorNum(connStatus);
@@ -849,25 +843,25 @@ const ChangeConnectionBlockModal = React.memo(
         );
         const remoteSuggestions: SuggestionConnectionScope = {
             headerText: "Remote",
-            items: [...sortedRemoteItems, connectionsEditItem],
+            items: [...sortedRemoteItems],
         };
 
-        let suggestions: Array<SuggestionsType> = [];
-        if (prioritySuggestions.items.length > 0) {
-            suggestions.push(prioritySuggestions);
-        }
-        if (localSuggestion.items.length > 0) {
-            suggestions.push(localSuggestion);
-        }
-        if (remoteSuggestions.items.length > 0) {
-            suggestions.push(remoteSuggestions);
-        }
-
-        let selectionList: Array<SuggestionConnectionItem> = [
-            ...prioritySuggestions.items,
-            ...localSuggestion.items,
-            ...remoteSuggestions.items,
+        const suggestions: Array<SuggestionsType> = [
+            ...(showReconnect && (connStatus.status == "disconnected" || connStatus.status == "error")
+                ? [reconnectSuggestion]
+                : []),
+            ...(localSuggestion.items.length > 0 ? [localSuggestion] : []),
+            ...(remoteSuggestions.items.length > 0 ? [remoteSuggestions] : []),
+            ...(connSelected == "" ? [connectionsEditItem] : []),
+            ...(createNew ? [newConnectionSuggestion] : []),
         ];
+
+        let selectionList: Array<SuggestionConnectionItem> = suggestions.flatMap((item) => {
+            if ("items" in item) {
+                return item.items;
+            }
+            return item;
+        });
 
         // quick way to change icon color when highlighted
         selectionList = selectionList.map((item, index) => {
@@ -899,9 +893,10 @@ const ChangeConnectionBlockModal = React.memo(
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
-                    setRowIndex((idx) => Math.min(idx + 1, selectionList.flat().length - 1));
+                    setRowIndex((idx) => Math.min(idx + 1, selectionList.length - 1));
                     return true;
                 }
+                setRowIndex(0);
             },
             [changeConnModalAtom, viewModel, blockId, connSelected, selectionList]
         );
