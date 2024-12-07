@@ -294,27 +294,34 @@ export class WaveBrowserWindow extends BaseWindow {
             console.log("switchWorkspace already on this workspace", this.waveWindowId);
             return;
         }
-        const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-        if (curWorkspace.tabids.length > 1 && (!curWorkspace.name || !curWorkspace.icon)) {
-            const choice = dialog.showMessageBoxSync(this, {
-                type: "question",
-                buttons: ["Cancel", "Open in New Window", "Yes"],
-                title: "Confirm",
-                message:
-                    "This window has unsaved tabs, switching workspaces will delete the existing tabs. Would you like to continue?",
-            });
-            if (choice === 0) {
-                console.log("user cancelled switch workspace", this.waveWindowId);
-                return;
-            } else if (choice === 1) {
-                console.log("user chose open in new window", this.waveWindowId);
-                const newWin = await WindowService.CreateWindow(null, workspaceId);
-                if (!newWin) {
-                    console.log("error creating new window", this.waveWindowId);
+
+        // If the workspace is already owned by a window, then we can just call SwitchWorkspace without first prompting the user, since it'll just focus to the other window.
+        const workspaceList = await WorkspaceService.ListWorkspaces();
+        if (!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
+            const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
+            if (curWorkspace.tabids.length > 1 && (!curWorkspace.name || !curWorkspace.icon)) {
+                const choice = dialog.showMessageBoxSync(this, {
+                    type: "question",
+                    buttons: ["Cancel", "Open in New Window", "Yes"],
+                    title: "Confirm",
+                    message:
+                        "This window has unsaved tabs, switching workspaces will delete the existing tabs. Would you like to continue?",
+                });
+                if (choice === 0) {
+                    console.log("user cancelled switch workspace", this.waveWindowId);
+                    return;
+                } else if (choice === 1) {
+                    console.log("user chose open in new window", this.waveWindowId);
+                    const newWin = await WindowService.CreateWindow(null, workspaceId);
+                    if (!newWin) {
+                        console.log("error creating new window", this.waveWindowId);
+                    }
+                    const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), {
+                        unamePlatform,
+                    });
+                    newBwin.show();
+                    return;
                 }
-                const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), { unamePlatform });
-                newBwin.show();
-                return;
             }
         }
         const newWs = await WindowService.SwitchWorkspace(this.waveWindowId, workspaceId);
