@@ -79,10 +79,12 @@ type BlockController struct {
 	ShellProcStatus   string
 	ShellProcExitCode int
 	RunLock           *atomic.Bool
+	StatusVersion     int
 }
 
 type BlockControllerRuntimeStatus struct {
 	BlockId           string `json:"blockid"`
+	Version           int    `json:"version"`
 	ShellProcStatus   string `json:"shellprocstatus,omitempty"`
 	ShellProcConnName string `json:"shellprocconnname,omitempty"`
 	ShellProcExitCode int    `json:"shellprocexitcode"`
@@ -97,6 +99,8 @@ func (bc *BlockController) WithLock(f func()) {
 func (bc *BlockController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 	var rtn BlockControllerRuntimeStatus
 	bc.WithLock(func() {
+		bc.StatusVersion++
+		rtn.Version = bc.StatusVersion
 		rtn.BlockId = bc.BlockId
 		rtn.ShellProcStatus = bc.ShellProcStatus
 		if bc.ShellProc != nil {

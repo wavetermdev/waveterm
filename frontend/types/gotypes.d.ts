@@ -56,6 +56,7 @@ declare global {
     // blockcontroller.BlockControllerRuntimeStatus
     type BlockControllerRuntimeStatus = {
         blockid: string;
+        version: number;
         shellprocstatus?: string;
         shellprocconnname?: string;
         shellprocexitcode: number;
