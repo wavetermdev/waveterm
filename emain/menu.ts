@@ -48,16 +48,27 @@ async function getWorkspaceMenu(): Promise<Electron.MenuItemConstructorOptions[]
             },
         },
     ];
+    function getWorkspaceSwitchAccelerator(i: number): string {
+        if (i < 10) {
+            if (i == 9) {
+                i = 0;
+            } else {
+                i++;
+            }
+            return unamePlatform == "darwin" ? `Command+Control+${i}` : `Alt+Control+${i}`;
+        }
+    }
     workspaceList?.length &&
         workspaceMenu.push(
             { type: "separator" },
-            ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace) => {
+            ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace, i) => {
                 return {
                     label: `Switch to ${workspace.workspacedata.name} (${workspace.workspacedata.oid.slice(0, 5)})`,
                     click: (_, window) => {
                         const ww = window as WaveBrowserWindow;
                         ww.switchWorkspace(workspace.workspacedata.oid);
                     },
+                    accelerator: getWorkspaceSwitchAccelerator(i),
                 };
             })
         );
