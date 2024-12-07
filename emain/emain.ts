@@ -44,7 +44,7 @@ import {
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { log } from "./log";
-import { instantiateAppMenu, makeAppMenu } from "./menu";
+import { makeAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
@@ -426,17 +426,6 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
 
 electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
 
-electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenuItem[]) => {
-    if (menuDefArr?.length === 0) {
-        return;
-    }
-    fireAndForget(async () => {
-        const menu = menuDefArr ? convertMenuDefArrToMenu(menuDefArr) : await instantiateAppMenu();
-        menu.popup();
-    });
-    event.returnValue = true;
-});
-
 // we try to set the primary display as index [0]
 function getActivityDisplays(): ActivityDisplayType[] {
     const displays = electron.screen.getAllDisplays();
@@ -486,28 +475,6 @@ function logActiveState() {
 function runActiveTimer() {
     logActiveState();
     setTimeout(runActiveTimer, 60000);
-}
-
-function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electron.Menu {
-    const menuItems: electron.MenuItem[] = [];
-    for (const menuDef of menuDefArr) {
-        const menuItemTemplate: electron.MenuItemConstructorOptions = {
-            role: menuDef.role as any,
-            label: menuDef.label,
-            type: menuDef.type,
-            click: (_, window) => {
-                const ww = window as WaveBrowserWindow;
-                ww?.activeTabView?.webContents?.send("contextmenu-click", menuDef.id);
-            },
-            checked: menuDef.checked,
-        };
-        if (menuDef.submenu != null) {
-            menuItemTemplate.submenu = convertMenuDefArrToMenu(menuDef.submenu);
-        }
-        const menuItem = new electron.MenuItem(menuItemTemplate);
-        menuItems.push(menuItem);
-    }
-    return electron.Menu.buildFromTemplate(menuItems);
 }
 
 function hideWindowWithCatch(window: WaveBrowserWindow) {

@@ -599,7 +599,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     };
 
     function onEllipsisClick() {
-        getApi().showContextMenu();
+        getApi().showContextMenu(workspace.oid);
     }
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;

@@ -299,7 +299,10 @@ export class WaveBrowserWindow extends BaseWindow {
         const workspaceList = await WorkspaceService.ListWorkspaces();
         if (!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
             const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-            if (curWorkspace.tabids.length > 1 && (!curWorkspace.name || !curWorkspace.icon)) {
+            if (
+                (curWorkspace.tabids?.length || curWorkspace.pinnedtabids?.length) &&
+                (!curWorkspace.name || !curWorkspace.icon)
+            ) {
                 const choice = dialog.showMessageBoxSync(this, {
                     type: "question",
                     buttons: ["Cancel", "Open in New Window", "Yes"],
