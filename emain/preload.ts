@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld("api", {
     getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
-    showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
+    showContextMenu: (workspaceId, menu) => ipcRenderer.send("contextmenu-show", workspaceId, menu),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),
     downloadFile: (filePath) => ipcRenderer.send("download", { filePath }),
     openExternal: (url) => {

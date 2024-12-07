@@ -72,7 +72,7 @@ declare global {
         getWebviewPreload: () => string;
         getAboutModalDetails: () => AboutModalDetails;
         getDocsiteUrl: () => string;
-        showContextMenu: (menu?: ElectronContextMenuItem[]) => void;
+        showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
         onNavigate: (callback: (url: string) => void) => void;
         onIframeNavigate: (callback: (url: string) => void) => void;
