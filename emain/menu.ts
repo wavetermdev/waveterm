@@ -343,16 +343,11 @@ function convertMenuDefArrToMenu(workspaceId: string, menuDefArr: ElectronContex
             label: menuDef.label,
             type: menuDef.type,
             click: (_, window) => {
-                const ww = getWaveWindowByWorkspaceId(workspaceId);
-                console.log(
-                    "click",
-                    window,
-                    ww,
-                    ww?.waveWindowId,
-                    ww?.workspaceId,
-                    ww?.activeTabView.waveTabId,
-                    menuDef.id
-                );
+                const ww = (window as WaveBrowserWindow) ?? getWaveWindowByWorkspaceId(workspaceId);
+                if (!ww) {
+                    console.error("invalid window for context menu click handler:", ww, window, workspaceId);
+                    return;
+                }
                 ww?.activeTabView?.webContents?.send("contextmenu-click", menuDef.id);
             },
             checked: menuDef.checked,
