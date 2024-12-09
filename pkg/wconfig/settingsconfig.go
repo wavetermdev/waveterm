@@ -75,6 +75,8 @@ type SettingsType struct {
 
 	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
 
+	TabPreset string `json:"tab:preset,omitempty"`
+
 	WidgetClear    bool  `json:"widget:*,omitempty"`
 	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`
 

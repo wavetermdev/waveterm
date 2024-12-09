@@ -638,6 +638,7 @@ declare global {
         "autoupdate:installonquit"?: boolean;
         "autoupdate:channel"?: string;
         "preview:showhiddenfiles"?: boolean;
+        "tab:preset"?: string;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;
