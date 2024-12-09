@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -80,6 +81,16 @@ func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) 
 	return wstore.DBMustGet[*waveobj.Workspace](ctx, wsID)
 }
 
+func getTabPresetMeta() (waveobj.MetaMapType, error) {
+	settings := wconfig.GetWatcher().GetFullConfig()
+	tabPreset := settings.Settings.TabPreset
+	if tabPreset == "" {
+		return nil, nil
+	}
+	presetMeta := settings.Presets[tabPreset]
+	return presetMeta, nil
+}
+
 // returns tabid
 func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, pinned bool, isInitialLaunch bool) (string, error) {
 	if tabName == "" {
@@ -107,6 +118,13 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout())
 		if err != nil {
 			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
+		}
+		presetMeta, presetErr := getTabPresetMeta()
+		if presetErr != nil {
+			log.Printf("error getting tab preset meta: %v\n", presetErr)
+		} else if presetMeta != nil && len(presetMeta) > 0 {
+			tabORef := waveobj.ORefFromWaveObj(tab)
+			wstore.UpdateObjectMeta(ctx, *tabORef, presetMeta, true)
 		}
 	}
 	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")

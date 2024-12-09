@@ -120,7 +120,7 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
 	log.Printf("SetMetaCommand: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef
-	err := wstore.UpdateObjectMeta(ctx, oref, data.Meta)
+	err := wstore.UpdateObjectMeta(ctx, oref, data.Meta, false)
 	if err != nil {
 		return fmt.Errorf("error updating object meta: %w", err)
 	}

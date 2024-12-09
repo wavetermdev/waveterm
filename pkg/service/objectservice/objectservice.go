@@ -143,7 +143,7 @@ func (svc *ObjectService) UpdateObjectMeta(uiContext waveobj.UIContext, orefStr 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing object reference: %w", err)
 	}
-	err = wstore.UpdateObjectMeta(ctx, *oref, meta)
+	err = wstore.UpdateObjectMeta(ctx, *oref, meta, false)
 	if err != nil {
 		return nil, fmt.Errorf("error updateing %q meta: %w", orefStr, err)
 	}
