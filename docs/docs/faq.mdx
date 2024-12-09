@@ -66,6 +66,23 @@ Set these keys:
 
 Note: we set the `ai:*` key to true to clear all the existing "ai" keys so this config is a clean slate.
 
+### How can I connect to Perplexity?
+
+Open your [config file](./config) in Wave using `wsh editconfig`.
+
+Set these keys:
+
+```json
+{
+  "ai:*": true,
+  "ai:apitype": "perplexity",
+  "ai:model": "llama-3.1-sonar-small-128k-online",
+  "ai:apitoken": "<your perplexity API key>"
+}
+```
+
+Note: we set the `ai:*` key to true to clear all the existing "ai" keys so this config is a clean slate.
+
 To switch between models, consider [adding AI Presets](./presets) instead.
 
 ### How can I see the block numbers?
