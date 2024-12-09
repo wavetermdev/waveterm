@@ -30,11 +30,6 @@ func (svc *WorkspaceService) CreateWorkspace(ctx context.Context) (string, error
 	if err != nil {
 		return "", fmt.Errorf("error creating workspace: %w", err)
 	}
-
-	err = wcore.BootstrapNewWorkspaceLayout(ctx, newWS)
-	if err != nil {
-		return newWS.OID, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
-	}
 	return newWS.OID, nil
 }
 
