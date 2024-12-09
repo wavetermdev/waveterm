@@ -96,7 +96,7 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, pinned)
+	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, pinned, false)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}

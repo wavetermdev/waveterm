@@ -31,7 +31,7 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
 
-	_, err = CreateTab(ctx, ws.OID, "", true, isInitialLaunch)
+	_, err = CreateTab(ctx, ws.OID, "", true, false, isInitialLaunch)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tab: %w", err)
 	}
@@ -81,7 +81,7 @@ func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) 
 }
 
 // returns tabid
-func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, isInitialLaunch bool) (string, error) {
+func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, pinned bool, isInitialLaunch bool) (string, error) {
 	if tabName == "" {
 		ws, err := GetWorkspace(ctx, workspaceId)
 		if err != nil {
@@ -91,7 +91,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	}
 
 	// The initial tab for the initial launch should be pinned
-	tab, err := createTabObj(ctx, workspaceId, tabName, isInitialLaunch)
+	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
