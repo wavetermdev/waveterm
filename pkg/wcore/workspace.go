@@ -16,7 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-func CreateWorkspace(ctx context.Context, name string, icon string, color string) (*waveobj.Workspace, error) {
+func CreateWorkspace(ctx context.Context, name string, icon string, color string, pinInitialTab bool) (*waveobj.Workspace, error) {
 	log.Println("CreateWorkspace")
 	ws := &waveobj.Workspace{
 		OID:          uuid.NewString(),
@@ -31,7 +31,7 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
 
-	_, err = CreateTab(ctx, ws.OID, "", true, false)
+	_, err = CreateTab(ctx, ws.OID, "", true, pinInitialTab)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tab: %w", err)
 	}
