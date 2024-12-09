@@ -180,40 +180,54 @@ export class WaveAiModel implements ViewModel {
             const presetKey = get(this.presetKey);
             const presetName = presets[presetKey]?.["display:name"] ?? "";
             const isCloud = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
-            if (aiOpts?.apitype == "anthropic") {
-                const modelName = aiOpts.model;
-                viewTextChildren.push({
-                    elemtype: "iconbutton",
-                    icon: "globe",
-                    title: "Using Remote Antropic API (" + modelName + ")",
-                    noAction: true,
-                });
-            } else if (isCloud) {
-                viewTextChildren.push({
-                    elemtype: "iconbutton",
-                    icon: "cloud",
-                    title: "Using Wave's AI Proxy (gpt-4o-mini)",
-                    noAction: true,
-                });
-            } else {
-                const baseUrl = aiOpts.baseurl ?? "OpenAI Default Endpoint";
-                const modelName = aiOpts.model;
-                if (baseUrl.startsWith("http://localhost") || baseUrl.startsWith("http://127.0.0.1")) {
-                    viewTextChildren.push({
-                        elemtype: "iconbutton",
-                        icon: "location-dot",
-                        title: "Using Local Model @ " + baseUrl + " (" + modelName + ")",
-                        noAction: true,
-                    });
-                } else {
+
+            // Handle known API providers
+            switch (aiOpts?.apitype) {
+                case "anthropic":
                     viewTextChildren.push({
                         elemtype: "iconbutton",
                         icon: "globe",
-                        title: "Using Remote Model @ " + baseUrl + " (" + modelName + ")",
+                        title: `Using Remote Anthropic API (${aiOpts.model})`,
                         noAction: true,
                     });
-                }
+                    break;
+                case "perplexity":
+                    viewTextChildren.push({
+                        elemtype: "iconbutton",
+                        icon: "globe",
+                        title: `Using Remote Perplexity API (${aiOpts.model})`,
+                        noAction: true,
+                    });
+                    break;
+                default:
+                    if (isCloud) {
+                        viewTextChildren.push({
+                            elemtype: "iconbutton",
+                            icon: "cloud",
+                            title: "Using Wave's AI Proxy (gpt-4o-mini)",
+                            noAction: true,
+                        });
+                    } else {
+                        const baseUrl = aiOpts.baseurl ?? "OpenAI Default Endpoint";
+                        const modelName = aiOpts.model;
+                        if (baseUrl.startsWith("http://localhost") || baseUrl.startsWith("http://127.0.0.1")) {
+                            viewTextChildren.push({
+                                elemtype: "iconbutton",
+                                icon: "location-dot",
+                                title: `Using Local Model @ ${baseUrl} (${modelName})`,
+                                noAction: true,
+                            });
+                        } else {
+                            viewTextChildren.push({
+                                elemtype: "iconbutton",
+                                icon: "globe",
+                                title: `Using Remote Model @ ${baseUrl} (${modelName})`,
+                                noAction: true,
+                            });
+                        }
+                    }
             }
+
             const dropdownItems = Object.entries(presets)
                 .sort((a, b) => ((a[1]["display:order"] ?? 0) > (b[1]["display:order"] ?? 0) ? 1 : -1))
                 .map(
