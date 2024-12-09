@@ -16,13 +16,5 @@
         "ai:model": "gpt-4o-mini",
         "ai:maxtokens": 2048,
         "ai:timeoutms": 60000
-    },
-    "ai@perplexity": {
-        "display:name": "Perplexity",
-        "display:order": 2,
-        "ai:*": true,
-        "ai:apitype": "perplexity",
-        "ai:model": "llama-3.1-sonar-small-128k-online",
-        "ai:name": "Perplexity"
     }
 }

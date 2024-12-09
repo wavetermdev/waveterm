@@ -173,7 +173,7 @@ export class WaveAiModel implements ViewModel {
             return opts;
         });
 
-this.viewText = atom((get) => {
+        this.viewText = atom((get) => {
             const viewTextChildren: HeaderElem[] = [];
             const aiOpts = get(this.aiOpts);
             const presets = get(this.presetMap);
@@ -195,7 +195,7 @@ this.viewText = atom((get) => {
                     viewTextChildren.push({
                         elemtype: "iconbutton",
                         icon: "globe",
-                        title: `Using Perplexity API (${aiOpts.model})`,
+                        title: `Using Remote Perplexity API (${aiOpts.model})`,
                         noAction: true,
                     });
                     break;
