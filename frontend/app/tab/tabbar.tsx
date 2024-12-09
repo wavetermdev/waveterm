@@ -428,9 +428,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
             // Track indices that have been moved
             if (getDragDirection(currentX) === "+") {
-                setTabIndicesMoved([tabIndex, newTabIndex, newTabIndex + 1]);
+                setTabIndicesMoved([tabIds[newTabIndex], tabIds[newTabIndex + 1]].filter(Boolean));
             } else if (getDragDirection(currentX) === "-") {
-                setTabIndicesMoved([newTabIndex - 1, newTabIndex, newTabIndex + 1]);
+                setTabIndicesMoved([tabIds[newTabIndex - 1], tabIds[newTabIndex]].filter(Boolean));
             }
 
             tabIds.splice(newTabIndex, 0, tabId);
@@ -517,6 +517,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             setDraggingTab(null);
         }
 
+        setTabIndicesMoved([]);
         document.removeEventListener("mouseup", handleMouseUp);
         document.removeEventListener("mousemove", handleMouseMove);
         draggingRemovedRef.current = false;
@@ -666,8 +667,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}
                                 tabIds={tabIds}
-                                onMouseEnter={() => handleMouseEnterTab(index)}
-                                onMouseLeave={() => handleMouseLeaveTab(index)}
+                                // onMouseEnter={() => handleMouseEnterTab(index)}
+                                // onMouseLeave={() => handleMouseLeaveTab(index)}
                                 tabRefs={tabRefs}
                             />
                         );
