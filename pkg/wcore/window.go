@@ -80,15 +80,6 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId str
 			return nil, fmt.Errorf("error creating workspace: %w", err)
 		}
 		ws = ws1
-		err = BootstrapNewWorkspaceLayout(ctx, ws)
-		if err != nil {
-			errStr := fmt.Errorf("error bootstrapping new workspace layout: %w", err)
-			_, err = DeleteWorkspace(ctx, ws.OID, true)
-			if err != nil {
-				errStr = fmt.Errorf("%s\nerror deleting workspace: %w", errStr, err)
-			}
-			return nil, errStr
-		}
 	} else {
 		ws1, err := GetWorkspace(ctx, workspaceId)
 		if err != nil {

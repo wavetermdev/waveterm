@@ -31,17 +31,18 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 	if err != nil {
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
-
 	_, err = CreateTab(ctx, ws.OID, "", true, false, isInitialLaunch)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tab: %w", err)
 	}
+
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_WorkspaceUpdate})
+
 	ws, err = GetWorkspace(ctx, ws.OID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting updated workspace: %w", err)
 	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event: wps.Event_WorkspaceUpdate})
 	return ws, nil
 }
 
