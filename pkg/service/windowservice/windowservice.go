@@ -14,7 +14,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -49,15 +48,6 @@ func (svc *WindowService) CreateWindow(ctx context.Context, winSize *waveobj.Win
 	window, err := wcore.CreateWindow(ctx, winSize, workspaceId)
 	if err != nil {
 		return nil, fmt.Errorf("error creating window: %w", err)
-	}
-
-	ws, err := wcore.GetWorkspace(ctx, window.WorkspaceId)
-	if err != nil {
-		return window, fmt.Errorf("error getting workspace: %w", err)
-	}
-	err = wlayout.BootstrapNewWorkspaceLayout(ctx, ws)
-	if err != nil {
-		return window, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
 	}
 	return window, nil
 }
@@ -137,12 +127,12 @@ func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId
 	if !windowCreated {
 		return nil, fmt.Errorf("new window not created")
 	}
-	wlayout.QueueLayoutActionForTab(ctx, currentTabId, waveobj.LayoutActionData{
-		ActionType: wlayout.LayoutActionDataType_Remove,
+	wcore.QueueLayoutActionForTab(ctx, currentTabId, waveobj.LayoutActionData{
+		ActionType: wcore.LayoutActionDataType_Remove,
 		BlockId:    blockId,
 	})
-	wlayout.QueueLayoutActionForTab(ctx, ws.ActiveTabId, waveobj.LayoutActionData{
-		ActionType: wlayout.LayoutActionDataType_Insert,
+	wcore.QueueLayoutActionForTab(ctx, ws.ActiveTabId, waveobj.LayoutActionData{
+		ActionType: wcore.LayoutActionDataType_Insert,
 		BlockId:    blockId,
 		Focused:    true,
 	})
