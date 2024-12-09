@@ -250,10 +250,7 @@ const Tab = memo(
                     // Set the opacity of the separator for the current tab
                     if (currentIndex !== -1) {
                         const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
-                        // To check if leftAdjacentId is the active tab then do not set opacity to 0
-                        const leftAdjacentElement = document.querySelector(
-                            `[data-tab-id="${leftAdjacentId}"]`
-                        ) as HTMLElement;
+
                         if (currentTabElement) {
                             const separator = currentTabElement.querySelector(".separator") as HTMLElement;
                             if (separator) {
@@ -283,8 +280,8 @@ const Tab = memo(
                                 if (isActive && !tabIndicesMoved.length) {
                                     separator.style.opacity = "0"; // Hide the separator of the right adjacent tab
                                 } else if (tabIndicesMoved.length) {
-                                    console.log("rightAdjacentTabElement>>>>>>", rightAdjacentTabElement);
-                                    console.log("2");
+                                    // console.log("rightAdjacentTabElement>>>>>>", rightAdjacentTabElement);
+                                    // console.log("2");
                                     separator.style.opacity = "0"; // Hide the separator of the right adjacent tab
                                 }
                             }
@@ -337,6 +334,74 @@ const Tab = memo(
                 }
             }, [id, tabIds, isFirst, isActive, tabIndicesMoved]);
 
+            const handleMouseEnter = useCallback(() => {
+                if (isActive) return;
+
+                const currentIndex = tabIds.indexOf(id);
+
+                console.log("tabIds", tabIds);
+                console.log("id", id);
+                const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
+
+                if (currentTabElement) {
+                    // Ensure the element exists
+                    if (!tabIndicesMoved.length) {
+                        currentTabElement.classList.add("hover");
+                    }
+                }
+                // const crrSeparator = currentTabElement.querySelector(".separator") as HTMLElement;
+                // if (crrSeparator) {
+                //     crrSeparator.style.opacity = "0"; // Reset opacity for the right adjacent tab
+                // }
+
+                // const rightAdjacentTabElement = document.querySelector(
+                //     `[data-tab-id="${rightAdjacentId}"]`
+                // ) as HTMLElement;
+                // const rightSeparator = rightAdjacentTabElement.querySelector(".separator") as HTMLElement;
+                // if (rightSeparator) {
+                //     rightSeparator.style.opacity = "0"; // Reset opacity for the right adjacent tab
+                // }
+            }, [id, isActive, tabIndicesMoved]);
+
+            const handleMouseLeave = useCallback(() => {
+                if (isActive) return;
+
+                console.log("tabIds", tabIds);
+                console.log("id", id);
+                const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
+
+                if (currentTabElement) {
+                    // Ensure the element exists
+
+                    currentTabElement.classList.remove("hover");
+                }
+
+                // const currentIndex = tabIds.indexOf(id);
+
+                // console.log("tabIds", tabIds);
+                // console.log("id", id);
+
+                // // Get the right adjacent ID
+                // const rightAdjacentId = tabIds[currentIndex + 1];
+                // // Get the left adjacent ID
+                // const leftAdjacentId = tabIds[currentIndex - 1];
+
+                // const currentElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
+                // const crrSeparator = currentElement.querySelector(".separator") as HTMLElement;
+                // const leftAdjacentElement = document.querySelector(`[data-tab-id="${leftAdjacentId}"]`) as HTMLElement;
+                // if (crrSeparator && leftAdjacentElement && !leftAdjacentElement.classList.contains("active")) {
+                //     crrSeparator.style.opacity = "1"; // Reset opacity for the right adjacent tab
+                // }
+
+                // const rightAdjacentElement = document.querySelector(
+                //     `[data-tab-id="${rightAdjacentId}"]`
+                // ) as HTMLElement;
+                // const rightSeparator = rightAdjacentElement.querySelector(".separator") as HTMLElement;
+                // if (rightSeparator && rightAdjacentElement && !rightAdjacentElement.classList.contains("active")) {
+                //     rightSeparator.style.opacity = "1"; // Reset opacity for the right adjacent tab
+                // }
+            }, [id, isActive, tabIndicesMoved]);
+
             return (
                 <div
                     ref={tabRef}
@@ -349,8 +414,8 @@ const Tab = memo(
                     onMouseDown={onMouseDown}
                     onClick={onClick}
                     onContextMenu={handleContextMenu}
-                    // onMouseEnter={onMouseEnter}
-                    // onMouseLeave={onMouseLeave}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
                     data-tab-id={id}
                 >
                     <div className="separator"></div>

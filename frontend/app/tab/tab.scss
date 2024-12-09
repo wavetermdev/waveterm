@@ -25,6 +25,13 @@
 		opacity: 1;
 	}
 
+	&.hover {
+		.separator,
+		& + .tab .separator {
+			display: none;
+		}
+	}
+
     .tab-inner {
         position: relative;
         width: calc(100% - 6px); 
