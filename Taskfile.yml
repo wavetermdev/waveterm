@@ -277,7 +277,9 @@ tasks:
         cmd: |
             echo "Releasing to channels: [{{.CHANNEL}}]"
             for file in waveterm_{{.UP_VERSION}}_*.snap; do
+                echo "Publishing $file"
                 snapcraft upload --release={{.CHANNEL}} $file
+                echo "Finished publishing $file"
             done
 
     artifacts:winget:publish:*:
