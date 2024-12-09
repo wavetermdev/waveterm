@@ -11,7 +11,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -32,7 +31,7 @@ func (svc *WorkspaceService) CreateWorkspace(ctx context.Context) (string, error
 		return "", fmt.Errorf("error creating workspace: %w", err)
 	}
 
-	err = wlayout.BootstrapNewWorkspaceLayout(ctx, newWS)
+	err = wcore.BootstrapNewWorkspaceLayout(ctx, newWS)
 	if err != nil {
 		return newWS.OID, fmt.Errorf("error bootstrapping new workspace layout: %w", err)
 	}
@@ -100,10 +99,6 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, pinned)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
-	}
-	err = wlayout.ApplyPortableLayout(ctx, tabId, wlayout.GetNewTabLayout())
-	if err != nil {
-		return "", nil, fmt.Errorf("error applying new tab layout: %w", err)
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {

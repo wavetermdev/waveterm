@@ -99,6 +99,11 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 			return "", fmt.Errorf("error setting active tab: %w", err)
 		}
 	}
+
+	err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout())
+	if err != nil {
+		return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
+	}
 	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")
 	return tab.OID, nil
 }
