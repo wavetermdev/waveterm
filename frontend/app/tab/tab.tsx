@@ -296,7 +296,7 @@ const Tab = memo(
                         if (!isActive && currentIndex !== -1) {
                             const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
 
-                            // To check if leftAdjacentId is the active tab then do not reset opacity
+                            // To check if leftAdjacentElement is the active tab then do not reset opacity
                             const leftAdjacentElement = document.querySelector(
                                 `[data-tab-id="${leftAdjacentId}"]`
                             ) as HTMLElement;
@@ -317,7 +317,16 @@ const Tab = memo(
                                 `[data-tab-id="${rightAdjacentId}"]`
                             ) as HTMLElement;
                             console.log("rightAdjacentId!!!!!", rightAdjacentId);
-                            if (rightAdjacentTabElement) {
+
+                            // To check if rightAdjacentElement is the active tab then do not reset opacity
+                            const rightAdjacentElement = document.querySelector(
+                                `[data-tab-id="${rightAdjacentId}"]`
+                            ) as HTMLElement;
+                            if (
+                                rightAdjacentTabElement &&
+                                rightAdjacentElement &&
+                                !rightAdjacentElement.classList.contains("active")
+                            ) {
                                 const separator = rightAdjacentTabElement.querySelector(".separator") as HTMLElement;
                                 if (separator) {
                                     separator.style.opacity = "1"; // Reset opacity for the right adjacent tab
