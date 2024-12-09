@@ -384,12 +384,12 @@ export class WaveBrowserWindow extends BaseWindow {
         // something is causing the new tab to lose focus so it requires manual refocusing
         tabView.webContents.focus();
         setTimeout(() => {
-            if (this.activeTabView == tabView && !tabView.webContents.isFocused()) {
+            if (tabView.webContents && this.activeTabView == tabView && !tabView.webContents.isFocused()) {
                 tabView.webContents.focus();
             }
         }, 10);
         setTimeout(() => {
-            if (this.activeTabView == tabView && !tabView.webContents.isFocused()) {
+            if (tabView.webContents && this.activeTabView == tabView && !tabView.webContents.isFocused()) {
                 tabView.webContents.focus();
             }
         }, 30);
