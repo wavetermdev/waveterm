@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package wlayout
+package wcore
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -131,7 +130,7 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 	for i := 0; i < len(layout); i++ {
 		layoutAction := layout[i]
 
-		blockData, err := wcore.CreateBlock(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{})
+		blockData, err := CreateBlock(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{})
 		if err != nil {
 			return fmt.Errorf("unable to create block to apply portable layout to tab %s: %w", tabId, err)
 		}
@@ -150,18 +149,6 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 		return fmt.Errorf("unable to queue layout actions for portable layout: %w", err)
 	}
 
-	return nil
-}
-
-func BootstrapNewWorkspaceLayout(ctx context.Context, workspace *waveobj.Workspace) error {
-	log.Printf("BootstrapNewWorkspaceLayout, workspace: %v\n", workspace)
-	tabId := workspace.ActiveTabId
-	newTabLayout := GetNewTabLayout()
-
-	err := ApplyPortableLayout(ctx, tabId, newTabLayout)
-	if err != nil {
-		return fmt.Errorf("error applying new window layout: %w", err)
-	}
 	return nil
 }
 

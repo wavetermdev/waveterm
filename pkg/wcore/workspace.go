@@ -11,12 +11,13 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-func CreateWorkspace(ctx context.Context, name string, icon string, color string) (*waveobj.Workspace, error) {
+func CreateWorkspace(ctx context.Context, name string, icon string, color string, isInitialLaunch bool) (*waveobj.Workspace, error) {
 	log.Println("CreateWorkspace")
 	ws := &waveobj.Workspace{
 		OID:          uuid.NewString(),
@@ -30,17 +31,18 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 	if err != nil {
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
-
-	_, err = CreateTab(ctx, ws.OID, "", true, false)
+	_, err = CreateTab(ctx, ws.OID, "", true, false, isInitialLaunch)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tab: %w", err)
 	}
+
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_WorkspaceUpdate})
+
 	ws, err = GetWorkspace(ctx, ws.OID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting updated workspace: %w", err)
 	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event: wps.Event_WorkspaceUpdate})
 	return ws, nil
 }
 
@@ -80,8 +82,18 @@ func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) 
 	return wstore.DBMustGet[*waveobj.Workspace](ctx, wsID)
 }
 
+func getTabPresetMeta() (waveobj.MetaMapType, error) {
+	settings := wconfig.GetWatcher().GetFullConfig()
+	tabPreset := settings.Settings.TabPreset
+	if tabPreset == "" {
+		return nil, nil
+	}
+	presetMeta := settings.Presets[tabPreset]
+	return presetMeta, nil
+}
+
 // returns tabid
-func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, pinned bool) (string, error) {
+func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, pinned bool, isInitialLaunch bool) (string, error) {
 	if tabName == "" {
 		ws, err := GetWorkspace(ctx, workspaceId)
 		if err != nil {
@@ -89,7 +101,9 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		}
 		tabName = "T" + fmt.Sprint(len(ws.TabIds)+len(ws.PinnedTabIds)+1)
 	}
-	tab, err := createTabObj(ctx, workspaceId, tabName, pinned)
+
+	// The initial tab for the initial launch should be pinned
+	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
@@ -97,6 +111,21 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		err = SetActiveTab(ctx, workspaceId, tab.OID)
 		if err != nil {
 			return "", fmt.Errorf("error setting active tab: %w", err)
+		}
+	}
+
+	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after TOS modal dismissal
+	if !isInitialLaunch {
+		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout())
+		if err != nil {
+			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
+		}
+		presetMeta, presetErr := getTabPresetMeta()
+		if presetErr != nil {
+			log.Printf("error getting tab preset meta: %v\n", presetErr)
+		} else if presetMeta != nil && len(presetMeta) > 0 {
+			tabORef := waveobj.ORefFromWaveObj(tab)
+			wstore.UpdateObjectMeta(ctx, *tabORef, presetMeta, true)
 		}
 	}
 	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")

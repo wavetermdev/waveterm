@@ -276,8 +276,11 @@ tasks:
             CHANNEL: '{{if contains "beta" .UP_VERSION}}beta{{else}}beta,stable{{end}}'
         cmd: |
             echo "Releasing to channels: [{{.CHANNEL}}]"
-            snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_arm64.snap
-            snapcraft upload --release={{.CHANNEL}} waveterm_{{.UP_VERSION}}_amd64.snap
+            for file in waveterm_{{.UP_VERSION}}_*.snap; do
+                echo "Publishing $file"
+                snapcraft upload --release={{.CHANNEL}} $file
+                echo "Finished publishing $file"
+            done
 
     artifacts:winget:publish:*:
         desc: Submits a version bump request to WinGet for the latest release.
