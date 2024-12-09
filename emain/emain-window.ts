@@ -36,7 +36,7 @@ async function getClientId() {
     return cachedClientId;
 }
 
-type TabSwitchQueueEntry =
+type WindowActionQueueEntry =
     | {
           op: "switchtab";
           tabId: string;
@@ -63,7 +63,7 @@ export class WaveBrowserWindow extends BaseWindow {
     activeTabView: WaveTabView;
     private canClose: boolean;
     private deleteAllowed: boolean;
-    private actionQueue: TabSwitchQueueEntry[];
+    private actionQueue: WindowActionQueueEntry[];
 
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
         console.log("create win", waveWindow.oid);
@@ -446,7 +446,7 @@ export class WaveBrowserWindow extends BaseWindow {
         await this._queueActionInternal({ op: "closetab", tabId });
     }
 
-    private async _queueActionInternal(entry: TabSwitchQueueEntry) {
+    private async _queueActionInternal(entry: WindowActionQueueEntry) {
         if (this.actionQueue.length >= 2) {
             this.actionQueue[1] = entry;
             return;
@@ -464,12 +464,10 @@ export class WaveBrowserWindow extends BaseWindow {
         }, 1000);
     }
 
-    // the queue and this function are used to serialize tab switches
-    // [0] => the tab that is currently being switched to
-    // [1] => the tab that will be switched to next
-    // queueTabSwitch will replace [1] if it is already set
+    // the queue and this function are used to serialize operations that update the window contents view
+    // processActionQueue will replace [1] if it is already set
     // we don't mess with [0] because it is "in process"
-    // we replace [1] because there is no point to switching to a tab that will be switched out of immediately
+    // we replace [1] because there is no point to run an action that is going to be overwritten
     private async processActionQueue() {
         while (this.actionQueue.length > 0) {
             try {
