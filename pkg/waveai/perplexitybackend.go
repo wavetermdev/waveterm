@@ -68,7 +68,7 @@ func (PerplexityBackend) StreamCompletion(ctx context.Context, request wshrpc.Op
 
 		model := request.Opts.Model
 		if model == "" {
-			model = "pplx-7b-online" // default model
+			model = "llama-3.1-sonar-small-128k-online"
 		}
 
 		// Convert messages format
