@@ -6,8 +6,28 @@ on:
     release:
         types: [published]
 jobs:
-    publish:
+    publish-s3:
+        name: Publish to Releases
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Publish from staging
+              run: "task artifacts:publish:${{ github.ref_name }}"
+              env:
+                  AWS_ACCESS_KEY_ID: "${{ secrets.PUBLISHER_KEY_ID }}"
+                  AWS_SECRET_ACCESS_KEY: "${{ secrets.PUBLISHER_KEY_SECRET }}"
+                  AWS_DEFAULT_REGION: us-west-2
+              shell: bash
+    publish-snap-amd64:
+        name: Publish AMD64 Snap
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        needs: [publish-s3]
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -19,26 +39,45 @@ jobs:
             - name: Install Snapcraft
               run: sudo snap install snapcraft --classic
               shell: bash
-            - name: Publish from staging
-              run: "task artifacts:publish:${{ github.ref_name }}"
+            - name: Download Snap from Release
+              uses: robinraju/release-downloader@v1
+              with:
+                  tag: ${{github.ref_name}}
+                  fileName: "*amd64.snap"
+            - name: Publish to Snapcraft
+              run: "task artifacts:snap:publish:${{ github.ref_name }}"
               env:
-                  AWS_ACCESS_KEY_ID: "${{ secrets.PUBLISHER_KEY_ID }}"
-                  AWS_SECRET_ACCESS_KEY: "${{ secrets.PUBLISHER_KEY_SECRET }}"
-                  AWS_DEFAULT_REGION: us-west-2
+                  SNAPCRAFT_STORE_CREDENTIALS: "${{secrets.SNAPCRAFT_LOGIN_CREDS}}"
+              shell: bash
+    publish-snap-arm64:
+        name: Publish ARM64 Snap
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        needs: [publish-s3]
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Install Snapcraft
+              run: sudo snap install snapcraft --classic
               shell: bash
             - name: Download Snap from Release
               uses: robinraju/release-downloader@v1
               with:
                   tag: ${{github.ref_name}}
-                  fileName: "*.snap"
+                  fileName: "*arm64.snap"
             - name: Publish to Snapcraft
               run: "task artifacts:snap:publish:${{ github.ref_name }}"
               env:
                   SNAPCRAFT_STORE_CREDENTIALS: "${{secrets.SNAPCRAFT_LOGIN_CREDS}}"
               shell: bash
     bump-winget:
+        name: Submit WinGet PR
         if: ${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, 'beta') }}
-        needs: [publish]
+        needs: [publish-s3]
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v4
