@@ -29,7 +29,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -180,8 +179,8 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	err = wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
-		ActionType: wlayout.LayoutActionDataType_Insert,
+	err = wcore.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+		ActionType: wcore.LayoutActionDataType_Insert,
 		BlockId:    blockData.OID,
 		Magnified:  data.Magnified,
 		Focused:    true,
@@ -506,8 +505,8 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
-	wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
-		ActionType: wlayout.LayoutActionDataType_Remove,
+	wcore.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+		ActionType: wcore.LayoutActionDataType_Remove,
 		BlockId:    data.BlockId,
 	})
 	updates := waveobj.ContextGetUpdatesRtn(ctx)

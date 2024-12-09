@@ -54,13 +54,9 @@ func EnsureInitialData() error {
 		return nil
 	}
 	log.Println("client has no windows, creating starter workspace")
-	starterWs, err := CreateWorkspace(ctx, "Starter workspace", "circle", "green")
+	starterWs, err := CreateWorkspace(ctx, "Starter workspace", "circle", "green", true)
 	if err != nil {
 		return fmt.Errorf("error creating starter workspace: %w", err)
-	}
-	_, err = CreateTab(ctx, starterWs.OID, "", true, true)
-	if err != nil {
-		return fmt.Errorf("error creating tab: %w", err)
 	}
 	_, err = CreateWindow(ctx, nil, starterWs.OID)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-func CreateWorkspace(ctx context.Context, name string, icon string, color string) (*waveobj.Workspace, error) {
+func CreateWorkspace(ctx context.Context, name string, icon string, color string, isInitialLaunch bool) (*waveobj.Workspace, error) {
 	log.Println("CreateWorkspace")
 	ws := &waveobj.Workspace{
 		OID:          uuid.NewString(),
@@ -31,7 +31,7 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
 
-	_, err = CreateTab(ctx, ws.OID, "", true, false)
+	_, err = CreateTab(ctx, ws.OID, "", true, false, isInitialLaunch)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tab: %w", err)
 	}
@@ -81,7 +81,7 @@ func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) 
 }
 
 // returns tabid
-func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, pinned bool) (string, error) {
+func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, pinned bool, isInitialLaunch bool) (string, error) {
 	if tabName == "" {
 		ws, err := GetWorkspace(ctx, workspaceId)
 		if err != nil {
@@ -89,7 +89,9 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		}
 		tabName = "T" + fmt.Sprint(len(ws.TabIds)+len(ws.PinnedTabIds)+1)
 	}
-	tab, err := createTabObj(ctx, workspaceId, tabName, pinned)
+
+	// The initial tab for the initial launch should be pinned
+	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
@@ -97,6 +99,14 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		err = SetActiveTab(ctx, workspaceId, tab.OID)
 		if err != nil {
 			return "", fmt.Errorf("error setting active tab: %w", err)
+		}
+	}
+
+	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after TOS modal dismissal
+	if !isInitialLaunch {
+		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout())
+		if err != nil {
+			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
 		}
 	}
 	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")
