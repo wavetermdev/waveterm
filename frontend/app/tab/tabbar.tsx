@@ -668,6 +668,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 tabIds={tabIds}
                                 onMouseEnter={() => handleMouseEnterTab(index)}
                                 onMouseLeave={() => handleMouseLeaveTab(index)}
+                                tabRefs={tabRefs}
                             />
                         );
                     })}

@@ -24,6 +24,7 @@ interface TabProps {
     isNew: boolean;
     isPinned: boolean;
     tabIds: string[];
+    tabRefs: React.MutableRefObject<React.RefObject<HTMLDivElement>[]>;
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onMouseDown: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -46,6 +47,7 @@ const Tab = memo(
                 tabWidth,
                 isNew,
                 tabIds,
+                tabRefs,
                 onLoaded,
                 onClick,
                 onClose,
@@ -202,14 +204,32 @@ const Tab = memo(
 
             const showSeparator = useCallback(
                 (id) => {
-                    // if (isFirst) return false;
-
                     const idx = tabIds.indexOf(id);
-                    const found = tabIndicesMoved.find((i, ii) => ii !== 0 && i === idx) === undefined;
-                    return found;
+                    const found = tabIndicesMoved.find((i, ii) => ii !== 0 && i === idx);
+                    console.log("id**********", id);
+                    if (found) {
+                        console.log("found=====", tabIds[found]);
+                        console.log("tabIndicesMoved", tabIndicesMoved);
+                        return false;
+                    }
+                    return true;
                 },
                 [isFirst, tabIndicesMoved]
             );
+
+            useEffect(() => {
+                if (!isActive) return;
+
+                const idx = tabIds.indexOf(id);
+                const targetIds = [tabIds[idx], tabIds[idx + 1]];
+
+                tabRefs.current.forEach((ref) => {
+                    const separator = ref.current.querySelector(".separator") as HTMLElement;
+                    if (!separator) return;
+
+                    separator.style.opacity = targetIds.includes(ref.current.dataset.tabId) ? "0" : "1";
+                });
+            }, [id, isActive, tabIds, tabIndicesMoved]);
 
             return (
                 <div
@@ -239,7 +259,7 @@ const Tab = memo(
                             suppressContentEditableWarning={true}
                         >
                             {tabData?.name}
-                            {/* {id.substring(id.length - 3)} */}
+                            {id.substring(id.length - 3)}
                         </div>
                         {isPinned ? (
                             <Button

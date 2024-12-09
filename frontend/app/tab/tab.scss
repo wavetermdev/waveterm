@@ -49,11 +49,6 @@
         .name {
             color: var(--main-text-color);
         }
-
-		& + .tab .separator,
-		.separator {
-			opacity: 0;
-		}
     }
 
     .name {
@@ -102,11 +97,6 @@
 
 // Only apply hover effects when not in nohover mode. This prevents the previously-hovered tab from remaining hovered while a tab view is not mounted.
 body:not(.nohover) .tab:hover {
-    & + .tab::after,
-    &::after {
-        content: none;
-    }
-
     .tab-inner {
         border-color: transparent;
         background: rgb(from var(--main-text-color) r g b / 0.07);
