@@ -232,7 +232,8 @@ const Tab = memo(
 
             useEffect(() => {
                 console.log("triggered!!!!");
-                if ((isDragging || isActive) && tabIndicesMoved.length) {
+                // if ((isDragging || isActive) && tabIndicesMoved.length) {
+                if (isDragging || isActive) {
                     // Find the index of the current tab ID
                     const currentIndex = tabIds.indexOf(id);
 
@@ -249,11 +250,23 @@ const Tab = memo(
                     // Set the opacity of the separator for the current tab
                     if (currentIndex !== -1) {
                         const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
+                        // To check if leftAdjacentId is the active tab then do not set opacity to 0
+                        const leftAdjacentElement = document.querySelector(
+                            `[data-tab-id="${leftAdjacentId}"]`
+                        ) as HTMLElement;
                         if (currentTabElement) {
                             const separator = currentTabElement.querySelector(".separator") as HTMLElement;
                             if (separator) {
                                 console.log("1");
-                                separator.style.opacity = "0"; // Always hide the separator of the current tab
+                                // separator.style.opacity = "0"; // Always hide the separator of the current tab
+
+                                if (isActive && !tabIndicesMoved.length) {
+                                    separator.style.opacity = "0"; // Hide the separator of the right adjacent tab
+                                } else if (tabIndicesMoved.length) {
+                                    //  console.log("rightAdjacentTabElement>>>>>>", rightAdjacentTabElement);
+                                    console.log("2");
+                                    separator.style.opacity = "0"; // Hide the separator of the right adjacent tab
+                                }
                             }
                         }
                     }
@@ -265,9 +278,15 @@ const Tab = memo(
                         ) as HTMLElement;
                         if (rightAdjacentTabElement) {
                             const separator = rightAdjacentTabElement.querySelector(".separator") as HTMLElement;
+
                             if (separator) {
-                                console.log("2");
-                                separator.style.opacity = "0"; // Hide the separator of the right adjacent tab
+                                if (isActive && !tabIndicesMoved.length) {
+                                    separator.style.opacity = "0"; // Hide the separator of the right adjacent tab
+                                } else if (tabIndicesMoved.length) {
+                                    console.log("rightAdjacentTabElement>>>>>>", rightAdjacentTabElement);
+                                    console.log("2");
+                                    separator.style.opacity = "0"; // Hide the separator of the right adjacent tab
+                                }
                             }
                         }
                     }
@@ -277,7 +296,7 @@ const Tab = memo(
                         if (!isActive && currentIndex !== -1) {
                             const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
 
-                            // To check if leftAdjacentId is the active tab
+                            // To check if leftAdjacentId is the active tab then do not reset opacity
                             const leftAdjacentElement = document.querySelector(
                                 `[data-tab-id="${leftAdjacentId}"]`
                             ) as HTMLElement;
@@ -286,13 +305,6 @@ const Tab = memo(
                                 leftAdjacentElement &&
                                 !leftAdjacentElement.classList.contains("active")
                             ) {
-                                console.log(
-                                    "currentTabElement>>>>>>",
-                                    currentTabElement,
-                                    currentTabElement &&
-                                        leftAdjacentElement &&
-                                        !leftAdjacentElement.classList.contains("active")
-                                );
                                 const separator = currentTabElement.querySelector(".separator") as HTMLElement;
                                 if (separator) {
                                     separator.style.opacity = "1"; // Reset opacity for the current tab only if not active
