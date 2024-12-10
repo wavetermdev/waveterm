@@ -208,28 +208,6 @@ const Tab = memo(
                 [onPinChange, handleRenameTab, id, onClose, isPinned]
             );
 
-            // if (isDragging) {
-            //     console.log("isDragging", isDragging);
-            //     console.log("dragging tab idx>>>>>>", id);
-            //     const draggingTabIdx = tabIds.indexOf(id);
-
-            //     // Add the dragging tab and its right adjacent tab to the Set
-            //     adjacentTabsRef.current.add(id);
-            //     if (draggingTabIdx + 1 < tabIds.length) {
-            //         adjacentTabsRef.current.add(tabIds[draggingTabIdx + 1]);
-            //     }
-            // }
-
-            // if (isActive) {
-            //     const activeTabIdx = tabIds.indexOf(id);
-
-            //     // Add the active tab and its right adjacent tab to the Set
-            //     adjacentTabsRef.current.add(id);
-            //     if (activeTabIdx + 1 < tabIds.length) {
-            //         adjacentTabsRef.current.add(tabIds[activeTabIdx + 1]);
-            //     }
-            // }
-
             useEffect(() => {
                 console.log("triggered!!!!", tabsSwapped);
 

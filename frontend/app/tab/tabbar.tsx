@@ -615,14 +615,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         });
     }, []);
 
-    const handleMouseEnterTab = (index: number) => {
-        setTabIndicesMoved([index - 1, index, index + 1]);
-    };
-
-    const handleMouseLeaveTab = (index: number) => {
-        setTabIndicesMoved([]);
-    };
-
     const isBeforeActive = (tabId: string) => {
         return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
     };
@@ -672,8 +664,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}
                                 tabIds={tabIds}
-                                // onMouseEnter={() => handleMouseEnterTab(index)}
-                                // onMouseLeave={() => handleMouseLeaveTab(index)}
                                 tabRefs={tabRefs}
                             />
                         );
