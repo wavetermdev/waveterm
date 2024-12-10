@@ -18,7 +18,7 @@ Wave is an open-source terminal that can launch graphical widgets, controlled an
 
 Wave isn't just another terminal emulator; it's a rethink on how terminals are built. For too long there has been a disconnect between the CLI and the web. If you want fast, keyboard-accessible, easy-to-write applications, you use the CLI, but if you want graphical interfaces, native widgets, copy/paste, scrolling, variable font sizes, then you'd have to turn to the web. Wave's goal is to bridge that gap.
 
-![WaveTerm Screenshot](./assets/wave-screenshot.png)
+![WaveTerm Screenshot](./assets/wave-screenshot.webp)
 
 ## Installation
 
