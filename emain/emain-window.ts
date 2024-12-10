@@ -695,7 +695,7 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
 
         const choice = dialog.showMessageBoxSync(this, {
             type: "question",
-            buttons: ["Cancel", "Delete workspace"],
+            buttons: ["Cancel", "Delete Workspace"],
             title: "Confirm",
             message: `Deleting workspace will also delete its contents.${workspaceHasWindow ? "\nWorkspace is open in a window, which will be closed." : ""}\n\nContinue?`,
         });
