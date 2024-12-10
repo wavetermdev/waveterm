@@ -164,7 +164,9 @@ export class Updater {
                     type: "info",
                     message: "There are currently no updates available.",
                 };
-                dialog.showMessageBox(focusedWaveWindow, dialogOpts);
+                if (focusedWaveWindow) {
+                    dialog.showMessageBox(focusedWaveWindow, dialogOpts);
+                }
             }
 
             // Only update the last check time if this is an automatic check. This ensures the interval remains consistent.

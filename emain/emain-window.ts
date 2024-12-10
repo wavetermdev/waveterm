@@ -23,7 +23,10 @@ export type WindowOpts = {
 };
 
 export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> WaveBrowserWindow
-export let focusedWaveWindow = null; // on blur we do not set this to null (but on destroy we do)
+
+// on blur we do not set this to null (but on destroy we do), so this tracks the *last* focused window
+// e.g. it persists when the app itself is not focused
+export let focusedWaveWindow: WaveBrowserWindow = null;
 
 let cachedClientId: string = null;
 
@@ -62,7 +65,6 @@ function showCloseConfirmDialog(workspace: Workspace): boolean {
 export class WaveBrowserWindow extends BaseWindow {
     waveWindowId: string;
     workspaceId: string;
-    waveReadyPromise: Promise<void>;
     allLoadedTabViews: Map<string, WaveTabView>;
     activeTabView: WaveTabView;
     private canClose: boolean;
@@ -211,12 +213,7 @@ export class WaveBrowserWindow extends BaseWindow {
             setWasActive(true);
         });
         this.on("blur", () => {
-            if (this.isDestroyed()) {
-                return;
-            }
-            if (focusedWaveWindow == this) {
-                focusedWaveWindow = null;
-            }
+            // nothing for now
         });
         this.on("close", (e) => {
             if (this.canClose) {
@@ -470,6 +467,9 @@ export class WaveBrowserWindow extends BaseWindow {
     private async processActionQueue() {
         while (this.actionQueue.length > 0) {
             try {
+                if (this.isDestroyed()) {
+                    break;
+                }
                 const entry = this.actionQueue[0];
                 let tabId: string = null;
                 // have to use "===" here to get the typechecker to work :/
@@ -725,7 +725,6 @@ export async function createNewWaveWindow() {
         const existingWindowData = (await ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
             const win = await createBrowserWindow(existingWindowData, fullConfig, { unamePlatform });
-            await win.waveReadyPromise;
             win.show();
             recreatedWindow = true;
         }
@@ -736,7 +735,6 @@ export async function createNewWaveWindow() {
     }
     console.log("creating new window");
     const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
-    await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
 }
 
@@ -768,7 +766,6 @@ export async function relaunchBrowserWindows() {
         wins.push(win);
     }
     for (const win of wins) {
-        await win.waveReadyPromise;
         console.log("show window", win.waveWindowId);
         win.show();
     }

@@ -94,7 +94,6 @@ function handleWSEvent(evtMsg: WSEventType) {
             }
             const fullConfig = await services.FileService.GetFullConfig();
             const newWin = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
-            await newWin.waveReadyPromise;
             newWin.show();
         } else if (evtMsg.eventtype == "electron:closewindow") {
             console.log("electron:closewindow", evtMsg.data);
@@ -378,6 +377,9 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
         defaultFileName = "image";
     }
     const ww = focusedWaveWindow;
+    if (ww == null) {
+        return;
+    }
     const mimeToExtension: { [key: string]: string } = {
         "image/png": "png",
         "image/jpeg": "jpg",
