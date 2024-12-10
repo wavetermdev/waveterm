@@ -546,6 +546,14 @@ process.on("uncaughtException", (error) => {
     if (caughtException) {
         return;
     }
+
+    // Check if the error is related to QUIC protocol, if so, ignore (can happen with the updater)
+    if (error?.message?.includes("net::ERR_QUIC_PROTOCOL_ERROR")) {
+        console.log("Ignoring QUIC protocol error:", error.message);
+        console.log("Stack Trace:", error.stack);
+        return;
+    }
+
     caughtException = true;
     console.log("Uncaught Exception, shutting down: ", error);
     console.log("Stack Trace:", error.stack);
