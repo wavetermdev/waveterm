@@ -698,7 +698,7 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
             type: "question",
             buttons: ["Cancel", "Delete workspace"],
             title: "Confirm",
-            message: `Deleting this workspace will also delete its contents.${workspaceHasWindow ? "\nThis workspace has a window associated with it, which will be closed." : ""}\n\nContinue?`,
+            message: `Deleting this workspace will also delete its contents.${workspaceHasWindow ? "\nThis workspace is open in a window, which will be closed." : ""}\n\nContinue?`,
         });
         if (choice === 0) {
             console.log("user cancelled workspace delete", workspaceId, ww?.waveWindowId);
