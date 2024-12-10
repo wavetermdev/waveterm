@@ -147,7 +147,7 @@ const ColorAndIconSelector = memo(
                 <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
                 <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
                 <div className="delete-ws-btn-wrapper">
-                    <Button className="ghost red font-size-12" onClick={onDeleteWorkspace}>
+                    <Button className="ghost red font-size-12 bold" onClick={onDeleteWorkspace}>
                         Delete workspace
                     </Button>
                 </div>
@@ -221,6 +221,7 @@ const WorkspaceSwitcher = () => {
         setTimeout(() => {
             fireAndForget(updateWorkspaceList);
         }, 10);
+        setEditingWorkspace(activeWorkspace.oid);
     };
 
     return (
@@ -339,7 +340,7 @@ const WorkspaceSwitcherItem = ({
                 >
                     <ExpandableMenuItemLeftElement>
                         <i
-                            className={clsx("left-icon", makeIconClass(workspace.icon, false))}
+                            className={clsx("left-icon", makeIconClass(workspace.icon, true))}
                             style={{ color: workspace.color }}
                         />
                     </ExpandableMenuItemLeftElement>

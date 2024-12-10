@@ -55,6 +55,10 @@ type WindowActionQueueEntry =
           workspaceId: string;
       };
 
+function showCloseConfirmDialog(workspace: Workspace): boolean {
+    return !workspace.name && !workspace.icon && (workspace.tabids?.length > 1 || workspace.pinnedtabids?.length > 1);
+}
+
 export class WaveBrowserWindow extends BaseWindow {
     waveWindowId: string;
     workspaceId: string;
@@ -232,14 +236,13 @@ export class WaveBrowserWindow extends BaseWindow {
                     console.log("numWindows > 1", numWindows);
                     const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
                     console.log("workspace", workspace);
-                    if (!workspace.name && !workspace.icon && workspace.tabids.length > 1) {
+                    if (showCloseConfirmDialog(workspace)) {
                         console.log("workspace has no name, icon, and multiple tabs", workspace);
                         const choice = dialog.showMessageBoxSync(this, {
                             type: "question",
-                            buttons: ["Cancel", "Yes"],
+                            buttons: ["Cancel", "Close Window"],
                             title: "Confirm",
-                            message:
-                                "Are you sure you want to close this window (all tabs and blocks will be deleted)?",
+                            message: "Window has unsaved tabs, closing window will delete existing tabs.\n\nContinue?",
                         });
                         if (choice === 0) {
                             console.log("user cancelled close window", this.waveWindowId);
@@ -303,16 +306,12 @@ export class WaveBrowserWindow extends BaseWindow {
         const workspaceList = await WorkspaceService.ListWorkspaces();
         if (!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
             const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-            if (
-                (curWorkspace.tabids?.length || curWorkspace.pinnedtabids?.length) &&
-                (!curWorkspace.name || !curWorkspace.icon)
-            ) {
+            if (showCloseConfirmDialog(curWorkspace)) {
                 const choice = dialog.showMessageBoxSync(this, {
                     type: "question",
-                    buttons: ["Cancel", "Open in New Window", "Yes"],
+                    buttons: ["Cancel", "Open in New Window", "Switch Workspace"],
                     title: "Confirm",
-                    message:
-                        "This window has unsaved tabs, switching workspaces will delete the existing tabs. Would you like to continue?",
+                    message: "Window has unsaved tabs, switching workspaces will delete existing tabs.\n\nContinue?",
                 });
                 if (choice === 0) {
                     console.log("user cancelled switch workspace", this.waveWindowId);
@@ -689,6 +688,21 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
     fireAndForget(async () => {
         const ww = getWaveWindowByWebContentsId(event.sender.id);
         console.log("delete-workspace", workspaceId, ww?.waveWindowId);
+
+        const workspaceList = await WorkspaceService.ListWorkspaces();
+
+        const workspaceHasWindow = !!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid;
+
+        const choice = dialog.showMessageBoxSync(this, {
+            type: "question",
+            buttons: ["Cancel", "Delete Workspace"],
+            title: "Confirm",
+            message: `Deleting workspace will also delete its contents.${workspaceHasWindow ? "\nWorkspace is open in a window, which will be closed." : ""}\n\nContinue?`,
+        });
+        if (choice === 0) {
+            console.log("user cancelled workspace delete", workspaceId, ww?.waveWindowId);
+            return;
+        }
         await WorkspaceService.DeleteWorkspace(workspaceId);
         console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
         if (ww?.workspaceId == workspaceId) {
