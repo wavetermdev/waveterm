@@ -637,7 +637,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusMap = new Map<string, ConnStatus>();
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
         const connectionsConfig = fullConfig.connections;
-        let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) || true;
+        let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) ?? true;
 
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
