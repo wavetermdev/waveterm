@@ -43,20 +43,20 @@ const colors = [
 ];
 
 const icons = [
+    "circle",
     "triangle",
     "star",
-    "cube",
-    "gem",
-    "chess-knight",
     "heart",
-    "plane",
+    "bolt",
+    "solid@cloud",
+    "moon",
+    "layer-group",
     "rocket",
-    "shield-cat",
-    "paw-simple",
-    "umbrella",
+    "flask",
+    "paperclip",
+    "chart-line",
     "graduation-cap",
     "mug-hot",
-    "circle",
 ];
 
 const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: ColorSelectorProps) => {
@@ -209,7 +209,12 @@ const WorkspaceSwitcher = () => {
 
     const saveWorkspace = () => {
         setObjectValue(
-            { ...activeWorkspace, name: "New Workspace", icon: "circle", color: colors[0] },
+            {
+                ...activeWorkspace,
+                name: `New Workspace (${activeWorkspace.oid.slice(0, 5)})`,
+                icon: icons[0],
+                color: colors[0],
+            },
             undefined,
             true
         );
