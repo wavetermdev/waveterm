@@ -75,6 +75,10 @@
 
     .expandable-menu-item-group {
         margin: 0 8px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+
+        --workspace-color: var(--main-bg-color);
 
         &:last-child {
             margin-bottom: 4px;
@@ -85,13 +89,6 @@
         .expandable-menu-item {
             margin: 0;
         }
-    }
-
-    .expandable-menu-item-group {
-        border: 1px solid transparent;
-        border-radius: 4px;
-
-        --workspace-color: var(--main-bg-color);
 
         .menu-group-title-wrapper {
             display: flex;
@@ -149,6 +146,7 @@
 
         .left-icon {
             font-size: 14px;
+            width: 16px;
         }
     }
 
@@ -168,6 +166,8 @@
             justify-content: center;
             align-items: center;
             margin-top: 5px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--modal-border-color);
 
             .color-circle {
                 width: 15px;
@@ -223,7 +223,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: 10px;
+            margin-top: 5px;
         }
     }
 
