@@ -23,7 +23,10 @@ export type WindowOpts = {
 };
 
 export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> WaveBrowserWindow
-export let focusedWaveWindow = null; // on blur we do not set this to null (but on destroy we do)
+
+// on blur we do not set this to null (but on destroy we do), so this tracks the *last* focused window
+// e.g. it persists when the app itself is not focused
+export let focusedWaveWindow: WaveBrowserWindow = null;
 
 let cachedClientId: string = null;
 
@@ -206,12 +209,7 @@ export class WaveBrowserWindow extends BaseWindow {
             setWasActive(true);
         });
         this.on("blur", () => {
-            if (this.isDestroyed()) {
-                return;
-            }
-            if (focusedWaveWindow == this) {
-                focusedWaveWindow = null;
-            }
+            // nothing for now
         });
         this.on("close", (e) => {
             if (this.canClose) {

@@ -377,6 +377,9 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
         defaultFileName = "image";
     }
     const ww = focusedWaveWindow;
+    if (ww == null) {
+        return;
+    }
     const mimeToExtension: { [key: string]: string } = {
         "image/png": "png",
         "image/jpeg": "jpg",
