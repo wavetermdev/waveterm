@@ -345,7 +345,7 @@ const Tab = memo(
                             suppressContentEditableWarning={true}
                         >
                             {tabData?.name}
-                            {id.substring(id.length - 3)}
+                            {/* {id.substring(id.length - 3)} */}
                         </div>
                         {isPinned ? (
                             <Button
