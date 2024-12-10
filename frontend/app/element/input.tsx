@@ -67,6 +67,7 @@ interface InputProps {
     required?: boolean;
     maxLength?: number;
     autoFocus?: boolean;
+    autoSelect?: boolean;
     disabled?: boolean;
     isNumber?: boolean;
     inputRef?: React.MutableRefObject<any>;
@@ -88,6 +89,7 @@ const Input = memo(
                 required,
                 maxLength,
                 autoFocus,
+                autoSelect,
                 disabled,
                 isNumber,
                 manageFocus,
@@ -114,6 +116,9 @@ const Input = memo(
             };
 
             const handleFocus = () => {
+                if (autoSelect) {
+                    inputRef.current?.select();
+                }
                 manageFocus?.(true);
                 onFocus?.();
             };
