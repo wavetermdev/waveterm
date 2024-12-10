@@ -209,7 +209,12 @@ const WorkspaceSwitcher = () => {
 
     const saveWorkspace = () => {
         setObjectValue(
-            { ...activeWorkspace, name: "New Workspace", icon: icons[0], color: colors[0] },
+            {
+                ...activeWorkspace,
+                name: `New Workspace (${activeWorkspace.oid.slice(0, 5)})`,
+                icon: icons[0],
+                color: colors[0],
+            },
             undefined,
             true
         );
