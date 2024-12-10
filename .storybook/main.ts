@@ -38,8 +38,8 @@ const config: StorybookConfig = {
     },
 
     staticDirs: [
-        { from: "../assets", to: "/assets" },
-        { from: "../public/fontawesome", to: "/fontawesome" },
+        { from: "../assets", to: "./assets" },
+        { from: "../public/fontawesome", to: "./fontawesome" },
     ],
     managerHead: (head) => `
         ${head}
