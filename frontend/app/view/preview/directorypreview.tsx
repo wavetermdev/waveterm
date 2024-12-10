@@ -293,7 +293,8 @@ function DirectoryTable({
                     newPath = path.replace(fileName, newName);
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
-                        await FileService.Rename(globalStore.get(model.connection), path, newPath);
+                        const connection = await globalStore.get(model.connection);
+                        await FileService.Rename(connection, path, newPath);
                         model.refreshCallback();
                     });
                 }
@@ -804,7 +805,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newFile: ${newName}`);
                 fireAndForget(async () => {
-                    await FileService.TouchFile(globalStore.get(model.connection), `${dirPath}/${newName}`);
+                    const connection = await globalStore.get(model.connection);
+                    await FileService.TouchFile(connection, `${dirPath}/${newName}`);
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
@@ -817,7 +819,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newDirectory: ${newName}`);
                 fireAndForget(async () => {
-                    await FileService.Mkdir(globalStore.get(model.connection), `${dirPath}/${newName}`);
+                    const connection = await globalStore.get(model.connection);
+                    await FileService.Mkdir(connection, `${dirPath}/${newName}`);
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
