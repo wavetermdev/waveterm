@@ -6,6 +6,25 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.10.0 &mdash; Dec 10, 2024
+
+Wave Terminal v0.10.0 introduces workspaces, making it easier to manage multiple work environments. We've added powerful new command execution capabilities with `wsh run`, allowing you to launch and control commands in dedicated blocks. This release also brings significant improvements to SSH with a new connections configuration system for managing your remote environments.
+
+- **Workspaces**: Organize your work into separate environments, each with their own tabs, layouts, and settings
+- **Command Blocks**: New `wsh run` command for launching terminal commands in dedicated blocks, with support for magnification, auto-closing, and execution control
+- **[Connections]** New configuration system for managing SSH connections, with support for WSH-free operation
+- **[UI]** Improved tab management with better switching behavior and context menus
+- New tab features including pinned tabs and drag-and-drop improvements
+- Create, rename, and delete files/directories directly in directory preview
+- Added Perplexity API integration
+- `wsh setbg` command for background handling
+- Switched from Less to SCSS for styling
+- [bugfix] Fixed tab flickering issues during tab switches
+- [bugfix] Corrected WaveAI text area resize behavior
+- [bugfix] Fixed concurrent block controller start issues
+- Upgraded Go toolchain to 1.23.4
+- Other bug fixes, performance improvements, and dependency updates
+
 ### v0.9.3 &mdash; Nov 20, 2024
 
 New minor release that introduces Wave's connected computing extensions. We've introduced new `wsh` commands that allow you to store variables and files, and access them across terminal sessions (on both local and remote machines).
