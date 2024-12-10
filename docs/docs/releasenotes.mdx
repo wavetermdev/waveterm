@@ -12,10 +12,12 @@ Wave Terminal v0.10.0 introduces workspaces, making it easier to manage multiple
 
 - **Workspaces**: Organize your work into separate environments, each with their own tabs, layouts, and settings
 - **Command Blocks**: New `wsh run` command for launching terminal commands in dedicated blocks, with support for magnification, auto-closing, and execution control
-- **[Connections]** New configuration system for managing SSH connections, with support for WSH-free operation
+- **[Connections]** New configuration system for managing SSH connections, with support for WSH-free operation, per-connection themes, and more -- [Docs](https://docs.waveterm.dev/connections)
 - **[UI]** Improved tab management with better switching behavior and context menus
 - New tab features including pinned tabs and drag-and-drop improvements
 - Create, rename, and delete files/directories directly in directory preview
+- Attempt WSH-free connection as a fallback if wsh installation or execution fails
+- New `-i` flag to add identity files with the `wsh ssh` command
 - Added Perplexity API integration
 - `wsh setbg` command for background handling
 - Switched from Less to SCSS for styling
