@@ -14,7 +14,7 @@ const config: StorybookConfig = {
         "./custom-addons/theme/register",
     ],
 
-    core: {},
+    core: { builder: "@storybook/builder-vite" },
 
     framework: {
         name: "@storybook/react-vite",
@@ -32,14 +32,15 @@ const config: StorybookConfig = {
         const { tsImport } = await import("tsx/esm/api");
         const electronViteConfig = (await tsImport("../electron.vite.config.ts", import.meta.url))
             .default as ElectronViteConfig;
+        config.base = "/storybook/";
         const mergedConfig = mergeConfig(config, electronViteConfig.renderer as UserConfig);
         mergedConfig.build.outDir = "storybook-static";
         return mergedConfig;
     },
 
     staticDirs: [
-        { from: "../assets", to: "./assets" },
-        { from: "../public/fontawesome", to: "./fontawesome" },
+        { from: "../assets", to: "/assets" },
+        { from: "../public/fontawesome", to: "/fontawesome" },
     ],
     managerHead: (head) => `
         ${head}

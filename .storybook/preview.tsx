@@ -9,7 +9,6 @@ import "../frontend/app/reset.scss";
 import "./global.css";
 import { light, dark } from "./theme";
 import { DocsContainer } from "@storybook/addon-docs";
-
 import { addons } from "@storybook/preview-api";
 import { DARK_MODE_EVENT_NAME } from "storybook-dark-mode";
 
