@@ -203,8 +203,6 @@ const Tab = memo(
             );
 
             useEffect(() => {
-                console.log("triggered!!!!", tabsSwapped);
-
                 // Get the index of the current tab ID
                 const currentIndex = tabIds.indexOf(id);
                 // Get the right adjacent ID
@@ -261,18 +259,12 @@ const Tab = memo(
                 };
 
                 if (tabsSwapped || isActive) {
-                    // Find the index of the current tab ID
-
-                    console.log("tabIds", tabIds);
-                    console.log("id", id);
-
                     const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
                     if (!currentTabElement) return;
                     const separator = currentTabElement.querySelector(".separator") as HTMLElement;
                     const rightSeparator = currentTabElement.querySelector(".right-separator") as HTMLElement;
 
                     if (isActive || draggingId === id) {
-                        console.log("here!!!!!", currentTabElement, draggingId);
                         separator.style.opacity = "0";
                         if (rightSeparator) {
                             rightSeparator.style.opacity = "0";
@@ -293,26 +285,17 @@ const Tab = memo(
                     }
 
                     return () => {
-                        console.log("entered return +++++++++++++++");
                         reset();
                     };
                 } else {
-                    console.log("entered else ?????????????????????????", tabsSwapped);
                     reset();
                 }
             }, [id, tabIds, isActive, draggingId, tabsSwapped]);
 
             const handleMouseEnter = useCallback(() => {
                 if (isActive) return;
-
-                const currentIndex = tabIds.indexOf(id);
-
-                // console.log("tabIds", tabIds);
-                // console.log("id", id);
                 const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
-
                 if (currentTabElement) {
-                    // Ensure the element exists
                     if (!tabsSwapped) {
                         currentTabElement.classList.add("hover");
                     }
@@ -321,14 +304,8 @@ const Tab = memo(
 
             const handleMouseLeave = useCallback(() => {
                 if (isActive) return;
-
-                // console.log("tabIds", tabIds);
-                // console.log("id", id);
                 const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
-
                 if (currentTabElement) {
-                    // Ensure the element exists
-
                     currentTabElement.classList.remove("hover");
                 }
             }, [id, isActive, tabsSwapped]);
@@ -338,6 +315,7 @@ const Tab = memo(
                     ref={tabRef}
                     className={clsx("tab", {
                         active: isActive,
+                        "is-pinned": isPinned,
                         "is-dragging": draggingId === id,
                         "before-active": isBeforeActive,
                         "new-tab": isNew,
