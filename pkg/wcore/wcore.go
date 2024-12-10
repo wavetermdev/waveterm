@@ -54,7 +54,7 @@ func EnsureInitialData() error {
 		return nil
 	}
 	log.Println("client has no windows, creating starter workspace")
-	starterWs, err := CreateWorkspace(ctx, "Starter workspace", "circle", "green", true)
+	starterWs, err := CreateWorkspace(ctx, "Starter workspace", "circle", "#58C142", true)
 	if err != nil {
 		return fmt.Errorf("error creating starter workspace: %w", err)
 	}

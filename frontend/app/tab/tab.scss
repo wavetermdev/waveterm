@@ -41,7 +41,7 @@
         .tab-inner {
             border-color: transparent;
             border-radius: 6px;
-            background: rgb(from var(--main-text-color) r g b / 0.14);
+            background: rgb(from var(--main-text-color) r g b / 0.1);
         }
 
         .name {
@@ -111,7 +111,7 @@ body:not(.nohover) .tab:hover {
 
     .tab-inner {
         border-color: transparent;
-        background: rgb(from var(--main-text-color) r g b / 0.14);
+        background: rgb(from var(--main-text-color) r g b / 0.1);
     }
     .close {
         visibility: visible;

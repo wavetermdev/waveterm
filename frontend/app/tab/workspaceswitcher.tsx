@@ -32,6 +32,33 @@ interface ColorSelectorProps {
     className?: string;
 }
 
+const colors = [
+    "#58C142", // Green (accent)
+    "#00FFDB", // Teal
+    "#429DFF", // Blue
+    "#BF55EC", // Purple
+    "#FF453A", // Red
+    "#FF9500", // Orange
+    "#FFE900", // Yellow
+];
+
+const icons = [
+    "triangle",
+    "star",
+    "cube",
+    "gem",
+    "chess-knight",
+    "heart",
+    "plane",
+    "rocket",
+    "shield-cat",
+    "paw-simple",
+    "umbrella",
+    "graduation-cap",
+    "mug-hot",
+    "circle",
+];
+
 const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: ColorSelectorProps) => {
     const handleColorClick = (color: string) => {
         onSelect(color);
@@ -117,31 +144,8 @@ const ColorAndIconSelector = memo(
                     value={title}
                     autoFocus
                 />
-                <ColorSelector
-                    selectedColor={color}
-                    colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
-                    onSelect={onColorChange}
-                />
-                <IconSelector
-                    selectedIcon={icon}
-                    icons={[
-                        "triangle",
-                        "star",
-                        "cube",
-                        "gem",
-                        "chess-knight",
-                        "heart",
-                        "plane",
-                        "rocket",
-                        "shield-cat",
-                        "paw-simple",
-                        "umbrella",
-                        "graduation-cap",
-                        "mug-hot",
-                        "circle",
-                    ]}
-                    onSelect={onIconChange}
-                />
+                <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
+                <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
                 <div className="delete-ws-btn-wrapper">
                     <Button className="ghost red font-size-12" onClick={onDeleteWorkspace}>
                         Delete workspace
@@ -204,7 +208,11 @@ const WorkspaceSwitcher = () => {
     );
 
     const saveWorkspace = () => {
-        setObjectValue({ ...activeWorkspace, name: "New Workspace", icon: "circle", color: "green" }, undefined, true);
+        setObjectValue(
+            { ...activeWorkspace, name: "New Workspace", icon: "circle", color: colors[0] },
+            undefined,
+            true
+        );
         setTimeout(() => {
             fireAndForget(updateWorkspaceList);
         }, 10);

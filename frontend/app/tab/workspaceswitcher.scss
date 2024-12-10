@@ -9,10 +9,14 @@
     align-items: center;
     gap: 12px;
     border-radius: 6px;
-    background: var(--modal-bg-color);
     margin-top: 6px;
     margin-right: 13px;
     box-sizing: border-box;
+    background-color: rgb(from var(--main-text-color) r g b / 0.1) !important;
+
+    &:hover {
+        background-color: rgb(from var(--main-text-color) r g b / 0.14) !important;
+    }
 
     .workspace-icon {
         width: 15px;
