@@ -63,7 +63,7 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
             { type: "separator" },
             ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace, i) => {
                 return {
-                    label: `Switch to ${workspace.workspacedata.name} (${workspace.workspacedata.oid.slice(0, 5)})`,
+                    label: `Switch to ${workspace.workspacedata.name}`,
                     click: (_, window) => {
                         ((window as WaveBrowserWindow) ?? ww)?.switchWorkspace(workspace.workspacedata.oid);
                     },
