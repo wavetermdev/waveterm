@@ -6502,9 +6502,9 @@ __metadata:
   linkType: hard
 
 "@types/prop-types@npm:*, @types/prop-types@npm:^15":
-  version: 15.7.13
-  resolution: "@types/prop-types@npm:15.7.13"
-  checksum: 10c0/1b20fc67281902c6743379960247bc161f3f0406ffc0df8e7058745a85ea1538612109db0406290512947f9632fe9e10e7337bf0ce6338a91d6c948df16a7c61
+  version: 15.7.14
+  resolution: "@types/prop-types@npm:15.7.14"
+  checksum: 10c0/1ec775160bfab90b67a782d735952158c7e702ca4502968aa82565bd8e452c2de8601c8dfe349733073c31179116cf7340710160d3836aa8a1ef76d1532893b1
   languageName: node
   linkType: hard
 
@@ -21675,9 +21675,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite-tsconfig-paths@npm:^5.1.3":
-  version: 5.1.3
-  resolution: "vite-tsconfig-paths@npm:5.1.3"
+"vite-tsconfig-paths@npm:^5.1.4":
+  version: 5.1.4
+  resolution: "vite-tsconfig-paths@npm:5.1.4"
   dependencies:
     debug: "npm:^4.1.1"
     globrex: "npm:^0.1.2"
@@ -21687,7 +21687,7 @@ __metadata:
   peerDependenciesMeta:
     vite:
       optional: true
-  checksum: 10c0/fb7480efa31fd50439f4a12c91bc953e5cc09d69fdc7eeb6ffff7cc796bc2c1f2c617c3abfdcbf5d7414848076cea9deb60bc002142f93b6e3131e5458760710
+  checksum: 10c0/6228f23155ea25d92b1e1702284cf8dc52ad3c683c5ca691edd5a4c82d2913e7326d00708cef1cbfde9bb226261df0e0a12e03ef1d43b6a92d8f02b483ef37e3
   languageName: node
   linkType: hard
 
@@ -21734,9 +21734,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^6.0.2":
-  version: 6.0.2
-  resolution: "vite@npm:6.0.2"
+"vite@npm:^6.0.3":
+  version: 6.0.3
+  resolution: "vite@npm:6.0.3"
   dependencies:
     esbuild: "npm:^0.24.0"
     fsevents: "npm:~2.3.3"
@@ -21782,7 +21782,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 10c0/45fc609f2bc5fb5beb5a8e2cad9ad6c2edce229a922f6fc1270ea2a9d75819482edcc0f77c85b4a7abdad7eb69ce6a4f26131925d47cdc0778fc15d1bbc3b6a2
+  checksum: 10c0/764ebed14770426a638575b23a51127c630ace873999ab896b0184484d8107e7255cdf64cfb36c65c1ef1d583e44b70a1d14c0f05b89612e834a5806e3964475
   languageName: node
   linkType: hard
 
@@ -22049,11 +22049,11 @@ __metadata:
     typescript: "npm:^5.7.2"
     typescript-eslint: "npm:^8.17.0"
     use-device-pixel-ratio: "npm:^1.1.2"
-    vite: "npm:^6.0.2"
+    vite: "npm:^6.0.3"
     vite-plugin-image-optimizer: "npm:^1.1.8"
     vite-plugin-static-copy: "npm:^2.2.0"
     vite-plugin-svgr: "npm:^4.3.0"
-    vite-tsconfig-paths: "npm:^5.1.3"
+    vite-tsconfig-paths: "npm:^5.1.4"
     vitest: "npm:^2.1.8"
     winston: "npm:^3.17.0"
     ws: "npm:^8.18.0"
