@@ -251,7 +251,18 @@ const Tab = memo(
                         const separator = currentTabElement.querySelector(".separator") as HTMLElement;
 
                         if (!leftAdjacentElement.classList.contains("active")) {
+                            console.log("here!!!!!", currentTabElement, draggingId);
                             separator.style.opacity = "1"; // Reset opacity for the current tab only if not active
+                        }
+
+                        // If dragging tab is the first tab set opacity to 1
+                        if (draggingId === tabIds[0]) {
+                            const draggingTabElement = document.querySelector(
+                                `[data-tab-id="${draggingId}"]`
+                            ) as HTMLElement;
+                            if (!draggingTabElement) return;
+                            const separator = draggingTabElement.querySelector(".separator") as HTMLElement;
+                            separator.style.opacity = "1";
                         }
                     }
 
@@ -264,7 +275,6 @@ const Tab = memo(
                         const separator = rightAdjacentElement.querySelector(".separator") as HTMLElement;
 
                         if (!rightAdjacentElement.classList.contains("active")) {
-                            console.log("here!!!!!");
                             separator.style.opacity = "1"; // Reset opacity for the right adjacent tab
                         }
                     }
