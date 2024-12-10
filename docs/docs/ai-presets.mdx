@@ -1,0 +1,177 @@
+---
+sidebar_position: 3.6
+id: "ai-presets"
+title: "AI Presets"
+---
+
+<img
+  title="AI Presets Menu"
+  style={{ float: "right", margin: "0 0 10px 10px" }}
+  src="./img/ai-presets.png"
+  width="300"
+/>
+
+Wave's AI widget can be configured to work with various AI providers and models through presets. Presets allow you to define multiple AI configurations and easily switch between them using the dropdown menu in the AI widget.
+
+## How AI Presets Work
+
+AI presets are defined in `~/.config/waveterm/presets/ai.json`. You can easily edit this file using:
+
+```bash
+wsh editconfig presets/ai.json
+```
+
+Each preset defines a complete set of configuration values for the AI widget. When you select a preset from the dropdown menu, those configuration values are applied to the widget. If no preset is selected, the widget uses the default values from `settings.json`.
+
+Here's a basic example using Claude:
+
+```json
+{
+  "ai@claude-sonnet": {
+    "display:name": "Claude 3 Sonnet",
+    "display:order": 1,
+    "ai:*": true,
+    "ai:apitype": "anthropic",
+    "ai:model": "claude-3-5-sonnet-latest",
+    "ai:apitoken": "<your anthropic API key>"
+  }
+}
+```
+
+To make a preset your default, add this single line to your `settings.json`:
+
+```json
+{
+  "ai:preset": "ai@claude-sonnet"
+}
+```
+
+:::info
+You can quickly set your default preset using the `setconfig` command:
+
+```bash
+wsh setconfig ai:preset=ai@claude-sonnet
+```
+
+This is easier than editing settings.json directly!
+:::
+
+## Provider-Specific Configurations
+
+### Anthropic (Claude)
+
+To use Claude models, create a preset like this:
+
+```json
+{
+  "ai@claude-sonnet": {
+    "display:name": "Claude 3 Sonnet",
+    "display:order": 1,
+    "ai:*": true,
+    "ai:apitype": "anthropic",
+    "ai:model": "claude-3-5-sonnet-latest",
+    "ai:apitoken": "<your anthropic API key>"
+  }
+}
+```
+
+### Local LLMs (Ollama)
+
+To connect to a local Ollama instance:
+
+```json
+{
+  "ai@ollama-llama": {
+    "display:name": "Ollama - Llama2",
+    "display:order": 2,
+    "ai:*": true,
+    "ai:baseurl": "http://localhost:11434/v1",
+    "ai:name": "llama2",
+    "ai:model": "llama2",
+    "ai:apitoken": "ollama"
+  }
+}
+```
+
+Note: The `ai:apitoken` is required but can be any value as Ollama ignores it. See [Ollama OpenAI compatibility docs](https://github.com/ollama/ollama/blob/main/docs/openai.md) for more details.
+
+### Azure OpenAI
+
+To connect to Azure AI services:
+
+```json
+{
+  "ai@azure-gpt4": {
+    "display:name": "Azure GPT-4",
+    "display:order": 3,
+    "ai:*": true,
+    "ai:apitype": "azure",
+    "ai:baseurl": "<your Azure AI base URL>",
+    "ai:model": "<your model deployment name>",
+    "ai:apitoken": "<your Azure API key>"
+  }
+}
+```
+
+Note: Do not include query parameters or `api-version` in the `ai:baseurl`. The `ai:model` should be your model deployment name in Azure.
+
+### Perplexity
+
+To use Perplexity's models:
+
+```json
+{
+  "ai@perplexity-sonar": {
+    "display:name": "Perplexity Sonar",
+    "display:order": 4,
+    "ai:*": true,
+    "ai:apitype": "perplexity",
+    "ai:model": "llama-3.1-sonar-small-128k-online",
+    "ai:apitoken": "<your perplexity API key>"
+  }
+}
+```
+
+## Multiple Presets Example
+
+You can define multiple presets in your `ai.json` file:
+
+```json
+{
+  "ai@claude-sonnet": {
+    "display:name": "Claude 3 Sonnet",
+    "display:order": 1,
+    "ai:*": true,
+    "ai:apitype": "anthropic",
+    "ai:model": "claude-3-5-sonnet-latest",
+    "ai:apitoken": "<your anthropic API key>"
+  },
+  "ai@ollama-llama": {
+    "display:name": "Ollama - Llama2",
+    "display:order": 2,
+    "ai:*": true,
+    "ai:baseurl": "http://localhost:11434/v1",
+    "ai:name": "llama2",
+    "ai:model": "llama2",
+    "ai:apitoken": "ollama"
+  },
+  "ai@perplexity-sonar": {
+    "display:name": "Perplexity Sonar",
+    "display:order": 3,
+    "ai:*": true,
+    "ai:apitype": "perplexity",
+    "ai:model": "llama-3.1-sonar-small-128k-online",
+    "ai:apitoken": "<your perplexity API key>"
+  }
+}
+```
+
+The `display:order` value determines the order in which presets appear in the dropdown menu.
+
+Remember to set your default preset in `settings.json`:
+
+```json
+{
+  "ai:preset": "ai@claude-sonnet"
+}
+```
