@@ -32,7 +32,6 @@ const config: StorybookConfig = {
         const { tsImport } = await import("tsx/esm/api");
         const electronViteConfig = (await tsImport("../electron.vite.config.ts", import.meta.url))
             .default as ElectronViteConfig;
-        config.base = "/storybook/";
         const mergedConfig = mergeConfig(config, electronViteConfig.renderer as UserConfig);
         mergedConfig.build.outDir = "storybook-static";
         return mergedConfig;
