@@ -200,7 +200,7 @@ const Tab = memo(
                     ref={tabRef}
                     className={clsx("tab", {
                         active,
-                        isDragging,
+                        dragging: isDragging,
                         "before-active": isBeforeActive,
                         "new-tab": isNew,
                     })}

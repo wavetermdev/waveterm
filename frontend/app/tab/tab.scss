@@ -103,7 +103,8 @@
 }
 
 // Only apply hover effects when not in nohover mode. This prevents the previously-hovered tab from remaining hovered while a tab view is not mounted.
-body:not(.nohover) .tab:hover {
+body:not(.nohover) .tab:hover,
+body:not(.nohover) .tab.dragging {
     & + .tab::after,
     &::after {
         content: none;
