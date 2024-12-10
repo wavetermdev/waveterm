@@ -96,5 +96,13 @@
         "bg": "linear-gradient(120deg,hsla(350, 65%, 57%, 1),hsla(30,60%,60%, .75), hsla(208,69%,50%,.15), hsl(230,60%,40%)),radial-gradient(at top right,hsla(300,60%,70%,0.3),transparent),radial-gradient(at top left,hsla(330,100%,70%,.20),transparent),radial-gradient(at top right,hsla(190,100%,40%,.20),transparent),radial-gradient(at bottom left,hsla(323,54%,50%,.5),transparent),radial-gradient(at bottom left,hsla(144,54%,50%,.25),transparent)",
         "bg:blendmode": "overlay",
         "bg:text": "rgb(200, 200, 200)"
+    },
+    "bg@cosmic-tide": {
+        "display:name": "Cosmic Tide",
+        "display:order": 3.6,
+        "bg:activebordercolor": "#ff55aa",
+        "bg:*": true,
+        "bg": "linear-gradient(135deg, #00d9d9, #ff55aa, #1e1e2f, #2f3b57, #ff99ff)",
+        "bg:opacity": 0.6
     }
 }

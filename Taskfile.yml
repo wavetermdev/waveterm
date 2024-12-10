@@ -120,6 +120,7 @@ tasks:
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
+            - "pkg/**/*.json"
         generates:
             - dist/bin/wavesrv.*
 
