@@ -312,7 +312,7 @@ export class WaveBrowserWindow extends BaseWindow {
                     buttons: ["Cancel", "Open in New Window", "Yes"],
                     title: "Confirm",
                     message:
-                        "This window has unsaved tabs, switching workspaces will delete the existing tabs. Would you like to continue?",
+                        "This window has unsaved tabs, switching workspaces will delete the existing tabs.\n\nContinue?",
                 });
                 if (choice === 0) {
                     console.log("user cancelled switch workspace", this.waveWindowId);
@@ -689,6 +689,21 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
     fireAndForget(async () => {
         const ww = getWaveWindowByWebContentsId(event.sender.id);
         console.log("delete-workspace", workspaceId, ww?.waveWindowId);
+
+        const workspaceList = await WorkspaceService.ListWorkspaces();
+
+        const workspaceHasWindow = !!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid;
+
+        const choice = dialog.showMessageBoxSync(this, {
+            type: "question",
+            buttons: ["Cancel", "Delete workspace"],
+            title: "Confirm",
+            message: `Deleting this workspace will also delete its contents.${workspaceHasWindow ? "\nThis workspace has a window associated with it, which will be closed." : ""}\n\nContinue?`,
+        });
+        if (choice === 0) {
+            console.log("user cancelled workspace delete", workspaceId, ww?.waveWindowId);
+            return;
+        }
         await WorkspaceService.DeleteWorkspace(workspaceId);
         console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
         if (ww?.workspaceId == workspaceId) {
