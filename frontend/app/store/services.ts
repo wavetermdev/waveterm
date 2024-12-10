@@ -183,6 +183,11 @@ class WorkspaceServiceType {
         return WOS.callBackendService("workspace", "CreateTab", Array.from(arguments))
     }
 
+    // @returns workspaceId
+    CreateWorkspace(): Promise<string> {
+        return WOS.callBackendService("workspace", "CreateWorkspace", Array.from(arguments))
+    }
+
     // @returns object updates
     DeleteWorkspace(workspaceId: string): Promise<void> {
         return WOS.callBackendService("workspace", "DeleteWorkspace", Array.from(arguments))

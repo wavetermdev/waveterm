@@ -14,7 +14,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -49,7 +48,6 @@ func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnSta
 
 // moves the window to the front of the windowId stack
 func (cs *ClientService) FocusWindow(ctx context.Context, windowId string) error {
-	log.Printf("FocusWindow %s\n", windowId)
 	return wcore.FocusWindow(ctx, windowId)
 }
 
@@ -65,7 +63,7 @@ func (cs *ClientService) AgreeTos(ctx context.Context) (waveobj.UpdatesRtnType, 
 	if err != nil {
 		return nil, fmt.Errorf("error updating client data: %w", err)
 	}
-	wlayout.BootstrapStarterLayout(ctx)
+	wcore.BootstrapStarterLayout(ctx)
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 

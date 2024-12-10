@@ -311,12 +311,18 @@ class TermViewModel implements ViewModel {
     }
 
     updateShellProcStatus(fullStatus: BlockControllerRuntimeStatus) {
-        globalStore.set(this.shellProcFullStatus, fullStatus);
-        const status = fullStatus?.shellprocstatus ?? "init";
-        if (status == "running") {
-            this.termRef.current?.setIsRunning?.(true);
-        } else {
-            this.termRef.current?.setIsRunning?.(false);
+        if (fullStatus == null) {
+            return;
+        }
+        const curStatus = globalStore.get(this.shellProcFullStatus);
+        if (curStatus == null || curStatus.version < fullStatus.version) {
+            globalStore.set(this.shellProcFullStatus, fullStatus);
+            const status = fullStatus?.shellprocstatus ?? "init";
+            if (status == "running") {
+                this.termRef.current?.setIsRunning?.(true);
+            } else {
+                this.termRef.current?.setIsRunning?.(false);
+            }
         }
     }
 

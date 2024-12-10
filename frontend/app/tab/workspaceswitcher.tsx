@@ -32,6 +32,33 @@ interface ColorSelectorProps {
     className?: string;
 }
 
+const colors = [
+    "#58C142", // Green (accent)
+    "#00FFDB", // Teal
+    "#429DFF", // Blue
+    "#BF55EC", // Purple
+    "#FF453A", // Red
+    "#FF9500", // Orange
+    "#FFE900", // Yellow
+];
+
+const icons = [
+    "circle",
+    "triangle",
+    "star",
+    "heart",
+    "bolt",
+    "solid@cloud",
+    "moon",
+    "layer-group",
+    "rocket",
+    "flask",
+    "paperclip",
+    "chart-line",
+    "graduation-cap",
+    "mug-hot",
+];
+
 const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: ColorSelectorProps) => {
     const handleColorClick = (color: string) => {
         onSelect(color);
@@ -117,31 +144,8 @@ const ColorAndIconSelector = memo(
                     value={title}
                     autoFocus
                 />
-                <ColorSelector
-                    selectedColor={color}
-                    colors={["#e91e63", "#8bc34a", "#ff9800", "#ffc107", "#03a9f4", "#3f51b5", "#f44336"]}
-                    onSelect={onColorChange}
-                />
-                <IconSelector
-                    selectedIcon={icon}
-                    icons={[
-                        "triangle",
-                        "star",
-                        "cube",
-                        "gem",
-                        "chess-knight",
-                        "heart",
-                        "plane",
-                        "rocket",
-                        "shield-cat",
-                        "paw-simple",
-                        "umbrella",
-                        "graduation-cap",
-                        "mug-hot",
-                        "circle",
-                    ]}
-                    onSelect={onIconChange}
-                />
+                <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
+                <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
                 <div className="delete-ws-btn-wrapper">
                     <Button className="ghost red font-size-12" onClick={onDeleteWorkspace}>
                         Delete workspace
@@ -189,12 +193,10 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement, {}>(({}, ref) => {
     }, []);
 
     const onDeleteWorkspace = useCallback((workspaceId: string) => {
-        fireAndForget(async () => {
-            getApi().deleteWorkspace(workspaceId);
-            setTimeout(() => {
-                fireAndForget(updateWorkspaceList);
-            }, 10);
-        });
+        getApi().deleteWorkspace(workspaceId);
+        setTimeout(() => {
+            fireAndForget(updateWorkspaceList);
+        }, 10);
     }, []);
 
     const isActiveWorkspaceSaved = !!(activeWorkspace.name && activeWorkspace.icon);
@@ -206,7 +208,16 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement, {}>(({}, ref) => {
     );
 
     const saveWorkspace = () => {
-        setObjectValue({ ...activeWorkspace, name: "New Workspace", icon: "circle", color: "green" }, undefined, true);
+        setObjectValue(
+            {
+                ...activeWorkspace,
+                name: `New Workspace (${activeWorkspace.oid.slice(0, 5)})`,
+                icon: icons[0],
+                color: colors[0],
+            },
+            undefined,
+            true
+        );
         setTimeout(() => {
             fireAndForget(updateWorkspaceList);
         }, 10);
@@ -233,16 +244,23 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement, {}>(({}, ref) => {
                     </ExpandableMenu>
                 </OverlayScrollbarsComponent>
 
-                {!isActiveWorkspaceSaved && (
-                    <div className="actions">
+                <div className="actions">
+                    {isActiveWorkspaceSaved ? (
+                        <ExpandableMenuItem onClick={() => getApi().createWorkspace()}>
+                            <ExpandableMenuItemLeftElement>
+                                <i className="fa-sharp fa-solid fa-plus"></i>
+                            </ExpandableMenuItemLeftElement>
+                            <div className="content">Create new workspace</div>
+                        </ExpandableMenuItem>
+                    ) : (
                         <ExpandableMenuItem onClick={() => saveWorkspace()}>
                             <ExpandableMenuItemLeftElement>
                                 <i className="fa-sharp fa-solid fa-floppy-disk"></i>
                             </ExpandableMenuItemLeftElement>
                             <div className="content">Save workspace</div>
                         </ExpandableMenuItem>
-                    </div>
-                )}
+                    )}
+                </div>
             </PopoverContent>
         </Popover>
     );
@@ -263,12 +281,10 @@ const WorkspaceSwitcherItem = ({
     const isCurrentWorkspace = activeWorkspace.oid === workspace.oid;
 
     const setWorkspace = useCallback((newWorkspace: Workspace) => {
-        fireAndForget(async () => {
-            if (newWorkspace.name != "") {
-                setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
-            }
-            setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
-        });
+        if (newWorkspace.name != "") {
+            setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
+        }
+        setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
     }, []);
 
     const isActive = !!workspaceEntry.windowId;

@@ -11,7 +11,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -19,6 +18,20 @@ import (
 const DefaultTimeout = 2 * time.Second
 
 type WorkspaceService struct{}
+
+func (svc *WorkspaceService) CreateWorkspace_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ReturnDesc: "workspaceId",
+	}
+}
+
+func (svc *WorkspaceService) CreateWorkspace(ctx context.Context) (string, error) {
+	newWS, err := wcore.CreateWorkspace(ctx, "", "", "", false)
+	if err != nil {
+		return "", fmt.Errorf("error creating workspace: %w", err)
+	}
+	return newWS.OID, nil
+}
 
 func (svc *WorkspaceService) GetWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
@@ -78,13 +91,9 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, pinned)
+	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, pinned, false)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
-	}
-	err = wlayout.ApplyPortableLayout(ctx, tabId, wlayout.GetNewTabLayout())
-	if err != nil {
-		return "", nil, fmt.Errorf("error applying new tab layout: %w", err)
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {

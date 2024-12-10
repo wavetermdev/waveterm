@@ -1,12 +1,3 @@
-<p align="center">
-  <picture>
-	<source media="(prefers-color-scheme: dark)" srcset="../assets/wave-dark.png">
-	<source media="(prefers-color-scheme: light)" srcset="../assets/wave-light.png">
-	<img alt="Wave Terminal Logo" src="../assets/wave-light.png" width="240">
-  </picture>
-  <br/>
-</p>
-
 # Wave Terminal Documentation
 
 This is the home for Wave Terminal's documentation site. This README is specifically about _building_ and contributing to the docs site. If you are looking for the actual hosted docs, go here -- https://docs.waveterm.dev

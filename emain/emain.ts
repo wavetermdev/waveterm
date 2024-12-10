@@ -10,8 +10,6 @@ import * as path from "path";
 import { PNG } from "pngjs";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
-import * as util from "util";
-import winston from "winston";
 import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
@@ -25,7 +23,6 @@ import {
     getGlobalIsRelaunching,
     setForceQuit,
     setGlobalIsQuitting,
-    setGlobalIsRelaunching,
     setGlobalIsStarting,
     setWasActive,
     setWasInFg,
@@ -35,16 +32,19 @@ import { handleCtrlShiftState } from "./emain-util";
 import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
 import {
     createBrowserWindow,
+    createNewWaveWindow,
     focusedWaveWindow,
     getAllWaveWindows,
     getWaveWindowById,
     getWaveWindowByWebContentsId,
     getWaveWindowByWorkspaceId,
+    relaunchBrowserWindows,
     WaveBrowserWindow,
 } from "./emain-window";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
-import { getAppMenu } from "./menu";
+import { log } from "./log";
+import { makeAppMenu } from "./menu";
 import {
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
@@ -65,30 +65,7 @@ electron.nativeTheme.themeSource = "dark";
 
 let webviewFocusId: number = null; // set to the getWebContentsId of the webview that has focus (null if not focused)
 let webviewKeys: string[] = []; // the keys to trap when webview has focus
-const oldConsoleLog = console.log;
 
-const loggerTransports: winston.transport[] = [
-    new winston.transports.File({ filename: path.join(waveDataDir, "waveapp.log"), level: "info" }),
-];
-if (isDev) {
-    loggerTransports.push(new winston.transports.Console());
-}
-const loggerConfig = {
-    level: "info",
-    format: winston.format.combine(
-        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }),
-        winston.format.printf((info) => `${info.timestamp} ${info.message}`)
-    ),
-    transports: loggerTransports,
-};
-const logger = winston.createLogger(loggerConfig);
-function log(...msg: any[]) {
-    try {
-        logger.info(util.format(...msg));
-    } catch (e) {
-        oldConsoleLog(...msg);
-    }
-}
 console.log = log;
 console.log(
     sprintf(
@@ -368,42 +345,13 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
 
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
-    fireAndForget(async () =>
+    fireAndForget(() =>
         electron.shell.openPath(filePath).then((excuse) => {
             if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
         })
     );
 });
 
-async function createNewWaveWindow(): Promise<void> {
-    log("createNewWaveWindow");
-    const clientData = await services.ClientService.GetClientData();
-    const fullConfig = await services.FileService.GetFullConfig();
-    let recreatedWindow = false;
-    const allWindows = getAllWaveWindows();
-    if (allWindows.length === 0 && clientData?.windowids?.length >= 1) {
-        console.log("no windows, but clientData has windowids, recreating first window");
-        // reopen the first window
-        const existingWindowId = clientData.windowids[0];
-        const existingWindowData = (await services.ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
-        if (existingWindowData != null) {
-            const win = await createBrowserWindow(existingWindowData, fullConfig, { unamePlatform });
-            await win.waveReadyPromise;
-            win.show();
-            recreatedWindow = true;
-        }
-    }
-    if (recreatedWindow) {
-        console.log("recreated window, returning");
-        return;
-    }
-    console.log("creating new window");
-    const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
-    await newBrowserWindow.waveReadyPromise;
-    newBrowserWindow.show();
-}
-
-// Here's where init is not getting fired
 electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-ready") => {
     const tabView = getWaveTabViewByWebContentsId(event.sender.id);
     if (tabView == null || tabView.initResolve == null) {
@@ -412,10 +360,9 @@ electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-re
     if (status === "ready") {
         tabView.initResolve();
         if (tabView.savedInitOpts) {
-            console.log("savedInitOpts");
+            // this handles the "reload" case.  we'll re-send the init opts to the frontend
+            console.log("savedInitOpts calling wave-init", tabView.waveTabId);
             tabView.webContents.send("wave-init", tabView.savedInitOpts);
-        } else {
-            console.log("no-savedInitOpts");
         }
     } else if (status === "wave-ready") {
         tabView.waveReadyResolve();
@@ -479,17 +426,6 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
 
 electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
 
-electron.ipcMain.on("contextmenu-show", (event, menuDefArr?: ElectronContextMenuItem[]) => {
-    if (menuDefArr?.length === 0) {
-        return;
-    }
-    const menu = menuDefArr ? convertMenuDefArrToMenu(menuDefArr) : instantiateAppMenu();
-    // const { x, y } = electron.screen.getCursorScreenPoint();
-    // const windowPos = window.getPosition();
-    menu.popup();
-    event.returnValue = true;
-});
-
 // we try to set the primary display as index [0]
 function getActivityDisplays(): ActivityDisplayType[] {
     const displays = electron.screen.getAllDisplays();
@@ -539,40 +475,6 @@ function logActiveState() {
 function runActiveTimer() {
     logActiveState();
     setTimeout(runActiveTimer, 60000);
-}
-
-function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electron.Menu {
-    const menuItems: electron.MenuItem[] = [];
-    for (const menuDef of menuDefArr) {
-        const menuItemTemplate: electron.MenuItemConstructorOptions = {
-            role: menuDef.role as any,
-            label: menuDef.label,
-            type: menuDef.type,
-            click: (_, window) => {
-                const ww = window as WaveBrowserWindow;
-                ww?.activeTabView?.webContents?.send("contextmenu-click", menuDef.id);
-            },
-            checked: menuDef.checked,
-        };
-        if (menuDef.submenu != null) {
-            menuItemTemplate.submenu = convertMenuDefArrToMenu(menuDef.submenu);
-        }
-        const menuItem = new electron.MenuItem(menuItemTemplate);
-        menuItems.push(menuItem);
-    }
-    return electron.Menu.buildFromTemplate(menuItems);
-}
-
-function instantiateAppMenu(): electron.Menu {
-    return getAppMenu({
-        createNewWaveWindow,
-        relaunchBrowserWindows,
-    });
-}
-
-function makeAppMenu() {
-    const menu = instantiateAppMenu();
-    electron.Menu.setApplicationMenu(menu);
 }
 
 function hideWindowWithCatch(window: WaveBrowserWindow) {
@@ -644,43 +546,20 @@ process.on("uncaughtException", (error) => {
     if (caughtException) {
         return;
     }
+
+    // Check if the error is related to QUIC protocol, if so, ignore (can happen with the updater)
+    if (error?.message?.includes("net::ERR_QUIC_PROTOCOL_ERROR")) {
+        console.log("Ignoring QUIC protocol error:", error.message);
+        console.log("Stack Trace:", error.stack);
+        return;
+    }
+
     caughtException = true;
     console.log("Uncaught Exception, shutting down: ", error);
     console.log("Stack Trace:", error.stack);
     // Optionally, handle cleanup or exit the app
     electronApp.quit();
 });
-
-async function relaunchBrowserWindows(): Promise<void> {
-    console.log("relaunchBrowserWindows");
-    setGlobalIsRelaunching(true);
-    const windows = getAllWaveWindows();
-    for (const window of windows) {
-        console.log("relaunch -- closing window", window.waveWindowId);
-        window.close();
-    }
-    setGlobalIsRelaunching(false);
-
-    const clientData = await services.ClientService.GetClientData();
-    const fullConfig = await services.FileService.GetFullConfig();
-    const wins: WaveBrowserWindow[] = [];
-    for (const windowId of clientData.windowids.slice().reverse()) {
-        const windowData: WaveWindow = await services.WindowService.GetWindow(windowId);
-        if (windowData == null) {
-            console.log("relaunch -- window data not found, closing window", windowId);
-            await services.WindowService.CloseWindow(windowId, true);
-            continue;
-        }
-        console.log("relaunch -- creating window", windowId, windowData);
-        const win = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
-        wins.push(win);
-    }
-    for (const win of wins) {
-        await win.waveReadyPromise;
-        console.log("show window", win.waveWindowId);
-        win.show();
-    }
-}
 
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.
@@ -696,7 +575,6 @@ async function appMain() {
         electronApp.quit();
         return;
     }
-    makeAppMenu();
     try {
         await runWaveSrv(handleWSEvent);
     } catch (e) {
@@ -717,6 +595,7 @@ async function appMain() {
     } catch (e) {
         console.log("error initializing wshrpc", e);
     }
+    makeAppMenu();
     await configureAutoUpdater();
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {

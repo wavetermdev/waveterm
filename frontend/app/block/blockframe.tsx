@@ -185,8 +185,8 @@ const BlockFrame_Header = ({
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
     const connName = blockData?.meta?.connection;
-    const allSettings = jotai.useAtomValue(atoms.fullConfigAtom);
-    const wshEnabled = allSettings?.connections?.[connName]?.["conn:wshenabled"] ?? true;
+    const connStatus = util.useAtomValueSafe(getConnStatusAtom(connName));
+    const wshProblem = connName && !connStatus?.wshenabled && connStatus?.status == "connected";
 
     React.useEffect(() => {
         if (!magnified || preview || prevMagifiedState.current) {
@@ -266,7 +266,7 @@ const BlockFrame_Header = ({
                     changeConnModalAtom={changeConnModalAtom}
                 />
             )}
-            {manageConnection && !wshEnabled && (
+            {manageConnection && wshProblem && (
                 <IconButton decl={wshInstallButton} className="block-frame-header-iconbutton" />
             )}
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
@@ -342,6 +342,8 @@ const ConnStatusOverlay = React.memo(
         const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
         const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
+        const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+        const [showWshError, setShowWshError] = React.useState(false);
 
         React.useEffect(() => {
             if (width) {
@@ -356,10 +358,38 @@ const ConnStatusOverlay = React.memo(
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
+        const handleDisableWsh = React.useCallback(async () => {
+            // using unknown is a hack. we need proper types for the
+            // connection config on the frontend
+            const metamaptype: unknown = {
+                "conn:wshenabled": false,
+            };
+            const data: ConnConfigRequest = {
+                host: connName,
+                metamaptype: metamaptype,
+            };
+            try {
+                await RpcApi.SetConnectionsConfigCommand(TabRpcClient, data);
+            } catch (e) {
+                console.log("problem setting connection config: ", e);
+            }
+        }, [connName]);
+
+        const handleRemoveWshError = React.useCallback(async () => {
+            try {
+                await RpcApi.DismissWshFailCommand(TabRpcClient, connName);
+            } catch (e) {
+                console.log("unable to dismiss wsh error: ", e);
+            }
+        }, [connName]);
+
         let statusText = `Disconnected from "${connName}"`;
         let showReconnect = true;
         if (connStatus.status == "connecting") {
             statusText = `Connecting to "${connName}"...`;
+            showReconnect = false;
+        }
+        if (connStatus.status == "connected") {
             showReconnect = false;
         }
         let reconDisplay = null;
@@ -373,18 +403,37 @@ const ConnStatusOverlay = React.memo(
         }
         const showIcon = connStatus.status != "connecting";
 
-        if (isLayoutMode || connStatus.status == "connected" || connModalOpen) {
+        const wshConfigEnabled = fullConfig?.connections?.[connName]?.["conn:wshenabled"] ?? true;
+        React.useEffect(() => {
+            const showWshErrorTemp =
+                connStatus.status == "connected" &&
+                connStatus.wsherror &&
+                connStatus.wsherror != "" &&
+                wshConfigEnabled;
+
+            setShowWshError(showWshErrorTemp);
+        }, [connStatus, wshConfigEnabled]);
+
+        if (!showWshError && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
 
         return (
             <div className="connstatus-overlay" ref={overlayRefCallback}>
                 <div className="connstatus-content">
-                    <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError })}>
+                    <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError || showWshError })}>
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
                         <div className="connstatus-status">
                             <div className="connstatus-status-text">{statusText}</div>
                             {showError ? <div className="connstatus-error">error: {connStatus.error}</div> : null}
+                            {showWshError ? (
+                                <div className="connstatus-error">unable to use wsh: {connStatus.wsherror}</div>
+                            ) : null}
+                            {showWshError && (
+                                <Button className={reconClassName} onClick={handleDisableWsh}>
+                                    always disable wsh
+                                </Button>
+                            )}
                         </div>
                     </div>
                     {showReconnect ? (
@@ -392,6 +441,11 @@ const ConnStatusOverlay = React.memo(
                             <Button className={reconClassName} onClick={handleTryReconnect}>
                                 {reconDisplay}
                             </Button>
+                        </div>
+                    ) : null}
+                    {showWshError ? (
+                        <div className="connstatus-actions">
+                            <Button className={`fa-xmark fa-solid ${reconClassName}`} onClick={handleRemoveWshError} />
                         </div>
                     ) : null}
                 </div>
@@ -657,8 +711,8 @@ const ChangeConnectionBlockModal = React.memo(
             }
             if (
                 conn.includes(connSelected) &&
-                connectionsConfig[conn]?.["display:hidden"] != true &&
-                (connectionsConfig[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
+                connectionsConfig?.[conn]?.["display:hidden"] != true &&
+                (connectionsConfig?.[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
                 // != false is necessary because of defaults
             ) {
                 filteredList.push(conn);
@@ -671,8 +725,8 @@ const ChangeConnectionBlockModal = React.memo(
             }
             if (
                 conn.includes(connSelected) &&
-                connectionsConfig[conn]?.["display:hidden"] != true &&
-                (connectionsConfig[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
+                connectionsConfig?.[conn]?.["display:hidden"] != true &&
+                (connectionsConfig?.[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
                 // != false is necessary because of defaults
             ) {
                 filteredWslList.push(conn);
@@ -683,7 +737,7 @@ const ChangeConnectionBlockModal = React.memo(
         const newConnectionSuggestion: SuggestionConnectionItem = {
             status: "connected",
             icon: "plus",
-            iconColor: "var(--conn-icon-color)",
+            iconColor: "var(--grey-text-color)",
             label: `${connSelected} (New Connection)`,
             value: "",
             onSelect: (_: string) => {
@@ -706,30 +760,24 @@ const ChangeConnectionBlockModal = React.memo(
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };
-        const priorityItems: Array<SuggestionConnectionItem> = [];
-        if (createNew) {
-            priorityItems.push(newConnectionSuggestion);
-        }
-        if (showReconnect && (connStatus.status == "disconnected" || connStatus.status == "error")) {
-            priorityItems.push(reconnectSuggestion);
-        }
-        const prioritySuggestions: SuggestionConnectionScope = {
-            headerText: "",
-            items: priorityItems,
-        };
         const localName = getUserName() + "@" + getHostName();
         const localSuggestion: SuggestionConnectionScope = {
             headerText: "Local",
             items: [],
         };
-        localSuggestion.items.push({
-            status: "connected",
-            icon: "laptop",
-            iconColor: "var(--grey-text-color)",
-            value: "",
-            label: localName,
-            current: connection == null,
-        });
+        if (localName.includes(connSelected)) {
+            localSuggestion.items.push({
+                status: "connected",
+                icon: "laptop",
+                iconColor: "var(--grey-text-color)",
+                value: "",
+                label: localName,
+                current: connection == null,
+            });
+        }
+        if (localName == connSelected) {
+            createNew = false;
+        }
         for (const wslConn of filteredWslList) {
             const connStatus = connStatusMap.get(wslConn);
             const connColorNum = computeConnColorNum(connStatus);
@@ -785,32 +833,32 @@ const ChangeConnectionBlockModal = React.memo(
             (itemA: SuggestionConnectionItem, itemB: SuggestionConnectionItem) => {
                 const connNameA = itemA.value;
                 const connNameB = itemB.value;
-                const valueA = connectionsConfig[connNameA]?.["display:order"] ?? 0;
-                const valueB = connectionsConfig[connNameB]?.["display:order"] ?? 0;
+                const valueA = connectionsConfig?.[connNameA]?.["display:order"] ?? 0;
+                const valueB = connectionsConfig?.[connNameB]?.["display:order"] ?? 0;
                 return valueA - valueB;
             }
         );
         const remoteSuggestions: SuggestionConnectionScope = {
             headerText: "Remote",
-            items: [...sortedRemoteItems, connectionsEditItem],
+            items: [...sortedRemoteItems],
         };
 
-        let suggestions: Array<SuggestionsType> = [];
-        if (prioritySuggestions.items.length > 0) {
-            suggestions.push(prioritySuggestions);
-        }
-        if (localSuggestion.items.length > 0) {
-            suggestions.push(localSuggestion);
-        }
-        if (remoteSuggestions.items.length > 0) {
-            suggestions.push(remoteSuggestions);
-        }
-
-        let selectionList: Array<SuggestionConnectionItem> = [
-            ...prioritySuggestions.items,
-            ...localSuggestion.items,
-            ...remoteSuggestions.items,
+        const suggestions: Array<SuggestionsType> = [
+            ...(showReconnect && (connStatus.status == "disconnected" || connStatus.status == "error")
+                ? [reconnectSuggestion]
+                : []),
+            ...(localSuggestion.items.length > 0 ? [localSuggestion] : []),
+            ...(remoteSuggestions.items.length > 0 ? [remoteSuggestions] : []),
+            ...(connSelected == "" ? [connectionsEditItem] : []),
+            ...(createNew ? [newConnectionSuggestion] : []),
         ];
+
+        let selectionList: Array<SuggestionConnectionItem> = suggestions.flatMap((item) => {
+            if ("items" in item) {
+                return item.items;
+            }
+            return item;
+        });
 
         // quick way to change icon color when highlighted
         selectionList = selectionList.map((item, index) => {
@@ -842,9 +890,10 @@ const ChangeConnectionBlockModal = React.memo(
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
-                    setRowIndex((idx) => Math.min(idx + 1, selectionList.flat().length - 1));
+                    setRowIndex((idx) => Math.min(idx + 1, selectionList.length - 1));
                     return true;
                 }
+                setRowIndex(0);
             },
             [changeConnModalAtom, viewModel, blockId, connSelected, selectionList]
         );

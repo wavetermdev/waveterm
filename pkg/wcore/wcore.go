@@ -19,11 +19,6 @@ import (
 // the wcore package coordinates actions across the storage layer
 // orchestrating the wave object store, the wave pubsub system, and the wave rpc system
 
-// TODO bring Tx infra into wcore
-
-const DefaultTimeout = 2 * time.Second
-const DefaultActivateBlockTimeout = 60 * time.Second
-
 // Ensures that the initial data is present in the store, creates an initial window if needed
 func EnsureInitialData() error {
 	// does not need to run in a transaction since it is called on startup
@@ -58,16 +53,12 @@ func EnsureInitialData() error {
 		log.Println("client has windows")
 		return nil
 	}
-	log.Println("client has no windows, creating default workspace")
-	defaultWs, err := CreateWorkspace(ctx, "Default workspace", "circle", "green")
+	log.Println("client has no windows, creating starter workspace")
+	starterWs, err := CreateWorkspace(ctx, "Starter workspace", "circle", "#58C142", true)
 	if err != nil {
-		return fmt.Errorf("error creating default workspace: %w", err)
+		return fmt.Errorf("error creating starter workspace: %w", err)
 	}
-	_, err = CreateTab(ctx, defaultWs.OID, "", true, true)
-	if err != nil {
-		return fmt.Errorf("error creating tab: %w", err)
-	}
-	_, err = CreateWindow(ctx, nil, defaultWs.OID)
+	_, err = CreateWindow(ctx, nil, starterWs.OID)
 	if err != nil {
 		return fmt.Errorf("error creating window: %w", err)
 	}

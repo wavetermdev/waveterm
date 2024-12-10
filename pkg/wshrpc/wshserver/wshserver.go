@@ -29,7 +29,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wlayout"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -121,7 +120,7 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
 	log.Printf("SetMetaCommand: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef
-	err := wstore.UpdateObjectMeta(ctx, oref, data.Meta)
+	err := wstore.UpdateObjectMeta(ctx, oref, data.Meta, false)
 	if err != nil {
 		return fmt.Errorf("error updating object meta: %w", err)
 	}
@@ -180,8 +179,8 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	err = wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
-		ActionType: wlayout.LayoutActionDataType_Insert,
+	err = wcore.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+		ActionType: wcore.LayoutActionDataType_Insert,
 		BlockId:    blockData.OID,
 		Magnified:  data.Magnified,
 		Focused:    true,
@@ -506,8 +505,8 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
-	wlayout.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
-		ActionType: wlayout.LayoutActionDataType_Remove,
+	wcore.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+		ActionType: wcore.LayoutActionDataType_Remove,
 		BlockId:    data.BlockId,
 	})
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
@@ -573,6 +572,11 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 func (ws *WshServer) SetConfigCommand(ctx context.Context, data wshrpc.MetaSettingsType) error {
 	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
+}
+
+func (ws *WshServer) SetConnectionsConfigCommand(ctx context.Context, data wshrpc.ConnConfigRequest) error {
+	log.Printf("SET CONNECTIONS CONFIG: %v\n", data)
+	return wconfig.SetConnectionsConfigValue(data.Host, data.MetaMapType)
 }
 
 func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
@@ -683,6 +687,25 @@ func (ws *WshServer) WslDefaultDistroCommand(ctx context.Context) (string, error
 		return "", fmt.Errorf("unable to determine default distro")
 	}
 	return distro.Name(), nil
+}
+
+/**
+ * Dismisses the WshFail Command in runtime memory on the backend
+ */
+func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string) error {
+	opts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return err
+	}
+	conn := conncontroller.GetConn(ctx, opts, false, nil)
+	if conn == nil {
+		return fmt.Errorf("connection %s not found", connName)
+	}
+	conn.WithLock(func() {
+		conn.WshError = ""
+	})
+	conn.FireConnChangeEvent()
+	return nil
 }
 
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {

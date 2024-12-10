@@ -1,10 +1,20 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { waveEventSubscribe } from "@/app/store/wps";
+import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
 import { clearTabCache } from "./emain-tabview";
-import { focusedWaveWindow, WaveBrowserWindow } from "./emain-window";
+import {
+    createNewWaveWindow,
+    createWorkspace,
+    focusedWaveWindow,
+    getWaveWindowByWorkspaceId,
+    relaunchBrowserWindows,
+    WaveBrowserWindow,
+} from "./emain-window";
+import { ElectronWshClient } from "./emain-wsh";
 import { unamePlatform } from "./platform";
 import { updater } from "./updater";
 
@@ -27,7 +37,45 @@ function getWindowWebContents(window: electron.BaseWindow): electron.WebContents
     return null;
 }
 
-function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
+async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuItemConstructorOptions[]> {
+    const workspaceList = await RpcApi.WorkspaceListCommand(ElectronWshClient);
+    console.log("workspaceList:", workspaceList);
+    const workspaceMenu: Electron.MenuItemConstructorOptions[] = [
+        {
+            label: "Create New Workspace",
+            click: (_, window) => {
+                fireAndForget(() => createWorkspace((window as WaveBrowserWindow) ?? ww));
+            },
+        },
+    ];
+    function getWorkspaceSwitchAccelerator(i: number): string {
+        if (i < 10) {
+            if (i == 9) {
+                i = 0;
+            } else {
+                i++;
+            }
+            return unamePlatform == "darwin" ? `Command+Control+${i}` : `Alt+Control+${i}`;
+        }
+    }
+    workspaceList?.length &&
+        workspaceMenu.push(
+            { type: "separator" },
+            ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace, i) => {
+                return {
+                    label: `Switch to ${workspace.workspacedata.name}`,
+                    click: (_, window) => {
+                        ((window as WaveBrowserWindow) ?? ww)?.switchWorkspace(workspace.workspacedata.oid);
+                    },
+                    accelerator: getWorkspaceSwitchAccelerator(i),
+                };
+            })
+        );
+    return workspaceMenu;
+}
+
+async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Promise<Electron.Menu> {
+    const ww = workspaceId && getWaveWindowByWorkspaceId(workspaceId);
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "New Window",
@@ -46,7 +94,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
         {
             label: "About Wave Terminal",
             click: (_, window) => {
-                getWindowWebContents(window)?.send("menu-item-about");
+                getWindowWebContents(window ?? ww)?.send("menu-item-about");
             },
         },
         {
@@ -124,7 +172,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Reload Tab",
             accelerator: "Shift+CommandOrControl+R",
             click: (_, window) => {
-                getWindowWebContents(window)?.reloadIgnoringCache();
+                getWindowWebContents(window ?? ww)?.reloadIgnoringCache();
             },
         },
         {
@@ -143,7 +191,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Toggle DevTools",
             accelerator: devToolsAccel,
             click: (_, window) => {
-                let wc = getWindowWebContents(window);
+                let wc = getWindowWebContents(window ?? ww);
                 wc?.toggleDevTools();
             },
         },
@@ -154,14 +202,14 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Reset Zoom",
             accelerator: "CommandOrControl+0",
             click: (_, window) => {
-                getWindowWebContents(window)?.setZoomFactor(1);
+                getWindowWebContents(window ?? ww)?.setZoomFactor(1);
             },
         },
         {
             label: "Zoom In",
             accelerator: "CommandOrControl+=",
             click: (_, window) => {
-                const wc = getWindowWebContents(window);
+                const wc = getWindowWebContents(window ?? ww);
                 if (wc == null) {
                     return;
                 }
@@ -175,7 +223,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Zoom In (hidden)",
             accelerator: "CommandOrControl+Shift+=",
             click: (_, window) => {
-                const wc = getWindowWebContents(window);
+                const wc = getWindowWebContents(window ?? ww);
                 if (wc == null) {
                     return;
                 }
@@ -191,7 +239,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Zoom Out",
             accelerator: "CommandOrControl+-",
             click: (_, window) => {
-                const wc = getWindowWebContents(window);
+                const wc = getWindowWebContents(window ?? ww);
                 if (wc == null) {
                     return;
                 }
@@ -205,7 +253,7 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             label: "Zoom Out (hidden)",
             accelerator: "CommandOrControl+Shift+-",
             click: (_, window) => {
-                const wc = getWindowWebContents(window);
+                const wc = getWindowWebContents(window ?? ww);
                 if (wc == null) {
                     return;
                 }
@@ -224,6 +272,9 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             role: "togglefullscreen",
         },
     ];
+
+    const workspaceMenu = await getWorkspaceMenu();
+
     const windowMenu: Electron.MenuItemConstructorOptions[] = [
         { role: "minimize", accelerator: "" },
         { role: "zoom" },
@@ -250,11 +301,77 @@ function getAppMenu(callbacks: AppMenuCallbacks): Electron.Menu {
             submenu: viewMenu,
         },
         {
+            label: "Workspace",
+            id: "workspace-menu",
+            submenu: workspaceMenu,
+        },
+        {
             role: "windowMenu",
             submenu: windowMenu,
         },
     ];
     return electron.Menu.buildFromTemplate(menuTemplate);
 }
+
+export function instantiateAppMenu(workspaceId?: string): Promise<electron.Menu> {
+    return getAppMenu(
+        {
+            createNewWaveWindow,
+            relaunchBrowserWindows,
+        },
+        workspaceId
+    );
+}
+
+export function makeAppMenu() {
+    fireAndForget(async () => {
+        const menu = await instantiateAppMenu();
+        electron.Menu.setApplicationMenu(menu);
+    });
+}
+
+waveEventSubscribe({
+    eventType: "workspace:update",
+    handler: makeAppMenu,
+});
+
+function convertMenuDefArrToMenu(workspaceId: string, menuDefArr: ElectronContextMenuItem[]): electron.Menu {
+    const menuItems: electron.MenuItem[] = [];
+    for (const menuDef of menuDefArr) {
+        const menuItemTemplate: electron.MenuItemConstructorOptions = {
+            role: menuDef.role as any,
+            label: menuDef.label,
+            type: menuDef.type,
+            click: (_, window) => {
+                const ww = (window as WaveBrowserWindow) ?? getWaveWindowByWorkspaceId(workspaceId);
+                if (!ww) {
+                    console.error("invalid window for context menu click handler:", ww, window, workspaceId);
+                    return;
+                }
+                ww?.activeTabView?.webContents?.send("contextmenu-click", menuDef.id);
+            },
+            checked: menuDef.checked,
+        };
+        if (menuDef.submenu != null) {
+            menuItemTemplate.submenu = convertMenuDefArrToMenu(workspaceId, menuDef.submenu);
+        }
+        const menuItem = new electron.MenuItem(menuItemTemplate);
+        menuItems.push(menuItem);
+    }
+    return electron.Menu.buildFromTemplate(menuItems);
+}
+
+electron.ipcMain.on("contextmenu-show", (event, workspaceId: string, menuDefArr?: ElectronContextMenuItem[]) => {
+    if (menuDefArr?.length === 0) {
+        return;
+    }
+    fireAndForget(async () => {
+        const menu = menuDefArr
+            ? convertMenuDefArrToMenu(workspaceId, menuDefArr)
+            : await instantiateAppMenu(workspaceId);
+        menu.popup();
+    });
+    event.returnValue = true;
+});
 
 export { getAppMenu };

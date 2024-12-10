@@ -58,7 +58,6 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
     const setActiveDrag = useSetAtom(layoutModel.activeDrag);
     const setReady = useSetAtom(layoutModel.ready);
     const isResizing = useAtomValue(layoutModel.isResizing);
-    const ephemeralNode = useAtomValue(layoutModel.ephemeralNode);
 
     const { activeDrag, dragClientOffset } = useDragLayer((monitor) => ({
         activeDrag: monitor.isDragging(),

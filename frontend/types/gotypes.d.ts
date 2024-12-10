@@ -56,6 +56,7 @@ declare global {
     // blockcontroller.BlockControllerRuntimeStatus
     type BlockControllerRuntimeStatus = {
         blockid: string;
+        version: number;
         shellprocstatus?: string;
         shellprocconnname?: string;
         shellprocexitcode: number;
@@ -278,6 +279,12 @@ declare global {
         err: string;
     };
 
+    // wshrpc.ConnConfigRequest
+    type ConnConfigRequest = {
+        host: string;
+        metamaptype: MetaType;
+    };
+
     // wshrpc.ConnKeywords
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
@@ -319,6 +326,7 @@ declare global {
         hasconnected: boolean;
         activeconnnum: number;
         error?: string;
+        wsherror?: string;
     };
 
     // wshrpc.CpuDataRequest
@@ -630,6 +638,7 @@ declare global {
         "autoupdate:installonquit"?: boolean;
         "autoupdate:channel"?: string;
         "preview:showhiddenfiles"?: boolean;
+        "tab:preset"?: string;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;

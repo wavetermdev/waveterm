@@ -6,6 +6,7 @@
 import { waveEventSubscribe } from "@/app/store/wps";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
+import { fireAndForget } from "@/util/util";
 import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { globalStore } from "./jotaiStore";
@@ -301,7 +302,7 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: Setter, pushToServe
     }
     setFn(wov.dataAtom, { value: value, loading: false });
     if (pushToServer) {
-        ObjectService.UpdateObject(value, false);
+        fireAndForget(() => ObjectService.UpdateObject(value, false));
     }
 }
 

@@ -29,48 +29,50 @@ const (
 )
 
 const (
-	Command_Authenticate      = "authenticate"    // special
-	Command_Dispose           = "dispose"         // special (disposes of the route, for multiproxy only)
-	Command_RouteAnnounce     = "routeannounce"   // special (for routing)
-	Command_RouteUnannounce   = "routeunannounce" // special (for routing)
-	Command_Message           = "message"
-	Command_GetMeta           = "getmeta"
-	Command_SetMeta           = "setmeta"
-	Command_SetView           = "setview"
-	Command_ControllerInput   = "controllerinput"
-	Command_ControllerRestart = "controllerrestart"
-	Command_ControllerStop    = "controllerstop"
-	Command_ControllerResync  = "controllerresync"
-	Command_FileAppend        = "fileappend"
-	Command_FileAppendIJson   = "fileappendijson"
-	Command_ResolveIds        = "resolveids"
-	Command_BlockInfo         = "blockinfo"
-	Command_CreateBlock       = "createblock"
-	Command_DeleteBlock       = "deleteblock"
-	Command_FileWrite         = "filewrite"
-	Command_FileRead          = "fileread"
-	Command_EventPublish      = "eventpublish"
-	Command_EventRecv         = "eventrecv"
-	Command_EventSub          = "eventsub"
-	Command_EventUnsub        = "eventunsub"
-	Command_EventUnsubAll     = "eventunsuball"
-	Command_EventReadHistory  = "eventreadhistory"
-	Command_StreamTest        = "streamtest"
-	Command_StreamWaveAi      = "streamwaveai"
-	Command_StreamCpuData     = "streamcpudata"
-	Command_Test              = "test"
-	Command_RemoteStreamFile  = "remotestreamfile"
-	Command_RemoteFileInfo    = "remotefileinfo"
-	Command_RemoteFileTouch   = "remotefiletouch"
-	Command_RemoteWriteFile   = "remotewritefile"
-	Command_RemoteFileDelete  = "remotefiledelete"
-	Command_RemoteFileJoin    = "remotefilejoin"
-	Command_WaveInfo          = "waveinfo"
-	Command_WshActivity       = "wshactivity"
-	Command_Activity          = "activity"
-	Command_GetVar            = "getvar"
-	Command_SetVar            = "setvar"
-	Command_RemoteMkdir       = "remotemkdir"
+	Command_Authenticate         = "authenticate"    // special
+	Command_Dispose              = "dispose"         // special (disposes of the route, for multiproxy only)
+	Command_RouteAnnounce        = "routeannounce"   // special (for routing)
+	Command_RouteUnannounce      = "routeunannounce" // special (for routing)
+	Command_Message              = "message"
+	Command_GetMeta              = "getmeta"
+	Command_SetMeta              = "setmeta"
+	Command_SetView              = "setview"
+	Command_ControllerInput      = "controllerinput"
+	Command_ControllerRestart    = "controllerrestart"
+	Command_ControllerStop       = "controllerstop"
+	Command_ControllerResync     = "controllerresync"
+	Command_FileAppend           = "fileappend"
+	Command_FileAppendIJson      = "fileappendijson"
+	Command_ResolveIds           = "resolveids"
+	Command_BlockInfo            = "blockinfo"
+	Command_CreateBlock          = "createblock"
+	Command_DeleteBlock          = "deleteblock"
+	Command_FileWrite            = "filewrite"
+	Command_FileRead             = "fileread"
+	Command_EventPublish         = "eventpublish"
+	Command_EventRecv            = "eventrecv"
+	Command_EventSub             = "eventsub"
+	Command_EventUnsub           = "eventunsub"
+	Command_EventUnsubAll        = "eventunsuball"
+	Command_EventReadHistory     = "eventreadhistory"
+	Command_StreamTest           = "streamtest"
+	Command_StreamWaveAi         = "streamwaveai"
+	Command_StreamCpuData        = "streamcpudata"
+	Command_Test                 = "test"
+	Command_SetConfig            = "setconfig"
+	Command_SetConnectionsConfig = "connectionsconfig"
+	Command_RemoteStreamFile     = "remotestreamfile"
+	Command_RemoteFileInfo       = "remotefileinfo"
+	Command_RemoteFileTouch      = "remotefiletouch"
+	Command_RemoteWriteFile      = "remotewritefile"
+	Command_RemoteFileDelete     = "remotefiledelete"
+	Command_RemoteFileJoin       = "remotefilejoin"
+	Command_WaveInfo             = "waveinfo"
+	Command_WshActivity          = "wshactivity"
+	Command_Activity             = "activity"
+	Command_GetVar               = "getvar"
+	Command_SetVar               = "setvar"
+	Command_RemoteMkdir          = "remotemkdir"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -81,6 +83,7 @@ const (
 	Command_ConnList         = "connlist"
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
+	Command_DismissWshFail   = "dismisswshfail"
 
 	Command_WorkspaceList = "workspacelist"
 
@@ -139,6 +142,7 @@ type WshRpcInterface interface {
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
+	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
@@ -156,6 +160,7 @@ type WshRpcInterface interface {
 	ConnListCommand(ctx context.Context) ([]string, error)
 	WslListCommand(ctx context.Context) ([]string, error)
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
+	DismissWshFailCommand(ctx context.Context, connName string) error
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -512,6 +517,11 @@ func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.MetaMapType)
 }
 
+type ConnConfigRequest struct {
+	Host        string              `json:"host"`
+	MetaMapType waveobj.MetaMapType `json:"metamaptype"`
+}
+
 type ConnStatus struct {
 	Status        string `json:"status"`
 	WshEnabled    bool   `json:"wshenabled"`
@@ -520,6 +530,7 @@ type ConnStatus struct {
 	HasConnected  bool   `json:"hasconnected"` // true if it has *ever* connected successfully
 	ActiveConnNum int    `json:"activeconnnum"`
 	Error         string `json:"error,omitempty"`
+	WshError      string `json:"wsherror,omitempty"`
 }
 
 type WebSelectorOpts struct {

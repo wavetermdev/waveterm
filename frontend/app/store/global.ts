@@ -43,9 +43,6 @@ function setPlatform(platform: NodeJS.Platform) {
     PLATFORM = platform;
 }
 
-// Used to override the tab id when switching tabs to prevent flicker in the tab bar.
-const overrideStaticTabAtom = atom(null) as PrimitiveAtom<string>;
-
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
     const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
@@ -103,8 +100,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const tabAtom: Atom<Tab> = atom((get) => {
         return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
     });
-    // This atom is used to determine the tab id to use for the static tab. It is set to the overrideStaticTabAtom value if it is not null, otherwise it is set to the initOpts.tabId value.
-    const staticTabIdAtom: Atom<string> = atom((get) => get(overrideStaticTabAtom) ?? initOpts.tabId);
+    // this is *the* tab that this tabview represents.  it should never change.
+    const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
     const controlShiftDelayAtom = atom(false);
     const updaterStatusAtom = atom<UpdaterStatus>("up-to-date") as PrimitiveAtom<UpdaterStatus>;
     try {
@@ -662,10 +659,6 @@ function createTab() {
 }
 
 function setActiveTab(tabId: string) {
-    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active. This class is set in setActiveTab in global.ts. See tab.scss for where this class is used.
-    // Also overrides the staticTabAtom to the new tab id so that the active tab is set correctly.
-    globalStore.set(overrideStaticTabAtom, tabId);
-    document.body.classList.add("nohover");
     getApi().setActiveTab(tabId);
 }
 
@@ -692,7 +685,6 @@ export {
     isDev,
     loadConnStatus,
     openLink,
-    overrideStaticTabAtom,
     PLATFORM,
     pushFlashError,
     pushNotification,

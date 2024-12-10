@@ -5,9 +5,9 @@ import { Modal } from "@/app/modals/modal";
 import { Markdown } from "@/element/markdown";
 import { modalsModel } from "@/store/modalmodel";
 import * as keyutil from "@/util/keyutil";
-import { UserInputService } from "../store/services";
-
+import { fireAndForget } from "@/util/util";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { UserInputService } from "../store/services";
 import "./userinputmodal.scss";
 
 const UserInputModal = (userInputRequest: UserInputRequest) => {
@@ -16,33 +16,39 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
     const checkboxRef = useRef<HTMLInputElement>();
 
     const handleSendErrResponse = useCallback(() => {
-        UserInputService.SendUserInputResponse({
-            type: "userinputresp",
-            requestid: userInputRequest.requestid,
-            errormsg: "Canceled by the user",
-        });
+        fireAndForget(() =>
+            UserInputService.SendUserInputResponse({
+                type: "userinputresp",
+                requestid: userInputRequest.requestid,
+                errormsg: "Canceled by the user",
+            })
+        );
         modalsModel.popModal();
     }, [responseText, userInputRequest]);
 
     const handleSendText = useCallback(() => {
-        UserInputService.SendUserInputResponse({
-            type: "userinputresp",
-            requestid: userInputRequest.requestid,
-            text: responseText,
-            checkboxstat: checkboxRef?.current?.checked ?? false,
-        });
+        fireAndForget(() =>
+            UserInputService.SendUserInputResponse({
+                type: "userinputresp",
+                requestid: userInputRequest.requestid,
+                text: responseText,
+                checkboxstat: checkboxRef?.current?.checked ?? false,
+            })
+        );
         modalsModel.popModal();
     }, [responseText, userInputRequest]);
     console.log("bar");
 
     const handleSendConfirm = useCallback(
         (response: boolean) => {
-            UserInputService.SendUserInputResponse({
-                type: "userinputresp",
-                requestid: userInputRequest.requestid,
-                confirm: response,
-                checkboxstat: checkboxRef?.current?.checked ?? false,
-            });
+            fireAndForget(() =>
+                UserInputService.SendUserInputResponse({
+                    type: "userinputresp",
+                    requestid: userInputRequest.requestid,
+                    confirm: response,
+                    checkboxstat: checkboxRef?.current?.checked ?? false,
+                })
+            );
             modalsModel.popModal();
         },
         [userInputRequest]

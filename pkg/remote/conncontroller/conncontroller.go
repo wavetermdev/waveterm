@@ -59,6 +59,7 @@ type SSHConn struct {
 	DomainSockListener net.Listener
 	ConnController     *ssh.Session
 	Error              string
+	WshError           string
 	HasWaiter          *atomic.Bool
 	LastConnectTime    int64
 	ActiveConnNum      int
@@ -94,10 +95,12 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	return wshrpc.ConnStatus{
 		Status:        conn.Status,
 		Connected:     conn.Status == Status_Connected,
+		WshEnabled:    conn.WshEnabled.Load(),
 		Connection:    conn.Opts.String(),
 		HasConnected:  (conn.LastConnectTime > 0),
 		ActiveConnNum: conn.ActiveConnNum,
 		Error:         conn.Error,
+		WshError:      conn.WshError,
 	}
 }
 
@@ -532,7 +535,11 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 			})
 		} else if installErr != nil {
 			log.Printf("error: unable to install wsh shell extensions for %s: %v\n", conn.GetName(), err)
-			return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
+			log.Print("attempting to run with nowsh instead")
+			conn.WithLock(func() {
+				conn.WshError = installErr.Error()
+			})
+			conn.WshEnabled.Store(false)
 		} else {
 			conn.WshEnabled.Store(true)
 		}
@@ -541,7 +548,12 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 			csErr := conn.StartConnServer()
 			if csErr != nil {
 				log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
-				return fmt.Errorf("conncontroller %s start wsh connserver error: %v", conn.GetName(), csErr)
+				log.Print("attempting to run with nowsh instead")
+				conn.WithLock(func() {
+					conn.WshError = csErr.Error()
+				})
+				conn.WshEnabled.Store(false)
+				//return fmt.Errorf("conncontroller %s start wsh connserver error: %v", conn.GetName(), csErr)
 			}
 		}
 	} else {

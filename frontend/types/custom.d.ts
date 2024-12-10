@@ -74,7 +74,7 @@ declare global {
         getWebviewPreload: () => string;
         getAboutModalDetails: () => AboutModalDetails;
         getDocsiteUrl: () => string;
-        showContextMenu: (menu?: ElectronContextMenuItem[]) => void;
+        showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
         onNavigate: (callback: (url: string) => void) => void;
         onIframeNavigate: (callback: (url: string) => void) => void;
@@ -91,11 +91,12 @@ declare global {
         setWebviewFocus: (focusedId: number) => void; // focusedId si the getWebContentsId of the webview
         registerGlobalWebviewKeys: (keys: string[]) => void;
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
+        createWorkspace: () => void;
         switchWorkspace: (workspaceId: string) => void;
         deleteWorkspace: (workspaceId: string) => void;
         setActiveTab: (tabId: string) => void;
         createTab: () => void;
-        closeTab: (tabId: string) => void;
+        closeTab: (workspaceId: string, tabId: string) => void;
         setWindowInitStatus: (status: "ready" | "wave-ready") => void;
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
         sendLog: (log: string) => void;

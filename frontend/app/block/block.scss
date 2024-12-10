@@ -166,6 +166,7 @@
                         flex: 1 2 auto;
                         overflow: hidden;
                         padding-right: 4px;
+						@include mixins.ellipsis()
                     }
 
                     .connecting-svg {

@@ -53,7 +53,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 	})
 }
 
-func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaMapType) error {
+func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaMapType, mergeSpecial bool) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		if oref.IsEmpty() {
 			return fmt.Errorf("empty object reference")
@@ -66,7 +66,7 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaM
 		if objMeta == nil {
 			objMeta = make(map[string]any)
 		}
-		newMeta := waveobj.MergeMeta(objMeta, meta, false)
+		newMeta := waveobj.MergeMeta(objMeta, meta, mergeSpecial)
 		waveobj.SetMeta(obj, newMeta)
 		DBUpdate(tx.Context(), obj)
 		return nil

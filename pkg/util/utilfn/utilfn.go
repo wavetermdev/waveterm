@@ -620,6 +620,7 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 // on error just returns ""
 // does not return "application/octet-stream" as this is considered a detection failure
 // can pass an existing fileInfo to avoid re-statting the file
+// falls back to text/plain for 0 byte files
 func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	if fileInfo == nil {
 		statRtn, err := os.Stat(path)
@@ -647,6 +648,9 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	}
 	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
 		return mimeType
+	}
+	if fileInfo.Size() == 0 {
+		return "text/plain"
 	}
 	if !extended {
 		return ""

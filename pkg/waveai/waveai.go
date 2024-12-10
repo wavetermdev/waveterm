@@ -17,6 +17,7 @@ const OpenAICloudReqStr = "openai-cloudreq"
 const PacketEOFStr = "EOF"
 const DefaultAzureAPIVersion = "2023-05-15"
 const ApiType_Anthropic = "anthropic"
+const ApiType_Perplexity = "perplexity"
 
 type OpenAICmdInfoPacketOutputType struct {
 	Model        string `json:"model,omitempty"`
@@ -73,6 +74,15 @@ func RunAICommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan 
 		log.Printf("sending ai chat message to anthropic endpoint %q using model %s\n", endpoint, request.Opts.Model)
 		anthropicBackend := AnthropicBackend{}
 		return anthropicBackend.StreamCompletion(ctx, request)
+	}
+	if request.Opts.APIType == ApiType_Perplexity {
+		endpoint := request.Opts.BaseURL
+		if endpoint == "" {
+			endpoint = "default"
+		}
+		log.Printf("sending ai chat message to perplexity endpoint %q using model %s\n", endpoint, request.Opts.Model)
+		perplexityBackend := PerplexityBackend{}
+		return perplexityBackend.StreamCompletion(ctx, request)
 	}
 	if IsCloudAIRequest(request.Opts) {
 		log.Print("sending ai chat message to default waveterm cloud endpoint\n")
