@@ -128,7 +128,7 @@ export class PreviewModel implements ViewModel {
     normFilePath: Atom<Promise<string>>;
     loadableStatFilePath: Atom<Loadable<string>>;
     loadableFileInfo: Atom<Loadable<FileInfo>>;
-    connection: Atom<string>;
+    connection: Atom<Promise<string>>;
     statFile: Atom<Promise<FileInfo>>;
     fullFile: Atom<Promise<FullFile>>;
     fileMimeType: Atom<Promise<string>>;
@@ -136,6 +136,7 @@ export class PreviewModel implements ViewModel {
     fileContentSaved: PrimitiveAtom<string | null>;
     fileContent: WritableAtom<Promise<string>, [string], void>;
     newFileContent: PrimitiveAtom<string | null>;
+    connectionError: PrimitiveAtom<string>;
 
     openFileModal: PrimitiveAtom<boolean>;
     openFileError: PrimitiveAtom<string>;
@@ -167,6 +168,7 @@ export class PreviewModel implements ViewModel {
         this.markdownShowToc = atom(false);
         this.filterOutNowsh = atom(true);
         this.monacoRef = createRef();
+        this.connectionError = atom("");
         this.viewIcon = atom((get) => {
             const blockData = get(this.blockAtom);
             if (blockData?.meta?.icon) {
@@ -359,15 +361,22 @@ export class PreviewModel implements ViewModel {
             return fileInfo.dir + "/" + fileInfo.name;
         });
         this.loadableStatFilePath = loadable(this.statFilePath);
-        this.connection = atom<string>((get) => {
-            return get(this.blockAtom)?.meta?.connection;
+        this.connection = atom<Promise<string>>(async (get) => {
+            const connName = get(this.blockAtom)?.meta?.connection;
+            try {
+                await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
+                globalStore.set(this.connectionError, "");
+            } catch (e) {
+                globalStore.set(this.connectionError, e as string);
+            }
+            return connName;
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
             }
-            const conn = get(this.connection) ?? "";
+            const conn = (await get(this.connection)) ?? "";
             const statFile = await services.FileService.StatFile(conn, fileName);
             return statFile;
         });
@@ -384,7 +393,7 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            const conn = get(this.connection) ?? "";
+            const conn = (await get(this.connection)) ?? "";
             const file = await services.FileService.ReadFile(conn, fileName);
             return file;
         });
@@ -434,10 +443,14 @@ export class PreviewModel implements ViewModel {
         const mimeType = await getFn(this.fileMimeType);
         const fileInfo = await getFn(this.statFile);
         const fileName = await getFn(this.statFilePath);
+        const connErr = getFn(this.connectionError);
         const editMode = getFn(this.editMode);
         const parentFileInfo = await this.getParentInfo(fileInfo);
         console.log(parentFileInfo);
 
+        if (connErr != "") {
+            return { errorStr: `Connection Error: ${connErr}` };
+        }
         if (parentFileInfo?.notfound ?? false) {
             return { errorStr: `Parent Directory Not Found: ${fileInfo.path}` };
         }
@@ -505,7 +518,7 @@ export class PreviewModel implements ViewModel {
     }
 
     async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
-        const conn = globalStore.get(this.connection);
+        const conn = await globalStore.get(this.connection);
         try {
             const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
@@ -526,7 +539,7 @@ export class PreviewModel implements ViewModel {
             this.updateOpenFileModalAndError(false);
             return true;
         }
-        const conn = globalStore.get(this.connection);
+        const conn = await globalStore.get(this.connection);
         try {
             const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
@@ -586,7 +599,7 @@ export class PreviewModel implements ViewModel {
             console.log("not saving file, newFileContent is null");
             return;
         }
-        const conn = globalStore.get(this.connection) ?? "";
+        const conn = (await globalStore.get(this.connection)) ?? "";
         try {
             await services.FileService.SaveFile(conn, filePath, stringToBase64(newFileContent));
             globalStore.set(this.fileContent, newFileContent);
@@ -609,7 +622,7 @@ export class PreviewModel implements ViewModel {
             this.updateOpenFileModalAndError(false);
             return true;
         }
-        const conn = globalStore.get(this.connection);
+        const conn = await globalStore.get(this.connection);
         try {
             const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, filePath], {
                 route: makeConnRoute(conn),
