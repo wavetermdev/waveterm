@@ -221,6 +221,7 @@ const WorkspaceSwitcher = () => {
         setTimeout(() => {
             fireAndForget(updateWorkspaceList);
         }, 10);
+        setEditingWorkspace(activeWorkspace.oid);
     };
 
     return (
