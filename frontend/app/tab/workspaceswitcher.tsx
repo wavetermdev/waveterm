@@ -106,7 +106,7 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
     );
 });
 
-interface ColorAndIconSelectorProps {
+interface WorkspaceEditorProps {
     title: string;
     icon: string;
     color: string;
@@ -116,7 +116,7 @@ interface ColorAndIconSelectorProps {
     onIconChange: (newIcon: string) => void;
     onDeleteWorkspace: () => void;
 }
-const ColorAndIconSelector = memo(
+const WorkspaceEditor = memo(
     ({
         title,
         icon,
@@ -126,23 +126,25 @@ const ColorAndIconSelector = memo(
         onColorChange,
         onIconChange,
         onDeleteWorkspace,
-    }: ColorAndIconSelectorProps) => {
+    }: WorkspaceEditorProps) => {
         const inputRef = useRef<HTMLInputElement>(null);
 
         useEffect(() => {
             if (focusInput && inputRef.current) {
                 inputRef.current.focus();
+                inputRef.current.select();
             }
         }, [focusInput]);
 
         return (
-            <div className="color-icon-selector">
+            <div className="workspace-editor">
                 <Input
                     ref={inputRef}
                     className={clsx("vertical-padding-3", { error: title === "" })}
                     onChange={onTitleChange}
                     value={title}
                     autoFocus
+                    autoSelect
                 />
                 <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
                 <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
@@ -354,7 +356,7 @@ const WorkspaceSwitcherItem = ({
                 </div>
             </ExpandableMenuItemGroupTitle>
             <ExpandableMenuItem>
-                <ColorAndIconSelector
+                <WorkspaceEditor
                     title={workspace.name}
                     icon={workspace.icon}
                     color={workspace.color}
