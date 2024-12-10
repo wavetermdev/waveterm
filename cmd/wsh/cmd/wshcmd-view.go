@@ -34,6 +34,7 @@ var editCmd = &cobra.Command{
 func init() {
 	viewCmd.Flags().BoolVarP(&viewMagnified, "magnified", "m", false, "open view in magnified mode")
 	rootCmd.AddCommand(viewCmd)
+	editCmd.Flags().BoolVarP(&viewMagnified, "magnified", "m", false, "open view in magnified mode")
 	rootCmd.AddCommand(editCmd)
 }
 
