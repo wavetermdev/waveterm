@@ -164,8 +164,8 @@
             grid-gap: 18.5px; // Space between items
             justify-content: center;
             align-items: center;
-            padding-top: 5px;
-            padding-bottom: 20px;
+            margin-top: 5px;
+            padding-bottom: 15px;
             border-bottom: 1px solid var(--modal-border-color);
 
             .color-circle {
@@ -203,10 +203,7 @@
             grid-row-gap: 13px; // Space between items
             justify-content: center;
             align-items: center;
-            padding-top: 15px;
-
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--modal-border-color);
+            margin-top: 15px;
 
             .icon-item {
                 font-size: 15px;
