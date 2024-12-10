@@ -226,13 +226,22 @@ const Tab = memo(
                             separator.style.opacity = "1"; // Reset opacity for the current tab only if not active
                         }
 
+                        const draggingTabElement = document.querySelector(
+                            `[data-tab-id="${draggingId}"]`
+                        ) as HTMLElement;
+                        if (!draggingTabElement) return;
+
                         // If dragging tab is the first tab set opacity to 1
                         if (draggingId === tabIds[0]) {
+                            const separator = draggingTabElement.querySelector(".separator") as HTMLElement;
+                            separator.style.opacity = "1";
+                        } else if (draggingId === tabIds[tabIds.length - 1]) {
+                            // if daragging tab is the last tab set opacity of right separator to 1
                             const draggingTabElement = document.querySelector(
                                 `[data-tab-id="${draggingId}"]`
                             ) as HTMLElement;
                             if (!draggingTabElement) return;
-                            const separator = draggingTabElement.querySelector(".separator") as HTMLElement;
+                            const separator = draggingTabElement.querySelector(".right-separator") as HTMLElement;
                             separator.style.opacity = "1";
                         }
                     }
@@ -260,10 +269,14 @@ const Tab = memo(
                     const currentTabElement = document.querySelector(`[data-tab-id="${id}"]`) as HTMLElement;
                     if (!currentTabElement) return;
                     const separator = currentTabElement.querySelector(".separator") as HTMLElement;
+                    const rightSeparator = currentTabElement.querySelector(".right-separator") as HTMLElement;
 
                     if (isActive || draggingId === id) {
                         console.log("here!!!!!", currentTabElement, draggingId);
                         separator.style.opacity = "0";
+                        if (rightSeparator) {
+                            rightSeparator.style.opacity = "0";
+                        }
                     }
 
                     // Set the opacity of the separator for the right adjacent tab
