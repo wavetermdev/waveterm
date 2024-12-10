@@ -653,7 +653,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 key={tabId}
                                 ref={tabRefs.current[index]}
                                 id={tabId}
-                                isFirst={tabIds[0]}
                                 isPinned={isPinned}
                                 onClick={() => handleSelectTab(tabId)}
                                 isActive={activeTabId === tabId}

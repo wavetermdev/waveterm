@@ -20,7 +20,6 @@ const adjacentTabsAtom = atom<Set<string>>(new Set<string>());
 interface TabProps {
     id: string;
     isActive: boolean;
-    isFirst: boolean;
     isBeforeActive: boolean;
     draggingId: string;
     tabWidth: number;
@@ -33,8 +32,6 @@ interface TabProps {
     onMouseDown: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
     onPinChange: () => void;
-    // onMouseEnter: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-    // onMouseLeave: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
 }
 
 const Tab = memo(
@@ -43,7 +40,6 @@ const Tab = memo(
             {
                 id,
                 isActive,
-                isFirst,
                 isPinned,
                 isBeforeActive,
                 draggingId,
@@ -55,8 +51,6 @@ const Tab = memo(
                 onClick,
                 onClose,
                 onMouseDown,
-                // onMouseEnter,
-                // onMouseLeave,
                 onPinChange,
             },
             ref
@@ -293,7 +287,7 @@ const Tab = memo(
                     console.log("entered else ?????????????????????????", tabsSwapped);
                     reset();
                 }
-            }, [id, tabIds, isFirst, isActive, draggingId, tabsSwapped]);
+            }, [id, tabIds, isActive, draggingId, tabsSwapped]);
 
             const handleMouseEnter = useCallback(() => {
                 if (isActive) return;
@@ -331,7 +325,7 @@ const Tab = memo(
                     ref={tabRef}
                     className={clsx("tab", {
                         active: isActive,
-                        isDragging: draggingId === id,
+                        "is-dragging": draggingId === id,
                         "before-active": isBeforeActive,
                         "new-tab": isNew,
                     })}
@@ -372,6 +366,7 @@ const Tab = memo(
                             </Button>
                         )}
                     </div>
+                    {tabIds[tabIds.length - 1] === id && <div className="right-separator"></div>}
                 </div>
             );
         }

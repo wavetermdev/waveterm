@@ -14,7 +14,8 @@
 	align-items: center; 
 	justify-content: center; 
 
-	.separator {
+	.separator,
+	.right-separator {
 		position: absolute;
 		left: 0px;
 		width: 1px;
@@ -25,8 +26,14 @@
 		opacity: 1;
 	}
 
+	.right-separator {
+		left: auto;
+		right: 0px;
+	}
+
 	&.hover {
 		.separator,
+		.right-separator,
 		& + .tab .separator {
 			display: none;
 		}
@@ -103,7 +110,8 @@
 }
 
 // Only apply hover effects when not in nohover mode. This prevents the previously-hovered tab from remaining hovered while a tab view is not mounted.
-body:not(.nohover) .tab:hover {
+body:not(.nohover) .tab:hover,
+body:not(.nohover) .is-dragging {
     .tab-inner {
         border-color: transparent;
         background: rgb(from var(--main-text-color) r g b / 0.07);
