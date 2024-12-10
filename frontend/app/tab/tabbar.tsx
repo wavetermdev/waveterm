@@ -103,7 +103,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const [tabIds, setTabIds] = useState([]);
     const [pinnedTabIds, setPinnedTabIds] = useState<Set<string>>(new Set());
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
-    const [draggingTab, setDraggingTab] = useState<string>();
+    const [draggingTabId, setDraggingTabId] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
     const [newTabId, setNewTabId] = useState<string | null>(null);
 
@@ -376,7 +376,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         totalScrollOffset = draggingTabDataRef.current.totalScrollOffset;
         currentX = event.clientX - initialOffsetX - totalScrollOffset;
 
-        setDraggingTab((prev) => (prev !== tabId ? tabId : prev));
+        setDraggingTabId((prev) => (prev !== tabId ? tabId : prev));
 
         // Check if the tab has moved 5 pixels
         if (Math.abs(currentX - tabStartX) >= 50) {
@@ -482,7 +482,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 pinnedTabCount = pinnedTabIds.size;
             }
             // Reset dragging state
-            setDraggingTab(null);
+            setDraggingTabId(null);
             // Update workspace tab ids
             fireAndForget(
                 async () =>
@@ -500,10 +500,10 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const { tabIndex, dragged } = draggingTabDataRef.current;
 
         // Update the final position of the dragged tab
-        const draggingTab = tabIds[tabIndex];
+        const draggingTabId = tabIds[tabIndex];
         const tabWidth = tabWidthRef.current;
         const finalLeftPosition = tabIndex * tabWidth;
-        const ref = tabRefs.current.find((ref) => ref.current.dataset.tabId === draggingTab);
+        const ref = tabRefs.current.find((ref) => ref.current.dataset.tabId === draggingTabId);
         if (ref.current) {
             ref.current.classList.add("animate");
             ref.current.style.transform = `translate3d(${finalLeftPosition}px,0,0)`;
@@ -518,7 +518,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 ref.current.classList.remove("animate");
             });
             // Reset dragging state
-            setDraggingTab(null);
+            setDraggingTabId(null);
         }
 
         // setTabIndicesMoved([]);
@@ -534,6 +534,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
             const tabIndex = tabIds.indexOf(tabId);
             const tabStartX = dragStartPositions[tabIndex]; // Starting X position of the tab
+
+            setTabsSwapped(tabIndex + 1);
 
             // console.log("handleDragStart", tabId, tabIndex, tabStartX);
             if (ref.current) {
@@ -660,7 +662,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                                 onLoaded={() => handleTabLoaded(tabId)}
                                 onPinChange={() => handlePinChange(tabId, !isPinned)}
                                 isBeforeActive={isBeforeActive(tabId)}
-                                draggingId={draggingTab}
+                                draggingId={draggingTabId}
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}
                                 tabIds={tabIds}

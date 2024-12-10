@@ -229,7 +229,6 @@ const Tab = memo(
                         const separator = currentTabElement.querySelector(".separator") as HTMLElement;
 
                         if (!leftAdjacentElement.classList.contains("active")) {
-                            console.log("here!!!!!", currentTabElement, draggingId);
                             separator.style.opacity = "1"; // Reset opacity for the current tab only if not active
                         }
 
@@ -269,6 +268,7 @@ const Tab = memo(
                     const separator = currentTabElement.querySelector(".separator") as HTMLElement;
 
                     if (isActive || draggingId === id) {
+                        console.log("here!!!!!", currentTabElement, draggingId);
                         separator.style.opacity = "0";
                     }
 
