@@ -435,7 +435,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             // }
 
             // Update to trigger in-tab re-render
-            setTabsSwapped(newTabIndex);
+            setTabsSwapped(newTabIndex + 1);
 
             tabIds.splice(newTabIndex, 0, tabId);
 
@@ -522,7 +522,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
 
         // setTabIndicesMoved([]);
-        setTabsSwapped(false);
+        setTabsSwapped(null);
         document.removeEventListener("mouseup", handleMouseUp);
         document.removeEventListener("mousemove", handleMouseMove);
         draggingRemovedRef.current = false;

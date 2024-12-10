@@ -256,8 +256,6 @@ const Tab = memo(
                     }
 
                     if (rightAdjacentId) {
-                        console.log("rightAdjacentId!!!!!", rightAdjacentId);
-
                         // To check if rightAdjacentElement is the active tab then do not reset opacity
                         const rightAdjacentElement = document.querySelector(
                             `[data-tab-id="${rightAdjacentId}"]`
@@ -266,6 +264,7 @@ const Tab = memo(
                         const separator = rightAdjacentElement.querySelector(".separator") as HTMLElement;
 
                         if (!rightAdjacentElement.classList.contains("active")) {
+                            console.log("here!!!!!");
                             separator.style.opacity = "1"; // Reset opacity for the right adjacent tab
                         }
                     }
@@ -303,7 +302,7 @@ const Tab = memo(
                         reset();
                     };
                 } else {
-                    console.log("entered else ?????????????????????????");
+                    console.log("entered else ?????????????????????????", tabsSwapped);
                     reset();
                 }
             }, [id, tabIds, isFirst, isActive, draggingId, tabsSwapped]);
