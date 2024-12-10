@@ -151,7 +151,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     useEffect(() => {
         if (workspace) {
             // Compare current tabIds with new workspace.tabids
-            // console.log("tabbar workspace", workspace);
             const newTabIds = new Set([...(workspace.pinnedtabids ?? []), ...(workspace.tabids ?? [])]);
             const newPinnedTabIds = workspace.pinnedtabids ?? [];
 
@@ -162,9 +161,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
             if (!areEqual) {
                 const newPinnedTabIdSet = new Set(newPinnedTabIds);
-                // console.log("newPinnedTabIds", newPinnedTabIds);
                 const newTabIdList = newPinnedTabIds.concat([...newTabIds].filter((id) => !newPinnedTabIdSet.has(id))); // Corrects for any duplicates between the two lists
-                // console.log("newTabIdList", newTabIdList);
                 setTabIds(newTabIdList);
                 setPinnedTabIds(newPinnedTabIdSet);
             }
@@ -315,9 +312,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             for (let i = tabIndex + 1; i < tabIds.length; i++) {
                 const otherTabStart = dragStartPositions[i];
                 if (currentX + tabWidth > otherTabStart + tabWidth / 2) {
-                    // setTest("switching right");
                     newTabIndex = i;
-                    // console.log("newTabIndex===", newTabIndex, tabRefs.current);
                 }
             }
         } else {
@@ -325,7 +320,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             for (let i = tabIndex - 1; i >= 0; i--) {
                 const otherTabEnd = dragStartPositions[i] + tabWidth;
                 if (currentX < otherTabEnd - tabWidth / 2) {
-                    // setTest("switching left");
                     newTabIndex = i;
                 }
             }
@@ -419,20 +413,10 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             // Find current index of the dragged tab in tempTabs
             const currentIndexOfDraggingTab = tabIds.indexOf(tabId);
 
-            // console.log("currentIndexOfDraggingTab", currentIndexOfDraggingTab);
-            // console.log("tabIndex", tabIndex);
-
             // Move the dragged tab to its new position
             if (currentIndexOfDraggingTab !== -1) {
                 tabIds.splice(tabIndex, 1);
             }
-
-            // Track indices that have been moved
-            // if (getDragDirection(currentX) === "+") {
-            //     setTabIndicesMoved([tabIds[newTabIndex], tabIds[newTabIndex + 1]].filter(Boolean));
-            // } else if (getDragDirection(currentX) === "-") {
-            //     setTabIndicesMoved([tabIds[newTabIndex - 1], tabIds[newTabIndex]].filter(Boolean));
-            // }
 
             // Update to trigger in-tab re-render
             setTabsSwapped(newTabIndex + 1);
@@ -452,17 +436,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     };
 
-    //            } else if ((tabIndex > pinnedTabCount || (tabIndex === 1 && pinnedTabCount === 1)) && isPinned) {
-
     const setUpdatedTabsDebounced = useCallback(
         debounce(300, (tabIndex: number, tabIds: string[], pinnedTabIds: Set<string>) => {
-            // console.log(
-            //     "setting updated tabs",
-            //     tabIds,
-            //     pinnedTabIds,
-            //     tabIndex,
-            //     draggingTabDataRef.current.tabStartIndex
-            // );
             // Reset styles
             tabRefs.current.forEach((ref) => {
                 ref.current.style.zIndex = "0";
@@ -477,7 +452,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 pinnedTabIds.delete(draggedTabId);
             }
             if (pinnedTabCount != pinnedTabIds.size) {
-                // console.log("updated pinnedTabIds", pinnedTabIds, tabIds);
                 setPinnedTabIds(pinnedTabIds);
                 pinnedTabCount = pinnedTabIds.size;
             }
@@ -535,9 +509,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             const tabIndex = tabIds.indexOf(tabId);
             const tabStartX = dragStartPositions[tabIndex]; // Starting X position of the tab
 
+            // Trigger in-tab re-render when a tab is dragged
             setTabsSwapped(tabIndex + 1);
 
-            // console.log("handleDragStart", tabId, tabIndex, tabStartX);
             if (ref.current) {
                 draggingTabDataRef.current = {
                     tabId,
@@ -599,7 +573,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handlePinChange = useCallback(
         (tabId: string, pinned: boolean) => {
-            // console.log("handlePinChange", tabId, pinned);
             fireAndForget(async () => {
                 await WorkspaceService.ChangeTabPinning(workspace.oid, tabId, pinned);
             });
