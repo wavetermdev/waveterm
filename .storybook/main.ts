@@ -58,6 +58,7 @@ const config: StorybookConfig = {
         <link rel="stylesheet" href="./fontawesome/css/solid.min.css" />
         <link rel="stylesheet" href="./fontawesome/css/sharp-solid.min.css" />
         <link rel="stylesheet" href="./fontawesome/css/sharp-regular.min.css" />
+        <link rel="stylesheet" href="./fontawesome/css/custom-icons.min.css" />
         <style>
         #storybook-docs {
             [id^="anchor--"],

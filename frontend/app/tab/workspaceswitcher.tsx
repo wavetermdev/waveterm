@@ -43,7 +43,7 @@ const colors = [
 ];
 
 const icons = [
-    "circle",
+    "custom@wave-logo-solid",
     "triangle",
     "star",
     "heart",
@@ -93,7 +93,7 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
     return (
         <div className={clsx("icon-selector", className)}>
             {icons.map((icon) => {
-                const iconClass = makeIconClass(icon, false);
+                const iconClass = makeIconClass(icon, true);
                 return (
                     <i
                         key={icon}
