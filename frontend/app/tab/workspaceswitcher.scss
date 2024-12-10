@@ -74,7 +74,7 @@
     }
 
     .expandable-menu-item-group {
-        padding: 0 8px;
+        margin: 0 8px;
         border: 1px solid transparent;
         border-radius: 4px;
 
@@ -205,6 +205,9 @@
             align-items: center;
             padding-top: 15px;
 
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--modal-border-color);
+
             .icon-item {
                 font-size: 15px;
                 color: oklch(from var(--modal-bg-color) calc(l * 1.5) c h);
@@ -222,7 +225,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: 10px;
+            margin-top: 5px;
         }
     }
 
