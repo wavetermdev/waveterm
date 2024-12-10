@@ -97,9 +97,9 @@
         "bg:blendmode": "overlay",
         "bg:text": "rgb(200, 200, 200)"
     },
-    "bg@shadows-neon-nebula": {
+    "bg@cosmic-tide": {
         "display:name": "Cosmic Tide",
-        "display:order": 0.9,
+        "display:order": 3.6,
         "bg:activebordercolor": "#ff55aa",
         "bg:*": true,
         "bg": "linear-gradient(135deg, #00d9d9, #ff55aa, #1e1e2f, #2f3b57, #ff99ff)",
