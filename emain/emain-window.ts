@@ -58,7 +58,6 @@ type WindowActionQueueEntry =
 export class WaveBrowserWindow extends BaseWindow {
     waveWindowId: string;
     workspaceId: string;
-    waveReadyPromise: Promise<void>;
     allLoadedTabViews: Map<string, WaveTabView>;
     activeTabView: WaveTabView;
     private canClose: boolean;
@@ -471,6 +470,9 @@ export class WaveBrowserWindow extends BaseWindow {
     private async processActionQueue() {
         while (this.actionQueue.length > 0) {
             try {
+                if (this.isDestroyed()) {
+                    break;
+                }
                 const entry = this.actionQueue[0];
                 let tabId: string = null;
                 // have to use "===" here to get the typechecker to work :/
@@ -711,7 +713,6 @@ export async function createNewWaveWindow() {
         const existingWindowData = (await ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
             const win = await createBrowserWindow(existingWindowData, fullConfig, { unamePlatform });
-            await win.waveReadyPromise;
             win.show();
             recreatedWindow = true;
         }
@@ -722,7 +723,6 @@ export async function createNewWaveWindow() {
     }
     console.log("creating new window");
     const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
-    await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
 }
 
@@ -754,7 +754,6 @@ export async function relaunchBrowserWindows() {
         wins.push(win);
     }
     for (const win of wins) {
-        await win.waveReadyPromise;
         console.log("show window", win.waveWindowId);
         win.show();
     }
