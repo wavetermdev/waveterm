@@ -152,7 +152,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 		if err == nil {
 			signer, err := ssh.NewSignerFromKey(unencryptedPrivateKey)
 			if err == nil {
-				if sshKeywords.SshAddKeysToAgent && agentClient != nil {
+				if safeDeref(sshKeywords.SshAddKeysToAgent) && agentClient != nil {
 					agentClient.Add(agent.AddedKey{
 						PrivateKey: unencryptedPrivateKey,
 					})
@@ -166,7 +166,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 		}
 
 		// batch mode deactivates user input
-		if sshKeywords.SshBatchMode {
+		if safeDeref(sshKeywords.SshBatchMode) {
 			// skip this key and try with the next
 			return createDummySigner()
 		}
@@ -195,7 +195,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 			// skip this key and try with the next
 			return createDummySigner()
 		}
-		if sshKeywords.SshAddKeysToAgent && agentClient != nil {
+		if safeDeref(sshKeywords.SshAddKeysToAgent) && agentClient != nil {
 			agentClient.Add(agent.AddedKey{
 				PrivateKey: unencryptedPrivateKey,
 			})
@@ -551,12 +551,27 @@ func createHostKeyCallback(sshKeywords *wshrpc.ConnKeywords) (ssh.HostKeyCallbac
 	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
+func safeDeref[T any](x *T) T {
+	if x == nil {
+		var safeOut T
+		return safeOut
+	}
+	return *x
+}
+
+func ptr[T any](x T) *T {
+	return &x
+}
+
 func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
-	remoteName := sshKeywords.SshUser + "@" + xknownhosts.Normalize(sshKeywords.SshHostName+":"+sshKeywords.SshPort)
+	chosenUser := safeDeref(sshKeywords.SshUser)
+	chosenHostName := safeDeref(sshKeywords.SshHostName)
+	chosenPort := safeDeref(sshKeywords.SshPort)
+	remoteName := chosenUser + xknownhosts.Normalize(chosenHostName+":"+chosenPort)
 
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
-	conn, err := net.Dial("unix", sshKeywords.SshIdentityAgent)
+	conn, err := net.Dial("unix", safeDeref(sshKeywords.SshIdentityAgent))
 	if err != nil {
 		log.Printf("Failed to open Identity Agent Socket: %v", err)
 	} else {
@@ -577,9 +592,9 @@ func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeyword
 
 	// note: batch mode turns off interactive input
 	authMethodActiveMap := map[string]bool{
-		"publickey":            sshKeywords.SshPubkeyAuthentication,
-		"keyboard-interactive": sshKeywords.SshKbdInteractiveAuthentication && !sshKeywords.SshBatchMode,
-		"password":             sshKeywords.SshPasswordAuthentication && !sshKeywords.SshBatchMode,
+		"publickey":            safeDeref(sshKeywords.SshPubkeyAuthentication),
+		"keyboard-interactive": safeDeref(sshKeywords.SshKbdInteractiveAuthentication) && !safeDeref(sshKeywords.SshBatchMode),
+		"password":             safeDeref(sshKeywords.SshPasswordAuthentication) && !safeDeref(sshKeywords.SshBatchMode),
 	}
 
 	var authMethods []ssh.AuthMethod
@@ -600,9 +615,9 @@ func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeyword
 		return nil, err
 	}
 
-	networkAddr := sshKeywords.SshHostName + ":" + sshKeywords.SshPort
+	networkAddr := chosenHostName + ":" + chosenPort
 	return &ssh.ClientConfig{
-		User:              sshKeywords.SshUser,
+		User:              chosenUser,
 		Auth:              authMethods,
 		HostKeyCallback:   hostKeyCallback,
 		HostKeyAlgorithms: hostKeyAlgorithms(networkAddr),
@@ -646,9 +661,10 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 
-	connFlags.SshUser = opts.SSHUser
-	connFlags.SshHostName = opts.SSHHost
-	connFlags.SshPort = fmt.Sprintf("%d", opts.SSHPort)
+	connFlags.SshUser = &opts.SSHUser
+	connFlags.SshHostName = &opts.SSHHost
+	portStr := fmt.Sprintf("%d", opts.SSHPort)
+	connFlags.SshPort = &portStr
 
 	rawName := opts.String()
 	savedKeywords, ok := wconfig.ReadFullConfig().Connections[rawName]
@@ -684,7 +700,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if err != nil {
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
-	networkAddr := sshKeywords.SshHostName + ":" + sshKeywords.SshPort
+	networkAddr := safeDeref(sshKeywords.SshHostName) + ":" + safeDeref(sshKeywords.SshPort)
 	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
 	if err != nil {
 		return client, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
@@ -695,32 +711,33 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 func combineSshKeywords(userProvidedOpts *wshrpc.ConnKeywords, configKeywords *wshrpc.ConnKeywords, savedKeywords *wshrpc.ConnKeywords) (*wshrpc.ConnKeywords, error) {
 	sshKeywords := &wshrpc.ConnKeywords{}
 
-	if userProvidedOpts.SshUser != "" {
+	if safeDeref(userProvidedOpts.SshUser) != "" {
 		sshKeywords.SshUser = userProvidedOpts.SshUser
-	} else if configKeywords.SshUser != "" {
+	} else if safeDeref(configKeywords.SshUser) != "" {
 		sshKeywords.SshUser = configKeywords.SshUser
 	} else {
 		user, err := user.Current()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user for ssh: %+v", err)
 		}
-		sshKeywords.SshUser = user.Username
+		sshKeywords.SshUser = ptr(user.Username)
 	}
 
 	// we have to check the host value because of the weird way
 	// we store the pattern as the hostname for imported remotes
-	if configKeywords.SshHostName != "" {
+	if safeDeref(configKeywords.SshHostName) != "" {
 		sshKeywords.SshHostName = configKeywords.SshHostName
 	} else {
 		sshKeywords.SshHostName = userProvidedOpts.SshHostName
 	}
 
-	if userProvidedOpts.SshPort != "0" && userProvidedOpts.SshPort != "22" {
+	userPort := safeDeref(userProvidedOpts.SshPort)
+	if userPort != "" && userPort != "0" && userPort != "22" {
 		sshKeywords.SshPort = userProvidedOpts.SshPort
-	} else if configKeywords.SshPort != "" && configKeywords.SshPort != "22" {
+	} else if userPort != "" && userPort != "22" {
 		sshKeywords.SshPort = configKeywords.SshPort
 	} else {
-		sshKeywords.SshPort = "22"
+		sshKeywords.SshPort = ptr("22")
 	}
 
 	// use internal config ones
@@ -760,19 +777,19 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshUser = trimquotes.TryTrimQuotes(userRaw)
+	sshKeywords.SshUser = ptr(trimquotes.TryTrimQuotes(userRaw))
 
 	hostNameRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "HostName")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshHostName = trimquotes.TryTrimQuotes(hostNameRaw)
+	sshKeywords.SshHostName = ptr(trimquotes.TryTrimQuotes(hostNameRaw))
 
 	portRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "Port")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshPort = trimquotes.TryTrimQuotes(portRaw)
+	sshKeywords.SshPort = ptr(trimquotes.TryTrimQuotes(portRaw))
 
 	identityFileRaw := WaveSshConfigUserSettings().GetAll(hostPattern, "IdentityFile")
 	for i := 0; i < len(identityFileRaw); i++ {
@@ -784,26 +801,26 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshBatchMode = (strings.ToLower(trimquotes.TryTrimQuotes(batchModeRaw)) == "yes")
+	sshKeywords.SshBatchMode = ptr(strings.ToLower(trimquotes.TryTrimQuotes(batchModeRaw)) == "yes")
 
 	// we currently do not support host-bound or unbound but will use yes when they are selected
 	pubkeyAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PubkeyAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshPubkeyAuthentication = (strings.ToLower(trimquotes.TryTrimQuotes(pubkeyAuthenticationRaw)) != "no")
+	sshKeywords.SshPubkeyAuthentication = ptr(strings.ToLower(trimquotes.TryTrimQuotes(pubkeyAuthenticationRaw)) != "no")
 
 	passwordAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PasswordAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshPasswordAuthentication = (strings.ToLower(trimquotes.TryTrimQuotes(passwordAuthenticationRaw)) != "no")
+	sshKeywords.SshPasswordAuthentication = ptr(strings.ToLower(trimquotes.TryTrimQuotes(passwordAuthenticationRaw)) != "no")
 
 	kbdInteractiveAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "KbdInteractiveAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshKbdInteractiveAuthentication = (strings.ToLower(trimquotes.TryTrimQuotes(kbdInteractiveAuthenticationRaw)) != "no")
+	sshKeywords.SshKbdInteractiveAuthentication = ptr(strings.ToLower(trimquotes.TryTrimQuotes(kbdInteractiveAuthenticationRaw)) != "no")
 
 	// these are parsed as a single string and must be separated
 	// these are case sensitive in openssh so they are here too
@@ -816,7 +833,7 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshAddKeysToAgent = (strings.ToLower(trimquotes.TryTrimQuotes(addKeysToAgentRaw)) == "yes")
+	sshKeywords.SshAddKeysToAgent = ptr(strings.ToLower(trimquotes.TryTrimQuotes(addKeysToAgentRaw)) == "yes")
 
 	identityAgentRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentityAgent")
 	if err != nil {
@@ -831,7 +848,7 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 			if err != nil {
 				return nil, err
 			}
-			sshKeywords.SshIdentityAgent = agentPath
+			sshKeywords.SshIdentityAgent = ptr(agentPath)
 		} else {
 			log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
 		}
@@ -840,7 +857,7 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 		if err != nil {
 			return nil, err
 		}
-		sshKeywords.SshIdentityAgent = agentPath
+		sshKeywords.SshIdentityAgent = ptr(agentPath)
 	}
 
 	proxyJumpRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "ProxyJump")

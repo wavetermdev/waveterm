@@ -139,6 +139,7 @@ declare global {
         blockdef: BlockDef;
         rtopts?: RuntimeOpts;
         magnified?: boolean;
+        ephemeral?: boolean;
     };
 
     // wshrpc.CommandCreateSubBlockData
