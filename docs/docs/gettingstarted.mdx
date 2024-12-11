@@ -5,15 +5,14 @@ title: "Getting Started"
 ---
 
 import { PlatformProvider, PlatformSelectorButton, PlatformItem } from "@site/src/components/platformcontext.tsx";
+import { Kbd } from "@site/src/components/kbd.tsx";
 
-<PlatformProvider>
-  <PlatformSelectorButton />
+Wave Terminal combines the power of a traditional terminal with modern graphical capabilities, letting you seamlessly mix CLI operations with web browsing, file previews, AI assistance, and more. This guide will help you get started.
 
 ## Installation
 
-You can install Wave directly from our [Downloads page](https://www.waveterm.dev/download) or by using a package manager.
-
-Unless otherwise noted, the package manager entries are supported officially by Command Line Inc.
+<PlatformProvider>
+  <PlatformSelectorButton />
 
 ### Package managers
 
@@ -21,50 +20,115 @@ Unless otherwise noted, the package manager entries are supported officially by 
 
 #### Homebrew
 
-Wave is available on macOS as a [Homebrew Cask](https://formulae.brew.sh/cask/wave):
-
 ```bash
 brew install --cask wave
 ```
 
 </PlatformItem>
+
 <PlatformItem platforms={["windows"]}>
-
-Wave is available on Windows via [Chocolatey](https://community.chocolatey.org/packages/wave) and the [Windows Package Manager](https://winstall.app/apps/CommandLine.Wave).
-
-#### Chocolatey
-
-```Powershell
-choco install wave
-```
 
 #### Windows Package Manager
 
-```Powershell
+```powershell
 winget install CommandLine.Wave
 ```
 
+#### Chocolatey
+
+```powershell
+choco install wave
+```
+
 </PlatformItem>
+
 <PlatformItem platforms={["linux"]}>
 
-Wave is available in the following package managers for Linux
-
 #### Snap
-
-Different Linux distributions have different ways of enabling Snap. You can find distro-specific instructions in our [Snapcraft listing](https://snapcraft.io/waveterm).
 
 ```bash
 sudo snap install --classic waveterm
 ```
 
-#### AUR/Pacman (community)
-
-This is a [community-maintained AUR package](https://aur.archlinux.org/packages/waveterm) for installing Wave on Arch distributions.
-
-#### Nix (community)
-
-This is a [community-maintained Nix package](https://search.nixos.org/packages?channel=unstable&show=waveterm&size=50&sort=relevance&type=packages&query=waveterm) for installing on NixOS or any other Linux distribution set up with Nix.
+Other options available: [AUR package](https://aur.archlinux.org/packages/waveterm) (community maintained), [Nix package](https://search.nixos.org/packages?channel=unstable&show=waveterm) (community maintained)
 
 </PlatformItem>
+
+You can also download installers directly from our [Downloads page](https://www.waveterm.dev/download).
+
+## Core Concepts
+
+### Tabs and Blocks
+
+- **Tabs**: Like browser tabs, these help organize your work. Create new tabs with <Kbd k="Cmd:t"/>.
+- **Blocks**: The building blocks of Wave. Each block can be a terminal, web browser, file preview, or other widget.
+- **Layout**: Blocks can be dragged, dropped, and resized to create your ideal workspace layout.
+
+### Key Features
+
+1. **Terminal Integration**
+
+   - Full terminal emulation with modern features
+   - Support for your preferred shell (bash, zsh, fish, etc.)
+   - The `wsh` command provides special integration with Wave features
+
+2. **Graphical Widgets**
+
+   - File previews (images, markdown, code with syntax highlighting)
+   - Built-in web browser
+   - System monitoring
+   - AI assistance
+
+3. **Remote Connections**
+   - Easy SSH connections with the connection button <i className="fa-sharp fa-laptop"/>
+   - WSL integration on Windows
+   - Consistent experience across local and remote sessions
+
+## Quick Start Guide
+
+1. **Open Your First Terminal**
+
+   - New Wave tabs start with a single terminal block
+   - Use it just like your regular terminal
+   - Create additional terminal blocks with <Kbd k="Cmd:n"/>
+
+2. **Try Some Basic Commands**
+
+   ```bash
+   # View a file or directory
+   wsh view ~/Documents
+
+   # Open a webpage
+   wsh web github.com
+
+   # Get AI assistance
+   wsh ai "how do I find large files in my current directory?"
+   ```
+
+3. **Customize Your Layout**
+
+   - Drag block headers to rearrange them
+   - Hover between blocks to resize them
+   - Right-click tab headers for background options
+   - Right-click block headers for block-specific options
+
+4. **Connect to Remote Machines**
+   - Click the <i className="fa-sharp fa-laptop"/> button
+   - Enter `username@hostname` for SSH connections
+   - Or select a WSL distribution on Windows
+
+## Next Steps
+
+- Explore [Key Bindings](./keybindings) to work more efficiently
+- Learn about [Tab Layouts](./layout) to organize your workspace
+- Set up [Custom Widgets](./customwidgets) for quick access to your tools
+- Configure [AI Presets](./ai-presets) to use your preferred AI models
+- Check out [Configuration](./config) for detailed customization options
+
+## Getting Help
+
+- Join our [Discord community](https://discord.gg/XfvZ334gwU) for help and discussions
+- Report issues on [GitHub](https://github.com/wavetermdev/waveterm/issues)
+- Check our [FAQ](./faq) for common questions
 
 </PlatformProvider>
