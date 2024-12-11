@@ -70,6 +70,7 @@ jobs:
                       yarn install
                   timeout_minutes: 5
                   retry_on: error
+                  max_attempts: 3
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
