@@ -11,7 +11,7 @@ sidebar_position: 200
 Wave Terminal v0.10.0 introduces workspaces, making it easier to manage multiple work environments. We've added powerful new command execution capabilities with `wsh run`, allowing you to launch and control commands in dedicated blocks. This release also brings significant improvements to SSH with a new connections configuration system for managing your remote environments.
 
 - **Workspaces**: Organize your work into separate environments, each with their own tabs, layouts, and settings
-- **Command Blocks**: New `wsh run` command for launching terminal commands in dedicated blocks, with support for magnification, auto-closing, and execution control ([docs](/wsh#run))
+- **Command Blocks**: New `wsh run` command for launching terminal commands in dedicated blocks, with support for magnification, auto-closing, and execution control ([docs](/wsh-reference#run))
 - **Connections**: New configuration system for managing SSH connections, with support for wsh-free operation, per-connection themes, and more ([docs](/connections))
 - Improved tab management with better switching behavior and context menus (many bug fixes)
 - New tab features including pinned tabs and drag-and-drop improvements
@@ -19,7 +19,7 @@ Wave Terminal v0.10.0 introduces workspaces, making it easier to manage multiple
 - Attempt wsh-free connection as a fallback if wsh installation or execution fails
 - New `-i` flag to add identity files with the `wsh ssh` command
 - Added Perplexity API integration ([docs](/faq#perplexity))
-- `wsh setbg` command for background handling ([docs](/wsh#setbg))
+- `wsh setbg` command for background handling ([docs](/wsh-reference#setbg))
 - Switched from Less to SCSS for styling
 - [bugfix] Fixed tab flickering issues during tab switches
 - [bugfix] Corrected WaveAI text area resize behavior
@@ -32,8 +32,8 @@ Wave Terminal v0.10.0 introduces workspaces, making it easier to manage multiple
 
 New minor release that introduces Wave's connected computing extensions. We've introduced new `wsh` commands that allow you to store variables and files, and access them across terminal sessions (on both local and remote machines).
 
-- `wsh setvar/getvar` to get and set variables -- [Docs](https://docs.waveterm.dev/wsh#getvarsetvar)
-- `wsh file` operations (cat, write, append, rm, info, cp, and ls) -- [Docs](https://docs.waveterm.dev/wsh#file)
+- `wsh setvar/getvar` to get and set variables -- [Docs](https://docs.waveterm.dev/wsh-reference#getvarsetvar)
+- `wsh file` operations (cat, write, append, rm, info, cp, and ls) -- [Docs](https://docs.waveterm.dev/wsh-reference#file)
 - Improved golang panic handling to prevent backend crashes
 - Improved SSH config logging and fixes a reused connection bug
 - Updated telemetry to track additional counters
