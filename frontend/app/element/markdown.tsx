@@ -210,6 +210,8 @@ type MarkdownProps = {
     resolveOpts?: MarkdownResolveOpts;
     scrollable?: boolean;
     rehype?: boolean;
+    fontSizeOverride?: number;
+    fixedFontSizeOverride?: number;
 };
 
 const Markdown = ({
@@ -219,6 +221,8 @@ const Markdown = ({
     style,
     className,
     resolveOpts,
+    fontSizeOverride,
+    fixedFontSizeOverride,
     scrollable = true,
     rehype = true,
     onClickExecute,
@@ -349,8 +353,15 @@ const Markdown = ({
         );
     };
 
+    const mergedStyle = { ...style };
+    if (fontSizeOverride != null) {
+        mergedStyle["--markdown-font-size"] = `${fontSizeOverride}px`;
+    }
+    if (fixedFontSizeOverride != null) {
+        mergedStyle["--markdown-fixed-font-size"] = `${fixedFontSizeOverride}px`;
+    }
     return (
-        <div className={clsx("markdown", className)} style={style}>
+        <div className={clsx("markdown", className)} style={mergedStyle}>
             {scrollable ? <ScrollableMarkdown /> : <NonScrollableMarkdown />}
             {toc && (
                 <OverlayScrollbarsComponent className="toc" options={{ scrollbars: { autoHide: "leave" } }}>
