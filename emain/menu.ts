@@ -49,13 +49,8 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
         },
     ];
     function getWorkspaceSwitchAccelerator(i: number): string {
-        if (i < 10) {
-            if (i == 9) {
-                i = 0;
-            } else {
-                i++;
-            }
-            return unamePlatform == "darwin" ? `Command+Control+${i}` : `Alt+Control+${i}`;
+        if (i < 9) {
+            return unamePlatform == "darwin" ? `Command+Control+${i}` : `Alt+Control+${i + 1}`;
         }
     }
     workspaceList?.length &&

@@ -177,7 +177,7 @@ func CheckAndFixWindow(ctx context.Context, windowId string) *waveobj.Window {
 		CloseWindow(ctx, windowId, false)
 		return nil
 	}
-	if len(ws.TabIds) == 0 {
+	if len(ws.TabIds) == 0 && len(ws.PinnedTabIds) == 0 {
 		log.Printf("fixing workspace with no tabs %q (in checkAndFixWindow)\n", ws.OID)
 		_, err = CreateTab(ctx, ws.OID, "", true, false, false)
 		if err != nil {

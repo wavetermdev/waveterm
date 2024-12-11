@@ -27,12 +27,12 @@
     user-select: none;
     display: flex;
     flex-direction: row;
-    width: env(titlebar-area-width);
-	-webkit-app-region: drag;
+    width: 100vw;
+    -webkit-app-region: drag;
 
-	* {
-		-webkit-app-region: no-drag;
-	}
+    * {
+        -webkit-app-region: no-drag;
+    }
 
     .tabs-wrapper {
         transition: var(--tabs-wrapper-transition);
@@ -40,7 +40,7 @@
     }
 
     .tab-bar {
-		margin-top: 6px;
+        margin-top: 6px;
         position: relative; // Needed for absolute positioning of child tabs
         display: flex;
         flex-direction: row;
@@ -61,7 +61,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 6px 6px 0 0;
+        padding: 6px 6px 0 0;
     }
 
     .app-menu-button {

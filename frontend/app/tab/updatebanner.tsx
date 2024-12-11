@@ -1,10 +1,10 @@
 import { Button } from "@/element/button";
 import { atoms, getApi } from "@/store/global";
 import { useAtomValue } from "jotai";
-import { memo, useEffect, useState } from "react";
+import { forwardRef, memo, useEffect, useState } from "react";
 import "./updatebanner.scss";
 
-const UpdateStatusBannerComponent = ({ buttonRef }: { buttonRef: React.RefObject<HTMLButtonElement> }) => {
+const UpdateStatusBannerComponent = forwardRef<HTMLDivElement>((_, ref) => {
     const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
     let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
@@ -54,17 +54,18 @@ const UpdateStatusBannerComponent = ({ buttonRef }: { buttonRef: React.RefObject
     }
     if (updateStatusMessage) {
         return (
-            <Button
-                ref={buttonRef}
-                className="update-available-button"
-                title={appUpdateStatus === "ready" ? "Click to Install Update" : updateStatusMessage}
-                onClick={onClick}
-                disabled={appUpdateStatus !== "ready"}
-            >
-                {updateStatusMessage}
-            </Button>
+            <div className="update-available-banner" ref={ref}>
+                <Button
+                    className="update-available-button"
+                    title={appUpdateStatus === "ready" ? "Click to Install Update" : updateStatusMessage}
+                    onClick={onClick}
+                    disabled={appUpdateStatus !== "ready"}
+                >
+                    {updateStatusMessage}
+                </Button>
+            </div>
         );
     }
-};
+});
 
 export const UpdateStatusBanner = memo(UpdateStatusBannerComponent) as typeof UpdateStatusBannerComponent;
