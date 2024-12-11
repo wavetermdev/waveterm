@@ -66,3 +66,18 @@ body .markdown h2 {
     mask: url(/img/discord.svg) no-repeat center / contain;
     -webkit-mask: url(/img/discord.svg) no-repeat center / contain;
 }
+
+img[src*="#left"] {
+    float: left;
+    margin: 0 10px 10px 0;
+    max-width: 300px;
+}
+img[src*="#right"] {
+    float: right;
+    margin: 0 0 10px 10px;
+    max-width: 300px;
+}
+img[src*="#center"] {
+    display: block;
+    margin: auto;
+}

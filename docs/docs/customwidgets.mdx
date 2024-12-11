@@ -7,11 +7,11 @@ title: "Custom Widgets"
 # Custom Widgets
 
 Wave allows users to create their own widgets to uniquely customize their experience for what works for them. While we plan on greatly expanding on this in the future, it is already possible to make some widgets that you can access at the press of a button. All widgets can be created by modifying the `<WAVETERM_HOME>/config/widgets.json` file. By adding a widget to this file, it is possible to add widgets to the widget bar. By default, the widget bar looks like this:
-![The default widget bar](/img/all-widgets-default.webp)
+![The default widget bar](./img/all-widgets-default.webp)
 
 By adding additional widgets, it is possible to get a widget bar that looks like this:
 
-![A widget bar with custom widgets added](/img/all-widgets-extra.webp)
+![A widget bar with custom widgets added](./img/all-widgets-extra.webp)
 
 ## The Structure of a Widget
 
@@ -34,7 +34,7 @@ All widgets share a similar structure that roughly looks like the example below:
 
 This consists of a couple different parts. First and foremost, each widget has a unique identifying name. The value associated with this name is the outer `WidgetConfigType`. It is outlined in red below:
 
-![An example of a widget with outer keys labeled as WidgetConfigType and inner keys labeled as MetaTSType. In the example, the outer keys are icon, label, color, and blockdef. The inner keys are view, controller, and cmd.](/img/widget-example.webp)
+![An example of a widget with outer keys labeled as WidgetConfigType and inner keys labeled as MetaTSType. In the example, the outer keys are icon, label, color, and blockdef. The inner keys are view, controller, and cmd.](./img/widget-example.webp)
 
 This `WidgetConfigType` is shared between all types of widgets. That is to say, all widgets&mdash;regardless of type&mdash; will use the same keys for this. The accepted keys are:
 
@@ -135,7 +135,7 @@ Suppose I want a widget that will run speedtest-go when opened. Then, I can defi
 ```
 
 This adds an icon to the widget bar that you can press to launch a terminal running the `speedtest-go --unix` command.
-![The example speedtest widget](/img/widget-example-speed.webp)
+![The example speedtest widget](./img/widget-example-speed.webp)
 
 Using `"cmd"` for the `"controller"` is the simplest way to accomplish this. `"cmd:clearonstart"` isn't necessary, but it makes it so every time the command is run (which can be done by right clicking the header and selecting `Force Controller Restart`), the previous contents are cleared out.
 
@@ -158,7 +158,7 @@ Now suppose I wanted to run a TUI app, for instance, `dua`. Well, it turns out t
 ```
 
 This adds an icon to the widget bar that you can press to launch a terminal running the `dua` command.
-![The example speedtest widget](/img/widget-example-dua.webp)
+![The example speedtest widget](./img/widget-example-dua.webp)
 
 Because this is a TUI app that does not return anything when closed, the `"cmd:clearonstart"` option doesn't change the behavior, so it has been excluded.
 
@@ -212,7 +212,7 @@ Say you want a widget that automatically starts at YouTube and will use YouTube 
 ```
 
 This adds an icon to the widget bar that you can press to launch a web widget on the youtube homepage.
-![The example speedtest widget](/img/widget-example-youtube.webp)
+![The example speedtest widget](./img/widget-example-youtube.webp)
 
 Alternatively, say you want a web widget that opens to github as if it were a bookmark, but will use google as its home page after that. This can easily be done with:
 
@@ -233,7 +233,7 @@ Alternatively, say you want a web widget that opens to github as if it were a bo
 ```
 
 This adds an icon to the widget bar that you can press to launch a web widget on the github homepage.
-![The example speedtest widget](/img/widget-example-github.webp)
+![The example speedtest widget](./img/widget-example-github.webp)
 
 # Sysinfo Widgets
 
@@ -286,7 +286,7 @@ Suppose you have a build process that lasts 3 minutes and you'd like to be able 
 ```
 
 This adds an icon to the widget bar that you can press to launch the CPU and Memory plots by default with 180 seconds of data.
-![The example speedtest widget](/img/widget-example-3mininfo.webp)
+![The example speedtest widget](./img/widget-example-3mininfo.webp)
 
 Now, suppose you are fine with the default 100 points (and 100 seconds) but would like to show all of the CPU data when launched. In that case, you can write:
 
@@ -307,4 +307,4 @@ Now, suppose you are fine with the default 100 points (and 100 seconds) but woul
 
 This adds an icon to the widget bar that you can press to launch All CPU plots by default.
 
-![The example speedtest widget](/img/widget-example-all-cpu.webp)
+![The example speedtest widget](./img/widget-example-all-cpu.webp)
