@@ -6,26 +6,27 @@ sidebar_position: 200
 
 # Release Notes
 
-### v0.10.0 &mdash; Dec 10, 2024
+### v0.10.0 &mdash; Dec 11, 2024
 
 Wave Terminal v0.10.0 introduces workspaces, making it easier to manage multiple work environments. We've added powerful new command execution capabilities with `wsh run`, allowing you to launch and control commands in dedicated blocks. This release also brings significant improvements to SSH with a new connections configuration system for managing your remote environments.
 
 - **Workspaces**: Organize your work into separate environments, each with their own tabs, layouts, and settings
-- **Command Blocks**: New `wsh run` command for launching terminal commands in dedicated blocks, with support for magnification, auto-closing, and execution control ([docs](/wsh-reference#run))
-- **Connections**: New configuration system for managing SSH connections, with support for wsh-free operation, per-connection themes, and more ([docs](/connections))
+- **Command Blocks**: New `wsh run` command for launching terminal commands in dedicated blocks, with support for magnification, auto-closing, and execution control ([docs](https://docs.waveterm.dev/wsh-reference#run))
+- **Connections**: New configuration system for managing SSH connections, with support for wsh-free operation, per-connection themes, and more ([docs](https://docs.waveterm.dev/connections))
 - Improved tab management with better switching behavior and context menus (many bug fixes)
 - New tab features including pinned tabs and drag-and-drop improvements
 - Create, rename, and delete files/directories directly in directory preview
 - Attempt wsh-free connection as a fallback if wsh installation or execution fails
 - New `-i` flag to add identity files with the `wsh ssh` command
-- Added Perplexity API integration ([docs](/faq#perplexity))
-- `wsh setbg` command for background handling ([docs](/wsh-reference#setbg))
+- Added Perplexity API integration ([docs](https://docs.waveterm.dev/faq#perplexity))
+- `wsh setbg` command for background handling ([docs](https://docs.waveterm.dev/wsh-reference#setbg))
 - Switched from Less to SCSS for styling
 - [bugfix] Fixed tab flickering issues during tab switches
 - [bugfix] Corrected WaveAI text area resize behavior
 - [bugfix] Fixed concurrent block controller start issues
 - [bugfix] Fixed Preview Blocks for uninitialized connections
 - Upgraded Go toolchain to 1.23.4
+- Lots of new documentation, including new pages for [Getting Started](https://docs.waveterm.dev/gettingstarted), [AI Presets](https://docs.waveterm.dev/ai-presets), and [wsh overview](https://docs.waveterm.dev/wsh).
 - Other bug fixes, performance improvements, and dependency updates
 
 ### v0.9.3 &mdash; Nov 20, 2024
