@@ -293,7 +293,6 @@ export class WebViewModel implements ViewModel {
      * @param url The URL that has been navigated to.
      */
     handleNavigate(url: string) {
-        console.log("webview handleNavigate", url);
         fireAndForget(() => ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
         globalStore.set(this.url, url);
     }
@@ -353,11 +352,7 @@ export class WebViewModel implements ViewModel {
             return;
         }
         if (this.webviewRef.current.getURL() != nextUrl) {
-            console.log("webview loadURL", nextUrl);
-            fireAndForget(async () => {
-                await this.webviewRef.current.loadURL(nextUrl);
-                console.log("webview loadURL done", nextUrl);
-            });
+            fireAndForget(() => this.webviewRef.current.loadURL(nextUrl));
         }
         if (newUrl != nextUrl) {
             globalStore.set(this.url, nextUrl);
