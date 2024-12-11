@@ -195,7 +195,6 @@ export class WebViewModel implements ViewModel {
     }
 
     setMediaPlaying(isPlaying: boolean) {
-        console.log("setMediaPlaying", isPlaying);
         globalStore.set(this.mediaPlaying, isPlaying);
     }
 
@@ -532,7 +531,6 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             return;
         }
         const navigateListener = (e: any) => {
-            console.log("webview did-navigate event:", e);
             if (e.isMainFrame) {
                 setErrorText("");
                 model.handleNavigate(e.url);
@@ -541,7 +539,6 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
         const newWindowHandler = (e: any) => {
             e.preventDefault();
             const newUrl = e.detail.url;
-            console.log("webview new-window event:", newUrl);
             fireAndForget(() => openLink(newUrl, true));
         };
         const startLoadingHandler = () => {
