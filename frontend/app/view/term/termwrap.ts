@@ -55,7 +55,6 @@ export class TermWrap {
     loaded: boolean;
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
-    isRunning: boolean;
     hasResized: boolean;
 
     constructor(
@@ -134,7 +133,6 @@ export class TermWrap {
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
-        this.isRunning = true;
     }
 
     async initTerminal() {
@@ -159,10 +157,6 @@ export class TermWrap {
             this.loaded = true;
         }
         this.runProcessIdleTimeout();
-    }
-
-    setIsRunning(isRunning: boolean) {
-        this.isRunning = isRunning;
     }
 
     dispose() {

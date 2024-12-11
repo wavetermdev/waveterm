@@ -45,7 +45,7 @@ class TermViewModel implements ViewModel {
     viewType: string;
     nodeModel: BlockNodeModel;
     connected: boolean;
-    termRef: React.RefObject<TermWrap>;
+    termRef: React.MutableRefObject<TermWrap> = { current: null };
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     blockId: string;
@@ -317,12 +317,6 @@ class TermViewModel implements ViewModel {
         const curStatus = globalStore.get(this.shellProcFullStatus);
         if (curStatus == null || curStatus.version < fullStatus.version) {
             globalStore.set(this.shellProcFullStatus, fullStatus);
-            const status = fullStatus?.shellprocstatus ?? "init";
-            if (status == "running") {
-                this.termRef.current?.setIsRunning?.(true);
-            } else {
-                this.termRef.current?.setIsRunning?.(false);
-            }
         }
     }
 
@@ -724,8 +718,6 @@ const TermToolbarVDomNode = ({ blockId, model }: TerminalViewProps) => {
 const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
-    const termRef = React.useRef<TermWrap>(null);
-    model.termRef = termRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = useSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
@@ -756,7 +748,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         if (termScrollback > 10000) {
             termScrollback = 10000;
         }
-        const wasFocused = termRef.current != null && globalStore.get(model.nodeModel.isFocused);
+        const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
@@ -775,14 +767,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 useWebGl: !termSettings?.["term:disablewebgl"],
             }
         );
-        const shellProcStatus = globalStore.get(model.shellProcStatus);
-        if (shellProcStatus == "running") {
-            termWrap.setIsRunning(true);
-        } else if (shellProcStatus == "done") {
-            termWrap.setIsRunning(false);
-        }
         (window as any).term = termWrap;
-        termRef.current = termWrap;
+        model.termRef.current = termWrap;
         const rszObs = new ResizeObserver(() => {
             termWrap.handleResize_debounced();
         });
@@ -810,14 +796,14 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     let stickerConfig = {
         charWidth: 8,
         charHeight: 16,
-        rows: termRef.current?.terminal.rows ?? 24,
-        cols: termRef.current?.terminal.cols ?? 80,
+        rows: model.termRef.current?.terminal.rows ?? 24,
+        cols: model.termRef.current?.terminal.cols ?? 80,
         blockId: blockId,
     };
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
             <TermResyncHandler blockId={blockId} model={model} />
-            <TermThemeUpdater blockId={blockId} model={model} termRef={termRef} />
+            <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
             <TermStickers config={stickerConfig} />
             <TermToolbarVDomNode key="vdom-toolbar" blockId={blockId} model={model} />
             <TermVDomNode key="vdom" blockId={blockId} model={model} />
