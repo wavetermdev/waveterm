@@ -30,14 +30,6 @@
     width: 100vw;
     -webkit-app-region: drag;
 
-    * {
-        -webkit-app-region: no-drag;
-    }
-
-    .workspace-switcher-popover {
-        -webkit-app-region: drag;
-    }
-
     .tabs-wrapper {
         transition: var(--tabs-wrapper-transition);
         height: 26px;
@@ -49,6 +41,7 @@
         display: flex;
         flex-direction: row;
         height: 27px;
+        -webkit-app-region: no-drag;
     }
 
     .pinned-tab-spacer {
