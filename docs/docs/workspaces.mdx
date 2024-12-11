@@ -4,8 +4,6 @@ id: "workspaces"
 title: "Workspaces"
 ---
 
-import WorkspaceSVG from "@site/static/img/workspace.svg";
-
 # Workspaces
 
 Workspaces are a powerful way to organize your workflows into separate environments, which you can tailor and optimize.
@@ -18,7 +16,7 @@ The primary mechanism to interact with workspaces is via the Workspace Switcher,
 
 This is where you can create a new workspace, edit how a workspace entry appears, and delete a workspace.
 
-The Workspace Switcher button changes to display the icon and color of the active workspace. If the current workspace is not saved, it will display the <WorkspaceSVG/> icon. Clicking the button will open the Workspace Switcher.
+The Workspace Switcher button changes to display the icon and color of the active workspace. If the current workspace is not saved, it will display the <i className="custom-icon-inline custom-icon-workspace"/> icon. Clicking the button will open the Workspace Switcher.
 
 The Switcher contains a list of all saved workspaces for your installation, each with a customizable icon, icon color, and name.
 
@@ -46,7 +44,7 @@ The exception to this rule is the last window will be preserved when closed and 
 
 To preserve a new workspace, you must save it. This can be acheived by clicking the "Save workspace" button at the bottom of the Workspace Switcher.
 
-If you instead see "Create new workspace" at the bottom of the Workspace Switcher, you are already in a saved workspace. You can also confirm this by checking the wording at the top of the Workspace Switcher. For an unsaved workspace, you will see "Open workspace"; for a saved workspace, you will see "Switch workspaces". You can also confirm this because the icon for the Workspace Switcher button will be <WorkspaceSVG/>.
+If you instead see "Create new workspace" at the bottom of the Workspace Switcher, you are already in a saved workspace. You can also confirm this by checking the wording at the top of the Workspace Switcher. For an unsaved workspace, you will see "Open workspace"; for a saved workspace, you will see "Switch workspaces". You can also confirm this because the icon for the Workspace Switcher button will be <i className="custom-icon-inline custom-icon-workspace"/>.
 
 Once a workspace is saved, you will see a new entry in the Workspace Switcher list for your saved workspace. It will be named `New Workspace (<random string>)`. To make the most of your workspace, is recommended to change this name, and the icon and icon color, to something more memorable or meaningful.
 
