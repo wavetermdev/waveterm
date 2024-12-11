@@ -167,7 +167,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
-    const updateStatusBannerRef = useRef<HTMLDivElement>(null);
+    const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
@@ -685,9 +685,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     })}
                 </div>
             </div>
-            <IconButton decl={addtabButtonDecl} ref={addBtnRef} />
-            <UpdateStatusBanner ref={updateStatusBannerRef} />
-            <ConfigErrorIcon buttonRef={configErrorButtonRef} />
+            <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
+            <div className="tab-bar-right">
+                <UpdateStatusBanner ref={updateStatusBannerRef} />
+                <ConfigErrorIcon buttonRef={configErrorButtonRef} />
+            </div>
         </div>
     );
 });

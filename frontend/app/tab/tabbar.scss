@@ -78,39 +78,24 @@
         color: var(--accent-color);
     }
 
+    .tab-bar-right {
+        display: flex;
+        flex-direction: row;
+        gap: 6px;
+        &:not(:empty) {
+            margin-left: auto;
+            margin-right: 6px;
+        }
+    }
+
     .config-error-button {
-        margin-left: auto;
-        height: 80%;
-        margin: auto 4px;
         color: black;
+        padding: 0 6px;
         flex: 0 0 fit-content;
     }
 
-    .update-available-banner {
-        margin-left: auto;
-    }
-
-    .add-tab-btn {
-        height: 100%;
-        cursor: pointer;
-        font-size: 14px;
-        text-align: center;
-        user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.5;
+    .add-tab {
         padding: 0 10px;
-
-        &:hover {
-            opacity: 1;
-        }
-
-        i {
-            overflow: hidden;
-            margin-top: 5px;
-            font-size: 11px;
-        }
     }
 
     .window-drag {
