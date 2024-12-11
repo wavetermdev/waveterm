@@ -23,10 +23,23 @@ func main() {
 	}
 
 	for _, filePath := range os.Args[1:] {
+		if filePath == "" || filePath == "--" {
+			continue
+		}
 		// Convert file path to an absolute path
 		absPath, err := filepath.Abs(filePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error resolving absolute path for %q: %v\n", filePath, err)
+			continue
+		}
+
+		finfo, err := os.Stat(absPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting file info for %q: %v\n", absPath, err)
+			continue
+		}
+		if finfo.IsDir() {
+			fmt.Fprintf(os.Stderr, "%q is a directory, skipping\n", absPath)
 			continue
 		}
 
