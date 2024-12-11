@@ -46,6 +46,7 @@ class ContextMenuModelType {
     }
 
     showContextMenu(menu: ContextMenuItem[], ev: React.MouseEvent<any>): void {
+        ev.stopPropagation();
         this.handlers.clear();
         const electronMenuItems = this._convertAndRegisterMenu(menu);
         getApi().showContextMenu(globalStore.get(atoms.workspace).oid, electronMenuItems);
