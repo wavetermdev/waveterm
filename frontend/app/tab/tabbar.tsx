@@ -19,7 +19,6 @@ import { WorkspaceSwitcher } from "./workspaceswitcher";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
-const DRAGGER_RIGHT_MIN_WIDTH = 74;
 const OS_OPTIONS = {
     overflow: {
         x: "scroll",
@@ -236,7 +235,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
-            DRAGGER_RIGHT_MIN_WIDTH +
             addBtnWidth +
             updateStatusLabelWidth +
             configErrorWidth +
@@ -255,6 +253,19 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         // Determine if the tab bar needs to be scrollable
         const newScrollable = idealTabWidth * numberOfTabs > spaceForTabs;
+
+        console.log(
+            "tabbarWrapperWidth",
+            tabbarWrapperWidth,
+            "nonTabElementsWidth",
+            nonTabElementsWidth,
+            "idealTabWidth",
+            idealTabWidth,
+            "spaceForTabs",
+            spaceForTabs,
+            "newScrollable",
+            newScrollable
+        );
 
         // Apply the calculated width and position to all tabs
         tabRefs.current.forEach((ref, index) => {
@@ -653,7 +664,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
-            <WorkspaceSwitcher />
+            <WorkspaceSwitcher ref={workspaceSwitcherRef} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
@@ -683,7 +694,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <div ref={addBtnRef} className="add-tab-btn" onClick={handleAddTab}>
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>
-            <WindowDrag ref={draggerRightRef} className="right" style={{ minWidth: DRAGGER_RIGHT_MIN_WIDTH }} />
+            <WindowDrag ref={draggerRightRef} className="right" />
             <UpdateStatusBanner buttonRef={updateStatusButtonRef} />
             <ConfigErrorIcon buttonRef={configErrorButtonRef} />
         </div>

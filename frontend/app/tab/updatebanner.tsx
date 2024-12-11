@@ -29,6 +29,7 @@ const UpdateStatusBannerComponent = ({ buttonRef }: { buttonRef: React.RefObject
             default:
                 break;
         }
+        message = "Update Available";
         setUpdateStatusMessage(message);
 
         // Clear any existing timeout
