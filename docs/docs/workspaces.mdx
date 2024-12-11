@@ -1,0 +1,74 @@
+---
+sidebar_position: 3
+id: "workspaces"
+title: "Workspaces"
+---
+
+import WorkspaceSVG from "../../frontend/app/asset/workspace.svg";
+
+# Workspaces
+
+Workspaces are a powerful way to organize your workflows into separate environments, which you can tailor and optimize.
+
+## Workspace Switcher
+
+![Workspace switcher screenshot](./img/workspace-switcher.png#right)
+
+The primary mechanism to interact with workspaces is via the Workspace Switcher, located to the left of the tab bar.
+
+This is where you can create a new workspace, edit how a workspace entry appears, and delete a workspace.
+
+The Workspace Switcher button changes to display the icon and color of the active workspace. If the current workspace is not saved, it will display the <WorkspaceSVG/> icon. Clicking the button will open the Workspace Switcher.
+
+The Switcher contains a list of all saved workspaces for your installation, each with a customizable icon, icon color, and name.
+
+The active workspace for the current window will have a <i className="fa fa-sharp fa-check"/> next to it. Any workspace that is currently open in another window will have the <i className="fa fa-sharp fa-window"/> icon next to it.
+
+Hovering over a workspace in the switcher will display a <i className="fa fa-sharp fa-pencil"/> icon, which will open an editor pane when clicked, in which you can change the workspace name, icon, and icon color. You can also delete a workspace from this pane.
+
+## Creating a new workspace
+
+Every new window is initialized with a blank workspace containing a single tab with a single terminal block inside it. There are three ways to create a new workspace:
+
+1. Create a new window, either via `File` app menu or using the [keybinding](./keybindings.mdx#global-keybindings). This will create a new window and a new workspace within that.
+2. Create a new workspace via the `Workspace` app menu. This will create a new workspace and switch the current window to that workspace.
+3. If you are on a saved workspace, you can click the "Create new workspace" button at the bottom of the Workspace Switcher. This will create a new workspace and switch the current window to that workspace.
+
+## Saving a workspace
+
+:::note
+
+A new workspace is ephemeral. When a window closes, its workspace, along with all its tabs, is deleted unless the workspace is saved.
+
+The exception to this rule is the last window will be preserved when closed and will be reopened next time you open the app, regardless of whether the workspace is saved.
+
+:::
+
+To preserve a new workspace, you must save it. This can be acheived by clicking the "Save workspace" button at the bottom of the Workspace Switcher.
+
+If you instead see "Create new workspace" at the bottom of the Workspace Switcher, you are already in a saved workspace. You can also confirm this by checking the wording at the top of the Workspace Switcher. For an unsaved workspace, you will see "Open workspace"; for a saved workspace, you will see "Switch workspaces".
+
+Once a workspace is saved, you will see a new entry in the Workspace Switcher list for your saved workspace. It will be named `New Workspace (<random string>)`. To make the most of your workspace, is recommended to change this name, and the icon and icon color, to something more memorable or meaningful.
+
+## Switching workspaces
+
+There are two ways to switch workspaces:
+
+1. From an open window, you can open the Workspace Switcher and click on a workspace from the list.
+2. From the Workspace app menu, click on a workspace from the list.
+
+If the workspace is already open in another window (it has the <i className="fa fa-sharp fa-window"/> next to it if you are in the Workspace Switcher), that window will take focus.
+
+If the workspace is not open, your current window will switch to it. If your current workspace is unsaved, you will be prompted whether you want to open the new workspace in a new window or whether you want to open it in the current window. **If you choose the latter option, the current workspace and its contents will be deleted.**
+
+The Workspace Switcher button will update with the colored icon for your new active workspace.
+
+## Edit a workspace
+
+:::info
+
+The tabs, layouts, and terminal and AI histories of a [saved workspace](#saving-a-workspace) are persisted automatically, however if you have unsaved file changes in an editor or a webpage, your progress will be lost when you close the window.
+
+:::
+
+To update the name, icon, and icon color of a workspace, hover over the workspace in the Workspace Switcher and click the <i className="fa fa-sharp fa-pencil"/> button that appears. This will open an editor pane, where you can make your changes. They are persisted and updated automatically.
