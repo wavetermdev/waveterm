@@ -28,17 +28,23 @@
     display: flex;
     flex-direction: row;
     width: env(titlebar-area-width);
+	-webkit-app-region: drag;
+
+	* {
+		-webkit-app-region: no-drag;
+	}
 
     .tabs-wrapper {
         transition: var(--tabs-wrapper-transition);
-        height: 32px;
+        height: 26px;
     }
 
     .tab-bar {
+		margin-top: 6px;
         position: relative; // Needed for absolute positioning of child tabs
         display: flex;
         flex-direction: row;
-        height: 33px;
+        height: 27px;
     }
 
     .pinned-tab-spacer {

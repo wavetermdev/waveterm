@@ -23,7 +23,10 @@ export type WindowOpts = {
 };
 
 export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> WaveBrowserWindow
-export let focusedWaveWindow = null; // on blur we do not set this to null (but on destroy we do)
+
+// on blur we do not set this to null (but on destroy we do), so this tracks the *last* focused window
+// e.g. it persists when the app itself is not focused
+export let focusedWaveWindow: WaveBrowserWindow = null;
 
 let cachedClientId: string = null;
 
@@ -55,10 +58,13 @@ type WindowActionQueueEntry =
           workspaceId: string;
       };
 
+function showCloseConfirmDialog(workspace: Workspace): boolean {
+    return !workspace.name && !workspace.icon && (workspace.tabids?.length > 1 || workspace.pinnedtabids?.length > 1);
+}
+
 export class WaveBrowserWindow extends BaseWindow {
     waveWindowId: string;
     workspaceId: string;
-    waveReadyPromise: Promise<void>;
     allLoadedTabViews: Map<string, WaveTabView>;
     activeTabView: WaveTabView;
     private canClose: boolean;
@@ -207,12 +213,7 @@ export class WaveBrowserWindow extends BaseWindow {
             setWasActive(true);
         });
         this.on("blur", () => {
-            if (this.isDestroyed()) {
-                return;
-            }
-            if (focusedWaveWindow == this) {
-                focusedWaveWindow = null;
-            }
+            // nothing for now
         });
         this.on("close", (e) => {
             if (this.canClose) {
@@ -232,14 +233,13 @@ export class WaveBrowserWindow extends BaseWindow {
                     console.log("numWindows > 1", numWindows);
                     const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
                     console.log("workspace", workspace);
-                    if (!workspace.name && !workspace.icon && workspace.tabids.length > 1) {
+                    if (showCloseConfirmDialog(workspace)) {
                         console.log("workspace has no name, icon, and multiple tabs", workspace);
                         const choice = dialog.showMessageBoxSync(this, {
                             type: "question",
-                            buttons: ["Cancel", "Yes"],
+                            buttons: ["Cancel", "Close Window"],
                             title: "Confirm",
-                            message:
-                                "Are you sure you want to close this window (all tabs and blocks will be deleted)?",
+                            message: "Window has unsaved tabs, closing window will delete existing tabs.\n\nContinue?",
                         });
                         if (choice === 0) {
                             console.log("user cancelled close window", this.waveWindowId);
@@ -303,16 +303,12 @@ export class WaveBrowserWindow extends BaseWindow {
         const workspaceList = await WorkspaceService.ListWorkspaces();
         if (!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
             const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-            if (
-                (curWorkspace.tabids?.length || curWorkspace.pinnedtabids?.length) &&
-                (!curWorkspace.name || !curWorkspace.icon)
-            ) {
+            if (showCloseConfirmDialog(curWorkspace)) {
                 const choice = dialog.showMessageBoxSync(this, {
                     type: "question",
-                    buttons: ["Cancel", "Open in New Window", "Yes"],
+                    buttons: ["Cancel", "Open in New Window", "Switch Workspace"],
                     title: "Confirm",
-                    message:
-                        "This window has unsaved tabs, switching workspaces will delete the existing tabs. Would you like to continue?",
+                    message: "Window has unsaved tabs, switching workspaces will delete existing tabs.\n\nContinue?",
                 });
                 if (choice === 0) {
                     console.log("user cancelled switch workspace", this.waveWindowId);
@@ -471,6 +467,9 @@ export class WaveBrowserWindow extends BaseWindow {
     private async processActionQueue() {
         while (this.actionQueue.length > 0) {
             try {
+                if (this.isDestroyed()) {
+                    break;
+                }
                 const entry = this.actionQueue[0];
                 let tabId: string = null;
                 // have to use "===" here to get the typechecker to work :/
@@ -689,6 +688,21 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
     fireAndForget(async () => {
         const ww = getWaveWindowByWebContentsId(event.sender.id);
         console.log("delete-workspace", workspaceId, ww?.waveWindowId);
+
+        const workspaceList = await WorkspaceService.ListWorkspaces();
+
+        const workspaceHasWindow = !!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid;
+
+        const choice = dialog.showMessageBoxSync(this, {
+            type: "question",
+            buttons: ["Cancel", "Delete Workspace"],
+            title: "Confirm",
+            message: `Deleting workspace will also delete its contents.${workspaceHasWindow ? "\nWorkspace is open in a window, which will be closed." : ""}\n\nContinue?`,
+        });
+        if (choice === 0) {
+            console.log("user cancelled workspace delete", workspaceId, ww?.waveWindowId);
+            return;
+        }
         await WorkspaceService.DeleteWorkspace(workspaceId);
         console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
         if (ww?.workspaceId == workspaceId) {
@@ -711,7 +725,6 @@ export async function createNewWaveWindow() {
         const existingWindowData = (await ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
             const win = await createBrowserWindow(existingWindowData, fullConfig, { unamePlatform });
-            await win.waveReadyPromise;
             win.show();
             recreatedWindow = true;
         }
@@ -722,7 +735,6 @@ export async function createNewWaveWindow() {
     }
     console.log("creating new window");
     const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
-    await newBrowserWindow.waveReadyPromise;
     newBrowserWindow.show();
 }
 
@@ -754,7 +766,6 @@ export async function relaunchBrowserWindows() {
         wins.push(win);
     }
     for (const win of wins) {
-        await win.waveReadyPromise;
         console.log("show window", win.waveWindowId);
         win.show();
     }

@@ -126,7 +126,7 @@ Suppose I want a widget that will run speedtest-go when opened. Then, I can defi
                 "view": "term",
                 "controller": "cmd",
                 "cmd": "speedtest-go --unix",
-                "cmd:clearonstart"
+                "cmd:clearonstart": true
             }
         }
     },
@@ -144,13 +144,13 @@ Now suppose I wanted to run a TUI app, for instance, `dua`. Well, it turns out t
 ```json
     <... other widgets go here ...>,
     "dua" : {
-    "icon": "brands@linux",
-    "label": "dua",
-    "blockdef": {
-        "meta": {
-            "view": "term",
-            "controller": "cmd",
-            "cmd": "dua"
+        "icon": "brands@linux",
+        "label": "dua",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "cmd",
+                "cmd": "dua"
             }
         }
     },

@@ -733,6 +733,10 @@ func GetConnectionsFromInternalConfig() []string {
 	var internalNames []string
 	config := wconfig.ReadFullConfig()
 	for internalName := range config.Connections {
+		if strings.HasPrefix(internalName, "wsl://") {
+			// don't add wsl conns to this list
+			continue
+		}
 		internalNames = append(internalNames, internalName)
 	}
 	return internalNames

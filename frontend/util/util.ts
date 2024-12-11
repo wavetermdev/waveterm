@@ -103,6 +103,11 @@ function makeIconClass(icon: string, fw: boolean, opts?: { spin?: boolean; defau
         icon = icon.replace(/^brands@/, "");
         return clsx(`fa fa-brands fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
     }
+    if (icon.match(/^custom@[a-z0-9-]+$/)) {
+        // strip off the "custom@" prefix if it exists
+        icon = icon.replace(/^custom@/, "");
+        return clsx(`fa fa-kit fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
+    }
     if (opts?.defaultIcon != null) {
         return makeIconClass(opts.defaultIcon, fw, { spin: opts?.spin });
     }

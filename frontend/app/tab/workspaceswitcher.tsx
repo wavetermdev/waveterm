@@ -43,7 +43,7 @@ const colors = [
 ];
 
 const icons = [
-    "circle",
+    "custom@wave-logo-solid",
     "triangle",
     "star",
     "heart",
@@ -93,7 +93,7 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
     return (
         <div className={clsx("icon-selector", className)}>
             {icons.map((icon) => {
-                const iconClass = makeIconClass(icon, false);
+                const iconClass = makeIconClass(icon, true);
                 return (
                     <i
                         key={icon}
@@ -106,7 +106,7 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
     );
 });
 
-interface ColorAndIconSelectorProps {
+interface WorkspaceEditorProps {
     title: string;
     icon: string;
     color: string;
@@ -116,7 +116,7 @@ interface ColorAndIconSelectorProps {
     onIconChange: (newIcon: string) => void;
     onDeleteWorkspace: () => void;
 }
-const ColorAndIconSelector = memo(
+const WorkspaceEditor = memo(
     ({
         title,
         icon,
@@ -126,28 +126,30 @@ const ColorAndIconSelector = memo(
         onColorChange,
         onIconChange,
         onDeleteWorkspace,
-    }: ColorAndIconSelectorProps) => {
+    }: WorkspaceEditorProps) => {
         const inputRef = useRef<HTMLInputElement>(null);
 
         useEffect(() => {
             if (focusInput && inputRef.current) {
                 inputRef.current.focus();
+                inputRef.current.select();
             }
         }, [focusInput]);
 
         return (
-            <div className="color-icon-selector">
+            <div className="workspace-editor">
                 <Input
                     ref={inputRef}
                     className={clsx("vertical-padding-3", { error: title === "" })}
                     onChange={onTitleChange}
                     value={title}
                     autoFocus
+                    autoSelect
                 />
                 <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
                 <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
                 <div className="delete-ws-btn-wrapper">
-                    <Button className="ghost red font-size-12" onClick={onDeleteWorkspace}>
+                    <Button className="ghost red font-size-12 bold" onClick={onDeleteWorkspace}>
                         Delete workspace
                     </Button>
                 </div>
@@ -221,6 +223,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement, {}>(({}, ref) => {
         setTimeout(() => {
             fireAndForget(updateWorkspaceList);
         }, 10);
+        setEditingWorkspace(activeWorkspace.oid);
     };
 
     return (
@@ -335,7 +338,7 @@ const WorkspaceSwitcherItem = ({
                 >
                     <ExpandableMenuItemLeftElement>
                         <i
-                            className={clsx("left-icon", makeIconClass(workspace.icon, false))}
+                            className={clsx("left-icon", makeIconClass(workspace.icon, true))}
                             style={{ color: workspace.color }}
                         />
                     </ExpandableMenuItemLeftElement>
@@ -349,7 +352,7 @@ const WorkspaceSwitcherItem = ({
                 </div>
             </ExpandableMenuItemGroupTitle>
             <ExpandableMenuItem>
-                <ColorAndIconSelector
+                <WorkspaceEditor
                     title={workspace.name}
                     icon={workspace.icon}
                     color={workspace.color}

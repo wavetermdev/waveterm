@@ -637,7 +637,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusMap = new Map<string, ConnStatus>();
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
         const connectionsConfig = fullConfig.connections;
-        let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) || true;
+        let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) ?? true;
 
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
@@ -706,9 +706,6 @@ const ChangeConnectionBlockModal = React.memo(
         }
         const filteredList: Array<string> = [];
         for (const conn of connList) {
-            if (conn === connSelected) {
-                createNew = false;
-            }
             if (
                 conn.includes(connSelected) &&
                 connectionsConfig?.[conn]?.["display:hidden"] != true &&
@@ -716,13 +713,13 @@ const ChangeConnectionBlockModal = React.memo(
                 // != false is necessary because of defaults
             ) {
                 filteredList.push(conn);
+                if (conn === connSelected) {
+                    createNew = false;
+                }
             }
         }
         const filteredWslList: Array<string> = [];
         for (const conn of wslList) {
-            if (conn === connSelected) {
-                createNew = false;
-            }
             if (
                 conn.includes(connSelected) &&
                 connectionsConfig?.[conn]?.["display:hidden"] != true &&
@@ -730,6 +727,9 @@ const ChangeConnectionBlockModal = React.memo(
                 // != false is necessary because of defaults
             ) {
                 filteredWslList.push(conn);
+                if (conn === connSelected) {
+                    createNew = false;
+                }
             }
         }
         // priority handles special suggestions when necessary
