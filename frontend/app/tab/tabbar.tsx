@@ -167,7 +167,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
-    const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
+    const updateStatusBannerRef = useRef<HTMLDivElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
@@ -226,8 +226,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
+        const windowDragRightWidth = draggerRightRef.current.getBoundingClientRect().width;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
-        const updateStatusLabelWidth = updateStatusButtonRef.current?.getBoundingClientRect().width ?? 0;
+        const updateStatusLabelWidth = updateStatusBannerRef.current?.getBoundingClientRect().width ?? 0;
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
@@ -235,6 +236,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
+            windowDragRightWidth +
             addBtnWidth +
             updateStatusLabelWidth +
             configErrorWidth +
@@ -264,7 +266,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             "spaceForTabs",
             spaceForTabs,
             "newScrollable",
-            newScrollable
+            newScrollable,
+            "devLabelWidth",
+            devLabelWidth
         );
 
         // Apply the calculated width and position to all tabs
@@ -695,7 +699,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>
             <WindowDrag ref={draggerRightRef} className="right" />
-            <UpdateStatusBanner buttonRef={updateStatusButtonRef} />
+            <UpdateStatusBanner ref={updateStatusBannerRef} />
             <ConfigErrorIcon buttonRef={configErrorButtonRef} />
         </div>
     );

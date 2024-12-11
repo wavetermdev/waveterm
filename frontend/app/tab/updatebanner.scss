@@ -1,11 +1,15 @@
-.update-available-button {
-    height: 80%;
-    margin: auto 4px;
-    color: black;
-    background-color: var(--accent-color);
-    flex: 0 0 fit-content;
+.update-available-banner {
+    display: flex;
+    height: 100%;
+    .button {
+        color: black;
+        height: 80%;
+        margin: auto 4px;
+        background-color: var(--accent-color);
+        flex: 0 0 fit-content;
 
-    &:disabled {
-        opacity: unset !important;
+        &:disabled {
+            opacity: unset !important;
+        }
     }
 }
