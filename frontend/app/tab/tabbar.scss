@@ -78,14 +78,18 @@
     }
 
     .config-error-button {
+        margin-left: auto;
         height: 80%;
         margin: auto 4px;
         color: black;
         flex: 0 0 fit-content;
     }
 
+    .update-available-banner {
+        margin-left: auto;
+    }
+
     .add-tab-btn {
-        width: 22px;
         height: 100%;
         cursor: pointer;
         font-size: 14px;
@@ -95,6 +99,7 @@
         align-items: center;
         justify-content: center;
         opacity: 0.5;
+        padding: 0 10px;
 
         &:hover {
             opacity: 1;

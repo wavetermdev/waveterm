@@ -226,7 +226,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
-        const windowDragRightWidth = draggerRightRef.current.getBoundingClientRect().width;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
         const updateStatusLabelWidth = updateStatusBannerRef.current?.getBoundingClientRect().width ?? 0;
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
@@ -236,7 +235,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
-            windowDragRightWidth +
             addBtnWidth +
             updateStatusLabelWidth +
             configErrorWidth +
@@ -683,7 +681,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <div ref={addBtnRef} className="add-tab-btn" onClick={handleAddTab}>
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>
-            <WindowDrag ref={draggerRightRef} className="right" />
             <UpdateStatusBanner ref={updateStatusBannerRef} />
             <ConfigErrorIcon buttonRef={configErrorButtonRef} />
         </div>
