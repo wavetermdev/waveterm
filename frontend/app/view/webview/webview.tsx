@@ -339,15 +339,7 @@ export class WebViewModel implements ViewModel {
         const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
         const searchTemplate = globalStore.get(defaultSearchAtom);
         const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
-        console.log(
-            "webview loadUrl",
-            reason,
-            nextUrl,
-            newUrl,
-            "cur=",
-            this.webviewRef?.current.getURL(),
-            this.webviewRef.current
-        );
+        console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef?.current.getURL());
         if (!this.webviewRef.current) {
             return;
         }
