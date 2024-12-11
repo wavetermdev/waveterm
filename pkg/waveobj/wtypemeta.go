@@ -101,6 +101,8 @@ type MetaTSType struct {
 	VDomRoute         string `json:"vdom:route,omitempty"`
 	VDomPersist       bool   `json:"vdom:persist,omitempty"`
 
+	ScrollOffset float64 `json:"scroll:offset,omitempty"`
+
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }
 

@@ -494,6 +494,7 @@ declare global {
         "vdom:correlationid"?: string;
         "vdom:route"?: string;
         "vdom:persist"?: boolean;
+        "scroll:offset"?: number;
         count?: number;
     };
 

@@ -12,7 +12,8 @@ import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
-import { WorkspaceService } from "../store/services";
+import { ObjectService, WorkspaceService } from "../store/services";
+import { makeORef } from "../store/wos";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
@@ -200,6 +201,10 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             console.log("newTabIdList", newTabIdsArr);
             setTabIds(newTabIdsArr);
             setPinnedTabIds(newPinnedTabSet);
+        }
+        if (osInstanceRef.current) {
+            const { viewport } = osInstanceRef.current.elements();
+            viewport.scrollLeft = workspace.meta?.["scroll:offset"] ?? 0;
         }
     }, [workspace, tabIds, pinnedTabIds]);
 
@@ -578,6 +583,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             if (scrollableRef.current) {
                 const { viewport } = osInstanceRef.current.elements();
                 viewport.scrollLeft = tabIds.length * tabWidthRef.current;
+                fireAndForget(() =>
+                    ObjectService.UpdateObjectMeta(makeORef("workspace", workspace.oid), {
+                        "scroll:offset": viewport.scrollLeft,
+                    })
+                );
             }
         }),
         [tabIds]

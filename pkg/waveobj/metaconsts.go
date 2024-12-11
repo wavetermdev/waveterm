@@ -100,6 +100,8 @@ const (
 	MetaKey_VDomRoute                        = "vdom:route"
 	MetaKey_VDomPersist                      = "vdom:persist"
 
+	MetaKey_ScrollOffset                     = "scroll:offset"
+
 	MetaKey_Count                            = "count"
 )
 
