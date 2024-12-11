@@ -5,7 +5,7 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, globalStore, isDev, PLATFORM, setActiveTab } from "@/store/global";
+import { atoms, createTab, getApi, globalStore, PLATFORM, setActiveTab } from "@/store/global";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -637,7 +637,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     }
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    const devLabel = isDev() ? (
+    const devLabel = false ? (
         <div ref={devLabelRef} className="dev-label">
             <i className="fa fa-brands fa-dev fa-fw" />
         </div>

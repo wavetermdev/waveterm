@@ -1,34 +1,22 @@
 ---
-sidebar_position: 1.5
+sidebar_position: 3.2
 id: "customization"
 title: "Customization"
 ---
 
 ## Tab Themes
 
-<img
-  title="Tab Context Menu"
-  style={{ float: "right", margin: "0 0 10px 10px" }}
-  src="./img/tab-context-menu.png"
-  width="300"
-/>
+![Tab Context Menu](./img/tab-context-menu.png#right)
 
 Right click on any tab to bring up a menu which allows you to rename the tab and select different backgrounds.
 
 It is also possible to create your own themes using custom colors, gradients, images and more by editing your presets.json config file. To see how Wave's built in tab themes are defined, you can check out our [default presets file](https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/presets.json).
 
-<div style={{ clear: "both" }} />
-
 ## Terminal Customization
 
-<img
-  title="Terminal Context Menu"
-  style={{ float: "right", margin: "0 0 10px 10px" }}
-  src="./img/terminal-context-menu.png"
-  width="300"
-/>
-
 #### Terminal Theme
+
+![Terminal Context Menu](./img/terminal-context-menu.png#right)
 
 Right click in the header area of any terminal block to bring up a menu which allows you to set a terminal
 theme for that terminal.
@@ -40,8 +28,6 @@ If you add your own termthemes.json file in the config directory, you can also a
 
 You can set the key `tab:preset` in your [Wave Config File](/config) to apply a theme to all new tabs.
 
-<div style={{ clear: "both" }} />
-
 #### Font Size
 
 From the same context menu you can also change the font-size of the terminal. To change the default font size across all of your (non-overridden) terminals, you can set the config key `term:fontsize` to the size you want. e.g. `{ "term:fontsize": 14}`.
@@ -52,20 +38,13 @@ There is no UI to edit your default terminal font family. But, it _can_ be overr
 
 ## Widgets Sidebar
 
-<img
-  title="Terminal Context Menu"
-  style={{ float: "right", margin: "0 0 10px 10px" }}
-  src="./img/custom-widgets.png"
-  width="120"
-/>
+![Terminal Context Menu](./img/custom-widgets.png#right)
 
 See [Custom Widgets](/customwidgets) for detailed documentation around changing what appears in your right widget sidebar.
 
 Using widgets.json, you'll be able to remove any default widgets and add widgets of your own. You can fully customize the icons, colors, text, and defaults (like directories, webpages, AI model, remote connection, commands, etc.) of your custom widgets.
 
 You can also suppress the help widgets in the bottom right by setting the config key `widget:showhelp` to `false`.
-
-<div style={{ clear: "both" }} />
 
 ## Tab Backgrounds
 
