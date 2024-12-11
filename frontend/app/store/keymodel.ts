@@ -142,6 +142,10 @@ function switchTab(offset: number) {
 }
 
 function handleCmdI() {
+    globalRefocus();
+}
+
+function globalRefocus() {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {
@@ -345,6 +349,7 @@ export {
     appHandleKeyDown,
     getAllGlobalKeyBindings,
     getSimpleControlShiftAtom,
+    globalRefocus,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
