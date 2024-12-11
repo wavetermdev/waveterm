@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getApi } from "@/app/store/global";
+import { getApi, globalStore } from "@/app/store/global";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { fireAndForget } from "@/util/util";
 import { atom, useAtomValue } from "jotai";
@@ -39,7 +39,12 @@ class HelpViewModel extends WebViewModel {
                 },
             ];
         });
-        this.homepageUrl = atom(getApi().getDocsiteUrl());
+        const startUrl = getApi().getDocsiteUrl();
+        const url = globalStore.get(this.url);
+        const metaUrl = globalStore.get(this.blockAtom)?.meta?.url;
+        console.log("help-view-model-ctor", url, metaUrl, startUrl);
+        this.url = atom(url ?? metaUrl ?? startUrl);
+        this.homepageUrl = atom(startUrl);
         this.viewType = "help";
         this.viewIcon = atom("circle-question");
         this.viewName = atom("Help");
@@ -54,6 +59,7 @@ class HelpViewModel extends WebViewModel {
             const strippedDocsiteUrl = getApi().getDocsiteUrl().replace(baseUrlRegex, "");
             const strippedCurUrl = url.replace(baseUrlRegex, "").replace(strippedDocsiteUrl, "");
             const newUrl = docsiteWebUrl + strippedCurUrl;
+            console.log("modify-external-url", url, newUrl, strippedDocsiteUrl, strippedCurUrl);
             return newUrl;
         };
     }
@@ -97,7 +103,6 @@ function HelpView({ model }: { model: HelpViewModel }) {
                 // Correct the base URL of the current page, if necessary
                 const newBaseUrl = baseUrlRegex.exec(newDocsiteUrl)?.[0];
                 const curBaseUrl = baseUrlRegex.exec(url)?.[0];
-                console.log("fix-docsite-url", url, newDocsiteUrl, homepageUrl, curBaseUrl, newBaseUrl);
                 if (curBaseUrl && newBaseUrl && curBaseUrl !== newBaseUrl) {
                     model.loadUrl(url.replace(curBaseUrl, newBaseUrl), "fix-fail-load");
                 }

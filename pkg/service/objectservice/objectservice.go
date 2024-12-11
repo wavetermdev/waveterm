@@ -6,6 +6,7 @@ package objectservice
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -136,6 +137,7 @@ func (svc *ObjectService) UpdateObjectMeta_Meta() tsgenmeta.MethodMeta {
 }
 
 func (svc *ObjectService) UpdateObjectMeta(uiContext waveobj.UIContext, orefStr string, meta waveobj.MetaMapType) (waveobj.UpdatesRtnType, error) {
+	log.Printf("UpdateObjectMeta: %s %v\n", orefStr, meta)
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
