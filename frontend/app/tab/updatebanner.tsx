@@ -29,7 +29,6 @@ const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
             default:
                 break;
         }
-        // message = "Update Available";
         setUpdateStatusMessage(message);
 
         // Clear any existing timeout
