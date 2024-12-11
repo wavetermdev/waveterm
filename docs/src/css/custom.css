@@ -55,6 +55,14 @@ body .markdown h2 {
     background-color: var(--ifm-navbar-link-hover-color);
 }
 
+.custom-icon-inline:before {
+    display: inline-block;
+    height: 16px;
+    width: 16px;
+    background-color: var(--ifm-color-primary-contrast-foreground);
+    transition: background-color 0.15s linear;
+}
+
 .custom-icon-github:before {
     content: "";
     mask: url(/img/github.svg) no-repeat center / contain;
@@ -65,6 +73,12 @@ body .markdown h2 {
     content: "";
     mask: url(/img/discord.svg) no-repeat center / contain;
     -webkit-mask: url(/img/discord.svg) no-repeat center / contain;
+}
+
+.custom-icon-workspace:before {
+    content: "";
+    mask: url(/img/workspace.svg) no-repeat center / contain;
+    -webkit-mask: url(/img/workspace.svg) no-repeat center / contain;
 }
 
 img[src*="#left"] {
