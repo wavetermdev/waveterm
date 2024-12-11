@@ -272,9 +272,12 @@ async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Pr
             role: "togglefullscreen",
         },
     ];
-
-    const workspaceMenu = await getWorkspaceMenu();
-
+    let workspaceMenu: Electron.MenuItemConstructorOptions[] = null;
+    try {
+        workspaceMenu = await getWorkspaceMenu();
+    } catch (e) {
+        console.error("getWorkspaceMenu error:", e);
+    }
     const windowMenu: Electron.MenuItemConstructorOptions[] = [
         { role: "minimize", accelerator: "" },
         { role: "zoom" },
@@ -300,16 +303,18 @@ async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Pr
             role: "viewMenu",
             submenu: viewMenu,
         },
-        {
+    ];
+    if (workspaceMenu != null) {
+        menuTemplate.push({
             label: "Workspace",
             id: "workspace-menu",
             submenu: workspaceMenu,
-        },
-        {
-            role: "windowMenu",
-            submenu: windowMenu,
-        },
-    ];
+        });
+    }
+    menuTemplate.push({
+        role: "windowMenu",
+        submenu: windowMenu,
+    });
     return electron.Menu.buildFromTemplate(menuTemplate);
 }
 
