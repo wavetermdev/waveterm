@@ -3,6 +3,7 @@
 
 import { App } from "@/app/app";
 import {
+    globalRefocus,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
@@ -106,6 +107,9 @@ async function reinitWave() {
     getApi().setWindowInitStatus("wave-ready");
     globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
     globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
+    setTimeout(() => {
+        globalRefocus();
+    }, 50);
 }
 
 function reloadAllWorkspaceTabs(ws: Workspace) {
