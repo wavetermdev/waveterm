@@ -256,21 +256,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         // Determine if the tab bar needs to be scrollable
         const newScrollable = idealTabWidth * numberOfTabs > spaceForTabs;
 
-        console.log(
-            "tabbarWrapperWidth",
-            tabbarWrapperWidth,
-            "nonTabElementsWidth",
-            nonTabElementsWidth,
-            "idealTabWidth",
-            idealTabWidth,
-            "spaceForTabs",
-            spaceForTabs,
-            "newScrollable",
-            newScrollable,
-            "devLabelWidth",
-            devLabelWidth
-        );
-
         // Apply the calculated width and position to all tabs
         tabRefs.current.forEach((ref, index) => {
             if (ref.current) {
