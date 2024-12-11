@@ -23,6 +23,7 @@
 }
 
 .tab-bar-wrapper {
+    margin-top: 6px;
     position: relative;
     user-select: none;
     display: flex;
@@ -30,13 +31,16 @@
     width: 100vw;
     -webkit-app-region: drag;
 
+    button {
+        -webkit-app-region: no-drag;
+    }
+
     .tabs-wrapper {
         transition: var(--tabs-wrapper-transition);
         height: 26px;
     }
 
     .tab-bar {
-        margin-top: 6px;
         position: relative; // Needed for absolute positioning of child tabs
         display: flex;
         flex-direction: row;
@@ -58,7 +62,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 6px 6px 0 0;
+        padding: 0 6px 0 0;
     }
 
     .app-menu-button {

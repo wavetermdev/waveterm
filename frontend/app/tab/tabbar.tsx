@@ -11,6 +11,7 @@ import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
+import { IconButton } from "../element/iconbutton";
 import { WorkspaceService } from "../store/services";
 import { Tab } from "./tab";
 import "./tabbar.scss";
@@ -147,7 +148,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const tabBarRef = useRef<HTMLDivElement>(null);
     const tabsWrapperRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<React.RefObject<HTMLDivElement>[]>([]);
-    const addBtnRef = useRef<HTMLDivElement>(null);
+    const addBtnRef = useRef<HTMLButtonElement>(null);
     const draggingRemovedRef = useRef(false);
     const draggingTabDataRef = useRef({
         tabId: "",
@@ -645,6 +646,13 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
+
+    const addtabButtonDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: "plus",
+        click: handleAddTab,
+        title: "Add Tab",
+    };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
@@ -677,9 +685,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     })}
                 </div>
             </div>
-            <div ref={addBtnRef} className="add-tab-btn" onClick={handleAddTab}>
-                <i className="fa fa-solid fa-plus fa-fw" />
-            </div>
+            <IconButton decl={addtabButtonDecl} ref={addBtnRef} />
             <UpdateStatusBanner ref={updateStatusBannerRef} />
             <ConfigErrorIcon buttonRef={configErrorButtonRef} />
         </div>
