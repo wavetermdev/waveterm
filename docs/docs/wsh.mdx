@@ -1,656 +1,172 @@
 ---
 sidebar_position: 4
 id: "wsh"
-title: "wsh command"
+title: "wsh overview"
 ---
 
-import { Kbd } from "@site/src/components/kbd.tsx";
-import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext.tsx";
+The `wsh` command provides Wave Terminal's core command line interface, allowing users to interact with both terminal and graphical elements from the command line. This guide covers the basics of using `wsh` and its key features.
 
-<PlatformProvider>
+See the [wsh reference](/wsh-reference) for a list of all wsh commands and their arguments.
 
-# wsh command
+## Overview
 
-The `wsh` command is always available from Wave blocks. It is a powerful tool for interacting with Wave blocks and can bridge data between your CLI and the widget GUIs.
+At its core, `wsh` enables seamless interaction between your terminal commands and Wave's graphical blocks. It allows you to:
 
----
+- Control graphical widgets directly from the command line
+- Share data between terminal sessions and GUI components
+- Manage your workspace programmatically
+- Connect remote and local environments
+- Send CLI output and files directly to AI conversations
+- Run terminal commands in separate, isolated blocks
 
-## view
+## Key Concepts
 
-You can open a preview block with the contents of any file or directory by running:
+### Interacting with Blocks
 
-```
-wsh view [path]
-```
-
-You can use this command to easily preview images, markdown files, and directories. For code/text files this will open
-a codeedit block which you can use to quickly edit the file using Wave's embedded graphical editor.
-
----
-
-## edit
-
-```
-wsh edit [path]
-```
-
-This will open up codeedit for the specified file. This is useful for quickly editing files on a local or remote machine in our graphical editor. This command will wait until the file is closed before exiting (unlike \`view\`) so you can set your \`$EDITOR\` to \`wsh editor\` for a seamless experience. You can combine this with a \`-m\` flag to open the editor in magnified mode.
-
----
-
-## getmeta
-
-You can view the metadata of any block or tab by running:
-
-```
-# get the metadata for the current terminal block
-wsh getmeta
-
-# get the metadata for block num 2 (see block numbers by holidng down Ctrl+Shift)
-wsh getmeta -b 2
-
-# get the metadata for a blockid (get block ids by right clicking any block header "Copy Block Id")
-wsh getmeta -b [blockid]
-
-# get the metadata for a tab
-wsh getmeta -b tab
-
-# dump a single metadata key
-wsh getmeta [-b [blockid]] [key]
-
-# dump a set of keys with a certain prefix
-wsh getmeta -b tab "bg:*"
-
-# dump a set of keys with prefix (and include the 'clear' key)
-wsh getmeta -b tab --clear-prefix "bg:*"
-```
-
-This is especially useful for preview and web blocks as you can see the file or url that they are pointing to and use that in your CLI scripts.
-
-blockid format:
-
-- `this` -- the current block (this is also the default)
-- `tab` -- the id of the current tab
-- `d6ff4966-231a-4074-b78a-20acc7226b41` -- a full blockid is a UUID
-- `a67f55a3` -- blockids may be truncated to the first 8 characters
-- `5` -- if a number less than 100 is given, it is a block number. blocks are numbered sequentially in the current tab from the top-left to bottom-right. holding <Kbd k="Ctrl:Shift"/> will show a block number overlay.
-
----
-
-## setmeta
-
-You can update any metadata key value pair for blocks (and tabs) by using the setmeta command. The setmeta command takes the same `-b` arguments as getmeta.
-
-```
-wsh setmeta -b [blockid] [key]=[value]
-wsh setmeta -b [blockid] file=~/myfile.txt
-wsh setmeta -b [blockid] url=https://waveterm.dev/
-
-# set the metadata for the current tab using the given json file
-wsh setmeta -b tab --json [jsonfile]
-
-# set the metadata for the current tab using a json file read from stdin
-wsh setmeta -b tab --json
-```
-
-You can get block and tab ids by right clicking on the appropriate block and selecting "Copy BlockId" (or use the block number via Ctrl:Shift). When you
-update the metadata for a preview or web block you'll see the changes reflected instantly in the block.
-
-Other useful metadata values to override block titles, icons, colors, themes, etc.
-
-Here's a complex command that will copy the background (bg:\* keys) from one tab to the current tab:
-
-```
-wsh getmeta -b [other-tab-id] "bg:*" --clear-prefix | wsh setmeta -b tab --json -
-```
-
----
-
-## ai
-
-Send messages to new or existing AI blocks directly from the CLI. `-f` passes a file. note that there is a maximum size of 10k for messages and files, so use a tail/grep to cut down file sizes before passing. The `-f` option works great for small files though like shell scripts or `.zshrc` etc.
-
-By default the messages get sent to the first AI block (by blocknum). If no AI block exists, then a new one will be created. Use `-n` to force creation of a new AI block. Use `-b` to target a specific AI block.
-
-```
-wsh ai "how do i write an ls command that sorts files in reverse size order"
-wsh ai -f <(tail -n 20 "my.log") -- "any idea what these error messages mean"
-wsh ai -f README.md "help me update this readme file"
-
-# creates a new AI block
-wsh ai -n "tell me a story"
-
-# targets block number 5
-wsh ai -b 5 "tell me more"
-```
-
----
-
-## editconfig
-
-You can easily open up any of Wave's config files using this command.
-
-```
-wsh editconfig [config-file-name]
-
-# opens the default settings.json file
-wsh editconfig
-
-# opens presets.json
-wsh editconfig presets.json
-
-# opens widgets.json
-wsh editconfig widgets.json
-```
-
----
-
-## setbg
-
-The `setbg` command allows you to set a background image or color for the current tab with various customization options.
+`wsh` provides direct interaction with Wave's graphical blocks through the command line. For example:
 
 ```bash
-wsh setbg [--opacity value] [--tile|--center] [--size value] (image-path|"#color"|color-name)
+# Open a file in the editor
+wsh edit config.json
+
+# Get the current file path from a preview block
+wsh getmeta -b 2 file
+
+# Send output to an AI assistant (the "-" reads from stdin)
+ls -la | wsh ai - "what are the largest files here?"
 ```
 
-You can set a background using:
+### Persistent State
 
-- An image file (displayed as cover, tiled, or centered)
-- A hex color (must be quoted like "#ff0000")
-- A CSS color name (like "blue" or "forestgreen")
-
-Flags:
-
-- `--opacity value` - set the background opacity (0.0-1.0, default 0.5)
-- `--tile` - tile the background image instead of using cover mode
-- `--center` - center the image without scaling (good for logos)
-- `--size` - size for centered images (px, %, or auto)
-- `--clear` - remove the background
-- `--print` - show the metadata without applying it
-
-Supported image formats: JPEG, PNG, GIF, WebP, and SVG.
-
-Examples:
+`wsh` can maintain state across terminal sessions through its variable and file storage system:
 
 ```bash
-# Set an image background with default settings
-wsh setbg ~/pictures/background.jpg
-
-# Set a background with custom opacity
-wsh setbg --opacity 0.3 ~/pictures/light-pattern.png
-
-# Set a tiled background
-wsh setbg --tile --opacity 0.2 ~/pictures/texture.png
-
-# Center an image (good for logos)
-wsh setbg --center ~/pictures/logo.png
-wsh setbg --center --size 200px ~/pictures/logo.png
-
-# Set color backgrounds
-wsh setbg "#ff0000"          # hex color (requires quotes)
-wsh setbg forestgreen        # CSS color name
-
-# Change just the opacity of current background
-wsh setbg --opacity 0.7
-
-# Remove background
-wsh setbg --clear
-
-# Preview the metadata
-wsh setbg --print "#ff0000"
-```
-
-The command validates that:
-
-- Color values are valid hex codes or CSS color names
-- Image paths point to accessible, supported image files
-- The opacity value is between 0.0 and 1.0
-- The center and tile options are not used together
-
-:::tip
-Use `--print` to preview the metadata for any background configuration without applying it. You can then copy this JSON representation to use as a [Background Preset](/presets#background-configurations)
-:::
-
----
-
-## run
-
-The `run` command creates a new terminal command block and executes a specified command within it. The command can be provided either as arguments after `--` or using the `-c` flag. Unless the `-x` or `-X` flags are passed, commands can be re-executed by pressing `Enter` once the command has finished running.
-
-```bash
-# Run a command specified after --
-wsh run -- ls -la
-
-# Run a command using -c flag
-wsh run -c "ls -la"
-
-# Run with working directory specified
-wsh run --cwd /path/to/dir -- ./script.sh
-
-# Run in magnified mode
-wsh run -m -- make build
-
-# Run and auto-close on successful completion
-wsh run -x -- npm test
-
-# Run and auto-close regardless of exit status
-wsh run -X -- ./long-running-task.sh
-```
-
-The command inherits the current environment variables and working directory by default.
-
-Flags:
-
-- `-m, --magnified` - open the block in magnified mode
-- `-c, --command string` - run a command string in _shell_
-- `-x, --exit` - close block if command exits successfully (stays open if there was an error)
-- `-X, --forceexit` - close block when command exits, regardless of exit status
-- `--delay int` - if using -x/-X, delay in milliseconds before closing block (default 2000)
-- `-p, --paused` - create block in paused state
-- `-a, --append` - append output on command restart instead of clearing
-- `--cwd string` - set working directory for command
-
-Examples:
-
-```bash
-# Run a build command in magnified mode
-wsh run -m -- npm run build
-
-# Execute a script and auto-close after success
-wsh run -x -- ./backup-script.sh
-
-# Run a command in a specific directory
-wsh run --cwd ./project -- make test
-
-# Run a shell command and force close after completion
-wsh run -X -c "find . -name '*.log' -delete"
-
-# Start a command in paused state
-wsh run -p -- ./server --dev
-
-# Run with custom close delay
-wsh run -x --delay 5000 -- ./deployment.sh
-```
-
-When using the `-x` or `-X` flags, the block will automatically close after the command completes. The `-x` flag only closes on successful completion (exit code 0), while `-X` closes regardless of exit status. The `--delay` flag controls how long to wait before closing (default 2000ms).
-
-The `-p` flag creates the block in a paused state, allowing you to review the command before execution.
-
-:::tip
-You can use either `--` followed by your command and arguments, or the `-c` flag with a quoted command string. The `--` method is preferred when you want to preserve argument handling, while `-c` is useful for shell commands with pipes or redirections.
-:::
-
----
-
-## deleteblock
-
-```
-wsh deleteblock -b [blockid]
-```
-
-This will delete the block with the specified id.
-
----
-
-## ssh
-
-```
-wsh ssh [user@host]
-```
-
-This will use Wave's internal ssh implementation to connect to the specified remote machine. The `-i` flag can be used to specify a path to an identity file.
-
----
-
-## wsl
-
-```
-wsh wsl [-d <distribution name>]
-```
-
-This will connect to a WSL distribution on the local machine. It will use the default if no distribution is provided.
-
----
-
-## web
-
-You can search for a given url using:
-
-```
-wsh web <url>
-```
-
-Alternatively, you can search with the configured search engine using:
-
-```
-wsh web <search query>
-```
-
-Both of these commands will open a new web block with the desired page.
-
----
-
-## conn
-
-This has several subcommands which all perform various features related to connections.
-
-### status
-
-```
-wsh conn status
-```
-
-This command gives the status of all connections made since waveterm started.
-
-### reinstall
-
-For ssh connections,
-
-```
-wsh conn reinstall [user@host]
-```
-
-For wsl connections,
-
-```
-wsh conn reinstall [wsl://<distribution name>]
-```
-
-This command reinstalls the Wave Shell Extensions on the specified connection.
-
-### disconnect
-
-For ssh connections,
-
-```
-wsh conn disconnect [user@host]
-```
-
-For wsl connections,
-
-```
-wsh conn disconnect [wsl://<distribution name>]
-```
-
-This command completely disconnects the specified connection. This will apply to all blocks where the connection is being used
-
-### connect
-
-For ssh connections,
-
-```
-wsh conn connect [user@host]
-```
-
-For wsl connections,
-
-```
-wsh conn connect [wsl://<distribution name>]
-```
-
-This command connects to the specified connection but does not create a block for it.
-
-### ensure
-
-For ssh connections,
-
-```
-wsh conn ensure [user@host]
-```
-
-For wsl connections,
-
-```
-wsh conn ensure [wsl://<distribution name>]
-```
-
-This command connects to the specified connection if it isn't already connected.
-
----
-
-## setconfig
-
-```
-wsh setconfig [config name]=[config value]
-```
-
-This allows setting various options in the `config/settings.json` file. It will check to be sure a valid config option was provided.
-
----
-
-## file
-
-The `file` command provides a set of subcommands for managing files stored in Wave blocks. Files are referenced using `wavefile://` URLs which specify the zone where the file is stored (e.g., `wavefile://block/mydocs.md` or `wavefile://global/myfile.txt`).
-
-### cat
-
-```bash
-wsh file cat wavefile://global/filename
-```
-
-Display the contents of a wave file. For example:
-
-```bash
-wsh file cat wavefile://block/config.txt
-wsh file cat wavefile://client/settings.json
-```
-
-### write
-
-```bash
-wsh file write wavefile://tab/filename
-```
-
-Write data from stdin to a wave file. The maximum file size is 10MB. For example:
-
-```bash
-echo "hello" | wsh file write wavefile://block/greeting.txt
-cat config.json | wsh file write wavefile://client/settings.json
-```
-
-### append
-
-```bash
-wsh file append wavefile://global/filename
-```
-
-Append data from stdin to an existing wave file, respecting the 10MB total file size limit. This is useful for log files or accumulating data. For example:
-
-```bash
-tail -f app.log | wsh file append wavefile://block/logs.txt
-echo "new line" | wsh file append wavefile://client/notes.txt
-```
-
-### rm
-
-```bash
-wsh file rm wavefile://client/filename
-```
-
-Remove a wave file. For example:
-
-```bash
-wsh file rm wavefile://block/old-config.txt
-wsh file rm wavefile://client/temp.json
-```
-
-### info
-
-```bash
-wsh file info wavefile://client/filename
-```
-
-Display information about a wave file including size, creation time, modification time, and metadata. For example:
-
-```bash
-wsh file info wavefile://block/config.txt
-wsh file info wavefile://client/settings.json
-```
-
-### cp
-
-```bash
-wsh file cp source destination
-```
-
-Copy files between wave storage and the local filesystem. Exactly one of the source or destination must be a wavefile:// URL. For example:
-
-```bash
-# Copy from wave storage to local filesystem
-wsh file cp wavefile://block/config.txt ./local-config.txt
-
-# Copy from local filesystem to wave storage
-wsh file cp ./local-config.txt wavefile://client/config.txt
-```
-
-### ls
-
-```bash
-wsh file ls [flags] [wavefile://zone/path]
-```
-
-List wave files in a zone. If no path is specified, lists all files in `wavefile://client/`.
-
-Examples:
-
-```bash
-# List all files in client zone
-wsh file ls
-
-# List files in a specific zone
-wsh file ls wavefile://block/
-wsh file ls wavefile://workspace/configs/
-
-# Show detailed file information
-wsh file ls -l wavefile://client/
-
-# List files recursively
-wsh file ls -r wavefile://block/
-
-# List one file per line (good for scripting)
-wsh file ls -1 wavefile://client/
-```
-
-Flags:
-
-- `-l, --long` - use long listing format showing size, timestamps, and metadata
-- `-r, --recursive` - list subdirectories recursively
-- `-1, --one` - list one file per line
-- `-f, --files` - list only files (no directories)
-
-When output is piped to another command, automatically switches to one-file-per-line format:
-
-```bash
-# Easy to process with grep, awk, etc.
-wsh file ls wavefile://client/ | grep ".json$"
-```
-
-:::info
-
-Note: Wave file locations can be:
-
-- `wavefile://block/...` - stored in the current block ("this" is also an alias for "block")
-- `wavefile://tab/...` - stored in the current tab
-- `wavefile://workspace/...` - stored in the current workspace ("ws" is also an alias for "workspace")
-- `wavefile://client/...` - stored globally for the client ("global" is also an alias for "client")
-- `wavefile://temp/...` - stored globally, but removed on startup/shutdown
-- `wavefile://[uuid]/...` - an entity id (can be a block, tab, workspace, etc.)
-
-All file operations respect a maximum file size of 10MB.
-
-:::
-
----
-
-## getvar/setvar
-
-Wave Terminal provides commands for managing persistent variables at different scopes (block, tab, workspace, or client-wide).
-
-### setvar
-
-```bash
-wsh setvar [flags] KEY=VALUE...
-```
-
-Set one or more variables. By default, variables are set at the client (global) level. Use `-l` for block-local variables.
-
-Examples:
-
-```bash
-# Set a single variable
+# Store a variable that persists across sessions
 wsh setvar API_KEY=abc123
 
-# Set multiple variables at once
-wsh setvar HOST=localhost PORT=8080 DEBUG=true
+# Store globally
+wsh setvar DEPLOY_ENV=prod
+# Or store in the current workspace
+wsh setvar -b workspace DEPLOY_ENV=staging
 
-# Set a block-local variable
-wsh setvar -l BLOCK_SPECIFIC=value
-
-# Remove variables
-wsh setvar -r API_KEY PORT
-```
-
-Flags:
-
-- `-l, --local` - set variables local to the current block
-- `-r, --remove` - remove the specified variables instead of setting them
-- `--varfile string` - use a different variable file (default "var")
-- `-b [blockid]` - used to set a specific zone (block, tab, workspace, client, or UUID)
-
-### getvar
-
-```bash
-wsh getvar [flags] [key]
-```
-
-Get the value of a variable. Returns exit code 0 if the variable exists, 1 if it doesn't. This allows for shell scripting like:
-
-```bash
-# Check if a variable exists
-if wsh getvar API_KEY >/dev/null; then
-    echo "API key is set"
-fi
-
-# Use a variable in a command
+# Use stored variables in commands
 curl -H "Authorization: $(wsh getvar API_KEY)" https://api.example.com
 
-# Get a block-local variable
-wsh getvar -l BLOCK_SPECIFIC
+# Store a file that can be accessed from any block
+echo "data" | wsh file write wavefile://global/config.txt
 
-# List all variables
-wsh getvar --all
-
-# List all variables with null terminators (for scripting)
-wsh getvar --all -0
+# Append logs from multiple terminals
+echo "Terminal 1 log" | wsh file append wavefile://workspace/logs.txt
 ```
 
-Flags:
+### Block Management
 
-- `-l, --local` - get variables local to the current block
-- `--all` - list all variables
-- `-0, --null` - use null terminators in output instead of newlines
-- `--varfile string` - use a different variable file (default "var")
-
-Variables can be accessed at different scopes using the `-b` flag:
+Every visual element in Wave is a block, and `wsh` gives you complete control over them (hold Ctrl+Shift to see block numbers):
 
 ```bash
-# Get/set at block level
-wsh getvar -b block MYVAR
-wsh setvar -b block MYVAR=value
+# Create a new block showing a webpage
+wsh web open github.com
 
-# Get/set at tab level
-wsh getvar -b tab MYVAR
-wsh setvar -b tab MYVAR=value
+# Do a web search in a new block
+wsh web open "wave terminal"
 
-# Get/set at workspace level
-wsh getvar -b workspace MYVAR
-wsh setvar -b workspace MYVAR=value
+# Run a command in a new block and auto-close when done
+wsh run -x -- npm test
 
-# Get/set at client (global) level
-wsh getvar -b client MYVAR
-wsh setvar -b client MYVAR=value
+# Get information about the current block
+wsh getmeta
 ```
 
-Variables set with these commands persist across sessions and can be used to store configuration values, secrets, or any other string data that needs to be accessible across blocks or tabs.
+## Common Workflows
 
-</PlatformProvider>
+Here are some common ways to use `wsh`:
+
+### Development Workflow
+
+```bash
+# Open directory or markdown files
+wsh view .
+wsh view README.md
+
+# add a -m to open the block in "magnified" mode
+wsh view -m README.md
+
+# Start development server in a new block (-m will magnify the block on startup)
+wsh run -m -- npm run dev
+
+# Open documentation in a web block
+wsh web open http://localhost:3000
+```
+
+### Remote Development
+
+```bash
+# Connect to remote server with optional key
+wsh ssh -i ~/.ssh/mykey.pem dev@server
+
+# Edit remote files
+wsh edit /etc/nginx/nginx.conf
+
+# Monitor remote logs
+wsh run -- tail -f /var/log/app.log
+
+# Share variables between sessions
+wsh setvar -b tab SHARED_ENV=staging
+```
+
+### AI-Assisted Development
+
+```bash
+# Get AI help with code (uses "-" to read from stdin)
+git diff | wsh ai - "review these changes"
+
+# Get help with a file
+wsh ai -f .zshrc "help me add ~/bin to my path"
+
+# Debug issues (uses "-" to read from stdin)
+dmesg | wsh ai - "help me understand these errors"
+```
+
+## Tips & Features
+
+1. **Working with Blocks**
+
+   - Use block numbers (1-9) to target specific blocks within a tab (hold Ctrl+Shift to see block numbers)
+   - Can get full block ids by right click a block's header and selecting "Copy Block Id" (useful for scripting)
+   - Use references like "this", "tab", "workspace", or "global" for different scopes
+
+2. **Data Storage**
+
+   - Use `wsh setvar/getvar` for configuration and secrets
+   - Store file data using `wsh file`, which can be easily referenced in all terminals (local and remote)
+   - Use appropriate storage scopes (block, tab, workspace, global)
+
+3. **Command Execution**
+   - Use `wsh run` to execute commands in new blocks
+   - Send command output and files quickly to AI blocks with `wsh ai`
+
+## Scripting with wsh
+
+wsh commands can be combined in scripts to automate common tasks. Here's an example that sets up a development environment and uses `wsh notify` to monitor a long-running build:
+
+```bash
+#!/bin/bash
+# Setup development environment
+wsh run -- docker-compose up -d
+wsh web open localhost:8080
+wsh view ./src
+wsh run -- npm run test:watch
+
+# Get notified when long-running tasks complete using wsh notify
+npm run build && wsh notify "Build complete" || wsh notify "Build failed"
+```
+
+## Getting Help
+
+You can get help on available commands by running `wsh` with no arguments, or get detailed help for a specific command using `wsh [command] -h`.
+
+For a complete reference of all `wsh` functionality, see the [WSH Command Reference](./wsh-reference).
+
+```
+
+```

@@ -7,7 +7,7 @@ title: "Getting Started"
 import { PlatformProvider, PlatformSelectorButton, PlatformItem } from "@site/src/components/platformcontext.tsx";
 import { Kbd } from "@site/src/components/kbd.tsx";
 
-Wave Terminal combines the power of a traditional terminal with modern graphical capabilities, letting you seamlessly mix CLI operations with web browsing, file previews, AI assistance, and more. This guide will help you get started.
+Wave Terminal is a modern terminal that includes graphical capabilities like web browsing, file previews, and AI assistance alongside traditional terminal features. This guide will help you get started.
 
 ## Installation
 
@@ -61,23 +61,24 @@ You can also download installers directly from our [Downloads page](https://www.
 ### Tabs and Blocks
 
 - **Tabs**: Like browser tabs, these help organize your work. Create new tabs with <Kbd k="Cmd:t"/>.
-- **Blocks**: The building blocks of Wave. Each block can be a terminal, web browser, file preview, or other widget.
-- **Layout**: Blocks can be dragged, dropped, and resized to create your ideal workspace layout.
+- **Blocks**: The building blocks of Wave. Each block can be a terminal, web browser, file preview, AI chat, or other widget.
+- **Layout**: Blocks can be dragged, dropped, and resized to create your ideal layout.
 
 ### Key Features
 
-1. **Terminal Integration**
+1. **Terminal Features**
 
-   - Full terminal emulation with modern features
-   - Support for your preferred shell (bash, zsh, fish, etc.)
-   - The `wsh` command provides special integration with Wave features
+   - Works with common shells (bash, zsh, fish)
+   - Supports standard terminal features (readline, control sequences, etc)
+   - Includes the `wsh` command for interacting with Wave's GUI features
+   - GPU accelerated (on most platforms)
 
 2. **Graphical Widgets**
 
-   - File previews (images, markdown, code with syntax highlighting)
-   - Built-in web browser
-   - System monitoring
-   - AI assistance
+   - Preview files (images, video, markdown, code with syntax highlighting)
+   - Browse web pages
+   - Ask questions and get AI help directly from the terminal (set up multiple AI models)
+   - Basic system monitoring graphs
 
 3. **Remote Connections**
    - Easy SSH connections with the connection button <i className="fa-sharp fa-laptop"/>
@@ -86,7 +87,7 @@ You can also download installers directly from our [Downloads page](https://www.
 
 ## Quick Start Guide
 
-1. **Open Your First Terminal**
+1. **Open Your First New Tab**
 
    - New Wave tabs start with a single terminal block
    - Use it just like your regular terminal
@@ -99,7 +100,7 @@ You can also download installers directly from our [Downloads page](https://www.
    wsh view ~/Documents
 
    # Open a webpage
-   wsh web github.com
+   wsh web open github.com
 
    # Get AI assistance
    wsh ai "how do I find large files in my current directory?"
