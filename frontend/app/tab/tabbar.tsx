@@ -99,6 +99,43 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
     );
 };
 
+function strArrayIsEqual(a: string[], b: string[]) {
+    // null check
+    if (a == null && b == null) {
+        return true;
+    }
+    if (a == null || b == null) {
+        return false;
+    }
+    if (a.length !== b.length) {
+        return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function setIsEqual(a: Set<string> | null, b: Set<string> | null): boolean {
+    if (a == null && b == null) {
+        return true;
+    }
+    if (a == null || b == null) {
+        return false;
+    }
+    if (a.size !== b.size) {
+        return false;
+    }
+    for (const item of a) {
+        if (!b.has(item)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 const TabBar = memo(({ workspace }: TabBarProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [pinnedTabIds, setPinnedTabIds] = useState<Set<string>>(new Set());
@@ -148,25 +185,22 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     }, [tabIds]);
 
     useEffect(() => {
-        if (workspace) {
-            // Compare current tabIds with new workspace.tabids
-            console.log("tabbar workspace", workspace);
-            const newTabIds = new Set([...(workspace.pinnedtabids ?? []), ...(workspace.tabids ?? [])]);
-            const newPinnedTabIds = workspace.pinnedtabids ?? [];
+        if (!workspace) {
+            return;
+        }
+        // Compare current tabIds with new workspace.tabids
+        console.log("tabbar workspace", workspace);
 
-            const areEqual =
-                tabIds.length === newTabIds.size &&
-                tabIds.every((id) => newTabIds.has(id)) &&
-                newPinnedTabIds.length === pinnedTabIds.size;
+        const newTabIdsArr = [...(workspace.pinnedtabids ?? []), ...(workspace.tabids ?? [])];
+        const newPinnedTabSet = new Set(workspace.pinnedtabids ?? []);
 
-            if (!areEqual) {
-                const newPinnedTabIdSet = new Set(newPinnedTabIds);
-                console.log("newPinnedTabIds", newPinnedTabIds);
-                const newTabIdList = newPinnedTabIds.concat([...newTabIds].filter((id) => !newPinnedTabIdSet.has(id))); // Corrects for any duplicates between the two lists
-                console.log("newTabIdList", newTabIdList);
-                setTabIds(newTabIdList);
-                setPinnedTabIds(newPinnedTabIdSet);
-            }
+        const areEqual = strArrayIsEqual(tabIds, newTabIdsArr) && setIsEqual(pinnedTabIds, newPinnedTabSet);
+
+        if (!areEqual) {
+            console.log("newPinnedTabIds", newPinnedTabSet);
+            console.log("newTabIdList", newTabIdsArr);
+            setTabIds(newTabIdsArr);
+            setPinnedTabIds(newPinnedTabSet);
         }
     }, [workspace, tabIds, pinnedTabIds]);
 
