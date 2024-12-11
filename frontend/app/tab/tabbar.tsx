@@ -160,7 +160,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         dragged: false,
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
-    const draggerRightRef = useRef<HTMLDivElement>(null);
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
     const devLabelRef = useRef<HTMLDivElement>(null);
