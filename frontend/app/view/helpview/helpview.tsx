@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getApi, globalStore } from "@/app/store/global";
+import { getApi } from "@/app/store/global";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { fireAndForget } from "@/util/util";
 import { atom, useAtomValue } from "jotai";
@@ -39,12 +39,7 @@ class HelpViewModel extends WebViewModel {
                 },
             ];
         });
-        const startUrl = getApi().getDocsiteUrl();
-        const url = globalStore.get(this.url);
-        const metaUrl = globalStore.get(this.blockAtom)?.meta?.url;
-        console.log("help-view-model-ctor", url, metaUrl, startUrl);
-        this.url = atom(url ?? metaUrl ?? startUrl);
-        this.homepageUrl = atom(startUrl);
+        this.homepageUrl = atom(getApi().getDocsiteUrl());
         this.viewType = "help";
         this.viewIcon = atom("circle-question");
         this.viewName = atom("Help");
