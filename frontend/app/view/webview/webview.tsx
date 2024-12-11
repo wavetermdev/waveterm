@@ -532,8 +532,11 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             return;
         }
         const navigateListener = (e: any) => {
-            setErrorText("");
-            model.handleNavigate(e.url);
+            console.log("webview did-navigate event:", e);
+            if (e.isMainFrame) {
+                setErrorText("");
+                model.handleNavigate(e.url);
+            }
         };
         const newWindowHandler = (e: any) => {
             e.preventDefault();
