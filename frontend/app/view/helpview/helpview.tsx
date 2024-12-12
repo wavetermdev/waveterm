@@ -54,6 +54,7 @@ class HelpViewModel extends WebViewModel {
             const strippedDocsiteUrl = getApi().getDocsiteUrl().replace(baseUrlRegex, "");
             const strippedCurUrl = url.replace(baseUrlRegex, "").replace(strippedDocsiteUrl, "");
             const newUrl = docsiteWebUrl + strippedCurUrl;
+            console.log("modify-external-url", url, newUrl);
             return newUrl;
         };
     }
@@ -97,7 +98,6 @@ function HelpView({ model }: { model: HelpViewModel }) {
                 // Correct the base URL of the current page, if necessary
                 const newBaseUrl = baseUrlRegex.exec(newDocsiteUrl)?.[0];
                 const curBaseUrl = baseUrlRegex.exec(url)?.[0];
-                console.log("fix-docsite-url", url, newDocsiteUrl, homepageUrl, curBaseUrl, newBaseUrl);
                 if (curBaseUrl && newBaseUrl && curBaseUrl !== newBaseUrl) {
                     model.loadUrl(url.replace(curBaseUrl, newBaseUrl), "fix-fail-load");
                 }
