@@ -301,7 +301,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
         // If the workspace is already owned by a window, then we can just call SwitchWorkspace without first prompting the user, since it'll just focus to the other window.
         const workspaceList = await WorkspaceService.ListWorkspaces();
-        if (!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
+        if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
             const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
             if (showCloseConfirmDialog(curWorkspace)) {
                 const choice = dialog.showMessageBoxSync(this, {
@@ -312,6 +312,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 });
                 if (choice === 0) {
                     console.log("user cancelled switch workspace", this.waveWindowId);
+                    await WorkspaceService.DeleteWorkspace(workspaceId);
                     return;
                 } else if (choice === 1) {
                     console.log("user chose open in new window", this.waveWindowId);
