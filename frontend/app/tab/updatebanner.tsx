@@ -4,7 +4,7 @@ import { useAtomValue } from "jotai";
 import { forwardRef, memo, useEffect, useState } from "react";
 import "./updatebanner.scss";
 
-const UpdateStatusBannerComponent = forwardRef<HTMLDivElement>((_, ref) => {
+const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
     const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
     let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
@@ -54,16 +54,15 @@ const UpdateStatusBannerComponent = forwardRef<HTMLDivElement>((_, ref) => {
     }
     if (updateStatusMessage) {
         return (
-            <div className="update-available-banner" ref={ref}>
-                <Button
-                    className="update-available-button"
-                    title={appUpdateStatus === "ready" ? "Click to Install Update" : updateStatusMessage}
-                    onClick={onClick}
-                    disabled={appUpdateStatus !== "ready"}
-                >
-                    {updateStatusMessage}
-                </Button>
-            </div>
+            <Button
+                className="update-available-banner"
+                title={appUpdateStatus === "ready" ? "Click to Install Update" : updateStatusMessage}
+                onClick={onClick}
+                disabled={appUpdateStatus !== "ready"}
+                ref={ref}
+            >
+                {updateStatusMessage}
+            </Button>
         );
     }
 });
