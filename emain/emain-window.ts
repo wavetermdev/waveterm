@@ -312,7 +312,6 @@ export class WaveBrowserWindow extends BaseWindow {
                 });
                 if (choice === 0) {
                     console.log("user cancelled switch workspace", this.waveWindowId);
-                    await WorkspaceService.DeleteWorkspace(workspaceId);
                     return;
                 } else if (choice === 1) {
                     console.log("user chose open in new window", this.waveWindowId);
