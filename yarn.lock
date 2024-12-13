@@ -3764,17 +3764,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/react@npm:^0.26.28":
-  version: 0.26.28
-  resolution: "@floating-ui/react@npm:0.26.28"
+"@floating-ui/react@npm:^0.27.0":
+  version: 0.27.0
+  resolution: "@floating-ui/react@npm:0.27.0"
   dependencies:
     "@floating-ui/react-dom": "npm:^2.1.2"
     "@floating-ui/utils": "npm:^0.2.8"
     tabbable: "npm:^6.0.0"
   peerDependencies:
-    react: ">=16.8.0"
-    react-dom: ">=16.8.0"
-  checksum: 10c0/a42df129e1e976fe8ba3f4c8efdda265a0196c1b66b83f2b9b27423d08dcc765406f893aeff9d830e70e3f14a9d4c490867eb4c32983317cbaa33863b0fae6f6
+    react: ">=17.0.0"
+    react-dom: ">=17.0.0"
+  checksum: 10c0/a0d4bcd0c81694e86e176d4f8680c6e672b9e131d6c0b2a6d1fb8024087001000d856e90d415846e3a685e946b3d0cf1c3a8b39024f22364557c2091d3fcd44b
   languageName: node
   linkType: hard
 
@@ -5909,15 +5909,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-table@npm:^8.20.5":
-  version: 8.20.5
-  resolution: "@tanstack/react-table@npm:8.20.5"
+"@tanstack/react-table@npm:^8.20.6":
+  version: 8.20.6
+  resolution: "@tanstack/react-table@npm:8.20.6"
   dependencies:
     "@tanstack/table-core": "npm:8.20.5"
   peerDependencies:
     react: ">=16.8"
     react-dom: ">=16.8"
-  checksum: 10c0/574fa62fc6868a3b1113dbd043323f8b73aeb60555609caa164d5137a14636d4502784a961191afde2ec46f33f8c2bbfc4561d27a701c3d084e899a632dda3c8
+  checksum: 10c0/3213dc146f647fbd571f4e347007b969320819e588439b2ee95dd3a65efcbe30d097c24426dd82617041ed1e186182a5b303382bcebed5d61a1c6045a55c58d3
   languageName: node
   linkType: hard
 
@@ -6522,12 +6522,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-dom@npm:^18.3.1":
-  version: 18.3.1
-  resolution: "@types/react-dom@npm:18.3.1"
-  dependencies:
-    "@types/react": "npm:*"
-  checksum: 10c0/8b416551c60bb6bd8ec10e198c957910cfb271bc3922463040b0d57cf4739cdcd24b13224f8d68f10318926e1ec3cd69af0af79f0291b599a992f8c80d47f1eb
+"@types/react-dom@npm:^19.0.2":
+  version: 19.0.2
+  resolution: "@types/react-dom@npm:19.0.2"
+  peerDependencies:
+    "@types/react": ^19.0.0
+  checksum: 10c0/3d0c7b78dbe8df64ea769f30af990a5950173a8321c745fe11094d765423f7964c3519dca6e7cd36b4be6521c8efc690bdd3b79b327b229dd1e9d5a8bad677dd
   languageName: node
   linkType: hard
 
@@ -6573,13 +6573,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^18.3.13":
-  version: 18.3.13
-  resolution: "@types/react@npm:18.3.13"
+"@types/react@npm:^19.0.1":
+  version: 19.0.1
+  resolution: "@types/react@npm:19.0.1"
   dependencies:
-    "@types/prop-types": "npm:*"
     csstype: "npm:^3.0.2"
-  checksum: 10c0/91815e00157deb179fa670aa2dfc491952698b7743ffddca0e3e0f16e7a18454f3f5ef72321a07386c49e721563b9d280dbbdfae039face764e2fdd8ad949d4b
+  checksum: 10c0/25eb69114abb9a6d5fc4414ee584388275bbc9ac32976449cf58b95fe9880efe6b3f936c3842be9bed8c571546a9752e8d3e2095288381e9c809269f5f574f2e
   languageName: node
   linkType: hard
 
@@ -9427,13 +9426,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"css-tree@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "css-tree@npm:3.0.1"
+"css-tree@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "css-tree@npm:3.1.0"
   dependencies:
-    mdn-data: "npm:2.12.1"
+    mdn-data: "npm:2.12.2"
     source-map-js: "npm:^1.0.1"
-  checksum: 10c0/9f117f3067e68e9edb0b3db0134f420db1a62bede3e84d8835767ecfaa6f8ced5e87989cf39b65ffe65d788c134c8ea9abd7393d7c35838a9da84326adf57a9b
+  checksum: 10c0/b5715852c2f397c715ca00d56ec53fc83ea596295ae112eb1ba6a1bda3b31086380e596b1d8c4b980fe6da09e7d0fc99c64d5bb7313030dd0fba9c1415f30979
   languageName: node
   linkType: hard
 
@@ -9921,6 +9920,18 @@ __metadata:
     supports-color:
       optional: true
   checksum: 10c0/1471db19c3b06d485a622d62f65947a19a23fbd0dd73f7fd3eafb697eec5360cde447fb075919987899b1a2096e85d35d4eb5a4de09a57600ac9cf7e6c8e768b
+  languageName: node
+  linkType: hard
+
+"debug@npm:^4.4.0":
+  version: 4.4.0
+  resolution: "debug@npm:4.4.0"
+  dependencies:
+    ms: "npm:^2.1.3"
+  peerDependenciesMeta:
+    supports-color:
+      optional: true
+  checksum: 10c0/db94f1a182bf886f57b4755f85b3a74c39b5114b9377b7ab375dc2cfa3454f09490cc6c30f829df3fc8042bc8b8995f6567ce5cd96f3bc3688bd24027197d9de
   languageName: node
   linkType: hard
 
@@ -14652,10 +14663,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mdn-data@npm:2.12.1":
-  version: 2.12.1
-  resolution: "mdn-data@npm:2.12.1"
-  checksum: 10c0/1a09f441bdd423f2b0ab712665a1a3329fe7b15e9a2dad8c1c10c521ddb204ed186e7ac91052fd53a5ae0a07ac6eae53b5bcbb59ba8a1fb654268611297eea4a
+"mdn-data@npm:2.12.2":
+  version: 2.12.2
+  resolution: "mdn-data@npm:2.12.2"
+  checksum: 10c0/b22443b71d70f72ccc3c6ba1608035431a8fc18c3c8fc53523f06d20e05c2ac10f9b53092759a2ca85cf02f0d37036f310b581ce03e7b99ac74d388ef8152ade
   languageName: node
   linkType: hard
 
@@ -15510,10 +15521,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"monaco-editor@npm:^0.52.0":
-  version: 0.52.0
-  resolution: "monaco-editor@npm:0.52.0"
-  checksum: 10c0/962c75272568eb1556835f0097da2c7768bffe1116b252bb8b3aefd34f31e2dc46baa27e3911c0a6617bf556e6d6802e6e9f0f5548edd832c33872a8a0c146d3
+"monaco-editor@npm:^0.52.2":
+  version: 0.52.2
+  resolution: "monaco-editor@npm:0.52.2"
+  checksum: 10c0/5a92da64f1e2ab375c0ce99364137f794d057c97bed10ecc65a08d6e6846804b8ecbd377eacf01e498f7dfbe1b21e8be64f728256681448f0484df90e767b435
   languageName: node
   linkType: hard
 
@@ -17492,6 +17503,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"prism-react-renderer@npm:^2.4.1":
+  version: 2.4.1
+  resolution: "prism-react-renderer@npm:2.4.1"
+  dependencies:
+    "@types/prismjs": "npm:^1.26.0"
+    clsx: "npm:^2.0.0"
+  peerDependencies:
+    react: ">=16.0.0"
+  checksum: 10c0/ebbe8feb975224344bbdd046b3a937d121592dbe4b8f22ba0be31f5af37b9a8219f441138ef6cab1c5b96f2aa6b529015200959f7e5e85b60ca69c81d35edcd4
+  languageName: node
+  linkType: hard
+
 "prismjs@npm:^1.29.0":
   version: 1.29.0
   resolution: "prismjs@npm:1.29.0"
@@ -17807,7 +17830,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-dom@npm:^16.8.0 || ^17.0.0 || ^18.0.0, react-dom@npm:^18.0.0, react-dom@npm:^18.3.1":
+"react-dom@npm:^16.8.0 || ^17.0.0 || ^18.0.0":
   version: 18.3.1
   resolution: "react-dom@npm:18.3.1"
   dependencies:
@@ -17816,6 +17839,17 @@ __metadata:
   peerDependencies:
     react: ^18.3.1
   checksum: 10c0/a752496c1941f958f2e8ac56239172296fcddce1365ce45222d04a1947e0cc5547df3e8447f855a81d6d39f008d7c32eab43db3712077f09e3f67c4874973e85
+  languageName: node
+  linkType: hard
+
+"react-dom@npm:^19.0.0":
+  version: 19.0.0
+  resolution: "react-dom@npm:19.0.0"
+  dependencies:
+    scheduler: "npm:^0.25.0"
+  peerDependencies:
+    react: ^19.0.0
+  checksum: 10c0/a36ce7ab507b237ae2759c984cdaad4af4096d8199fb65b3815c16825e5cfeb7293da790a3fc2184b52bfba7ba3ff31c058c01947aff6fd1a3701632aabaa6a9
   languageName: node
   linkType: hard
 
@@ -18021,12 +18055,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react@npm:^16.8.0 || ^17.0.0 || ^18.0.0, react@npm:^18.0.0, react@npm:^18.3.1":
+"react@npm:^16.8.0 || ^17.0.0 || ^18.0.0":
   version: 18.3.1
   resolution: "react@npm:18.3.1"
   dependencies:
     loose-envify: "npm:^1.1.0"
   checksum: 10c0/283e8c5efcf37802c9d1ce767f302dd569dd97a70d9bb8c7be79a789b9902451e0d16334b05d73299b20f048cbc3c7d288bbbde10b701fa194e2089c237dbea3
+  languageName: node
+  linkType: hard
+
+"react@npm:^19.0.0":
+  version: 19.0.0
+  resolution: "react@npm:19.0.0"
+  checksum: 10c0/9cad8f103e8e3a16d15cb18a0d8115d8bd9f9e1ce3420310aea381eb42aa0a4f812cf047bb5441349257a05fba8a291515691e3cb51267279b2d2c3253f38471
   languageName: node
   linkType: hard
 
@@ -19403,6 +19444,13 @@ __metadata:
   dependencies:
     loose-envify: "npm:^1.1.0"
   checksum: 10c0/26383305e249651d4c58e6705d5f8425f153211aef95f15161c151f7b8de885f24751b377e4a0b3dd42cce09aad3f87a61dab7636859c0d89b7daf1a1e2a5c78
+  languageName: node
+  linkType: hard
+
+"scheduler@npm:^0.25.0":
+  version: 0.25.0
+  resolution: "scheduler@npm:0.25.0"
+  checksum: 10c0/a4bb1da406b613ce72c1299db43759526058fdcc413999c3c3e0db8956df7633acf395cb20eb2303b6a65d658d66b6585d344460abaee8080b4aa931f10eaafe
   languageName: node
   linkType: hard
 
@@ -21926,9 +21974,9 @@ __metadata:
     prettier: "npm:^3.4.2"
     prettier-plugin-jsdoc: "npm:^1.3.0"
     prettier-plugin-organize-imports: "npm:^4.1.0"
-    prism-react-renderer: "npm:^2.3.0"
-    react: "npm:^18.0.0"
-    react-dom: "npm:^18.0.0"
+    prism-react-renderer: "npm:^2.4.1"
+    react: "npm:^19.0.0"
+    react-dom: "npm:^19.0.0"
     remark-cli: "npm:^12.0.1"
     remark-frontmatter: "npm:^5.0.0"
     remark-gfm: "npm:^4.0.0"
@@ -21948,7 +21996,7 @@ __metadata:
   dependencies:
     "@chromatic-com/storybook": "npm:^3.2.2"
     "@eslint/js": "npm:^9.16.0"
-    "@floating-ui/react": "npm:^0.26.28"
+    "@floating-ui/react": "npm:^0.27.0"
     "@monaco-editor/loader": "npm:^1.4.0"
     "@monaco-editor/react": "npm:^4.6.0"
     "@observablehq/plot": "npm:^0.6.16"
@@ -21965,7 +22013,7 @@ __metadata:
     "@storybook/theming": "npm:^8.4.7"
     "@table-nav/core": "npm:^0.0.7"
     "@table-nav/react": "npm:^0.0.7"
-    "@tanstack/react-table": "npm:^8.20.5"
+    "@tanstack/react-table": "npm:^8.20.6"
     "@types/color": "npm:^4.2.0"
     "@types/css-tree": "npm:^2"
     "@types/debug": "npm:^4"
@@ -21974,8 +22022,8 @@ __metadata:
     "@types/papaparse": "npm:^5"
     "@types/pngjs": "npm:^6.0.5"
     "@types/prop-types": "npm:^15"
-    "@types/react": "npm:^18.3.13"
-    "@types/react-dom": "npm:^18.3.1"
+    "@types/react": "npm:^19.0.1"
+    "@types/react-dom": "npm:^19.0.2"
     "@types/semver": "npm:^7"
     "@types/shell-quote": "npm:^1"
     "@types/sprintf-js": "npm:^1"
@@ -21994,9 +22042,9 @@ __metadata:
     clsx: "npm:^2.1.1"
     color: "npm:^4.2.3"
     colord: "npm:^2.9.3"
-    css-tree: "npm:^3.0.1"
+    css-tree: "npm:^3.1.0"
     dayjs: "npm:^1.11.13"
-    debug: "npm:^4.3.7"
+    debug: "npm:^4.4.0"
     electron: "npm:^33.2.0"
     electron-builder: "npm:^25.1.8"
     electron-updater: "npm:6.3.9"
@@ -22009,7 +22057,7 @@ __metadata:
     html-to-image: "npm:^1.11.11"
     immer: "npm:^10.1.1"
     jotai: "npm:2.9.3"
-    monaco-editor: "npm:^0.52.0"
+    monaco-editor: "npm:^0.52.2"
     monaco-yaml: "npm:^5.2.3"
     overlayscrollbars: "npm:^2.10.1"
     overlayscrollbars-react: "npm:^0.5.6"
@@ -22019,10 +22067,10 @@ __metadata:
     prettier-plugin-jsdoc: "npm:^1.3.0"
     prettier-plugin-organize-imports: "npm:^4.1.0"
     prop-types: "npm:^15.8.1"
-    react: "npm:^18.3.1"
+    react: "npm:^19.0.0"
     react-dnd: "npm:^16.0.1"
     react-dnd-html5-backend: "npm:^16.0.1"
-    react-dom: "npm:^18.3.1"
+    react-dom: "npm:^19.0.0"
     react-frame-component: "npm:^5.2.7"
     react-gauge-chart: "npm:^0.5.1"
     react-markdown: "npm:^9.0.1"
