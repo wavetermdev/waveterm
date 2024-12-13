@@ -42,10 +42,12 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
     console.log("workspaceList:", workspaceList);
     const workspaceMenu: Electron.MenuItemConstructorOptions[] = [
         {
-            label: "Create New Workspace",
-            click: (_, window) => {
-                fireAndForget(() => createWorkspace((window as WaveBrowserWindow) ?? ww));
-            },
+            label: "Create Workspace",
+            click: (_, window) => fireAndForget(() => createWorkspace((window as WaveBrowserWindow) ?? ww)),
+        },
+        {
+            label: "Create Workspace in New Window",
+            click: () => fireAndForget(() => createWorkspace(null)),
         },
     ];
     function getWorkspaceSwitchAccelerator(i: number): string {

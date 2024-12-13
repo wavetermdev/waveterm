@@ -78,7 +78,7 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId str
 	log.Printf("CreateWindow %v %v\n", winSize, workspaceId)
 	var ws *waveobj.Workspace
 	if workspaceId == "" {
-		ws1, err := CreateWorkspace(ctx, "", "", "", false)
+		ws1, err := CreateWorkspace(ctx, "", "", "", false, false)
 		if err != nil {
 			return nil, fmt.Errorf("error creating workspace: %w", err)
 		}

@@ -315,14 +315,7 @@ export class WaveBrowserWindow extends BaseWindow {
                     return;
                 } else if (choice === 1) {
                     console.log("user chose open in new window", this.waveWindowId);
-                    const newWin = await WindowService.CreateWindow(null, workspaceId);
-                    if (!newWin) {
-                        console.log("error creating new window", this.waveWindowId);
-                    }
-                    const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), {
-                        unamePlatform,
-                    });
-                    newBwin.show();
+                    await createWindowForWorkspace(workspaceId);
                     return;
                 }
             }
@@ -605,6 +598,17 @@ export function getAllWaveWindows(): WaveBrowserWindow[] {
     return Array.from(waveWindowMap.values());
 }
 
+export async function createWindowForWorkspace(workspaceId: string) {
+    const newWin = await WindowService.CreateWindow(null, workspaceId);
+    if (!newWin) {
+        console.log("error creating new window", this.waveWindowId);
+    }
+    const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), {
+        unamePlatform,
+    });
+    newBwin.show();
+}
+
 // note, this does not *show* the window.
 // to show, await win.readyPromise and then win.show()
 export async function createBrowserWindow(
@@ -667,12 +671,13 @@ ipcMain.on("switch-workspace", (event, workspaceId) => {
 });
 
 export async function createWorkspace(window: WaveBrowserWindow) {
-    if (!window) {
-        return;
-    }
-    const newWsId = await WorkspaceService.CreateWorkspace();
+    const newWsId = await WorkspaceService.CreateWorkspace("", "", "", true);
     if (newWsId) {
-        await window.switchWorkspace(newWsId);
+        if (window) {
+            await window.switchWorkspace(newWsId);
+        } else {
+            await createWindowForWorkspace(newWsId);
+        }
     }
 }
 

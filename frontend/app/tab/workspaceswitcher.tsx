@@ -17,7 +17,7 @@ import clsx from "clsx";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { CSSProperties, forwardRef, memo, useCallback, useEffect, useRef } from "react";
+import { CSSProperties, forwardRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
 import { atoms, getApi } from "../store/global";
@@ -31,33 +31,6 @@ interface ColorSelectorProps {
     onSelect: (color: string) => void;
     className?: string;
 }
-
-const colors = [
-    "#58C142", // Green (accent)
-    "#00FFDB", // Teal
-    "#429DFF", // Blue
-    "#BF55EC", // Purple
-    "#FF453A", // Red
-    "#FF9500", // Orange
-    "#FFE900", // Yellow
-];
-
-const icons = [
-    "custom@wave-logo-solid",
-    "triangle",
-    "star",
-    "heart",
-    "bolt",
-    "solid@cloud",
-    "moon",
-    "layer-group",
-    "rocket",
-    "flask",
-    "paperclip",
-    "chart-line",
-    "graduation-cap",
-    "mug-hot",
-];
 
 const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: ColorSelectorProps) => {
     const handleColorClick = (color: string) => {
@@ -128,6 +101,18 @@ const WorkspaceEditor = memo(
         onDeleteWorkspace,
     }: WorkspaceEditorProps) => {
         const inputRef = useRef<HTMLInputElement>(null);
+
+        const [colors, setColors] = useState<string[]>([]);
+        const [icons, setIcons] = useState<string[]>([]);
+
+        useEffect(() => {
+            fireAndForget(async () => {
+                const colors = await WorkspaceService.GetColors();
+                const icons = await WorkspaceService.GetIcons();
+                setColors(colors);
+                setIcons(icons);
+            });
+        }, []);
 
         useEffect(() => {
             if (focusInput && inputRef.current) {
@@ -210,20 +195,11 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
     );
 
     const saveWorkspace = () => {
-        setObjectValue(
-            {
-                ...activeWorkspace,
-                name: `New Workspace (${activeWorkspace.oid.slice(0, 5)})`,
-                icon: icons[0],
-                color: colors[0],
-            },
-            undefined,
-            true
-        );
-        setTimeout(() => {
-            fireAndForget(updateWorkspaceList);
-        }, 10);
-        setEditingWorkspace(activeWorkspace.oid);
+        fireAndForget(async () => {
+            await WorkspaceService.UpdateWorkspace(activeWorkspace.oid, "", "", "", true);
+            await updateWorkspaceList();
+            setEditingWorkspace(activeWorkspace.oid);
+        });
     };
 
     return (
