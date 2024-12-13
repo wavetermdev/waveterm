@@ -58,7 +58,7 @@ type WindowActionQueueEntry =
           workspaceId: string;
       };
 
-function showCloseConfirmDialog(workspace: Workspace): boolean {
+function isNonEmptyUnsavedWorkspace(workspace: Workspace): boolean {
     return !workspace.name && !workspace.icon && (workspace.tabids?.length > 1 || workspace.pinnedtabids?.length > 1);
 }
 
@@ -233,7 +233,7 @@ export class WaveBrowserWindow extends BaseWindow {
                     console.log("numWindows > 1", numWindows);
                     const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
                     console.log("workspace", workspace);
-                    if (showCloseConfirmDialog(workspace)) {
+                    if (isNonEmptyUnsavedWorkspace(workspace)) {
                         console.log("workspace has no name, icon, and multiple tabs", workspace);
                         const choice = dialog.showMessageBoxSync(this, {
                             type: "question",
@@ -303,8 +303,10 @@ export class WaveBrowserWindow extends BaseWindow {
         const workspaceList = await WorkspaceService.ListWorkspaces();
         if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
             const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-            if (showCloseConfirmDialog(curWorkspace)) {
-                console.log("user chose open in new window", this.waveWindowId);
+            if (isNonEmptyUnsavedWorkspace(curWorkspace)) {
+                console.log(
+                    `existing unsaved workspace ${this.workspaceId} has content, opening workspace ${workspaceId} in new window`
+                );
                 await createWindowForWorkspace(workspaceId);
                 return;
             }
