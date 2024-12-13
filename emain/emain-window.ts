@@ -58,7 +58,7 @@ type WindowActionQueueEntry =
           workspaceId: string;
       };
 
-function showCloseConfirmDialog(workspace: Workspace): boolean {
+function isNonEmptyUnsavedWorkspace(workspace: Workspace): boolean {
     return !workspace.name && !workspace.icon && (workspace.tabids?.length > 1 || workspace.pinnedtabids?.length > 1);
 }
 
@@ -233,7 +233,7 @@ export class WaveBrowserWindow extends BaseWindow {
                     console.log("numWindows > 1", numWindows);
                     const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
                     console.log("workspace", workspace);
-                    if (showCloseConfirmDialog(workspace)) {
+                    if (isNonEmptyUnsavedWorkspace(workspace)) {
                         console.log("workspace has no name, icon, and multiple tabs", workspace);
                         const choice = dialog.showMessageBoxSync(this, {
                             type: "question",
@@ -303,29 +303,12 @@ export class WaveBrowserWindow extends BaseWindow {
         const workspaceList = await WorkspaceService.ListWorkspaces();
         if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
             const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-            if (showCloseConfirmDialog(curWorkspace)) {
-                const choice = dialog.showMessageBoxSync(this, {
-                    type: "question",
-                    buttons: ["Cancel", "Open in New Window", "Switch Workspace"],
-                    title: "Confirm",
-                    message: "Window has unsaved tabs, switching workspaces will delete existing tabs.\n\nContinue?",
-                });
-                if (choice === 0) {
-                    console.log("user cancelled switch workspace", this.waveWindowId);
-                    await WorkspaceService.DeleteWorkspace(workspaceId);
-                    return;
-                } else if (choice === 1) {
-                    console.log("user chose open in new window", this.waveWindowId);
-                    const newWin = await WindowService.CreateWindow(null, workspaceId);
-                    if (!newWin) {
-                        console.log("error creating new window", this.waveWindowId);
-                    }
-                    const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), {
-                        unamePlatform,
-                    });
-                    newBwin.show();
-                    return;
-                }
+            if (isNonEmptyUnsavedWorkspace(curWorkspace)) {
+                console.log(
+                    `existing unsaved workspace ${this.workspaceId} has content, opening workspace ${workspaceId} in new window`
+                );
+                await createWindowForWorkspace(workspaceId);
+                return;
             }
         }
         await this._queueActionInternal({ op: "switchworkspace", workspaceId });
@@ -606,6 +589,17 @@ export function getAllWaveWindows(): WaveBrowserWindow[] {
     return Array.from(waveWindowMap.values());
 }
 
+export async function createWindowForWorkspace(workspaceId: string) {
+    const newWin = await WindowService.CreateWindow(null, workspaceId);
+    if (!newWin) {
+        console.log("error creating new window", this.waveWindowId);
+    }
+    const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), {
+        unamePlatform,
+    });
+    newBwin.show();
+}
+
 // note, this does not *show* the window.
 // to show, await win.readyPromise and then win.show()
 export async function createBrowserWindow(
@@ -668,12 +662,13 @@ ipcMain.on("switch-workspace", (event, workspaceId) => {
 });
 
 export async function createWorkspace(window: WaveBrowserWindow) {
-    if (!window) {
-        return;
-    }
-    const newWsId = await WorkspaceService.CreateWorkspace();
+    const newWsId = await WorkspaceService.CreateWorkspace("", "", "", true);
     if (newWsId) {
-        await window.switchWorkspace(newWsId);
+        if (window) {
+            await window.switchWorkspace(newWsId);
+        } else {
+            await createWindowForWorkspace(newWsId);
+        }
     }
 }
 

@@ -42,15 +42,13 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
     console.log("workspaceList:", workspaceList);
     const workspaceMenu: Electron.MenuItemConstructorOptions[] = [
         {
-            label: "Create New Workspace",
-            click: (_, window) => {
-                fireAndForget(() => createWorkspace((window as WaveBrowserWindow) ?? ww));
-            },
+            label: "Create Workspace",
+            click: (_, window) => fireAndForget(() => createWorkspace((window as WaveBrowserWindow) ?? ww)),
         },
     ];
     function getWorkspaceSwitchAccelerator(i: number): string {
         if (i < 9) {
-            return unamePlatform == "darwin" ? `Command+Control+${i}` : `Alt+Control+${i + 1}`;
+            return unamePlatform == "darwin" ? `Command+Control+${i + 1}` : `Alt+Control+${i + 1}`;
         }
     }
     workspaceList?.length &&
@@ -58,7 +56,7 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
             { type: "separator" },
             ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace, i) => {
                 return {
-                    label: `Switch to ${workspace.workspacedata.name}`,
+                    label: `${workspace.workspacedata.name}`,
                     click: (_, window) => {
                         ((window as WaveBrowserWindow) ?? ww)?.switchWorkspace(workspace.workspacedata.oid);
                     },

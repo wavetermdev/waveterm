@@ -173,7 +173,7 @@ class WorkspaceServiceType {
         return WOS.callBackendService("workspace", "ChangeTabPinning", Array.from(arguments))
     }
 
-    // @returns object updates
+    // @returns CloseTabRtn (and object updates)
     CloseTab(workspaceId: string, tabId: string, fromElectron: boolean): Promise<CloseTabRtnType> {
         return WOS.callBackendService("workspace", "CloseTab", Array.from(arguments))
     }
@@ -184,7 +184,7 @@ class WorkspaceServiceType {
     }
 
     // @returns workspaceId
-    CreateWorkspace(): Promise<string> {
+    CreateWorkspace(name: string, icon: string, color: string, applyDefaults: boolean): Promise<string> {
         return WOS.callBackendService("workspace", "CreateWorkspace", Array.from(arguments))
     }
 
@@ -192,6 +192,18 @@ class WorkspaceServiceType {
     DeleteWorkspace(workspaceId: string): Promise<void> {
         return WOS.callBackendService("workspace", "DeleteWorkspace", Array.from(arguments))
     }
+
+    // @returns colors
+    GetColors(): Promise<string[]> {
+        return WOS.callBackendService("workspace", "GetColors", Array.from(arguments))
+    }
+
+    // @returns icons
+    GetIcons(): Promise<string[]> {
+        return WOS.callBackendService("workspace", "GetIcons", Array.from(arguments))
+    }
+
+    // @returns workspace
     GetWorkspace(workspaceId: string): Promise<Workspace> {
         return WOS.callBackendService("workspace", "GetWorkspace", Array.from(arguments))
     }
@@ -207,6 +219,11 @@ class WorkspaceServiceType {
     // @returns object updates
     UpdateTabIds(workspaceId: string, tabIds: string[], pinnedTabIds: string[]): Promise<void> {
         return WOS.callBackendService("workspace", "UpdateTabIds", Array.from(arguments))
+    }
+
+    // @returns object updates
+    UpdateWorkspace(workspaceId: string, name: string, icon: string, color: string, applyDefaults: boolean): Promise<void> {
+        return WOS.callBackendService("workspace", "UpdateWorkspace", Array.from(arguments))
     }
 }
 
