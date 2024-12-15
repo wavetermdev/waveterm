@@ -1,6 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+@use "./../theme.scss";
+
 .tab-bar-wrapper {
     --default-indent: 10px;
     --darwin-not-fullscreen-indent: 74px;
@@ -25,6 +27,25 @@
 .tab-bar-wrapper {
     padding-top: 6px;
     position: relative;
+}
+
+.tab-bar-wrapper-auto-hide {
+    top: -20px; 
+    left: 0; 
+    right: 0;
+
+    padding: 6px;
+    margin: 2px;
+
+    position: fixed;
+    z-index: 1000;
+    background: var(--main-bg-color);
+
+    transition: top 0.3s ease;
+}
+
+.tab-bar-wrapper,
+.tab-bar-wrapper-auto-hide {
     user-select: none;
     display: flex;
     flex-direction: row;
