@@ -174,7 +174,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     const settings = useAtomValue(atoms.settingsAtom);
-    const autoHideTabsBar = useRef<boolean>(settings["window:autoHideTabsBar"]);
+    const autoHideTabsBar = useRef<boolean>(settings["window:autohidetabsbar"]);
 
     let prevDelta: number;
     let prevDragDirection: string;
