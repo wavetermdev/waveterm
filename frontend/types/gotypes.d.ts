@@ -490,6 +490,8 @@ declare global {
         "term:vdomblockid"?: string;
         "term:vdomtoolbarblockid"?: string;
         "web:zoom"?: number;
+        "markdown:fontsize"?: number;
+        "markdown:fixedfontsize"?: number;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -638,6 +640,8 @@ declare global {
         "autoupdate:intervalms"?: number;
         "autoupdate:installonquit"?: boolean;
         "autoupdate:channel"?: string;
+        "markdown:fontsize"?: number;
+        "markdown:fixedfontsize"?: number;
         "preview:showhiddenfiles"?: boolean;
         "tab:preset"?: string;
         "widget:*"?: boolean;
