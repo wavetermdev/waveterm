@@ -24,13 +24,13 @@
     margin-bottom: 20px;
 }
 
-.tab-bar-wrapper {
+.tab-bar-wrapper-always-visible {
     padding-top: 6px;
     position: relative;
+    opacity: 1;
 }
 
 .tab-bar-wrapper-auto-hide {
-    top: -20px; 
     left: 0; 
     right: 0;
 
@@ -39,15 +39,20 @@
 
     position: fixed;
     z-index: 1000;
+
+    opacity: 0;
     background: transparent;
     backdrop-filter: blur(10px);
-    border-radius: 12px;
+    border-radius: 6px;
 
-    transition: top 0.3s ease;
+    transition: opacity 0.3s ease, top 0.3s ease;
 }
 
-.tab-bar-wrapper,
-.tab-bar-wrapper-auto-hide {
+.tab-bar-wrapper-auto-hide-visible {
+    opacity: 1;
+}
+
+.tab-bar-wrapper {
     user-select: none;
     display: flex;
     flex-direction: row;
