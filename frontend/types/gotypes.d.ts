@@ -489,6 +489,7 @@ declare global {
         "term:scrollback"?: number;
         "term:vdomblockid"?: string;
         "term:vdomtoolbarblockid"?: string;
+        "web:zoom"?: number;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
