@@ -535,6 +535,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     let metaUrl = blockData?.meta?.url || defaultUrl;
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     const metaUrlRef = useRef(metaUrl);
+    const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(metaUrl);
@@ -579,14 +580,12 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             const wcId = model.webviewRef.current.getWebContentsId?.();
             if (wcId) {
                 setWebContentsId(wcId);
-                const zoomAtom = getBlockMetaKeyAtom(model.blockId, "web:zoom");
-                const zoomFactor = globalStore.get(zoomAtom) || 1;
                 if (model.webviewRef.current.getZoomFactor() != zoomFactor) {
                     model.webviewRef.current.setZoomFactor(zoomFactor);
                 }
             }
         }
-    }, [model.webviewRef.current, domReady]);
+    }, [model.webviewRef.current, domReady, zoomFactor]);
 
     // Load a new URL if the block metadata is updated.
     useEffect(() => {
