@@ -14,7 +14,7 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
 [![waveterm](https://snapcraft.io/waveterm/trending.svg?name=0)](https://snapcraft.io/waveterm)
 
-Wave is an [open-source](https://github.com/wavetermdev/waveterm) terminal that combines traditional terminal features with graphical capabilities like file previews, web browsing, and AI assistance. It runs on MacOS, Linux, and Windows ([Getting Started](./gettingstarted)).
+Wave is an open-source terminal that combines traditional terminal features with graphical capabilities like file previews, web browsing, and AI assistance. It runs on MacOS, Linux, and Windows.
 
 Modern development involves constantly switching between terminals and browsers - checking documentation, previewing files, monitoring systems, and using AI tools. Wave brings these graphical tools directly into the terminal, letting you control them from the command line. This means you can stay in your terminal workflow while still having access to the visual interfaces you need.
 
@@ -54,6 +54,7 @@ Wave Terminal and WSH run on the following platforms:
 - Documentation &mdash; https://docs.waveterm.dev
 - Legacy Documentation &mdash; https://legacydocs.waveterm.dev
 - Blog &mdash; https://blog.waveterm.dev
+- X &mdash; https://x.com/wavetermdev
 - Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
 ## Building from Source
