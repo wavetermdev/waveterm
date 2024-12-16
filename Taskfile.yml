@@ -290,7 +290,7 @@ tasks:
         vars:
             UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
         cmd: |
-            wingetcreate update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t $env:GITHUB_TOKEN
+            wingetcreate update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t {{.GITHUB_TOKEN}}
 
     dev:installwsh:
         desc: quick shortcut to rebuild wsh and install for macos arm64

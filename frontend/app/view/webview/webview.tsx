@@ -142,6 +142,7 @@ export class WebViewModel implements ViewModel {
                     icon: "arrow-up-right-from-square",
                     title: "Open in External Browser",
                     click: () => {
+                        console.log("open external", url);
                         if (url != null && url != "") {
                             const externalUrl = this.modifyExternalUrl?.(url) ?? url;
                             return getApi().openExternal(externalUrl);
@@ -339,14 +340,14 @@ export class WebViewModel implements ViewModel {
         const searchTemplate = globalStore.get(defaultSearchAtom);
         const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
         console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef?.current.getURL());
-        if (newUrl != nextUrl) {
-            globalStore.set(this.url, nextUrl);
-        }
         if (!this.webviewRef.current) {
             return;
         }
         if (this.webviewRef.current.getURL() != nextUrl) {
-            this.webviewRef.current.loadURL(nextUrl);
+            fireAndForget(() => this.webviewRef.current.loadURL(nextUrl));
+        }
+        if (newUrl != nextUrl) {
+            globalStore.set(this.url, nextUrl);
         }
     }
 
@@ -531,8 +532,8 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             return;
         }
         const navigateListener = (e: any) => {
+            setErrorText("");
             if (e.isMainFrame) {
-                setErrorText("");
                 model.handleNavigate(e.url);
             }
         };
@@ -582,6 +583,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             model.setMediaPlaying(false);
         };
 
+        webview.addEventListener("did-frame-navigate", navigateListener);
         webview.addEventListener("did-navigate-in-page", navigateListener);
         webview.addEventListener("did-navigate", navigateListener);
         webview.addEventListener("did-start-loading", startLoadingHandler);
@@ -596,6 +598,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
 
         // Clean up event listeners on component unmount
         return () => {
+            webview.removeEventListener("did-frame-navigate", navigateListener);
             webview.removeEventListener("did-navigate", navigateListener);
             webview.removeEventListener("did-navigate-in-page", navigateListener);
             webview.removeEventListener("new-window", newWindowHandler);

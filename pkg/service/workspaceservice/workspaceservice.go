@@ -24,21 +24,44 @@ type WorkspaceService struct{}
 
 func (svc *WorkspaceService) CreateWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
+		ArgNames:   []string{"ctx", "name", "icon", "color", "applyDefaults"},
 		ReturnDesc: "workspaceId",
 	}
 }
 
-func (svc *WorkspaceService) CreateWorkspace(ctx context.Context) (string, error) {
-	newWS, err := wcore.CreateWorkspace(ctx, "", "", "", false)
+func (svc *WorkspaceService) CreateWorkspace(ctx context.Context, name string, icon string, color string, applyDefaults bool) (string, error) {
+	newWS, err := wcore.CreateWorkspace(ctx, name, icon, color, applyDefaults, false)
 	if err != nil {
 		return "", fmt.Errorf("error creating workspace: %w", err)
 	}
 	return newWS.OID, nil
 }
 
+func (svc *WorkspaceService) UpdateWorkspace_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"ctx", "workspaceId", "name", "icon", "color", "applyDefaults"},
+	}
+}
+
+func (svc *WorkspaceService) UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (waveobj.UpdatesRtnType, error) {
+	ctx = waveobj.ContextWithUpdates(ctx)
+	_, err := wcore.UpdateWorkspace(ctx, workspaceId, name, icon, color, applyDefaults)
+	if err != nil {
+		return nil, fmt.Errorf("error updating workspace: %w", err)
+	}
+
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("WorkspaceService:UpdateWorkspace:SendUpdateEvents")
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
+}
+
 func (svc *WorkspaceService) GetWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"workspaceId"},
+		ArgNames:   []string{"workspaceId"},
+		ReturnDesc: "workspace",
 	}
 }
 
@@ -77,7 +100,7 @@ func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.Update
 	return updates, nil
 }
 
-func (svg *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
+func (svc *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	return wcore.ListWorkspaces(ctx)
@@ -88,6 +111,26 @@ func (svc *WorkspaceService) CreateTab_Meta() tsgenmeta.MethodMeta {
 		ArgNames:   []string{"workspaceId", "tabName", "activateTab", "pinned"},
 		ReturnDesc: "tabId",
 	}
+}
+
+func (svc *WorkspaceService) GetColors_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ReturnDesc: "colors",
+	}
+}
+
+func (svc *WorkspaceService) GetColors() []string {
+	return wcore.WorkspaceColors[:]
+}
+
+func (svc *WorkspaceService) GetIcons_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ReturnDesc: "icons",
+	}
+}
+
+func (svc *WorkspaceService) GetIcons() []string {
+	return wcore.WorkspaceIcons[:]
 }
 
 func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activateTab bool, pinned bool) (string, waveobj.UpdatesRtnType, error) {
@@ -188,7 +231,8 @@ type CloseTabRtnType struct {
 
 func (svc *WorkspaceService) CloseTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"ctx", "workspaceId", "tabId", "fromElectron"},
+		ArgNames:   []string{"ctx", "workspaceId", "tabId", "fromElectron"},
+		ReturnDesc: "CloseTabRtn",
 	}
 }
 
