@@ -14,11 +14,22 @@
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
 [![waveterm](https://snapcraft.io/waveterm/trending.svg?name=0)](https://snapcraft.io/waveterm)
 
-Wave is an open-source terminal that can launch graphical widgets, controlled and integrated directly with the CLI. It includes a base terminal, directory browser, file previews (images, media, markdown), a graphical editor (for code/text files), a web browser, and integrated AI chat.
+Wave is an open-source terminal that combines traditional terminal features with graphical capabilities like file previews, web browsing, and AI assistance. It runs on MacOS, Linux, and Windows.
 
-Wave isn't just another terminal emulator; it's a rethink on how terminals are built. For too long there has been a disconnect between the CLI and the web. If you want fast, keyboard-accessible, easy-to-write applications, you use the CLI, but if you want graphical interfaces, native widgets, copy/paste, scrolling, variable font sizes, then you'd have to turn to the web. Wave's goal is to bridge that gap.
+Modern development involves constantly switching between terminals and browsers - checking documentation, previewing files, monitoring systems, and using AI tools. Wave brings these graphical tools directly into the terminal, letting you control them from the command line. This means you can stay in your terminal workflow while still having access to the visual interfaces you need.
 
 ![WaveTerm Screenshot](./assets/wave-screenshot.webp)
+
+## Key Features
+
+- Flexible drag & drop interface to organize terminal blocks, editors, web browsers, and AI assistants
+- Built-in editor for seamlessly editing remote files with syntax highlighting and modern editor features
+- Rich file preview system for remote files (markdown, images, video, PDFs, CSVs, directories)
+- Integrated AI chat with support for multiple models (OpenAI, Claude, Azure, Perplexity, Ollama)
+- Command Blocks for isolating and monitoring individual commands with auto-close options
+- One-click remote connections with full terminal and file system access
+- Rich customization including tab themes, terminal styles, and background images
+- Powerful `wsh` command system for managing your workspace from the CLI and sharing data between terminal sessions
 
 ## Installation
 
@@ -43,6 +54,7 @@ Wave Terminal and WSH run on the following platforms:
 - Documentation &mdash; https://docs.waveterm.dev
 - Legacy Documentation &mdash; https://legacydocs.waveterm.dev
 - Blog &mdash; https://blog.waveterm.dev
+- X &mdash; https://x.com/wavetermdev
 - Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
 ## Building from Source
