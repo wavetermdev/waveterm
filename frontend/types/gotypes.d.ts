@@ -657,6 +657,8 @@ declare global {
         "window:magnifiedblocksize"?: number;
         "window:magnifiedblockblurprimarypx"?: number;
         "window:magnifiedblockblursecondarypx"?: number;
+        "key:*"?: boolean;
+        "key:globalhotkey"?: string;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;

@@ -96,6 +96,9 @@ type SettingsType struct {
 	WindowMagnifiedBlockBlurPrimaryPx   *int64   `json:"window:magnifiedblockblurprimarypx,omitempty"`
 	WindowMagnifiedBlockBlurSecondaryPx *int64   `json:"window:magnifiedblockblursecondarypx,omitempty"`
 
+	KeyClear        bool   `json:"key:*,omitempty"`
+	KeyGlobalHotkey string `json:"key:globalhotkey,omitempty"`
+
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
 

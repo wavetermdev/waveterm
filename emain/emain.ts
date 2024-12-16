@@ -28,7 +28,7 @@ import {
     setWasInFg,
 } from "./emain-activity";
 import { ensureHotSpareTab, getWaveTabViewByWebContentsId, setMaxTabCacheSize } from "./emain-tabview";
-import { handleCtrlShiftState } from "./emain-util";
+import { handleCtrlShiftState, waveKeyToElectronKey } from "./emain-util";
 import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
 import {
     createBrowserWindow,
@@ -610,6 +610,27 @@ async function appMain() {
             fireAndForget(createNewWaveWindow);
         }
     });
+    const rawGlobalHotKey = launchSettings?.["key:globalhotkey"];
+    if (rawGlobalHotKey) {
+        try {
+            const electronHotKey = waveKeyToElectronKey(rawGlobalHotKey);
+            console.log("registering globalhotkey of ", electronHotKey);
+            electron.globalShortcut.register(electronHotKey, () => {
+                const selectedWindow = focusedWaveWindow;
+                const firstWaveWindow = getAllWaveWindows()[0];
+                console.log("the selected window is ", selectedWindow ?? "nonexistent");
+                if (focusedWaveWindow) {
+                    selectedWindow.focus();
+                } else if (firstWaveWindow) {
+                    firstWaveWindow.focus();
+                } else {
+                    fireAndForget(createNewWaveWindow);
+                }
+            });
+        } catch (e) {
+            console.log(e);
+        }
+    }
 }
 
 appMain().catch((e) => {
