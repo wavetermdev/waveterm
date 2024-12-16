@@ -38,6 +38,20 @@
             margin-bottom: 10px;
         }
 
+        img {
+            border-style: none;
+            max-width: 100%;
+            box-sizing: content-box;
+
+            &[align="right"] {
+                padding-left: 20px;
+            }
+
+            &[align="left"] {
+                padding-right: 20px;
+            }
+        }
+
         strong {
             color: var(--main-text-color);
         }
