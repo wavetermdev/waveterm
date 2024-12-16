@@ -20,14 +20,41 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-func CreateWorkspace(ctx context.Context, name string, icon string, color string, isInitialLaunch bool) (*waveobj.Workspace, error) {
+var WorkspaceColors = [...]string{
+	"#58C142", // Green (accent)
+	"#00FFDB", // Teal
+	"#429DFF", // Blue
+	"#BF55EC", // Purple
+	"#FF453A", // Red
+	"#FF9500", // Orange
+	"#FFE900", // Yellow
+}
+
+var WorkspaceIcons = [...]string{
+	"custom@wave-logo-solid",
+	"triangle",
+	"star",
+	"heart",
+	"bolt",
+	"solid@cloud",
+	"moon",
+	"layer-group",
+	"rocket",
+	"flask",
+	"paperclip",
+	"chart-line",
+	"graduation-cap",
+	"mug-hot",
+}
+
+func CreateWorkspace(ctx context.Context, name string, icon string, color string, applyDefaults bool, isInitialLaunch bool) (*waveobj.Workspace, error) {
 	ws := &waveobj.Workspace{
 		OID:          uuid.NewString(),
 		TabIds:       []string{},
 		PinnedTabIds: []string{},
-		Name:         name,
-		Icon:         icon,
-		Color:        color,
+		Name:         "",
+		Icon:         "",
+		Color:        "",
 	}
 	err := wstore.DBInsert(ctx, ws)
 	if err != nil {
@@ -41,10 +68,35 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_WorkspaceUpdate})
 
-	ws, err = GetWorkspace(ctx, ws.OID)
+	return UpdateWorkspace(ctx, ws.OID, name, icon, color, applyDefaults)
+}
+
+func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (*waveobj.Workspace, error) {
+	ws, err := GetWorkspace(ctx, workspaceId)
 	if err != nil {
-		return nil, fmt.Errorf("error getting updated workspace: %w", err)
+		return nil, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 	}
+	if name != "" {
+		ws.Name = name
+	} else if applyDefaults && ws.Name == "" {
+		ws.Name = fmt.Sprintf("New Workspace (%s)", ws.OID[0:5])
+	}
+	if icon != "" {
+		ws.Icon = icon
+	} else if applyDefaults && ws.Icon == "" {
+		ws.Icon = WorkspaceIcons[0]
+	}
+	if color != "" {
+		ws.Color = color
+	} else if applyDefaults && ws.Color == "" {
+		wsList, err := ListWorkspaces(ctx)
+		if err != nil {
+			log.Printf("error listing workspaces: %v", err)
+			wsList = waveobj.WorkspaceList{}
+		}
+		ws.Color = WorkspaceColors[len(wsList)%len(WorkspaceColors)]
+	}
+	wstore.DBUpdate(ctx, ws)
 	return ws, nil
 }
 

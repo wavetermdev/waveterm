@@ -17,7 +17,7 @@ import clsx from "clsx";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { CSSProperties, memo, useCallback, useEffect, useRef } from "react";
+import { CSSProperties, forwardRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
 import { atoms, getApi } from "../store/global";
@@ -31,33 +31,6 @@ interface ColorSelectorProps {
     onSelect: (color: string) => void;
     className?: string;
 }
-
-const colors = [
-    "#58C142", // Green (accent)
-    "#00FFDB", // Teal
-    "#429DFF", // Blue
-    "#BF55EC", // Purple
-    "#FF453A", // Red
-    "#FF9500", // Orange
-    "#FFE900", // Yellow
-];
-
-const icons = [
-    "custom@wave-logo-solid",
-    "triangle",
-    "star",
-    "heart",
-    "bolt",
-    "solid@cloud",
-    "moon",
-    "layer-group",
-    "rocket",
-    "flask",
-    "paperclip",
-    "chart-line",
-    "graduation-cap",
-    "mug-hot",
-];
 
 const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: ColorSelectorProps) => {
     const handleColorClick = (color: string) => {
@@ -129,6 +102,18 @@ const WorkspaceEditor = memo(
     }: WorkspaceEditorProps) => {
         const inputRef = useRef<HTMLInputElement>(null);
 
+        const [colors, setColors] = useState<string[]>([]);
+        const [icons, setIcons] = useState<string[]>([]);
+
+        useEffect(() => {
+            fireAndForget(async () => {
+                const colors = await WorkspaceService.GetColors();
+                const icons = await WorkspaceService.GetIcons();
+                setColors(colors);
+                setIcons(icons);
+            });
+        }, []);
+
         useEffect(() => {
             if (focusInput && inputRef.current) {
                 inputRef.current.focus();
@@ -167,7 +152,7 @@ type WorkspaceList = WorkspaceListEntry[];
 const workspaceMapAtom = atom<WorkspaceList>([]);
 const workspaceSplitAtom = splitAtom(workspaceMapAtom);
 const editingWorkspaceAtom = atom<string>();
-const WorkspaceSwitcher = () => {
+const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
     const setWorkspaceList = useSetAtom(workspaceMapAtom);
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const workspaceList = useAtomValue(workspaceSplitAtom);
@@ -210,20 +195,11 @@ const WorkspaceSwitcher = () => {
     );
 
     const saveWorkspace = () => {
-        setObjectValue(
-            {
-                ...activeWorkspace,
-                name: `New Workspace (${activeWorkspace.oid.slice(0, 5)})`,
-                icon: icons[0],
-                color: colors[0],
-            },
-            undefined,
-            true
-        );
-        setTimeout(() => {
-            fireAndForget(updateWorkspaceList);
-        }, 10);
-        setEditingWorkspace(activeWorkspace.oid);
+        fireAndForget(async () => {
+            await WorkspaceService.UpdateWorkspace(activeWorkspace.oid, "", "", "", true);
+            await updateWorkspaceList();
+            setEditingWorkspace(activeWorkspace.oid);
+        });
     };
 
     return (
@@ -231,6 +207,7 @@ const WorkspaceSwitcher = () => {
             className="workspace-switcher-popover"
             placement="bottom-start"
             onDismiss={() => setEditingWorkspace(null)}
+            ref={ref}
         >
             <PopoverButton
                 className="workspace-switcher-button grey"
@@ -271,7 +248,7 @@ const WorkspaceSwitcher = () => {
             </PopoverContent>
         </Popover>
     );
-};
+});
 
 const WorkspaceSwitcherItem = ({
     entryAtom,

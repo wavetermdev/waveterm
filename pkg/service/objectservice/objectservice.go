@@ -145,7 +145,7 @@ func (svc *ObjectService) UpdateObjectMeta(uiContext waveobj.UIContext, orefStr 
 	}
 	err = wstore.UpdateObjectMeta(ctx, *oref, meta, false)
 	if err != nil {
-		return nil, fmt.Errorf("error updateing %q meta: %w", orefStr, err)
+		return nil, fmt.Errorf("error updating %q meta: %w", orefStr, err)
 	}
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }

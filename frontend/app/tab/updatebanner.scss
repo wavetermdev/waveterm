@@ -1,10 +1,9 @@
-.update-available-button {
-    height: 80%;
-    margin: auto 4px;
+.button {
     color: black;
     background-color: var(--accent-color);
     flex: 0 0 fit-content;
-
+    line-height: unset !important;
+    padding: 0 6px;
     &:disabled {
         opacity: unset !important;
     }

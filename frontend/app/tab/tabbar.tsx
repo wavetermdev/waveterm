@@ -11,6 +11,7 @@ import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
+import { IconButton } from "../element/iconbutton";
 import { WorkspaceService } from "../store/services";
 import { Tab } from "./tab";
 import "./tabbar.scss";
@@ -19,7 +20,6 @@ import { WorkspaceSwitcher } from "./workspaceswitcher";
 
 const TAB_DEFAULT_WIDTH = 130;
 const TAB_MIN_WIDTH = 100;
-const DRAGGER_RIGHT_MIN_WIDTH = 74;
 const OS_OPTIONS = {
     overflow: {
         x: "scroll",
@@ -148,7 +148,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const tabBarRef = useRef<HTMLDivElement>(null);
     const tabsWrapperRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<React.RefObject<HTMLDivElement>[]>([]);
-    const addBtnRef = useRef<HTMLDivElement>(null);
+    const addBtnRef = useRef<HTMLButtonElement>(null);
     const draggingRemovedRef = useRef(false);
     const draggingTabDataRef = useRef({
         tabId: "",
@@ -161,14 +161,13 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         dragged: false,
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
-    const draggerRightRef = useRef<HTMLDivElement>(null);
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
     const devLabelRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
-    const updateStatusButtonRef = useRef<HTMLButtonElement>(null);
+    const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
@@ -228,7 +227,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
-        const updateStatusLabelWidth = updateStatusButtonRef.current?.getBoundingClientRect().width ?? 0;
+        const updateStatusLabelWidth = updateStatusBannerRef.current?.getBoundingClientRect().width ?? 0;
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
@@ -236,7 +235,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
-            DRAGGER_RIGHT_MIN_WIDTH +
             addBtnWidth +
             updateStatusLabelWidth +
             configErrorWidth +
@@ -648,12 +646,19 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <i className="fa fa-ellipsis" />
             </div>
         ) : undefined;
+
+    const addtabButtonDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: "plus",
+        click: handleAddTab,
+        title: "Add Tab",
+    };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
-            <WorkspaceSwitcher />
+            <WorkspaceSwitcher ref={workspaceSwitcherRef} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
@@ -680,12 +685,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     })}
                 </div>
             </div>
-            <div ref={addBtnRef} className="add-tab-btn" onClick={handleAddTab}>
-                <i className="fa fa-solid fa-plus fa-fw" />
+            <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
+            <div className="tab-bar-right">
+                <UpdateStatusBanner ref={updateStatusBannerRef} />
+                <ConfigErrorIcon buttonRef={configErrorButtonRef} />
             </div>
-            <WindowDrag ref={draggerRightRef} className="right" style={{ minWidth: DRAGGER_RIGHT_MIN_WIDTH }} />
-            <UpdateStatusBanner buttonRef={updateStatusButtonRef} />
-            <ConfigErrorIcon buttonRef={configErrorButtonRef} />
         </div>
     );
 });

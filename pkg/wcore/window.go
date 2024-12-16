@@ -78,7 +78,7 @@ func CreateWindow(ctx context.Context, winSize *waveobj.WinSize, workspaceId str
 	log.Printf("CreateWindow %v %v\n", winSize, workspaceId)
 	var ws *waveobj.Workspace
 	if workspaceId == "" {
-		ws1, err := CreateWorkspace(ctx, "", "", "", false)
+		ws1, err := CreateWorkspace(ctx, "", "", "", false, false)
 		if err != nil {
 			return nil, fmt.Errorf("error creating workspace: %w", err)
 		}
@@ -177,7 +177,7 @@ func CheckAndFixWindow(ctx context.Context, windowId string) *waveobj.Window {
 		CloseWindow(ctx, windowId, false)
 		return nil
 	}
-	if len(ws.TabIds) == 0 {
+	if len(ws.TabIds) == 0 && len(ws.PinnedTabIds) == 0 {
 		log.Printf("fixing workspace with no tabs %q (in checkAndFixWindow)\n", ws.OID)
 		_, err = CreateTab(ctx, ws.OID, "", true, false, false)
 		if err != nil {
