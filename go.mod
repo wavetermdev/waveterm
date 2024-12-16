@@ -18,7 +18,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sashabaranov/go-openai v1.36.0
 	github.com/sawka/txwrap v0.2.0
-	github.com/shirou/gopsutil/v4 v4.24.10
+	github.com/shirou/gopsutil/v4 v4.24.11
 	github.com/skeema/knownhosts v1.3.0
 	github.com/spf13/cobra v1.8.1
 	github.com/ubuntu/gowsl v0.0.0-20240906163211-049fd49bd93b
