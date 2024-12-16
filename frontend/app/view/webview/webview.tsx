@@ -576,7 +576,10 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     }, []);
 
     useEffect(() => {
-        if (model.webviewRef.current && domReady) {
+        if (model.webviewRef.current == null || !domReady) {
+            return;
+        }
+        try {
             const wcId = model.webviewRef.current.getWebContentsId?.();
             if (wcId) {
                 setWebContentsId(wcId);
@@ -584,6 +587,8 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                     model.webviewRef.current.setZoomFactor(zoomFactor);
                 }
             }
+        } catch (e) {
+            console.error("Failed to get webcontentsid / setzoomlevel (webview)", e);
         }
     }, [model.webviewRef.current, domReady, zoomFactor]);
 
