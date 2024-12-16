@@ -210,9 +210,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
 
         tabbarWrapperRef.current.addEventListener("mouseenter", handleAutoHideTabBar);
-        return () => {
-            tabbarWrapperRef.current.removeEventListener("mouseenter", handleAutoHideTabBar);
-        }
+        return () => tabbarWrapperRef.current.removeEventListener("mouseenter", handleAutoHideTabBar);
     }, [autoHideTabBar])
 
     // Update refs when tabIds change
