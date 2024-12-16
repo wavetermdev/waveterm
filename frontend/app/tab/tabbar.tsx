@@ -174,7 +174,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     const settings = useAtomValue(atoms.settingsAtom);
-    const autoHideTabsBar = useRef<boolean>(settings["window:autohidetabsbar"]);
+    const autoHideTabsBar = settings?.["window:autohidetabsbar"] ?? false;
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -185,13 +185,15 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const tabBarHeight = tabBar.clientHeight + 1;
 
         if (currentY < 10) tabBar.style.top = '0px';
-        if (autoHideTabsBar.current && currentY > tabBarHeight) tabBar.style.top = `-${tabBarHeight}px`;
+        if (autoHideTabsBar && currentY > tabBarHeight) tabBar.style.top = `-${tabBarHeight}px`;
     };
 
     useEffect(() => {
+        if (!autoHideTabsBar) return;
+
         document.addEventListener("mousemove", handleAutoHideTabsBar);
         return () => document.removeEventListener("mousemove", handleAutoHideTabsBar);
-    }, [])
+    }, [autoHideTabsBar])
 
     // Update refs when tabIds change
     useEffect(() => {
@@ -669,7 +671,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         title: "Add Tab",
     };
     return (
-        <div ref={tabbarWrapperRef} className={`tab-bar-wrapper${autoHideTabsBar.current ? '-auto-hide' : ''}`}>
+        <div ref={tabbarWrapperRef} className={`tab-bar-wrapper${autoHideTabsBar ? '-auto-hide' : ''}`}>
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
