@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getApi, getSettingsKeyAtom, openLink } from "@/app/store/global";
+import { getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -49,13 +49,13 @@ export class WebViewModel implements ViewModel {
     mediaPlaying: PrimitiveAtom<boolean>;
     mediaMuted: PrimitiveAtom<boolean>;
     modifyExternalUrl?: (url: string) => string;
+    domReady: PrimitiveAtom<boolean>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
         this.viewType = "web";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-
         this.url = atom();
         const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
         this.homepageUrl = atom((get) => {
@@ -71,6 +71,7 @@ export class WebViewModel implements ViewModel {
         this.viewName = atom("Web");
         this.urlInputRef = createRef<HTMLInputElement>();
         this.webviewRef = createRef<WebviewTag>();
+        this.domReady = atom(false);
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -339,7 +340,7 @@ export class WebViewModel implements ViewModel {
         const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
         const searchTemplate = globalStore.get(defaultSearchAtom);
         const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
-        console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef?.current.getURL());
+        console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef.current.getURL());
         if (!this.webviewRef.current) {
             return;
         }
@@ -414,7 +415,7 @@ export class WebViewModel implements ViewModel {
             return true;
         }
         if (checkKeyPressed(e, "Cmd:r")) {
-            this.webviewRef?.current?.reload();
+            this.webviewRef.current?.reload();
             return true;
         }
         if (checkKeyPressed(e, "Cmd:ArrowLeft")) {
@@ -428,7 +429,61 @@ export class WebViewModel implements ViewModel {
         return false;
     }
 
+    setZoomFactor(factor: number | null) {
+        // null is ok (will reset to default)
+        if (factor != null && factor < 0.1) {
+            factor = 0.1;
+        }
+        if (factor != null && factor > 5) {
+            factor = 5;
+        }
+        const domReady = globalStore.get(this.domReady);
+        if (!domReady) {
+            return;
+        }
+        this.webviewRef.current?.setZoomFactor(factor || 1);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "web:zoom": factor }, // allow null so we can remove the zoom factor here
+        });
+    }
+
     getSettingsMenuItems(): ContextMenuItem[] {
+        const zoomSubMenu: ContextMenuItem[] = [];
+        let curZoom = 1;
+        if (globalStore.get(this.domReady)) {
+            curZoom = this.webviewRef.current?.getZoomFactor() || 1;
+        }
+        const model = this; // for the closure to work (this is getting unset)
+        function makeZoomFactorMenuItem(label: string, factor: number): ContextMenuItem {
+            return {
+                label: label,
+                type: "checkbox",
+                click: () => {
+                    model.setZoomFactor(factor);
+                },
+                checked: curZoom == factor,
+            };
+        }
+        zoomSubMenu.push({
+            label: "Reset",
+            click: () => {
+                model.setZoomFactor(null);
+            },
+        });
+        zoomSubMenu.push(makeZoomFactorMenuItem("25%", 0.25));
+        zoomSubMenu.push(makeZoomFactorMenuItem("50%", 0.5));
+        zoomSubMenu.push(makeZoomFactorMenuItem("70%", 0.7));
+        zoomSubMenu.push(makeZoomFactorMenuItem("80%", 0.8));
+        zoomSubMenu.push(makeZoomFactorMenuItem("90%", 0.9));
+        zoomSubMenu.push(makeZoomFactorMenuItem("100%", 1));
+        zoomSubMenu.push(makeZoomFactorMenuItem("110%", 1.1));
+        zoomSubMenu.push(makeZoomFactorMenuItem("120%", 1.2));
+        zoomSubMenu.push(makeZoomFactorMenuItem("130%", 1.3));
+        zoomSubMenu.push(makeZoomFactorMenuItem("150%", 1.5));
+        zoomSubMenu.push(makeZoomFactorMenuItem("175%", 1.75));
+        zoomSubMenu.push(makeZoomFactorMenuItem("200%", 2));
+
         return [
             {
                 label: "Set Block Homepage",
@@ -440,6 +495,10 @@ export class WebViewModel implements ViewModel {
             },
             {
                 type: "separator",
+            },
+            {
+                label: "Set Zoom Factor",
+                submenu: zoomSubMenu,
             },
             {
                 label: this.webviewRef.current?.isDevToolsOpened() ? "Close DevTools" : "Open DevTools",
@@ -476,12 +535,13 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     let metaUrl = blockData?.meta?.url || defaultUrl;
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     const metaUrlRef = useRef(metaUrl);
+    const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(metaUrl);
 
     const [webContentsId, setWebContentsId] = useState(null);
-    const [domReady, setDomReady] = useState(false);
+    const domReady = useAtomValue(model.domReady);
 
     const [errorText, setErrorText] = useState("");
 
@@ -510,13 +570,27 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     }
 
     useEffect(() => {
-        if (model.webviewRef.current && domReady) {
+        return () => {
+            globalStore.set(model.domReady, false);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (model.webviewRef.current == null || !domReady) {
+            return;
+        }
+        try {
             const wcId = model.webviewRef.current.getWebContentsId?.();
             if (wcId) {
                 setWebContentsId(wcId);
+                if (model.webviewRef.current.getZoomFactor() != zoomFactor) {
+                    model.webviewRef.current.setZoomFactor(zoomFactor);
+                }
             }
+        } catch (e) {
+            console.error("Failed to get webcontentsid / setzoomlevel (webview)", e);
         }
-    }, [model.webviewRef.current, domReady]);
+    }, [model.webviewRef.current, domReady, zoomFactor]);
 
     // Load a new URL if the block metadata is updated.
     useEffect(() => {
@@ -560,7 +634,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                 console.error(errorMessage);
                 setErrorText(errorMessage);
                 if (onFailLoad) {
-                    const curUrl = model.webviewRef?.current.getURL();
+                    const curUrl = model.webviewRef.current.getURL();
                     onFailLoad(curUrl);
                 }
             }
@@ -573,7 +647,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             getApi().setWebviewFocus(null);
         };
         const handleDomReady = () => {
-            setDomReady(true);
+            globalStore.set(model.domReady, true);
             setBgColor();
         };
         const handleMediaPlaying = () => {
