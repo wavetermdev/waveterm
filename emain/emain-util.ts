@@ -166,3 +166,24 @@ export function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rec
     }
     return bounds;
 }
+
+export function waveKeyToElectronKey(waveKey: string): string {
+    const waveParts = waveKey.split(":");
+    const electronParts: Array<string> = waveParts.map((part: string) => {
+        if (part == "ArrowUp") {
+            return "Up";
+        }
+        if (part == "ArrowDown") {
+            return "Down";
+        }
+        if (part == "ArrowLeft") {
+            return "Left";
+        }
+        if (part == "ArrowRight") {
+            return "Right";
+        }
+
+        return part;
+    });
+    return electronParts.join("+");
+}

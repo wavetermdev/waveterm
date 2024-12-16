@@ -38,6 +38,7 @@ import {
     getWaveWindowById,
     getWaveWindowByWebContentsId,
     getWaveWindowByWorkspaceId,
+    registerGlobalHotkey,
     relaunchBrowserWindows,
     WaveBrowserWindow,
 } from "./emain-window";
@@ -610,6 +611,10 @@ async function appMain() {
             fireAndForget(createNewWaveWindow);
         }
     });
+    const rawGlobalHotKey = launchSettings?.["key:globalhotkey"];
+    if (rawGlobalHotKey) {
+        registerGlobalHotkey(rawGlobalHotKey);
+    }
 }
 
 appMain().catch((e) => {
