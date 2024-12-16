@@ -1,6 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { getWebServerEndpoint } from "@/util/endpoints";
+import { isBlank, makeConnRoute } from "@/util/util";
+
 export type MarkdownContentBlockType = {
     type: string;
     id: string;
@@ -147,3 +152,27 @@ export function transformBlocks(content: string): { content: string; blocks: Map
         blocks: blocks,
     };
 }
+
+export const resolveRemoteFile = async (filepath: string, resolveOpts: MarkdownResolveOpts): Promise<string | null> => {
+    if (!filepath || filepath.startsWith("http://") || filepath.startsWith("https://")) {
+        return filepath;
+    }
+
+    try {
+        const route = makeConnRoute(resolveOpts.connName);
+        const fileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [resolveOpts.baseDir, filepath], {
+            route: route,
+        });
+
+        const usp = new URLSearchParams();
+        usp.set("path", fileInfo.path);
+        if (!isBlank(resolveOpts.connName)) {
+            usp.set("connection", resolveOpts.connName);
+        }
+
+        return getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
+    } catch (err) {
+        console.warn("Failed to resolve remote file:", filepath, err);
+        return null;
+    }
+};

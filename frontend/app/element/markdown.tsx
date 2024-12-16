@@ -3,11 +3,8 @@
 
 import { CopyButton } from "@/app/element/copybutton";
 import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
-import { MarkdownContentBlockType, transformBlocks } from "@/app/element/markdown-util";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { getWebServerEndpoint } from "@/util/endpoints";
-import { isBlank, makeConnRoute, useAtomValueSafe } from "@/util/util";
+import { MarkdownContentBlockType, resolveRemoteFile, transformBlocks } from "@/app/element/markdown-util";
+import { useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
@@ -108,8 +105,39 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
     );
 };
 
-const MarkdownSource = (props: React.HTMLAttributes<HTMLSourceElement>) => {
-    return null;
+const MarkdownSource = ({
+    props,
+    resolveOpts,
+}: {
+    props: React.HTMLAttributes<HTMLSourceElement> & {
+        srcSet?: string;
+        media?: string;
+    };
+    resolveOpts: MarkdownResolveOpts;
+}) => {
+    const [resolvedSrcSet, setResolvedSrcSet] = useState<string>(props.srcSet);
+    const [resolving, setResolving] = useState<boolean>(true);
+
+    useEffect(() => {
+        if (!props.srcSet) {
+            setResolving(false);
+            return;
+        }
+
+        const resolvePath = async () => {
+            const resolvedUrl = await resolveRemoteFile(props.srcSet, resolveOpts);
+            setResolvedSrcSet(resolvedUrl);
+            setResolving(false);
+        };
+
+        resolvePath();
+    }, [props.srcSet]);
+
+    if (resolving) {
+        return null;
+    }
+
+    return <source srcSet={resolvedSrcSet} media={props.media} />;
 };
 
 interface WaveBlockProps {
@@ -152,12 +180,6 @@ const MarkdownImg = ({
     const [resolving, setResolving] = useState<boolean>(true);
 
     useEffect(() => {
-        if (props.src.startsWith("http://") || props.src.startsWith("https://")) {
-            setResolving(false);
-            setResolvedSrc(props.src);
-            setResolvedStr(null);
-            return;
-        }
         if (props.src.startsWith("data:image/")) {
             setResolving(false);
             setResolvedSrc(props.src);
@@ -170,17 +192,9 @@ const MarkdownImg = ({
             setResolvedStr(`[img:${props.src}]`);
             return;
         }
+
         const resolveFn = async () => {
-            const route = makeConnRoute(resolveOpts.connName);
-            const fileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [resolveOpts.baseDir, props.src], {
-                route: route,
-            });
-            const usp = new URLSearchParams();
-            usp.set("path", fileInfo.path);
-            if (!isBlank(resolveOpts.connName)) {
-                usp.set("connection", resolveOpts.connName);
-            }
-            const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
+            const streamingUrl = await resolveRemoteFile(props.src, resolveOpts);
             setResolvedSrc(streamingUrl);
             setResolvedStr(null);
             setResolving(false);
@@ -266,7 +280,9 @@ const Markdown = ({
         h5: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={5} />,
         h6: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={6} />,
         img: (props: React.HTMLAttributes<HTMLImageElement>) => <MarkdownImg props={props} resolveOpts={resolveOpts} />,
-        source: (props: React.HTMLAttributes<HTMLSourceElement>) => <MarkdownSource {...props} />,
+        source: (props: React.HTMLAttributes<HTMLSourceElement>) => (
+            <MarkdownSource props={props} resolveOpts={resolveOpts} />
+        ),
         code: Code,
         pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
             <CodeBlock children={props.children} onClickExecute={onClickExecute} />
@@ -305,12 +321,15 @@ const Markdown = ({
                             ...(defaultSchema.attributes?.span || []),
                             // Allow all class names starting with `hljs-`.
                             ["className", /^hljs-./],
+                            ["srcset"],
+                            ["media"],
+                            ["type"],
                             // Alternatively, to allow only certain class names:
                             // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
                         ],
                         waveblock: [["blockkey"]],
                     },
-                    tagNames: [...(defaultSchema.tagNames || []), "span", "waveblock"],
+                    tagNames: [...(defaultSchema.tagNames || []), "span", "waveblock", "picture", "source"],
                 }),
             () => rehypeSlug({ prefix: idPrefix }),
         ];
