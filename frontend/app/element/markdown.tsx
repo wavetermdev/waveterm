@@ -3,12 +3,16 @@
 
 import { CopyButton } from "@/app/element/copybutton";
 import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
-import { MarkdownContentBlockType, resolveRemoteFile, transformBlocks } from "@/app/element/markdown-util";
+import {
+    MarkdownContentBlockType,
+    resolveRemoteFile,
+    resolveSrcSet,
+    transformBlocks,
+} from "@/app/element/markdown-util";
 import { useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import parseSrcSet from "parse-srcset";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -120,38 +124,9 @@ const MarkdownSource = ({
     const [resolving, setResolving] = useState<boolean>(true);
 
     useEffect(() => {
-        if (!props.srcSet) {
-            setResolving(false);
-            return;
-        }
-
         const resolvePath = async () => {
-            // Parse the srcset
-            const candidates = parseSrcSet(props.srcSet);
-
-            // Resolve each URL in the array of candidates
-            const resolvedCandidates = await Promise.all(
-                candidates.map(async (candidate) => {
-                    const resolvedUrl = await resolveRemoteFile(candidate.url, resolveOpts);
-                    return {
-                        ...candidate,
-                        url: resolvedUrl,
-                    };
-                })
-            );
-
-            // Reconstruct the srcset string
-            const resolvedSrcSetString = resolvedCandidates
-                .map((candidate) => {
-                    let part = candidate.url;
-                    if (candidate.w) part += ` ${candidate.w}w`;
-                    if (candidate.h) part += ` ${candidate.h}h`;
-                    if (candidate.d) part += ` ${candidate.d}x`;
-                    return part;
-                })
-                .join(", ");
-
-            setResolvedSrcSet(resolvedSrcSetString);
+            const resolved = await resolveSrcSet(props.srcSet, resolveOpts);
+            setResolvedSrcSet(resolved);
             setResolving(false);
         };
 
@@ -201,6 +176,7 @@ const MarkdownImg = ({
     resolveOpts: MarkdownResolveOpts;
 }) => {
     const [resolvedSrc, setResolvedSrc] = useState<string>(props.src);
+    const [resolvedSrcSet, setResolvedSrcSet] = useState<string>(props.srcSet);
     const [resolvedStr, setResolvedStr] = useState<string>(null);
     const [resolving, setResolving] = useState<boolean>(true);
 
@@ -219,13 +195,18 @@ const MarkdownImg = ({
         }
 
         const resolveFn = async () => {
-            const streamingUrl = await resolveRemoteFile(props.src, resolveOpts);
-            setResolvedSrc(streamingUrl);
+            const [resolvedSrc, resolvedSrcSet] = await Promise.all([
+                resolveRemoteFile(props.src, resolveOpts),
+                resolveSrcSet(props.srcSet, resolveOpts),
+            ]);
+
+            setResolvedSrc(resolvedSrc);
+            setResolvedSrcSet(resolvedSrcSet);
             setResolvedStr(null);
             setResolving(false);
         };
         resolveFn();
-    }, [props.src]);
+    }, [props.src, props.srcSet]);
 
     if (resolving) {
         return null;
@@ -234,7 +215,7 @@ const MarkdownImg = ({
         return <span>{resolvedStr}</span>;
     }
     if (resolvedSrc != null) {
-        return <img {...props} src={resolvedSrc} />;
+        return <img {...props} src={resolvedSrc} srcSet={resolvedSrcSet} />;
     }
     return <span>[img]</span>;
 };

@@ -5,6 +5,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { isBlank, makeConnRoute } from "@/util/util";
+import parseSrcSet from "parse-srcset";
 
 export type MarkdownContentBlockType = {
     type: string;
@@ -175,4 +176,33 @@ export const resolveRemoteFile = async (filepath: string, resolveOpts: MarkdownR
         console.warn("Failed to resolve remote file:", filepath, err);
         return null;
     }
+};
+
+export const resolveSrcSet = async (srcSet: string, resolveOpts: MarkdownResolveOpts): Promise<string> => {
+    if (!srcSet) return null;
+
+    // Parse the srcset
+    const candidates = parseSrcSet(srcSet);
+
+    // Resolve each URL in the array of candidates
+    const resolvedCandidates = await Promise.all(
+        candidates.map(async (candidate) => {
+            const resolvedUrl = await resolveRemoteFile(candidate.url, resolveOpts);
+            return {
+                ...candidate,
+                url: resolvedUrl,
+            };
+        })
+    );
+
+    // Reconstruct the srcset string
+    return resolvedCandidates
+        .map((candidate) => {
+            let part = candidate.url;
+            if (candidate.w) part += ` ${candidate.w}w`;
+            if (candidate.h) part += ` ${candidate.h}h`;
+            if (candidate.d) part += ` ${candidate.d}x`;
+            return part;
+        })
+        .join(", ");
 };
