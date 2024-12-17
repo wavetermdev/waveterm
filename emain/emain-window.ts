@@ -3,7 +3,7 @@
 
 import { ClientService, FileService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
 import { fireAndForget } from "@/util/util";
-import { BaseWindow, BaseWindowConstructorOptions, dialog, ipcMain, screen } from "electron";
+import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
 import path from "path";
 import { debounce } from "throttle-debounce";
 import {
@@ -14,7 +14,7 @@ import {
     setWasInFg,
 } from "./emain-activity";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
-import { delay, ensureBoundsAreVisible } from "./emain-util";
+import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-util";
 import { log } from "./log";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
@@ -764,5 +764,25 @@ export async function relaunchBrowserWindows() {
     for (const win of wins) {
         console.log("show window", win.waveWindowId);
         win.show();
+    }
+}
+
+export function registerGlobalHotkey(rawGlobalHotKey: string) {
+    try {
+        const electronHotKey = waveKeyToElectronKey(rawGlobalHotKey);
+        console.log("registering globalhotkey of ", electronHotKey);
+        globalShortcut.register(electronHotKey, () => {
+            const selectedWindow = focusedWaveWindow;
+            const firstWaveWindow = getAllWaveWindows()[0];
+            if (focusedWaveWindow) {
+                selectedWindow.focus();
+            } else if (firstWaveWindow) {
+                firstWaveWindow.focus();
+            } else {
+                fireAndForget(createNewWaveWindow);
+            }
+        });
+    } catch (e) {
+        console.log("error registering global hotkey: ", e);
     }
 }
