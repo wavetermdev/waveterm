@@ -548,10 +548,10 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 				csErr = conn.StartConnServer()
 				if csErr != nil {
 					log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
-					log.Print("attempting to run with nowsh instead")
 				}
 			}
 			if dsErr != nil || csErr != nil {
+				log.Print("attempting to run with nowsh instead")
 				conn.WithLock(func() {
 					conn.WshError = csErr.Error()
 				})
