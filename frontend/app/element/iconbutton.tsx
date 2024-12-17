@@ -16,7 +16,7 @@ export const IconButton = memo(
         return (
             <button
                 ref={ref}
-                className={clsx("iconbutton", className, decl.className, {
+                className={clsx("wave-iconbutton", className, decl.className, {
                     disabled: decl.disabled,
                     "no-action": decl.noAction,
                 })}
