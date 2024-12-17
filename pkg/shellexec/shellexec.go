@@ -167,9 +167,6 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	homeDir := wsl.GetHomeDir(conn.Context, client)
 	shellOpts = append(shellOpts, "~", "-d", client.Name())
 
-	if isZshShell(shellPath) {
-		shellOpts = append(shellOpts, fmt.Sprintf(`ZDOTDIR="%s/.waveterm/%s"`, homeDir, shellutil.ZshIntegrationDir))
-	}
 	var subShellOpts []string
 
 	if cmdStr == "" {
@@ -215,6 +212,10 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		shellOpts = append(shellOpts, "--", fmt.Sprintf(`$env:%s=%s;`, wshutil.WaveJwtTokenVarName, jwtToken))
 	} else {
 		shellOpts = append(shellOpts, "--", fmt.Sprintf(`%s=%s`, wshutil.WaveJwtTokenVarName, jwtToken))
+	}
+
+	if isZshShell(shellPath) {
+		shellOpts = append(shellOpts, fmt.Sprintf(`ZDOTDIR="%s/.waveterm/%s"`, homeDir, shellutil.ZshIntegrationDir))
 	}
 	shellOpts = append(shellOpts, shellPath)
 	shellOpts = append(shellOpts, subShellOpts...)
