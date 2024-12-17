@@ -629,6 +629,7 @@ declare global {
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
+        "editor:fontsize"?: number;
         "web:*"?: boolean;
         "web:openlinksinternally"?: boolean;
         "web:defaulturl"?: string;

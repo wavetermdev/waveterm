@@ -55,9 +55,10 @@ type SettingsType struct {
 	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
 	TermCopyOnSelect   *bool    `json:"term:copyonselect,omitempty"`
 
-	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
-	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
-	EditorWordWrap            bool `json:"editor:wordwrap,omitempty"`
+	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
+	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
+	EditorWordWrap            bool    `json:"editor:wordwrap,omitempty"`
+	EditorFontSize            float64 `json:"editor:fontsize,omitempty"`
 
 	WebClear               bool   `json:"web:*,omitempty"`
 	WebOpenLinksInternally bool   `json:"web:openlinksinternally,omitempty"`

@@ -31,6 +31,7 @@ const (
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
 	ConfigKey_EditorWordWrap                 = "editor:wordwrap"
+	ConfigKey_EditorFontSize                 = "editor:fontsize"
 
 	ConfigKey_WebClear                       = "web:*"
 	ConfigKey_WebOpenLinksInternally         = "web:openlinksinternally"
