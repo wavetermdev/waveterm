@@ -122,6 +122,7 @@ export function CodeEditor({ blockId, text, language, filename, meta, onChange, 
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
     const stickyScrollEnabled = useOverrideConfigAtom(blockId, "editor:stickyscrollenabled") ?? false;
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
+    const fontSize = useOverrideConfigAtom(blockId, "editor:fontsize");
     const theme = "wave-theme-dark";
 
     React.useEffect(() => {
@@ -150,8 +151,9 @@ export function CodeEditor({ blockId, text, language, filename, meta, onChange, 
         opts.minimap.enabled = minimapEnabled;
         opts.stickyScroll.enabled = stickyScrollEnabled;
         opts.wordWrap = wordWrap ? "on" : "off";
+        opts.fontSize = fontSize;
         return opts;
-    }, [minimapEnabled, stickyScrollEnabled, wordWrap]);
+    }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize]);
 
     return (
         <div className="code-editor-wrapper">
