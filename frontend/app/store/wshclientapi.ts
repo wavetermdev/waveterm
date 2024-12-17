@@ -202,6 +202,11 @@ class RpcApiType {
         return client.wshRpcCall("notify", data, opts);
     }
 
+    // command "path" [call]
+    PathCommand(client: WshClient, data: PathCommandData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("path", data, opts);
+    }
+
     // command "remotefiledelete" [call]
     RemoteFileDeleteCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefiledelete", data, opts);
