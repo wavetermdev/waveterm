@@ -569,7 +569,7 @@ const ChatWindow = memo(
 
 interface ChatInputProps {
     value: string;
-    termFontSize: number;
+    baseFontSize: number;
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
@@ -577,7 +577,7 @@ interface ChatInputProps {
 }
 
 const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
-    ({ value, onChange, onKeyDown, onMouseDown, termFontSize, model }, ref) => {
+    ({ value, onChange, onKeyDown, onMouseDown, baseFontSize, model }, ref) => {
         const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
         useImperativeHandle(ref, () => textAreaRef.current as HTMLTextAreaElement);
@@ -594,7 +594,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
 
                 // Adjust the height of the textarea to fit the text
                 const textAreaMaxLines = 5;
-                const textAreaLineHeight = termFontSize * 1.5;
+                const textAreaLineHeight = baseFontSize * 1.5;
                 const textAreaMinHeight = textAreaLineHeight;
                 const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
 
@@ -608,7 +608,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
                 const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
                 textAreaRef.current.style.height = newHeight + "px";
             },
-            [termFontSize]
+            [baseFontSize]
         );
 
         useEffect(() => {
@@ -624,7 +624,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
                 onMouseDown={onMouseDown} // When the user clicks on the textarea
                 onChange={onChange}
                 onKeyDown={onKeyDown}
-                style={{ fontSize: termFontSize }}
+                style={{ fontSize: baseFontSize }}
                 placeholder="Ask anything..."
                 value={value}
             ></textarea>
@@ -642,7 +642,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const [value, setValue] = useState("");
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
 
-    const termFontSize: number = 14;
+    const baseFontSize: number = 14;
     const msgWidths = {};
     const locked = useAtomValue(model.locked);
 
@@ -815,7 +815,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
                         onChange={handleTextAreaChange}
                         onKeyDown={handleTextAreaKeyDown}
                         onMouseDown={handleTextAreaMouseDown}
-                        termFontSize={termFontSize}
+                        baseFontSize={baseFontSize}
                     />
                 </div>
                 <Button className={buttonClass} onClick={handleButtonPress}>

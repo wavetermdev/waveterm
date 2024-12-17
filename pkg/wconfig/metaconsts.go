@@ -46,6 +46,9 @@ const (
 	ConfigKey_AutoUpdateInstallOnQuit        = "autoupdate:installonquit"
 	ConfigKey_AutoUpdateChannel              = "autoupdate:channel"
 
+	ConfigKey_MarkdownFontSize               = "markdown:fontsize"
+	ConfigKey_MarkdownFixedFontSize          = "markdown:fixedfontsize"
+
 	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
 
 	ConfigKey_TabPreset                      = "tab:preset"

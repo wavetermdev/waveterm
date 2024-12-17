@@ -73,6 +73,9 @@ type SettingsType struct {
 	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
 	AutoUpdateChannel       string  `json:"autoupdate:channel,omitempty"`
 
+	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
+	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
+
 	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
 
 	TabPreset string `json:"tab:preset,omitempty"`

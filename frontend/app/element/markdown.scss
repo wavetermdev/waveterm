@@ -16,21 +16,66 @@
         overflow: scroll;
         line-height: 1.5;
         color: var(--main-text-color);
-        font-family: var(--markdown-font);
-        font-size: 14px;
+        font-family: var(--markdown-font-family);
+        font-size: var(--markdown-font-size);
         overflow-wrap: break-word;
 
         &.non-scrollable {
             overflow: hidden;
         }
 
+        .heading:not(.heading ~ .heading) {
+            margin-top: 0 !important;
+        }
+
         .heading {
-            &:first-of-type {
-                margin-top: 0 !important;
-            }
             color: var(--main-text-color);
-            margin-top: 16px;
-            margin-bottom: 8px;
+            margin-top: 1.143em;
+            margin-bottom: 0.571em;
+            font-weight: semibold;
+            padding-top: 0.429em;
+
+            &.is-1 {
+                border-bottom: 1px solid var(--border-color);
+                padding-bottom: 0.429em;
+                font-size: 2em;
+            }
+            &.is-2 {
+                border-bottom: 1px solid var(--border-color);
+                padding-bottom: 0.429em;
+                font-size: 1.5em;
+            }
+            &.is-3 {
+                font-size: 1.25em;
+            }
+            &.is-4 {
+                font-size: 1em;
+            }
+            &.is-5 {
+                font-size: 0.875em;
+            }
+            &.is-6 {
+                font-size: 0.85em;
+            }
+        }
+
+        .paragraph {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        img {
+            border-style: none;
+            max-width: 100%;
+            box-sizing: content-box;
+
+            &[align="right"] {
+                padding-left: 20px;
+            }
+
+            &[align="left"] {
+                padding-right: 20px;
+            }
         }
 
         strong {
@@ -44,24 +89,24 @@
         ul {
             list-style-type: disc;
             list-style-position: outside;
-            margin-left: 16px;
+            margin-left: 1.143em;
         }
 
         ol {
             list-style-position: outside;
-            margin-left: 19px;
+            margin-left: 1.357em;
         }
 
         blockquote {
-            margin: 4px 10px 4px 10px;
-            border-radius: 3px;
+            margin: 0.286em 0.714em;
+            border-radius: 4px;
             background-color: var(--panel-bg-color);
-            padding: 2px 4px 2px 6px;
+            padding: 0.143em 0.286em 0.143em 0.429em;
         }
 
         pre.codeblock {
             background-color: var(--panel-bg-color);
-            margin: 4px 10px;
+            margin: 0.286em 0.714em;
             padding: 0.4em 0.7em;
             border-radius: 4px;
             position: relative;
@@ -83,11 +128,11 @@
                 right: 0;
                 border-radius: 4px;
                 backdrop-filter: blur(8px);
-                margin: 2px 2px;
-                padding: 4px 4px;
+                margin: 0.143em;
+                padding: 0.286em;
                 align-items: center;
                 justify-content: flex-end;
-                gap: 4px;
+                gap: 0.286em;
             }
 
             &:hover .codeblock-actions {
@@ -98,6 +143,7 @@
         code {
             color: var(--main-text-color);
             font: var(--fixed-font);
+            font-size: var(--markdown-fixed-font-size);
             border-radius: 4px;
         }
 
@@ -105,41 +151,13 @@
             outline: 2px solid var(--accent-color);
         }
 
-        .heading {
-            font-weight: semibold;
-            padding-top: 6px;
-        }
-
-        .heading.is-1 {
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 6px;
-            font-size: 2em;
-        }
-        .heading.is-2 {
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 6px;
-            font-size: 1.5em;
-        }
-        .heading.is-3 {
-            font-size: 1.25em;
-        }
-        .heading.is-4 {
-            font-size: 1em;
-        }
-        .heading.is-5 {
-            font-size: 0.875em;
-        }
-        .heading.is-6 {
-            font-size: 0.85em;
-        }
-
         .waveblock {
-            margin: 16px 0;
+            margin: 1.143em 0;
 
             .wave-block-content {
                 display: flex;
                 align-items: center;
-                padding: 12px;
+                padding: 0.857em;
                 background-color: var(--highlight-bg-color);
                 border: 1px solid var(--border-color);
                 border-radius: 8px;
@@ -150,15 +168,15 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                width: 40px;
-                height: 40px;
+                width: 2.857em;
+                height: 2.857em;
                 background-color: black;
                 border-radius: 8px;
-                margin-right: 12px;
+                margin-right: 0.857em;
             }
 
             .wave-block-icon i {
-                font-size: 18px;
+                font-size: 1.125em;
                 color: var(--secondary-text-color);
             }
 
@@ -168,19 +186,18 @@
             }
 
             .wave-block-filename {
-                font-size: 14px;
+                font-size: 1em;
                 font-weight: 500;
                 color: var(--main-text-color);
             }
 
             .wave-block-size {
-                font-size: 12px;
+                font-size: 0.857em;
                 color: var(--secondary-text-color);
             }
         }
     }
 
-    // The TOC view should scroll independently of the contents view.
     .toc {
         max-width: 40%;
         height: 100%;
@@ -192,21 +209,20 @@
             top: 0;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 0.357em;
             text-wrap: wrap;
 
             h4 {
-                padding-left: 5px;
+                padding-left: 0.357em;
             }
 
             .toc-item {
                 cursor: pointer;
                 --indent-factor: 1;
-
-                // The 5px offset in the padding will ensure that when the text in the item wraps, it indents slightly.
+                // The offset in the padding will ensure that when the text in the item wraps, it indents slightly.
                 // The indent factor is set in the React code and denotes the depth of the item in the TOC tree.
-                padding-left: calc((var(--indent-factor) - 1) * 10px + 5px);
-                text-indent: -5px;
+                padding-left: calc((var(--indent-factor) - 1) * 0.714em + 0.357em);
+                text-indent: -0.357em;
             }
         }
     }
