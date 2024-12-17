@@ -616,6 +616,8 @@ declare global {
 
     // wconfig.SettingsType
     type SettingsType = {
+        "app:*"?: boolean;
+        "app:globalhotkey"?: string;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -674,8 +676,6 @@ declare global {
         "window:magnifiedblocksize"?: number;
         "window:magnifiedblockblurprimarypx"?: number;
         "window:magnifiedblockblursecondarypx"?: number;
-        "key:*"?: boolean;
-        "key:globalhotkey"?: string;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;

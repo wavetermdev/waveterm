@@ -25,6 +25,7 @@ wsh editconfig
 
 | Key Name                             | Type     | Function                                                                                                                                                                                                                                                      |
 | ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| app:globalhotkey                     | string   | A systemwide keybinding to open your most recent wave window. This is a set of key names separated by `:`. For more info, see [Customizable Systemwide Global Hotkey](#customizable-systemwide-global-hotkey)                                                 |
 | ai:preset                            | string   | the default AI preset to use                                                                                                                                                                                                                                  |
 | ai:baseurl                           | string   | Set the AI Base Url (must be OpenAI compatible)                                                                                                                                                                                                               |
 | ai:apitoken                          | string   | your AI api token                                                                                                                                                                                                                                             |
@@ -190,3 +191,44 @@ wsh editconfig termthemes.json
 | background          | CSS color |          |          | background color (default when no color code is applied), must have alpha channel (#rrggbbaa) if you want the terminal to be transparent |
 | cursorAccent        | CSS color |          |          | color for cursor                                                                                                                         |
 | selectionBackground | CSS color |          |          | background color for selected text                                                                                                       |
+
+### Customizable Systemwide Global Hotkey
+
+Wave allows settings a custom global hotkey to open your most recent window from anywhere in your computer. This has the name `"app:globalhotkey"` in the `settings.json` file and takes the form of a series of key names separated by the `:` character. We support the following key names:
+
+- `Ctrl`
+- `Cmd`
+- `Shift`
+- `Alt`
+- `Option`
+- `Meta`
+- `Super`
+- Digits (non-numpad) represented by `c{Digit0}` through `c{Digit9}`
+- Letters `a` though `z`
+- F keys `F1` through `F20`
+- Soft keys `Soft1` through `Soft4`. These are essentially the same as `F21` through `F24`.
+- Space represented as a literal space &nbsp;<code>&nbsp;</code>
+- `Enter` (This is labeled as return on Mac)
+- `Tab`
+- `CapsLock`
+- `NumLock`
+- `Backspace` (This is labeled as delete on Mac)
+- `Delete`
+- `Insert`
+- The arrow keys `ArrowUp`, `ArrowDown`, `ArrowLeft`, and `ArrowRight`
+- `Home`
+- `End`
+- `PageUp`
+- `PageDown`
+- `Esc`
+- Volume controls `AudioVolumeUp`, `AudioVolumeDown`, `AudioVolumeMute`
+- Media controls `MediaTrackNext`, `MediaTrackPrevious`, `MediaPlayPause`, and `MediaStop`
+- `PrintScreen`
+- Numpad keys represented by `c{Numpad0}` through `c{Numpad9}`
+- The numpad decimal represented by `Decimal`
+- The numpad plus/add represented by `Add`
+- The numpad minus/subtract represented by `Subtract`
+- The numpad star/multiply represented by `Multiply`
+- The numpad slash/divide represented by `Divide`
+
+As an example, to set the key to the combination of Control, Option, and the letter E, you would configure it to `"Ctrl:Opt:e"`.

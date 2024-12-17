@@ -6,6 +6,9 @@
 package wconfig
 
 const (
+	ConfigKey_AppClear                       = "app:*"
+	ConfigKey_AppGlobalHotkey                = "app:globalhotkey"
+
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
 	ConfigKey_AiApiType                      = "ai:apitype"
@@ -74,9 +77,6 @@ const (
 	ConfigKey_WindowMagnifiedBlockSize       = "window:magnifiedblocksize"
 	ConfigKey_WindowMagnifiedBlockBlurPrimaryPx = "window:magnifiedblockblurprimarypx"
 	ConfigKey_WindowMagnifiedBlockBlurSecondaryPx = "window:magnifiedblockblursecondarypx"
-
-	ConfigKey_KeyClear                       = "key:*"
-	ConfigKey_KeyGlobalHotkey                = "key:globalhotkey"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
