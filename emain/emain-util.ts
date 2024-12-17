@@ -170,8 +170,8 @@ export function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rec
 export function waveKeyToElectronKey(waveKey: string): string {
     const waveParts = waveKey.split(":");
     const electronParts: Array<string> = waveParts.map((part: string) => {
-        const digitRegexpMatch = new RegExp("^c\{Digit(\d)\}$").exec(part);
-        const numpadRegexpMatch = new RegExp("^c\{Numpad(\d)\}$").exec(part);
+        const digitRegexpMatch = new RegExp("^c{Digit([0-9])}$").exec(part);
+        const numpadRegexpMatch = new RegExp("^c{Numpad([0-9])}$").exec(part);
         const lowercaseCharMatch = new RegExp("^([a-z])$").exec(part);
         if (part == "ArrowUp") {
             return "Up";
@@ -239,14 +239,15 @@ export function waveKeyToElectronKey(waveKey: string): string {
         if (part == "Divide") {
             return "numdiv";
         }
-        if (digitRegexpMatch && digitRegexpMatch.length > 0) {
-            return digitRegexpMatch[0];
+        if (digitRegexpMatch && digitRegexpMatch.length > 1) {
+            console.log("digit match is ", digitRegexpMatch);
+            return digitRegexpMatch[1];
         }
-        if (numpadRegexpMatch && numpadRegexpMatch.length > 0) {
-            return `num${numpadRegexpMatch[0]}`;
+        if (numpadRegexpMatch && numpadRegexpMatch.length > 1) {
+            return `num${numpadRegexpMatch[1]}`;
         }
-        if (lowercaseCharMatch && lowercaseCharMatch.length > 0) {
-            return lowercaseCharMatch[0].toUpperCase();
+        if (lowercaseCharMatch && lowercaseCharMatch.length > 1) {
+            return lowercaseCharMatch[1].toUpperCase();
         }
 
         return part;
