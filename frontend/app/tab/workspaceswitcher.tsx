@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/element/button";
 import {
     ExpandableMenu,
     ExpandableMenuItem,
@@ -10,138 +9,21 @@ import {
     ExpandableMenuItemLeftElement,
     ExpandableMenuItemRightElement,
 } from "@/element/expandablemenu";
-import { Input } from "@/element/input";
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
 import { fireAndForget, makeIconClass, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { CSSProperties, forwardRef, memo, useCallback, useEffect, useRef, useState } from "react";
+import { CSSProperties, forwardRef, useCallback, useEffect } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
 import { atoms, getApi } from "../store/global";
 import { WorkspaceService } from "../store/services";
-import { getObjectValue, makeORef, setObjectValue } from "../store/wos";
+import { getObjectValue, makeORef } from "../store/wos";
+import { waveEventSubscribe } from "../store/wps";
+import { WorkspaceEditor } from "./workspaceeditor";
 import "./workspaceswitcher.scss";
-
-interface ColorSelectorProps {
-    colors: string[];
-    selectedColor?: string;
-    onSelect: (color: string) => void;
-    className?: string;
-}
-
-const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: ColorSelectorProps) => {
-    const handleColorClick = (color: string) => {
-        onSelect(color);
-    };
-
-    return (
-        <div className={clsx("color-selector", className)}>
-            {colors.map((color) => (
-                <div
-                    key={color}
-                    className={clsx("color-circle", { selected: selectedColor === color })}
-                    style={{ backgroundColor: color }}
-                    onClick={() => handleColorClick(color)}
-                />
-            ))}
-        </div>
-    );
-});
-
-interface IconSelectorProps {
-    icons: string[];
-    selectedIcon?: string;
-    onSelect: (icon: string) => void;
-    className?: string;
-}
-
-const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSelectorProps) => {
-    const handleIconClick = (icon: string) => {
-        onSelect(icon);
-    };
-
-    return (
-        <div className={clsx("icon-selector", className)}>
-            {icons.map((icon) => {
-                const iconClass = makeIconClass(icon, true);
-                return (
-                    <i
-                        key={icon}
-                        className={clsx(iconClass, "icon-item", { selected: selectedIcon === icon })}
-                        onClick={() => handleIconClick(icon)}
-                    />
-                );
-            })}
-        </div>
-    );
-});
-
-interface WorkspaceEditorProps {
-    title: string;
-    icon: string;
-    color: string;
-    focusInput: boolean;
-    onTitleChange: (newTitle: string) => void;
-    onColorChange: (newColor: string) => void;
-    onIconChange: (newIcon: string) => void;
-    onDeleteWorkspace: () => void;
-}
-const WorkspaceEditor = memo(
-    ({
-        title,
-        icon,
-        color,
-        focusInput,
-        onTitleChange,
-        onColorChange,
-        onIconChange,
-        onDeleteWorkspace,
-    }: WorkspaceEditorProps) => {
-        const inputRef = useRef<HTMLInputElement>(null);
-
-        const [colors, setColors] = useState<string[]>([]);
-        const [icons, setIcons] = useState<string[]>([]);
-
-        useEffect(() => {
-            fireAndForget(async () => {
-                const colors = await WorkspaceService.GetColors();
-                const icons = await WorkspaceService.GetIcons();
-                setColors(colors);
-                setIcons(icons);
-            });
-        }, []);
-
-        useEffect(() => {
-            if (focusInput && inputRef.current) {
-                inputRef.current.focus();
-                inputRef.current.select();
-            }
-        }, [focusInput]);
-
-        return (
-            <div className="workspace-editor">
-                <Input
-                    ref={inputRef}
-                    className={clsx("vertical-padding-3", { error: title === "" })}
-                    onChange={onTitleChange}
-                    value={title}
-                    autoFocus
-                    autoSelect
-                />
-                <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
-                <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
-                <div className="delete-ws-btn-wrapper">
-                    <Button className="ghost red font-size-12 bold" onClick={onDeleteWorkspace}>
-                        Delete workspace
-                    </Button>
-                </div>
-            </div>
-        );
-    }
-);
 
 type WorkspaceListEntry = {
     windowId: string;
@@ -175,15 +57,21 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
         setWorkspaceList(newList);
     }, []);
 
+    useEffect(
+        () =>
+            waveEventSubscribe({
+                eventType: "workspace:update",
+                handler: () => fireAndForget(updateWorkspaceList),
+            }),
+        []
+    );
+
     useEffect(() => {
         fireAndForget(updateWorkspaceList);
     }, []);
 
     const onDeleteWorkspace = useCallback((workspaceId: string) => {
         getApi().deleteWorkspace(workspaceId);
-        setTimeout(() => {
-            fireAndForget(updateWorkspaceList);
-        }, 10);
     }, []);
 
     const isActiveWorkspaceSaved = !!(activeWorkspace.name && activeWorkspace.icon);
@@ -266,9 +154,16 @@ const WorkspaceSwitcherItem = ({
 
     const setWorkspace = useCallback((newWorkspace: Workspace) => {
         if (newWorkspace.name != "") {
-            setObjectValue({ ...newWorkspace, otype: "workspace" }, undefined, true);
+            fireAndForget(() =>
+                WorkspaceService.UpdateWorkspace(
+                    workspace.oid,
+                    newWorkspace.name,
+                    newWorkspace.icon,
+                    newWorkspace.color,
+                    false
+                )
+            );
         }
-        setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
     }, []);
 
     const isActive = !!workspaceEntry.windowId;
