@@ -240,7 +240,6 @@ export function waveKeyToElectronKey(waveKey: string): string {
             return "numdiv";
         }
         if (digitRegexpMatch && digitRegexpMatch.length > 1) {
-            console.log("digit match is ", digitRegexpMatch);
             return digitRegexpMatch[1];
         }
         if (numpadRegexpMatch && numpadRegexpMatch.length > 1) {
