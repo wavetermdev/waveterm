@@ -246,7 +246,7 @@ export function waveKeyToElectronKey(waveKey: string): string {
             return `num${numpadRegexpMatch[0]}`;
         }
         if (lowercaseCharMatch && lowercaseCharMatch.length > 0) {
-            return numpadRegexpMatch[0].toUpperCase();
+            return lowercaseCharMatch[0].toUpperCase();
         }
 
         return part;
