@@ -434,7 +434,9 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
     const { user, text } = chatItem;
     const cssVar = "--panel-bg-color";
     const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-
+    const settings = useAtomValue(atoms.settingsAtom);
+    const fontSize = settings?.["ai:fontsize"];
+    const fixedFontSize = settings?.["ai:fixedfontsize"];
     const renderContent = useMemo(() => {
         if (user == "error") {
             return (
@@ -445,7 +447,12 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                         </div>
                     </div>
                     <div className="chat-msg chat-msg-error">
-                        <Markdown text={text} scrollable={false} />
+                        <Markdown
+                            text={text}
+                            scrollable={false}
+                            fontSizeOverride={fontSize}
+                            fixedFontSizeOverride={fixedFontSize}
+                        />
                     </div>
                 </>
             );
@@ -459,7 +466,12 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                         </div>
                     </div>
                     <div className="chat-msg chat-msg-assistant">
-                        <Markdown text={text} scrollable={false} />
+                        <Markdown
+                            text={text}
+                            scrollable={false}
+                            fontSizeOverride={fontSize}
+                            fixedFontSizeOverride={fixedFontSize}
+                        />
                     </div>
                 </>
             ) : (
@@ -474,11 +486,17 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
         return (
             <>
                 <div className="chat-msg chat-msg-user">
-                    <Markdown className="msg-text" text={text} scrollable={false} />
+                    <Markdown
+                        className="msg-text"
+                        text={text}
+                        scrollable={false}
+                        fontSizeOverride={fontSize}
+                        fixedFontSizeOverride={fixedFontSize}
+                    />
                 </div>
             </>
         );
-    }, [text, user]);
+    }, [text, user, fontSize, fixedFontSize]);
 
     return <div className={"chat-msg-container"}>{renderContent}</div>;
 };

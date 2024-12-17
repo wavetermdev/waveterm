@@ -617,6 +617,8 @@ declare global {
         "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
+        "ai:fontsize"?: number;
+        "ai:fixedfontsize"?: number;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
