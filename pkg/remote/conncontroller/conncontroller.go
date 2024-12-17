@@ -543,7 +543,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 			dsErr := conn.OpenDomainSocketListener()
 			var csErr error
 			if dsErr != nil {
-				log.Printf("error: unable to open domain socket listener for %s: %v\n", conn.GetName(), err)
+				log.Printf("error: unable to open domain socket listener for %s: %v\n", conn.GetName(), dsErr)
 			} else {
 				csErr = conn.StartConnServer()
 				if csErr != nil {
