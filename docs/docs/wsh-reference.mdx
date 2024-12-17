@@ -693,4 +693,52 @@ wsh setvar -b client MYVAR=value
 
 Variables set with these commands persist across sessions and can be used to store configuration values, secrets, or any other string data that needs to be accessible across blocks or tabs.
 
+## wavepath
+
+The `wavepath` command lets you get the paths to various Wave Terminal directories and files, including configuration, data storage, and logs.
+
+```bash
+wsh wavepath {config|data|log}
+```
+
+This command returns the full path to the requested Wave Terminal system directory or file. It's useful for accessing Wave's configuration files, data storage, or checking logs.
+
+Flags:
+
+- `-o, --open` - open the path in a new block
+- `-O, --open-external` - open the path in the default external application
+- `-t, --tail` - show the last ~100 lines of the log file (only valid for log path)
+
+Examples:
+
+```bash
+# Get path to config directory
+wsh wavepath config
+
+# Get path to data directory
+wsh wavepath data
+
+# Get path to log file
+wsh wavepath log
+
+# Open log file in a new block
+wsh wavepath -o log
+
+# Open config directory in system file explorer
+wsh wavepath -O config
+
+# View recent log entries
+wsh wavepath -t log
+```
+
+The command will show you the full path to:
+
+- `config` - Where Wave Terminal stores its configuration files
+- `data` - Where Wave Terminal stores its persistent data
+- `log` - The main Wave Terminal log file
+
+:::tip
+Use the `-t` flag with the log path to quickly view recent log entries without having to open the full file. This is particularly useful for troubleshooting.
+:::
+
 </PlatformProvider>

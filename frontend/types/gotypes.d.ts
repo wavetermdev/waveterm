@@ -139,6 +139,7 @@ declare global {
         blockdef: BlockDef;
         rtopts?: RuntimeOpts;
         magnified?: boolean;
+        ephemeral?: boolean;
     };
 
     // wshrpc.CommandCreateSubBlockData
@@ -400,6 +401,7 @@ declare global {
         indexarr?: number[];
         focused: boolean;
         magnified: boolean;
+        ephemeral: boolean;
     };
 
     // waveobj.LayoutState
@@ -560,6 +562,14 @@ declare global {
         clientid?: string;
         opts: OpenAIOptsType;
         prompt: OpenAIPromptMessageType[];
+    };
+
+    // wshrpc.PathCommandData
+    type PathCommandData = {
+        pathtype: string;
+        open: boolean;
+        openexternal: boolean;
+        tabid: string;
     };
 
     // waveobj.Point
