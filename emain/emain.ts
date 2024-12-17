@@ -611,7 +611,7 @@ async function appMain() {
             fireAndForget(createNewWaveWindow);
         }
     });
-    const rawGlobalHotKey = launchSettings?.["key:globalhotkey"];
+    const rawGlobalHotKey = launchSettings?.["app:globalhotkey"];
     if (rawGlobalHotKey) {
         registerGlobalHotkey(rawGlobalHotKey);
     }

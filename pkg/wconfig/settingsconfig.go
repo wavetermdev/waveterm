@@ -33,6 +33,9 @@ const AnySchema = `
 `
 
 type SettingsType struct {
+	AppClear        bool   `json:"app:*,omitempty"`
+	AppGlobalHotkey string `json:"app:globalhotkey,omitempty"`
+
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
 	AiApiType       string  `json:"ai:apitype,omitempty"`
@@ -101,9 +104,6 @@ type SettingsType struct {
 	WindowMagnifiedBlockSize            *float64 `json:"window:magnifiedblocksize,omitempty"`
 	WindowMagnifiedBlockBlurPrimaryPx   *int64   `json:"window:magnifiedblockblurprimarypx,omitempty"`
 	WindowMagnifiedBlockBlurSecondaryPx *int64   `json:"window:magnifiedblockblursecondarypx,omitempty"`
-
-	KeyClear        bool   `json:"key:*,omitempty"`
-	KeyGlobalHotkey string `json:"key:globalhotkey,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
