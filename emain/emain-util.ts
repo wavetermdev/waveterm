@@ -170,6 +170,9 @@ export function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rec
 export function waveKeyToElectronKey(waveKey: string): string {
     const waveParts = waveKey.split(":");
     const electronParts: Array<string> = waveParts.map((part: string) => {
+        const digitRegexpMatch = new RegExp("^c\{Digit(\d)\}$").exec(part);
+        const numpadRegexpMatch = new RegExp("^c\{Numpad(\d)\}$").exec(part);
+        const lowercaseCharMatch = new RegExp("^([a-z])$").exec(part);
         if (part == "ArrowUp") {
             return "Up";
         }
@@ -181,6 +184,69 @@ export function waveKeyToElectronKey(waveKey: string): string {
         }
         if (part == "ArrowRight") {
             return "Right";
+        }
+        if (part == "Soft1") {
+            return "F21";
+        }
+        if (part == "Soft2") {
+            return "F22";
+        }
+        if (part == "Soft3") {
+            return "F23";
+        }
+        if (part == "Soft4") {
+            return "F24";
+        }
+        if (part == " ") {
+            return "Space";
+        }
+        if (part == "CapsLock") {
+            return "Capslock";
+        }
+        if (part == "NumLock") {
+            return "Numlock";
+        }
+        if (part == "ScrollLock") {
+            return "Scrolllock";
+        }
+        if (part == "AudioVolumeUp") {
+            return "VolumeUp";
+        }
+        if (part == "AudioVolumeDown") {
+            return "VolumeDown";
+        }
+        if (part == "AudioVolumeMute") {
+            return "VolumeMute";
+        }
+        if (part == "MediaTrackNext") {
+            return "MediaNextTrack";
+        }
+        if (part == "MediaTrackPrevious") {
+            return "MediaPreviousTrack";
+        }
+        if (part == "Decimal") {
+            return "numdec";
+        }
+        if (part == "Add") {
+            return "numadd";
+        }
+        if (part == "Subtract") {
+            return "numsub";
+        }
+        if (part == "Multiply") {
+            return "nummult";
+        }
+        if (part == "Divide") {
+            return "numdiv";
+        }
+        if (digitRegexpMatch && digitRegexpMatch.length > 0) {
+            return digitRegexpMatch[0];
+        }
+        if (numpadRegexpMatch && numpadRegexpMatch.length > 0) {
+            return `num${numpadRegexpMatch[0]}`;
+        }
+        if (lowercaseCharMatch && lowercaseCharMatch.length > 0) {
+            return numpadRegexpMatch[0].toUpperCase();
         }
 
         return part;
