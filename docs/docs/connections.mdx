@@ -76,9 +76,9 @@ In addition to the regular ssh config file, wave also has its own config file to
 | term:theme | This string can be used to specify a terminal theme for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
 | ssh:identityfile | A list of strings containing the paths to identity files that will be used. If a `wsh ssh` command using the `-i` flag is successful, the identity file will automatically be added here. |
 
-### Example Interal Configurations
+### Example Internal Configurations
 
-Here are a couple examples of things you can do using the internal configuration file `config.json`:
+Here are a couple examples of things you can do using the internal configuration file `connections.json`:
 
 #### Hiding a Connection
 
@@ -110,7 +110,7 @@ Suppose you have a connection named `rarelyused` that shows up as `myusername@ra
 
 #### Theming a Connection
 
-Suppose you have a connection named `myhost` that shows up as `myusername@myhost` in the connections dropdown. You use this connection a lot but you keep getting it mixed up with your local connections. In this case, you can use the internal configuration file to style it differently. For example:
+Suppose you have a connection named `myhost` that shows up as `myusername@myhost` in the connections dropdown. You use this connection a lot, but you keep getting it mixed up with your local connections. In this case, you can use the internal configuration file to style it differently. For example:
 
 ```json
 {
@@ -134,7 +134,7 @@ While Wave provides an option disable `wsh` when first connecting to a remote, t
 {
     <... other connections go here ...>,
     "root@wshless" : {
-        "conn:enablewsh": "false",
+        "conn:enablewsh": false,
     },
     <... other connections go here ...>
 }
