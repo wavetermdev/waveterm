@@ -118,19 +118,19 @@ Suppose you want a widget to launch a `fish` shell. Once you have `fish` install
 ```json
 {
     <... other widgets go here ...>,
-	"fish" : {
-		"icon": "fish",
-		"color": "#4abc39",
-		"label": "fish",
-		"blockdef": {
-			"meta": {
-				"view": "term",
-				"controller": "shell",
-				"term:localshellpath": "/usr/local/bin/fish",
-				"term:localshellopts": "-i -l"
-			}
-		}
-	},
+    "fish" : {
+        "icon": "fish",
+        "color": "#4abc39",
+        "label": "fish",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "shell",
+                "term:localshellpath": "/usr/local/bin/fish",
+                "term:localshellopts": "-i -l"
+            }
+        }
+    },
     <... other widgets go here ...>
 }
 ```
@@ -147,18 +147,18 @@ If you want to do the same for something like Powershell Core, or `pwsh`, you ca
 ```json
 {
     <... other widgets go here ...>,
-	"pwsh" : {
-		"icon": "rectangle-terminal",
-		"color": "#2671be",
-		"label": "pwsh",
-		"blockdef": {
-			"meta": {
-				"view": "term",
-				"controller": "shell",
-				"term:localshellpath": "pwsh"
-			}
-		}
-	},
+    "pwsh" : {
+        "icon": "rectangle-terminal",
+        "color": "#2671be",
+        "label": "pwsh",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "shell",
+                "term:localshellpath": "pwsh"
+            }
+        }
+    },
     <... other widgets go here ...>
 }
 ```
