@@ -128,7 +128,7 @@ This style, font size, and font family will then only apply to the widgets that 
 
 ### Disabling Wsh for a Connection
 
-While Wave will automatically disable `wsh` if you click the option to delete it, there are cases where you may install it, but for some reason, it doesn't work on your remote machine. In this case, you may wish to disable wsh after the fact. While it is possible to get the prompt again by deleting `wsh` from the remote system, it is also possible to do so by editing the config file. Suppose the connection shows up in the dropdown as `root@wshless`. Then:
+While Wave provides an option disable `wsh` when first connecting to a remote, there are cases where you may wish to disable it afterward. The easiest way to do this is by editing the `connections.json` file. Suppose the connection shows up in the dropdown as `root@wshless`. Then you can disable it manually with the following line:
 
 ```json
 {
@@ -139,6 +139,8 @@ While Wave will automatically disable `wsh` if you click the option to delete it
     <... other connections go here ...>
 }
 ```
+
+Note that this same line gets added to your `connections.json` file automatically when you choose to disable `wsh` in gui when initially connecting.
 
 ## Managing Connections with the CLI
 
