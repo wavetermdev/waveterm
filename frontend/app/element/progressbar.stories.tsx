@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ProgressBar } from "./progressbar";
 
 const meta: Meta<typeof ProgressBar> = {
-    title: "Components/ProgressBar",
+    title: "Elements/ProgressBar",
     component: ProgressBar,
     args: {
         progress: 0, // Default value
@@ -30,7 +30,6 @@ type Story = StoryObj<typeof ProgressBar>;
 export const EmptyProgress: Story = {
     render: (args) => (
         <div style={{ padding: "20px", background: "#111", color: "#fff" }}>
-            <h4>Empty Progress Bar</h4>
             <ProgressBar {...args} />
         </div>
     ),
@@ -43,7 +42,6 @@ export const EmptyProgress: Story = {
 export const FilledProgress: Story = {
     render: (args) => (
         <div style={{ padding: "20px", background: "#111", color: "#fff" }}>
-            <h4>Filled Progress Bar</h4>
             <ProgressBar {...args} />
         </div>
     ),

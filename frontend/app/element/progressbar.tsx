@@ -22,7 +22,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress, label = "Progress" 
             aria-valuemax={100}
             aria-label={label}
         >
-            <div className="progress-bar-fill" style={{ width: `${progressWidth}%` }}></div>
+            <div className="outer">
+                <div className="progress-bar-fill" style={{ width: `${progressWidth}%` }}></div>
+            </div>
             <span className="progress-bar-label">{progressWidth}%</span>
         </div>
     );
