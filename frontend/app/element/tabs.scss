@@ -1,0 +1,40 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.tabs-container {
+	display: flex;
+	flex-direction: column;
+	font-family: Arial, sans-serif;
+
+	.tabs-list {
+		display: flex;
+		gap: 12px;
+		border: 1px solid #444;
+		border-radius: 6px;
+		padding: 4px;
+		background-color: #111;
+
+		.tab-item {
+			padding: 6px 12px;
+			cursor: pointer;
+			border-radius: 4px;
+			color: #aaa;
+			transition: all 0.2s ease-in-out;
+
+			&:hover {
+				background-color: #222;
+			}
+
+			&.active {
+				border: 1px solid #28a745;
+				background-color: #0a0a0a;
+				color: #fff;
+				font-weight: bold;
+			}
+
+			&:focus {
+				outline: 2px solid #28a745;
+			}
+		}
+	}
+}
