@@ -30,3 +30,7 @@ Just remember in JSON, backslashes need to be escaped. So add this to your [sett
 ```json
     "term:localshellpath": "C:\\Program Files\\Git\\bin\\bash.exe"
 ```
+
+### Can I use WSH outside of Wave?
+
+`wsh` is an internal CLI for extending control over Wave to the command line, you can learn more about it [here](./wsh). To prevent misuse by other applications, `wsh` requires an access token provided by Wave to work and will not function outside of the app.
