@@ -135,6 +135,9 @@ Suppose you want a widget to launch a `fish` shell. Once you have `fish` install
 }
 ```
 
+This adds an icon to the widget bar that you can press to launch a terminal running the `fish` shell.
+![The example fish widget](./img/widget-example-fish.webp)
+
 :::info
 It is very possible that `fish` is not in your path. In this case, using `"fish"` as the value of `"term:localshellpath"` will not work. In these cases, you will need to provide a direct path to it. This is often somewhere like `"/usr/local/bin/fish"`, but it may be different on your system.
 :::
@@ -159,6 +162,9 @@ If you want to do the same for something like Powershell Core, or `pwsh`, you ca
     <... other widgets go here ...>
 }
 ```
+
+This adds an icon to the widget bar that you can press to launch a terminal running the `pwsh` shell.
+![The example pwsh widget](./img/widget-example-pwsh.webp)
 
 :::info
 It is very possible that `pwsh` is not in your path. In this case, using `"pwsh"` as the value of `"term:localshellpath"` will not work. In these cases, you will need to provide a direct path to it. This could be somewhere like `"/usr/local/bin/pwsh"` on a Unix system or <code>"C:\\Program&nbsp;Files\\PowerShell\\7\\pwsh.exe"</code> on
