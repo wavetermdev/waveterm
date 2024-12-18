@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState } from "react";
-import "./MultiSelect.scss";
+import "./multiselect.scss";
 
 type Option = {
     label: string;
@@ -11,7 +11,7 @@ type Option = {
 
 type MultiSelectProps = {
     options: Option[];
-    selectedValues?: string[]; // Pre-selected options
+    selectedValues?: string[];
     onChange: (values: string[]) => void;
 };
 
@@ -19,26 +19,43 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ options, selectedValues = [],
     const [selected, setSelected] = useState<string[]>(selectedValues);
 
     const handleToggle = (value: string) => {
-        const newSelected = selected.includes(value)
-            ? selected.filter((v) => v !== value) // Remove if already selected
-            : [...selected, value]; // Add if not selected
+        setSelected((prevSelected) => {
+            const newSelected = prevSelected.includes(value)
+                ? prevSelected.filter((v) => v !== value) // Remove if already selected
+                : [...prevSelected, value]; // Add if not selected
 
-        setSelected(newSelected);
-        onChange(newSelected);
+            onChange(newSelected);
+            return newSelected;
+        });
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, value: string) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleToggle(value);
+        }
     };
 
     return (
-        <div className="multi-select">
-            {options.map((option) => (
-                <div
-                    key={option.value}
-                    className={`option ${selected.includes(option.value) ? "selected" : ""}`}
-                    onClick={() => handleToggle(option.value)}
-                >
-                    {option.label}
-                    {selected.includes(option.value) && <i className="fa fa-solid fa-check" />}
-                </div>
-            ))}
+        <div className="multi-select" role="listbox" aria-multiselectable="true" aria-label="Multi-select list">
+            {options.map((option) => {
+                const isSelected = selected.includes(option.value);
+
+                return (
+                    <div
+                        key={option.value}
+                        role="option"
+                        aria-selected={isSelected}
+                        className={`option ${isSelected ? "selected" : ""}`}
+                        tabIndex={0}
+                        onClick={() => handleToggle(option.value)}
+                        onKeyDown={(e) => handleKeyDown(e, option.value)}
+                    >
+                        {option.label}
+                        {isSelected && <i className="fa fa-solid fa-check" aria-hidden="true" />}
+                    </div>
+                );
+            })}
         </div>
     );
 };
