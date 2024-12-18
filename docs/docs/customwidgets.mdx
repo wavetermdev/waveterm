@@ -204,6 +204,7 @@ Using `"cmd"` for the `"controller"` is the simplest way to accomplish this. `"c
 Now suppose I wanted to run a TUI app, for instance, `dua`. Well, it turns out that you can more or less do the same thing:
 
 ```json
+{
     <... other widgets go here ...>,
     "dua" : {
         "icon": "brands@linux",
@@ -217,6 +218,7 @@ Now suppose I wanted to run a TUI app, for instance, `dua`. Well, it turns out t
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch a terminal running the `dua` command.
@@ -258,6 +260,7 @@ The `WidgetConfigType` takes the usual options common to all widgets. The `MetaT
 Say you want a widget that automatically starts at YouTube and will use YouTube as the home page. This can be done using:
 
 ```json
+{
     <... other widgets go here ...>,
     "youtube" : {
         "icon": "brands@youtube",
@@ -271,6 +274,7 @@ Say you want a widget that automatically starts at YouTube and will use YouTube 
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch a web widget on the youtube homepage.
@@ -279,6 +283,7 @@ This adds an icon to the widget bar that you can press to launch a web widget on
 Alternatively, say you want a web widget that opens to github as if it were a bookmark, but will use google as its home page after that. This can easily be done with:
 
 ```json
+{
     <... other widgets go here ...>,
     "github" : {
         "icon": "brands@github",
@@ -292,6 +297,7 @@ Alternatively, say you want a web widget that opens to github as if it were a bo
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch a web widget on the github homepage.
@@ -332,6 +338,7 @@ The `WidgetConfigType` takes the usual options common to all widgets. The `MetaT
 Suppose you have a build process that lasts 3 minutes and you'd like to be able to see the entire build on the sysinfo graph. Also, you would really like to view both the cpu and memory since both are impacted by this process. In that case, you can set up a widget as follows:
 
 ```json
+{
     <... other widgets go here ...>,
     "3min-info" : {
         "icon": "circle-3",
@@ -345,6 +352,7 @@ Suppose you have a build process that lasts 3 minutes and you'd like to be able 
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch the CPU and Memory plots by default with 180 seconds of data.
@@ -353,6 +361,7 @@ This adds an icon to the widget bar that you can press to launch the CPU and Mem
 Now, suppose you are fine with the default 100 points (and 100 seconds) but would like to show all of the CPU data when launched. In that case, you can write:
 
 ```json
+{
     <... other widgets go here ...>,
     "all-cpu" : {
         "icon": "chart-scatter",
@@ -365,6 +374,7 @@ Now, suppose you are fine with the default 100 points (and 100 seconds) but woul
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch All CPU plots by default.
