@@ -109,9 +109,65 @@ The `WidgetConfigType` takes the usual options common to all widgets. The `MetaT
 | "term:localshellpath"  | (optional) Sets the shell used for running your widget command. Only works locally. If left blank, wave will determine your system default instead.                                                                                                                                |
 | "term:localshellopts"  | (optional) Sets the shell options meant to be used with `"term:localshellpath"`. This is useful if you are using a nonstandard shell and need to provide a specific option that we do not cover. Only works locally. Defaults to an empty string.                                  |
 
-## Example Terminal Widgets
+## Example Shell Widgets
 
-Here are a few simple widgets to serve as examples.
+If you have multiple shells installed on your machine, there may be times when you want to use a non-default shell. For cases like this, it is easy to create a widget for each.
+
+Suppose you want a widget to launch a `fish` shell. Once you have `fish` installed on your system, you can define a widget as
+
+```json
+{
+    <... other widgets go here ...>,
+	"fish" : {
+		"icon": "fish",
+		"color": "#4abc39",
+		"label": "fish",
+		"blockdef": {
+			"meta": {
+				"view": "term",
+				"controller": "shell",
+				"term:localshellpath": "/usr/local/bin/fish",
+				"term:localshellopts": "-i -l"
+			}
+		}
+	},
+    <... other widgets go here ...>
+}
+```
+
+:::info
+It is very possible that `fish` is not in your path. In this case, using `"fish"` as the value of `"term:localshellpath"` will not work. In these cases, you will need to provide a direct path to it. This is often somewhere like `"/usr/local/bin/fish"`, but it may be different on your system.
+:::
+
+If you want to do the same for something like Powershell Core, or `pwsh`, you can define the widget as
+
+```json
+{
+    <... other widgets go here ...>,
+	"pwsh" : {
+		"icon": "rectangle-terminal",
+		"color": "#2671be",
+		"label": "pwsh",
+		"blockdef": {
+			"meta": {
+				"view": "term",
+				"controller": "shell",
+				"term:localshellpath": "pwsh"
+			}
+		}
+	},
+    <... other widgets go here ...>
+}
+```
+
+:::info
+It is very possible that `pwsh` is not in your path. In this case, using `"pwsh"` as the value of `"term:localshellpath"` will not work. In these cases, you will need to provide a direct path to it. This could be somewhere like `"/usr/local/bin/pwsh"` on a Unix system or <code>"C:\\Program&nbsp;Files\\PowerShell\\7\\pwsh.exe"</code> on
+Windows. but it may be different on your system. Also note that both `pwsh.exe` and `pwsh` work on Windows, but only `pwsh` works on Unix systems.
+:::
+
+## Example Cmd Widgets
+
+Here are a few simple cmd widgets to serve as examples.
 
 Suppose I want a widget that will run speedtest-go when opened. Then, I can define a widget as
 
