@@ -15,7 +15,7 @@ type MultiSelectProps = {
     onChange: (values: string[]) => void;
 };
 
-const MultiSelect: React.FC<MultiSelectProps> = ({ options, selectedValues = [], onChange }) => {
+const MultiSelect = ({ options, selectedValues = [], onChange }: MultiSelectProps) => {
     const [selected, setSelected] = useState<string[]>(selectedValues);
 
     const handleToggle = (value: string) => {
