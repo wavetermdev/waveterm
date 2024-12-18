@@ -1,7 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { app, ipcMain } from "electron";
+import { fireAndForget } from "@/util/util";
+import { app, dialog, ipcMain, shell } from "electron";
 import envPaths from "env-paths";
 import { existsSync, mkdirSync } from "fs";
 import os from "os";
@@ -39,6 +40,27 @@ keyutil.setKeyUtilPlatform(unamePlatform);
 const WaveConfigHomeVarName = "WAVETERM_CONFIG_HOME";
 const WaveDataHomeVarName = "WAVETERM_DATA_HOME";
 const WaveHomeVarName = "WAVETERM_HOME";
+
+export function checkIfRunningUnderARM64Translation(fullConfig: FullConfigType) {
+    if (!fullConfig.settings["app:dismissarchitecturewarning"] && app.runningUnderARM64Translation) {
+        console.log("Running under ARM64 translation, alerting user");
+        const dialogOpts: Electron.MessageBoxOptions = {
+            type: "warning",
+            buttons: ["See documentation", "Dismiss"],
+            title: "Wave has detected a performance issue",
+            message: `Wave has detected that it is running in ARM64 translation mode.\n\nThis may cause performance issues.\n\nPlease download the native version of Wave for your architecture (${unameArch})`,
+        };
+
+        const choice = dialog.showMessageBoxSync(null, dialogOpts);
+        if (choice === 0) {
+            // Open the documentation URL
+            console.log("Opening documentation URL");
+            fireAndForget(() => shell.openExternal("https://docs.waveterm.dev"));
+        } else {
+            console.log("User dismissed the dialog");
+        }
+    }
+}
 
 /**
  * Gets the path to the old Wave home directory (defaults to `~/.waveterm`).
