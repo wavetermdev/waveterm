@@ -24,6 +24,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
+import { boundNumber } from "@/util/util";
 import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -62,6 +63,7 @@ class TermViewModel implements ViewModel {
     vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
+    termTransparencyAtom: jotai.Atom<number>;
     noPadding: jotai.PrimitiveAtom<boolean>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
@@ -203,10 +205,17 @@ class TermViewModel implements ViewModel {
                 return get(getOverrideConfigAtom(this.blockId, "term:theme")) ?? DefaultTermTheme;
             });
         });
+        this.termTransparencyAtom = useBlockAtom(blockId, "termtransparencyatom", () => {
+            return jotai.atom<number>((get) => {
+                let value = get(getOverrideConfigAtom(this.blockId, "term:transparency")) ?? 0.5;
+                return boundNumber(value, 0, 1);
+            });
+        });
         this.blockBg = jotai.atom((get) => {
             const fullConfig = get(atoms.fullConfigAtom);
             const themeName = get(this.termThemeNameAtom);
-            const [_, bgcolor] = computeTheme(fullConfig, themeName);
+            const termTransparency = get(this.termTransparencyAtom);
+            const [_, bgcolor] = computeTheme(fullConfig, themeName, termTransparency);
             if (bgcolor != null) {
                 return { bg: bgcolor };
             }
@@ -734,7 +743,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemeName = globalStore.get(model.termThemeNameAtom);
-        const [termTheme, _] = computeTheme(fullConfig, termThemeName);
+        const termTransparency = globalStore.get(model.termTransparencyAtom);
+        const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
         let termScrollback = 1000;
         if (termSettings?.["term:scrollback"]) {
             termScrollback = Math.floor(termSettings["term:scrollback"]);
