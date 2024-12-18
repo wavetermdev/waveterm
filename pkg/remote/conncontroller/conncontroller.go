@@ -61,6 +61,7 @@ type SSHConn struct {
 	Error              string
 	WshError           string
 	HasWaiter          *atomic.Bool
+	InactiveTimeout    *time.Duration
 	LastConnectTime    int64
 	ActiveConnNum      int
 }

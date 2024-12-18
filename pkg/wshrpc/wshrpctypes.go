@@ -461,6 +461,8 @@ type CommandRemoteWriteFileData struct {
 type ConnKeywords struct {
 	ConnWshEnabled          *bool `json:"conn:wshenabled,omitempty"`
 	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
+	ConnAutoConnect         *bool `json:"conn:autoconnect,omitempty"`
+	ConnInactiveTimeout     *bool `json:"conn:inactivetimeout,omitempty"` // If set, this is the timeout in seconds
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`
