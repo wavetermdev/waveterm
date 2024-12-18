@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Button } from "@/element/button";
 import type { Placement } from "@floating-ui/react";
 import {
     arrow,
@@ -125,9 +126,14 @@ export const TooltipTrigger = React.forwardRef<HTMLElement, React.HTMLProps<HTML
 
         // Default trigger as a button
         return (
-            <button ref={setRefs} data-state={state.open ? "open" : "closed"} {...state.getReferenceProps(props)}>
+            <Button
+                className="grey"
+                ref={setRefs}
+                data-state={state.open ? "open" : "closed"}
+                {...state.getReferenceProps(props)}
+            >
                 {children}
-            </button>
+            </Button>
         );
     }
 );
