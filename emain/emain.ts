@@ -565,6 +565,15 @@ process.on("uncaughtException", (error) => {
 });
 
 async function appMain() {
+    // Check if the user is requesting the version from the command line, if so, return it and bail out.
+    const args = process.argv;
+    if (args?.length > 1 && (args[1] === "--version" || args[1] === "-v")) {
+        const versionInfo = getWaveVersion();
+        console.log(`Wave Terminal v${versionInfo.version} (build ${versionInfo.buildTime})`);
+        electronApp.quit();
+        return;
+    }
+
     // Set disableHardwareAcceleration as early as possible, if required.
     const launchSettings = getLaunchSettings();
     if (launchSettings?.["window:disablehardwareacceleration"]) {
