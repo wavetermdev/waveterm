@@ -24,6 +24,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
+import { boundNumber } from "@/util/util";
 import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -735,19 +736,14 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemeName = globalStore.get(model.termThemeNameAtom);
         const [termTheme, _] = computeTheme(fullConfig, termThemeName);
-        let termScrollback = 1000;
+        let termScrollback = 2000;
         if (termSettings?.["term:scrollback"]) {
             termScrollback = Math.floor(termSettings["term:scrollback"]);
         }
         if (blockData?.meta?.["term:scrollback"]) {
             termScrollback = Math.floor(blockData.meta["term:scrollback"]);
         }
-        if (termScrollback < 0) {
-            termScrollback = 0;
-        }
-        if (termScrollback > 10000) {
-            termScrollback = 10000;
-        }
+        termScrollback = boundNumber(termScrollback, 0, 50000);
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             blockId,
@@ -761,6 +757,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 fontWeightBold: "bold",
                 allowTransparency: true,
                 scrollback: termScrollback,
+                ignoreBracketedPasteMode: true,
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
