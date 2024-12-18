@@ -621,7 +621,6 @@ async function appMain() {
 
 // Check if the user is requesting the version from the command line, if so, return it and bail out.
 const args = process.argv;
-console.log("args", args);
 if (args?.length > 1 && (args.includes("--version") || args.includes("-v"))) {
     const pkg = require("../package.json");
     console.log(`Wave Terminal v${pkg.version}`);
