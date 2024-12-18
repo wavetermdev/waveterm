@@ -194,7 +194,17 @@ wsh editconfig termthemes.json
 
 ### Customizable Systemwide Global Hotkey
 
-Wave allows settings a custom global hotkey to open your most recent window from anywhere in your computer. This has the name `"app:globalhotkey"` in the `settings.json` file and takes the form of a series of key names separated by the `:` character. We support the following key names:
+Wave allows settings a custom global hotkey to open your most recent window from anywhere in your computer. This has the name `"app:globalhotkey"` in the `settings.json` file and takes the form of a series of key names separated by the `:` character.
+
+#### Examples
+
+As a practical example, suppose you want a value of `F5` as your global hotkey. Then you can simply set the value of `"app:globalhotkey"` to `"F5"` and reboot Wave to make that your global hotkey.
+
+As a less practical example, suppose you use the combination of the keys `Ctrl`, `Option`, and `e`. Then the value for this keybinding would be `"Ctrl:Option:e"`.
+
+#### Allowed Key Names
+
+We support the following key names:
 
 - `Ctrl`
 - `Cmd`
@@ -207,7 +217,7 @@ Wave allows settings a custom global hotkey to open your most recent window from
 - Letters `a` though `z`
 - F keys `F1` through `F20`
 - Soft keys `Soft1` through `Soft4`. These are essentially the same as `F21` through `F24`.
-- Space represented as a literal space &nbsp;<code>&nbsp;</code>
+- Space represented as either `Space` or a literal space &nbsp;<code>&nbsp;</code>
 - `Enter` (This is labeled as return on Mac)
 - `Tab`
 - `CapsLock`
@@ -230,5 +240,3 @@ Wave allows settings a custom global hotkey to open your most recent window from
 - The numpad minus/subtract represented by `Subtract`
 - The numpad star/multiply represented by `Multiply`
 - The numpad slash/divide represented by `Divide`
-
-As an example, to set the key to the combination of Control, Option, and the letter E, you would configure it to `"Ctrl:Opt:e"`.
