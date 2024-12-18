@@ -290,6 +290,8 @@ declare global {
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
+        "conn:autoconnect"?: boolean;
+        "conn:inactivetimeout"?: boolean;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;
