@@ -28,12 +28,12 @@ interface TooltipOptions {
     onOpenChange?: (open: boolean) => void;
 }
 
-export function useTooltip({
+export const useTooltip = ({
     initialOpen = false,
     placement = "top",
     open: controlledOpen,
     onOpenChange: setControlledOpen,
-}: TooltipOptions = {}) {
+}: TooltipOptions = {}) => {
     const arrowRef = React.useRef(null);
     const [uncontrolledOpen, setUncontrolledOpen] = React.useState(initialOpen);
 
@@ -72,7 +72,7 @@ export function useTooltip({
         }),
         [open, setOpen, arrowRef, interactions, data]
     );
-}
+};
 
 type ContextType = ReturnType<typeof useTooltip> | null;
 
@@ -88,12 +88,12 @@ export const useTooltipState = () => {
     return context;
 };
 
-export function Tooltip({ children, ...options }: { children: React.ReactNode } & TooltipOptions) {
+export const Tooltip = ({ children, ...options }: { children: React.ReactNode } & TooltipOptions) => {
     // This can accept any props as options, e.g. `placement`,
     // or other positioning options.
     const tooltip = useTooltip(options);
     return <TooltipContext.Provider value={tooltip}>{children}</TooltipContext.Provider>;
-}
+};
 
 export const TooltipTrigger = React.forwardRef<HTMLElement, React.HTMLProps<HTMLElement> & { asChild?: boolean }>(
     function TooltipTrigger({ children, asChild = false, ...props }, propRef) {
