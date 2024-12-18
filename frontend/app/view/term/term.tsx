@@ -462,6 +462,7 @@ class TermViewModel implements ViewModel {
         const termThemeKeys = Object.keys(termThemes);
         const curThemeName = globalStore.get(getBlockMetaKeyAtom(this.blockId, "term:theme"));
         const defaultFontSize = globalStore.get(getSettingsKeyAtom("term:fontsize")) ?? 12;
+        const transparencyMeta = globalStore.get(getBlockMetaKeyAtom(this.blockId, "term:transparency"));
         const blockData = globalStore.get(this.blockAtom);
         const overrideFontSize = blockData?.meta?.["term:fontsize"];
 
@@ -483,6 +484,41 @@ class TermViewModel implements ViewModel {
             checked: curThemeName == null,
             click: () => this.setTerminalTheme(null),
         });
+        const transparencySubMenu: ContextMenuItem[] = [];
+        transparencySubMenu.push({
+            label: "Default",
+            type: "checkbox",
+            checked: transparencyMeta == null,
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:transparency": null },
+                });
+            },
+        });
+        transparencySubMenu.push({
+            label: "Transparent Background",
+            type: "checkbox",
+            checked: transparencyMeta == 0.5,
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:transparency": 0.5 },
+                });
+            },
+        });
+        transparencySubMenu.push({
+            label: "No Transparency",
+            type: "checkbox",
+            checked: transparencyMeta == 0,
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:transparency": 0 },
+                });
+            },
+        });
+
         const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
             (fontSize: number) => {
                 return {
@@ -516,6 +552,10 @@ class TermViewModel implements ViewModel {
         fullMenu.push({
             label: "Font Size",
             submenu: fontSizeSubMenu,
+        });
+        fullMenu.push({
+            label: "Transparency",
+            submenu: transparencySubMenu,
         });
         fullMenu.push({ type: "separator" });
         fullMenu.push({
