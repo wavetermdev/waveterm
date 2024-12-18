@@ -118,25 +118,28 @@ Suppose you want a widget to launch a `fish` shell. Once you have `fish` install
 ```json
 {
     <... other widgets go here ...>,
-	"fish" : {
-		"icon": "fish",
-		"color": "#4abc39",
-		"label": "fish",
-		"blockdef": {
-			"meta": {
-				"view": "term",
-				"controller": "shell",
-				"term:localshellpath": "/usr/local/bin/fish",
-				"term:localshellopts": "-i -l"
-			}
-		}
-	},
+    "fish" : {
+        "icon": "fish",
+        "color": "#4abc39",
+        "label": "fish",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "shell",
+                "term:localshellpath": "/usr/local/bin/fish",
+                "term:localshellopts": "-i -l"
+            }
+        }
+    },
     <... other widgets go here ...>
 }
 ```
 
+This adds an icon to the widget bar that you can press to launch a terminal running the `fish` shell.
+![The example fish widget](./img/widget-example-fish.webp)
+
 :::info
-It is very possible that `fish` is not in your path. In this case, using `"fish"` as the value of `"term:localshellpath"` will not work. In these cases, you will need to provide a direct path to it. This is often somewhere like `"/usr/local/bin/fish"`, but it may be different on your system.
+It is possible that `fish` is not in your path. If this is true, using `"fish"` as the value of `"term:localshellpath"` will not work. In these cases, you will need to provide a direct path to it. This is often somewhere like `"/usr/local/bin/fish"`, but it may be different on your system.
 :::
 
 If you want to do the same for something like Powershell Core, or `pwsh`, you can define the widget as
@@ -144,24 +147,27 @@ If you want to do the same for something like Powershell Core, or `pwsh`, you ca
 ```json
 {
     <... other widgets go here ...>,
-	"pwsh" : {
-		"icon": "rectangle-terminal",
-		"color": "#2671be",
-		"label": "pwsh",
-		"blockdef": {
-			"meta": {
-				"view": "term",
-				"controller": "shell",
-				"term:localshellpath": "pwsh"
-			}
-		}
-	},
+    "pwsh" : {
+        "icon": "rectangle-terminal",
+        "color": "#2671be",
+        "label": "pwsh",
+        "blockdef": {
+            "meta": {
+                "view": "term",
+                "controller": "shell",
+                "term:localshellpath": "pwsh"
+            }
+        }
+    },
     <... other widgets go here ...>
 }
 ```
 
+This adds an icon to the widget bar that you can press to launch a terminal running the `pwsh` shell.
+![The example pwsh widget](./img/widget-example-pwsh.webp)
+
 :::info
-It is very possible that `pwsh` is not in your path. In this case, using `"pwsh"` as the value of `"term:localshellpath"` will not work. In these cases, you will need to provide a direct path to it. This could be somewhere like `"/usr/local/bin/pwsh"` on a Unix system or <code>"C:\\Program&nbsp;Files\\PowerShell\\7\\pwsh.exe"</code> on
+It is possible that `pwsh` is not in your path. If this is true, using `"pwsh"` as the value of `"term:localshellpath"` will not work. In these cases, you will need to provide a direct path to it. This could be somewhere like `"/usr/local/bin/pwsh"` on a Unix system or <code>"C:\\Program&nbsp;Files\\PowerShell\\7\\pwsh.exe"</code> on
 Windows. but it may be different on your system. Also note that both `pwsh.exe` and `pwsh` work on Windows, but only `pwsh` works on Unix systems.
 :::
 
@@ -198,6 +204,7 @@ Using `"cmd"` for the `"controller"` is the simplest way to accomplish this. `"c
 Now suppose I wanted to run a TUI app, for instance, `dua`. Well, it turns out that you can more or less do the same thing:
 
 ```json
+{
     <... other widgets go here ...>,
     "dua" : {
         "icon": "brands@linux",
@@ -211,6 +218,7 @@ Now suppose I wanted to run a TUI app, for instance, `dua`. Well, it turns out t
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch a terminal running the `dua` command.
@@ -252,6 +260,7 @@ The `WidgetConfigType` takes the usual options common to all widgets. The `MetaT
 Say you want a widget that automatically starts at YouTube and will use YouTube as the home page. This can be done using:
 
 ```json
+{
     <... other widgets go here ...>,
     "youtube" : {
         "icon": "brands@youtube",
@@ -265,6 +274,7 @@ Say you want a widget that automatically starts at YouTube and will use YouTube 
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch a web widget on the youtube homepage.
@@ -273,6 +283,7 @@ This adds an icon to the widget bar that you can press to launch a web widget on
 Alternatively, say you want a web widget that opens to github as if it were a bookmark, but will use google as its home page after that. This can easily be done with:
 
 ```json
+{
     <... other widgets go here ...>,
     "github" : {
         "icon": "brands@github",
@@ -286,6 +297,7 @@ Alternatively, say you want a web widget that opens to github as if it were a bo
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch a web widget on the github homepage.
@@ -326,6 +338,7 @@ The `WidgetConfigType` takes the usual options common to all widgets. The `MetaT
 Suppose you have a build process that lasts 3 minutes and you'd like to be able to see the entire build on the sysinfo graph. Also, you would really like to view both the cpu and memory since both are impacted by this process. In that case, you can set up a widget as follows:
 
 ```json
+{
     <... other widgets go here ...>,
     "3min-info" : {
         "icon": "circle-3",
@@ -339,6 +352,7 @@ Suppose you have a build process that lasts 3 minutes and you'd like to be able 
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch the CPU and Memory plots by default with 180 seconds of data.
@@ -347,6 +361,7 @@ This adds an icon to the widget bar that you can press to launch the CPU and Mem
 Now, suppose you are fine with the default 100 points (and 100 seconds) but would like to show all of the CPU data when launched. In that case, you can write:
 
 ```json
+{
     <... other widgets go here ...>,
     "all-cpu" : {
         "icon": "chart-scatter",
@@ -359,6 +374,7 @@ Now, suppose you are fine with the default 100 points (and 100 seconds) but woul
         }
     },
     <... other widgets go here ...>
+}
 ```
 
 This adds an icon to the widget bar that you can press to launch All CPU plots by default.
