@@ -42,3 +42,18 @@ macOS and Windows both have compatibility layers that allow x64 applications to 
 To get the best experience using Wave, it is recommended that you uninstall Wave and reinstall the version that is natively-compiled for your computer. You can find the right version by consulting our [Installation Instructions](./gettingstarted#installation)
 
 You can disable this warning by setting `app:dismissarchitecturewarning=true` in [your configurations](./config.mdx).
+
+## How do I join the beta builds of Wave?
+
+Wave publishes to two channels, `latest` and `beta`. If you've installed the app for macOS, Windows, or Linux via DEB or RPM, you can set the following configurations in your `settings.json` (see [Configuration](./config) for more info):
+
+```json
+"autoupdate:enabled": true,
+"autoupdate:channel": "beta"
+```
+
+If you've installed via Snap, you can use the following command:
+
+```sh
+sudo snap install waveterm --classic --beta
+```
