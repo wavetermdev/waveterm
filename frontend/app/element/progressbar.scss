@@ -1,0 +1,33 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.progress-bar-container {
+    position: relative;
+    width: 100%;
+    background-color: var(--main-bg-color);
+    border-radius: 40px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border: 1px solid rgb(from var(--main-text-color) r g b / 15%);
+
+    .progress-bar-fill {
+        height: 100%;
+        transition: width 0.3s ease-in-out;
+        background-color: var(--success-color);
+        height: 4px;
+        border-radius: 9px;
+    }
+
+    .progress-bar-label {
+        position: absolute;
+        right: 8px;
+        font-size: 0.9rem;
+        color: var(--main-text-color);
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+    }
+}
