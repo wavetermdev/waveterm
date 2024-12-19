@@ -672,6 +672,7 @@ declare global {
         "window:reducedmotion"?: boolean;
         "window:tilegapsize"?: number;
         "window:showmenubar"?: boolean;
+        "window:autohidetabbar"?: boolean;
         "window:nativetitlebar"?: boolean;
         "window:disablehardwareacceleration"?: boolean;
         "window:maxtabcachesize"?: number;
