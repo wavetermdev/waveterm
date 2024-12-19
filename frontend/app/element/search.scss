@@ -1,0 +1,29 @@
+.search-container {
+    display: flex;
+    flex-direction: row;
+    background-color: var(--modal-bg-color);
+    border: 1px solid var(--accent-color);
+    border-radius: 25px;
+    box-shadow: var(--modal-box-shadow);
+    color: var(--main-text-color);
+    padding: 10px;
+    gap: 10px;
+
+    input {
+        border: none;
+        font-size: 18px;
+        width: fit-content;
+        height: 100%;
+    }
+
+    .search-results {
+        font-size: 16px;
+        width: fit-content;
+        margin: auto 0 auto auto;
+        color: var(--secondary-text-color);
+
+        &.hidden {
+            display: none;
+        }
+    }
+}
