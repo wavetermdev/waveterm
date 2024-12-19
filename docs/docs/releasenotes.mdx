@@ -6,6 +6,25 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.10.2 &mdash; Dec 19, 2024
+
+Quick update to v0.10 with new features and bug fixes.
+
+- Global hotkey support [docs](https://docs.waveterm.dev/config#customizable-systemwide-global-hotkey)
+- Added configuration to override the font size for markdown, AI-chat, and preview editor [docs](https://docs.waveterm.dev/config)
+- Added ability to set independent zoom level for the web view (right click block header)
+- New `wsh wavepath` command to open the config directory, data directory, and log file
+- [bugfix] Fixed crash when /etc/sshd_config contained an unsupported Match directive (most common on Fedora)
+- [bugfix] Workspaces are now more consistent across windows, closes associated window when Workspaces are deleted
+- [bugfix] Fixed zsh on WSL
+- [bugfix] Fixed long-standing bug around control sequences sometimes showing up in terminal output when switching tabs
+- Lots of new examples in the docs for shell overrides, presets, widgets, and connections
+- Other bug fixes and UI updates
+
+### v0.10.1 &mdash; Dec 12, 2024
+
+Quick update to fix the workspace app menu actions. Also fixes workspace switching to always open a new window when invoked from a non-workspace window. This reduces the chance of losing a non-workspace window's tabs accidentally.
+
 ### v0.10.0 &mdash; Dec 11, 2024
 
 Wave Terminal v0.10.0 introduces workspaces, making it easier to manage multiple work environments. We've added powerful new command execution capabilities with `wsh run`, allowing you to launch and control commands in dedicated blocks. This release also brings significant improvements to SSH with a new connections configuration system for managing your remote environments.
