@@ -24,6 +24,10 @@
             overflow: hidden;
         }
 
+        *:last-child {
+            margin-bottom: 0 !important;
+        }
+
         .heading:not(.heading ~ .heading) {
             margin-top: 0 !important;
         }
