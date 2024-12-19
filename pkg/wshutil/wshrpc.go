@@ -342,7 +342,10 @@ func (w *WshRpc) runServer() {
 			continue
 		}
 		if msg.IsRpcRequest() {
-			go w.handleRequest(&msg)
+			go func() {
+				defer panichandler.PanicHandler("handleRequest:goroutine")
+				w.handleRequest(&msg)
+			}()
 		} else {
 			respCh := w.getResponseCh(msg.ResId)
 			if respCh == nil {
