@@ -41,11 +41,17 @@ You can also install Wave Terminal directly from: [www.waveterm.dev/download](ht
 
 ### Minimum requirements
 
-Wave Terminal and WSH run on the following platforms:
+Wave Terminal runs on the following platforms:
 
 - macOS 11 or later (arm64, x64)
 - Windows 10 1809 or later (x64)
 - Linux based on glibc-2.28 or later (Debian 10, RHEL 8, Ubuntu 20.04, etc.) (arm64, x64)
+
+The WSH helper runs on the following platforms:
+
+- macOS 11 or later (arm64, x64)
+- Windows 10 or later (arm64, x64)
+- Linux Kernel 2.6.32 or later (x64), Linux Kernel 3.1 or later (arm64)
 
 ## Links
 
