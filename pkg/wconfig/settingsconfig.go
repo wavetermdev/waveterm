@@ -59,6 +59,7 @@ type SettingsType struct {
 	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"`
 	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
 	TermCopyOnSelect   *bool    `json:"term:copyonselect,omitempty"`
+	TermTransparency   *float64 `json:"term:transparency,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
