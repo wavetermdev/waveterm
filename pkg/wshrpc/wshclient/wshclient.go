@@ -247,6 +247,12 @@ func NotifyCommand(w *wshutil.WshRpc, data wshrpc.WaveNotificationOptions, opts 
 	return err
 }
 
+// command "path", wshserver.PathCommand
+func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "path", data, opts)
+	return resp, err
+}
+
 // command "remotefiledelete", wshserver.RemoteFileDeleteCommand
 func RemoteFileDeleteCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotefiledelete", data, opts)

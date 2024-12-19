@@ -94,6 +94,12 @@ type MetaTSType struct {
 	TermScrollback         *int     `json:"term:scrollback,omitempty"`
 	TermVDomSubBlockId     string   `json:"term:vdomblockid,omitempty"`
 	TermVDomToolbarBlockId string   `json:"term:vdomtoolbarblockid,omitempty"`
+	TermTransparency       *float64 `json:"term:transparency,omitempty"` // default 0.5
+
+	WebZoom float64 `json:"web:zoom,omitempty"`
+
+	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
+	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`

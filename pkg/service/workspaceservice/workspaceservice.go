@@ -50,6 +50,9 @@ func (svc *WorkspaceService) UpdateWorkspace(ctx context.Context, workspaceId st
 		return nil, fmt.Errorf("error updating workspace: %w", err)
 	}
 
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_WorkspaceUpdate})
+
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
 		defer panichandler.PanicHandler("WorkspaceService:UpdateWorkspace:SendUpdateEvents")

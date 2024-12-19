@@ -93,6 +93,12 @@ const (
 	MetaKey_TermScrollback                   = "term:scrollback"
 	MetaKey_TermVDomSubBlockId               = "term:vdomblockid"
 	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
+	MetaKey_TermTransparency                 = "term:transparency"
+
+	MetaKey_WebZoom                          = "web:zoom"
+
+	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
+	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"

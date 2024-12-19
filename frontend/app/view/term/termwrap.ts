@@ -165,6 +165,9 @@ export class TermWrap {
     }
 
     handleTermData(data: string) {
+        if (!this.loaded) {
+            return;
+        }
         const b64data = util.stringToBase64(data);
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }

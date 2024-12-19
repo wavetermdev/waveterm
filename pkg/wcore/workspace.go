@@ -122,6 +122,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 			return false, fmt.Errorf("error closing tab: %w", err)
 		}
 	}
+	windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
 	if err != nil {
 		return false, fmt.Errorf("error deleting workspace: %w", err)
@@ -129,6 +130,12 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	log.Printf("deleted workspace %s\n", workspaceId)
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_WorkspaceUpdate})
+	if windowId != "" {
+		err = CloseWindow(ctx, windowId, false)
+		if err != nil {
+			return false, fmt.Errorf("error closing window: %w", err)
+		}
+	}
 	return true, nil
 }
 

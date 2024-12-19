@@ -783,6 +783,8 @@ function makePreviewModel(blockId: string, nodeModel: BlockNodeModel): PreviewMo
 function MarkdownPreview({ model }: SpecializedViewProps) {
     const connName = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
+    const fontSizeOverride = useAtomValue(getOverrideConfigAtom(model.blockId, "markdown:fontsize"));
+    const fixedFontSizeOverride = useAtomValue(getOverrideConfigAtom(model.blockId, "markdown:fixedfontsize"));
     const resolveOpts: MarkdownResolveOpts = useMemo<MarkdownResolveOpts>(() => {
         return {
             connName: connName,
@@ -791,7 +793,13 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
     }, [connName, fileInfo.dir]);
     return (
         <div className="view-preview view-preview-markdown">
-            <Markdown textAtom={model.fileContent} showTocAtom={model.markdownShowToc} resolveOpts={resolveOpts} />
+            <Markdown
+                textAtom={model.fileContent}
+                showTocAtom={model.markdownShowToc}
+                resolveOpts={resolveOpts}
+                fontSizeOverride={fontSizeOverride}
+                fixedFontSizeOverride={fixedFontSizeOverride}
+            />
         </div>
     );
 }

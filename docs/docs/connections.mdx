@@ -76,6 +76,72 @@ In addition to the regular ssh config file, wave also has its own config file to
 | term:theme | This string can be used to specify a terminal theme for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
 | ssh:identityfile | A list of strings containing the paths to identity files that will be used. If a `wsh ssh` command using the `-i` flag is successful, the identity file will automatically be added here. |
 
+### Example Internal Configurations
+
+Here are a couple examples of things you can do using the internal configuration file `connections.json`:
+
+#### Hiding a Connection
+
+Suppose you have a connection named `github.com` in your `~/.ssh/config` file that shows up as `git@github.com` in the connections dropdown. While it does belong in the config file for authentication reasons, it makes no sense to be in the dropdown since it doesn't involve connecting to a remote environment. In that case, you can hide it as in the example below:
+
+```json
+{
+    <... other connections go here ...>,
+    "git@github.com" : {
+        "display:hidden": true
+    },
+    <... other connections go here ...>
+}
+```
+
+#### Moving a Connection
+
+Suppose you have a connection named `rarelyused` that shows up as `myusername@rarelyused:9999` in the connections dropdown. Since it's so rarely used, you would prefer to move it later in the list. In that case, you can move it as in the example below:
+
+```json
+{
+    <... other connections go here ...>,
+    "myusername@rarelyused:9999" : {
+        "display:order": 100
+    },
+    <... other connections go here ...>
+}
+```
+
+#### Theming a Connection
+
+Suppose you have a connection named `myhost` that shows up as `myusername@myhost` in the connections dropdown. You use this connection a lot, but you keep getting it mixed up with your local connections. In this case, you can use the internal configuration file to style it differently. For example:
+
+```json
+{
+    <... other connections go here ...>,
+    "myusername@myhost" : {
+        "term:theme": "warmyellow",
+        "term:fontsize": 16,
+        "term:fontfamily": "menlo"
+    },
+    <... other connections go here ...>
+}
+```
+
+This style, font size, and font family will then only apply to the widgets that are using this connection.
+
+### Disabling Wsh for a Connection
+
+While Wave provides an option disable `wsh` when first connecting to a remote, there are cases where you may wish to disable it afterward. The easiest way to do this is by editing the `connections.json` file. Suppose the connection shows up in the dropdown as `root@wshless`. Then you can disable it manually with the following line:
+
+```json
+{
+    <... other connections go here ...>,
+    "root@wshless" : {
+        "conn:enablewsh": false,
+    },
+    <... other connections go here ...>
+}
+```
+
+Note that this same line gets added to your `connections.json` file automatically when you choose to disable `wsh` in gui when initially connecting.
+
 ## Managing Connections with the CLI
 
 The `wsh` command gives some commands specifically for interacting with the connections. You can view these [here](/wsh-reference#conn).

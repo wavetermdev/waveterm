@@ -1,7 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { app, ipcMain } from "electron";
+import { fireAndForget } from "@/util/util";
+import { app, dialog, ipcMain, shell } from "electron";
 import envPaths from "env-paths";
 import { existsSync, mkdirSync } from "fs";
 import os from "os";
@@ -39,6 +40,32 @@ keyutil.setKeyUtilPlatform(unamePlatform);
 const WaveConfigHomeVarName = "WAVETERM_CONFIG_HOME";
 const WaveDataHomeVarName = "WAVETERM_DATA_HOME";
 const WaveHomeVarName = "WAVETERM_HOME";
+
+export function checkIfRunningUnderARM64Translation(fullConfig: FullConfigType) {
+    if (!fullConfig.settings["app:dismissarchitecturewarning"] && app.runningUnderARM64Translation) {
+        console.log("Running under ARM64 translation, alerting user");
+        const dialogOpts: Electron.MessageBoxOptions = {
+            type: "warning",
+            buttons: ["Dismiss", "Learn More"],
+            title: "Wave has detected a performance issue",
+            message: `Wave is running in ARM64 translation mode which may impact performance.\n\nRecommendation: Download the native ARM64 version from our website for optimal performance.`,
+        };
+
+        const choice = dialog.showMessageBoxSync(null, dialogOpts);
+        if (choice === 1) {
+            // Open the documentation URL
+            console.log("User chose to learn more");
+            fireAndForget(() =>
+                shell.openExternal(
+                    "https://docs.waveterm.dev/faq#why-does-wave-warn-me-about-arm64-translation-when-it-launches"
+                )
+            );
+            throw new Error("User redirected to docsite to learn more about ARM64 translation, exiting");
+        } else {
+            console.log("User dismissed the dialog");
+        }
+    }
+}
 
 /**
  * Gets the path to the old Wave home directory (defaults to `~/.waveterm`).

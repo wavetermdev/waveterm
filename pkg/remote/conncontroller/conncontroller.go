@@ -509,11 +509,6 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 	conn.WithLock(func() {
 		conn.Client = client
 	})
-	err = conn.OpenDomainSocketListener()
-	if err != nil {
-		log.Printf("error: unable to open domain socket listener for %s: %v\n", conn.GetName(), err)
-		return err
-	}
 	config := wconfig.ReadFullConfig()
 	enableWsh := config.Settings.ConnWshEnabled
 	askBeforeInstall := config.Settings.ConnAskBeforeWshInstall
@@ -545,15 +540,22 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 		}
 
 		if conn.WshEnabled.Load() {
-			csErr := conn.StartConnServer()
-			if csErr != nil {
-				log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
+			dsErr := conn.OpenDomainSocketListener()
+			var csErr error
+			if dsErr != nil {
+				log.Printf("error: unable to open domain socket listener for %s: %v\n", conn.GetName(), dsErr)
+			} else {
+				csErr = conn.StartConnServer()
+				if csErr != nil {
+					log.Printf("error: unable to start conn server for %s: %v\n", conn.GetName(), csErr)
+				}
+			}
+			if dsErr != nil || csErr != nil {
 				log.Print("attempting to run with nowsh instead")
 				conn.WithLock(func() {
 					conn.WshError = csErr.Error()
 				})
 				conn.WshEnabled.Store(false)
-				//return fmt.Errorf("conncontroller %s start wsh connserver error: %v", conn.GetName(), csErr)
 			}
 		}
 	} else {
