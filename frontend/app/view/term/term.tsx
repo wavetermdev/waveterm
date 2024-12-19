@@ -416,6 +416,11 @@ class TermViewModel implements ViewModel {
             event.preventDefault();
             event.stopPropagation();
             return false;
+        } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:k")) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.termRef.current?.terminal?.clear();
+            return false;
         }
         const shellProcStatus = globalStore.get(this.shellProcStatus);
         if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
