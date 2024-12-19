@@ -42,7 +42,7 @@ const WaveDataHomeVarName = "WAVETERM_DATA_HOME";
 const WaveHomeVarName = "WAVETERM_HOME";
 
 export function checkIfRunningUnderARM64Translation(fullConfig: FullConfigType) {
-    if (true || (!fullConfig.settings["app:dismissarchitecturewarning"] && app.runningUnderARM64Translation)) {
+    if (!fullConfig.settings["app:dismissarchitecturewarning"] && app.runningUnderARM64Translation) {
         console.log("Running under ARM64 translation, alerting user");
         const dialogOpts: Electron.MessageBoxOptions = {
             type: "warning",
