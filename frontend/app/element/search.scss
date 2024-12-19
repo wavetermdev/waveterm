@@ -8,7 +8,9 @@
     color: var(--main-text-color);
     padding: 5px 10px;
     gap: 5px;
-    max-width: 50%;
+    width: 50%;
+    max-width: 400px;
+    min-width: 200px;
 
     input {
         flex: 1 1 auto;
