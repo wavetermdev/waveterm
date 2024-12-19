@@ -139,6 +139,7 @@ declare global {
         blockdef: BlockDef;
         rtopts?: RuntimeOpts;
         magnified?: boolean;
+        ephemeral?: boolean;
     };
 
     // wshrpc.CommandCreateSubBlockData
@@ -400,6 +401,7 @@ declare global {
         indexarr?: number[];
         focused: boolean;
         magnified: boolean;
+        ephemeral: boolean;
     };
 
     // waveobj.LayoutState
@@ -489,6 +491,9 @@ declare global {
         "term:scrollback"?: number;
         "term:vdomblockid"?: string;
         "term:vdomtoolbarblockid"?: string;
+        "web:zoom"?: number;
+        "markdown:fontsize"?: number;
+        "markdown:fixedfontsize"?: number;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -559,6 +564,14 @@ declare global {
         prompt: OpenAIPromptMessageType[];
     };
 
+    // wshrpc.PathCommandData
+    type PathCommandData = {
+        pathtype: string;
+        open: boolean;
+        openexternal: boolean;
+        tabid: string;
+    };
+
     // waveobj.Point
     type Point = {
         x: number;
@@ -603,6 +616,9 @@ declare global {
 
     // wconfig.SettingsType
     type SettingsType = {
+        "app:*"?: boolean;
+        "app:globalhotkey"?: string;
+        "app:dismissarchitecturewarning"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -614,6 +630,8 @@ declare global {
         "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
+        "ai:fontsize"?: number;
+        "ai:fixedfontsize"?: number;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -626,6 +644,7 @@ declare global {
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
+        "editor:fontsize"?: number;
         "web:*"?: boolean;
         "web:openlinksinternally"?: boolean;
         "web:defaulturl"?: string;
@@ -637,6 +656,8 @@ declare global {
         "autoupdate:intervalms"?: number;
         "autoupdate:installonquit"?: boolean;
         "autoupdate:channel"?: string;
+        "markdown:fontsize"?: number;
+        "markdown:fixedfontsize"?: number;
         "preview:showhiddenfiles"?: boolean;
         "tab:preset"?: string;
         "widget:*"?: boolean;

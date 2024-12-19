@@ -25,6 +25,8 @@ wsh editconfig
 
 | Key Name                             | Type     | Function                                                                                                                                                                                                                                                      |
 | ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| app:globalhotkey                     | string   | A systemwide keybinding to open your most recent wave window. This is a set of key names separated by `:`. For more info, see [Customizable Systemwide Global Hotkey](#customizable-systemwide-global-hotkey)                                                 |
+| app:dismissarchitecturewarning       | bool     | Disable warnings on app start when you are using a non-native architecture for Wave. For more info, see [Why does Wave warn me about ARM64 translation when it launches?](./faq#why-does-wave-warn-me-about-arm64-translation-when-it-launches).              |
 | ai:preset                            | string   | the default AI preset to use                                                                                                                                                                                                                                  |
 | ai:baseurl                           | string   | Set the AI Base Url (must be OpenAI compatible)                                                                                                                                                                                                               |
 | ai:apitoken                          | string   | your AI api token                                                                                                                                                                                                                                             |
@@ -40,12 +42,14 @@ wsh editconfig
 | term:fontfamily                      | string   | font family to use for terminal block                                                                                                                                                                                                                         |
 | term:disablewebgl                    | bool     | set to false to disable WebGL acceleration in terminal                                                                                                                                                                                                        |
 | term:localshellpath                  | string   | set to override the default shell path for local terminals                                                                                                                                                                                                    |
-| term:localshellopts                  | string[] | set to pass additional parameters to the term:localshellpath                                                                                                                                                                                                  |
+| term:localshellopts                  | string[] | set to pass additional parameters to the term:localshellpath (example: `["-NoLogo"]` for PowerShell will remove the copyright notice)                                                                                                                         |
 | term:copyonselect                    | bool     | set to false to disable terminal copy-on-select                                                                                                                                                                                                               |
 | term:scrollback                      | int      | size of terminal scrollback buffer, max is 10000                                                                                                                                                                                                              |
 | editor:minimapenabled                | bool     | set to false to disable editor minimap                                                                                                                                                                                                                        |
 | editor:stickyscrollenabled           | bool     | enables monaco editor's stickyScroll feature (pinning headers of current context, e.g. class names, method names, etc.), defaults to false                                                                                                                    |
 | editor:wordwrap                      | bool     | set to true to enable word wrapping in the editor (defaults to false)                                                                                                                                                                                         |
+| markdown:fontsize                    | float64  | font size for the normal text when rendering markdown in preview. headers are scaled up from this size, (default 14px)                                                                                                                                        |
+| markdown:fixedfontsize               | float64  | font size for the code blocks when rendering markdown in preview (default is 12px)                                                                                                                                                                            |
 | web:openlinksinternally              | bool     | set to false to open web links in external browser                                                                                                                                                                                                            |
 | web:defaulturl                       | string   | default web page to open in the web widget when no url is provided (homepage)                                                                                                                                                                                 |
 | web:defaultsearch                    | string   | search template for web searches. e.g. `https://www.google.com/search?q={query}`. "\{query}" gets replaced by search term                                                                                                                                     |
@@ -189,3 +193,52 @@ wsh editconfig termthemes.json
 | background          | CSS color |          |          | background color (default when no color code is applied), must have alpha channel (#rrggbbaa) if you want the terminal to be transparent |
 | cursorAccent        | CSS color |          |          | color for cursor                                                                                                                         |
 | selectionBackground | CSS color |          |          | background color for selected text                                                                                                       |
+
+### Customizable Systemwide Global Hotkey
+
+Wave allows settings a custom global hotkey to open your most recent window from anywhere in your computer. This has the name `"app:globalhotkey"` in the `settings.json` file and takes the form of a series of key names separated by the `:` character.
+
+#### Examples
+
+As a practical example, suppose you want a value of `F5` as your global hotkey. Then you can simply set the value of `"app:globalhotkey"` to `"F5"` and reboot Wave to make that your global hotkey.
+
+As a less practical example, suppose you use the combination of the keys `Ctrl`, `Option`, and `e`. Then the value for this keybinding would be `"Ctrl:Option:e"`.
+
+#### Allowed Key Names
+
+We support the following key names:
+
+- `Ctrl`
+- `Cmd`
+- `Shift`
+- `Alt`
+- `Option`
+- `Meta`
+- `Super`
+- Digits (non-numpad) represented by `c{Digit0}` through `c{Digit9}`
+- Letters `a` though `z`
+- F keys `F1` through `F20`
+- Soft keys `Soft1` through `Soft4`. These are essentially the same as `F21` through `F24`.
+- Space represented as either `Space` or a literal space &nbsp;<code>&nbsp;</code>
+- `Enter` (This is labeled as return on Mac)
+- `Tab`
+- `CapsLock`
+- `NumLock`
+- `Backspace` (This is labeled as delete on Mac)
+- `Delete`
+- `Insert`
+- The arrow keys `ArrowUp`, `ArrowDown`, `ArrowLeft`, and `ArrowRight`
+- `Home`
+- `End`
+- `PageUp`
+- `PageDown`
+- `Esc`
+- Volume controls `AudioVolumeUp`, `AudioVolumeDown`, `AudioVolumeMute`
+- Media controls `MediaTrackNext`, `MediaTrackPrevious`, `MediaPlayPause`, and `MediaStop`
+- `PrintScreen`
+- Numpad keys represented by `c{Numpad0}` through `c{Numpad9}`
+- The numpad decimal represented by `Decimal`
+- The numpad plus/add represented by `Add`
+- The numpad minus/subtract represented by `Subtract`
+- The numpad star/multiply represented by `Multiply`
+- The numpad slash/divide represented by `Divide`

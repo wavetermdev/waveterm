@@ -95,6 +95,11 @@ type MetaTSType struct {
 	TermVDomSubBlockId     string   `json:"term:vdomblockid,omitempty"`
 	TermVDomToolbarBlockId string   `json:"term:vdomtoolbarblockid,omitempty"`
 
+	WebZoom float64 `json:"web:zoom,omitempty"`
+
+	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
+	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
+
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`
 	VDomCorrelationId string `json:"vdom:correlationid,omitempty"`

@@ -28,7 +28,8 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 	if err != nil {
 		return nil, fmt.Errorf("error getting window: %w", err)
 	}
-	if window.WorkspaceId == workspaceId {
+	curWsId := window.WorkspaceId
+	if curWsId == workspaceId {
 		return nil, nil
 	}
 
@@ -45,24 +46,24 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 			return nil, err
 		}
 	}
-
-	curWs, err := GetWorkspace(ctx, window.WorkspaceId)
+	window.WorkspaceId = workspaceId
+	err = wstore.DBUpdate(ctx, window)
 	if err != nil {
-		return nil, fmt.Errorf("error getting current workspace: %w", err)
+		return nil, fmt.Errorf("error updating window: %w", err)
 	}
-	deleted, err := DeleteWorkspace(ctx, curWs.OID, false)
+
+	deleted, err := DeleteWorkspace(ctx, curWsId, false)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting current workspace: %w", err)
 	}
 	if !deleted {
-		log.Printf("current workspace %s was not deleted\n", curWs.OID)
+		log.Printf("current workspace %s was not deleted\n", curWsId)
 	} else {
-		log.Printf("deleted current workspace %s\n", curWs.OID)
+		log.Printf("deleted current workspace %s\n", curWsId)
 	}
 
-	window.WorkspaceId = workspaceId
 	log.Printf("switching window %s to workspace %s\n", windowId, workspaceId)
-	return ws, wstore.DBUpdate(ctx, window)
+	return ws, nil
 }
 
 func GetWindow(ctx context.Context, windowId string) (*waveobj.Window, error) {

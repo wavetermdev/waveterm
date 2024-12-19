@@ -8,7 +8,7 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
+import { atoms, createBlock, fetchWaveFile, getApi, globalStore, useOverrideConfigAtom, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
@@ -30,6 +30,7 @@ const slidingWindowSize = 30;
 
 interface ChatItemProps {
     chatItem: ChatMessageType;
+    model: WaveAiModel;
 }
 
 function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
@@ -430,11 +431,12 @@ function makeWaveAiViewModel(blockId: string): WaveAiModel {
     return waveAiModel;
 }
 
-const ChatItem = ({ chatItem }: ChatItemProps) => {
+const ChatItem = ({ chatItem, model }: ChatItemProps) => {
     const { user, text } = chatItem;
     const cssVar = "--panel-bg-color";
     const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-
+    const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
+    const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
     const renderContent = useMemo(() => {
         if (user == "error") {
             return (
@@ -445,7 +447,12 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                         </div>
                     </div>
                     <div className="chat-msg chat-msg-error">
-                        <Markdown text={text} scrollable={false} />
+                        <Markdown
+                            text={text}
+                            scrollable={false}
+                            fontSizeOverride={fontSize}
+                            fixedFontSizeOverride={fixedFontSize}
+                        />
                     </div>
                 </>
             );
@@ -459,7 +466,12 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
                         </div>
                     </div>
                     <div className="chat-msg chat-msg-assistant">
-                        <Markdown text={text} scrollable={false} />
+                        <Markdown
+                            text={text}
+                            scrollable={false}
+                            fontSizeOverride={fontSize}
+                            fixedFontSizeOverride={fixedFontSize}
+                        />
                     </div>
                 </>
             ) : (
@@ -474,11 +486,17 @@ const ChatItem = ({ chatItem }: ChatItemProps) => {
         return (
             <>
                 <div className="chat-msg chat-msg-user">
-                    <Markdown className="msg-text" text={text} scrollable={false} />
+                    <Markdown
+                        className="msg-text"
+                        text={text}
+                        scrollable={false}
+                        fontSizeOverride={fontSize}
+                        fixedFontSizeOverride={fixedFontSize}
+                    />
                 </div>
             </>
         );
-    }, [text, user]);
+    }, [text, user, fontSize, fixedFontSize]);
 
     return <div className={"chat-msg-container"}>{renderContent}</div>;
 };
@@ -487,10 +505,11 @@ interface ChatWindowProps {
     chatWindowRef: React.RefObject<HTMLDivElement>;
     messages: ChatMessageType[];
     msgWidths: Object;
+    model: WaveAiModel;
 }
 
 const ChatWindow = memo(
-    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages, msgWidths }, ref) => {
+    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages, msgWidths, model }, ref) => {
         const [isUserScrolling, setIsUserScrolling] = useState(false);
 
         const osRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -559,7 +578,7 @@ const ChatWindow = memo(
                 <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
                     <div className="filler"></div>
                     {messages.map((chitem, idx) => (
-                        <ChatItem key={idx} chatItem={chitem} />
+                        <ChatItem key={idx} chatItem={chitem} model={model} />
                     ))}
                 </div>
             </OverlayScrollbarsComponent>
@@ -569,7 +588,7 @@ const ChatWindow = memo(
 
 interface ChatInputProps {
     value: string;
-    termFontSize: number;
+    baseFontSize: number;
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
@@ -577,7 +596,7 @@ interface ChatInputProps {
 }
 
 const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
-    ({ value, onChange, onKeyDown, onMouseDown, termFontSize, model }, ref) => {
+    ({ value, onChange, onKeyDown, onMouseDown, baseFontSize, model }, ref) => {
         const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
         useImperativeHandle(ref, () => textAreaRef.current as HTMLTextAreaElement);
@@ -594,7 +613,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
 
                 // Adjust the height of the textarea to fit the text
                 const textAreaMaxLines = 5;
-                const textAreaLineHeight = termFontSize * 1.5;
+                const textAreaLineHeight = baseFontSize * 1.5;
                 const textAreaMinHeight = textAreaLineHeight;
                 const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
 
@@ -608,7 +627,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
                 const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
                 textAreaRef.current.style.height = newHeight + "px";
             },
-            [termFontSize]
+            [baseFontSize]
         );
 
         useEffect(() => {
@@ -624,7 +643,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
                 onMouseDown={onMouseDown} // When the user clicks on the textarea
                 onChange={onChange}
                 onKeyDown={onKeyDown}
-                style={{ fontSize: termFontSize }}
+                style={{ fontSize: baseFontSize }}
                 placeholder="Ask anything..."
                 value={value}
             ></textarea>
@@ -642,7 +661,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const [value, setValue] = useState("");
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
 
-    const termFontSize: number = 14;
+    const baseFontSize: number = 14;
     const msgWidths = {};
     const locked = useAtomValue(model.locked);
 
@@ -804,7 +823,13 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     return (
         <div ref={waveaiRef} className="waveai">
             <div className="waveai-chat">
-                <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} msgWidths={msgWidths} />
+                <ChatWindow
+                    ref={osRef}
+                    chatWindowRef={chatWindowRef}
+                    messages={messages}
+                    msgWidths={msgWidths}
+                    model={model}
+                />
             </div>
             <div className="waveai-controls">
                 <div className="waveai-input-wrapper">
@@ -815,7 +840,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
                         onChange={handleTextAreaChange}
                         onKeyDown={handleTextAreaKeyDown}
                         onMouseDown={handleTextAreaMouseDown}
-                        termFontSize={termFontSize}
+                        baseFontSize={baseFontSize}
                     />
                 </div>
                 <Button className={buttonClass} onClick={handleButtonPress}>

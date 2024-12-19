@@ -12,10 +12,12 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -183,6 +185,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 		ActionType: wcore.LayoutActionDataType_Insert,
 		BlockId:    blockData.OID,
 		Magnified:  data.Magnified,
+		Ephemeral:  data.Ephemeral,
 		Focused:    true,
 	})
 	if err != nil {
@@ -828,4 +831,40 @@ func (ws *WshServer) SetVarCommand(ctx context.Context, data wshrpc.CommandVarDa
 	}
 	envStr := envutil.MapToEnv(envMap)
 	return filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, []byte(envStr))
+}
+
+func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandData) (string, error) {
+	pathType := data.PathType
+	openInternal := data.Open
+	openExternal := data.OpenExternal
+	var path string
+	switch pathType {
+	case "config":
+		path = wavebase.GetWaveConfigDir()
+	case "data":
+		path = wavebase.GetWaveDataDir()
+	case "log":
+		path = filepath.Join(wavebase.GetWaveDataDir(), "waveapp.log")
+	}
+
+	if openInternal && openExternal {
+		return "", fmt.Errorf("open and openExternal cannot both be true")
+	}
+
+	if openInternal {
+		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{BlockDef: &waveobj.BlockDef{Meta: map[string]any{
+			waveobj.MetaKey_View: "preview",
+			waveobj.MetaKey_File: path,
+		}}, Ephemeral: true, TabId: data.TabId})
+
+		if err != nil {
+			return path, fmt.Errorf("error opening path: %w", err)
+		}
+	} else if openExternal {
+		err := open.Run(path)
+		if err != nil {
+			return path, fmt.Errorf("error opening path: %w", err)
+		}
+	}
+	return path, nil
 }

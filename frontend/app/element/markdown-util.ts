@@ -1,6 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { getWebServerEndpoint } from "@/util/endpoints";
+import { isBlank, makeConnRoute } from "@/util/util";
+import parseSrcSet from "parse-srcset";
+
 export type MarkdownContentBlockType = {
     type: string;
     id: string;
@@ -147,3 +153,56 @@ export function transformBlocks(content: string): { content: string; blocks: Map
         blocks: blocks,
     };
 }
+
+export const resolveRemoteFile = async (filepath: string, resolveOpts: MarkdownResolveOpts): Promise<string | null> => {
+    if (!filepath || filepath.startsWith("http://") || filepath.startsWith("https://")) {
+        return filepath;
+    }
+
+    try {
+        const route = makeConnRoute(resolveOpts.connName);
+        const fileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [resolveOpts.baseDir, filepath], {
+            route: route,
+        });
+
+        const usp = new URLSearchParams();
+        usp.set("path", fileInfo.path);
+        if (!isBlank(resolveOpts.connName)) {
+            usp.set("connection", resolveOpts.connName);
+        }
+
+        return getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
+    } catch (err) {
+        console.warn("Failed to resolve remote file:", filepath, err);
+        return null;
+    }
+};
+
+export const resolveSrcSet = async (srcSet: string, resolveOpts: MarkdownResolveOpts): Promise<string> => {
+    if (!srcSet) return null;
+
+    // Parse the srcset
+    const candidates = parseSrcSet(srcSet);
+
+    // Resolve each URL in the array of candidates
+    const resolvedCandidates = await Promise.all(
+        candidates.map(async (candidate) => {
+            const resolvedUrl = await resolveRemoteFile(candidate.url, resolveOpts);
+            return {
+                ...candidate,
+                url: resolvedUrl,
+            };
+        })
+    );
+
+    // Reconstruct the srcset string
+    return resolvedCandidates
+        .map((candidate) => {
+            let part = candidate.url;
+            if (candidate.w) part += ` ${candidate.w}w`;
+            if (candidate.h) part += ` ${candidate.h}h`;
+            if (candidate.d) part += ` ${candidate.d}x`;
+            return part;
+        })
+        .join(", ");
+};

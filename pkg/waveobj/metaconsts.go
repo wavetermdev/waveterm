@@ -94,6 +94,11 @@ const (
 	MetaKey_TermVDomSubBlockId               = "term:vdomblockid"
 	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
 
+	MetaKey_WebZoom                          = "web:zoom"
+
+	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
+	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"
+
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"
 	MetaKey_VDomCorrelationId                = "vdom:correlationid"

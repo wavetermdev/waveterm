@@ -33,17 +33,23 @@ const AnySchema = `
 `
 
 type SettingsType struct {
-	AiClear      bool    `json:"ai:*,omitempty"`
-	AiPreset     string  `json:"ai:preset,omitempty"`
-	AiApiType    string  `json:"ai:apitype,omitempty"`
-	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
-	AiApiToken   string  `json:"ai:apitoken,omitempty"`
-	AiName       string  `json:"ai:name,omitempty"`
-	AiModel      string  `json:"ai:model,omitempty"`
-	AiOrgID      string  `json:"ai:orgid,omitempty"`
-	AIApiVersion string  `json:"ai:apiversion,omitempty"`
-	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
-	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
+	AppClear                      bool   `json:"app:*,omitempty"`
+	AppGlobalHotkey               string `json:"app:globalhotkey,omitempty"`
+	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
+
+	AiClear         bool    `json:"ai:*,omitempty"`
+	AiPreset        string  `json:"ai:preset,omitempty"`
+	AiApiType       string  `json:"ai:apitype,omitempty"`
+	AiBaseURL       string  `json:"ai:baseurl,omitempty"`
+	AiApiToken      string  `json:"ai:apitoken,omitempty"`
+	AiName          string  `json:"ai:name,omitempty"`
+	AiModel         string  `json:"ai:model,omitempty"`
+	AiOrgID         string  `json:"ai:orgid,omitempty"`
+	AIApiVersion    string  `json:"ai:apiversion,omitempty"`
+	AiMaxTokens     float64 `json:"ai:maxtokens,omitempty"`
+	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
+	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
+	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 
 	TermClear          bool     `json:"term:*,omitempty"`
 	TermFontSize       float64  `json:"term:fontsize,omitempty"`
@@ -55,9 +61,10 @@ type SettingsType struct {
 	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
 	TermCopyOnSelect   *bool    `json:"term:copyonselect,omitempty"`
 
-	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
-	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
-	EditorWordWrap            bool `json:"editor:wordwrap,omitempty"`
+	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
+	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
+	EditorWordWrap            bool    `json:"editor:wordwrap,omitempty"`
+	EditorFontSize            float64 `json:"editor:fontsize,omitempty"`
 
 	WebClear               bool   `json:"web:*,omitempty"`
 	WebOpenLinksInternally bool   `json:"web:openlinksinternally,omitempty"`
@@ -72,6 +79,9 @@ type SettingsType struct {
 	AutoUpdateIntervalMs    float64 `json:"autoupdate:intervalms,omitempty"`
 	AutoUpdateInstallOnQuit bool    `json:"autoupdate:installonquit,omitempty"`
 	AutoUpdateChannel       string  `json:"autoupdate:channel,omitempty"`
+
+	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
+	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
 
 	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
 

@@ -149,6 +149,7 @@ type WshRpcInterface interface {
 	ActivityCommand(ctx context.Context, data ActivityUpdate) error
 	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
+	PathCommand(ctx context.Context, data PathCommandData) (string, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -290,6 +291,7 @@ type CommandCreateBlockData struct {
 	BlockDef  *waveobj.BlockDef    `json:"blockdef"`
 	RtOpts    *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 	Magnified bool                 `json:"magnified,omitempty"`
+	Ephemeral bool                 `json:"ephemeral,omitempty"`
 }
 
 type CommandCreateSubBlockData struct {
@@ -602,6 +604,13 @@ type CommandVarResponseData struct {
 	Key    string `json:"key"`
 	Val    string `json:"val"`
 	Exists bool   `json:"exists"`
+}
+
+type PathCommandData struct {
+	PathType     string `json:"pathtype"`
+	Open         bool   `json:"open"`
+	OpenExternal bool   `json:"openexternal"`
+	TabId        string `json:"tabid" wshcontext:"TabId"`
 }
 
 type ActivityDisplayType struct {

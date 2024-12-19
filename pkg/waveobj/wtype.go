@@ -208,6 +208,7 @@ type LayoutActionData struct {
 	IndexArr   *[]int `json:"indexarr,omitempty"`
 	Focused    bool   `json:"focused"`
 	Magnified  bool   `json:"magnified"`
+	Ephemeral  bool   `json:"ephemeral"`
 }
 
 type LeafOrderEntry struct {

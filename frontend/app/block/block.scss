@@ -133,9 +133,9 @@
                     opacity: 0.7;
                     flex-grow: 1;
 
-					&.flex-nogrow {
-						flex-grow: 0;
-					}
+                    &.flex-nogrow {
+                        flex-grow: 0;
+                    }
 
                     &.preview-filename {
                         direction: rtl;
@@ -175,7 +175,7 @@
                         flex: 1 2 auto;
                         overflow: hidden;
                         padding-right: 4px;
-						@include mixins.ellipsis()
+                        @include mixins.ellipsis();
                     }
 
                     .connecting-svg {
@@ -220,12 +220,12 @@
                             }
                         }
 
-                        .button {
+                        .wave-button {
                             margin-left: 3px;
                         }
 
                         // webview specific. for refresh button
-                        .iconbutton {
+                        .wave-iconbutton {
                             height: 100%;
                             width: 27px;
                             display: flex;
@@ -235,7 +235,7 @@
                     }
 
                     .menubutton {
-                        .button {
+                        .wave-button {
                             font-size: 11px;
                         }
                     }
@@ -245,7 +245,7 @@
                     display: flex;
                     flex-shrink: 0;
 
-                    .iconbutton {
+                    .wave-iconbutton {
                         display: flex;
                         width: 24px;
                         padding: 4px 6px;
@@ -277,7 +277,7 @@
                 align-items: center;
                 justify-content: center;
 
-                .iconbutton {
+                .wave-iconbutton {
                     opacity: 0.7;
                     font-size: 45px;
                     margin: -30px 0 0 0;
@@ -382,7 +382,7 @@
                         }
                     }
 
-                    .button:last-child {
+                    .wave-button:last-child {
                         margin-top: 1.5px;
                     }
                 }

@@ -412,6 +412,11 @@ export class LayoutModel {
                 for (const action of actions) {
                     switch (action.actiontype) {
                         case LayoutTreeActionType.InsertNode: {
+                            if (action.ephemeral) {
+                                this.newEphemeralNode(action.blockid);
+                                break;
+                            }
+
                             const insertNodeAction: LayoutTreeInsertNodeAction = {
                                 type: LayoutTreeActionType.InsertNode,
                                 node: newLayoutNode(undefined, undefined, undefined, {
