@@ -3,14 +3,15 @@
 
 @use "./../theme.scss";
 
+$darwin-not-fullscreen-indent: 74px;
+
 .tab-bar-wrapper {
     --default-indent: 10px;
-    --darwin-not-fullscreen-indent: 74px;
 }
 
 .darwin:not(.fullscreen) .tab-bar-wrapper {
     .window-drag.left {
-        width: var(--darwin-not-fullscreen-indent);
+        width: $darwin-not-fullscreen-indent;
     }
 }
 
