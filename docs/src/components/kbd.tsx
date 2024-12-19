@@ -38,9 +38,9 @@ function convertKey(platform: Platform, key: string): [any, string, boolean] {
         return ["⇧", "Shift", true];
     }
     if (key == "Escape") {
-        return ["Esc", null, false];
+        return ["Esc", "Escape", false];
     }
-    return [key, null, false];
+    return [key, key, false];
 }
 
 // Custom KBD component
