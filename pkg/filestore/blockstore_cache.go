@@ -227,6 +227,9 @@ func (entry *CacheEntry) readAt(ctx context.Context, offset int64, size int64, r
 			offset += truncateAmt
 			size -= truncateAmt
 		}
+		if size <= 0 {
+			return realDataOffset, nil, nil
+		}
 	}
 	partMap := file.computePartMap(offset, size)
 	dataEntryMap, err := entry.loadDataPartsForRead(ctx, getPartIdxsFromMap(partMap))
