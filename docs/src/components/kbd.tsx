@@ -50,7 +50,7 @@ const KbdInternal = ({ k }: { k: string }) => {
     const keyElems = keys.map((key, i) => {
         const [displayKey, title, symbol] = convertKey(platform, key);
         return (
-            <kbd key={i} title={title} className={symbol ? "symbol" : null}>
+            <kbd key={i} title={title} aria-label={title} className={symbol ? "symbol" : null}>
                 {displayKey}
             </kbd>
         );
