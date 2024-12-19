@@ -40,6 +40,7 @@ import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
+import { WindowDrag } from "../element/windowdrag";
 
 const NumActiveConnColors = 8;
 
@@ -181,9 +182,12 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const settings = jotai.useAtomValue(atoms.settingsAtom);
+    const autoHideTabBar = settings?.["window:autohidetabbar"] ?? false;
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
+    const draggerLeftRef = React.useRef<HTMLDivElement>(null);
     const connName = blockData?.meta?.connection;
     const connStatus = util.useAtomValueSafe(getConnStatusAtom(connName));
     const wshProblem = connName && !connStatus?.wshenabled && connStatus?.status == "connected";
@@ -252,6 +256,7 @@ const BlockFrame_Header = ({
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
+            <WindowDrag ref={draggerLeftRef} className={clsx({ 'left': autoHideTabBar })} />
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}
