@@ -84,7 +84,11 @@ const SearchComponent = ({
                 <FloatingPortal>
                     <div className="search-container" style={{ ...floatingStyles }} {...dismiss} ref={refs.setFloating}>
                         <Input placeholder="Search" value={search} onChange={setSearch} />
-                        <div className={clsx("search-results", { hidden: numResults === 0 })}>
+                        <div
+                            className={clsx("search-results", { hidden: numResults === 0 })}
+                            aria-live="polite"
+                            aria-label="Search Results"
+                        >
                             {index + 1}/{numResults}
                         </div>
                         <div className="right-buttons">

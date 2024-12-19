@@ -3,10 +3,10 @@
     flex-direction: row;
     background-color: var(--modal-bg-color);
     border: 1px solid var(--accent-color);
-    border-radius: 15px;
+    border-radius: var(--modal-border-radius);
     box-shadow: var(--modal-box-shadow);
     color: var(--main-text-color);
-    padding: 5px 10px;
+    padding: 5px 5px 5px 10px;
     gap: 5px;
     width: 50%;
     max-width: 300px;
