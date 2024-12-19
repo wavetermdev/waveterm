@@ -242,8 +242,9 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 		return fmt.Errorf("block controller not found for block %q", data.BlockId)
 	}
 	inputUnion := &blockcontroller.BlockInputUnion{
-		SigName:  data.SigName,
-		TermSize: data.TermSize,
+		SigName:    data.SigName,
+		TermSize:   data.TermSize,
+		FeActionId: data.FeActionId,
 	}
 	if len(data.InputData64) > 0 {
 		inputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(data.InputData64)))

@@ -116,6 +116,8 @@ declare global {
         blockid: string;
         inputdata64?: string;
         signame?: string;
+        pendingptyoffset?: number;
+        feactionid?: string;
         termsize?: TermSize;
     };
 

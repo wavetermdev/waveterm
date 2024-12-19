@@ -62,24 +62,27 @@ var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
 type BlockInputUnion struct {
-	InputData []byte            `json:"inputdata,omitempty"`
-	SigName   string            `json:"signame,omitempty"`
-	TermSize  *waveobj.TermSize `json:"termsize,omitempty"`
+	InputData  []byte            `json:"inputdata,omitempty"`
+	SigName    string            `json:"signame,omitempty"`
+	TermSize   *waveobj.TermSize `json:"termsize,omitempty"`
+	FeActionId string            `json:"feactionid,omitempty"`
 }
 
 type BlockController struct {
-	Lock              *sync.Mutex
-	ControllerType    string
-	TabId             string
-	BlockId           string
-	BlockDef          *waveobj.BlockDef
-	CreatedHtmlFile   bool
-	ShellProc         *shellexec.ShellProc
-	ShellInputCh      chan *BlockInputUnion
-	ShellProcStatus   string
-	ShellProcExitCode int
-	RunLock           *atomic.Bool
-	StatusVersion     int
+	Lock               *sync.Mutex
+	ControllerType     string
+	TabId              string
+	BlockId            string
+	BlockDef           *waveobj.BlockDef
+	CreatedHtmlFile    bool
+	ShellProc          *shellexec.ShellProc
+	ShellInputCh       chan *BlockInputUnion
+	ShellProcStatus    string
+	ShellProcExitCode  int
+	RunLock            *atomic.Bool
+	StatusVersion      int
+	ProcessedToOffset  int64
+	LastResizeActionId string
 }
 
 type BlockControllerRuntimeStatus struct {
@@ -115,6 +118,16 @@ func (bc *BlockController) getShellProc() *shellexec.ShellProc {
 	bc.Lock.Lock()
 	defer bc.Lock.Unlock()
 	return bc.ShellProc
+}
+
+func (bc *BlockController) TestAndSetResizeActionId(actionId string) bool {
+	bc.Lock.Lock()
+	defer bc.Lock.Unlock()
+	if actionId <= bc.LastResizeActionId {
+		return false
+	}
+	bc.LastResizeActionId = actionId
+	return true
 }
 
 type RunShellOpts struct {
@@ -469,13 +482,16 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 				shellProc.Cmd.Write(ic.InputData)
 			}
 			if ic.TermSize != nil {
-				err = setTermSize(ctx, bc.BlockId, *ic.TermSize)
-				if err != nil {
-					log.Printf("error setting pty size: %v\n", err)
-				}
-				err = shellProc.Cmd.SetSize(ic.TermSize.Rows, ic.TermSize.Cols)
-				if err != nil {
-					log.Printf("error setting pty size: %v\n", err)
+				ok := bc.TestAndSetResizeActionId(ic.FeActionId)
+				if ok {
+					err = setTermSize(ctx, bc.BlockId, *ic.TermSize)
+					if err != nil {
+						log.Printf("error setting pty size: %v\n", err)
+					}
+					err = shellProc.Cmd.SetSize(ic.TermSize.Rows, ic.TermSize.Cols)
+					if err != nil {
+						log.Printf("error setting pty size: %v\n", err)
+					}
 				}
 			}
 		}

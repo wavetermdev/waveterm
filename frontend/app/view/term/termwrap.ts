@@ -46,6 +46,7 @@ type TermWrapOptions = {
 export class TermWrap {
     blockId: string;
     ptyOffset: number;
+    pendingPtyOffset: number;
     dataBytesProcessed: number;
     terminal: Terminal;
     connectElem: HTMLDivElement;
@@ -56,6 +57,7 @@ export class TermWrap {
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
     hasResized: boolean;
+    isLoadingCache: boolean;
 
     constructor(
         blockId: string,
@@ -64,6 +66,7 @@ export class TermWrap {
         waveOptions: TermWrapOptions
     ) {
         this.loaded = false;
+        this.isLoadingCache = false;
         this.blockId = blockId;
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
@@ -165,11 +168,20 @@ export class TermWrap {
     }
 
     handleTermData(data: string) {
+        if (this.isLoadingCache) {
+            return;
+        }
         if (!this.loaded) {
             return;
         }
         const b64data = util.stringToBase64(data);
-        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
+        const actionId = util.getNextActionId();
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            inputdata64: b64data,
+            feactionid: actionId,
+            pendingptyoffset: this.pendingPtyOffset,
+        });
     }
 
     addFocusListener(focusFn: () => void) {
@@ -198,11 +210,14 @@ export class TermWrap {
         let prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
         });
+        if (setPtyOffset != null) {
+            this.pendingPtyOffset = setPtyOffset;
+        } else {
+            this.pendingPtyOffset = this.ptyOffset + data.length;
+        }
         this.terminal.write(data, () => {
-            if (setPtyOffset != null) {
-                this.ptyOffset = setPtyOffset;
-            } else {
-                this.ptyOffset += data.length;
+            this.ptyOffset = this.pendingPtyOffset;
+            if (setPtyOffset == null) {
                 this.dataBytesProcessed += data.length;
             }
             resolve();
@@ -217,20 +232,25 @@ export class TermWrap {
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
             if (cacheData.byteLength > 0) {
-                const curTermSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-                const fileTermSize: TermSize = cacheFile.meta["termsize"];
-                let didResize = false;
-                if (
-                    fileTermSize != null &&
-                    (fileTermSize.rows != curTermSize.rows || fileTermSize.cols != curTermSize.cols)
-                ) {
-                    console.log("terminal restore size mismatch, temp resize", fileTermSize, curTermSize);
-                    this.terminal.resize(fileTermSize.cols, fileTermSize.rows);
-                    didResize = true;
-                }
-                this.doTerminalWrite(cacheData, ptyOffset);
-                if (didResize) {
-                    this.terminal.resize(curTermSize.cols, curTermSize.rows);
+                try {
+                    this.isLoadingCache = true;
+                    const curTermSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+                    const fileTermSize: TermSize = cacheFile.meta["termsize"];
+                    let didResize = false;
+                    if (
+                        fileTermSize != null &&
+                        (fileTermSize.rows != curTermSize.rows || fileTermSize.cols != curTermSize.cols)
+                    ) {
+                        console.log("terminal restore size mismatch, temp resize", fileTermSize, curTermSize);
+                        this.terminal.resize(fileTermSize.cols, fileTermSize.rows);
+                        didResize = true;
+                    }
+                    await this.doTerminalWrite(cacheData, ptyOffset);
+                    if (didResize) {
+                        this.terminal.resize(curTermSize.cols, curTermSize.rows);
+                    }
+                } finally {
+                    this.isLoadingCache = false;
                 }
             }
         }
