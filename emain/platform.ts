@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { RpcApi } from "@/app/store/wshclientapi";
 import { fireAndForget } from "@/util/util";
 import { app, dialog, ipcMain, shell } from "electron";
 import envPaths from "env-paths";
@@ -10,7 +9,6 @@ import os from "os";
 import path from "path";
 import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
 import * as keyutil from "../frontend/util/keyutil";
-import { ElectronWshClient } from "./emain-wsh";
 
 // This is a little trick to ensure that Electron puts all its runtime data into a subdirectory to avoid conflicts with our own data.
 // On macOS, it will store to ~/Library/Application \Support/waveterm/electron
@@ -48,7 +46,7 @@ export function checkIfRunningUnderARM64Translation(fullConfig: FullConfigType) 
         console.log("Running under ARM64 translation, alerting user");
         const dialogOpts: Electron.MessageBoxOptions = {
             type: "warning",
-            buttons: ["Dismiss", "Learn More", "Don't Show Again"],
+            buttons: ["Dismiss", "Learn More"],
             title: "Wave has detected a performance issue",
             message: `Wave is running in ARM64 translation mode which may impact performance.\n\nRecommendation: Download the native ARM64 version from our website for optimal performance.`,
         };
@@ -63,10 +61,6 @@ export function checkIfRunningUnderARM64Translation(fullConfig: FullConfigType) 
                 )
             );
             throw new Error("User redirected to docsite to learn more about ARM64 translation, exiting");
-        } else if (choice === 2) {
-            // Don't show again
-            console.log("User dismissed the dialog and chose to not show again");
-            RpcApi.SetConfigCommand(ElectronWshClient, { "app:dismissarchitecturewarning": true });
         } else {
             console.log("User dismissed the dialog");
         }
