@@ -47,6 +47,7 @@ import { getLaunchSettings } from "./launchsettings";
 import { log } from "./log";
 import { makeAppMenu } from "./menu";
 import {
+    checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
@@ -588,6 +589,7 @@ async function appMain() {
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     const fullConfig = await services.FileService.GetFullConfig();
+    checkIfRunningUnderARM64Translation(fullConfig);
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();
     await initDocsite();

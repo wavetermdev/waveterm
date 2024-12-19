@@ -618,6 +618,7 @@ declare global {
     type SettingsType = {
         "app:*"?: boolean;
         "app:globalhotkey"?: string;
+        "app:dismissarchitecturewarning"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;

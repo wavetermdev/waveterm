@@ -33,8 +33,9 @@ const AnySchema = `
 `
 
 type SettingsType struct {
-	AppClear        bool   `json:"app:*,omitempty"`
-	AppGlobalHotkey string `json:"app:globalhotkey,omitempty"`
+	AppClear                      bool   `json:"app:*,omitempty"`
+	AppGlobalHotkey               string `json:"app:globalhotkey,omitempty"`
+	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
 
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
