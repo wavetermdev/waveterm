@@ -90,8 +90,8 @@ github.com/ubuntu/gowsl v0.0.0-20240906163211-049fd49bd93b h1:wFBKF5k5xbJQU8bYgc
 github.com/ubuntu/gowsl v0.0.0-20240906163211-049fd49bd93b/go.mod h1:N1CYNinssZru+ikvYTgVbVeSi21thHUTCoJ9xMvWe+s=
 github.com/wavetermdev/htmltoken v0.2.0 h1:sFVPPemlDv7/jg7n4Hx1AEF2m9MVAFjFpELWfhi/DlM=
 github.com/wavetermdev/htmltoken v0.2.0/go.mod h1:5FM0XV6zNYiNza2iaTcFGj+hnMtgqumFHO31Z8euquk=
-github.com/wavetermdev/ssh_config v0.0.0-20241027232332-ed124367682d h1:ArHaUBaiQWUqBzM2G/oLlm3Be0kwUMDt9vTNOWIfOd0=
-github.com/wavetermdev/ssh_config v0.0.0-20241027232332-ed124367682d/go.mod h1:q2RIzfka+BXARoNexmF9gkxEX7DmvbW9P4hIVx2Kg4M=
+github.com/wavetermdev/ssh_config v0.0.0-20241219203747-6409e4292f34 h1:I8VZVTZEXhnzfN7jB9a7TZYpzNO48sCUWMRXHM9XWSA=
+github.com/wavetermdev/ssh_config v0.0.0-20241219203747-6409e4292f34/go.mod h1:q2RIzfka+BXARoNexmF9gkxEX7DmvbW9P4hIVx2Kg4M=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 go.uber.org/atomic v1.7.0 h1:ADUqmZGgLDDfbSL9ZmPxKTybcoEYHgpYfELNoN+7hsw=
