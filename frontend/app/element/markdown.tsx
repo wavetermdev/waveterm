@@ -9,7 +9,7 @@ import {
     resolveSrcSet,
     transformBlocks,
 } from "@/app/element/markdown-util";
-import { useAtomValueSafe } from "@/util/util";
+import { boundNumber, useAtomValueSafe } from "@/util/util";
 import { clsx } from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
@@ -380,10 +380,10 @@ const Markdown = ({
 
     const mergedStyle = { ...style };
     if (fontSizeOverride != null) {
-        mergedStyle["--markdown-font-size"] = `${fontSizeOverride}px`;
+        mergedStyle["--markdown-font-size"] = `${boundNumber(fontSizeOverride, 6, 64)}px`;
     }
     if (fixedFontSizeOverride != null) {
-        mergedStyle["--markdown-fixed-font-size"] = `${fixedFontSizeOverride}px`;
+        mergedStyle["--markdown-fixed-font-size"] = `${boundNumber(fixedFontSizeOverride, 6, 64)}px`;
     }
     return (
         <div className={clsx("markdown", className)} style={mergedStyle}>
