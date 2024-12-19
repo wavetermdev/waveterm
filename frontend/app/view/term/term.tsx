@@ -24,6 +24,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
+import { boundNumber } from "@/util/util";
 import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -62,6 +63,7 @@ class TermViewModel implements ViewModel {
     vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
+    termTransparencyAtom: jotai.Atom<number>;
     noPadding: jotai.PrimitiveAtom<boolean>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
@@ -203,10 +205,17 @@ class TermViewModel implements ViewModel {
                 return get(getOverrideConfigAtom(this.blockId, "term:theme")) ?? DefaultTermTheme;
             });
         });
+        this.termTransparencyAtom = useBlockAtom(blockId, "termtransparencyatom", () => {
+            return jotai.atom<number>((get) => {
+                let value = get(getOverrideConfigAtom(this.blockId, "term:transparency")) ?? 0.5;
+                return boundNumber(value, 0, 1);
+            });
+        });
         this.blockBg = jotai.atom((get) => {
             const fullConfig = get(atoms.fullConfigAtom);
             const themeName = get(this.termThemeNameAtom);
-            const [_, bgcolor] = computeTheme(fullConfig, themeName);
+            const termTransparency = get(this.termTransparencyAtom);
+            const [_, bgcolor] = computeTheme(fullConfig, themeName, termTransparency);
             if (bgcolor != null) {
                 return { bg: bgcolor };
             }
@@ -407,6 +416,11 @@ class TermViewModel implements ViewModel {
             event.preventDefault();
             event.stopPropagation();
             return false;
+        } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:k")) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.termRef.current?.terminal?.clear();
+            return false;
         }
         const shellProcStatus = globalStore.get(this.shellProcStatus);
         if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
@@ -453,6 +467,7 @@ class TermViewModel implements ViewModel {
         const termThemeKeys = Object.keys(termThemes);
         const curThemeName = globalStore.get(getBlockMetaKeyAtom(this.blockId, "term:theme"));
         const defaultFontSize = globalStore.get(getSettingsKeyAtom("term:fontsize")) ?? 12;
+        const transparencyMeta = globalStore.get(getBlockMetaKeyAtom(this.blockId, "term:transparency"));
         const blockData = globalStore.get(this.blockAtom);
         const overrideFontSize = blockData?.meta?.["term:fontsize"];
 
@@ -474,6 +489,41 @@ class TermViewModel implements ViewModel {
             checked: curThemeName == null,
             click: () => this.setTerminalTheme(null),
         });
+        const transparencySubMenu: ContextMenuItem[] = [];
+        transparencySubMenu.push({
+            label: "Default",
+            type: "checkbox",
+            checked: transparencyMeta == null,
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:transparency": null },
+                });
+            },
+        });
+        transparencySubMenu.push({
+            label: "Transparent Background",
+            type: "checkbox",
+            checked: transparencyMeta == 0.5,
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:transparency": 0.5 },
+                });
+            },
+        });
+        transparencySubMenu.push({
+            label: "No Transparency",
+            type: "checkbox",
+            checked: transparencyMeta == 0,
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "term:transparency": 0 },
+                });
+            },
+        });
+
         const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
             (fontSize: number) => {
                 return {
@@ -507,6 +557,10 @@ class TermViewModel implements ViewModel {
         fullMenu.push({
             label: "Font Size",
             submenu: fontSizeSubMenu,
+        });
+        fullMenu.push({
+            label: "Transparency",
+            submenu: transparencySubMenu,
         });
         fullMenu.push({ type: "separator" });
         fullMenu.push({
@@ -734,7 +788,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemeName = globalStore.get(model.termThemeNameAtom);
-        const [termTheme, _] = computeTheme(fullConfig, termThemeName);
+        const termTransparency = globalStore.get(model.termTransparencyAtom);
+        const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
         let termScrollback = 1000;
         if (termSettings?.["term:scrollback"]) {
             termScrollback = Math.floor(termSettings["term:scrollback"]);

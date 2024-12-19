@@ -17,7 +17,8 @@ interface TermThemeProps {
 const TermThemeUpdater = ({ blockId, model, termRef }: TermThemeProps) => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const blockTermTheme = useAtomValue(model.termThemeNameAtom);
-    const [theme, _] = computeTheme(fullConfig, blockTermTheme);
+    const transparency = useAtomValue(model.termTransparencyAtom);
+    const [theme, _] = computeTheme(fullConfig, blockTermTheme, transparency);
     useEffect(() => {
         if (termRef.current?.terminal) {
             termRef.current.terminal.options.theme = theme;
