@@ -3,6 +3,7 @@
 
 @use "./../theme.scss";
 
+// 74px accounts for the macOS window controls and spacing in non-fullscreen mode
 $darwin-not-fullscreen-indent: 74px;
 
 .tab-bar-wrapper {
@@ -43,10 +44,16 @@ $darwin-not-fullscreen-indent: 74px;
 
     opacity: 0;
     background: transparent;
-    backdrop-filter: blur(10px);
     border-radius: 6px;
 
     transition: opacity 0.3s ease, top 0.3s ease;
+
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    
+    @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+        background: rgb(from var(--block-bg-color) r g b / 0.8);
+    }
 }
 
 .tab-bar-wrapper-auto-hide-visible {

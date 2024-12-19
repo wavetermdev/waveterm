@@ -187,7 +187,6 @@ const BlockFrame_Header = ({
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
-    const draggerLeftRef = React.useRef<HTMLDivElement>(null);
     const connName = blockData?.meta?.connection;
     const connStatus = util.useAtomValueSafe(getConnStatusAtom(connName));
     const wshProblem = connName && !connStatus?.wshenabled && connStatus?.status == "connected";
@@ -256,7 +255,7 @@ const BlockFrame_Header = ({
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
-            <WindowDrag ref={draggerLeftRef} className={clsx({ 'left': autoHideTabBar })} />
+            <WindowDrag className={clsx({ 'left': autoHideTabBar })} />
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}

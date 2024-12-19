@@ -4,9 +4,11 @@
 @use "../mixins.scss";
 @use "../tab/tabbar.scss" as tabbar;
 
-.darwin:not(.fullscreen) .block.block-frame-default .block-frame-default-header {
-    .window-drag.left {
-        width: tabbar.$darwin-not-fullscreen-indent;
+.darwin:not(.fullscreen) {
+    .block.block-frame-default .block-frame-default-header {
+        .window-drag.left {
+            width: tabbar.$darwin-not-fullscreen-indent;
+        }
     }
 }
 
