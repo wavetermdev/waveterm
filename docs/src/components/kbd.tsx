@@ -40,7 +40,7 @@ function convertKey(platform: Platform, key: string): [any, string, boolean] {
     if (key == "Escape") {
         return ["Esc", "Escape", false];
     }
-    return [key, key, false];
+    return [key.length > 1 ? key : key.toUpperCase(), key, false];
 }
 
 // Custom KBD component
