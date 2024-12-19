@@ -96,3 +96,32 @@ export const InputAndResults10: Story = {
     },
     args: {},
 };
+
+export const LongInputAndResults10: Story = {
+    render: (args) => {
+        const props = useSearch();
+        const setIsOpen = useSetAtom(props.isOpenAtom);
+        const setNumResults = useSetAtom(props.numResultsAtom);
+        const setSearch = useSetAtom(props.searchAtom);
+        useEffect(() => {
+            setIsOpen(true);
+            setNumResults(10);
+            setSearch("search term ".repeat(10).trimEnd());
+        }, []);
+        return (
+            <div
+                className="viewbox"
+                ref={props.anchorRef as React.RefObject<HTMLDivElement>}
+                style={{
+                    border: "2px solid black",
+                    width: "100%",
+                    height: "200px",
+                    background: "var(--main-bg-color)",
+                }}
+            >
+                <Search {...args} {...props} />
+            </div>
+        );
+    },
+    args: {},
+};
