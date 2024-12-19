@@ -30,7 +30,34 @@ export const DefaultSearch: Story = {
                 style={{
                     border: "2px solid black",
                     width: "100%",
-                    height: "100%",
+                    height: "200px",
+                    background: "var(--main-bg-color)",
+                }}
+            >
+                <Search {...args} {...props} />
+            </div>
+        );
+    },
+    args: {},
+};
+
+export const Results10: Story = {
+    render: (args) => {
+        const props = useSearch();
+        const setIsOpen = useSetAtom(props.isOpenAtom);
+        const setNumResults = useSetAtom(props.numResultsAtom);
+        useEffect(() => {
+            setIsOpen(true);
+            setNumResults(10);
+        }, []);
+        return (
+            <div
+                className="viewbox"
+                ref={props.anchorRef as React.RefObject<HTMLDivElement>}
+                style={{
+                    border: "2px solid black",
+                    width: "100%",
+                    height: "200px",
                     background: "var(--main-bg-color)",
                 }}
             >

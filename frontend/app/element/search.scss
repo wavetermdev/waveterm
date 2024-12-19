@@ -3,28 +3,40 @@
     flex-direction: row;
     background-color: var(--modal-bg-color);
     border: 1px solid var(--accent-color);
-    border-radius: 25px;
+    border-radius: 15px;
     box-shadow: var(--modal-box-shadow);
     color: var(--main-text-color);
-    padding: 10px;
-    gap: 10px;
+    padding: 5px 10px;
+    gap: 5px;
+    max-width: 50%;
 
     input {
+        flex: 1 1 100%;
         border: none;
-        font-size: 18px;
-        width: fit-content;
-        max-width: 30vw;
+        font-size: 14px;
         height: 100%;
+        padding: 0;
+        border-radius: 0;
     }
 
     .search-results {
-        font-size: 16px;
-        width: fit-content;
-        margin: auto 0 auto auto;
+        flex: 0 0 auto;
+        font-size: 12px;
+        margin: auto 0;
         color: var(--secondary-text-color);
 
         &.hidden {
             display: none;
+        }
+    }
+
+    .right-buttons {
+        display: flex;
+        gap: 5px;
+        padding-left: 5px;
+        border-left: 1px solid var(--modal-border-color);
+        button {
+            font-size: 12px;
         }
     }
 }

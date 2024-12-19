@@ -55,6 +55,22 @@ const SearchComponent = ({
 
     const dismiss = useDismiss(context);
 
+    const prevDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: "chevron-up",
+        title: "Previous Result",
+        disabled: index === 0,
+        click: () => setIndex(index - 1),
+    };
+
+    const nextDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: "chevron-down",
+        title: "Next Result",
+        disabled: !numResults || index === numResults - 1,
+        click: () => setIndex(index + 1),
+    };
+
     const closeDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "xmark-large",
@@ -66,12 +82,16 @@ const SearchComponent = ({
         <>
             {isOpen && (
                 <FloatingPortal>
-                    <div className="search-container" style={floatingStyles} {...dismiss} ref={refs.setFloating}>
+                    <div className="search-container" style={{ ...floatingStyles }} {...dismiss} ref={refs.setFloating}>
                         <Input placeholder="Search" value={search} onChange={setSearch} />
                         <div className={clsx("search-results", { hidden: numResults === 0 })}>
-                            {index} / {numResults}
+                            {index + 1}/{numResults}
                         </div>
-                        <IconButton decl={closeDecl} />
+                        <div className="right-buttons">
+                            <IconButton decl={prevDecl} />
+                            <IconButton decl={nextDecl} />
+                            <IconButton decl={closeDecl} />
+                        </div>
                     </div>
                 </FloatingPortal>
             )}
@@ -84,7 +104,7 @@ export const Search = memo(SearchComponent) as typeof SearchComponent;
 export function useSearch(anchorRef?: React.RefObject<HTMLElement>): SearchProps {
     const [searchAtom] = useState(atom(""));
     const [indexAtom] = useState(atom(0));
-    const [numResultsAtom] = useState(atom(1));
+    const [numResultsAtom] = useState(atom(0));
     const [isOpenAtom] = useState(atom(false));
     anchorRef ??= useRef(null);
     return { searchAtom, indexAtom, numResultsAtom, isOpenAtom, anchorRef };
