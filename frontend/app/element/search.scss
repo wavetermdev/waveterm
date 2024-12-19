@@ -11,7 +11,7 @@
     max-width: 50%;
 
     input {
-        flex: 1 1 100%;
+        flex: 1 1 auto;
         border: none;
         font-size: 14px;
         height: 100%;
@@ -20,7 +20,6 @@
     }
 
     .search-results {
-        flex: 0 0 auto;
         font-size: 12px;
         margin: auto 0;
         color: var(--secondary-text-color);
