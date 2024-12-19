@@ -699,9 +699,23 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
             console.log("user cancelled workspace delete", workspaceId, ww?.waveWindowId);
             return;
         }
+        
+        if (workspaceList.length > 1 && ww?.workspaceId == workspaceId){
+            
+            const workspaceIdindex : any =  workspaceList.findIndex(wse => wse.workspaceid === workspaceId);
+                
+            const moveIndex = (workspaceIdindex > 1) ? workspaceIdindex - 1 : workspaceIdindex + 1;   
+            const PrevNextWorkspace : any = workspaceList[moveIndex]
+            
+            await ww.switchWorkspace(PrevNextWorkspace.workspaceid);
+            relaunchBrowserWindows(); // the blank window bug from 0.10.1 OCCASIONALLY occurs if this is not here,  ( issue #1567 )
+        }
+        
         await WorkspaceService.DeleteWorkspace(workspaceId);
+        
         console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
-        if (ww?.workspaceId == workspaceId) {
+        
+        if (ww?.workspaceId == workspaceId) { 
             console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
             ww.destroy();
         }
