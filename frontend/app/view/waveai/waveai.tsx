@@ -520,20 +520,26 @@ const ChatWindow = memo(
 
         useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
 
-        useEffect(() => {
-            if (osRef.current?.osInstance()) {
-                const messagesLen = splitMessages.length;
-                console.log("handleNewMessage", messagesLen, isUserScrolling.current);
-                const { viewport } = osRef.current.osInstance().elements();
-                if (prevMessagesLenRef.current !== messagesLen || !isUserScrolling.current) {
-                    viewport.scrollTo({
-                        behavior: "auto",
-                        top: chatWindowRef.current?.scrollHeight || 0,
-                    });
-                }
+        const handleNewMessage = useCallback(
+            throttle(100, (messagesLen: number) => {
+                if (osRef.current?.osInstance()) {
+                    console.log("handleNewMessage", messagesLen, isUserScrolling.current);
+                    const { viewport } = osRef.current.osInstance().elements();
+                    if (prevMessagesLenRef.current !== messagesLen || !isUserScrolling.current) {
+                        viewport.scrollTo({
+                            behavior: "auto",
+                            top: chatWindowRef.current?.scrollHeight || 0,
+                        });
+                    }
 
-                prevMessagesLenRef.current = messagesLen;
-            }
+                    prevMessagesLenRef.current = messagesLen;
+                }
+            }),
+            []
+        );
+
+        useEffect(() => {
+            handleNewMessage(splitMessages.length);
         }, [splitMessages, latestMessage]);
 
         // Wait 300 ms after the user stops scrolling to determine if the user is within 300px of the bottom of the chat window.
