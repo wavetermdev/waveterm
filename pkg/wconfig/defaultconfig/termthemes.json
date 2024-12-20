@@ -28,16 +28,15 @@
     "onedarkpro": {
         "display:name": "One Dark Pro",
         "display:order": 2,
-        "background": "#282C34",
+        "background": "#21252B",
         "foreground": "#ABB2BF",
         "cursor": "#D7DAE0",
-        "selectionBackground": "#528BFF",
         "black": "#3F4451",
-        "red": "#E05561",
-        "green": "#8CC265",
+        "red": "#E06C75",
+        "green": "#98C379",
         "yellow": "#D18F52",
-        "blue": "#4AA5F0",
-        "magenta": "#C162DE",
+        "blue": "#61AFEF",
+        "magenta": "#C678DD",
         "cyan": "#42B3C2",
         "white": "#D7DAE0",
         "brightBlack": "#4F5666",
@@ -73,7 +72,6 @@
         "gray": "#6272A4",
         "cmdtext": "#F8F8F2",
         "foreground": "#F8F8F2",
-        "selectionBackground": "#44475a",
         "background": "#282a36",
         "cursor": "#f8f8f2"
     },
@@ -99,7 +97,6 @@
         "gray": "#75715E",
         "cmdtext": "#F8F8F2",
         "foreground": "#F8F8F2",
-        "selectionBackground": "#49483E",
         "background": "#272822",
         "cursor": "#F8F8F2"
     },
@@ -125,7 +122,7 @@
         "gray": "#767676",
         "cmdtext": "#CCCCCC",
         "foreground": "#CCCCCC",
-        "selectionBackground": "#3A96DD",
+        "selectionBackground": "#3A96DD77",
         "background": "#0C0C0C",
         "cursor": "#CCCCCC"
     },
@@ -150,7 +147,7 @@
         "brightWhite": "#FFFFFF",
         "background": "#2B2620",
         "foreground": "#F2E6D4",
-        "selectionBackground": "#B7950B",
+        "selectionBackground": "#B7950B77",
         "cursor": "#F9D784"
     },
     "rosepine": {
@@ -175,7 +172,6 @@
         "gray": "#908caa",
         "cmdtext": "#e0def4",
         "foreground": "#e0def4",
-        "selectionBackground": "#403d52",
         "background": "#191724",
         "cursor": "#524f67"
     }
