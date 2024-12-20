@@ -229,7 +229,11 @@ export class WaveBrowserWindow extends BaseWindow {
             e.preventDefault();
             fireAndForget(async () => {
                 const numWindows = waveWindowMap.size;
-                if (numWindows > 1) {
+                const fullConfig = await FileService.GetFullConfig();
+                if (
+                    fullConfig.settings["window:confirmonclose"] &&
+                    (numWindows > 1 || !fullConfig.settings["window:savelastwindowonclose"])
+                ) {
                     console.log("numWindows > 1", numWindows);
                     const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
                     console.log("workspace", workspace);

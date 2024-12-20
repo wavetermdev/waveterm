@@ -106,6 +106,8 @@ type SettingsType struct {
 	WindowMagnifiedBlockSize            *float64 `json:"window:magnifiedblocksize,omitempty"`
 	WindowMagnifiedBlockBlurPrimaryPx   *int64   `json:"window:magnifiedblockblurprimarypx,omitempty"`
 	WindowMagnifiedBlockBlurSecondaryPx *int64   `json:"window:magnifiedblockblursecondarypx,omitempty"`
+	WindowConfirmOnClose                bool     `json:"window:confirmonclose,omitempty"`
+	WindowSaveLastWindowOnClose         bool     `json:"window:savelastwindowonclose,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
