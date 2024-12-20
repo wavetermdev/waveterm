@@ -23,4 +23,4 @@ jobs:
               uses: upsidr/merge-gatekeeper@v1
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  ignored: Test Onboarding, Analyze (go), Analyze (javascript-typescript), License Compliance
+                  ignored: Test Onboarding, Analyze (go), Analyze (javascript-typescript), License Compliance, CodeRabbit

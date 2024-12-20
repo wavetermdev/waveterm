@@ -215,7 +215,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	}
 
 	if isZshShell(shellPath) {
-		shellOpts = append(shellOpts, fmt.Sprintf(`ZDOTDIR="%s/.waveterm/%s"`, homeDir, shellutil.ZshIntegrationDir))
+		shellOpts = append(shellOpts, fmt.Sprintf(`ZDOTDIR=%s/.waveterm/%s`, homeDir, shellutil.ZshIntegrationDir))
 	}
 	shellOpts = append(shellOpts, shellPath)
 	shellOpts = append(shellOpts, subShellOpts...)

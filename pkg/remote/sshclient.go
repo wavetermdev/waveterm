@@ -23,6 +23,7 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/trimquotes"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -750,7 +751,13 @@ func combineSshKeywords(userProvidedOpts *wshrpc.ConnKeywords, configKeywords *w
 // note that a `var == "yes"` will default to false
 // but `var != "no"` will default to true
 // when given unexpected strings
-func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
+func findSshConfigKeywords(hostPattern string) (connKeywords *wshrpc.ConnKeywords, outErr error) {
+	defer func() {
+		err := panichandler.PanicHandler("sshclient:find-ssh-config-keywords")
+		if err != nil {
+			outErr = err
+		}
+	}()
 	WaveSshConfigUserSettings().ReloadConfigs()
 	sshKeywords := &wshrpc.ConnKeywords{}
 	var err error
