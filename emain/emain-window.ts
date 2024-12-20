@@ -709,7 +709,7 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
                 
                 await ww.switchWorkspace(prevNextWorkspace.workspaceid);
                 await WorkspaceService.DeleteWorkspace(workspaceId);
-                
+                ww.activeTabView.webContents.reloadIgnoringCache(); // the blank window bug from 0.10.1 OCCASIONALLY occurs if this is not here,  ( issue #1567 )
             } else {
                 await WorkspaceService.DeleteWorkspace(workspaceId);
                 console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
