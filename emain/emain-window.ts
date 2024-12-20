@@ -700,26 +700,23 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
             return;
         }
         
-        if (workspaceList.length > 1 && ww?.workspaceId == workspaceId){
-            
-            const workspaceIdindex =  workspaceList.findIndex(wse => wse.workspaceid === workspaceId);
+        if (ww?.workspaceId == workspaceId){
+            if ( workspaceList?.length > 1 ) {
+                const workspaceIdindex =  workspaceList.findIndex(wse => wse.workspaceid === workspaceId);
+                    
+                const moveIndex = (workspaceIdindex > 0) ? workspaceIdindex - 1 : workspaceIdindex + 1;   
+                const prevNextWorkspace = workspaceList[moveIndex]
                 
-            const moveIndex = (workspaceIdindex > 0) ? workspaceIdindex - 1 : workspaceIdindex + 1;   
-            const prevNextWorkspace = workspaceList[moveIndex]
-            
-            await ww.switchWorkspace(prevNextWorkspace.workspaceid);
-			// this does it faster without restarting the window
-            ww.activeTabView.webContents.reloadIgnoringCache(); // the blank window bug from 0.10.1 OCCASIONALLY occurs if this is not here,  ( issue #1567 )
-    
-        }
-        
-        await WorkspaceService.DeleteWorkspace(workspaceId);
-        
-        console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
-        
-        if (ww?.workspaceId == workspaceId) { 
-            console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-            ww.destroy();
+                await ww.switchWorkspace(prevNextWorkspace.workspaceid);
+                await WorkspaceService.DeleteWorkspace(workspaceId);
+                
+            } else {
+                await WorkspaceService.DeleteWorkspace(workspaceId);
+                console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
+                
+                console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
+                ww.destroy();
+            }
         }
     });
 });
