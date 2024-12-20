@@ -16,6 +16,7 @@ import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { debounce, throttle } from "throttle-debounce";
 import "./waveai.scss";
 
 interface ChatMessageType {
@@ -433,8 +434,6 @@ function makeWaveAiViewModel(blockId: string): WaveAiModel {
 
 const ChatItem = ({ chatItem, model }: ChatItemProps) => {
     const { user, text } = chatItem;
-    const cssVar = "--panel-bg-color";
-    const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
     const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
     const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
     const renderContent = useMemo(() => {
@@ -514,32 +513,56 @@ const ChatWindow = memo(
 
         const osRef = useRef<OverlayScrollbarsComponentRef>(null);
         const prevMessagesLenRef = useRef(messages.length);
+        const latestMessageRef = useRef<ChatMessageType>(null);
 
         useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
 
-        useEffect(() => {
-            if (osRef.current && osRef.current.osInstance()) {
-                const { viewport } = osRef.current.osInstance().elements();
-                const curMessagesLen = messages.length;
-                if (prevMessagesLenRef.current !== curMessagesLen || !isUserScrolling) {
-                    setIsUserScrolling(false);
-                    viewport.scrollTo({
-                        behavior: "auto",
-                        top: chatWindowRef.current?.scrollHeight || 0,
-                    });
+        const handleNewMessage = useCallback(
+            throttle(100, (messages: ChatMessageType[]) => {
+                if (osRef.current?.osInstance()) {
+                    const { viewport } = osRef.current.osInstance().elements();
+                    const curMessagesLen = messages.length;
+                    if (prevMessagesLenRef.current !== curMessagesLen || !isUserScrolling) {
+                        latestMessageRef.current = messages[curMessagesLen - 1];
+                        viewport.scrollTo({
+                            behavior: "auto",
+                            top: chatWindowRef.current?.scrollHeight || 0,
+                        });
+                    }
+
+                    prevMessagesLenRef.current = curMessagesLen;
                 }
-
-                prevMessagesLenRef.current = curMessagesLen;
-            }
-        }, [messages, isUserScrolling]);
+            }),
+            [isUserScrolling]
+        );
 
         useEffect(() => {
-            if (osRef.current && osRef.current.osInstance()) {
-                const { viewport } = osRef.current.osInstance().elements();
+            handleNewMessage(messages);
+        }, [messages]);
 
-                const handleUserScroll = () => {
-                    setIsUserScrolling(true);
-                };
+        // Wait 300 ms after the user stops scrolling to determine if the user is within 300px of the bottom of the chat window.
+        // If so, unset the user scrolling flag.
+        const determineUnsetScroll = useCallback(
+            debounce(300, () => {
+                const { viewport } = osRef.current.osInstance().elements();
+                if (viewport.scrollTop > chatWindowRef.current?.clientHeight - viewport.clientHeight - 30) {
+                    setIsUserScrolling(false);
+                }
+            }),
+            []
+        );
+
+        const handleUserScroll = useCallback(
+            throttle(100, () => {
+                setIsUserScrolling(true);
+                determineUnsetScroll();
+            }),
+            []
+        );
+
+        useEffect(() => {
+            if (osRef.current?.osInstance()) {
+                const { viewport } = osRef.current.osInstance().elements();
 
                 viewport.addEventListener("wheel", handleUserScroll, { passive: true });
                 viewport.addEventListener("touchmove", handleUserScroll, { passive: true });
