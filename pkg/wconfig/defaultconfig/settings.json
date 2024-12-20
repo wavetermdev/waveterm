@@ -18,7 +18,7 @@
     "window:magnifiedblocksize": 0.9,
     "window:magnifiedblockblurprimarypx": 10,
     "window:magnifiedblockblursecondarypx": 2,
-    "window:confirmonclose": true,
+    "window:confirmclose": true,
     "window:savelastwindowonclose": true,
     "telemetry:enabled": true,
     "term:copyonselect": true
