@@ -13,6 +13,7 @@ import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
+import { splitAtom } from "jotai/utils";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -30,7 +31,7 @@ const outline = "2px solid var(--accent-color)";
 const slidingWindowSize = 30;
 
 interface ChatItemProps {
-    chatItem: ChatMessageType;
+    chatItemAtom: Atom<ChatMessageType>;
     model: WaveAiModel;
 }
 
@@ -73,6 +74,8 @@ export class WaveAiModel implements ViewModel {
     preIconButton?: Atom<IconButtonDecl>;
     endIconButtons?: Atom<IconButtonDecl[]>;
     messagesAtom: PrimitiveAtom<Array<ChatMessageType>>;
+    messagesSplitAtom: SplitAtom<Array<ChatMessageType>>;
+    latestMessageAtom: Atom<ChatMessageType>;
     addMessageAtom: WritableAtom<unknown, [message: ChatMessageType], void>;
     updateLastMessageAtom: WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
     removeLastMessageAtom: WritableAtom<unknown, [], void>;
@@ -93,6 +96,8 @@ export class WaveAiModel implements ViewModel {
         this.viewIcon = atom("sparkles");
         this.viewName = atom("Wave AI");
         this.messagesAtom = atom([]);
+        this.messagesSplitAtom = splitAtom(this.messagesAtom);
+        this.latestMessageAtom = atom((get) => get(this.messagesAtom).slice(-1)[0]);
         this.presetKey = atom((get) => {
             const metaPresetKey = get(this.blockAtom).meta["ai:preset"];
             const globalPresetKey = get(atoms.settingsAtom)["ai:preset"];
@@ -406,10 +411,8 @@ export class WaveAiModel implements ViewModel {
     }
 
     useWaveAi() {
-        const messages = useAtomValue(this.messagesAtom);
         return {
-            messages,
-            sendMessage: this.sendMessage.bind(this),
+            sendMessage: this.sendMessage.bind(this) as (text: string) => void,
         };
     }
 
@@ -432,7 +435,8 @@ function makeWaveAiViewModel(blockId: string): WaveAiModel {
     return waveAiModel;
 }
 
-const ChatItem = ({ chatItem, model }: ChatItemProps) => {
+const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
+    const chatItem = useAtomValue(chatItemAtom);
     const { user, text } = chatItem;
     const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
     const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
@@ -502,49 +506,49 @@ const ChatItem = ({ chatItem, model }: ChatItemProps) => {
 
 interface ChatWindowProps {
     chatWindowRef: React.RefObject<HTMLDivElement>;
-    messages: ChatMessageType[];
     msgWidths: Object;
     model: WaveAiModel;
 }
 
 const ChatWindow = memo(
-    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages, msgWidths, model }, ref) => {
-        const [isUserScrolling, setIsUserScrolling] = useState(false);
-
+    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, msgWidths, model }, ref) => {
+        const isUserScrolling = useRef(false);
         const osRef = useRef<OverlayScrollbarsComponentRef>(null);
-        const prevMessagesLenRef = useRef(messages.length);
+        const splitMessages = useAtomValue(model.messagesSplitAtom) as Atom<ChatMessageType>[];
+        const latestMessage = useAtomValue(model.latestMessageAtom);
+        const prevMessagesLenRef = useRef(splitMessages.length);
 
         useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
 
         const handleNewMessage = useCallback(
-            throttle(100, (messages: ChatMessageType[]) => {
+            throttle(100, (messagesLen: number) => {
                 if (osRef.current?.osInstance()) {
+                    console.log("handleNewMessage", messagesLen, isUserScrolling.current);
                     const { viewport } = osRef.current.osInstance().elements();
-                    const curMessagesLen = messages.length;
-                    if (prevMessagesLenRef.current !== curMessagesLen || !isUserScrolling) {
+                    if (prevMessagesLenRef.current !== messagesLen || !isUserScrolling.current) {
                         viewport.scrollTo({
                             behavior: "auto",
                             top: chatWindowRef.current?.scrollHeight || 0,
                         });
                     }
 
-                    prevMessagesLenRef.current = curMessagesLen;
+                    prevMessagesLenRef.current = messagesLen;
                 }
             }),
-            [isUserScrolling]
+            []
         );
 
         useEffect(() => {
-            handleNewMessage(messages);
-        }, [messages]);
+            handleNewMessage(splitMessages.length);
+        }, [splitMessages, latestMessage]);
 
         // Wait 300 ms after the user stops scrolling to determine if the user is within 300px of the bottom of the chat window.
         // If so, unset the user scrolling flag.
         const determineUnsetScroll = useCallback(
             debounce(300, () => {
                 const { viewport } = osRef.current.osInstance().elements();
-                if (viewport.scrollTop > chatWindowRef.current?.clientHeight - viewport.clientHeight - 30) {
-                    setIsUserScrolling(false);
+                if (viewport.scrollTop > chatWindowRef.current?.clientHeight - viewport.clientHeight - 100) {
+                    isUserScrolling.current = false;
                 }
             }),
             []
@@ -552,7 +556,7 @@ const ChatWindow = memo(
 
         const handleUserScroll = useCallback(
             throttle(100, () => {
-                setIsUserScrolling(true);
+                isUserScrolling.current = true;
                 determineUnsetScroll();
             }),
             []
@@ -598,8 +602,8 @@ const ChatWindow = memo(
             >
                 <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
                     <div className="filler"></div>
-                    {messages.map((chitem, idx) => (
-                        <ChatItem key={idx} chatItem={chitem} model={model} />
+                    {splitMessages.map((chitem, idx) => (
+                        <ChatItem key={idx} chatItemAtom={chitem} model={model} />
                     ))}
                 </div>
             </OverlayScrollbarsComponent>
@@ -673,7 +677,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
 );
 
 const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
-    const { messages, sendMessage } = model.useWaveAi();
+    const { sendMessage } = model.useWaveAi();
     const waveaiRef = useRef<HTMLDivElement>(null);
     const chatWindowRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -737,7 +741,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         sendMessage(value);
         setValue("");
         setSelectedBlockIdx(null);
-    }, [messages, value]);
+    }, [value]);
 
     const updateScrollTop = () => {
         const pres = chatWindowRef.current?.querySelectorAll("pre");
@@ -844,13 +848,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     return (
         <div ref={waveaiRef} className="waveai">
             <div className="waveai-chat">
-                <ChatWindow
-                    ref={osRef}
-                    chatWindowRef={chatWindowRef}
-                    messages={messages}
-                    msgWidths={msgWidths}
-                    model={model}
-                />
+                <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} msgWidths={msgWidths} model={model} />
             </div>
             <div className="waveai-controls">
                 <div className="waveai-input-wrapper">
