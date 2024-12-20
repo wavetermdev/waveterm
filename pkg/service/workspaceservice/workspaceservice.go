@@ -45,9 +45,12 @@ func (svc *WorkspaceService) UpdateWorkspace_Meta() tsgenmeta.MethodMeta {
 
 func (svc *WorkspaceService) UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (waveobj.UpdatesRtnType, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
-	_, err := wcore.UpdateWorkspace(ctx, workspaceId, name, icon, color, applyDefaults)
+	_, updated, err := wcore.UpdateWorkspace(ctx, workspaceId, name, icon, color, applyDefaults)
 	if err != nil {
 		return nil, fmt.Errorf("error updating workspace: %w", err)
+	}
+	if !updated {
+		return nil, nil
 	}
 
 	wps.Broker.Publish(wps.WaveEvent{
