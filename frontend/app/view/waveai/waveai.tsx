@@ -513,7 +513,6 @@ const ChatWindow = memo(
 
         const osRef = useRef<OverlayScrollbarsComponentRef>(null);
         const prevMessagesLenRef = useRef(messages.length);
-        const latestMessageRef = useRef<ChatMessageType>(null);
 
         useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
 
@@ -523,7 +522,6 @@ const ChatWindow = memo(
                     const { viewport } = osRef.current.osInstance().elements();
                     const curMessagesLen = messages.length;
                     if (prevMessagesLenRef.current !== curMessagesLen || !isUserScrolling) {
-                        latestMessageRef.current = messages[curMessagesLen - 1];
                         viewport.scrollTo({
                             behavior: "auto",
                             top: chatWindowRef.current?.scrollHeight || 0,
