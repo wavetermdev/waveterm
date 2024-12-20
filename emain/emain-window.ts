@@ -702,13 +702,15 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
         
         if (workspaceList.length > 1 && ww?.workspaceId == workspaceId){
             
-            const workspaceIdindex : any =  workspaceList.findIndex(wse => wse.workspaceid === workspaceId);
+            const workspaceIdindex =  workspaceList.findIndex(wse => wse.workspaceid === workspaceId);
                 
-            const moveIndex = (workspaceIdindex > 1) ? workspaceIdindex - 1 : workspaceIdindex + 1;   
-            const PrevNextWorkspace : any = workspaceList[moveIndex]
+            const moveIndex = (workspaceIdindex > 0) ? workspaceIdindex - 1 : workspaceIdindex + 1;   
+            const prevNextWorkspace = workspaceList[moveIndex]
             
-            await ww.switchWorkspace(PrevNextWorkspace.workspaceid);
-            relaunchBrowserWindows(); // the blank window bug from 0.10.1 OCCASIONALLY occurs if this is not here,  ( issue #1567 )
+            await ww.switchWorkspace(prevNextWorkspace.workspaceid);
+			// this does it faster without restarting the window
+            ww.activeTabView.webContents.reloadIgnoringCache(); // the blank window bug from 0.10.1 OCCASIONALLY occurs if this is not here,  ( issue #1567 )
+    
         }
         
         await WorkspaceService.DeleteWorkspace(workspaceId);
