@@ -19,7 +19,7 @@
     "window:magnifiedblockblurprimarypx": 10,
     "window:magnifiedblockblursecondarypx": 2,
     "window:confirmclose": true,
-    "window:savelastwindowonclose": true,
+    "window:savelastwindow": true,
     "telemetry:enabled": true,
     "term:copyonselect": true
 }

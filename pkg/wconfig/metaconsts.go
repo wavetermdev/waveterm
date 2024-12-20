@@ -80,7 +80,7 @@ const (
 	ConfigKey_WindowMagnifiedBlockBlurPrimaryPx = "window:magnifiedblockblurprimarypx"
 	ConfigKey_WindowMagnifiedBlockBlurSecondaryPx = "window:magnifiedblockblursecondarypx"
 	ConfigKey_WindowConfirmClose             = "window:confirmclose"
-	ConfigKey_WindowSaveLastWindowOnClose    = "window:savelastwindowonclose"
+	ConfigKey_WindowSaveLastWindow           = "window:savelastwindow"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"

@@ -230,7 +230,7 @@ export class WaveBrowserWindow extends BaseWindow {
             fireAndForget(async () => {
                 const numWindows = waveWindowMap.size;
                 const fullConfig = await FileService.GetFullConfig();
-                if (numWindows > 1 || !fullConfig.settings["window:savelastwindowonclose"]) {
+                if (numWindows > 1 || !fullConfig.settings["window:savelastwindow"]) {
                     console.log("numWindows > 1 or user does not want last window saved", numWindows);
                     if (fullConfig.settings["window:confirmclose"]) {
                         console.log("confirmclose", this.waveWindowId);

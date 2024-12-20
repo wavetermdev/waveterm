@@ -680,7 +680,7 @@ declare global {
         "window:magnifiedblockblurprimarypx"?: number;
         "window:magnifiedblockblursecondarypx"?: number;
         "window:confirmclose"?: boolean;
-        "window:savelastwindowonclose"?: boolean;
+        "window:savelastwindow"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
