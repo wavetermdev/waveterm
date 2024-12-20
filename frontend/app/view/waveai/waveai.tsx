@@ -4,7 +4,6 @@
 import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -17,6 +16,7 @@ import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { debounce, throttle } from "throttle-debounce";
 import "./waveai.scss";
 
 interface ChatMessageType {
@@ -434,8 +434,6 @@ function makeWaveAiViewModel(blockId: string): WaveAiModel {
 
 const ChatItem = ({ chatItem, model }: ChatItemProps) => {
     const { user, text } = chatItem;
-    const cssVar = "--panel-bg-color";
-    const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
     const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
     const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
     const renderContent = useMemo(() => {
@@ -507,25 +505,23 @@ interface ChatWindowProps {
     messages: ChatMessageType[];
     msgWidths: Object;
     model: WaveAiModel;
-    height: number;
 }
 
 const ChatWindow = memo(
-    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(
-        ({ chatWindowRef, messages, msgWidths, model, height }, ref) => {
-            const [isUserScrolling, setIsUserScrolling] = useState(false);
+    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages, msgWidths, model }, ref) => {
+        const [isUserScrolling, setIsUserScrolling] = useState(false);
 
-            const osRef = useRef<OverlayScrollbarsComponentRef>(null);
-            const prevMessagesLenRef = useRef(messages.length);
+        const osRef = useRef<OverlayScrollbarsComponentRef>(null);
+        const prevMessagesLenRef = useRef(messages.length);
 
-            useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
+        useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
 
-            useEffect(() => {
-                if (osRef.current && osRef.current.osInstance()) {
+        const handleNewMessage = useCallback(
+            throttle(100, (messages: ChatMessageType[]) => {
+                if (osRef.current?.osInstance()) {
                     const { viewport } = osRef.current.osInstance().elements();
                     const curMessagesLen = messages.length;
                     if (prevMessagesLenRef.current !== curMessagesLen || !isUserScrolling) {
-                        setIsUserScrolling(false);
                         viewport.scrollTo({
                             behavior: "auto",
                             top: chatWindowRef.current?.scrollHeight || 0,
@@ -534,61 +530,81 @@ const ChatWindow = memo(
 
                     prevMessagesLenRef.current = curMessagesLen;
                 }
-            }, [messages, isUserScrolling]);
+            }),
+            [isUserScrolling]
+        );
 
-            useEffect(() => {
-                if (osRef.current && osRef.current.osInstance()) {
-                    const { viewport } = osRef.current.osInstance().elements();
+        useEffect(() => {
+            handleNewMessage(messages);
+        }, [messages]);
 
-                    const handleUserScroll = () => {
-                        setIsUserScrolling(true);
-                    };
-
-                    viewport.addEventListener("wheel", handleUserScroll, { passive: true });
-                    viewport.addEventListener("touchmove", handleUserScroll, { passive: true });
-
-                    return () => {
-                        viewport.removeEventListener("wheel", handleUserScroll);
-                        viewport.removeEventListener("touchmove", handleUserScroll);
-                        if (osRef.current && osRef.current.osInstance()) {
-                            osRef.current.osInstance().destroy();
-                        }
-                    };
+        // Wait 300 ms after the user stops scrolling to determine if the user is within 300px of the bottom of the chat window.
+        // If so, unset the user scrolling flag.
+        const determineUnsetScroll = useCallback(
+            debounce(300, () => {
+                const { viewport } = osRef.current.osInstance().elements();
+                if (viewport.scrollTop > chatWindowRef.current?.clientHeight - viewport.clientHeight - 30) {
+                    setIsUserScrolling(false);
                 }
-            }, []);
+            }),
+            []
+        );
 
-            const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
-                const { viewport } = instance.elements();
-                viewport.removeAttribute("tabindex");
-                viewport.scrollTo({
-                    behavior: "auto",
-                    top: chatWindowRef.current?.scrollHeight || 0,
-                });
-            };
+        const handleUserScroll = useCallback(
+            throttle(100, () => {
+                setIsUserScrolling(true);
+                determineUnsetScroll();
+            }),
+            []
+        );
 
-            const handleScrollbarUpdated = (instance: OverlayScrollbars) => {
-                const { viewport } = instance.elements();
-                viewport.removeAttribute("tabindex");
-            };
+        useEffect(() => {
+            if (osRef.current?.osInstance()) {
+                const { viewport } = osRef.current.osInstance().elements();
 
-            return (
-                <OverlayScrollbarsComponent
-                    ref={osRef}
-                    className="scrollable"
-                    options={{ scrollbars: { autoHide: "leave" } }}
-                    events={{ initialized: handleScrollbarInitialized, updated: handleScrollbarUpdated }}
-                    style={{ maxHeight: height }}
-                >
-                    <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
-                        <div className="filler"></div>
-                        {messages.map((chitem, idx) => (
-                            <ChatItem key={idx} chatItem={chitem} model={model} />
-                        ))}
-                    </div>
-                </OverlayScrollbarsComponent>
-            );
-        }
-    )
+                viewport.addEventListener("wheel", handleUserScroll, { passive: true });
+                viewport.addEventListener("touchmove", handleUserScroll, { passive: true });
+
+                return () => {
+                    viewport.removeEventListener("wheel", handleUserScroll);
+                    viewport.removeEventListener("touchmove", handleUserScroll);
+                    if (osRef.current && osRef.current.osInstance()) {
+                        osRef.current.osInstance().destroy();
+                    }
+                };
+            }
+        }, []);
+
+        const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
+            const { viewport } = instance.elements();
+            viewport.removeAttribute("tabindex");
+            viewport.scrollTo({
+                behavior: "auto",
+                top: chatWindowRef.current?.scrollHeight || 0,
+            });
+        };
+
+        const handleScrollbarUpdated = (instance: OverlayScrollbars) => {
+            const { viewport } = instance.elements();
+            viewport.removeAttribute("tabindex");
+        };
+
+        return (
+            <OverlayScrollbarsComponent
+                ref={osRef}
+                className="chat-window-container"
+                options={{ scrollbars: { autoHide: "leave" } }}
+                events={{ initialized: handleScrollbarInitialized, updated: handleScrollbarUpdated }}
+            >
+                <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
+                    <div className="filler"></div>
+                    {messages.map((chitem, idx) => (
+                        <ChatItem key={idx} chatItem={chitem} model={model} />
+                    ))}
+                </div>
+            </OverlayScrollbarsComponent>
+        );
+    })
 );
 
 interface ChatInputProps {
@@ -662,8 +678,6 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const chatWindowRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<OverlayScrollbarsComponentRef>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
-    const waveAiDims = useDimensionsWithExistingRef(waveaiRef);
-    const chatInputDims = useDimensionsWithExistingRef(inputRef);
 
     const [value, setValue] = useState("");
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
@@ -836,8 +850,6 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
                     messages={messages}
                     msgWidths={msgWidths}
                     model={model}
-                    height={waveAiDims?.height - chatInputDims?.height - 28 ?? 400}
-                    // the 28 is a magic number it the moment but it makes the spacing look good
                 />
             </div>
             <div className="waveai-controls">
