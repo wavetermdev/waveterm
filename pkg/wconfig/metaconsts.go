@@ -33,6 +33,7 @@ const (
 	ConfigKey_TermLocalShellOpts             = "term:localshellopts"
 	ConfigKey_TermScrollback                 = "term:scrollback"
 	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
+	ConfigKey_TermTransparency               = "term:transparency"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
@@ -79,6 +80,8 @@ const (
 	ConfigKey_WindowMagnifiedBlockSize       = "window:magnifiedblocksize"
 	ConfigKey_WindowMagnifiedBlockBlurPrimaryPx = "window:magnifiedblockblurprimarypx"
 	ConfigKey_WindowMagnifiedBlockBlurSecondaryPx = "window:magnifiedblockblursecondarypx"
+	ConfigKey_WindowConfirmClose             = "window:confirmclose"
+	ConfigKey_WindowSaveLastWindow           = "window:savelastwindow"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"

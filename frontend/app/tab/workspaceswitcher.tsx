@@ -153,6 +153,7 @@ const WorkspaceSwitcherItem = ({
     const isCurrentWorkspace = activeWorkspace.oid === workspace.oid;
 
     const setWorkspace = useCallback((newWorkspace: Workspace) => {
+        setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
         if (newWorkspace.name != "") {
             fireAndForget(() =>
                 WorkspaceService.UpdateWorkspace(

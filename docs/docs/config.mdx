@@ -45,6 +45,8 @@ wsh editconfig
 | term:localshellopts                  | string[] | set to pass additional parameters to the term:localshellpath (example: `["-NoLogo"]` for PowerShell will remove the copyright notice)                                                                                                                         |
 | term:copyonselect                    | bool     | set to false to disable terminal copy-on-select                                                                                                                                                                                                               |
 | term:scrollback                      | int      | size of terminal scrollback buffer, max is 10000                                                                                                                                                                                                              |
+| term:theme                           | string   | preset name of terminal theme to apply by default (default is "default-dark")                                                                                                                                                                                 |
+| term:transparency                    | float64  | set the background transparency of terminal theme (default 0.5, 0 = not transparent, 1.0 = fully transparent)                                                                                                                                                 |
 | editor:minimapenabled                | bool     | set to false to disable editor minimap                                                                                                                                                                                                                        |
 | editor:stickyscrollenabled           | bool     | enables monaco editor's stickyScroll feature (pinning headers of current context, e.g. class names, method names, etc.), defaults to false                                                                                                                    |
 | editor:wordwrap                      | bool     | set to true to enable word wrapping in the editor (defaults to false)                                                                                                                                                                                         |
@@ -75,9 +77,11 @@ wsh editconfig
 | window:autohidetabbar                | bool     | show and hide the tab bar automatically when the mouse moves near the top of the window
 | window:nativetitlebar                | bool     | set to use the OS-native title bar, rather than the overlay (Windows and Linux only, requires app restart)                                                                                                                                                    |
 | window:disablehardwareacceleration   | bool     | set to disable Chromium hardware acceleration to resolve graphical bugs (requires app restart)                                                                                                                                                                |
+| window:savelastwindow                | bool     | when `true`, the last window that is closed is preserved and is reopened the next time the app is launched (defaults to `true`)                                                                                                                               |
+| window:confirmonclose                | bool     | when `true`, a prompt will ask a user to confirm that they want to close a window if it has an unsaved workspace with more than one tab (defaults to `true`)                                                                                                  |
 | telemetry:enabled                    | bool     | set to enable/disable telemetry                                                                                                                                                                                                                               |
 
-For reference this is the current default configuration (v0.9.3):
+For reference, this is the current default configuration (v0.10.4):
 
 ```json
 {
@@ -89,6 +93,7 @@ For reference this is the current default configuration (v0.9.3):
   "autoupdate:installonquit": true,
   "autoupdate:intervalms": 3600000,
   "conn:askbeforewshinstall": true,
+  "conn:wshenabled": true,
   "editor:minimapenabled": true,
   "web:defaulturl": "https://github.com/wavetermdev/waveterm",
   "web:defaultsearch": "https://www.google.com/search?q={query}",
@@ -99,6 +104,8 @@ For reference this is the current default configuration (v0.9.3):
   "window:magnifiedblocksize": 0.9,
   "window:magnifiedblockblurprimarypx": 10,
   "window:magnifiedblockblursecondarypx": 2,
+  "window:confirmclose": true,
+  "window:savelastwindow": true,
   "telemetry:enabled": true,
   "term:copyonselect": true
 }

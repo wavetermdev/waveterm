@@ -491,6 +491,7 @@ declare global {
         "term:scrollback"?: number;
         "term:vdomblockid"?: string;
         "term:vdomtoolbarblockid"?: string;
+        "term:transparency"?: number;
         "web:zoom"?: number;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
@@ -641,6 +642,7 @@ declare global {
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
         "term:copyonselect"?: boolean;
+        "term:transparency"?: number;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
@@ -678,6 +680,8 @@ declare global {
         "window:magnifiedblocksize"?: number;
         "window:magnifiedblockblurprimarypx"?: number;
         "window:magnifiedblockblursecondarypx"?: number;
+        "window:confirmclose"?: boolean;
+        "window:savelastwindow"?: boolean;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;

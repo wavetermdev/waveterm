@@ -58,5 +58,5 @@ func shellCmdInner() string {
 		}
 	}
 	// none found
-	return "bin/bash\n"
+	return "/bin/bash\n"
 }
