@@ -1,14 +1,18 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+@use "./../theme.scss";
+
+// 74px accounts for the macOS window controls and spacing in non-fullscreen mode
+$darwin-not-fullscreen-indent: 74px;
+
 .tab-bar-wrapper {
     --default-indent: 10px;
-    --darwin-not-fullscreen-indent: 74px;
 }
 
 .darwin:not(.fullscreen) .tab-bar-wrapper {
     .window-drag.left {
-        width: var(--darwin-not-fullscreen-indent);
+        width: $darwin-not-fullscreen-indent;
     }
 }
 
@@ -22,9 +26,41 @@
     margin-bottom: 20px;
 }
 
-.tab-bar-wrapper {
+.tab-bar-wrapper-always-visible {
     padding-top: 6px;
     position: relative;
+    opacity: 1;
+}
+
+.tab-bar-wrapper-auto-hide {
+    left: 0; 
+    right: 0;
+
+    padding: 6px;
+    margin: 2px;
+
+    position: fixed;
+    z-index: 1000;
+
+    opacity: 0;
+    background: transparent;
+    border-radius: 6px;
+
+    transition: opacity 0.3s ease, top 0.3s ease;
+
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    
+    @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+        background: rgb(from var(--block-bg-color) r g b / 0.8);
+    }
+}
+
+.tab-bar-wrapper-auto-hide-visible {
+    opacity: 1;
+}
+
+.tab-bar-wrapper {
     user-select: none;
     display: flex;
     flex-direction: row;
