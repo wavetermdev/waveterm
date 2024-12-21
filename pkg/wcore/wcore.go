@@ -25,6 +25,7 @@ func EnsureInitialData() error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	firstLaunch := false
 	if err == wstore.ErrNotFound {
 		client, err = CreateClient(ctx)
 		if err != nil {
@@ -34,6 +35,7 @@ func EnsureInitialData() error {
 		if migrateErr != nil {
 			log.Printf("error migrating old history: %v\n", migrateErr)
 		}
+		firstLaunch = true
 	}
 	if client.TempOID == "" {
 		log.Println("client.TempOID is empty")
@@ -53,12 +55,16 @@ func EnsureInitialData() error {
 		log.Println("client has windows")
 		return nil
 	}
-	log.Println("client has no windows, creating starter workspace")
-	starterWs, err := CreateWorkspace(ctx, "Starter workspace", "custom@wave-logo-solid", "#58C142", false, true)
-	if err != nil {
-		return fmt.Errorf("error creating starter workspace: %w", err)
+	wsId := ""
+	if firstLaunch {
+		log.Println("client has no windows and first launch, creating starter workspace")
+		starterWs, err := CreateWorkspace(ctx, "Starter workspace", "custom@wave-logo-solid", "#58C142", false, true)
+		if err != nil {
+			return fmt.Errorf("error creating starter workspace: %w", err)
+		}
+		wsId = starterWs.OID
 	}
-	_, err = CreateWindow(ctx, nil, starterWs.OID)
+	_, err = CreateWindow(ctx, nil, wsId)
 	if err != nil {
 		return fmt.Errorf("error creating window: %w", err)
 	}
