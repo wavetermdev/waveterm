@@ -31,7 +31,7 @@ func MakeWaveAIPacket() *wshrpc.WaveAIPacketType {
 	return &wshrpc.WaveAIPacketType{Type: OpenAIPacketStr}
 }
 
-type OpenAICmdInfoChatMessage struct {
+type WaveAICmdInfoChatMessage struct {
 	MessageID           int                            `json:"messageid"`
 	IsAssistantResponse bool                           `json:"isassistantresponse,omitempty"`
 	AssistantResponse   *WaveAICmdInfoPacketOutputType `json:"assistantresponse,omitempty"`
