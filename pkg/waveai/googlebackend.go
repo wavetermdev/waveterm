@@ -43,7 +43,7 @@ func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 			select {
 			case <-ctx.Done():
 				rtn <- makeAIError(fmt.Errorf("request cancelled: %v", ctx.Err()))
-				return
+				break
 			default:
 			}
 
