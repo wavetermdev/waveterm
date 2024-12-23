@@ -49,8 +49,8 @@ type perplexityResponse struct {
 	Model   string                     `json:"model"`
 }
 
-func (PerplexityBackend) StreamCompletion(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
-	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
+func (PerplexityBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 
 	go func() {
 		defer func() {
@@ -160,17 +160,17 @@ func (PerplexityBackend) StreamCompletion(ctx context.Context, request wshrpc.Op
 			}
 
 			if !sentHeader {
-				pk := MakeOpenAIPacket()
+				pk := MakeWaveAIPacket()
 				pk.Model = response.Model
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 				sentHeader = true
 			}
 
 			for _, choice := range response.Choices {
-				pk := MakeOpenAIPacket()
+				pk := MakeWaveAIPacket()
 				pk.Text = choice.Delta.Content
 				pk.FinishReason = choice.FinishReason
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 			}
 		}
 	}()
