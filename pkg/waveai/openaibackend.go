@@ -20,6 +20,8 @@ type OpenAIBackend struct{}
 
 var _ AIBackend = OpenAIBackend{}
 
+const DefaultAzureAPIVersion = "2023-05-15"
+
 // copied from go-openai/config.go
 func defaultAzureMapperFn(model string) string {
 	return regexp.MustCompile(`[.:]`).ReplaceAllString(model, "")
