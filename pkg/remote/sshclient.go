@@ -662,12 +662,12 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 
+	parsedKeywords := &wshrpc.ConnKeywords{}
 	if opts.SSHUser != "" {
-		connFlags.SshUser = &opts.SSHUser
+		parsedKeywords.SshUser = &opts.SSHUser
 	}
-	//connFlags.SshHostName = &opts.SSHHost
 	if opts.SSHPort != "" {
-		connFlags.SshPort = &opts.SSHPort
+		parsedKeywords.SshPort = &opts.SSHPort
 	}
 
 	rawName := opts.String()
@@ -676,10 +676,21 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if !ok {
 		internalSshConfigKeywords = wshrpc.ConnKeywords{}
 	}
-	partialMerged := mergeKeywords(sshConfigKeywords, &internalSshConfigKeywords)
-	sshKeywords := mergeKeywords(partialMerged, connFlags)
 
-	// handle these separately since they append
+	// cascade order:
+	//   ssh config -> (optional) internal config -> specified flag keywords -> parsed keywords
+	partialMerged := sshConfigKeywords
+	if internalSshConfigKeywords.ConnOverrideConfig {
+		partialMerged = mergeKeywords(partialMerged, &internalSshConfigKeywords)
+	}
+	partialMerged = mergeKeywords(partialMerged, connFlags)
+	sshKeywords := mergeKeywords(partialMerged, parsedKeywords)
+
+	// handle these separately since
+	// - they append
+	// - since they append, the order is reversed
+	// - there is no reason to not include the internal config
+	// - they are never part of the parsedKeywords
 	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, connFlags.SshIdentityFile...)
 	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, internalSshConfigKeywords.SshIdentityFile...)
 	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, sshConfigKeywords.SshIdentityFile...)
@@ -713,62 +724,6 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		return client, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 	return client, debugInfo.JumpNum, nil
-}
-
-func combineSshKeywords(userProvidedOpts *wshrpc.ConnKeywords, configKeywords *wshrpc.ConnKeywords, savedKeywords *wshrpc.ConnKeywords) (*wshrpc.ConnKeywords, error) {
-	sshKeywords := &wshrpc.ConnKeywords{}
-
-	if safeDeref(userProvidedOpts.SshUser) != "" {
-		sshKeywords.SshUser = userProvidedOpts.SshUser
-	} else if safeDeref(configKeywords.SshUser) != "" {
-		sshKeywords.SshUser = configKeywords.SshUser
-	} else {
-		user, err := user.Current()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get user for ssh: %+v", err)
-		}
-		sshKeywords.SshUser = ptr(user.Username)
-	}
-
-	// we have to check the host value because of the weird way
-	// we store the pattern as the hostname for imported remotes
-	if safeDeref(configKeywords.SshHostName) != "" {
-		sshKeywords.SshHostName = configKeywords.SshHostName
-	} else {
-		sshKeywords.SshHostName = userProvidedOpts.SshHostName
-	}
-
-	userPort := safeDeref(userProvidedOpts.SshPort)
-	if userPort != "" && userPort != "0" && userPort != "22" {
-		sshKeywords.SshPort = userProvidedOpts.SshPort
-	} else if userPort != "" && userPort != "22" {
-		sshKeywords.SshPort = configKeywords.SshPort
-	} else {
-		sshKeywords.SshPort = ptr("22")
-	}
-
-	// use internal config ones
-	if savedKeywords != nil {
-		sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, savedKeywords.SshIdentityFile...)
-	}
-
-	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, userProvidedOpts.SshIdentityFile...)
-	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, configKeywords.SshIdentityFile...)
-
-	// these are not officially supported in the waveterm frontend but can be configured
-	// in ssh config files
-	sshKeywords.SshBatchMode = configKeywords.SshBatchMode
-	sshKeywords.SshPubkeyAuthentication = configKeywords.SshPubkeyAuthentication
-	sshKeywords.SshPasswordAuthentication = configKeywords.SshPasswordAuthentication
-	sshKeywords.SshKbdInteractiveAuthentication = configKeywords.SshKbdInteractiveAuthentication
-	sshKeywords.SshPreferredAuthentications = configKeywords.SshPreferredAuthentications
-	sshKeywords.SshAddKeysToAgent = configKeywords.SshAddKeysToAgent
-	sshKeywords.SshIdentityAgent = configKeywords.SshIdentityAgent
-	sshKeywords.SshProxyJump = configKeywords.SshProxyJump
-	sshKeywords.SshUserKnownHostsFile = configKeywords.SshUserKnownHostsFile
-	sshKeywords.SshGlobalKnownHostsFile = configKeywords.SshGlobalKnownHostsFile
-
-	return sshKeywords, nil
 }
 
 // note that a `var == "yes"` will default to false
