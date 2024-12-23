@@ -35,7 +35,7 @@ interface ChatItemProps {
     model: WaveAiModel;
 }
 
-function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
+function promptToMsg(prompt: WaveAIPromptMessageType): ChatMessageType {
     return {
         id: crypto.randomUUID(),
         user: prompt.role,
@@ -67,7 +67,7 @@ export class WaveAiModel implements ViewModel {
     blockAtom: Atom<Block>;
     presetKey: Atom<string>;
     presetMap: Atom<{ [k: string]: MetaType }>;
-    aiOpts: Atom<OpenAIOptsType>;
+    aiOpts: Atom<WaveAIOptsType>;
     viewIcon?: Atom<string | IconButtonDecl>;
     viewName?: Atom<string>;
     viewText?: Atom<string | HeaderElem[]>;
@@ -167,7 +167,7 @@ export class WaveAiModel implements ViewModel {
                 ...settings,
                 ...meta,
             };
-            const opts: OpenAIOptsType = {
+            const opts: WaveAIOptsType = {
                 model: settings["ai:model"] ?? null,
                 apitype: settings["ai:apitype"] ?? null,
                 orgid: settings["ai:orgid"] ?? null,
@@ -293,12 +293,12 @@ export class WaveAiModel implements ViewModel {
         globalStore.set(this.messagesAtom, history.map(promptToMsg));
     }
 
-    async fetchAiData(): Promise<Array<OpenAIPromptMessageType>> {
+    async fetchAiData(): Promise<Array<WaveAIPromptMessageType>> {
         const { data } = await fetchWaveFile(this.blockId, "aidata");
         if (!data) {
             return [];
         }
-        const history: Array<OpenAIPromptMessageType> = JSON.parse(new TextDecoder().decode(data));
+        const history: Array<WaveAIPromptMessageType> = JSON.parse(new TextDecoder().decode(data));
         return history.slice(Math.max(history.length - slidingWindowSize, 0));
     }
 
@@ -333,7 +333,7 @@ export class WaveAiModel implements ViewModel {
         globalStore.set(this.addMessageAtom, newMessage);
         // send message to backend and get response
         const opts = globalStore.get(this.aiOpts);
-        const newPrompt: OpenAIPromptMessageType = {
+        const newPrompt: WaveAIPromptMessageType = {
             role: "user",
             content: text,
         };
@@ -368,7 +368,7 @@ export class WaveAiModel implements ViewModel {
                     // only save the author's prompt
                     await BlockService.SaveWaveAiData(this.blockId, [...history, newPrompt]);
                 } else {
-                    const responsePrompt: OpenAIPromptMessageType = {
+                    const responsePrompt: WaveAIPromptMessageType = {
                         role: "assistant",
                         content: fullMsg,
                     };
@@ -383,7 +383,7 @@ export class WaveAiModel implements ViewModel {
                     globalStore.set(this.removeLastMessageAtom);
                 } else {
                     globalStore.set(this.updateLastMessageAtom, "", false);
-                    const responsePrompt: OpenAIPromptMessageType = {
+                    const responsePrompt: WaveAIPromptMessageType = {
                         role: "assistant",
                         content: fullMsg,
                     };
@@ -397,7 +397,7 @@ export class WaveAiModel implements ViewModel {
                 };
                 globalStore.set(this.addMessageAtom, errorMessage);
                 globalStore.set(this.updateLastMessageAtom, "", false);
-                const errorPrompt: OpenAIPromptMessageType = {
+                const errorPrompt: WaveAIPromptMessageType = {
                     role: "error",
                     content: errMsg,
                 };

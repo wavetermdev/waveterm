@@ -519,52 +519,6 @@ declare global {
     // waveobj.ORef
     type ORef = string;
 
-    // wshrpc.OpenAIOptsType
-    type OpenAIOptsType = {
-        model: string;
-        apitype?: string;
-        apitoken: string;
-        orgid?: string;
-        apiversion?: string;
-        baseurl?: string;
-        maxtokens?: number;
-        maxchoices?: number;
-        timeoutms?: number;
-    };
-
-    // wshrpc.OpenAIPacketType
-    type OpenAIPacketType = {
-        type: string;
-        model?: string;
-        created?: number;
-        finish_reason?: string;
-        usage?: OpenAIUsageType;
-        index?: number;
-        text?: string;
-        error?: string;
-    };
-
-    // wshrpc.OpenAIPromptMessageType
-    type OpenAIPromptMessageType = {
-        role: string;
-        content: string;
-        name?: string;
-    };
-
-    // wshrpc.OpenAIUsageType
-    type OpenAIUsageType = {
-        prompt_tokens?: number;
-        completion_tokens?: number;
-        total_tokens?: number;
-    };
-
-    // wshrpc.OpenAiStreamRequest
-    type OpenAiStreamRequest = {
-        clientid?: string;
-        opts: OpenAIOptsType;
-        prompt: OpenAIPromptMessageType[];
-    };
-
     // wshrpc.PathCommandData
     type PathCommandData = {
         pathtype: string;
@@ -1014,6 +968,52 @@ declare global {
     // wconfig.WatcherUpdate
     type WatcherUpdate = {
         fullconfig: FullConfigType;
+    };
+
+    // wshrpc.WaveAIOptsType
+    type WaveAIOptsType = {
+        model: string;
+        apitype?: string;
+        apitoken: string;
+        orgid?: string;
+        apiversion?: string;
+        baseurl?: string;
+        maxtokens?: number;
+        maxchoices?: number;
+        timeoutms?: number;
+    };
+
+    // wshrpc.WaveAIPacketType
+    type WaveAIPacketType = {
+        type: string;
+        model?: string;
+        created?: number;
+        finish_reason?: string;
+        usage?: WaveAIUsageType;
+        index?: number;
+        text?: string;
+        error?: string;
+    };
+
+    // wshrpc.WaveAIPromptMessageType
+    type WaveAIPromptMessageType = {
+        role: string;
+        content: string;
+        name?: string;
+    };
+
+    // wshrpc.WaveAIStreamRequest
+    type WaveAIStreamRequest = {
+        clientid?: string;
+        opts: WaveAIOptsType;
+        prompt: WaveAIPromptMessageType[];
+    };
+
+    // wshrpc.WaveAIUsageType
+    type WaveAIUsageType = {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
     };
 
     // wps.WaveEvent
