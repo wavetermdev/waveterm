@@ -759,7 +759,13 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wshrpc.ConnKeyword
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshHostName = ptr(trimquotes.TryTrimQuotes(hostNameRaw))
+	// manually implementing default HostName here as it is not handled by ssh_config library
+	hostNameProcessed := trimquotes.TryTrimQuotes(hostNameRaw)
+	if hostNameProcessed == "" {
+		sshKeywords.SshHostName = &hostPattern
+	} else {
+		sshKeywords.SshHostName = &hostNameRaw
+	}
 
 	portRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "Port")
 	if err != nil {
