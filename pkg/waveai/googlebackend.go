@@ -21,11 +21,11 @@ func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 		log.Fatal(err)
 		return nil
 	}
-	defer client.Close()
 
 	model := client.GenerativeModel(request.Opts.Model)
 	if model == nil {
 		log.Fatal("model not found")
+		client.Close()
 		return nil
 	}
 
@@ -36,6 +36,7 @@ func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 
 	go func() {
+		defer client.Close()
 		defer close(rtn)
 		for {
 			// Check for context cancellation
