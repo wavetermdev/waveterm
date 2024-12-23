@@ -6,16 +6,12 @@ package waveai
 import (
 	"context"
 	"log"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const OpenAIPacketStr = "openai"
-const OpenAICloudReqStr = "openai-cloudreq"
-const PacketEOFStr = "EOF"
-const DefaultAzureAPIVersion = "2023-05-15"
+const WaveAIPacketstr = "waveai"
 const ApiType_Anthropic = "anthropic"
 const ApiType_Perplexity = "perplexity"
 const APIType_Google = "google"
@@ -30,7 +26,7 @@ type WaveAICmdInfoPacketOutputType struct {
 }
 
 func MakeWaveAIPacket() *wshrpc.WaveAIPacketType {
-	return &wshrpc.WaveAIPacketType{Type: OpenAIPacketStr}
+	return &wshrpc.WaveAIPacketType{Type: WaveAIPacketstr}
 }
 
 type WaveAICmdInfoChatMessage struct {
@@ -47,13 +43,6 @@ type AIBackend interface {
 		request wshrpc.WaveAIStreamRequest,
 	) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]
 }
-
-const DefaultMaxTokens = 2048
-const DefaultModel = "gpt-4o-mini"
-const WCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
-const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
-
-const CloudWebsocketConnectTimeout = 1 * time.Minute
 
 func IsCloudAIRequest(opts *wshrpc.WaveAIOptsType) bool {
 	if opts == nil {
@@ -83,6 +72,7 @@ func RunAICommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan 
 	} else if IsCloudAIRequest(request.Opts) {
 		endpoint = "waveterm cloud"
 		request.Opts.APIType = APIType_OpenAI
+		request.Opts.Model = "default"
 		backend = WaveAICloudBackend{}
 	} else {
 		request.Opts.APIType = APIType_OpenAI

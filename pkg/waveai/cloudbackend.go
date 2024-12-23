@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -19,6 +20,10 @@ import (
 type WaveAICloudBackend struct{}
 
 var _ AIBackend = WaveAICloudBackend{}
+
+const CloudWebsocketConnectTimeout = 1 * time.Minute
+const OpenAICloudReqStr = "openai-cloudreq"
+const PacketEOFStr = "EOF"
 
 type WaveAICloudReqPacketType struct {
 	Type       string                           `json:"type"`
