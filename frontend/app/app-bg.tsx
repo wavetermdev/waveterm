@@ -26,7 +26,7 @@ function processBackgroundUrls(cssText: string): string {
     }
     const attrRe = /^background(-image)?\s*:\s*/i;
     cssText = cssText.replace(attrRe, "");
-    const ast = parseCSS("background: " + cssText, {
+    const ast = parseCSS("background: " + cssText.replace(/\\/g, '\\\\'), {
         context: "declaration",
     });
     let hasUnsafeUrl = false;
@@ -54,7 +54,7 @@ function processBackgroundUrls(cssText: string): string {
                 return;
             }
             // allow absolute paths
-            if (originalUrl.startsWith("/") || originalUrl.startsWith("~/")) {
+            if (originalUrl.startsWith("/") || originalUrl.startsWith("~/") || /^[a-zA-Z]:\\/.test(originalUrl)) {
                 const newUrl = encodeFileURL(originalUrl);
                 node.value = newUrl;
                 return;
