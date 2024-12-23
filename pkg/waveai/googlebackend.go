@@ -36,6 +36,7 @@ func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 
 	go func() {
+		defer close(rtn)
 		for {
 			// Check for context cancellation
 			select {
