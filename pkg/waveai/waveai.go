@@ -19,7 +19,7 @@ const DefaultAzureAPIVersion = "2023-05-15"
 const ApiType_Anthropic = "anthropic"
 const ApiType_Perplexity = "perplexity"
 
-type OpenAICmdInfoPacketOutputType struct {
+type WaveAICmdInfoPacketOutputType struct {
 	Model        string `json:"model,omitempty"`
 	Created      int64  `json:"created,omitempty"`
 	FinishReason string `json:"finish_reason,omitempty"`
@@ -27,14 +27,14 @@ type OpenAICmdInfoPacketOutputType struct {
 	Error        string `json:"error,omitempty"`
 }
 
-func MakeOpenAIPacket() *wshrpc.OpenAIPacketType {
-	return &wshrpc.OpenAIPacketType{Type: OpenAIPacketStr}
+func MakeWaveAIPacket() *wshrpc.WaveAIPacketType {
+	return &wshrpc.WaveAIPacketType{Type: OpenAIPacketStr}
 }
 
-type OpenAICmdInfoChatMessage struct {
+type WaveAICmdInfoChatMessage struct {
 	MessageID           int                            `json:"messageid"`
 	IsAssistantResponse bool                           `json:"isassistantresponse,omitempty"`
-	AssistantResponse   *OpenAICmdInfoPacketOutputType `json:"assistantresponse,omitempty"`
+	AssistantResponse   *WaveAICmdInfoPacketOutputType `json:"assistantresponse,omitempty"`
 	UserQuery           string                         `json:"userquery,omitempty"`
 	UserEngineeredQuery string                         `json:"userengineeredquery,omitempty"`
 }
@@ -42,8 +42,8 @@ type OpenAICmdInfoChatMessage struct {
 type AIBackend interface {
 	StreamCompletion(
 		ctx context.Context,
-		request wshrpc.OpenAiStreamRequest,
-	) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]
+		request wshrpc.WaveAIStreamRequest,
+	) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]
 }
 
 const DefaultMaxTokens = 2048
@@ -53,18 +53,18 @@ const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
 
 const CloudWebsocketConnectTimeout = 1 * time.Minute
 
-func IsCloudAIRequest(opts *wshrpc.OpenAIOptsType) bool {
+func IsCloudAIRequest(opts *wshrpc.WaveAIOptsType) bool {
 	if opts == nil {
 		return true
 	}
 	return opts.BaseURL == "" && opts.APIToken == ""
 }
 
-func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
-	return wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Error: err}
+func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
+	return wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Error: err}
 }
 
-func RunAICommand(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
+func RunAICommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
 	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NumAIReqs: 1}, "RunAICommand")
 	if request.Opts.APIType == ApiType_Anthropic {
 		endpoint := request.Opts.BaseURL

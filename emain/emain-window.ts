@@ -229,21 +229,26 @@ export class WaveBrowserWindow extends BaseWindow {
             e.preventDefault();
             fireAndForget(async () => {
                 const numWindows = waveWindowMap.size;
-                if (numWindows > 1) {
-                    console.log("numWindows > 1", numWindows);
-                    const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-                    console.log("workspace", workspace);
-                    if (isNonEmptyUnsavedWorkspace(workspace)) {
-                        console.log("workspace has no name, icon, and multiple tabs", workspace);
-                        const choice = dialog.showMessageBoxSync(this, {
-                            type: "question",
-                            buttons: ["Cancel", "Close Window"],
-                            title: "Confirm",
-                            message: "Window has unsaved tabs, closing window will delete existing tabs.\n\nContinue?",
-                        });
-                        if (choice === 0) {
-                            console.log("user cancelled close window", this.waveWindowId);
-                            return;
+                const fullConfig = await FileService.GetFullConfig();
+                if (numWindows > 1 || !fullConfig.settings["window:savelastwindow"]) {
+                    console.log("numWindows > 1 or user does not want last window saved", numWindows);
+                    if (fullConfig.settings["window:confirmclose"]) {
+                        console.log("confirmclose", this.waveWindowId);
+                        const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
+                        console.log("workspace", workspace);
+                        if (isNonEmptyUnsavedWorkspace(workspace)) {
+                            console.log("workspace has no name, icon, and multiple tabs", workspace);
+                            const choice = dialog.showMessageBoxSync(this, {
+                                type: "question",
+                                buttons: ["Cancel", "Close Window"],
+                                title: "Confirm",
+                                message:
+                                    "Window has unsaved tabs, closing window will delete existing tabs.\n\nContinue?",
+                            });
+                            if (choice === 0) {
+                                console.log("user cancelled close window", this.waveWindowId);
+                                return;
+                            }
                         }
                     }
                     console.log("deleteAllowed = true", this.waveWindowId);
@@ -268,11 +273,6 @@ export class WaveBrowserWindow extends BaseWindow {
             if (getGlobalIsRelaunching()) {
                 console.log("win relaunching", this.waveWindowId);
                 this.destroy();
-                return;
-            }
-            const numWindows = waveWindowMap.size;
-            if (numWindows == 0) {
-                console.log("win no windows left", this.waveWindowId);
                 return;
             }
             if (this.deleteAllowed) {

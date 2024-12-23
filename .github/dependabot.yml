@@ -13,20 +13,98 @@ updates:
               exclude-patterns:
                   - "*storybook*"
                   - "*electron*"
-          storybook:
-              patterns:
+                  - "@types/react"
+              update-types:
+                  - "minor"
+                  - "patch"
+          dev-dependencies-major:
+              dependency-type: "development"
+              exclude-patterns:
                   - "*storybook*"
+                  - "*electron*"
+                  - "@types/react"
+              update-types:
+                  - "major"
+
           prod-dependencies:
               dependency-type: "production"
               exclude-patterns:
                   - "*electron*"
                   - "jotai"
+                  - "react"
+              update-types:
+                  - "minor"
+                  - "patch"
+          prod-dependencies-major:
+              dependency-type: "production"
+              exclude-patterns:
+                  - "*electron*"
+                  - "jotai"
+                  - "react"
+              update-types:
+                  - "major"
+
+          storybook:
+              patterns:
+                  - "*storybook*"
+              update-types:
+                  - "minor"
+                  - "patch"
+          storybook-major:
+              patterns:
+                  - "*storybook*"
+              update-types:
+                  - "major"
+
           electron:
               patterns:
                   - "*electron*"
+              update-types:
+                  - "minor"
+                  - "patch"
+          electron-major:
+              patterns:
+                  - "*electron*"
+              update-types:
+                  - "major"
+
           docusaurus:
               patterns:
                   - "*docusaurus*"
+              update-types:
+                  - "minor"
+                  - "patch"
+          docusaurus-major:
+              patterns:
+                  - "*docusaurus*"
+              update-types:
+                  - "major"
+
+          react:
+              patterns:
+                  - "react"
+                  - "@types/react"
+              update-types:
+                  - "minor"
+                  - "patch"
+          react-major:
+              patterns:
+                  - "react"
+                  - "@types/react"
+              update-types:
+                  - "major"
+
+          jotai:
+              patterns:
+                  - "jotai"
+              update-types:
+                  - "minor"
+                  - "patch"
+          jotai-major:
+              patterns:
+                  - "jotai"
+              update-types:
+                  - "major"
     - package-ecosystem: "gomod"
       directory: "/"
       schedule:

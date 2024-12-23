@@ -70,7 +70,7 @@ func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, s
 	return nil
 }
 
-func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, history []wshrpc.OpenAIPromptMessageType) error {
+func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, history []wshrpc.WaveAIPromptMessageType) error {
 	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return err
