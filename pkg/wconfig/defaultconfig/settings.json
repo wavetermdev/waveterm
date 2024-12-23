@@ -7,7 +7,7 @@
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
     "conn:askbeforewshinstall": true,
-	"conn:wshenabled": true,
+    "conn:wshenabled": true,
     "editor:minimapenabled": true,
     "web:defaulturl": "https://github.com/wavetermdev/waveterm",
     "web:defaultsearch": "https://www.google.com/search?q={query}",
@@ -18,6 +18,8 @@
     "window:magnifiedblocksize": 0.9,
     "window:magnifiedblockblurprimarypx": 10,
     "window:magnifiedblockblursecondarypx": 2,
+    "window:confirmclose": true,
+    "window:savelastwindow": true,
     "telemetry:enabled": true,
     "term:copyonselect": true
 }

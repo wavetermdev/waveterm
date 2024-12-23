@@ -138,7 +138,7 @@ type WshRpcInterface interface {
 	EventUnsubAllCommand(ctx context.Context) error
 	EventReadHistoryCommand(ctx context.Context, data CommandEventReadHistoryData) ([]*wps.WaveEvent, error)
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
-	StreamWaveAiCommand(ctx context.Context, request OpenAiStreamRequest) chan RespOrErrorUnion[OpenAIPacketType]
+	StreamWaveAiCommand(ctx context.Context, request WaveAIStreamRequest) chan RespOrErrorUnion[WaveAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
@@ -377,19 +377,19 @@ type CommandEventReadHistoryData struct {
 	MaxItems int    `json:"maxitems"`
 }
 
-type OpenAiStreamRequest struct {
+type WaveAIStreamRequest struct {
 	ClientId string                    `json:"clientid,omitempty"`
-	Opts     *OpenAIOptsType           `json:"opts"`
-	Prompt   []OpenAIPromptMessageType `json:"prompt"`
+	Opts     *WaveAIOptsType           `json:"opts"`
+	Prompt   []WaveAIPromptMessageType `json:"prompt"`
 }
 
-type OpenAIPromptMessageType struct {
+type WaveAIPromptMessageType struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 	Name    string `json:"name,omitempty"`
 }
 
-type OpenAIOptsType struct {
+type WaveAIOptsType struct {
 	Model      string `json:"model"`
 	APIType    string `json:"apitype,omitempty"`
 	APIToken   string `json:"apitoken"`
@@ -401,18 +401,18 @@ type OpenAIOptsType struct {
 	TimeoutMs  int    `json:"timeoutms,omitempty"`
 }
 
-type OpenAIPacketType struct {
+type WaveAIPacketType struct {
 	Type         string           `json:"type"`
 	Model        string           `json:"model,omitempty"`
 	Created      int64            `json:"created,omitempty"`
 	FinishReason string           `json:"finish_reason,omitempty"`
-	Usage        *OpenAIUsageType `json:"usage,omitempty"`
+	Usage        *WaveAIUsageType `json:"usage,omitempty"`
 	Index        int              `json:"index,omitempty"`
 	Text         string           `json:"text,omitempty"`
 	Error        string           `json:"error,omitempty"`
 }
 
-type OpenAIUsageType struct {
+type WaveAIUsageType struct {
 	PromptTokens     int `json:"prompt_tokens,omitempty"`
 	CompletionTokens int `json:"completion_tokens,omitempty"`
 	TotalTokens      int `json:"total_tokens,omitempty"`

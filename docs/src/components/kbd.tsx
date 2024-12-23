@@ -38,9 +38,9 @@ function convertKey(platform: Platform, key: string): [any, string, boolean] {
         return ["⇧", "Shift", true];
     }
     if (key == "Escape") {
-        return ["Esc", null, false];
+        return ["Esc", "Escape", false];
     }
-    return [key, null, false];
+    return [key.length > 1 ? key : key.toUpperCase(), key, false];
 }
 
 // Custom KBD component
@@ -50,7 +50,7 @@ const KbdInternal = ({ k }: { k: string }) => {
     const keyElems = keys.map((key, i) => {
         const [displayKey, title, symbol] = convertKey(platform, key);
         return (
-            <kbd key={i} title={title} className={symbol ? "symbol" : null}>
+            <kbd key={i} title={title} aria-label={title} className={symbol ? "symbol" : null}>
                 {displayKey}
             </kbd>
         );

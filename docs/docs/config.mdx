@@ -76,9 +76,11 @@ wsh editconfig
 | window:showmenubar                   | bool     | set to use the OS-native menu bar (Windows and Linux only, requires app restart)                                                                                                                                                                              |
 | window:nativetitlebar                | bool     | set to use the OS-native title bar, rather than the overlay (Windows and Linux only, requires app restart)                                                                                                                                                    |
 | window:disablehardwareacceleration   | bool     | set to disable Chromium hardware acceleration to resolve graphical bugs (requires app restart)                                                                                                                                                                |
+| window:savelastwindow                | bool     | when `true`, the last window that is closed is preserved and is reopened the next time the app is launched (defaults to `true`)                                                                                                                               |
+| window:confirmonclose                | bool     | when `true`, a prompt will ask a user to confirm that they want to close a window if it has an unsaved workspace with more than one tab (defaults to `true`)                                                                                                  |
 | telemetry:enabled                    | bool     | set to enable/disable telemetry                                                                                                                                                                                                                               |
 
-For reference this is the current default configuration (v0.9.3):
+For reference, this is the current default configuration (v0.10.4):
 
 ```json
 {
@@ -90,6 +92,7 @@ For reference this is the current default configuration (v0.9.3):
   "autoupdate:installonquit": true,
   "autoupdate:intervalms": 3600000,
   "conn:askbeforewshinstall": true,
+  "conn:wshenabled": true,
   "editor:minimapenabled": true,
   "web:defaulturl": "https://github.com/wavetermdev/waveterm",
   "web:defaultsearch": "https://www.google.com/search?q={query}",
@@ -100,6 +103,8 @@ For reference this is the current default configuration (v0.9.3):
   "window:magnifiedblocksize": 0.9,
   "window:magnifiedblockblurprimarypx": 10,
   "window:magnifiedblockblursecondarypx": 2,
+  "window:confirmclose": true,
+  "window:savelastwindow": true,
   "telemetry:enabled": true,
   "term:copyonselect": true
 }

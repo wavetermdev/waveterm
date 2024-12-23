@@ -4,100 +4,99 @@
 .waveai {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
     height: 100%;
     width: 100%;
 
     .waveai-chat {
-        flex-grow: 1;
-        > .scrollable {
-            flex-flow: column nowrap;
-            margin-bottom: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+        .chat-window-container {
             overflow-y: auto;
-            min-height: 100%;
+            margin-bottom: 0;
+            height: 100%;
 
             .chat-window {
+                flex-flow: column nowrap;
                 display: flex;
-                flex-direction: column;
                 gap: 8px;
 
                 // This is the filler that will push the chat messages to the bottom until the chat window is full
                 .filler {
                     flex: 1 1 auto;
                 }
-            }
 
-            .chat-msg-container {
-                display: flex;
-                gap: 8px;
-                .chat-msg {
-                    margin: 10px 0;
+                .chat-msg-container {
                     display: flex;
-                    align-items: flex-start;
-                    border-radius: 8px;
-
-                    &.chat-msg-header {
+                    gap: 8px;
+                    .chat-msg {
+                        margin: 10px 0;
                         display: flex;
-                        flex-direction: column;
-                        justify-content: flex-start;
+                        align-items: flex-start;
+                        border-radius: 8px;
 
-                        .icon-box {
-                            padding-top: 0;
-                            border-radius: 4px;
-                            background-color: rgb(from var(--highlight-bg-color) r g b / 0.05);
+                        &.chat-msg-header {
                             display: flex;
-                            padding: 6px;
-                        }
-                    }
+                            flex-direction: column;
+                            justify-content: flex-start;
 
-                    &.chat-msg-assistant {
-                        color: var(--main-text-color);
-                        background-color: rgb(from var(--highlight-bg-color) r g b / 0.1);
-                        margin-right: auto;
-                        padding: 10px;
-                        max-width: 85%;
-
-                        .markdown {
-                            width: 100%;
-
-                            pre {
-                                white-space: pre-wrap;
-                                word-break: break-word;
-                                max-width: 100%;
-                                overflow-x: auto;
-                                margin-left: 0;
+                            .icon-box {
+                                padding-top: 0;
+                                border-radius: 4px;
+                                background-color: rgb(from var(--highlight-bg-color) r g b / 0.05);
+                                display: flex;
+                                padding: 6px;
                             }
                         }
-                    }
-                    &.chat-msg-user {
-                        margin-left: auto;
-                        padding: 10px;
-                        max-width: 85%;
-                        background-color: rgb(from var(--accent-color) r g b / 0.15);
-                    }
 
-                    &.chat-msg-error {
-                        color: var(--main-text-color);
-                        background-color: rgb(from var(--error-color) r g b / 0.25);
-                        margin-right: auto;
-                        padding: 10px;
-                        max-width: 85%;
+                        &.chat-msg-assistant {
+                            color: var(--main-text-color);
+                            background-color: rgb(from var(--highlight-bg-color) r g b / 0.1);
+                            margin-right: auto;
+                            padding: 10px;
+                            max-width: 85%;
 
-                        .markdown {
-                            width: 100%;
+                            .markdown {
+                                width: 100%;
 
-                            pre {
-                                white-space: pre-wrap;
-                                word-break: break-word;
-                                max-width: 100%;
-                                overflow-x: auto;
-                                margin-left: 0;
+                                pre {
+                                    white-space: pre-wrap;
+                                    word-break: break-word;
+                                    max-width: 100%;
+                                    overflow-x: auto;
+                                    margin-left: 0;
+                                }
                             }
                         }
-                    }
+                        &.chat-msg-user {
+                            margin-left: auto;
+                            padding: 10px;
+                            max-width: 85%;
+                            background-color: rgb(from var(--accent-color) r g b / 0.15);
+                        }
 
-                    &.typing-indicator {
-                        margin-top: 4px;
+                        &.chat-msg-error {
+                            color: var(--main-text-color);
+                            background-color: rgb(from var(--error-color) r g b / 0.25);
+                            margin-right: auto;
+                            padding: 10px;
+                            max-width: 85%;
+
+                            .markdown {
+                                width: 100%;
+
+                                pre {
+                                    white-space: pre-wrap;
+                                    word-break: break-word;
+                                    max-width: 100%;
+                                    overflow-x: auto;
+                                    margin-left: 0;
+                                }
+                            }
+                        }
+
+                        &.typing-indicator {
+                            margin-top: 4px;
+                        }
                     }
                 }
             }
@@ -105,6 +104,7 @@
     }
 
     .waveai-controls {
+        flex: 0 0 auto;
         display: flex;
         flex-direction: row;
         align-items: center;

@@ -68,26 +68,34 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_WorkspaceUpdate})
 
-	return UpdateWorkspace(ctx, ws.OID, name, icon, color, applyDefaults)
+	ws, _, err = UpdateWorkspace(ctx, ws.OID, name, icon, color, applyDefaults)
+	return ws, err
 }
 
-func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (*waveobj.Workspace, error) {
+// Returns updated workspace, whether it was updated, error.
+func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (*waveobj.Workspace, bool, error) {
 	ws, err := GetWorkspace(ctx, workspaceId)
+	updated := false
 	if err != nil {
-		return nil, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
+		return nil, updated, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 	}
 	if name != "" {
 		ws.Name = name
+		updated = true
 	} else if applyDefaults && ws.Name == "" {
 		ws.Name = fmt.Sprintf("New Workspace (%s)", ws.OID[0:5])
+		updated = true
 	}
 	if icon != "" {
 		ws.Icon = icon
+		updated = true
 	} else if applyDefaults && ws.Icon == "" {
 		ws.Icon = WorkspaceIcons[0]
+		updated = true
 	}
 	if color != "" {
 		ws.Color = color
+		updated = true
 	} else if applyDefaults && ws.Color == "" {
 		wsList, err := ListWorkspaces(ctx)
 		if err != nil {
@@ -95,9 +103,12 @@ func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon 
 			wsList = waveobj.WorkspaceList{}
 		}
 		ws.Color = WorkspaceColors[len(wsList)%len(WorkspaceColors)]
+		updated = true
 	}
-	wstore.DBUpdate(ctx, ws)
-	return ws, nil
+	if updated {
+		wstore.DBUpdate(ctx, ws)
+	}
+	return ws, updated, nil
 }
 
 // If force is true, it will delete even if workspace is named.
