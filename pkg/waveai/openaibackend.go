@@ -59,17 +59,6 @@ func convertPrompt(prompt []wshrpc.WaveAIPromptMessageType) []openaiapi.ChatComp
 	return rtn
 }
 
-func convertUsage(resp openaiapi.ChatCompletionResponse) *wshrpc.WaveAIUsageType {
-	if resp.Usage.TotalTokens == 0 {
-		return nil
-	}
-	return &wshrpc.WaveAIUsageType{
-		PromptTokens:     resp.Usage.PromptTokens,
-		CompletionTokens: resp.Usage.CompletionTokens,
-		TotalTokens:      resp.Usage.TotalTokens,
-	}
-}
-
 func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 	go func() {
