@@ -1,26 +1,10 @@
-name: TestDriver.ai
+name: TestDriver.ai Run
 
 on:
-    push:
-        branches:
-            - main
-        tags:
-            - "v[0-9]+.[0-9]+.[0-9]+*"
-    pull_request:
-        branches:
-            - main
-        paths-ignore:
-            - "docs/**"
-            - ".storybook/**"
-            - ".vscode/**"
-            - ".editorconfig"
-            - ".gitignore"
-            - ".prettierrc"
-            - ".eslintrc.js"
-            - "**/*.md"
-    schedule:
-        - cron: 0 21 * * *
-    workflow_dispatch: null
+    workflow_run:
+        workflows: ["TestDriver.ai Build"]
+        types:
+            - completed
 
 env:
     GO_VERSION: "1.23"
@@ -31,50 +15,10 @@ permissions:
     pull-requests: write # To allow the action to create/update pull request comments
 
 jobs:
-    build_and_upload:
-        name: Test Onboarding
+    run_testdriver:
+        name: Run TestDriver.ai
         runs-on: windows-latest
         steps:
-            - uses: actions/checkout@v4
-
-            # General build dependencies
-            - uses: actions/setup-go@v5
-              with:
-                  go-version: ${{env.GO_VERSION}}
-                  cache-dependency-path: |
-                      go.sum
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{env.NODE_VERSION}}
-            - name: Install Yarn
-              uses: nick-fields/retry@v3
-              with:
-                  command: |
-                      corepack enable
-                      yarn install
-                  timeout_minutes: 5
-                  max_attempts: 3
-            - name: Install Task
-              uses: arduino/setup-task@v2
-              with:
-                  version: 3.x
-                  repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Build
-              run: task package
-              env:
-                  USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
-                  CSC_IDENTITY_AUTO_DISCOVERY: false # disable codesign
-              shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
-
-            # Upload .exe as an artifact
-            - name: Upload .exe artifact
-              id: upload
-              uses: actions/upload-artifact@v4
-              with:
-                  name: windows-exe
-                  path: make/*.exe
-
             - uses: testdriverai/action@main
               id: testdriver
               env:
@@ -102,7 +46,7 @@ jobs:
 
                       # Fetch the artifact upload URL
                       Write-Host "Fetching the artifact upload URL..."
-                      $artifactUrl = (Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" -Headers $headers).artifacts[0].archive_download_url
+                      $artifactUrl = (Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts" -Headers $headers).artifacts[0].archive_download_url
 
                       if ($artifactUrl) {
                           Write-Host "Artifact URL successfully fetched: $artifactUrl"
