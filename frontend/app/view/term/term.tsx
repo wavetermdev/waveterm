@@ -857,7 +857,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     }, []);
     const onScrollbarHideObserver = React.useCallback(() => {
         const termViewport = viewRef.current.getElementsByClassName("xterm-viewport")[0] as HTMLDivElement;
-        console.log("scrollbar hide observer", termViewport);
         termViewport.style.zIndex = "auto";
         scrollbarHideObserverRef.current.style.display = "none";
     }, []);
