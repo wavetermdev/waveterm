@@ -18,6 +18,8 @@ import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-uti
 import { log } from "./log";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
+import { time } from "console";
+import { timestamp } from "rxjs";
 export type WindowOpts = {
     unamePlatform: string;
 };
@@ -301,9 +303,9 @@ export class WaveBrowserWindow extends BaseWindow {
 
         // If the workspace is already owned by a window, then we can just call SwitchWorkspace without first prompting the user, since it'll just focus to the other window.
         const workspaceList = await WorkspaceService.ListWorkspaces();
-        if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
-            const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-            if (isNonEmptyUnsavedWorkspace(curWorkspace)) {
+        if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {		
+            const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);  /* potential bug here, curWorkspace undefined after deleting previous workspace */
+			if (curWorkspace  && isNonEmptyUnsavedWorkspace(curWorkspace)) {
                 console.log(
                     `existing unsaved workspace ${this.workspaceId} has content, opening workspace ${workspaceId} in new window`
                 );
@@ -417,7 +419,7 @@ export class WaveBrowserWindow extends BaseWindow {
             tabView?.positionTabOffScreen(curBounds);
         }
     }
-
+    
     async queueCreateTab(pinned = false) {
         await this._queueActionInternal({ op: "createtab", pinned });
     }
@@ -700,22 +702,14 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
             return;
         }
         
+        const moveToNewWorkspace = await WorkspaceService.DeleteWorkspace(workspaceId) 
+        console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
         if (ww?.workspaceId == workspaceId){
             if ( workspaceList?.length > 1 ) {
-                const workspaceIdindex =  workspaceList.findIndex(wse => wse.workspaceid === workspaceId);
-                    
-                const moveIndex = (workspaceIdindex > 0) ? workspaceIdindex - 1 : workspaceIdindex + 1;   
-                const prevNextWorkspace = workspaceList[moveIndex]
-                
-                await ww.switchWorkspace(prevNextWorkspace.workspaceid);
-                await WorkspaceService.DeleteWorkspace(workspaceId);
-                ww.activeTabView.webContents.reloadIgnoringCache(); // the blank window bug from 0.10.1 OCCASIONALLY occurs if this is not here,  ( issue #1567 )
+                   await ww.switchWorkspace(moveToNewWorkspace)
             } else {
-                await WorkspaceService.DeleteWorkspace(workspaceId);
-                console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
-                
-                console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-                ww.destroy();
+                    console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
+                    ww.destroy();
             }
         }
     });
