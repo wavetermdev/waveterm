@@ -36,23 +36,23 @@
         overflow: hidden;
     }
 
-	.term-cmd-toolbar {
-		display: flex;
-		flex-direction: row;
-		height: 24px;
-		border-bottom: 1px solid var(--border-color);
-		overflow: hidden;
-		align-items: center;
+    .term-cmd-toolbar {
+        display: flex;
+        flex-direction: row;
+        height: 24px;
+        border-bottom: 1px solid var(--border-color);
+        overflow: hidden;
+        align-items: center;
 
-		.term-cmd-toolbar-text {
-			font: var(--fixed-font);
-			flex-grow: 1;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-			padding: 0 5px;
-		}
-	}
+        .term-cmd-toolbar-text {
+            font: var(--fixed-font);
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0 5px;
+        }
+    }
 
     .term-connectelem {
         flex-grow: 1;
@@ -126,10 +126,27 @@
         }
     }
 
+    .term-scrollbar-show-observer {
+        z-index: calc(var(--zindex-xterm-viewport-overlay) - 1);
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 100%;
+        width: 12px;
+    }
+
+    .term-scrollbar-hide-observer {
+        z-index: calc(var(--zindex-xterm-viewport-overlay) + 1);
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: calc(100% - 12px);
+    }
+
     .terminal {
         .xterm-viewport {
-            z-index: var(--zindex-xterm-viewport-overlay);
-
             &::-webkit-scrollbar {
                 width: 6px;
                 height: 6px;

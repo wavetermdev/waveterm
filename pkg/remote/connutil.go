@@ -13,7 +13,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -27,16 +26,8 @@ func ParseOpts(input string) (*SSHOpts, error) {
 	if m == nil {
 		return nil, fmt.Errorf("invalid format of user@host argument")
 	}
-	remoteUser, remoteHost, remotePortStr := m[1], m[2], m[3]
+	remoteUser, remoteHost, remotePort := m[1], m[2], m[3]
 	remoteUser = strings.Trim(remoteUser, "@")
-	var remotePort int
-	if remotePortStr != "" {
-		var err error
-		remotePort, err = strconv.Atoi(remotePortStr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid port specified on user@host argument")
-		}
-	}
 
 	return &SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}, nil
 }
@@ -341,7 +332,7 @@ func IsPowershell(shellPath string) bool {
 
 func NormalizeConfigPattern(pattern string) string {
 	userName, err := WaveSshConfigUserSettings().GetStrict(pattern, "User")
-	if err != nil {
+	if err != nil || userName == "" {
 		log.Printf("warning: error parsing username of %s for conn dropdown: %v", pattern, err)
 		localUser, err := user.Current()
 		if err == nil {

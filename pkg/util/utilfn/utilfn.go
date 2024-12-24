@@ -942,3 +942,25 @@ func FormatLsTime(t time.Time) string {
 		return t.Format("Jan _2  2006")
 	}
 }
+
+/**
+ * Helper function that will deref a pointer if not null
+ * but returns a default value if it is null.
+ */
+func SafeDeref[T any](x *T) T {
+	if x == nil {
+		var safeOut T
+		return safeOut
+	}
+	return *x
+}
+
+/**
+ * Utility function for referencing a type with a pointer.
+ * This is the same as dereferencing with &, but unlike &
+ * you can directly use it on the ouput of a function
+ * without needing to create an intermediate variable
+ */
+func Ptr[T any](x T) *T {
+	return &x
+}
