@@ -23,7 +23,6 @@ jobs:
               id: testdriver
               env:
                   FORCE_COLOR: "3"
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
                   key: ${{ secrets.DASHCAM_API }}
                   prerun: |

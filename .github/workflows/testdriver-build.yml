@@ -25,8 +25,6 @@ on:
 env:
     GO_VERSION: "1.23"
     NODE_VERSION: 22
-    GITHUB_TOKEN: "" # Unset the GITHUB_TOKEN so that it cannot be leaked to external code
-    ACTIONS_RUNTIME_TOKEN: "" # Unset the ACTIONS_RUNTIME_TOKEN so that it cannot be leaked to external code
 
 permissions:
     contents: read # To allow the action to read repository contents
