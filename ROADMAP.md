@@ -1,10 +1,8 @@
 # Wave Terminal Roadmap
 
-:::info
 This roadmap outlines major upcoming features and improvements for Wave Terminal. As with any roadmap, priorities and timelines may shift as development progresses.
 
 Want input on the roadmap? Join the discussion on [Discord](https://discord.gg/XfvZ334gwU).
-:::
 
 ## v0.11
 
