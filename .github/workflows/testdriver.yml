@@ -6,7 +6,7 @@ on:
             - main
         tags:
             - "v[0-9]+.[0-9]+.[0-9]+*"
-    pull_request:
+    pull_request_target:
         branches:
             - main
         paths-ignore:
@@ -41,8 +41,6 @@ jobs:
             - uses: actions/setup-go@v5
               with:
                   go-version: ${{env.GO_VERSION}}
-                  cache-dependency-path: |
-                      go.sum
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
@@ -54,6 +52,8 @@ jobs:
                       yarn install
                   timeout_minutes: 5
                   max_attempts: 3
+              env:
+                  GITHUB_TOKEN: ""
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
@@ -65,6 +65,7 @@ jobs:
               env:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
                   CSC_IDENTITY_AUTO_DISCOVERY: false # disable codesign
+                  GITHUB_TOKEN: ""
               shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
 
             # Upload .exe as an artifact
