@@ -187,18 +187,21 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 
 func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData], 16)
-	defer close(ch)
-	err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte) {
-		resp := wshrpc.CommandRemoteStreamFileRtnData{}
-		resp.FileInfo = fileInfo
-		if len(data) > 0 {
-			resp.Data64 = base64.StdEncoding.EncodeToString(data)
+	go func() {
+		defer close(ch)
+		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte) {
+			resp := wshrpc.CommandRemoteStreamFileRtnData{}
+			resp.FileInfo = fileInfo
+			if len(data) > 0 {
+				resp.Data64 = base64.StdEncoding.EncodeToString(data)
+			}
+			log.Printf("callback -- sending response %d\n", len(resp.Data64))
+			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData]{Response: resp}
+		})
+		if err != nil {
+			ch <- respErr(err)
 		}
-		ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData]{Response: resp}
-	})
-	if err != nil {
-		ch <- respErr(err)
-	}
+	}()
 	return ch
 }
 
