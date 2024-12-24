@@ -32,7 +32,7 @@ permissions:
 
 jobs:
     build_and_upload:
-        name: Build and Upload
+        name: Build for TestDriver.ai
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v4
