@@ -110,4 +110,3 @@ jobs:
 
                   prompt: |
                       1. /run testdriver/onboarding.yml
-                      2. /generate desktop 20
