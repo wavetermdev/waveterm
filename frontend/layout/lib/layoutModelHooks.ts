@@ -94,7 +94,7 @@ export function useDebouncedNodeInnerRect(nodeModel: NodeModel): CSSProperties {
     }, [innerRectDebounceTimeout]);
 
     useEffect(() => {
-        if (prefersReducedMotion || isMagnified || isResizing) {
+        if (prefersReducedMotion || isResizing) {
             clearInnerRectDebounce();
             setInnerRect(nodeInnerRect);
         } else {
