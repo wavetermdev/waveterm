@@ -1,7 +1,7 @@
 import { autoUpdate, FloatingPortal, Middleware, offset, useDismiss, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
-import { atom, useAtom, useAtomValue } from "jotai";
-import { memo, useCallback, useRef, useState } from "react";
+import { atom, useAtom } from "jotai";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { IconButton } from "./iconbutton";
 import { Input } from "./input";
 import "./search.scss";
@@ -10,6 +10,9 @@ type SearchProps = SearchAtoms & {
     anchorRef?: React.RefObject<HTMLElement>;
     offsetX?: number;
     offsetY?: number;
+    onSearch?: (search: string) => void;
+    onNext?: () => void;
+    onPrev?: () => void;
 };
 
 const SearchComponent = ({
@@ -20,15 +23,30 @@ const SearchComponent = ({
     anchorRef,
     offsetX = 10,
     offsetY = 10,
+    onSearch,
+    onNext,
+    onPrev,
 }: SearchProps) => {
     const [isOpen, setIsOpen] = useAtom<boolean>(isOpenAtom);
     const [search, setSearch] = useAtom<string>(searchAtom);
     const [index, setIndex] = useAtom<number>(indexAtom);
-    const numResults = useAtomValue<number>(numResultsAtom);
+    const [numResults, setNumResults] = useAtom<number>(numResultsAtom);
 
     const handleOpenChange = useCallback((open: boolean) => {
         setIsOpen(open);
+        if (!open) {
+            setSearch("");
+            setIndex(0);
+            setNumResults(0);
+        }
     }, []);
+
+    useEffect(() => {
+        if (search) {
+            setIndex(0);
+            onSearch?.(search);
+        }
+    }, [search]);
 
     const middleware: Middleware[] = [];
     const offsetCallback = useCallback(
@@ -61,7 +79,7 @@ const SearchComponent = ({
         icon: "chevron-up",
         title: "Previous Result",
         disabled: index === 0,
-        click: () => setIndex(index - 1),
+        click: () => onPrev?.() ?? setIndex(index - 1),
     };
 
     const nextDecl: IconButtonDecl = {
@@ -69,7 +87,7 @@ const SearchComponent = ({
         icon: "chevron-down",
         title: "Next Result",
         disabled: !numResults || index === numResults - 1,
-        click: () => setIndex(index + 1),
+        click: () => onNext?.() ?? setIndex(index + 1),
     };
 
     const closeDecl: IconButtonDecl = {
@@ -84,7 +102,7 @@ const SearchComponent = ({
             {isOpen && (
                 <FloatingPortal>
                     <div className="search-container" style={{ ...floatingStyles }} {...dismiss} ref={refs.setFloating}>
-                        <Input placeholder="Search" value={search} onChange={setSearch} />
+                        <Input placeholder="Search" value={search} onChange={setSearch} autoFocus />
                         <div
                             className={clsx("search-results", { hidden: numResults === 0 })}
                             aria-live="polite"
