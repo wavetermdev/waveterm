@@ -228,6 +228,13 @@ declare global {
         elemtype: "menubutton";
     } & MenuButtonProps;
 
+    type SearchAtoms = {
+        searchAtom: PrimitiveAtom<string>;
+        indexAtom: PrimitiveAtom<number>;
+        numResultsAtom: PrimitiveAtom<number>;
+        isOpenAtom: PrimitiveAtom<boolean>;
+    };
+
     interface ViewModel {
         viewType: string;
         viewIcon?: jotai.Atom<string | IconButtonDecl>;

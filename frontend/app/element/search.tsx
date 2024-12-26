@@ -1,16 +1,12 @@
 import { autoUpdate, FloatingPortal, Middleware, offset, useDismiss, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
-import { atom, PrimitiveAtom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useRef, useState } from "react";
 import { IconButton } from "./iconbutton";
 import { Input } from "./input";
 import "./search.scss";
 
-type SearchProps = {
-    searchAtom: PrimitiveAtom<string>;
-    indexAtom: PrimitiveAtom<number>;
-    numResultsAtom: PrimitiveAtom<number>;
-    isOpenAtom: PrimitiveAtom<boolean>;
+type SearchProps = SearchAtoms & {
     anchorRef?: React.RefObject<HTMLElement>;
     offsetX?: number;
     offsetY?: number;
@@ -25,10 +21,10 @@ const SearchComponent = ({
     offsetX = 10,
     offsetY = 10,
 }: SearchProps) => {
-    const [isOpen, setIsOpen] = useAtom(isOpenAtom);
-    const [search, setSearch] = useAtom(searchAtom);
-    const [index, setIndex] = useAtom(indexAtom);
-    const numResults = useAtomValue(numResultsAtom);
+    const [isOpen, setIsOpen] = useAtom<boolean>(isOpenAtom);
+    const [search, setSearch] = useAtom<string>(searchAtom);
+    const [index, setIndex] = useAtom<number>(indexAtom);
+    const numResults = useAtomValue<number>(numResultsAtom);
 
     const handleOpenChange = useCallback((open: boolean) => {
         setIsOpen(open);
