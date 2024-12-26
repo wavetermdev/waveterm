@@ -18,8 +18,7 @@ import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-uti
 import { log } from "./log";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
-import { time } from "console";
-import { timestamp } from "rxjs";
+ 
 export type WindowOpts = {
     unamePlatform: string;
 };
