@@ -565,6 +565,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     }, []);
     const onSearchNext = useCallback(() => {
         try {
+            console.log("search next", searchVal);
             model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: true });
         } catch (e) {
             console.error("Failed to search next", e);
@@ -572,6 +573,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     }, [searchVal]);
     const onSearchPrev = useCallback(() => {
         try {
+            console.log("search prev", searchVal);
             model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: false });
         } catch (e) {
             console.error("Failed to search prev", e);

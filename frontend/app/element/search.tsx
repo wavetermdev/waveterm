@@ -37,12 +37,14 @@ const SearchComponent = ({
     }, []);
 
     useEffect(() => {
+        console.log("isOpen", isOpen);
         setSearch("");
         setIndex(0);
         setNumResults(0);
     }, [isOpen]);
 
     useEffect(() => {
+        console.log("search", search);
         setIndex(0);
         setNumResults(0);
         onSearch?.(search);
@@ -85,18 +87,42 @@ const SearchComponent = ({
 
     const dismiss = useDismiss(context);
 
+    const onPrevWrapper = useCallback(
+        () => (onPrev ? onPrev() : setIndex((index - 1) % numResults)),
+        [onPrev, index, numResults]
+    );
+    const onNextWrapper = useCallback(
+        () => (onNext ? onNext() : setIndex((index + 1) % numResults)),
+        [onNext, index, numResults]
+    );
+
+    const onKeyDown = useCallback(
+        (e: React.KeyboardEvent) => {
+            console.log("key", e);
+            if (e.key === "Enter") {
+                if (e.shiftKey) {
+                    onPrevWrapper();
+                } else {
+                    onNextWrapper();
+                }
+                e.preventDefault();
+            }
+        },
+        [onPrevWrapper, onNextWrapper, setIsOpen]
+    );
+
     const prevDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "chevron-up",
         title: "Previous Result",
-        click: () => onPrev?.() ?? setIndex((index - 1) % numResults),
+        click: onPrevWrapper,
     };
 
     const nextDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "chevron-down",
         title: "Next Result",
-        click: () => onNext?.() ?? setIndex((index + 1) % numResults),
+        click: onNextWrapper,
     };
 
     const closeDecl: IconButtonDecl = {
@@ -111,7 +137,13 @@ const SearchComponent = ({
             {isOpen && (
                 <FloatingPortal>
                     <div className="search-container" style={{ ...floatingStyles }} {...dismiss} ref={refs.setFloating}>
-                        <Input placeholder="Search" value={search} onChange={setSearch} autoFocus />
+                        <Input
+                            placeholder="Search"
+                            value={search}
+                            onChange={setSearch}
+                            onKeyDown={onKeyDown}
+                            autoFocus
+                        />
                         <div
                             className={clsx("search-results", { hidden: numResults === 0 })}
                             aria-live="polite"
