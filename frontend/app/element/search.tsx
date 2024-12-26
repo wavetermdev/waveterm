@@ -51,10 +51,21 @@ const SearchComponent = ({
     const middleware: Middleware[] = [];
     const offsetCallback = useCallback(
         ({ rects }) => {
-            console.log("rects", rects);
+            const docRect = document.documentElement.getBoundingClientRect();
+            let yOffsetCalc = -rects.floating.height - offsetY;
+            let xOffsetCalc = -offsetX;
+            const floatingBottom = rects.reference.y + rects.floating.height + offsetY;
+            const floatingLeft = rects.reference.x + rects.reference.width - (rects.floating.width + offsetX);
+            if (floatingBottom > docRect.bottom) {
+                yOffsetCalc -= docRect.bottom - floatingBottom;
+            }
+            if (floatingLeft < docRect.left + 5) {
+                xOffsetCalc += docRect.left + 5 - floatingLeft;
+            }
+            console.log("offsetCalc", yOffsetCalc, xOffsetCalc);
             return {
-                mainAxis: -rects.floating.height - offsetY,
-                crossAxis: -offsetX,
+                mainAxis: yOffsetCalc,
+                crossAxis: xOffsetCalc,
             };
         },
         [offsetX, offsetY]
