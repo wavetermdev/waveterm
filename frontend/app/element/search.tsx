@@ -89,16 +89,14 @@ const SearchComponent = ({
         elemtype: "iconbutton",
         icon: "chevron-up",
         title: "Previous Result",
-        disabled: index === 0,
-        click: () => onPrev?.() ?? setIndex(index - 1),
+        click: () => onPrev?.() ?? setIndex((index - 1) % numResults),
     };
 
     const nextDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "chevron-down",
         title: "Next Result",
-        disabled: !numResults || index === numResults - 1,
-        click: () => onNext?.() ?? setIndex(index + 1),
+        click: () => onNext?.() ?? setIndex((index + 1) % numResults),
     };
 
     const closeDecl: IconButtonDecl = {
