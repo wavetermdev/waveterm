@@ -1,7 +1,7 @@
 import { autoUpdate, FloatingPortal, Middleware, offset, useDismiss, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
 import { atom, useAtom } from "jotai";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { IconButton } from "./iconbutton";
 import { Input } from "./input";
 import "./search.scss";
@@ -163,12 +163,11 @@ const SearchComponent = ({
 export const Search = memo(SearchComponent) as typeof SearchComponent;
 
 export function useSearch(anchorRef?: React.RefObject<HTMLElement>, viewModel?: ViewModel): SearchProps {
-    const [searchAtom] = useState(atom(""));
-    const [indexAtom] = useState(atom(0));
-    const [numResultsAtom] = useState(atom(0));
-    const [isOpenAtom] = useState(atom(false));
+    const searchAtoms: SearchAtoms = useMemo(
+        () => ({ searchAtom: atom(""), indexAtom: atom(0), numResultsAtom: atom(0), isOpenAtom: atom(false) }),
+        []
+    );
     anchorRef ??= useRef(null);
-    const searchAtoms: SearchAtoms = { searchAtom, indexAtom, numResultsAtom, isOpenAtom };
     useEffect(() => {
         if (viewModel) {
             viewModel.searchAtoms = searchAtoms;
