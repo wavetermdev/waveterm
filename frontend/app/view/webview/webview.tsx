@@ -51,6 +51,7 @@ export class WebViewModel implements ViewModel {
     mediaMuted: PrimitiveAtom<boolean>;
     modifyExternalUrl?: (url: string) => string;
     domReady: PrimitiveAtom<boolean>;
+    searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
@@ -390,6 +391,11 @@ export class WebViewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
+        console.log("webview giveFocus");
+        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpenAtom)) {
+            console.log("search is open, not giving focus");
+            return true;
+        }
         const ctrlShiftState = globalStore.get(getSimpleControlShiftAtom());
         if (ctrlShiftState) {
             // this is really weird, we don't get keyup events from webview
