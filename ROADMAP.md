@@ -14,7 +14,7 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
   - 🔷 Remote S3 bucket browsing (directory + files)
   - 🔷 Drag & drop between preview blocks
   - 🔷 Drag into a preview directory from the native file browser or desktop to copy a file
-  - 🔷 EC-TIME timeout when transferring large files
+  - ✅ EC-TIME timeout when transferring large files
   - 🤞 log viewer
   - 🤞 binary viewer
 - 🔷 Wave Apps (Go SDK)
@@ -27,7 +27,6 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
 - 🔷 Multi-Input between terminal blocks on the same tab
 - 🔧 Gemini AI support
 - 🔷 Monaco Theming
-- 🤞 Log Viewer (stretch)
 - 🤞 Blockcontroller fixes for terminal escape sequences
 - 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
 - 🔷 Various Connection Bugs + Improvements
