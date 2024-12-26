@@ -326,7 +326,6 @@ function registerGlobalKeys() {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         if (bcm.viewModel.searchAtoms) {
             console.log("activateSearch2");
-            globalStore.set(bcm.viewModel.searchAtoms.searchAtom, "");
             globalStore.set(bcm.viewModel.searchAtoms.isOpenAtom, true);
             return true;
         }
