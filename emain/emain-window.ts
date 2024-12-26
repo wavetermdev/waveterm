@@ -707,11 +707,11 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
             return;
         }
         
-        const moveToNewWorkspace = await WorkspaceService.DeleteWorkspace(workspaceId) 
+        const newWorkspaceId = await WorkspaceService.DeleteWorkspace(workspaceId) 
         console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
         if (ww?.workspaceId == workspaceId){
-            if ( workspaceList?.length > 1 ) {
-                   await ww.switchWorkspace(moveToNewWorkspace)
+            if ( newWorkspaceId ) {
+                   await ww.switchWorkspace(newWorkspaceId)
             } else {
                     console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
                     ww.destroy();
