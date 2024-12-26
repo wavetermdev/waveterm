@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { Search, useSearch } from "@/app/element/search";
 import { getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
@@ -12,7 +13,7 @@ import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil"
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
-import { Atom, PrimitiveAtom, atom, useAtomValue } from "jotai";
+import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
 import { Fragment, createRef, memo, useEffect, useRef, useState } from "react";
 import "./webview.scss";
 
@@ -536,6 +537,8 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     const metaUrlRef = useRef(metaUrl);
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
+    const searchProps = useSearch(model.webviewRef, model);
+    const setIsSearchOpen = useSetAtom(searchProps.isOpenAtom);
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(metaUrl);
@@ -705,6 +708,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                     <div>{errorText}</div>
                 </div>
             )}
+            <Search {...searchProps} />
         </Fragment>
     );
 });

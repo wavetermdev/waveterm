@@ -31,12 +31,17 @@ const SearchComponent = ({
     }, []);
 
     const middleware: Middleware[] = [];
-    middleware.push(
-        offset(({ rects }) => ({
-            mainAxis: -rects.floating.height - offsetY,
-            crossAxis: -offsetX,
-        }))
+    const offsetCallback = useCallback(
+        ({ rects }) => {
+            console.log("rects", rects);
+            return {
+                mainAxis: -rects.floating.height - offsetY,
+                crossAxis: -offsetX,
+            };
+        },
+        [offsetX, offsetY]
     );
+    middleware.push(offset(offsetCallback));
 
     const { refs, floatingStyles, context } = useFloating({
         placement: "top-end",
@@ -101,11 +106,15 @@ const SearchComponent = ({
 
 export const Search = memo(SearchComponent) as typeof SearchComponent;
 
-export function useSearch(anchorRef?: React.RefObject<HTMLElement>): SearchProps {
+export function useSearch(anchorRef?: React.RefObject<HTMLElement>, viewModel?: ViewModel): SearchProps {
     const [searchAtom] = useState(atom(""));
     const [indexAtom] = useState(atom(0));
     const [numResultsAtom] = useState(atom(0));
     const [isOpenAtom] = useState(atom(false));
     anchorRef ??= useRef(null);
-    return { searchAtom, indexAtom, numResultsAtom, isOpenAtom, anchorRef };
+    const searchAtoms: SearchAtoms = { searchAtom, indexAtom, numResultsAtom, isOpenAtom };
+    if (viewModel) {
+        viewModel.searchAtoms = searchAtoms;
+    }
+    return { ...searchAtoms, anchorRef };
 }

@@ -246,11 +246,10 @@ declare global {
         manageConnection?: jotai.Atom<boolean>;
         noPadding?: jotai.Atom<boolean>;
         filterOutNowsh?: jotai.Atom<boolean>;
+        searchAtoms?: SearchAtoms;
 
         onBack?: () => void;
         onForward?: () => void;
-        onSearchChange?: (text: string) => void;
-        onSearch?: (text: string) => void;
         getSettingsMenuItems?: () => ContextMenuItem[];
         giveFocus?: () => boolean;
         keyDownHandler?: (e: WaveKeyboardEvent) => boolean;
