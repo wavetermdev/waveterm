@@ -43,7 +43,7 @@ function boundNumber(num: number, min: number, max: number): number {
     return Math.min(Math.max(num, min), max);
 }
 
-// key must be a suitable weakmap key (e.g. a jotai atom).  pass the new value
+// key must be a suitable weakmap key.  pass the new value
 // it will return the prevValue (for object equality) if the new value is deep equal to the prev value
 function deepCompareReturnPrev(key: any, newValue: any): any {
     if (key == null) {
