@@ -111,21 +111,21 @@ const SearchComponent = ({
     const prevDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "chevron-up",
-        title: "Previous Result",
+        title: "Previous Result (Shift+Enter)",
         click: onPrevWrapper,
     };
 
     const nextDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "chevron-down",
-        title: "Next Result",
+        title: "Next Result (Enter)",
         click: onNextWrapper,
     };
 
     const closeDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "xmark-large",
-        title: "Close",
+        title: "Close (Esc)",
         click: () => setIsOpen(false),
     };
 
