@@ -304,8 +304,13 @@ export class WaveBrowserWindow extends BaseWindow {
         // If the workspace is already owned by a window, then we can just call SwitchWorkspace without first prompting the user, since it'll just focus to the other window.
         const workspaceList = await WorkspaceService.ListWorkspaces();
         if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {		
-            const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);  /* potential bug here, curWorkspace undefined after deleting previous workspace */
-			if (curWorkspace  && isNonEmptyUnsavedWorkspace(curWorkspace)) {
+            const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);  
+            if (curWorkspace == undefined)   { // @jalileh this occurs when we have already deleted the current workspace
+				await this._queueActionInternal({ op: "switchworkspace", workspaceId });
+				return;
+			}
+                 
+			if (isNonEmptyUnsavedWorkspace(curWorkspace)) {
                 console.log(
                     `existing unsaved workspace ${this.workspaceId} has content, opening workspace ${workspaceId} in new window`
                 );

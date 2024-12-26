@@ -52,10 +52,11 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 		return nil, fmt.Errorf("error updating window: %w", err)
 	}
 
-	deleted, _, err := DeleteWorkspace(ctx, curWsId, false)
-	if err != nil {
-		return nil, fmt.Errorf("error deleting current workspace: %w", err)
+	deleted, claimableWorkspace, err := DeleteWorkspace(ctx, curWsId, false)
+	if err != nil && claimableWorkspace != "" { // @jalileh since we are waiting for a workspace switch after deleting the current, the curWsid is already deleted.
+		return nil, fmt.Errorf("error deleting workspace: %w", err)
 	}
+
 	if !deleted {
 		log.Printf("current workspace %s was not deleted\n", curWsId)
 	} else {
