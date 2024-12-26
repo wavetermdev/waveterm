@@ -546,7 +546,11 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const setNumSearchResults = useSetAtom(searchProps.numResultsAtom);
     const onSearch = useCallback((search: string) => {
         try {
-            model.webviewRef.current?.findInPage(search);
+            if (search) {
+                model.webviewRef.current?.findInPage(search);
+            } else {
+                model.webviewRef.current?.stopFindInPage("clearSelection");
+            }
         } catch (e) {
             console.error("Failed to search", e);
         }
@@ -574,15 +578,6 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
         setNumSearchResults(result.matches);
         setSearchIndex(result.activeMatchOrdinal - 1);
     }, []);
-    useEffect(() => {
-        if (!isSearchOpen) {
-            try {
-                model.webviewRef.current?.stopFindInPage("clearSelection");
-            } catch (e) {
-                console.error("Failed to stop find in page", e);
-            }
-        }
-    }, [isSearchOpen]);
     // End Search
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.

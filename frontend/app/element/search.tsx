@@ -43,10 +43,9 @@ const SearchComponent = ({
     }, [isOpen]);
 
     useEffect(() => {
-        if (search) {
-            setIndex(0);
-            onSearch?.(search);
-        }
+        setIndex(0);
+        setNumResults(0);
+        onSearch?.(search);
     }, [search]);
 
     const middleware: Middleware[] = [];
