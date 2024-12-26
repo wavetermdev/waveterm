@@ -298,6 +298,9 @@ export class WebViewModel implements ViewModel {
     handleNavigate(url: string) {
         fireAndForget(() => ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
         globalStore.set(this.url, url);
+        if (this.searchAtoms) {
+            globalStore.set(this.searchAtoms.isOpenAtom, false);
+        }
     }
 
     ensureUrlScheme(url: string, searchTemplate: string) {
@@ -547,7 +550,6 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     // Search
     const searchProps = useSearch(model.webviewRef, model);
     const searchVal = useAtomValue<string>(searchProps.searchAtom);
-    const isSearchOpen = useAtomValue(searchProps.isOpenAtom);
     const setSearchIndex = useSetAtom(searchProps.indexAtom);
     const setNumSearchResults = useSetAtom(searchProps.numResultsAtom);
     const onSearch = useCallback((search: string) => {
