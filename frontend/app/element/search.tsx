@@ -37,14 +37,12 @@ const SearchComponent = ({
     }, []);
 
     useEffect(() => {
-        console.log("isOpen", isOpen);
         setSearch("");
         setIndex(0);
         setNumResults(0);
     }, [isOpen]);
 
     useEffect(() => {
-        console.log("search", search);
         setIndex(0);
         setNumResults(0);
         onSearch?.(search);
@@ -98,7 +96,6 @@ const SearchComponent = ({
 
     const onKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
-            console.log("key", e);
             if (e.key === "Enter") {
                 if (e.shiftKey) {
                     onPrevWrapper();
