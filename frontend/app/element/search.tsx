@@ -34,12 +34,15 @@ const SearchComponent = ({
 
     const handleOpenChange = useCallback((open: boolean) => {
         setIsOpen(open);
-        if (!open) {
+    }, []);
+
+    useEffect(() => {
+        if (!isOpen) {
             setSearch("");
             setIndex(0);
             setNumResults(0);
         }
-    }, []);
+    }, [isOpen]);
 
     useEffect(() => {
         if (search) {
@@ -131,8 +134,10 @@ export function useSearch(anchorRef?: React.RefObject<HTMLElement>, viewModel?: 
     const [isOpenAtom] = useState(atom(false));
     anchorRef ??= useRef(null);
     const searchAtoms: SearchAtoms = { searchAtom, indexAtom, numResultsAtom, isOpenAtom };
-    if (viewModel) {
-        viewModel.searchAtoms = searchAtoms;
-    }
+    useEffect(() => {
+        if (viewModel) {
+            viewModel.searchAtoms = searchAtoms;
+        }
+    }, [viewModel]);
     return { ...searchAtoms, anchorRef };
 }

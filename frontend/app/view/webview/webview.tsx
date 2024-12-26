@@ -539,6 +539,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
     const searchProps = useSearch(model.webviewRef, model);
     const searchVal = useAtomValue<string>(searchProps.searchAtom);
+    const isSearchOpen = useAtomValue(searchProps.isOpenAtom);
     const setSearchIndex = useSetAtom(searchProps.indexAtom);
     const setNumSearchResults = useSetAtom(searchProps.numResultsAtom);
 
@@ -572,6 +573,15 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
         setNumSearchResults(result.matches);
         setSearchIndex(result.activeMatchOrdinal - 1);
     }, []);
+    useEffect(() => {
+        if (!isSearchOpen) {
+            try {
+                model.webviewRef.current?.stopFindInPage("clearSelection");
+            } catch (e) {
+                console.error("Failed to stop find in page", e);
+            }
+        }
+    }, [isSearchOpen]);
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(metaUrl);
