@@ -59,8 +59,8 @@ const SearchComponent = ({
             if (floatingBottom > docRect.bottom) {
                 yOffsetCalc -= docRect.bottom - floatingBottom;
             }
-            if (floatingLeft < docRect.left + 5) {
-                xOffsetCalc += docRect.left + 5 - floatingLeft;
+            if (floatingLeft < 5) {
+                xOffsetCalc += 5 - floatingLeft;
             }
             console.log("offsetCalc", yOffsetCalc, xOffsetCalc);
             return {
