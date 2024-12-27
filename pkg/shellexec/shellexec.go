@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"os"
@@ -235,6 +236,77 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	}
 	cmdWrap := MakeCmdWrap(ecmd, cmdPty)
 	return &ShellProc{Cmd: cmdWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+}
+
+var singleSessionCmdTemplate = `bash -c ' \
+{{.wshPath}} connserver --single || \
+( uname -m && \
+  read -r count &&
+  for ((i=0; i<count; i++)); do \
+      read -r line || break; \
+	  printf "%%b" "$line"; \
+  done > {{.tempPath}} && \
+  chmod a+x {{.tempPath}} && \
+  mv {{.tempPath}} {{.wshPath}} && 
+  {{.wshPath}} connserver --single \
+)
+`
+
+func StartSingleSessionRemoteShellProc(termSize waveobj.TermSize, conn *conncontroller.SSHConn) (*ShellProc, error) {
+	client := conn.GetClient()
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	remoteStdinRead, remoteStdinWriteOurs, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+
+	remoteStdoutReadOurs, remoteStdoutWrite, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+
+	pipePty := &PipePty{
+		remoteStdinWrite: remoteStdinWriteOurs,
+		remoteStdoutRead: remoteStdoutReadOurs,
+	}
+	if termSize.Rows == 0 || termSize.Cols == 0 {
+		termSize.Rows = shellutil.DefaultTermRows
+		termSize.Cols = shellutil.DefaultTermCols
+	}
+	if termSize.Rows <= 0 || termSize.Cols <= 0 {
+		return nil, fmt.Errorf("invalid term size: %v", termSize)
+	}
+	session.Stdin = remoteStdinRead
+	session.Stdout = remoteStdoutWrite
+	session.Stderr = remoteStdoutWrite
+
+	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
+
+	wshDir := "~/.waveterm/bin"
+	wshPath := wshDir + "/wsh"
+	var installWords = map[string]string{
+		"wshPath":  wshPath,
+		"tempPath": wshPath + ".temp",
+	}
+
+	//todo add code that allows streaming base64 for download
+
+	singleSessionCmd := &bytes.Buffer{}
+	cmdTemplate := template.Must(template.New("").Parse(singleSessionCmdTemplate))
+	cmdTemplate.Execute(singleSessionCmd, installWords)
+
+	log.Printf("full single session command is: %s", singleSessionCmd)
+	sessionWrap := MakeSessionWrap(session, singleSessionCmd.String(), pipePty)
+
+	err = sessionWrap.Start()
+	if err != nil {
+		pipePty.Close()
+		return nil, err
+	}
+	return &ShellProc{Cmd: sessionWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func StartRemoteShellProcNoWsh(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
