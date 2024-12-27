@@ -96,6 +96,7 @@ const (
 	MetaKey_TermTransparency                 = "term:transparency"
 
 	MetaKey_WebZoom                          = "web:zoom"
+	MetaKey_WebHideNav                       = "web:hidenav"
 
 	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
 	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"

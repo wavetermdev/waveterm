@@ -494,6 +494,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "web:zoom"?: number;
+        "web:hidenav"?: boolean;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
         "vdom:*"?: boolean;
