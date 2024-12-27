@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package shellexec
@@ -52,7 +52,9 @@ type ShellProc struct {
 func (sp *ShellProc) Close() {
 	sp.Cmd.KillGraceful(DefaultGracefulKillWait)
 	go func() {
-		defer panichandler.PanicHandler("ShellProc.Close")
+		defer func() {
+			panichandler.PanicHandler("ShellProc.Close", recover())
+		}()
 		waitErr := sp.Cmd.Wait()
 		sp.SetWaitErrorAndSignalDone(waitErr)
 
@@ -146,10 +148,12 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 }
 
 func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wsl.WslConn) (*ShellProc, error) {
+	utilCtx, cancelFn := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelFn()
 	client := conn.GetClient()
 	shellPath := cmdOpts.ShellPath
 	if shellPath == "" {
-		remoteShellPath, err := wsl.DetectShell(conn.Context, client)
+		remoteShellPath, err := wsl.DetectShell(utilCtx, client)
 		if err != nil {
 			return nil, err
 		}
@@ -158,13 +162,13 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	var shellOpts []string
 	log.Printf("detected shell: %s", shellPath)
 
-	err := wsl.InstallClientRcFiles(conn.Context, client)
+	err := wsl.InstallClientRcFiles(utilCtx, client)
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err
 	}
 
-	homeDir := wsl.GetHomeDir(conn.Context, client)
+	homeDir := wsl.GetHomeDir(utilCtx, client)
 	shellOpts = append(shellOpts, "~", "-d", client.Name())
 
 	var subShellOpts []string
@@ -182,7 +186,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		} else if wsl.IsPowershell(shellPath) {
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
-			subShellOpts = append(subShellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", homeDir+fmt.Sprintf("/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
+			subShellOpts = append(subShellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", fmt.Sprintf("%s/.waveterm/%s/wavepwsh.ps1", homeDir, shellutil.PwshIntegrationDir))
 		} else {
 			if cmdOpts.Login {
 				subShellOpts = append(subShellOpts, "-l")
@@ -315,7 +319,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		} else if remote.IsPowershell(shellPath) {
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
-			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", homeDir+fmt.Sprintf("/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
+			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", fmt.Sprintf("%s/.waveterm/%s/wavepwsh.ps1", homeDir, shellutil.PwshIntegrationDir))
 		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
@@ -496,7 +500,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error
 	ioDone := make(chan bool)
 	var outputBuf bytes.Buffer
 	go func() {
-		panichandler.PanicHandler("RunSimpleCmdInPty:ioCopy")
+		panichandler.PanicHandler("RunSimpleCmdInPty:ioCopy", recover())
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer close(ioDone)
 		io.Copy(&outputBuf, cmdPty)

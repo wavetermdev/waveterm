@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wcore
@@ -94,7 +94,9 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		}
 	}
 	go func() {
-		defer panichandler.PanicHandler("CreateBlock:telemetry")
+		defer func() {
+			panichandler.PanicHandler("CreateBlock:telemetry", recover())
+		}()
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
 		if blockView == "" {
 			return

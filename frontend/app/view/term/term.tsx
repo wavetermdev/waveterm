@@ -1,9 +1,10 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block, SubBlock } from "@/app/block/block";
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
+import { Search, useSearch } from "@/app/element/search";
+import { appHandleKeyDown } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -12,19 +13,21 @@ import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import {
     atoms,
+    getAllBlockComponentModels,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
+    getSettingsPrefixAtom,
     globalStore,
     useBlockAtom,
-    useSettingsPrefixAtom,
     WOS,
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { boundNumber } from "@/util/util";
+import { boundNumber, fireAndForget, stringToBase64, useAtomValueSafe } from "@/util/util";
+import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -71,6 +74,7 @@ class TermViewModel implements ViewModel {
     shellProcStatusUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
+    searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
@@ -129,7 +133,7 @@ class TermViewModel implements ViewModel {
                 ];
             }
             const vdomBlockId = get(this.vdomBlockId);
-            const rtn = [];
+            const rtn: HeaderElem[] = [];
             if (vdomBlockId) {
                 rtn.push({
                     elemtype: "iconbutton",
@@ -185,6 +189,18 @@ class TermViewModel implements ViewModel {
                         }
                     }
                 }
+            }
+            const isMI = get(atoms.isTermMultiInput);
+            if (isMI && this.isBasicTerm(get)) {
+                rtn.push({
+                    elemtype: "textbutton",
+                    text: "Multi Input ON",
+                    className: "yellow",
+                    title: "Input will be sent to all connected terminals (click to disable)",
+                    onClick: () => {
+                        globalStore.set(atoms.isTermMultiInput, false);
+                    },
+                });
             }
             return rtn;
         });
@@ -302,6 +318,36 @@ class TermViewModel implements ViewModel {
         });
     }
 
+    isBasicTerm(getFn: jotai.Getter): boolean {
+        // needs to match "const isBasicTerm" in TerminalView()
+        const termMode = getFn(this.termMode);
+        if (termMode == "vdom") {
+            return false;
+        }
+        const blockData = getFn(this.blockAtom);
+        if (blockData?.meta?.controller == "cmd") {
+            return false;
+        }
+        return true;
+    }
+
+    multiInputHandler(data: string) {
+        let tvms = getAllBasicTermModels();
+        // filter out "this" from the list
+        tvms = tvms.filter((tvm) => tvm != this);
+        if (tvms.length == 0) {
+            return;
+        }
+        for (const tvm of tvms) {
+            tvm.sendDataToController(data);
+        }
+    }
+
+    sendDataToController(data: string) {
+        const b64data = stringToBase64(data);
+        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
+    }
+
     setTermMode(mode: "term" | "vdom") {
         if (mode == "term") {
             mode = null;
@@ -361,6 +407,10 @@ class TermViewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
+        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpen)) {
+            console.log("search is open, not giving focus");
+            return true;
+        }
         let termMode = globalStore.get(this.termMode);
         if (termMode == "term") {
             if (this.termRef?.current?.terminal) {
@@ -427,11 +477,11 @@ class TermViewModel implements ViewModel {
             this.forceRestartController();
             return false;
         }
-        const globalKeys = getAllGlobalKeyBindings();
-        for (const key of globalKeys) {
-            if (keyutil.checkKeyPressed(waveEvent, key)) {
-                return false;
-            }
+        const appHandled = appHandleKeyDown(waveEvent);
+        if (appHandled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
         }
         return true;
     }
@@ -636,6 +686,21 @@ class TermViewModel implements ViewModel {
     }
 }
 
+function getAllBasicTermModels(): TermViewModel[] {
+    const allBCMs = getAllBlockComponentModels();
+    const rtn: TermViewModel[] = [];
+    for (const bcm of allBCMs) {
+        if (bcm.viewModel?.viewType != "term") {
+            continue;
+        }
+        const termVM = bcm.viewModel as TermViewModel;
+        if (termVM.isBasicTerm(globalStore.get)) {
+            rtn.push(termVM);
+        }
+    }
+    return rtn;
+}
+
 function makeTerminalModel(blockId: string, nodeModel: BlockNodeModel): TermViewModel {
     return new TermViewModel(blockId, nodeModel);
 }
@@ -773,7 +838,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const termSettingsAtom = useSettingsPrefixAtom("term");
+    const termSettingsAtom = getSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
     let termMode = blockData?.meta?.["term:mode"] ?? "term";
     if (termMode != "term" && termMode != "vdom") {
@@ -784,6 +849,79 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const connFontFamily = fullConfig.connections?.[blockData?.meta?.connection]?.["term:fontfamily"];
+    const isFocused = jotai.useAtomValue(model.nodeModel.isFocused);
+    const isMI = jotai.useAtomValue(atoms.isTermMultiInput);
+    const isBasicTerm = termMode != "vdom" && blockData?.meta?.controller != "cmd"; // needs to match isBasicTerm
+
+    // search
+    const searchProps = useSearch({
+        anchorRef: viewRef,
+        viewModel: model,
+        caseSensitive: false,
+        wholeWord: false,
+        regex: false,
+    });
+    const searchIsOpen = jotai.useAtomValue<boolean>(searchProps.isOpen);
+    const caseSensitive = useAtomValueSafe<boolean>(searchProps.caseSensitive);
+    const wholeWord = useAtomValueSafe<boolean>(searchProps.wholeWord);
+    const regex = useAtomValueSafe<boolean>(searchProps.regex);
+    const searchVal = jotai.useAtomValue<string>(searchProps.searchValue);
+    const searchDecorations = React.useMemo(
+        () => ({
+            matchOverviewRuler: "#000000",
+            activeMatchColorOverviewRuler: "#000000",
+            activeMatchBorder: "#FF9632",
+            matchBorder: "#FFFF00",
+        }),
+        []
+    );
+    const searchOpts = React.useMemo<ISearchOptions>(
+        () => ({
+            regex,
+            wholeWord,
+            caseSensitive,
+            decorations: searchDecorations,
+        }),
+        [regex, wholeWord, caseSensitive]
+    );
+    const handleSearchError = React.useCallback((e: Error) => {
+        console.warn("search error:", e);
+    }, []);
+    const executeSearch = React.useCallback(
+        (searchText: string, direction: "next" | "previous") => {
+            if (searchText === "") {
+                model.termRef.current?.searchAddon.clearDecorations();
+                return;
+            }
+            try {
+                model.termRef.current?.searchAddon[direction === "next" ? "findNext" : "findPrevious"](
+                    searchText,
+                    searchOpts
+                );
+            } catch (e) {
+                handleSearchError(e);
+            }
+        },
+        [searchOpts, handleSearchError]
+    );
+    searchProps.onSearch = React.useCallback(
+        (searchText: string) => executeSearch(searchText, "previous"),
+        [executeSearch]
+    );
+    searchProps.onPrev = React.useCallback(() => executeSearch(searchVal, "previous"), [executeSearch, searchVal]);
+    searchProps.onNext = React.useCallback(() => executeSearch(searchVal, "next"), [executeSearch, searchVal]);
+    // Return input focus to the terminal when the search is closed
+    React.useEffect(() => {
+        if (!searchIsOpen) {
+            model.giveFocus();
+        }
+    }, [searchIsOpen]);
+    // rerun search when the searchOpts change
+    React.useEffect(() => {
+        model.termRef.current?.searchAddon.clearDecorations();
+        searchProps.onSearch(searchVal);
+    }, [searchOpts]);
+    // end search
 
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
@@ -816,10 +954,12 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 fontWeightBold: "bold",
                 allowTransparency: true,
                 scrollback: termScrollback,
+                allowProposedApi: true, // Required by @xterm/addon-search to enable search functionality and decorations
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
                 useWebGl: !termSettings?.["term:disablewebgl"],
+                sendDataHandler: model.sendDataToController.bind(model),
             }
         );
         (window as any).term = termWrap;
@@ -828,7 +968,11 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             termWrap.handleResize_debounced();
         });
         rszObs.observe(connectElemRef.current);
-        termWrap.initTerminal();
+        termWrap.onSearchResultsDidChange = (results) => {
+            globalStore.set(searchProps.resultsIndex, results.resultIndex);
+            globalStore.set(searchProps.resultsCount, results.resultCount);
+        };
+        fireAndForget(termWrap.initTerminal.bind(termWrap));
         if (wasFocused) {
             setTimeout(() => {
                 model.giveFocus();
@@ -847,6 +991,18 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         }
         termModeRef.current = termMode;
     }, [termMode]);
+
+    React.useEffect(() => {
+        if (isMI && isBasicTerm && isFocused && model.termRef.current != null) {
+            model.termRef.current.multiInputCallback = (data: string) => {
+                model.multiInputHandler(data);
+            };
+        } else {
+            if (model.termRef.current != null) {
+                model.termRef.current.multiInputCallback = null;
+            }
+        }
+    }, [isMI, isBasicTerm, isFocused]);
 
     const scrollbarHideObserverRef = React.useRef<HTMLDivElement>(null);
     const onScrollbarShowObserver = React.useCallback(() => {
@@ -867,6 +1023,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         cols: model.termRef.current?.terminal.cols ?? 80,
         blockId: blockId,
     };
+
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
             <TermResyncHandler blockId={blockId} model={model} />
@@ -882,6 +1039,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                     onPointerOver={onScrollbarHideObserver}
                 />
             </div>
+            <Search {...searchProps} />
         </div>
     );
 };

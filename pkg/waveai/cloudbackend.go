@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -19,6 +20,10 @@ import (
 type WaveAICloudBackend struct{}
 
 var _ AIBackend = WaveAICloudBackend{}
+
+const CloudWebsocketConnectTimeout = 1 * time.Minute
+const OpenAICloudReqStr = "openai-cloudreq"
+const PacketEOFStr = "EOF"
 
 type WaveAICloudReqPacketType struct {
 	Type       string                           `json:"type"`
@@ -39,7 +44,7 @@ func (WaveAICloudBackend) StreamCompletion(ctx context.Context, request wshrpc.W
 	wsEndpoint := wcloud.GetWSEndpoint()
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("WaveAICloudBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("WaveAICloudBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}

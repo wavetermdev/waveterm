@@ -32,4 +32,17 @@
         cursor: default;
         opacity: 0.45 !important;
     }
+
+    &.toggle {
+        border-radius: 3px;
+        padding: 1px;
+        &.active {
+            opacity: 1;
+            border: 1px solid var(--accent-color);
+            padding: 0;
+        }
+        &:hover {
+            background: var(--highlight-bg-color);
+        }
+    }
 }

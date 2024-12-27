@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package remote
@@ -720,9 +720,9 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 // when given unexpected strings
 func findSshConfigKeywords(hostPattern string) (connKeywords *wshrpc.ConnKeywords, outErr error) {
 	defer func() {
-		err := panichandler.PanicHandler("sshclient:find-ssh-config-keywords")
-		if err != nil {
-			outErr = err
+		panicErr := panichandler.PanicHandler("sshclient:find-ssh-config-keywords", recover())
+		if panicErr != nil {
+			outErr = panicErr
 		}
 	}()
 	WaveSshConfigUserSettings().ReloadConfigs()

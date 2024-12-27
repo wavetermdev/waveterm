@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import * as util from "./util";
@@ -210,6 +210,7 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     rtn.code = event.code;
     rtn.key = event.key;
     rtn.location = event.location;
+    (rtn as any).nativeEvent = event;
     if (event.type == "keydown" || event.type == "keyup" || event.type == "keypress") {
         rtn.type = event.type;
     } else {

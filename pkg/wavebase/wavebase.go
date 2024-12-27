@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wavebase
@@ -42,13 +42,24 @@ const RemoteDomainSocketBaseName = "wave-remote.sock"
 const WaveDBDir = "db"
 const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
-
-var RemoteWaveHome = ExpandHomeDirSafe("~/.waveterm")
+const RemoteWaveHomeDirName = ".waveterm"
+const RemoteWshBinDirName = "bin"
+const RemoteFullWshBinPath = "~/.waveterm/bin/wsh"
+const RemoteFullDomainSocketPath = "~/.waveterm/wave-remote.sock"
 
 const AppPathBinDir = "bin"
 
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
+
+var SupportedWshBinaries = map[string]bool{
+	"darwin-x64":    true,
+	"darwin-arm64":  true,
+	"linux-x64":     true,
+	"linux-arm64":   true,
+	"windows-x64":   true,
+	"windows-arm64": true,
+}
 
 type FDLock interface {
 	Close() error
@@ -135,10 +146,6 @@ func ReplaceHomeDir(pathStr string) string {
 
 func GetDomainSocketName() string {
 	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
-}
-
-func GetRemoteDomainSocketName() string {
-	return filepath.Join(RemoteWaveHome, RemoteDomainSocketBaseName)
 }
 
 func EnsureWaveDataDir() error {
@@ -266,4 +273,11 @@ func UnameKernelRelease() string {
 		osRelease = unameKernelRelease()
 	})
 	return osRelease
+}
+
+func ValidateWshSupportedArch(os string, arch string) error {
+	if SupportedWshBinaries[fmt.Sprintf("%s-%s", os, arch)] {
+		return nil
+	}
+	return fmt.Errorf("unsupported wsh platform: %s-%s", os, arch)
 }

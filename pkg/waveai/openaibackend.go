@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -19,6 +19,8 @@ import (
 type OpenAIBackend struct{}
 
 var _ AIBackend = OpenAIBackend{}
+
+const DefaultAzureAPIVersion = "2023-05-15"
 
 // copied from go-openai/config.go
 func defaultAzureMapperFn(model string) string {
@@ -63,7 +65,7 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("OpenAIBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("OpenAIBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}

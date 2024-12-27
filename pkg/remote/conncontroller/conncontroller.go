@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package conncontroller
@@ -20,11 +20,11 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -33,6 +33,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -198,7 +199,9 @@ func (conn *SSHConn) OpenDomainSocketListener() error {
 		conn.DomainSockListener = listener
 	})
 	go func() {
-		defer panichandler.PanicHandler("conncontroller:OpenDomainSocketListener")
+		defer func() {
+			panichandler.PanicHandler("conncontroller:OpenDomainSocketListener", recover())
+		}()
 		defer conn.WithLock(func() {
 			conn.DomainSockListener = nil
 			conn.SockName = ""
@@ -258,7 +261,9 @@ func (conn *SSHConn) StartConnServer() error {
 	})
 	// service the I/O
 	go func() {
-		defer panichandler.PanicHandler("conncontroller:sshSession.Wait")
+		defer func() {
+			panichandler.PanicHandler("conncontroller:sshSession.Wait", recover())
+		}()
 		// wait for termination, clear the controller
 		defer conn.WithLock(func() {
 			conn.ConnController = nil
@@ -267,7 +272,9 @@ func (conn *SSHConn) StartConnServer() error {
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
-		defer panichandler.PanicHandler("conncontroller:sshSession-output")
+		defer func() {
+			panichandler.PanicHandler("conncontroller:sshSession-output", recover())
+		}()
 		readErr := wshutil.StreamToLines(pipeRead, func(line []byte) {
 			lineStr := string(line)
 			if !strings.HasSuffix(lineStr, "\n") {
@@ -309,9 +316,9 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		return fmt.Errorf("client is nil")
 	}
 	// check that correct wsh extensions are installed
-	expectedVersion := fmt.Sprintf("wsh v%s", wavebase.WaveVersion)
+	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
 	clientVersion, err := remote.GetWshVersion(client)
-	if err == nil && clientVersion == expectedVersion && !opts.Force {
+	if err == nil && !opts.Force && semver.Compare(clientVersion, expectedVersion) >= 0 {
 		return nil
 	}
 	var queryText string
@@ -363,19 +370,13 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		}
 	}
 	log.Printf("attempting to install wsh to `%s`", clientDisplayName)
-	clientOs, err := remote.GetClientOs(client)
+	clientOs, clientArch, err := remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(client))
 	if err != nil {
 		return err
 	}
-	clientArch, err := remote.GetClientArch(client)
+	err = remote.CpWshToRemote(ctx, client, clientOs, clientArch)
 	if err != nil {
-		return err
-	}
-	// attempt to install extension
-	wshLocalPath := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
-	err = remote.CpHostToRemote(client, wshLocalPath, "~/.waveterm/bin/wsh")
-	if err != nil {
-		return err
+		return fmt.Errorf("error installing wsh to remote: %w", err)
 	}
 	log.Printf("successfully installed wsh on %s\n", conn.GetName())
 	return nil
@@ -552,8 +553,16 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 			}
 			if dsErr != nil || csErr != nil {
 				log.Print("attempting to run with nowsh instead")
+				var errmsgs []string
+				if dsErr != nil {
+					errmsgs = append(errmsgs, fmt.Sprintf("domain socket error: %s", dsErr.Error()))
+				}
+				if csErr != nil {
+					errmsgs = append(errmsgs, fmt.Sprintf("conn server error: %s", csErr.Error()))
+				}
+				combinedErr := fmt.Errorf("%s", strings.Join(errmsgs, " | "))
 				conn.WithLock(func() {
-					conn.WshError = csErr.Error()
+					conn.WshError = combinedErr.Error()
 				})
 				conn.WshEnabled.Store(false)
 			}
@@ -712,7 +721,8 @@ func GetConnectionsList() ([]string, error) {
 
 	fromConfig, err := GetConnectionsFromConfig()
 	if err != nil {
-		return nil, err
+		// this is not a fatal error. do not return
+		log.Printf("warning: no connections from ssh config found: %v", err)
 	}
 
 	// sort into one final list and remove duplicates

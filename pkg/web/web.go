@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package web
@@ -358,7 +358,7 @@ type ClientActiveState struct {
 func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			recErr := panichandler.PanicHandler("WebFnWrap")
+			recErr := panichandler.PanicHandler("WebFnWrap", recover())
 			if recErr == nil {
 				return
 			}

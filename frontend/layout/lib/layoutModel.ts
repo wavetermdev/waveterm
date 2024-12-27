@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { getSettingsKeyAtom } from "@/app/store/global";
@@ -283,7 +283,11 @@ export class LayoutModel {
         this.magnifiedNodeSizeAtom = getSettingsKeyAtom("window:magnifiedblocksize");
 
         this.focusedNode = atom((get) => {
+            const ephemeralNode = get(this.ephemeralNode);
             const treeState = get(this.treeStateAtom);
+            if (ephemeralNode) {
+                return ephemeralNode;
+            }
             if (treeState.focusedNodeId == null) {
                 return null;
             }

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wconfig
@@ -108,6 +108,8 @@ type SettingsType struct {
 	WindowMagnifiedBlockBlurSecondaryPx *int64   `json:"window:magnifiedblockblursecondarypx,omitempty"`
 	WindowConfirmClose                  bool     `json:"window:confirmclose,omitempty"`
 	WindowSaveLastWindow                bool     `json:"window:savelastwindow,omitempty"`
+	WindowDimensions                    string   `json:"window:dimensions,omitempty"`
+	WindowZoom                          *float64 `json:"window:zoom,omitempty"`
 
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -114,7 +114,7 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Wav
 
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("AnthropicBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("AnthropicBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}
@@ -128,7 +128,7 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Wav
 
 		model := request.Opts.Model
 		if model == "" {
-			model = "claude-3-sonnet-20240229" // default model
+			model = "claude-3-sonnet-20250229" // default model
 		}
 
 		// Convert messages format

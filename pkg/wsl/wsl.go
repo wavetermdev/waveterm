@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wsl
@@ -51,7 +51,6 @@ type WslConn struct {
 	HasWaiter          *atomic.Bool
 	LastConnectTime    int64
 	ActiveConnNum      int
-	Context            context.Context
 	cancelFn           func()
 }
 
@@ -182,12 +181,14 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 		return fmt.Errorf("cannot open domain socket for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	conn.WithLock(func() {
-		conn.SockName = "~/.waveterm/wave-remote.sock"
+		conn.SockName = wavebase.RemoteFullDomainSocketPath
 	})
 	return nil
 }
 
 func (conn *WslConn) StartConnServer() error {
+	utilCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
 	var allowed bool
 	conn.WithLock(func() {
 		if conn.Status != Status_Connecting {
@@ -200,7 +201,7 @@ func (conn *WslConn) StartConnServer() error {
 		return fmt.Errorf("cannot start conn server for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	client := conn.GetClient()
-	wshPath := GetWshPath(conn.Context, client)
+	wshPath := GetWshPath(utilCtx, client)
 	rpcCtx := wshrpc.RpcContext{
 		ClientType: wshrpc.ClientType_ConnServer,
 		Conn:       conn.GetName(),
@@ -210,7 +211,7 @@ func (conn *WslConn) StartConnServer() error {
 	if err != nil {
 		return fmt.Errorf("unable to create jwt token for conn controller: %w", err)
 	}
-	shellPath, err := DetectShell(conn.Context, client)
+	shellPath, err := DetectShell(utilCtx, client)
 	if err != nil {
 		return err
 	}
@@ -221,7 +222,14 @@ func (conn *WslConn) StartConnServer() error {
 		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver --router", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	}
 	log.Printf("starting conn controller: %s\n", cmdStr)
-	cmd := client.WslCommand(conn.Context, cmdStr)
+	connServerCtx, cancelFn := context.WithCancel(context.Background())
+	conn.WithLock(func() {
+		if conn.cancelFn != nil {
+			conn.cancelFn()
+		}
+		conn.cancelFn = cancelFn
+	})
+	cmd := client.WslCommand(connServerCtx, cmdStr)
 	pipeRead, pipeWrite := io.Pipe()
 	inputPipeRead, inputPipeWrite := io.Pipe()
 	cmd.SetStdout(pipeWrite)
@@ -236,7 +244,9 @@ func (conn *WslConn) StartConnServer() error {
 	})
 	// service the I/O
 	go func() {
-		defer panichandler.PanicHandler("wsl:StartConnServer:wait")
+		defer func() {
+			panichandler.PanicHandler("wsl:StartConnServer:wait", recover())
+		}()
 		// wait for termination, clear the controller
 		defer conn.WithLock(func() {
 			conn.ConnController = nil
@@ -245,7 +255,9 @@ func (conn *WslConn) StartConnServer() error {
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
-		defer panichandler.PanicHandler("wsl:StartConnServer:handleStdIOClient")
+		defer func() {
+			panichandler.PanicHandler("wsl:StartConnServer:handleStdIOClient", recover())
+		}()
 		logName := fmt.Sprintf("conncontroller:%s", conn.GetName())
 		wshutil.HandleStdIOClient(logName, pipeRead, inputPipeWrite)
 	}()
@@ -325,8 +337,11 @@ func (conn *WslConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		return err
 	}
 	// attempt to install extension
-	wshLocalPath := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
-	err = CpHostToRemote(ctx, client, wshLocalPath, "~/.waveterm/bin/wsh")
+	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	if err != nil {
+		return err
+	}
+	err = CpHostToRemote(ctx, client, wshLocalPath, wavebase.RemoteFullWshBinPath)
 	if err != nil {
 		return err
 	}
@@ -469,8 +484,7 @@ func getConnInternal(name string) *WslConn {
 	connName := WslName{Distro: name}
 	rtn := clientControllerMap[name]
 	if rtn == nil {
-		ctx, cancelFn := context.WithCancel(context.Background())
-		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, HasWaiter: &atomic.Bool{}, Context: ctx, cancelFn: cancelFn}
+		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, HasWaiter: &atomic.Bool{}, cancelFn: nil}
 		clientControllerMap[name] = rtn
 	}
 	return rtn

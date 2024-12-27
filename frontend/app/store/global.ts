@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import {
@@ -10,7 +10,7 @@ import {
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
-import { getPrefixedSettings, isBlank } from "@/util/util";
+import { deepCompareReturnPrev, getPrefixedSettings, isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -164,6 +164,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
+        isTermMultiInput: atom(false),
     };
 }
 
@@ -314,16 +315,15 @@ function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): SettingsType[
     return useAtomValue(getSettingsKeyAtom(key));
 }
 
-function useSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
-    // TODO: use a shallow equal here to make this more efficient
-    let settingsPrefixAtom = settingsAtomCache.get(prefix + ":") as Atom<SettingsType>;
+function getSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
+    let settingsPrefixAtom = settingsAtomCache.get(prefix + ":");
     if (settingsPrefixAtom == null) {
+        // create a stable, closured reference to use as the deepCompareReturnPrev key
+        const cacheKey = {};
         settingsPrefixAtom = atom((get) => {
             const settings = get(atoms.settingsAtom);
-            if (settings == null) {
-                return {};
-            }
-            return getPrefixedSettings(settings, prefix);
+            const newValue = getPrefixedSettings(settings, prefix);
+            return deepCompareReturnPrev(cacheKey, newValue);
         });
         settingsAtomCache.set(prefix + ":", settingsPrefixAtom);
     }
@@ -497,6 +497,10 @@ function getBlockComponentModel(blockId: string): BlockComponentModel {
     return blockComponentModelMap.get(blockId);
 }
 
+function getAllBlockComponentModels(): BlockComponentModel[] {
+    return Array.from(blockComponentModelMap.values());
+}
+
 function getFocusedBlockId(): string {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedLayoutNode = globalStore.get(layoutModel.focusedNode);
@@ -666,6 +670,7 @@ export {
     createBlock,
     createTab,
     fetchWaveFile,
+    getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
@@ -674,6 +679,7 @@ export {
     getObjectId,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
+    getSettingsPrefixAtom,
     getUserName,
     globalStore,
     initGlobal,
@@ -700,6 +706,5 @@ export {
     useBlockMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,
-    useSettingsPrefixAtom,
     WOS,
 };

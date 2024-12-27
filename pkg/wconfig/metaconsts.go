@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -81,6 +81,8 @@ const (
 	ConfigKey_WindowMagnifiedBlockBlurSecondaryPx = "window:magnifiedblockblursecondarypx"
 	ConfigKey_WindowConfirmClose             = "window:confirmclose"
 	ConfigKey_WindowSaveLastWindow           = "window:savelastwindow"
+	ConfigKey_WindowDimensions               = "window:dimensions"
+	ConfigKey_WindowZoom                     = "window:zoom"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
