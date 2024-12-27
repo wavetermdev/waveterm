@@ -18,13 +18,13 @@ var _ AIBackend = GoogleBackend{}
 func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
 	client, err := genai.NewClient(ctx, option.WithAPIKey(request.Opts.APIToken))
 	if err != nil {
-		log.Fatalf("failed to create client: %v", err)
+		log.Printf("failed to create client: %v", err)
 		return nil
 	}
 
 	model := client.GenerativeModel(request.Opts.Model)
 	if model == nil {
-		log.Fatal("model not found")
+		log.Println("model not found")
 		client.Close()
 		return nil
 	}
