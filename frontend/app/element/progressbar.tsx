@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { boundNumber } from "@/util/util";
 import "./progressbar.scss";
 
 type ProgressBarProps = {
@@ -9,7 +10,7 @@ type ProgressBarProps = {
 };
 
 const ProgressBar = ({ progress, label = "Progress" }: ProgressBarProps) => {
-    const progressWidth = Math.min(Math.max(progress, 0), 100);
+    const progressWidth = boundNumber(progress, 0, 100);
 
     return (
         <div
