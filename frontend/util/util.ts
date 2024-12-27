@@ -5,6 +5,7 @@ import base64 from "base64-js";
 import clsx from "clsx";
 import { Atom, atom, Getter, SetStateAction, Setter, useAtomValue } from "jotai";
 import { debounce, throttle } from "throttle-debounce";
+const prevValueCache = new WeakMap<any, any>(); // stores a previous value for a deep equal comparison (used with the deepCompareReturnPrev function)
 
 function isBlank(str: string): boolean {
     return str == null || str == "";
@@ -40,6 +41,20 @@ function boundNumber(num: number, min: number, max: number): number {
         return null;
     }
     return Math.min(Math.max(num, min), max);
+}
+
+// key must be a suitable weakmap key.  pass the new value
+// it will return the prevValue (for object equality) if the new value is deep equal to the prev value
+function deepCompareReturnPrev(key: any, newValue: any): any {
+    if (key == null) {
+        return newValue;
+    }
+    const previousValue = prevValueCache.get(key);
+    if (previousValue !== undefined && JSON.stringify(newValue) === JSON.stringify(previousValue)) {
+        return previousValue;
+    }
+    prevValueCache.set(key, newValue);
+    return newValue;
 }
 
 // works for json-like objects (arrays, objects, strings, numbers, booleans)
@@ -294,6 +309,7 @@ export {
     base64ToString,
     boundNumber,
     countGraphemes,
+    deepCompareReturnPrev,
     fireAndForget,
     getPrefixedSettings,
     getPromiseState,
