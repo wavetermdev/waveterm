@@ -495,6 +495,7 @@ export class WebViewModel implements ViewModel {
         zoomSubMenu.push(makeZoomFactorMenuItem("175%", 1.75));
         zoomSubMenu.push(makeZoomFactorMenuItem("200%", 2));
 
+        const isNavHidden = globalStore.get(this.hideNav);
         return [
             {
                 label: "Set Block Homepage",
@@ -506,6 +507,16 @@ export class WebViewModel implements ViewModel {
             },
             {
                 type: "separator",
+            },
+            {
+                label: isNavHidden ? "Un-Hide Navigation" : "Hide Navigation",
+                click: () =>
+                    fireAndForget(() => {
+                        return RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "web:hidenav": !isNavHidden },
+                        });
+                    }),
             },
             {
                 label: "Set Zoom Factor",
