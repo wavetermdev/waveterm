@@ -712,7 +712,8 @@ func GetConnectionsList() ([]string, error) {
 
 	fromConfig, err := GetConnectionsFromConfig()
 	if err != nil {
-		return nil, err
+		// this is not a fatal error. do not return
+		log.Printf("warning: no connections from ssh config found: %v", err)
 	}
 
 	// sort into one final list and remove duplicates
