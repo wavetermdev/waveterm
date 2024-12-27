@@ -118,6 +118,15 @@ func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon 
 func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, string, error) {
 	log.Printf("DeleteWorkspace %s\n", workspaceId)
 	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
+	if err != nil && err.Error() == "not found" {
+		return true, "", fmt.Errorf("workspace probably already deleted %w", err)
+	}
+	// @jalileh list needs to be saved early on i assume
+	workspaces, err := ListWorkspaces(ctx)
+	if err != nil {
+		return false, "", fmt.Errorf("error retrieving workspaceList: %w", err)
+	}
+
 	if err != nil {
 		return false, "", fmt.Errorf("error getting workspace: %w", err)
 	}
@@ -145,14 +154,22 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	})
 
 	if windowId != "" {
-		workspaces, err := ListWorkspaces(ctx)
-		if err != nil {
-			return false, "", fmt.Errorf("error retrieving workspaceList: %w", err)
-		}
-		UnclaimedWorkspace := ""
-		for _, ws := range workspaces {
-			if ws.WindowId == "" && workspaceId != ws.WorkspaceId {
-				UnclaimedWorkspace = ws.WorkspaceId
+
+		UnclaimedWorkspace, findAfter := "", false
+		for i, ws := range workspaces {
+			if workspaceId == ws.WorkspaceId {
+				for N := i; N >= 0; N-- {
+					if workspaces[N].WindowId == "" {
+						UnclaimedWorkspace = workspaces[N].WorkspaceId
+						break
+					}
+				}
+				if UnclaimedWorkspace != "" {
+					break
+				}
+				findAfter = true
+			} else if findAfter && workspaces[i].WindowId == "" {
+				UnclaimedWorkspace = workspaces[i].WorkspaceId
 				break
 			}
 		}
