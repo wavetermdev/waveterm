@@ -56,6 +56,7 @@ export class TermWrap {
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
     hasResized: boolean;
+    multiInputCallback: (data: string) => void;
 
     constructor(
         blockId: string,
@@ -138,6 +139,7 @@ export class TermWrap {
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         this.terminal.onData(this.handleTermData.bind(this));
+        this.terminal.onKey(this.onKeyHandler.bind(this));
         this.terminal.onSelectionChange(
             debounce(50, () => {
                 if (!globalStore.get(copyOnSelectAtom)) {
@@ -170,6 +172,12 @@ export class TermWrap {
         }
         const b64data = util.stringToBase64(data);
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
+    }
+
+    onKeyHandler(data: string) {
+        if (this.multiInputCallback) {
+            this.multiInputCallback(data);
+        }
     }
 
     addFocusListener(focusFn: () => void) {

@@ -27,6 +27,7 @@ declare global {
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
         notificationPopoverMode: jotia.atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
+        isTermMultiInput: jotai.PrimitiveAtom<boolean>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -167,6 +168,7 @@ declare global {
         elemtype: "textbutton";
         text: string;
         className?: string;
+        title?: string;
         onClick?: (e: React.MouseEvent<any>) => void;
     };
 
@@ -239,6 +241,9 @@ declare global {
         manageConnection?: jotai.Atom<boolean>;
         noPadding?: jotai.Atom<boolean>;
         filterOutNowsh?: jotai.Atom<boolean>;
+
+        // just for terminal
+        isBasicTerm?: (getFn: jotai.Getter) => boolean;
 
         onBack?: () => void;
         onForward?: () => void;
