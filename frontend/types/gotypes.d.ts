@@ -291,6 +291,7 @@ declare global {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:overrideconfig"?: boolean;
+        "conn:singlesession"?: boolean;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;

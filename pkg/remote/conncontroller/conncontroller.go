@@ -511,6 +511,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 	})
 	config := wconfig.ReadFullConfig()
 	enableWsh := config.Settings.ConnWshEnabled
+	var singleSession bool
 	askBeforeInstall := config.Settings.ConnAskBeforeWshInstall
 	connSettings, ok := config.Connections[conn.GetName()]
 	if ok {
@@ -520,8 +521,9 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 		if connSettings.ConnAskBeforeWshInstall != nil {
 			askBeforeInstall = *connSettings.ConnAskBeforeWshInstall
 		}
+		singleSession = connSettings.ConnSingleSession
 	}
-	if enableWsh {
+	if enableWsh && !singleSession {
 		installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !askBeforeInstall})
 		if errors.Is(installErr, &WshInstallSkipError{}) {
 			// skips are not true errors
