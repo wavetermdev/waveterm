@@ -710,8 +710,11 @@ func GetConnectionsList() ([]string, error) {
 
 	fromInternal := GetConnectionsFromInternalConfig()
 
-	fromConfig, _ := GetConnectionsFromConfig()
-	// ignore the error and continue with an empty slice
+	fromConfig, err := GetConnectionsFromConfig()
+	if err != nil {
+		// this is not a fatal error. do not return
+		log.Printf("warning: no connections from ssh config found: %v", err)
+	}
 
 	// sort into one final list and remove duplicates
 	alreadyUsed := make(map[string]struct{})
