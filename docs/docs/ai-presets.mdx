@@ -127,6 +127,23 @@ To use Perplexity's models:
 }
 ```
 
+### Google (Gemini)
+
+To use Google's Gemini models from [Google AI Studio](https://aistudio.google.com):
+
+```json
+{
+  "ai@gemini-2.0": {
+    "display:name": "Gemini 2.0",
+    "display:order": 5,
+    "ai:*": true,
+    "ai:apitype": "google",
+    "ai:model": "gemini-2.0-flash-exp",
+    "ai:apitoken": "<your Google AI API key>"
+  }
+}
+```
+
 ## Multiple Presets Example
 
 You can define multiple presets in your `ai.json` file:
