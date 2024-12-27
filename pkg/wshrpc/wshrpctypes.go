@@ -461,6 +461,7 @@ type CommandRemoteWriteFileData struct {
 type ConnKeywords struct {
 	ConnWshEnabled          *bool `json:"conn:wshenabled,omitempty"`
 	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
+	ConnOverrideConfig      bool  `json:"conn:overrideconfig,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`
@@ -470,17 +471,17 @@ type ConnKeywords struct {
 	TermFontFamily string  `json:"term:fontfamily,omitempty"`
 	TermTheme      string  `json:"term:theme,omitempty"`
 
-	SshUser                         string   `json:"ssh:user,omitempty"`
-	SshHostName                     string   `json:"ssh:hostname,omitempty"`
-	SshPort                         string   `json:"ssh:port,omitempty"`
+	SshUser                         *string  `json:"ssh:user,omitempty"`
+	SshHostName                     *string  `json:"ssh:hostname,omitempty"`
+	SshPort                         *string  `json:"ssh:port,omitempty"`
 	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
-	SshBatchMode                    bool     `json:"ssh:batchmode,omitempty"`
-	SshPubkeyAuthentication         bool     `json:"ssh:pubkeyauthentication,omitempty"`
-	SshPasswordAuthentication       bool     `json:"ssh:passwordauthentication,omitempty"`
-	SshKbdInteractiveAuthentication bool     `json:"ssh:kbdinteractiveauthentication,omitempty"`
+	SshBatchMode                    *bool    `json:"ssh:batchmode,omitempty"`
+	SshPubkeyAuthentication         *bool    `json:"ssh:pubkeyauthentication,omitempty"`
+	SshPasswordAuthentication       *bool    `json:"ssh:passwordauthentication,omitempty"`
+	SshKbdInteractiveAuthentication *bool    `json:"ssh:kbdinteractiveauthentication,omitempty"`
 	SshPreferredAuthentications     []string `json:"ssh:preferredauthentications,omitempty"`
-	SshAddKeysToAgent               bool     `json:"ssh:addkeystoagent,omitempty"`
-	SshIdentityAgent                string   `json:"ssh:identityagent,omitempty"`
+	SshAddKeysToAgent               *bool    `json:"ssh:addkeystoagent,omitempty"`
+	SshIdentityAgent                *string  `json:"ssh:identityagent,omitempty"`
 	SshProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
 	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
 	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`

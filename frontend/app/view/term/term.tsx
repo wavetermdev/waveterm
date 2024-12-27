@@ -17,9 +17,9 @@ import {
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
+    getSettingsPrefixAtom,
     globalStore,
     useBlockAtom,
-    useSettingsPrefixAtom,
     WOS,
 } from "@/store/global";
 import * as services from "@/store/services";
@@ -773,7 +773,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const termSettingsAtom = useSettingsPrefixAtom("term");
+    const termSettingsAtom = getSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
     let termMode = blockData?.meta?.["term:mode"] ?? "term";
     if (termMode != "term" && termMode != "vdom") {
@@ -848,7 +848,19 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         termModeRef.current = termMode;
     }, [termMode]);
 
-    let stickerConfig = {
+    const scrollbarHideObserverRef = React.useRef<HTMLDivElement>(null);
+    const onScrollbarShowObserver = React.useCallback(() => {
+        const termViewport = viewRef.current.getElementsByClassName("xterm-viewport")[0] as HTMLDivElement;
+        termViewport.style.zIndex = "var(--zindex-xterm-viewport-overlay)";
+        scrollbarHideObserverRef.current.style.display = "block";
+    }, []);
+    const onScrollbarHideObserver = React.useCallback(() => {
+        const termViewport = viewRef.current.getElementsByClassName("xterm-viewport")[0] as HTMLDivElement;
+        termViewport.style.zIndex = "auto";
+        scrollbarHideObserverRef.current.style.display = "none";
+    }, []);
+
+    const stickerConfig = {
         charWidth: 8,
         charHeight: 16,
         rows: model.termRef.current?.terminal.rows ?? 24,
@@ -862,7 +874,14 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             <TermStickers config={stickerConfig} />
             <TermToolbarVDomNode key="vdom-toolbar" blockId={blockId} model={model} />
             <TermVDomNode key="vdom" blockId={blockId} model={model} />
-            <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
+            <div key="conntectElem" className="term-connectelem" ref={connectElemRef}>
+                <div className="term-scrollbar-show-observer" onPointerOver={onScrollbarShowObserver} />
+                <div
+                    ref={scrollbarHideObserverRef}
+                    className="term-scrollbar-hide-observer"
+                    onPointerOver={onScrollbarHideObserver}
+                />
+            </div>
         </div>
     );
 };
