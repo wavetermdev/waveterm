@@ -12,6 +12,7 @@ import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import {
     atoms,
+    getAllBlockComponentModels,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
@@ -24,7 +25,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { boundNumber } from "@/util/util";
+import { boundNumber, stringToBase64 } from "@/util/util";
 import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -328,7 +329,20 @@ class TermViewModel implements ViewModel {
     }
 
     multiInputHandler(data: string) {
-        console.log("MI handler", data);
+        let tvms = getAllBasicTermModels();
+        // filter out "this" from the list
+        tvms = tvms.filter((tvm) => tvm != this);
+        if (tvms.length == 0) {
+            return;
+        }
+        for (const tvm of tvms) {
+            tvm.sendDataToController(data);
+        }
+    }
+
+    sendDataToController(data: string) {
+        const b64data = stringToBase64(data);
+        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
     setTermMode(mode: "term" | "vdom") {
@@ -665,6 +679,21 @@ class TermViewModel implements ViewModel {
     }
 }
 
+function getAllBasicTermModels(): TermViewModel[] {
+    const allBCMs = getAllBlockComponentModels();
+    const rtn: TermViewModel[] = [];
+    for (const bcm of allBCMs) {
+        if (bcm.viewModel?.viewType != "term") {
+            continue;
+        }
+        const termVM = bcm.viewModel as TermViewModel;
+        if (termVM.isBasicTerm(globalStore.get)) {
+            rtn.push(termVM);
+        }
+    }
+    return rtn;
+}
+
 function makeTerminalModel(blockId: string, nodeModel: BlockNodeModel): TermViewModel {
     return new TermViewModel(blockId, nodeModel);
 }
@@ -852,6 +881,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
                 useWebGl: !termSettings?.["term:disablewebgl"],
+                sendDataHandler: model.sendDataToController.bind(model),
             }
         );
         (window as any).term = termWrap;
