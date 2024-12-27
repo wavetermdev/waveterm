@@ -118,8 +118,8 @@ func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon 
 func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, string, error) {
 	log.Printf("DeleteWorkspace %s\n", workspaceId)
 	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
-	if err != nil && err.Error() == "not found" {
-		return true, "", fmt.Errorf("workspace probably already deleted %w", err)
+	if err != nil && wstore.ErrNotFound == err {
+		return true, "", fmt.Errorf("workspace already deleted %w", err)
 	}
 	// @jalileh list needs to be saved early on i assume
 	workspaces, err := ListWorkspaces(ctx)
