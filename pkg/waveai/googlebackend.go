@@ -16,7 +16,6 @@ type GoogleBackend struct{}
 var _ AIBackend = GoogleBackend{}
 
 func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
-	log.Printf("GoogleBackend.StreamCompletion: %v", request)
 	client, err := genai.NewClient(ctx, option.WithAPIKey(request.Opts.APIToken))
 	if err != nil {
 		log.Fatalf("failed to create client: %v", err)

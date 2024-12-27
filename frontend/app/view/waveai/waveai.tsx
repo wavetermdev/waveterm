@@ -163,7 +163,6 @@ export class WaveAiModel implements ViewModel {
         this.aiOpts = atom((get) => {
             const meta = get(this.blockAtom).meta;
             let settings = get(atoms.settingsAtom);
-            console.log("meta", meta);
             settings = {
                 ...settings,
                 ...meta,
@@ -178,7 +177,6 @@ export class WaveAiModel implements ViewModel {
                 timeoutms: settings["ai:timeoutms"] ?? 60000,
                 baseurl: settings["ai:baseurl"] ?? null,
             };
-            console.log("aiOpts", opts);
             return opts;
         });
 
