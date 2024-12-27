@@ -20,12 +20,12 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
 - 🔷 Wave Apps (Go SDK)
 - 🔷 Fixes for reducing 2FA requests on connect
 - 🔷 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
-- 🔧 WebLinks in the terminal working again
+- ✅ WebLinks in the terminal working again
 - 🔧 Search in Web Views
 - 🔷 Search in the Terminal
 - 🔷 Custom init files for widgets and terminal blocks
 - 🔷 Multi-Input between terminal blocks on the same tab
-- 🔧 Gemini AI support
+- ✅ Gemini AI support
 - 🔷 Monaco Theming
 - 🤞 Blockcontroller fixes for terminal escape sequences
 - 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
