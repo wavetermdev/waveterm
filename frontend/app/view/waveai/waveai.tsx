@@ -163,6 +163,7 @@ export class WaveAiModel implements ViewModel {
         this.aiOpts = atom((get) => {
             const meta = get(this.blockAtom).meta;
             let settings = get(atoms.settingsAtom);
+            console.log("meta", meta);
             settings = {
                 ...settings,
                 ...meta,
@@ -177,6 +178,7 @@ export class WaveAiModel implements ViewModel {
                 timeoutms: settings["ai:timeoutms"] ?? 60000,
                 baseurl: settings["ai:baseurl"] ?? null,
             };
+            console.log("aiOpts", opts);
             return opts;
         });
 
@@ -347,7 +349,7 @@ export class WaveAiModel implements ViewModel {
             // Add a typing indicator
             globalStore.set(this.addMessageAtom, typingMessage);
             const history = await this.fetchAiData();
-            const beMsg: OpenAiStreamRequest = {
+            const beMsg: WaveAIStreamRequest = {
                 clientid: clientId,
                 opts: opts,
                 prompt: [...history, newPrompt],

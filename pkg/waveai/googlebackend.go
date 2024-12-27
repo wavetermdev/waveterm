@@ -16,9 +16,10 @@ type GoogleBackend struct{}
 var _ AIBackend = GoogleBackend{}
 
 func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
+	log.Printf("GoogleBackend.StreamCompletion: %v", request)
 	client, err := genai.NewClient(ctx, option.WithAPIKey(request.Opts.APIToken))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to create client: %v", err)
 		return nil
 	}
 
@@ -65,10 +66,12 @@ func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 func extractHistory(history []wshrpc.WaveAIPromptMessageType) []*genai.Content {
 	var rtn []*genai.Content
 	for _, h := range history[:len(history)-1] {
-		rtn = append(rtn, &genai.Content{
-			Role:  h.Role,
-			Parts: []genai.Part{genai.Text(h.Content)},
-		})
+		if h.Role == "user" || h.Role == "model" {
+			rtn = append(rtn, &genai.Content{
+				Role:  h.Role,
+				Parts: []genai.Part{genai.Text(h.Content)},
+			})
+		}
 	}
 	return rtn
 }
@@ -81,7 +84,9 @@ func extractPrompt(prompt []wshrpc.WaveAIPromptMessageType) genai.Part {
 func convertCandidatesToText(candidates []*genai.Candidate) string {
 	var rtn string
 	for _, c := range candidates {
-		rtn += fmt.Sprintf("%s\n", c.Content)
+		for _, p := range c.Content.Parts {
+			rtn += fmt.Sprintf("%v", p)
+		}
 	}
 	return rtn
 }
