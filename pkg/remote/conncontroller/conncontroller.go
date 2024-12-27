@@ -710,10 +710,8 @@ func GetConnectionsList() ([]string, error) {
 
 	fromInternal := GetConnectionsFromInternalConfig()
 
-	fromConfig, err := GetConnectionsFromConfig()
-	if err != nil {
-		return nil, err
-	}
+	fromConfig, _ := GetConnectionsFromConfig()
+	// ignore the error and continue with an empty slice
 
 	// sort into one final list and remove duplicates
 	alreadyUsed := make(map[string]struct{})
