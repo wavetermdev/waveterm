@@ -17,9 +17,9 @@ import {
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
+    getSettingsPrefixAtom,
     globalStore,
     useBlockAtom,
-    useSettingsPrefixAtom,
     WOS,
 } from "@/store/global";
 import * as services from "@/store/services";
@@ -773,7 +773,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const termSettingsAtom = useSettingsPrefixAtom("term");
+    const termSettingsAtom = getSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
     let termMode = blockData?.meta?.["term:mode"] ?? "term";
     if (termMode != "term" && termMode != "vdom") {
