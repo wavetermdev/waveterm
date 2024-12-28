@@ -156,21 +156,19 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	if windowId != "" {
 
 		UnclaimedWorkspace, findAfter := "", false
-		for i, ws := range workspaces {
-			if workspaceId == ws.WorkspaceId {
-				for N := i; N >= 0; N-- {
-					if workspaces[N].WindowId == "" {
-						UnclaimedWorkspace = workspaces[N].WorkspaceId
-						break
-					}
-				}
+		for _, ws := range workspaces {
+			if ws.WorkspaceId == workspaceId {
 				if UnclaimedWorkspace != "" {
 					break
 				}
 				findAfter = true
-			} else if findAfter && workspaces[i].WindowId == "" {
-				UnclaimedWorkspace = workspaces[i].WorkspaceId
+				continue
+			}
+			if findAfter && ws.WindowId == "" {
+				UnclaimedWorkspace = ws.WorkspaceId
 				break
+			} else if ws.WindowId == "" {
+				UnclaimedWorkspace = ws.WorkspaceId
 			}
 		}
 
