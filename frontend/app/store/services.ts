@@ -189,7 +189,7 @@ class WorkspaceServiceType {
     }
 
     // @returns object updates
-    DeleteWorkspace(workspaceId: string): Promise<string> {
+    DeleteWorkspace(workspaceId: string): Promise<void> {
         return WOS.callBackendService("workspace", "DeleteWorkspace", Array.from(arguments))
     }
 

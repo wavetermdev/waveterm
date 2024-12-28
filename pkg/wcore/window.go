@@ -52,13 +52,10 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 		return nil, fmt.Errorf("error updating window: %w", err)
 	}
 
-	deleted, _, err := DeleteWorkspace(ctx, curWsId, false)
-	if err != nil && deleted {
-		print(err.Error()) // @jalileh isolated the error for now, curwId/workspace was deleted when this occurs.
-	} else if err != nil {
-		return nil, fmt.Errorf("error deleting workspace: %w", err)
+	deleted, err := DeleteWorkspace(ctx, curWsId, false)
+	if err != nil {
+		return nil, fmt.Errorf("error deleting current workspace: %w", err)
 	}
-
 	if !deleted {
 		log.Printf("current workspace %s was not deleted\n", curWsId)
 	} else {
@@ -134,7 +131,7 @@ func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error 
 	window, err := GetWindow(ctx, windowId)
 	if err == nil {
 		log.Printf("got window %s\n", windowId)
-		deleted, _, err := DeleteWorkspace(ctx, window.WorkspaceId, false)
+		deleted, err := DeleteWorkspace(ctx, window.WorkspaceId, false)
 		if err != nil {
 			log.Printf("error deleting workspace: %v\n", err)
 		}

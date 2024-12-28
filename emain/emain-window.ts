@@ -18,7 +18,6 @@ import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-uti
 import { log } from "./log";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
- 
 export type WindowOpts = {
     unamePlatform: string;
 };
@@ -302,14 +301,9 @@ export class WaveBrowserWindow extends BaseWindow {
 
         // If the workspace is already owned by a window, then we can just call SwitchWorkspace without first prompting the user, since it'll just focus to the other window.
         const workspaceList = await WorkspaceService.ListWorkspaces();
-        if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {		
-            const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);  
-            if (curWorkspace == undefined)   { // @jalileh this occurs when we have already deleted the current workspace
-				await this._queueActionInternal({ op: "switchworkspace", workspaceId });
-				return;
-			}
-                 
-			if (isNonEmptyUnsavedWorkspace(curWorkspace)) {
+        if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
+            const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
+            if (isNonEmptyUnsavedWorkspace(curWorkspace)) {
                 console.log(
                     `existing unsaved workspace ${this.workspaceId} has content, opening workspace ${workspaceId} in new window`
                 );
@@ -423,7 +417,7 @@ export class WaveBrowserWindow extends BaseWindow {
             tabView?.positionTabOffScreen(curBounds);
         }
     }
-    
+
     async queueCreateTab(pinned = false) {
         await this._queueActionInternal({ op: "createtab", pinned });
     }
@@ -699,22 +693,17 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
             type: "question",
             buttons: ["Cancel", "Delete Workspace"],
             title: "Confirm",
-            message: `Deleting workspace will also delete its contents.\n\nContinue?`,
+            message: `Deleting workspace will also delete its contents.${workspaceHasWindow ? "\nWorkspace is open in a window, which will be closed." : ""}\n\nContinue?`,
         });
         if (choice === 0) {
             console.log("user cancelled workspace delete", workspaceId, ww?.waveWindowId);
             return;
         }
-        
-        const newWorkspaceId = await WorkspaceService.DeleteWorkspace(workspaceId) 
+        await WorkspaceService.DeleteWorkspace(workspaceId);
         console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
-        if (ww?.workspaceId == workspaceId){
-            if ( newWorkspaceId ) {
-                   await ww.switchWorkspace(newWorkspaceId)
-            } else {
-                    console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-                    ww.destroy();
-            }
+        if (ww?.workspaceId == workspaceId) {
+            console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
+            ww.destroy();
         }
     });
 });
