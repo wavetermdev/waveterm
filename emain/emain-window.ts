@@ -88,11 +88,14 @@ export class WaveBrowserWindow extends BaseWindow {
             const dimensions = settings["window:dimensions"];
             const [dimensionWidth, dimensionHeight] = dimensions.split(/[xX]/);
 
-            if (!winWidth || winWidth === 0) {
-                winWidth = parseInt(dimensionWidth);
+            const parsedWidth = parseInt(dimensionWidth);
+            const parsedHeight = parseInt(dimensionHeight);
+
+            if ((!winWidth || winWidth === 0) && !isNaN(parsedWidth)) {
+                winWidth = parsedWidth;
             }
-            if (!winHeight || winHeight === 0) {
-                winHeight = parseInt(dimensionHeight);
+            if ((!winHeight || winHeight === 0) && !isNaN(parsedHeight)) {
+                winHeight = parsedHeight;
             }
         }
 
