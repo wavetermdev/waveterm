@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { Search, useSearch } from "@/app/element/search";
 import { getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
@@ -12,8 +13,8 @@ import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil"
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
-import { Atom, PrimitiveAtom, atom, useAtomValue } from "jotai";
-import { Fragment, createRef, memo, useEffect, useRef, useState } from "react";
+import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
+import { Fragment, createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import "./webview.scss";
 
 let webviewPreloadUrl = null;
@@ -50,6 +51,7 @@ export class WebViewModel implements ViewModel {
     mediaMuted: PrimitiveAtom<boolean>;
     modifyExternalUrl?: (url: string) => string;
     domReady: PrimitiveAtom<boolean>;
+    searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
@@ -296,6 +298,9 @@ export class WebViewModel implements ViewModel {
     handleNavigate(url: string) {
         fireAndForget(() => ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
         globalStore.set(this.url, url);
+        if (this.searchAtoms) {
+            globalStore.set(this.searchAtoms.isOpenAtom, false);
+        }
     }
 
     ensureUrlScheme(url: string, searchTemplate: string) {
@@ -389,6 +394,11 @@ export class WebViewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
+        console.log("webview giveFocus");
+        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpenAtom)) {
+            console.log("search is open, not giving focus");
+            return true;
+        }
         const ctrlShiftState = globalStore.get(getSimpleControlShiftAtom());
         if (ctrlShiftState) {
             // this is really weird, we don't get keyup events from webview
@@ -537,6 +547,49 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const metaUrlRef = useRef(metaUrl);
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
 
+    // Search
+    const searchProps = useSearch(model.webviewRef, model);
+    const searchVal = useAtomValue<string>(searchProps.searchAtom);
+    const setSearchIndex = useSetAtom(searchProps.indexAtom);
+    const setNumSearchResults = useSetAtom(searchProps.numResultsAtom);
+    const onSearch = useCallback((search: string) => {
+        try {
+            if (search) {
+                model.webviewRef.current?.findInPage(search, { findNext: true });
+            } else {
+                model.webviewRef.current?.stopFindInPage("clearSelection");
+            }
+        } catch (e) {
+            console.error("Failed to search", e);
+        }
+    }, []);
+    const onSearchNext = useCallback(() => {
+        try {
+            console.log("search next", searchVal);
+            model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: true });
+        } catch (e) {
+            console.error("Failed to search next", e);
+        }
+    }, [searchVal]);
+    const onSearchPrev = useCallback(() => {
+        try {
+            console.log("search prev", searchVal);
+            model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: false });
+        } catch (e) {
+            console.error("Failed to search prev", e);
+        }
+    }, [searchVal]);
+    const onFoundInPage = useCallback((event: any) => {
+        const result = event.result;
+        console.log("found in page", result);
+        if (!result) {
+            return;
+        }
+        setNumSearchResults(result.matches);
+        setSearchIndex(result.activeMatchOrdinal - 1);
+    }, []);
+    // End Search
+
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(metaUrl);
 
@@ -669,6 +722,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
         webview.addEventListener("dom-ready", handleDomReady);
         webview.addEventListener("media-started-playing", handleMediaPlaying);
         webview.addEventListener("media-paused", handleMediaPaused);
+        webview.addEventListener("found-in-page", onFoundInPage);
 
         // Clean up event listeners on component unmount
         return () => {
@@ -684,6 +738,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             webview.removeEventListener("dom-ready", handleDomReady);
             webview.removeEventListener("media-started-playing", handleMediaPlaying);
             webview.removeEventListener("media-paused", handleMediaPaused);
+            webview.removeEventListener("found-in-page", onFoundInPage);
         };
     }, []);
 
@@ -705,6 +760,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                     <div>{errorText}</div>
                 </div>
             )}
+            <Search {...searchProps} onSearch={onSearch} onNext={onSearchNext} onPrev={onSearchPrev} />
         </Fragment>
     );
 });
