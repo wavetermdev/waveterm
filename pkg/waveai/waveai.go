@@ -6,18 +6,16 @@ package waveai
 import (
 	"context"
 	"log"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const OpenAIPacketStr = "openai"
-const OpenAICloudReqStr = "openai-cloudreq"
-const PacketEOFStr = "EOF"
-const DefaultAzureAPIVersion = "2023-05-15"
+const WaveAIPacketstr = "waveai"
 const ApiType_Anthropic = "anthropic"
 const ApiType_Perplexity = "perplexity"
+const APIType_Google = "google"
+const APIType_OpenAI = "openai"
 
 type WaveAICmdInfoPacketOutputType struct {
 	Model        string `json:"model,omitempty"`
@@ -28,7 +26,7 @@ type WaveAICmdInfoPacketOutputType struct {
 }
 
 func MakeWaveAIPacket() *wshrpc.WaveAIPacketType {
-	return &wshrpc.WaveAIPacketType{Type: OpenAIPacketStr}
+	return &wshrpc.WaveAIPacketType{Type: WaveAIPacketstr}
 }
 
 type WaveAICmdInfoChatMessage struct {
@@ -46,13 +44,6 @@ type AIBackend interface {
 	) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]
 }
 
-const DefaultMaxTokens = 2048
-const DefaultModel = "gpt-4o-mini"
-const WCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
-const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
-
-const CloudWebsocketConnectTimeout = 1 * time.Minute
-
 func IsCloudAIRequest(opts *wshrpc.WaveAIOptsType) bool {
 	if opts == nil {
 		return true
@@ -66,31 +57,32 @@ func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
 
 func RunAICommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
 	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NumAIReqs: 1}, "RunAICommand")
+
+	endpoint := request.Opts.BaseURL
+	if endpoint == "" {
+		endpoint = "default"
+	}
+	var backend AIBackend
 	if request.Opts.APIType == ApiType_Anthropic {
-		endpoint := request.Opts.BaseURL
-		if endpoint == "" {
-			endpoint = "default"
-		}
-		log.Printf("sending ai chat message to anthropic endpoint %q using model %s\n", endpoint, request.Opts.Model)
-		anthropicBackend := AnthropicBackend{}
-		return anthropicBackend.StreamCompletion(ctx, request)
-	}
-	if request.Opts.APIType == ApiType_Perplexity {
-		endpoint := request.Opts.BaseURL
-		if endpoint == "" {
-			endpoint = "default"
-		}
-		log.Printf("sending ai chat message to perplexity endpoint %q using model %s\n", endpoint, request.Opts.Model)
-		perplexityBackend := PerplexityBackend{}
-		return perplexityBackend.StreamCompletion(ctx, request)
-	}
-	if IsCloudAIRequest(request.Opts) {
-		log.Print("sending ai chat message to default waveterm cloud endpoint\n")
-		cloudBackend := WaveAICloudBackend{}
-		return cloudBackend.StreamCompletion(ctx, request)
+		backend = AnthropicBackend{}
+	} else if request.Opts.APIType == ApiType_Perplexity {
+		backend = PerplexityBackend{}
+	} else if request.Opts.APIType == APIType_Google {
+		backend = GoogleBackend{}
+	} else if IsCloudAIRequest(request.Opts) {
+		endpoint = "waveterm cloud"
+		request.Opts.APIType = APIType_OpenAI
+		request.Opts.Model = "default"
+		backend = WaveAICloudBackend{}
 	} else {
-		log.Printf("sending ai chat message to user-configured endpoint %s using model %s\n", request.Opts.BaseURL, request.Opts.Model)
-		openAIBackend := OpenAIBackend{}
-		return openAIBackend.StreamCompletion(ctx, request)
+		request.Opts.APIType = APIType_OpenAI
+		backend = OpenAIBackend{}
 	}
+	if backend == nil {
+		log.Printf("no backend found for %s\n", request.Opts.APIType)
+		return nil
+	}
+
+	log.Printf("sending ai chat message to %s endpoint %q using model %s\n", request.Opts.APIType, endpoint, request.Opts.Model)
+	return backend.StreamCompletion(ctx, request)
 }

@@ -6,11 +6,11 @@ import { ContextMenuModel } from "@/store/contextmenu";
 import {
     atoms,
     createBlock,
+    getSettingsPrefixAtom,
     globalStore,
     isDev,
     PLATFORM,
     removeFlashError,
-    useSettingsPrefixAtom,
 } from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
@@ -123,7 +123,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
 }
 
 function AppSettingsUpdater() {
-    const windowSettingsAtom = useSettingsPrefixAtom("window");
+    const windowSettingsAtom = getSettingsPrefixAtom("window");
     const windowSettings = useAtomValue(windowSettingsAtom);
     useEffect(() => {
         const isTransparentOrBlur =
