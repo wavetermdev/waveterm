@@ -59,6 +59,7 @@ export class TermWrap {
     handleResize_debounced: () => void;
     hasResized: boolean;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
+    toDispose: TermTypes.IDisposable[] = [];
 
     constructor(
         blockId: string,
@@ -98,9 +99,11 @@ export class TermWrap {
         );
         if (WebGLSupported && waveOptions.useWebGl) {
             const webglAddon = new WebglAddon();
-            webglAddon.onContextLoss(() => {
-                webglAddon.dispose();
-            });
+            this.toDispose.push(
+                webglAddon.onContextLoss(() => {
+                    webglAddon.dispose();
+                })
+            );
             this.terminal.loadAddon(webglAddon);
             if (!loggedWebGL) {
                 console.log("loaded webgl!");
@@ -142,20 +145,22 @@ export class TermWrap {
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
-        this.terminal.onData(this.handleTermData.bind(this));
-        this.terminal.onSelectionChange(
-            debounce(50, () => {
-                if (!globalStore.get(copyOnSelectAtom)) {
-                    return;
-                }
-                const selectedText = this.terminal.getSelection();
-                if (selectedText.length > 0) {
-                    navigator.clipboard.writeText(selectedText);
-                }
-            })
+        this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
+        this.toDispose.push(
+            this.terminal.onSelectionChange(
+                debounce(50, () => {
+                    if (!globalStore.get(copyOnSelectAtom)) {
+                        return;
+                    }
+                    const selectedText = this.terminal.getSelection();
+                    if (selectedText.length > 0) {
+                        navigator.clipboard.writeText(selectedText);
+                    }
+                })
+            )
         );
         if (this.onSearchResultsDidChange != null) {
-            this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this));
+            this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
         }
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
@@ -169,6 +174,11 @@ export class TermWrap {
 
     dispose() {
         this.terminal.dispose();
+        this.toDispose.forEach((d) => {
+            try {
+                d.dispose();
+            } catch (_) {}
+        });
         this.mainFileSubject.release();
     }
 
