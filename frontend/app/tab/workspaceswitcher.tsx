@@ -30,11 +30,15 @@ type WorkspaceListEntry = {
     workspace: Workspace;
 };
 
+type WorkspaceSwitcherProps = {
+    ref: React.RefObject<HTMLDivElement>;
+};
+
 type WorkspaceList = WorkspaceListEntry[];
 const workspaceMapAtom = atom<WorkspaceList>([]);
 const workspaceSplitAtom = splitAtom(workspaceMapAtom);
 const editingWorkspaceAtom = atom<string>();
-const WorkspaceSwitcher = (ref: React.RefObject<HTMLDivElement>) => {
+const WorkspaceSwitcher = ({ ref }: WorkspaceSwitcherProps) => {
     const setWorkspaceList = useSetAtom(workspaceMapAtom);
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const workspaceList = useAtomValue(workspaceSplitAtom);

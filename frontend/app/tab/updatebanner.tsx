@@ -4,7 +4,11 @@ import { useAtomValue } from "jotai";
 import { memo, useEffect, useState } from "react";
 import "./updatebanner.scss";
 
-const UpdateStatusBannerComponent = (ref: React.RefObject<HTMLButtonElement>) => {
+type UpdateStatusBannerProps = {
+    ref: React.RefObject<HTMLButtonElement>;
+};
+
+const UpdateStatusBannerComponent = ({ ref }: UpdateStatusBannerProps) => {
     const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
     let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();

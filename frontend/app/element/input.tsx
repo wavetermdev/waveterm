@@ -9,7 +9,7 @@ import "./input.scss";
 interface InputGroupProps {
     children: React.ReactNode;
     className?: string;
-    ref: React.RefObject<HTMLDivElement>;
+    ref?: React.RefObject<HTMLDivElement>;
 }
 
 const InputGroup = memo(({ children, className, ref }: InputGroupProps) => {
