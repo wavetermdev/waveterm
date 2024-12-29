@@ -154,8 +154,8 @@ export class TermWrap {
                 }
             })
         );
-        if (this.onSearchResultsDidChange)
-            this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this));
+        this.searchAddon.onDidChangeResults(this.searchResultsDidChange.bind(this));
+
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
         try {
@@ -309,5 +309,12 @@ export class TermWrap {
 
     search(search: string) {
         this.searchAddon.findNext(search);
+    }
+
+    searchResultsDidChange(result: { resultIndex: number; resultCount: number }) {
+        console.log("search results changed", result);
+        if (this.onSearchResultsDidChange) {
+            this.onSearchResultsDidChange(result);
+        }
     }
 }

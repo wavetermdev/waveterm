@@ -363,6 +363,10 @@ class TermViewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
+        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpenAtom)) {
+            console.log("search is open, not giving focus");
+            return true;
+        }
         let termMode = globalStore.get(this.termMode);
         if (termMode == "term") {
             if (this.termRef?.current?.terminal) {
@@ -840,11 +844,6 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 useWebGl: !termSettings?.["term:disablewebgl"],
             }
         );
-        termWrap.onSearchResultsDidChange = (results) => {
-            console.log("search results", results);
-            globalStore.set(searchProps.numResultsAtom, results.resultCount);
-            globalStore.set(searchProps.indexAtom, results.resultIndex);
-        };
         (window as any).term = termWrap;
         model.termRef.current = termWrap;
         const rszObs = new ResizeObserver(() => {
