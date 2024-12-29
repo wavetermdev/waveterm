@@ -66,7 +66,8 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 	}
 
 	wps.Broker.Publish(wps.WaveEvent{
-		Event: wps.Event_WorkspaceUpdate})
+		Event: wps.Event_WorkspaceUpdate,
+	})
 
 	ws, _, err = UpdateWorkspace(ctx, ws.OID, name, icon, color, applyDefaults)
 	return ws, err
@@ -114,15 +115,24 @@ func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon 
 // If force is true, it will delete even if workspace is named.
 // If workspace is empty, it will be deleted, even if it is named.
 // Returns true if workspace was deleted, false if it was not deleted.
-func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, error) {
+func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, string, error) {
 	log.Printf("DeleteWorkspace %s\n", workspaceId)
 	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
+	if err != nil && wstore.ErrNotFound == err {
+		return true, "", fmt.Errorf("workspace already deleted %w", err)
+	}
+	// @jalileh list needs to be saved early on i assume
+	workspaces, err := ListWorkspaces(ctx)
 	if err != nil {
-		return false, fmt.Errorf("error getting workspace: %w", err)
+		return false, "", fmt.Errorf("error retrieving workspaceList: %w", err)
+	}
+
+	if err != nil {
+		return false, "", fmt.Errorf("error getting workspace: %w", err)
 	}
 	if workspace.Name != "" && workspace.Icon != "" && !force && (len(workspace.TabIds) > 0 || len(workspace.PinnedTabIds) > 0) {
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
-		return false, nil
+		return false, "", nil
 	}
 
 	// delete all pinned and unpinned tabs
@@ -130,24 +140,49 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 		log.Printf("deleting tab %s\n", tabId)
 		_, err := DeleteTab(ctx, workspaceId, tabId, false)
 		if err != nil {
-			return false, fmt.Errorf("error closing tab: %w", err)
+			return false, "", fmt.Errorf("error closing tab: %w", err)
 		}
 	}
 	windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
 	if err != nil {
-		return false, fmt.Errorf("error deleting workspace: %w", err)
+		return false, "", fmt.Errorf("error deleting workspace: %w", err)
 	}
 	log.Printf("deleted workspace %s\n", workspaceId)
 	wps.Broker.Publish(wps.WaveEvent{
-		Event: wps.Event_WorkspaceUpdate})
+		Event: wps.Event_WorkspaceUpdate,
+	})
+
 	if windowId != "" {
-		err = CloseWindow(ctx, windowId, false)
+
+		UnclaimedWorkspace, findAfter := "", false
+		for _, ws := range workspaces {
+			if ws.WorkspaceId == workspaceId {
+				if UnclaimedWorkspace != "" {
+					break
+				}
+				findAfter = true
+				continue
+			}
+			if findAfter && ws.WindowId == "" {
+				UnclaimedWorkspace = ws.WorkspaceId
+				break
+			} else if ws.WindowId == "" {
+				UnclaimedWorkspace = ws.WorkspaceId
+			}
+		}
+
+		if UnclaimedWorkspace != "" {
+			return true, UnclaimedWorkspace, nil
+		} else {
+			err = CloseWindow(ctx, windowId, false)
+		}
+
 		if err != nil {
-			return false, fmt.Errorf("error closing window: %w", err)
+			return false, "", fmt.Errorf("error closing window: %w", err)
 		}
 	}
-	return true, nil
+	return true, "", nil
 }
 
 func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) {

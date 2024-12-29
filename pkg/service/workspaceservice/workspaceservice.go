@@ -54,7 +54,8 @@ func (svc *WorkspaceService) UpdateWorkspace(ctx context.Context, workspaceId st
 	}
 
 	wps.Broker.Publish(wps.WaveEvent{
-		Event: wps.Event_WorkspaceUpdate})
+		Event: wps.Event_WorkspaceUpdate,
+	})
 
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
@@ -87,23 +88,26 @@ func (svc *WorkspaceService) DeleteWorkspace_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.UpdatesRtnType, error) {
+func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.UpdatesRtnType, string, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	deleted, err := wcore.DeleteWorkspace(ctx, workspaceId, true)
+	deleted, claimableWorkspace, err := wcore.DeleteWorkspace(ctx, workspaceId, true)
+	if claimableWorkspace != "" {
+		return nil, claimableWorkspace, nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("error deleting workspace: %w", err)
+		return nil, claimableWorkspace, fmt.Errorf("error deleting workspace: %w", err)
 	}
 	if !deleted {
-		return nil, nil
+		return nil, claimableWorkspace, nil
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
 		defer panichandler.PanicHandler("WorkspaceService:DeleteWorkspace:SendUpdateEvents")
 		wps.Broker.SendUpdateEvents(updates)
 	}()
-	return updates, nil
+	return updates, claimableWorkspace, nil
 }
 
 func (svc *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
