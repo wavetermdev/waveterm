@@ -43,12 +43,10 @@ export function useLongClick<T extends HTMLElement>(
 
         element.addEventListener("pointerdown", startPressBound);
         element.addEventListener("pointerup", stopPressBound);
-        element.addEventListener("pointerleave", stopPressBound);
 
         return () => {
             element.removeEventListener("pointerdown", startPressBound);
             element.removeEventListener("pointerup", stopPressBound);
-            element.removeEventListener("pointerleave", stopPressBound);
         };
     }, [ref.current, startPress, stopPress]);
 
