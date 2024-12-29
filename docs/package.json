@@ -26,8 +26,8 @@
         "@waveterm/docusaurus-og": "https://github.com/wavetermdev/docusaurus-og",
         "clsx": "^2.1.1",
         "prism-react-renderer": "^2.3.0",
-        "react": "^18.0.0",
-        "react-dom": "^18.0.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
         "remark-gfm": "^4.0.0",
         "remark-typescript-code-import": "^1.0.1",
         "ua-parser-js": "^2.0.0"
@@ -53,7 +53,7 @@
         "remark-preset-lint-consistent": "^6.0.0",
         "remark-preset-lint-recommended": "^7.0.0",
         "typescript": "^5.7.2",
-        "typescript-eslint": "^8.18.0"
+        "typescript-eslint": "^8.18.2"
     },
     "resolutions": {
         "path-to-regexp@npm:2.2.1": "^3",

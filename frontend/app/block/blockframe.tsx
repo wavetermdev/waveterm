@@ -39,6 +39,7 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
+import { JSX } from "react";
 import { BlockFrameProps } from "./blocktypes";
 
 const NumActiveConnColors = 8;
@@ -513,7 +514,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
     const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
-    const connBtnRef = React.useRef<HTMLDivElement>();
+    const connBtnRef = React.useRef<HTMLDivElement>(null);
     React.useEffect(() => {
         if (!manageConnection) {
             return;

@@ -32,7 +32,7 @@ function evalAsync(Plot: any, d3: any, funcText: string): Promise<unknown> {
 }
 
 function PlotView() {
-    const containerRef = React.useRef<HTMLInputElement>();
+    const containerRef = React.useRef<HTMLInputElement>(null);
     const [plotDef, setPlotDef] = React.useState<string>();
     const [savedDef, setSavedDef] = React.useState<string>();
     const [modalUp, setModalUp] = React.useState(false);

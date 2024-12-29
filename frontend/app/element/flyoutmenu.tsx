@@ -3,7 +3,7 @@
 
 import { FloatingPortal, type Placement, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import clsx from "clsx";
-import { createRef, Fragment, memo, ReactNode, useRef, useState } from "react";
+import { createRef, Fragment, JSX, memo, ReactNode, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 
 import "./flyoutmenu.scss";

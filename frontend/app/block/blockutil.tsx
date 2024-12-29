@@ -145,6 +145,7 @@ export function getBlockHeaderIcon(blockIcon: string, blockData: Block): React.R
 interface ConnectionButtonProps {
     connection: string;
     changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
+    ref?: React.RefObject<HTMLDivElement>;
 }
 
 export function computeConnColorNum(connStatus: ConnStatus): number {
@@ -156,88 +157,84 @@ export function computeConnColorNum(connStatus: ConnStatus): number {
     return connColorNum;
 }
 
-export const ConnectionButton = React.memo(
-    React.forwardRef<HTMLDivElement, ConnectionButtonProps>(
-        ({ connection, changeConnModalAtom }: ConnectionButtonProps, ref) => {
-            const [connModalOpen, setConnModalOpen] = jotai.useAtom(changeConnModalAtom);
-            const isLocal = util.isBlank(connection);
-            const connStatusAtom = getConnStatusAtom(connection);
-            const connStatus = jotai.useAtomValue(connStatusAtom);
-            let showDisconnectedSlash = false;
-            let connIconElem: React.ReactNode = null;
-            const connColorNum = computeConnColorNum(connStatus);
-            let color = `var(--conn-icon-color-${connColorNum})`;
-            const clickHandler = function () {
-                setConnModalOpen(true);
-            };
-            let titleText = null;
-            let shouldSpin = false;
-            if (isLocal) {
-                color = "var(--grey-text-color)";
-                titleText = "Connected to Local Machine";
-                connIconElem = (
-                    <i
-                        className={clsx(util.makeIconClass("laptop", false), "fa-stack-1x")}
-                        style={{ color: color, marginRight: 2 }}
-                    />
-                );
-            } else {
-                titleText = "Connected to " + connection;
-                let iconName = "arrow-right-arrow-left";
-                let iconSvg = null;
-                if (connStatus?.status == "connecting") {
-                    color = "var(--warning-color)";
-                    titleText = "Connecting to " + connection;
-                    shouldSpin = false;
-                    iconSvg = (
-                        <div className="connecting-svg">
-                            <DotsSvg />
-                        </div>
-                    );
-                } else if (connStatus?.status == "error") {
-                    color = "var(--error-color)";
-                    titleText = "Error connecting to " + connection;
-                    if (connStatus?.error != null) {
-                        titleText += " (" + connStatus.error + ")";
-                    }
-                    showDisconnectedSlash = true;
-                } else if (!connStatus?.connected) {
-                    color = "var(--grey-text-color)";
-                    titleText = "Disconnected from " + connection;
-                    showDisconnectedSlash = true;
-                }
-                if (iconSvg != null) {
-                    connIconElem = iconSvg;
-                } else {
-                    connIconElem = (
-                        <i
-                            className={clsx(util.makeIconClass(iconName, false), "fa-stack-1x")}
-                            style={{ color: color, marginRight: 2 }}
-                        />
-                    );
-                }
-            }
-
-            return (
-                <div ref={ref} className={clsx("connection-button")} onClick={clickHandler} title={titleText}>
-                    <span className={clsx("fa-stack connection-icon-box", shouldSpin ? "fa-spin" : null)}>
-                        {connIconElem}
-                        <i
-                            className="fa-slash fa-solid fa-stack-1x"
-                            style={{
-                                color: color,
-                                marginRight: "2px",
-                                textShadow: "0 1px black, 0 1.5px black",
-                                opacity: showDisconnectedSlash ? 1 : 0,
-                            }}
-                        />
-                    </span>
-                    {isLocal ? null : <div className="connection-name">{connection}</div>}
+export const ConnectionButton = React.memo(({ connection, changeConnModalAtom, ref }: ConnectionButtonProps) => {
+    const setConnModalOpen = jotai.useSetAtom(changeConnModalAtom);
+    const isLocal = util.isBlank(connection);
+    const connStatusAtom = getConnStatusAtom(connection);
+    const connStatus = jotai.useAtomValue(connStatusAtom);
+    let showDisconnectedSlash = false;
+    let connIconElem: React.ReactNode = null;
+    const connColorNum = computeConnColorNum(connStatus);
+    let color = `var(--conn-icon-color-${connColorNum})`;
+    const clickHandler = function () {
+        setConnModalOpen(true);
+    };
+    let titleText = null;
+    let shouldSpin = false;
+    if (isLocal) {
+        color = "var(--grey-text-color)";
+        titleText = "Connected to Local Machine";
+        connIconElem = (
+            <i
+                className={clsx(util.makeIconClass("laptop", false), "fa-stack-1x")}
+                style={{ color: color, marginRight: 2 }}
+            />
+        );
+    } else {
+        titleText = "Connected to " + connection;
+        let iconName = "arrow-right-arrow-left";
+        let iconSvg = null;
+        if (connStatus?.status == "connecting") {
+            color = "var(--warning-color)";
+            titleText = "Connecting to " + connection;
+            shouldSpin = false;
+            iconSvg = (
+                <div className="connecting-svg">
+                    <DotsSvg />
                 </div>
             );
+        } else if (connStatus?.status == "error") {
+            color = "var(--error-color)";
+            titleText = "Error connecting to " + connection;
+            if (connStatus?.error != null) {
+                titleText += " (" + connStatus.error + ")";
+            }
+            showDisconnectedSlash = true;
+        } else if (!connStatus?.connected) {
+            color = "var(--grey-text-color)";
+            titleText = "Disconnected from " + connection;
+            showDisconnectedSlash = true;
         }
-    )
-);
+        if (iconSvg != null) {
+            connIconElem = iconSvg;
+        } else {
+            connIconElem = (
+                <i
+                    className={clsx(util.makeIconClass(iconName, false), "fa-stack-1x")}
+                    style={{ color: color, marginRight: 2 }}
+                />
+            );
+        }
+    }
+
+    return (
+        <div ref={ref} className={clsx("connection-button")} onClick={clickHandler} title={titleText}>
+            <span className={clsx("fa-stack connection-icon-box", shouldSpin ? "fa-spin" : null)}>
+                {connIconElem}
+                <i
+                    className="fa-slash fa-solid fa-stack-1x"
+                    style={{
+                        color: color,
+                        marginRight: "2px",
+                        textShadow: "0 1px black, 0 1.5px black",
+                        opacity: showDisconnectedSlash ? 1 : 0,
+                    }}
+                />
+            </span>
+            {isLocal ? null : <div className="connection-name">{connection}</div>}
+        </div>
+    );
+});
 
 export const Input = React.memo(
     ({ decl, className, preview }: { decl: HeaderInput; className: string; preview: boolean }) => {
