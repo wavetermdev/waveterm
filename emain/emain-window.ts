@@ -119,7 +119,6 @@ export class WaveBrowserWindow extends BaseWindow {
             height: winHeight,
         };
         winBounds = ensureBoundsAreVisible(winBounds);
-        // const settings = fullConfig?.settings;
         const winOpts: BaseWindowConstructorOptions = {
             titleBarStyle:
                 opts.unamePlatform === "darwin"
