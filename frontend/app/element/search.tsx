@@ -1,4 +1,4 @@
-import { autoUpdate, FloatingPortal, Middleware, offset, useDismiss, useFloating } from "@floating-ui/react";
+import { autoUpdate, FloatingPortal, Middleware, offset, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
 import { atom, useAtom } from "jotai";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
@@ -83,8 +83,6 @@ const SearchComponent = ({
         },
     });
 
-    const dismiss = useDismiss(context);
-
     const onPrevWrapper = useCallback(
         () => (onPrev ? onPrev() : setIndex((index - 1) % numResults)),
         [onPrev, index, numResults]
@@ -133,7 +131,7 @@ const SearchComponent = ({
         <>
             {isOpen && (
                 <FloatingPortal>
-                    <div className="search-container" style={{ ...floatingStyles }} {...dismiss} ref={refs.setFloating}>
+                    <div className="search-container" style={{ ...floatingStyles }} ref={refs.setFloating}>
                         <Input
                             placeholder="Search"
                             value={search}
