@@ -59,7 +59,7 @@ export class TermWrap {
     handleResize_debounced: () => void;
     hasResized: boolean;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
-    toDispose: TermTypes.IDisposable[] = [];
+    private toDispose: TermTypes.IDisposable[] = [];
 
     constructor(
         blockId: string,
