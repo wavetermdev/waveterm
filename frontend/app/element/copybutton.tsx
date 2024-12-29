@@ -9,14 +9,14 @@ import { IconButton } from "./iconbutton";
 type CopyButtonProps = {
     title: string;
     className?: string;
-    onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+    onClick: (e: React.PointerEvent<HTMLButtonElement>) => void;
 };
 
 const CopyButton = ({ title, className, onClick }: CopyButtonProps) => {
     const [isCopied, setIsCopied] = useState(false);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    const handleOnClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleOnClick = (e: React.PointerEvent<HTMLButtonElement>) => {
         if (isCopied) {
             return;
         }

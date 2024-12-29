@@ -76,13 +76,13 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
         return "";
     };
 
-    const handleCopy = async (e: React.MouseEvent) => {
+    const handleCopy = async (e: React.PointerEvent) => {
         let textToCopy = getTextContent(children);
         textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
         await navigator.clipboard.writeText(textToCopy);
     };
 
-    const handleExecute = (e: React.MouseEvent) => {
+    const handleExecute = (e: React.PointerEvent) => {
         let textToCopy = getTextContent(children);
         textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
         if (onClickExecute) {

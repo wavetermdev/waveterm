@@ -45,7 +45,7 @@ import { BlockFrameProps } from "./blocktypes";
 const NumActiveConnColors = 8;
 
 function handleHeaderContextMenu(
-    e: React.MouseEvent<HTMLDivElement>,
+    e: React.PointerEvent<HTMLDivElement>,
     blockData: Block,
     viewModel: ViewModel,
     magnified: boolean,
@@ -117,7 +117,7 @@ const OptMagnifyButton = React.memo(
 function computeEndIcons(
     viewModel: ViewModel,
     nodeModel: NodeModel,
-    onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void
+    onContextMenu: (e: React.PointerEvent<HTMLDivElement>) => void
 ): JSX.Element[] {
     const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
@@ -207,7 +207,7 @@ const BlockFrame_Header = ({
     }
 
     const onContextMenu = React.useCallback(
-        (e: React.MouseEvent<HTMLDivElement>) => {
+        (e: React.PointerEvent<HTMLDivElement>) => {
             handleHeaderContextMenu(e, blockData, viewModel, magnified, nodeModel.toggleMagnify, nodeModel.onClose);
         },
         [magnified]
