@@ -10,7 +10,7 @@ import "./iconbutton.scss";
 type IconButtonProps = { decl: IconButtonDecl; className?: string };
 export const IconButton = memo(
     forwardRef<HTMLButtonElement, IconButtonProps>(({ decl, className }, ref) => {
-        ref = ref ?? useRef<HTMLButtonElement>(null);
+        const localRef = ref ?? useRef<HTMLButtonElement>(null);
         const spin = decl.iconSpin ?? false;
         useLongClick(ref, decl.click, decl.longClick, decl.disabled);
         return (

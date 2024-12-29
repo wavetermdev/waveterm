@@ -1,40 +1,45 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
-export const useLongClick = (ref, onClick, onLongClick, disabled = false, ms = 300) => {
-    const timerRef = useRef(null);
-    const [longClickTriggered, setLongClickTriggered] = useState(false);
+export function useLongClick<T extends HTMLElement>(
+    ref: React.MutableRefObject<T>,
+    onClick?: React.PointerEventHandler<T>,
+    onLongClick?: React.PointerEventHandler<T>,
+    disabled = false,
+    ms = 300
+) {
+    const clickStartRef = useRef<number>(0);
 
     const startPress = useCallback(
-        (e: React.MouseEvent<any>) => {
-            if (onLongClick == null) {
-                return;
+        (e: React.PointerEvent<T>) => {
+            if (!onLongClick) {
+                onClick?.(e);
+            } else {
+                clickStartRef.current = Date.now();
             }
-            setLongClickTriggered(false);
-            timerRef.current = setTimeout(() => {
-                setLongClickTriggered(true);
-                onLongClick?.(e);
-            }, ms);
         },
-        [onLongClick, ms]
+        [onLongClick, onClick]
     );
 
-    const stopPress = useCallback(() => {
-        clearTimeout(timerRef.current);
-    }, []);
-
-    const handleClick = useCallback(
-        (e: React.MouseEvent<any>) => {
-            if (longClickTriggered) {
-                e.preventDefault();
-                e.stopPropagation();
-                return;
+    const stopPress = useCallback(
+        (e: React.PointerEvent<T>) => {
+            const clickStart = clickStartRef.current;
+            clickStartRef.current = 0;
+            if (clickStart !== 0) {
+                const now = Date.now();
+                const longClickTriggered = now - clickStart > ms;
+                if (longClickTriggered && onLongClick) {
+                    onLongClick?.(e);
+                } else {
+                    onClick?.(e);
+                }
+            } else {
+                onClick?.(e);
             }
-            onClick?.(e);
         },
-        [longClickTriggered, onClick]
+        [ms, onClick, onLongClick]
     );
 
     useEffect(() => {
@@ -42,18 +47,19 @@ export const useLongClick = (ref, onClick, onLongClick, disabled = false, ms = 3
 
         if (!element || disabled) return;
 
-        element.addEventListener("mousedown", startPress);
-        element.addEventListener("mouseup", stopPress);
-        element.addEventListener("mouseleave", stopPress);
-        element.addEventListener("click", handleClick);
+        const startPressBound = startPress.bind(element);
+        const stopPressBound = stopPress.bind(element);
+
+        element.addEventListener("pointerdown", startPressBound);
+        element.addEventListener("pointerup", stopPressBound);
+        element.addEventListener("pointerleave", stopPressBound);
 
         return () => {
-            element.removeEventListener("mousedown", startPress);
-            element.removeEventListener("mouseup", stopPress);
-            element.removeEventListener("mouseleave", stopPress);
-            element.removeEventListener("click", handleClick);
+            element.removeEventListener("pointerdown", startPressBound);
+            element.removeEventListener("pointerup", stopPressBound);
+            element.removeEventListener("pointerleave", stopPressBound);
         };
-    }, [ref.current, startPress, stopPress, handleClick]);
+    }, [ref.current, startPress, stopPress]);
 
     return ref;
-};
+}
