@@ -62,7 +62,6 @@ const SearchComponent = ({
             if (floatingLeft < 5) {
                 xOffsetCalc += 5 - floatingLeft;
             }
-            console.log("offsetCalc", yOffsetCalc, xOffsetCalc);
             return {
                 mainAxis: yOffsetCalc,
                 crossAxis: xOffsetCalc,
