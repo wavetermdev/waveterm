@@ -73,11 +73,29 @@ export class WaveBrowserWindow extends BaseWindow {
     private actionQueue: WindowActionQueueEntry[];
 
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
+        const settings = fullConfig?.settings;
+
         console.log("create win", waveWindow.oid);
         let winWidth = waveWindow?.winsize?.width;
         let winHeight = waveWindow?.winsize?.height;
         let winPosX = waveWindow.pos.x;
         let winPosY = waveWindow.pos.y;
+
+        if (
+            (winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) &&
+            settings?.["window:dimensions"]
+        ) {
+            const dimensions = settings["window:dimensions"];
+            const [dimensionWidth, dimensionHeight] = dimensions.split(/[xX]/);
+
+            if (!winWidth || winWidth === 0) {
+                winWidth = parseInt(dimensionWidth);
+            }
+            if (!winHeight || winHeight === 0) {
+                winHeight = parseInt(dimensionHeight);
+            }
+        }
+
         if (winWidth == null || winWidth == 0) {
             const primaryDisplay = screen.getPrimaryDisplay();
             const { width } = primaryDisplay.workAreaSize;
@@ -101,7 +119,7 @@ export class WaveBrowserWindow extends BaseWindow {
             height: winHeight,
         };
         winBounds = ensureBoundsAreVisible(winBounds);
-        const settings = fullConfig?.settings;
+        // const settings = fullConfig?.settings;
         const winOpts: BaseWindowConstructorOptions = {
             titleBarStyle:
                 opts.unamePlatform === "darwin"
