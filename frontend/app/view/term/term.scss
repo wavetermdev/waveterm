@@ -126,13 +126,14 @@
         }
     }
 
+    // The 18px width is the width of the scrollbar plus the margin
     .term-scrollbar-show-observer {
         z-index: calc(var(--zindex-xterm-viewport-overlay) - 1);
         position: absolute;
         top: 0;
         right: 0;
         height: 100%;
-        width: 12px;
+        width: 18px;
     }
 
     .term-scrollbar-hide-observer {
@@ -142,7 +143,7 @@
         top: 0;
         left: 0;
         height: 100%;
-        width: calc(100% - 12px);
+        width: calc(100% - 18px);
     }
 
     .terminal {
