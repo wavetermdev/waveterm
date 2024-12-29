@@ -3,6 +3,7 @@
 
 import { Block, SubBlock } from "@/app/block/block";
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { Search, useSearch } from "@/app/element/search";
 import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -24,7 +25,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { boundNumber } from "@/util/util";
+import { boundNumber, fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -71,6 +72,7 @@ class TermViewModel implements ViewModel {
     shellProcStatusUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
+    searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "term";
@@ -785,6 +787,22 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const connFontFamily = fullConfig.connections?.[blockData?.meta?.connection]?.["term:fontfamily"];
 
+    const searchProps = useSearch(viewRef, model);
+    const searchVal = jotai.useAtomValue<string>(searchProps.searchAtom);
+    searchProps.onSearch = React.useCallback((searchText: string) => {
+        if (searchText == "") {
+            model.termRef.current?.searchAddon.clearDecorations();
+            return;
+        }
+        model.termRef.current?.searchAddon.findNext(searchText);
+    }, []);
+    searchProps.onPrev = React.useCallback(() => {
+        model.termRef.current?.searchAddon.findPrevious(searchVal);
+    }, [searchVal]);
+    searchProps.onNext = React.useCallback(() => {
+        model.termRef.current?.searchAddon.findNext(searchVal);
+    }, [searchVal]);
+
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemeName = globalStore.get(model.termThemeNameAtom);
@@ -822,13 +840,18 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 useWebGl: !termSettings?.["term:disablewebgl"],
             }
         );
+        termWrap.onSearchResultsDidChange = (results) => {
+            console.log("search results", results);
+            globalStore.set(searchProps.numResultsAtom, results.resultCount);
+            globalStore.set(searchProps.indexAtom, results.resultIndex);
+        };
         (window as any).term = termWrap;
         model.termRef.current = termWrap;
         const rszObs = new ResizeObserver(() => {
             termWrap.handleResize_debounced();
         });
         rszObs.observe(connectElemRef.current);
-        termWrap.initTerminal();
+        fireAndForget(termWrap.initTerminal.bind(termWrap));
         if (wasFocused) {
             setTimeout(() => {
                 model.giveFocus();
@@ -867,6 +890,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         cols: model.termRef.current?.terminal.cols ?? 80,
         blockId: blockId,
     };
+
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
             <TermResyncHandler blockId={blockId} model={model} />
@@ -882,6 +906,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                     onPointerOver={onScrollbarHideObserver}
                 />
             </div>
+            <Search {...searchProps} />
         </div>
     );
 };

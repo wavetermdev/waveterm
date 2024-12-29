@@ -552,7 +552,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const searchVal = useAtomValue<string>(searchProps.searchAtom);
     const setSearchIndex = useSetAtom(searchProps.indexAtom);
     const setNumSearchResults = useSetAtom(searchProps.numResultsAtom);
-    const onSearch = useCallback((search: string) => {
+    searchProps.onSearch = useCallback((search: string) => {
         try {
             if (search) {
                 model.webviewRef.current?.findInPage(search, { findNext: true });
@@ -563,7 +563,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             console.error("Failed to search", e);
         }
     }, []);
-    const onSearchNext = useCallback(() => {
+    searchProps.onNext = useCallback(() => {
         try {
             console.log("search next", searchVal);
             model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: true });
@@ -571,7 +571,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             console.error("Failed to search next", e);
         }
     }, [searchVal]);
-    const onSearchPrev = useCallback(() => {
+    searchProps.onPrev = useCallback(() => {
         try {
             console.log("search prev", searchVal);
             model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: false });
@@ -760,7 +760,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                     <div>{errorText}</div>
                 </div>
             )}
-            <Search {...searchProps} onSearch={onSearch} onNext={onSearchNext} onPrev={onSearchPrev} />
+            <Search {...searchProps} />
         </Fragment>
     );
 });
