@@ -7,8 +7,6 @@
  * @id custom/missing-spdx-identifier
  */
 
-import cpp
-import python
 import javascript
 import go
 
@@ -22,24 +20,27 @@ predicate hasSPDXHeader(File f) {
     // Find first non-whitespace character
     startIndex = min(int i | exists(content.charAt(i)) and not content.charAt(i).regexpMatch("\\s")) and
     // Check if the content starts with SPDX identifier
-    content.substring(startIndex, startIndex + 200).regexpMatch("(?s)/[/*#].*SPDX-License-Identifier:\\s*[\\w\\.\\-+]+.*")
+    content
+        .substring(startIndex, startIndex + 200)
+        .regexpMatch("(?s)/[/*#].*SPDX-License-Identifier:\\s*[\\w\\.\\-+]+.*")
   )
 }
 
 from File f
-where 
+where
   // Include relevant file types
-  (f.getExtension() = "go" or
-   f.getExtension() = "ts" or
-   f.getExtension() = "tsx" or
-   f.getExtension() = "js" or
-   f.getExtension() = "jsx" or
-   f.getExtension() = "scss" or
-   f.getExtension() = "py") and
+  (
+    f.getExtension() = "go" or
+    f.getExtension() = "ts" or
+    f.getExtension() = "tsx" or
+    f.getExtension() = "js" or
+    f.getExtension() = "jsx" or
+    f.getExtension() = "scss" or
+    f.getExtension() = "py"
+  ) and
   // Exclude test files and generated code
   not f.getAbsolutePath().matches("%/test/%") and
   not f.getAbsolutePath().matches("%/generated/%") and
   // Check if file doesn't have SPDX header
   not hasSPDXHeader(f)
-select f,
-  "File is missing SPDX license identifier at the beginning"
+select f, "File is missing SPDX license identifier at the beginning"

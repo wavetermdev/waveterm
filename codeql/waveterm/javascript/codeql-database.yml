@@ -1,0 +1,39 @@
+---
+sourceLocationPrefix: /Users/evan/source/waveterm/codeql
+baselineLinesOfCode: 0
+unicodeNewlines: true
+columnKind: utf16
+primaryLanguage: javascript
+inProgress:
+  primaryLanguage: javascript
+  installedExtractors:
+    go:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/go
+    python:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/python
+    java:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/java
+    html:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/html
+    xml:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/xml
+    properties:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/properties
+    cpp:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/cpp
+    swift:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/swift
+    csv:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/csv
+    yaml:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/yaml
+    csharp:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/csharp
+    javascript:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/javascript
+    ruby:
+     - /Users/evan/.local/share/gh/extensions/gh-codeql/dist/release/v2.20.0/ruby
+creationMetadata:
+  cliVersion: 2.20.0
+  creationTime: 2024-12-29T22:31:50.209493Z
+finalised: false
