@@ -16,6 +16,7 @@ type SearchProps = SearchAtoms & {
     onSearch?: (search: string) => void;
     onNext?: () => void;
     onPrev?: () => void;
+    additionalButtons?: IconButtonDecl[];
 };
 
 const SearchComponent = ({
@@ -29,6 +30,7 @@ const SearchComponent = ({
     onSearch,
     onNext,
     onPrev,
+    additionalButtons,
 }: SearchProps) => {
     const [isOpen, setIsOpen] = useAtom<boolean>(isOpenAtom);
     const [search, setSearch] = useAtom<string>(searchAtom);
@@ -74,7 +76,7 @@ const SearchComponent = ({
     );
     middleware.push(offset(offsetCallback));
 
-    const { refs, floatingStyles, context } = useFloating({
+    const { refs, floatingStyles } = useFloating({
         placement: "top-end",
         open: isOpen,
         onOpenChange: handleOpenChange,
@@ -148,6 +150,13 @@ const SearchComponent = ({
                         >
                             {index + 1}/{numResults}
                         </div>
+                        {additionalButtons?.length && (
+                            <div className="right-buttons">
+                                {additionalButtons.map((decl, i) => (
+                                    <IconButton key={i} decl={decl} />
+                                ))}
+                            </div>
+                        )}
                         <div className="right-buttons">
                             <IconButton decl={prevDecl} />
                             <IconButton decl={nextDecl} />

@@ -792,10 +792,53 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const connFontFamily = fullConfig.connections?.[blockData?.meta?.connection]?.["term:fontfamily"];
 
+    // search
     const searchProps = useSearch(viewRef, model);
+    const { additionalButtons, stateAtoms } = React.useMemo(() => {
+        const regexAtom = jotai.atom(false);
+        const wholeWordAtom = jotai.atom(false);
+        const caseSensitiveAtom = jotai.atom(false);
+        const additionalButtons: IconButtonDecl[] = [
+            {
+                elemtype: "iconbutton",
+                icon: "font-case",
+                title: "Case Sensitive",
+                click: () => {
+                    globalStore.set(caseSensitiveAtom, !globalStore.get(caseSensitiveAtom));
+                },
+            },
+            {
+                elemtype: "iconbutton",
+                icon: "w",
+                title: "Whole Word",
+                click: () => {
+                    globalStore.set(wholeWordAtom, !globalStore.get(wholeWordAtom));
+                },
+            },
+            {
+                elemtype: "iconbutton",
+                icon: "asterisk",
+                title: "Regex Search",
+                click: () => {
+                    globalStore.set(regexAtom, !globalStore.get(regexAtom));
+                },
+            },
+        ];
+        return {
+            additionalButtons,
+            stateAtoms: { caseSensitiveAtom, wholeWordAtom, regexAtom },
+        };
+    }, []);
+    searchProps.additionalButtons = additionalButtons;
+    const caseSensitive = jotai.useAtomValue<boolean>(stateAtoms.caseSensitiveAtom);
+    const wholeWord = jotai.useAtomValue<boolean>(stateAtoms.wholeWordAtom);
+    const regex = jotai.useAtomValue<boolean>(stateAtoms.regexAtom);
     const searchVal = jotai.useAtomValue<string>(searchProps.searchAtom);
     const searchOpts: ISearchOptions = {
         incremental: true,
+        regex,
+        wholeWord,
+        caseSensitive,
         decorations: {
             matchOverviewRuler: "#e0e0e0",
             activeMatchColorOverviewRuler: "#e0e0e0",
@@ -816,6 +859,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     searchProps.onNext = React.useCallback(() => {
         model.termRef.current?.searchAddon.findNext(searchVal, searchOpts);
     }, [searchVal]);
+    // end search
 
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
