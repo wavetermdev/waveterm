@@ -26,6 +26,7 @@ import {
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import { boundNumber, fireAndForget } from "@/util/util";
+import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
@@ -793,18 +794,27 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
 
     const searchProps = useSearch(viewRef, model);
     const searchVal = jotai.useAtomValue<string>(searchProps.searchAtom);
+    const searchOpts: ISearchOptions = {
+        incremental: true,
+        decorations: {
+            matchOverviewRuler: "#e0e0e0",
+            activeMatchColorOverviewRuler: "#e0e0e0",
+            activeMatchBorder: "#58c142",
+            matchBorder: "#e0e0e0",
+        },
+    };
     searchProps.onSearch = React.useCallback((searchText: string) => {
         if (searchText == "") {
             model.termRef.current?.searchAddon.clearDecorations();
             return;
         }
-        model.termRef.current?.searchAddon.findNext(searchText);
+        model.termRef.current?.searchAddon.findNext(searchText, searchOpts);
     }, []);
     searchProps.onPrev = React.useCallback(() => {
-        model.termRef.current?.searchAddon.findPrevious(searchVal);
+        model.termRef.current?.searchAddon.findPrevious(searchVal, searchOpts);
     }, [searchVal]);
     searchProps.onNext = React.useCallback(() => {
-        model.termRef.current?.searchAddon.findNext(searchVal);
+        model.termRef.current?.searchAddon.findNext(searchVal, searchOpts);
     }, [searchVal]);
 
     React.useEffect(() => {
@@ -838,6 +848,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 fontWeightBold: "bold",
                 allowTransparency: true,
                 scrollback: termScrollback,
+                allowProposedApi: true,
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
@@ -850,6 +861,10 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             termWrap.handleResize_debounced();
         });
         rszObs.observe(connectElemRef.current);
+        termWrap.onSearchResultsDidChange = (results) => {
+            globalStore.set(searchProps.indexAtom, results.resultIndex);
+            globalStore.set(searchProps.numResultsAtom, results.resultCount);
+        };
         fireAndForget(termWrap.initTerminal.bind(termWrap));
         if (wasFocused) {
             setTimeout(() => {

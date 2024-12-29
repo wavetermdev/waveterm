@@ -154,8 +154,9 @@ export class TermWrap {
                 }
             })
         );
-        this.searchAddon.onDidChangeResults(this.searchResultsDidChange.bind(this));
-
+        if (this.onSearchResultsDidChange != null) {
+            this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this));
+        }
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
         try {
@@ -305,16 +306,5 @@ export class TermWrap {
                 this.runProcessIdleTimeout();
             });
         }, 5000);
-    }
-
-    search(search: string) {
-        this.searchAddon.findNext(search);
-    }
-
-    searchResultsDidChange(result: { resultIndex: number; resultCount: number }) {
-        console.log("search results changed", result);
-        if (this.onSearchResultsDidChange) {
-            this.onSearchResultsDidChange(result);
-        }
     }
 }
