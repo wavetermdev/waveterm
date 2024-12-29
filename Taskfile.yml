@@ -19,6 +19,8 @@ tasks:
     electron:dev:
         desc: Run the Electron application via the Vite dev server (enables hot reloading).
         cmd: yarn dev
+        aliases:
+            - dev
         deps:
             - yarn
             - docsite:build:embedded
@@ -30,6 +32,8 @@ tasks:
     electron:start:
         desc: Run the Electron application directly.
         cmd: yarn start
+        aliases:
+            - start
         deps:
             - yarn
             - docsite:build:embedded
@@ -56,6 +60,8 @@ tasks:
         desc: Start the docsite dev server.
         cmd: yarn start
         dir: docs
+        aliases:
+            - docsite
         deps:
             - yarn
 
