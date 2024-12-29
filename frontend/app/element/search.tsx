@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { autoUpdate, FloatingPortal, Middleware, offset, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
 import { atom, useAtom } from "jotai";
