@@ -848,7 +848,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 fontWeightBold: "bold",
                 allowTransparency: true,
                 scrollback: termScrollback,
-                allowProposedApi: true,
+                allowProposedApi: true, // needed for search
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
