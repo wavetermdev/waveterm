@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -38,8 +39,13 @@ func init() {
 	rootCmd.AddCommand(serverCmd)
 }
 
+func getRemoteDomainSocketName() string {
+	homeDir := wavebase.GetHomeDir()
+	return filepath.Join(homeDir, wavebase.RemoteWaveHomeDirName, wavebase.RemoteDomainSocketBaseName)
+}
+
 func MakeRemoteUnixListener() (net.Listener, error) {
-	serverAddr := wavebase.GetRemoteDomainSocketName()
+	serverAddr := getRemoteDomainSocketName()
 	os.Remove(serverAddr) // ignore error
 	rtn, err := net.Listen("unix", serverAddr)
 	if err != nil {
