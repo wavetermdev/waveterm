@@ -115,6 +115,7 @@ const SearchComponent = ({
         elemtype: "iconbutton",
         icon: "chevron-up",
         title: "Previous Result (Shift+Enter)",
+        disabled: numResults === 0,
         click: onPrevWrapper,
     };
 
@@ -122,6 +123,7 @@ const SearchComponent = ({
         elemtype: "iconbutton",
         icon: "chevron-down",
         title: "Next Result (Enter)",
+        disabled: numResults === 0,
         click: onNextWrapper,
     };
 
