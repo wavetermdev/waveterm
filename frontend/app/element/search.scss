@@ -49,13 +49,10 @@
     }
 
     .additional-buttons {
-        gap: 2px;
+        gap: 1px;
         padding-left: 5px;
         button {
-            font-size: 10px;
-            i {
-                margin: 1px;
-            }
+            font-size: 14px;
         }
     }
 }

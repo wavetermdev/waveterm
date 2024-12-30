@@ -136,9 +136,9 @@ const SearchComponent = ({
         click: () => setIsOpen(false),
     };
 
-    const regexDecl = createToggleButtonDecl(regexAtom, "asterisk", "Regular Expression");
-    const wholeWordDecl = createToggleButtonDecl(wholeWordAtom, "w", "Whole Word");
-    const caseSensitiveDecl = createToggleButtonDecl(caseSensitiveAtom, "font-case", "Case Sensitive");
+    const regexDecl = createToggleButtonDecl(regexAtom, "custom@regex", "Regular Expression");
+    const wholeWordDecl = createToggleButtonDecl(wholeWordAtom, "custom@whole-word", "Whole Word");
+    const caseSensitiveDecl = createToggleButtonDecl(caseSensitiveAtom, "custom@case-sensitive", "Case Sensitive");
 
     return (
         <>
