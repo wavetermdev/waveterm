@@ -160,11 +160,13 @@ const SearchComponent = ({
                             {index + 1}/{numResults}
                         </div>
 
-                        <div className="right-buttons additional">
-                            {caseSensitiveDecl && <ToggleIconButton decl={caseSensitiveDecl} />}
-                            {wholeWordDecl && <ToggleIconButton decl={wholeWordDecl} />}
-                            {regexDecl && <ToggleIconButton decl={regexDecl} />}
-                        </div>
+                        {(caseSensitiveDecl || wholeWordDecl || regexDecl) && (
+                            <div className="additional-buttons">
+                                {caseSensitiveDecl && <ToggleIconButton decl={caseSensitiveDecl} />}
+                                {wholeWordDecl && <ToggleIconButton decl={wholeWordDecl} />}
+                                {regexDecl && <ToggleIconButton decl={regexDecl} />}
+                            </div>
+                        )}
 
                         <div className="right-buttons">
                             <IconButton decl={prevDecl} />

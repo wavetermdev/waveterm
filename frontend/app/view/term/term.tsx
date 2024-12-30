@@ -825,15 +825,27 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 model.termRef.current?.searchAddon.clearDecorations();
                 return;
             }
-            model.termRef.current?.searchAddon.findNext(searchText, searchOpts);
+            try {
+                model.termRef.current?.searchAddon.findNext(searchText, searchOpts);
+            } catch (e) {
+                console.warn("search error:", e);
+            }
         },
         [searchOpts]
     );
     searchProps.onPrev = React.useCallback(() => {
-        model.termRef.current?.searchAddon.findPrevious(searchVal, searchOpts);
+        try {
+            model.termRef.current?.searchAddon.findPrevious(searchVal, searchOpts);
+        } catch (e) {
+            console.warn("search error:", e);
+        }
     }, [searchVal, searchOpts]);
     searchProps.onNext = React.useCallback(() => {
-        model.termRef.current?.searchAddon.findNext(searchVal, searchOpts);
+        try {
+            model.termRef.current?.searchAddon.findNext(searchVal, searchOpts);
+        } catch (e) {
+            console.warn("search error:", e);
+        }
     }, [searchVal, searchOpts]);
 
     // rerun search when the searchOpts change

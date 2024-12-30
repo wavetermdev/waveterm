@@ -34,22 +34,26 @@
         }
     }
 
-    .right-buttons:not(:empty) {
+    .right-buttons,
+    .additional-buttons {
         display: flex;
-        gap: 5px;
-        padding-left: 5px;
+        padding-left: 4px;
         border-left: 1px solid var(--modal-border-color);
+    }
+
+    .right-buttons {
+        gap: 5px;
         button {
             font-size: 12px;
         }
+    }
 
-        &.additional {
-            gap: 2px;
-            button {
-                font-size: 10px;
-                i {
-                    margin: auto 1px;
-                }
+    .additional-buttons {
+        gap: 2px;
+        button {
+            font-size: 10px;
+            i {
+                margin: 1px;
             }
         }
     }
