@@ -3,7 +3,7 @@
 
 import { autoUpdate, FloatingPortal, Middleware, offset, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, WritableAtom } from "jotai";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { IconButton, ToggleIconButton } from "./iconbutton";
 import { Input } from "./input";
@@ -136,30 +136,9 @@ const SearchComponent = ({
         click: () => setIsOpen(false),
     };
 
-    const regexDecl: ToggleIconButtonDecl = regexAtom
-        ? {
-              elemtype: "toggleiconbutton",
-              icon: "asterisk",
-              title: "Regex Search",
-              active: regexAtom,
-          }
-        : null;
-    const wholeWordDecl: ToggleIconButtonDecl = caseSensitiveAtom
-        ? {
-              elemtype: "toggleiconbutton",
-              icon: "w",
-              title: "Whole Word",
-              active: wholeWordAtom,
-          }
-        : null;
-    const caseSensitiveDecl: ToggleIconButtonDecl = caseSensitiveAtom
-        ? {
-              elemtype: "toggleiconbutton",
-              icon: "font-case",
-              title: "Case Sensitive",
-              active: caseSensitiveAtom,
-          }
-        : null;
+    const regexDecl = createToggleButtonDecl(regexAtom, "asterisk", "Regular Expression");
+    const wholeWordDecl = createToggleButtonDecl(wholeWordAtom, "w", "Whole Word");
+    const caseSensitiveDecl = createToggleButtonDecl(caseSensitiveAtom, "font-case", "Case Sensitive");
 
     return (
         <>
@@ -233,3 +212,17 @@ export function useSearch(options?: SearchOptions): SearchProps {
     }, [options?.viewModel]);
     return { ...searchAtoms, anchorRef };
 }
+
+const createToggleButtonDecl = (
+    atom: WritableAtom<boolean, [boolean], void> | undefined,
+    icon: string,
+    title: string
+): ToggleIconButtonDecl =>
+    atom
+        ? {
+              elemtype: "toggleiconbutton",
+              icon,
+              title,
+              active: atom,
+          }
+        : null;
