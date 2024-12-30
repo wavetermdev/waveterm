@@ -373,7 +373,7 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 	}
 	// attempt to install extension
 	wshLocalPath := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
-	err = remote.CpHostToRemote(client, wshLocalPath, "~/.waveterm/bin/wsh")
+	err = remote.CpHostToRemote(client, wshLocalPath, wavebase.RemoteFullWshBinPath)
 	if err != nil {
 		return err
 	}

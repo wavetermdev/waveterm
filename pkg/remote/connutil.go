@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -68,8 +69,7 @@ func GetWshVersion(client *ssh.Client) (string, error) {
 }
 
 func GetWshPath(client *ssh.Client) string {
-	defaultPath := "~/.waveterm/bin/wsh"
-
+	defaultPath := wavebase.RemoteFullWshBinPath
 	session, err := client.NewSession()
 	if err != nil {
 		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
@@ -306,21 +306,10 @@ func GetHomeDir(client *ssh.Client) string {
 	if err != nil {
 		return "~"
 	}
-
 	out, err := session.Output(`echo "$HOME"`)
 	if err == nil {
 		return strings.TrimSpace(string(out))
 	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "~"
-	}
-	out, err = session.Output(`echo %userprofile%`)
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-
 	return "~"
 }
 
