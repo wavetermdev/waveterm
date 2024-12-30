@@ -86,16 +86,21 @@ export class WaveBrowserWindow extends BaseWindow {
             settings?.["window:dimensions"]
         ) {
             const dimensions = settings["window:dimensions"];
-            const [dimensionWidth, dimensionHeight] = dimensions.split(/[xX]/);
+            const match = dimensions.match(/^(\d+)[xX](\d+)$/);
 
-            const parsedWidth = parseInt(dimensionWidth);
-            const parsedHeight = parseInt(dimensionHeight);
+            if (match) {
+                const [, dimensionWidth, dimensionHeight] = match;
+                const parsedWidth = parseInt(dimensionWidth, 10);
+                const parsedHeight = parseInt(dimensionHeight, 10);
 
-            if ((!winWidth || winWidth === 0) && !isNaN(parsedWidth)) {
-                winWidth = parsedWidth;
-            }
-            if ((!winHeight || winHeight === 0) && !isNaN(parsedHeight)) {
-                winHeight = parsedHeight;
+                if ((!winWidth || winWidth === 0) && Number.isFinite(parsedWidth) && parsedWidth > 0) {
+                    winWidth = parsedWidth;
+                }
+                if ((!winHeight || winHeight === 0) && Number.isFinite(parsedHeight) && parsedHeight > 0) {
+                    winHeight = parsedHeight;
+                }
+            } else {
+                console.warn('Invalid window:dimensions format. Expected "widthxheight".');
             }
         }
 
