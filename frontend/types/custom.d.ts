@@ -228,6 +228,13 @@ declare global {
         elemtype: "menubutton";
     } & MenuButtonProps;
 
+    type SearchAtoms = {
+        searchAtom: PrimitiveAtom<string>;
+        indexAtom: PrimitiveAtom<number>;
+        numResultsAtom: PrimitiveAtom<number>;
+        isOpenAtom: PrimitiveAtom<boolean>;
+    };
+
     interface ViewModel {
         viewType: string;
         viewIcon?: jotai.Atom<string | IconButtonDecl>;
@@ -239,11 +246,10 @@ declare global {
         manageConnection?: jotai.Atom<boolean>;
         noPadding?: jotai.Atom<boolean>;
         filterOutNowsh?: jotai.Atom<boolean>;
+        searchAtoms?: SearchAtoms;
 
         onBack?: () => void;
         onForward?: () => void;
-        onSearchChange?: (text: string) => void;
-        onSearch?: (text: string) => void;
         getSettingsMenuItems?: () => ContextMenuItem[];
         giveFocus?: () => boolean;
         keyDownHandler?: (e: WaveKeyboardEvent) => boolean;

@@ -321,6 +321,28 @@ function registerGlobalKeys() {
             return true;
         });
     }
+    function activateSearch(): boolean {
+        console.log("activateSearch");
+        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        if (bcm.viewModel.searchAtoms) {
+            console.log("activateSearch2");
+            globalStore.set(bcm.viewModel.searchAtoms.isOpenAtom, true);
+            return true;
+        }
+        return false;
+    }
+    function deactivateSearch(): boolean {
+        console.log("deactivateSearch");
+        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpenAtom)) {
+            globalStore.set(bcm.viewModel.searchAtoms.isOpenAtom, false);
+            return true;
+        }
+        return false;
+    }
+    globalKeyMap.set("Cmd:f", activateSearch);
+    globalKeyMap.set("Ctrl:f", activateSearch);
+    globalKeyMap.set("Escape", deactivateSearch);
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft");
