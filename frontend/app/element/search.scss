@@ -34,13 +34,23 @@
         }
     }
 
-    .right-buttons {
+    .right-buttons:not(:empty) {
         display: flex;
         gap: 5px;
         padding-left: 5px;
         border-left: 1px solid var(--modal-border-color);
         button {
             font-size: 12px;
+        }
+
+        &.additional {
+            gap: 2px;
+            button {
+                font-size: 10px;
+                i {
+                    margin: auto 1px;
+                }
+            }
         }
     }
 }

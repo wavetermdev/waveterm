@@ -5,7 +5,7 @@ import { autoUpdate, FloatingPortal, Middleware, offset, useFloating } from "@fl
 import clsx from "clsx";
 import { atom, useAtom } from "jotai";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
-import { IconButton } from "./iconbutton";
+import { IconButton, ToggleIconButton } from "./iconbutton";
 import { Input } from "./input";
 import "./search.scss";
 
@@ -16,21 +16,22 @@ type SearchProps = SearchAtoms & {
     onSearch?: (search: string) => void;
     onNext?: () => void;
     onPrev?: () => void;
-    additionalButtons?: IconButtonDecl[];
 };
 
 const SearchComponent = ({
-    searchAtom,
-    indexAtom,
-    numResultsAtom,
-    isOpenAtom,
+    searchValue: searchAtom,
+    resultsIndex: indexAtom,
+    resultsCount: numResultsAtom,
+    regex: regexAtom,
+    caseSensitive: caseSensitiveAtom,
+    wholeWord: wholeWordAtom,
+    isOpen: isOpenAtom,
     anchorRef,
     offsetX = 10,
     offsetY = 10,
     onSearch,
     onNext,
     onPrev,
-    additionalButtons,
 }: SearchProps) => {
     const [isOpen, setIsOpen] = useAtom<boolean>(isOpenAtom);
     const [search, setSearch] = useAtom<string>(searchAtom);
@@ -131,6 +132,31 @@ const SearchComponent = ({
         click: () => setIsOpen(false),
     };
 
+    const regexDecl: ToggleIconButtonDecl = regexAtom
+        ? {
+              elemtype: "toggleiconbutton",
+              icon: "asterisk",
+              title: "Regex Search",
+              active: regexAtom,
+          }
+        : null;
+    const wholeWordDecl: ToggleIconButtonDecl = caseSensitiveAtom
+        ? {
+              elemtype: "toggleiconbutton",
+              icon: "w",
+              title: "Whole Word",
+              active: wholeWordAtom,
+          }
+        : null;
+    const caseSensitiveDecl: ToggleIconButtonDecl = caseSensitiveAtom
+        ? {
+              elemtype: "toggleiconbutton",
+              icon: "font-case",
+              title: "Case Sensitive",
+              active: caseSensitiveAtom,
+          }
+        : null;
+
     return (
         <>
             {isOpen && (
@@ -150,13 +176,13 @@ const SearchComponent = ({
                         >
                             {index + 1}/{numResults}
                         </div>
-                        {additionalButtons?.length && (
-                            <div className="right-buttons">
-                                {additionalButtons.map((decl, i) => (
-                                    <IconButton key={i} decl={decl} />
-                                ))}
-                            </div>
-                        )}
+
+                        <div className="right-buttons additional">
+                            {caseSensitiveDecl && <ToggleIconButton decl={caseSensitiveDecl} />}
+                            {wholeWordDecl && <ToggleIconButton decl={wholeWordDecl} />}
+                            {regexDecl && <ToggleIconButton decl={regexDecl} />}
+                        </div>
+
                         <div className="right-buttons">
                             <IconButton decl={prevDecl} />
                             <IconButton decl={nextDecl} />
@@ -171,16 +197,32 @@ const SearchComponent = ({
 
 export const Search = memo(SearchComponent) as typeof SearchComponent;
 
-export function useSearch(anchorRef?: React.RefObject<HTMLElement>, viewModel?: ViewModel): SearchProps {
+type SearchOptions = {
+    anchorRef?: React.RefObject<HTMLElement>;
+    viewModel?: ViewModel;
+    regex?: boolean;
+    caseSensitive?: boolean;
+    wholeWord?: boolean;
+};
+
+export function useSearch(options?: SearchOptions): SearchProps {
     const searchAtoms: SearchAtoms = useMemo(
-        () => ({ searchAtom: atom(""), indexAtom: atom(0), numResultsAtom: atom(0), isOpenAtom: atom(false) }),
+        () => ({
+            searchValue: atom(""),
+            resultsIndex: atom(0),
+            resultsCount: atom(0),
+            isOpen: atom(false),
+            regex: options?.regex !== undefined ? atom(options.regex) : undefined,
+            caseSensitive: options?.caseSensitive !== undefined ? atom(options.caseSensitive) : undefined,
+            wholeWord: options?.wholeWord !== undefined ? atom(options.wholeWord) : undefined,
+        }),
         []
     );
-    anchorRef ??= useRef(null);
+    const anchorRef = options?.anchorRef ?? useRef(null);
     useEffect(() => {
-        if (viewModel) {
-            viewModel.searchAtoms = searchAtoms;
+        if (options?.viewModel) {
+            options.viewModel.searchAtoms = searchAtoms;
         }
-    }, [viewModel]);
+    }, [options?.viewModel]);
     return { ...searchAtoms, anchorRef };
 }

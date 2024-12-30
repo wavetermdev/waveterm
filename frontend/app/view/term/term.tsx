@@ -25,7 +25,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { boundNumber, fireAndForget } from "@/util/util";
+import { boundNumber, fireAndForget, useAtomValueSafe } from "@/util/util";
 import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
@@ -364,7 +364,7 @@ class TermViewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
-        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpenAtom)) {
+        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpen)) {
             console.log("search is open, not giving focus");
             return true;
         }
@@ -793,72 +793,54 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const connFontFamily = fullConfig.connections?.[blockData?.meta?.connection]?.["term:fontfamily"];
 
     // search
-    const searchProps = useSearch(viewRef, model);
-    const { additionalButtons, stateAtoms } = React.useMemo(() => {
-        const regexAtom = jotai.atom(false);
-        const wholeWordAtom = jotai.atom(false);
-        const caseSensitiveAtom = jotai.atom(false);
-        const additionalButtons: IconButtonDecl[] = [
-            {
-                elemtype: "iconbutton",
-                icon: "font-case",
-                title: "Case Sensitive",
-                click: () => {
-                    globalStore.set(caseSensitiveAtom, !globalStore.get(caseSensitiveAtom));
-                },
+    const searchProps = useSearch({
+        anchorRef: viewRef,
+        viewModel: model,
+        caseSensitive: false,
+        wholeWord: false,
+        regex: false,
+    });
+    const caseSensitive = useAtomValueSafe<boolean>(searchProps.caseSensitive);
+    const wholeWord = useAtomValueSafe<boolean>(searchProps.wholeWord);
+    const regex = useAtomValueSafe<boolean>(searchProps.regex);
+    const searchVal = jotai.useAtomValue<string>(searchProps.searchValue);
+    const searchOpts: ISearchOptions = React.useMemo(
+        () => ({
+            incremental: true,
+            regex,
+            wholeWord,
+            caseSensitive,
+            decorations: {
+                matchOverviewRuler: "#e0e0e0",
+                activeMatchColorOverviewRuler: "#e0e0e0",
+                activeMatchBorder: "#58c142",
+                matchBorder: "#e0e0e0",
             },
-            {
-                elemtype: "iconbutton",
-                icon: "w",
-                title: "Whole Word",
-                click: () => {
-                    globalStore.set(wholeWordAtom, !globalStore.get(wholeWordAtom));
-                },
-            },
-            {
-                elemtype: "iconbutton",
-                icon: "asterisk",
-                title: "Regex Search",
-                click: () => {
-                    globalStore.set(regexAtom, !globalStore.get(regexAtom));
-                },
-            },
-        ];
-        return {
-            additionalButtons,
-            stateAtoms: { caseSensitiveAtom, wholeWordAtom, regexAtom },
-        };
-    }, []);
-    searchProps.additionalButtons = additionalButtons;
-    const caseSensitive = jotai.useAtomValue<boolean>(stateAtoms.caseSensitiveAtom);
-    const wholeWord = jotai.useAtomValue<boolean>(stateAtoms.wholeWordAtom);
-    const regex = jotai.useAtomValue<boolean>(stateAtoms.regexAtom);
-    const searchVal = jotai.useAtomValue<string>(searchProps.searchAtom);
-    const searchOpts: ISearchOptions = {
-        incremental: true,
-        regex,
-        wholeWord,
-        caseSensitive,
-        decorations: {
-            matchOverviewRuler: "#e0e0e0",
-            activeMatchColorOverviewRuler: "#e0e0e0",
-            activeMatchBorder: "#58c142",
-            matchBorder: "#e0e0e0",
+        }),
+        [regex, wholeWord, caseSensitive]
+    );
+    searchProps.onSearch = React.useCallback(
+        (searchText: string) => {
+            if (searchText == "") {
+                model.termRef.current?.searchAddon.clearDecorations();
+                return;
+            }
+            model.termRef.current?.searchAddon.findNext(searchText, searchOpts);
         },
-    };
-    searchProps.onSearch = React.useCallback((searchText: string) => {
-        if (searchText == "") {
-            model.termRef.current?.searchAddon.clearDecorations();
-            return;
-        }
-        model.termRef.current?.searchAddon.findNext(searchText, searchOpts);
-    }, []);
+        [searchOpts]
+    );
     searchProps.onPrev = React.useCallback(() => {
         model.termRef.current?.searchAddon.findPrevious(searchVal, searchOpts);
-    }, [searchVal]);
+    }, [searchVal, searchOpts]);
     searchProps.onNext = React.useCallback(() => {
         model.termRef.current?.searchAddon.findNext(searchVal, searchOpts);
-    }, [searchVal]);
+    }, [searchVal, searchOpts]);
+
+    // rerun search when the searchOpts change
+    React.useEffect(() => {
+        model.termRef.current?.searchAddon.clearDecorations();
+        searchProps.onSearch(searchVal);
+    }, [searchOpts]);
     // end search
 
     React.useEffect(() => {
@@ -906,8 +888,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         });
         rszObs.observe(connectElemRef.current);
         termWrap.onSearchResultsDidChange = (results) => {
-            globalStore.set(searchProps.indexAtom, results.resultIndex);
-            globalStore.set(searchProps.numResultsAtom, results.resultCount);
+            globalStore.set(searchProps.resultsIndex, results.resultIndex);
+            globalStore.set(searchProps.resultsCount, results.resultCount);
         };
         fireAndForget(termWrap.initTerminal.bind(termWrap));
         if (wasFocused) {

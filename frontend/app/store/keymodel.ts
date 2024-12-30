@@ -326,7 +326,7 @@ function registerGlobalKeys() {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         if (bcm.viewModel.searchAtoms) {
             console.log("activateSearch2");
-            globalStore.set(bcm.viewModel.searchAtoms.isOpenAtom, true);
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
             return true;
         }
         return false;
@@ -334,8 +334,8 @@ function registerGlobalKeys() {
     function deactivateSearch(): boolean {
         console.log("deactivateSearch");
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpenAtom)) {
-            globalStore.set(bcm.viewModel.searchAtoms.isOpenAtom, false);
+        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, false);
             return true;
         }
         return false;

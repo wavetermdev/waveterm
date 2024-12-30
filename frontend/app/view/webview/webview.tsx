@@ -299,7 +299,7 @@ export class WebViewModel implements ViewModel {
         fireAndForget(() => ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
         globalStore.set(this.url, url);
         if (this.searchAtoms) {
-            globalStore.set(this.searchAtoms.isOpenAtom, false);
+            globalStore.set(this.searchAtoms.isOpen, false);
         }
     }
 
@@ -395,7 +395,7 @@ export class WebViewModel implements ViewModel {
 
     giveFocus(): boolean {
         console.log("webview giveFocus");
-        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpenAtom)) {
+        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpen)) {
             console.log("search is open, not giving focus");
             return true;
         }
@@ -549,9 +549,9 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
 
     // Search
     const searchProps = useSearch(model.webviewRef, model);
-    const searchVal = useAtomValue<string>(searchProps.searchAtom);
-    const setSearchIndex = useSetAtom(searchProps.indexAtom);
-    const setNumSearchResults = useSetAtom(searchProps.numResultsAtom);
+    const searchVal = useAtomValue<string>(searchProps.searchValue);
+    const setSearchIndex = useSetAtom(searchProps.resultsIndex);
+    const setNumSearchResults = useSetAtom(searchProps.resultsCount);
     searchProps.onSearch = useCallback((search: string) => {
         try {
             if (search) {
