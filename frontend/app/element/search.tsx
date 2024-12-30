@@ -226,6 +226,9 @@ export function useSearch(options?: SearchOptions): SearchProps {
     useEffect(() => {
         if (options?.viewModel) {
             options.viewModel.searchAtoms = searchAtoms;
+            return () => {
+                options.viewModel.searchAtoms = undefined;
+            };
         }
     }, [options?.viewModel]);
     return { ...searchAtoms, anchorRef };
