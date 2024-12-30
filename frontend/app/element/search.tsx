@@ -43,9 +43,11 @@ const SearchComponent = ({
     }, []);
 
     useEffect(() => {
-        setSearch("");
-        setIndex(0);
-        setNumResults(0);
+        if (!isOpen) {
+            setSearch("");
+            setIndex(0);
+            setNumResults(0);
+        }
     }, [isOpen]);
 
     useEffect(() => {

@@ -548,7 +548,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
 
     // Search
-    const searchProps = useSearch(model.webviewRef, model);
+    const searchProps = useSearch({ anchorRef: model.webviewRef, viewModel: model });
     const searchVal = useAtomValue<string>(searchProps.searchValue);
     const setSearchIndex = useSetAtom(searchProps.resultsIndex);
     const setNumSearchResults = useSetAtom(searchProps.resultsCount);
