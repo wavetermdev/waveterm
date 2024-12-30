@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef } from "react";
 
 export function useLongClick<T extends HTMLElement>(
     ref: React.RefObject<T>,
-    onClick?: React.PointerEventHandler<T>,
+    onClick?: React.MouseEventHandler<T>,
     onLongClick?: React.PointerEventHandler<T>,
     disabled = false,
     ms = 300
@@ -25,12 +25,10 @@ export function useLongClick<T extends HTMLElement>(
                 const longClickTriggered = now - clickStart > ms;
                 if (longClickTriggered && onLongClick) {
                     onLongClick?.(e);
-                } else {
-                    onClick?.(e);
                 }
             }
         },
-        [ms, onClick, onLongClick]
+        [ms, onLongClick]
     );
 
     useEffect(() => {
@@ -40,15 +38,18 @@ export function useLongClick<T extends HTMLElement>(
 
         const startPressBound = startPress.bind(element);
         const stopPressBound = stopPress.bind(element);
+        const onClickBound = onClick.bind(element);
 
         element.addEventListener("pointerdown", startPressBound);
         element.addEventListener("pointerup", stopPressBound);
+        element.addEventListener("click", onClickBound);
 
         return () => {
             element.removeEventListener("pointerdown", startPressBound);
             element.removeEventListener("pointerup", stopPressBound);
+            element.removeEventListener("click", onClickBound);
         };
-    }, [ref.current, startPress, stopPress]);
+    }, [ref.current, startPress, stopPress, onClick]);
 
     return ref;
 }
