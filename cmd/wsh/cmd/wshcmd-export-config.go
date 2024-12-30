@@ -32,6 +32,11 @@ func runExportConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	configDir := getWaveConfigDir()
+
+	if stat, err := os.Stat(configDir); err != nil || !stat.IsDir() {
+		return fmt.Errorf("Wave config directory not found at %s", configDir)
+	}
+
 	if err := zipDir(configDir, outputPath); err != nil {
 		return fmt.Errorf("export-config failed: %v", err)
 	}
