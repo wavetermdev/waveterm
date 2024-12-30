@@ -14,16 +14,18 @@ export const IconButton = memo(
         ref = ref ?? useRef<HTMLButtonElement>(null);
         const spin = decl.iconSpin ?? false;
         useLongClick(ref, decl.click, decl.longClick, decl.disabled);
+        const disabled = decl.disabled ?? false;
         return (
             <button
                 ref={ref}
                 className={clsx("wave-iconbutton", className, decl.className, {
-                    disabled: decl.disabled,
+                    disabled,
                     "no-action": decl.noAction,
                 })}
                 title={decl.title}
                 aria-label={decl.title}
                 style={{ color: decl.iconColor ?? "inherit" }}
+                disabled={disabled}
             >
                 {typeof decl.icon === "string" ? <i className={makeIconClass(decl.icon, true, { spin })} /> : decl.icon}
             </button>
@@ -40,21 +42,20 @@ export const ToggleIconButton = memo(
         ref = ref ?? useRef<HTMLButtonElement>(null);
         const spin = decl.iconSpin ?? false;
         const title = `${decl.title}${active ? " (Active)" : ""}`;
+        const disabled = decl.disabled ?? false;
         return (
             <button
                 ref={ref}
                 className={clsx("wave-iconbutton", "toggle", className, decl.className, {
                     active,
-                    disabled: decl.disabled,
+                    disabled,
                     "no-action": decl.noAction,
                 })}
                 title={title}
                 aria-label={title}
                 style={{ color: decl.iconColor ?? "inherit" }}
-                onPointerDown={() => {
-                    console.log("active", active);
-                    setActive(!active);
-                }}
+                onClick={() => setActive(!active)}
+                disabled={disabled}
             >
                 {typeof decl.icon === "string" ? <i className={makeIconClass(decl.icon, true, { spin })} /> : decl.icon}
             </button>
