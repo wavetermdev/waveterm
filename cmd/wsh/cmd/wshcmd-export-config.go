@@ -13,7 +13,7 @@ import (
 
 func init() {
 	var exportConfigCmd = &cobra.Command{
-		Use:   "export-config [output-path]",
+		Use:   "exportconfig [output-path]",
 		Short: "export Wave Terminal configuration",
 		Long:  "Export Wave Terminal configuration files into a zip archive",
 		RunE:  runExportConfig,
@@ -23,7 +23,7 @@ func init() {
 
 func runExportConfig(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("export-config requires an output path")
+		return fmt.Errorf("exportconfig requires an output path")
 	}
 
 	outputPath := args[0]
@@ -38,7 +38,7 @@ func runExportConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := zipDir(configDir, outputPath); err != nil {
-		return fmt.Errorf("export-config failed: %v", err)
+		return fmt.Errorf("exportconfig failed: %v", err)
 	}
 
 	fmt.Printf("Configuration exported to %s\n", outputPath)
