@@ -18,6 +18,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 func DetectShell(ctx context.Context, client *Distro) (string, error) {
@@ -49,7 +50,7 @@ func GetWshVersion(ctx context.Context, client *Distro) (string, error) {
 }
 
 func GetWshPath(ctx context.Context, client *Distro) string {
-	defaultPath := "~/.waveterm/bin/wsh"
+	defaultPath := wavebase.RemoteFullWshBinPath
 
 	cmd := client.WslCommand(ctx, "which wsh")
 	out, whichErr := cmd.Output()
@@ -60,13 +61,6 @@ func GetWshPath(ctx context.Context, client *Distro) string {
 	cmd = client.WslCommand(ctx, "where.exe wsh")
 	out, whereErr := cmd.Output()
 	if whereErr == nil {
-		return strings.TrimSpace(string(out))
-	}
-
-	// check cmd on windows since it requires an absolute path with backslashes
-	cmd = client.WslCommand(ctx, "(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none")
-	out, cmdErr := cmd.Output()
-	if cmdErr == nil && strings.TrimSpace(string(out)) != "none" {
 		return strings.TrimSpace(string(out))
 	}
 

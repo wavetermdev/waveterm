@@ -182,7 +182,7 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 		return fmt.Errorf("cannot open domain socket for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	conn.WithLock(func() {
-		conn.SockName = "~/.waveterm/wave-remote.sock"
+		conn.SockName = wavebase.RemoteFullDomainSocketPath
 	})
 	return nil
 }
@@ -326,7 +326,7 @@ func (conn *WslConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 	}
 	// attempt to install extension
 	wshLocalPath := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
-	err = CpHostToRemote(ctx, client, wshLocalPath, "~/.waveterm/bin/wsh")
+	err = CpHostToRemote(ctx, client, wshLocalPath, wavebase.RemoteFullWshBinPath)
 	if err != nil {
 		return err
 	}
