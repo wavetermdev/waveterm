@@ -36,5 +36,5 @@ func shellCmdInner() string {
 	if shell == "" {
 		return "/bin/bash\n"
 	}
-	return strings.TrimSpace(shell)
+	return strings.TrimSpace(shell) + "\n"
 }
