@@ -274,7 +274,9 @@ func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) erro
 	}
 
 	go func() {
-		defer panichandler.PanicHandler("connutil:CpHostToRemote")
+		defer func() {
+			panichandler.PanicHandler("connutil:CpHostToRemote", recover())
+		}()
 		io.Copy(installStdin, input)
 		session.Close() // this allows the command to complete for reasons i don't fully understand
 	}()

@@ -223,7 +223,9 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 		return fmt.Errorf("cannot open local file %s to send to host: %v", sourcePath, err)
 	}
 	go func() {
-		defer panichandler.PanicHandler("wslutil:cpHostToRemote:catStdin")
+		defer func() {
+			panichandler.PanicHandler("wslutil:cpHostToRemote:catStdin", recover())
+		}()
 		io.Copy(catStdin, input)
 		installStepCmds["cat"].Cancel()
 

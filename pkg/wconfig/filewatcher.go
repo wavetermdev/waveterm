@@ -65,7 +65,9 @@ func (w *Watcher) Start() {
 	w.sendInitialValues()
 
 	go func() {
-		defer panichandler.PanicHandler("filewatcher:Start")
+		defer func() {
+			panichandler.PanicHandler("filewatcher:Start", recover())
+		}()
 		for {
 			select {
 			case event, ok := <-w.watcher.Events:
