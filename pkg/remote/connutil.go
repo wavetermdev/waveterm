@@ -5,8 +5,8 @@ package remote
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"os"
@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"golang.org/x/crypto/ssh"
@@ -212,76 +212,83 @@ func GetClientArch(client *ssh.Client) (string, error) {
 	return "", fmt.Errorf("unable to determine architecture: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
 }
 
-var installTemplateRawBash = `bash -c ' \
-mkdir -p {{.installDir}}; \
-cat > {{.tempPath}}; \
-mv {{.tempPath}} {{.installPath}}; \
-chmod a+x {{.installPath}};' \
-`
+var installTemplateRawDefault = strings.TrimSpace(`
+mkdir -p {{.installDir}} || exit 1
+cat > {{.tempPath}} || exit 1
+mv {{.tempPath}} {{.installPath}} || exit 1
+chmod a+x {{.installPath}} || exit 1
+`)
+var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
 
-var installTemplateRawDefault = ` \
-mkdir -p {{.installDir}}; \
-cat > {{.tempPath}}; \
-mv {{.tempPath}} {{.installPath}}; \
-chmod a+x {{.installPath}}; \
-`
-
-func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) error {
-	// warning: does not work on windows remote yet
-	bashInstalled, err := hasBashInstalled(client)
-	if err != nil {
-		return err
-	}
-
-	var selectedTemplateRaw string
-	if bashInstalled {
-		selectedTemplateRaw = installTemplateRawBash
-	} else {
-		log.Printf("bash is not installed on remote. attempting with default shell")
-		selectedTemplateRaw = installTemplateRawDefault
-	}
-
-	// I need to use toSlash here to force unix keybindings
-	// this means we can't guarantee it will work on a remote windows machine
-	var installWords = map[string]string{
+func CpHostToRemote(ctx context.Context, client *ssh.Client, sourcePath string, destPath string) error {
+	installWords := map[string]string{
 		"installDir":  filepath.ToSlash(filepath.Dir(destPath)),
-		"tempPath":    destPath + ".temp",
-		"installPath": destPath,
+		"tempPath":    filepath.ToSlash(destPath + ".temp"),
+		"installPath": filepath.ToSlash(destPath),
 	}
 
-	installCmd := &bytes.Buffer{}
-	installTemplate := template.Must(template.New("").Parse(selectedTemplateRaw))
-	installTemplate.Execute(installCmd, installWords)
+	var installCmd bytes.Buffer
+	if err := installTemplate.Execute(&installCmd, installWords); err != nil {
+		return fmt.Errorf("failed to prepare install command: %w", err)
+	}
+
+	// Add debug log of the command
+	log.Printf("Running remote command: %s", installCmd.String())
 
 	session, err := client.NewSession()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create SSH session: %w", err)
+	}
+	defer session.Close()
+
+	// Add stderr capture
+	var stderr bytes.Buffer
+	session.Stderr = &stderr
+
+	stdin, err := session.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get stdin pipe: %w", err)
 	}
 
-	installStdin, err := session.StdinPipe()
-	if err != nil {
-		return err
-	}
-
-	err = session.Start(installCmd.String())
-	if err != nil {
-		return err
+	if err := session.Start(installCmd.String()); err != nil {
+		return fmt.Errorf("failed to start remote command: %w", err)
 	}
 
 	input, err := os.Open(sourcePath)
 	if err != nil {
-		return fmt.Errorf("cannot open local file %s to send to host: %v", sourcePath, err)
+		return fmt.Errorf("cannot open local file %s: %w", sourcePath, err)
 	}
+	defer input.Close()
+
+	copyDone := make(chan error, 1)
 
 	go func() {
-		defer func() {
-			panichandler.PanicHandler("connutil:CpHostToRemote", recover())
-		}()
-		io.Copy(installStdin, input)
-		session.Close() // this allows the command to complete for reasons i don't fully understand
+		defer close(copyDone)
+		defer stdin.Close()
+
+		_, err := io.Copy(stdin, input)
+		if err != nil && err != io.EOF {
+			copyDone <- err
+			return
+		}
+		copyDone <- nil
 	}()
 
-	return session.Wait()
+	select {
+	case <-ctx.Done():
+		session.Close()
+		return ctx.Err()
+	case err := <-copyDone:
+		if err != nil {
+			return fmt.Errorf("failed to copy data: %w", err)
+		}
+	}
+
+	if err := session.Wait(); err != nil {
+		return fmt.Errorf("remote command failed: %w (stderr: %s)", err, stderr.String())
+	}
+
+	return nil
 }
 
 func InstallClientRcFiles(client *ssh.Client) error {
