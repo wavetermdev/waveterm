@@ -93,6 +93,12 @@ $env:PATH = "{{.WSHBINDIR}}" + "{{.PATHSEP}}" + $env:PATH
 
 func DetectLocalShellPath() string {
 	if runtime.GOOS == "windows" {
+		if pwshPath, lpErr := exec.LookPath("pwsh"); lpErr == nil {
+			return pwshPath
+		}
+		if powershellPath, lpErr := exec.LookPath("powershell"); lpErr == nil {
+			return powershellPath
+		}
 		return "powershell.exe"
 	}
 	shellPath := GetMacUserShell()
