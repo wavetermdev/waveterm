@@ -51,6 +51,7 @@ export class WebViewModel implements ViewModel {
     mediaMuted: PrimitiveAtom<boolean>;
     modifyExternalUrl?: (url: string) => string;
     domReady: PrimitiveAtom<boolean>;
+    hideNav: Atom<boolean>;
     searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
@@ -74,6 +75,7 @@ export class WebViewModel implements ViewModel {
         this.urlInputRef = createRef<HTMLInputElement>();
         this.webviewRef = createRef<WebviewTag>();
         this.domReady = atom(false);
+        this.hideNav = getBlockMetaKeyAtom(blockId, "web:hidenav");
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -87,57 +89,66 @@ export class WebViewModel implements ViewModel {
             const mediaPlaying = get(this.mediaPlaying);
             const mediaMuted = get(this.mediaMuted);
             const url = currUrl ?? metaUrl ?? homepageUrl;
-            return [
-                {
+            const rtn: HeaderElem[] = [];
+            if (get(this.hideNav)) {
+                return rtn;
+            }
+
+            rtn.push({
+                elemtype: "iconbutton",
+                icon: "chevron-left",
+                click: this.handleBack.bind(this),
+                disabled: this.shouldDisableBackButton(),
+            });
+            rtn.push({
+                elemtype: "iconbutton",
+                icon: "chevron-right",
+                click: this.handleForward.bind(this),
+                disabled: this.shouldDisableForwardButton(),
+            });
+            rtn.push({
+                elemtype: "iconbutton",
+                icon: "house",
+                click: this.handleHome.bind(this),
+                disabled: this.shouldDisableHomeButton(),
+            });
+            const divChildren: HeaderElem[] = [];
+            divChildren.push({
+                elemtype: "input",
+                value: url,
+                ref: this.urlInputRef,
+                className: "url-input",
+                onChange: this.handleUrlChange.bind(this),
+                onKeyDown: this.handleKeyDown.bind(this),
+                onFocus: this.handleFocus.bind(this),
+                onBlur: this.handleBlur.bind(this),
+            });
+            if (mediaPlaying) {
+                divChildren.push({
                     elemtype: "iconbutton",
-                    icon: "chevron-left",
-                    click: this.handleBack.bind(this),
-                    disabled: this.shouldDisableBackButton(),
-                },
-                {
-                    elemtype: "iconbutton",
-                    icon: "chevron-right",
-                    click: this.handleForward.bind(this),
-                    disabled: this.shouldDisableForwardButton(),
-                },
-                {
-                    elemtype: "iconbutton",
-                    icon: "house",
-                    click: this.handleHome.bind(this),
-                    disabled: this.shouldDisableHomeButton(),
-                },
-                {
-                    elemtype: "div",
-                    className: clsx("block-frame-div-url", urlWrapperClassName),
-                    onMouseOver: this.handleUrlWrapperMouseOver.bind(this),
-                    onMouseOut: this.handleUrlWrapperMouseOut.bind(this),
-                    children: [
-                        {
-                            elemtype: "input",
-                            value: url,
-                            ref: this.urlInputRef,
-                            className: "url-input",
-                            onChange: this.handleUrlChange.bind(this),
-                            onKeyDown: this.handleKeyDown.bind(this),
-                            onFocus: this.handleFocus.bind(this),
-                            onBlur: this.handleBlur.bind(this),
-                        },
-                        mediaPlaying && {
-                            elemtype: "iconbutton",
-                            icon: mediaMuted ? "volume-slash" : "volume",
-                            click: this.handleMuteChange.bind(this),
-                        },
-                        {
-                            elemtype: "iconbutton",
-                            icon: refreshIcon,
-                            click: this.handleRefresh.bind(this),
-                        },
-                    ].filter((v) => v),
-                },
-            ] as HeaderElem[];
+                    icon: mediaMuted ? "volume-slash" : "volume",
+                    click: this.handleMuteChange.bind(this),
+                });
+            }
+            divChildren.push({
+                elemtype: "iconbutton",
+                icon: refreshIcon,
+                click: this.handleRefresh.bind(this),
+            });
+            rtn.push({
+                elemtype: "div",
+                className: clsx("block-frame-div-url", urlWrapperClassName),
+                onMouseOver: this.handleUrlWrapperMouseOver.bind(this),
+                onMouseOut: this.handleUrlWrapperMouseOut.bind(this),
+                children: divChildren,
+            });
+            return rtn;
         });
 
         this.endIconButtons = atom((get) => {
+            if (get(this.hideNav)) {
+                return null;
+            }
             const url = get(this.url);
             return [
                 {
@@ -308,7 +319,7 @@ export class WebViewModel implements ViewModel {
             url = "";
         }
 
-        if (/^(http|https):/.test(url)) {
+        if (/^(http|https|file):/.test(url)) {
             // If the URL starts with http: or https:, return it as is
             return url;
         }
@@ -494,6 +505,7 @@ export class WebViewModel implements ViewModel {
         zoomSubMenu.push(makeZoomFactorMenuItem("175%", 1.75));
         zoomSubMenu.push(makeZoomFactorMenuItem("200%", 2));
 
+        const isNavHidden = globalStore.get(this.hideNav);
         return [
             {
                 label: "Set Block Homepage",
@@ -505,6 +517,16 @@ export class WebViewModel implements ViewModel {
             },
             {
                 type: "separator",
+            },
+            {
+                label: isNavHidden ? "Un-Hide Navigation" : "Hide Navigation",
+                click: () =>
+                    fireAndForget(() => {
+                        return RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "web:hidenav": !isNavHidden },
+                        });
+                    }),
             },
             {
                 label: "Set Zoom Factor",
