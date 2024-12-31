@@ -974,7 +974,9 @@ func FilterValidArch(arch string) (string, error) {
 	formatted := strings.TrimSpace(strings.ToLower(arch))
 	switch formatted {
 	case "amd64":
+		return "x64", nil
 	case "x86_64":
+		return "x64", nil
 	case "x64":
 		return "x64", nil
 	case "arm64":
