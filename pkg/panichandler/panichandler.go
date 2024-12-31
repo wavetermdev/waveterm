@@ -30,7 +30,7 @@ func PanicHandler(debugStr string, recoverVal any) error {
 	debug.PrintStack()
 	if PanicTelemetryHandler != nil {
 		go func() {
-			defer PanicHandlerNoTelemetry("PanicTelemetryHandler")
+			defer PanicHandlerNoTelemetry("PanicTelemetryHandler", recover())
 			PanicTelemetryHandler()
 		}()
 	}
