@@ -65,7 +65,7 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("OpenAIBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("OpenAIBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}

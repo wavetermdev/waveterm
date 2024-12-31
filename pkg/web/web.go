@@ -358,7 +358,7 @@ type ClientActiveState struct {
 func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			recErr := panichandler.PanicHandler("WebFnWrap")
+			recErr := panichandler.PanicHandler("WebFnWrap", recover())
 			if recErr == nil {
 				return
 			}

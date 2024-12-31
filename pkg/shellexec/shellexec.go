@@ -52,7 +52,9 @@ type ShellProc struct {
 func (sp *ShellProc) Close() {
 	sp.Cmd.KillGraceful(DefaultGracefulKillWait)
 	go func() {
-		defer panichandler.PanicHandler("ShellProc.Close")
+		defer func() {
+			panichandler.PanicHandler("ShellProc.Close", recover())
+		}()
 		waitErr := sp.Cmd.Wait()
 		sp.SetWaitErrorAndSignalDone(waitErr)
 
@@ -496,7 +498,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error
 	ioDone := make(chan bool)
 	var outputBuf bytes.Buffer
 	go func() {
-		panichandler.PanicHandler("RunSimpleCmdInPty:ioCopy")
+		panichandler.PanicHandler("RunSimpleCmdInPty:ioCopy", recover())
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer close(ioDone)
 		io.Copy(&outputBuf, cmdPty)

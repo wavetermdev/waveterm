@@ -59,7 +59,9 @@ func (svc *WorkspaceService) UpdateWorkspace(ctx context.Context, workspaceId st
 
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:UpdateWorkspace:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:UpdateWorkspace:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return updates, nil
@@ -104,7 +106,9 @@ func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.Update
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:DeleteWorkspace:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:DeleteWorkspace:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return updates, claimableWorkspace, nil
@@ -153,7 +157,9 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:CreateTab:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:CreateTab:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return tabId, updates, nil
@@ -174,7 +180,9 @@ func (svc *WorkspaceService) ChangeTabPinning(ctx context.Context, workspaceId s
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:ChangeTabPinning:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:ChangeTabPinning:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return updates, nil
@@ -224,7 +232,9 @@ func (svc *WorkspaceService) SetActiveTab(workspaceId string, tabId string) (wav
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:SetActiveTab:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:SetActiveTab:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	var extraUpdates waveobj.UpdatesRtnType
@@ -270,7 +280,9 @@ func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, t
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:CloseTab:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:CloseTab:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return rtn, updates, nil

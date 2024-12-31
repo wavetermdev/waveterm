@@ -47,7 +47,9 @@ func (*WshServer) WshServerImpl() {}
 var WshServerImpl = WshServer{}
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
-	defer panichandler.PanicHandler("TestCommand")
+	defer func() {
+		panichandler.PanicHandler("TestCommand", recover())
+	}()
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	log.Printf("TEST src:%s | %s\n", rpcSource, data)
 	return nil
@@ -63,7 +65,9 @@ func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMess
 func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrErrorUnion[int] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[int])
 	go func() {
-		defer panichandler.PanicHandler("StreamTestCommand")
+		defer func() {
+			panichandler.PanicHandler("StreamTestCommand", recover())
+		}()
 		for i := 1; i <= 5; i++ {
 			rtn <- wshrpc.RespOrErrorUnion[int]{Response: i}
 			time.Sleep(1 * time.Second)

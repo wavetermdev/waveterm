@@ -83,7 +83,7 @@ func AutoUpdateChannel() string {
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
 func GoUpdateActivityWrap(update wshrpc.ActivityUpdate, debugStr string) {
 	go func() {
-		defer panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap")
+		defer panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap", recover())
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 		err := UpdateActivity(ctx, update)
