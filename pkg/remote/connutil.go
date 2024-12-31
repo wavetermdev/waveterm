@@ -232,9 +232,6 @@ func CpHostToRemote(ctx context.Context, client *ssh.Client, sourcePath string, 
 		return fmt.Errorf("failed to prepare install command: %w", err)
 	}
 
-	// Add debug log of the command
-	log.Printf("Running remote command: %s", installCmd.String())
-
 	session, err := client.NewSession()
 	if err != nil {
 		return fmt.Errorf("failed to create SSH session: %w", err)
