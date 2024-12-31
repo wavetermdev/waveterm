@@ -6,9 +6,7 @@
 package cmd
 
 import (
-	"bufio"
 	"os"
-	"os/user"
 	"runtime"
 	"strings"
 
@@ -33,30 +31,10 @@ func shellCmdInner() string {
 	if runtime.GOOS == "darwin" {
 		return shellutil.GetMacUserShell() + "\n"
 	}
-	user, err := user.Current()
-	if err != nil {
+
+	shell := os.Getenv("SHELL")
+	if shell == "" {
 		return "/bin/bash\n"
 	}
-
-	passwd, err := os.Open("/etc/passwd")
-	if err != nil {
-		return "/bin/bash\n"
-	}
-
-	scanner := bufio.NewScanner(passwd)
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
-		parts := strings.Split(line, ":")
-
-		if len(parts) != 7 {
-			continue
-		}
-
-		if parts[0] == user.Username {
-			return parts[6] + "\n"
-		}
-	}
-	// none found
-	return "/bin/bash\n"
+	return strings.TrimSpace(shell) + "\n"
 }

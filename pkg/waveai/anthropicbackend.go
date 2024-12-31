@@ -114,7 +114,7 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Wav
 
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("AnthropicBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("AnthropicBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}

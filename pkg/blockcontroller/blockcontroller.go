@@ -434,7 +434,9 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, shellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
-		defer panichandler.PanicHandler("blockcontroller:shellproc-pty-read-loop")
+		defer func() {
+			panichandler.PanicHandler("blockcontroller:shellproc-pty-read-loop", recover())
+		}()
 		defer func() {
 			log.Printf("[shellproc] pty-read loop done\n")
 			shellProc.Close()
@@ -471,7 +473,9 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	go func() {
 		// handles input from the shellInputCh, sent to pty
 		// use shellInputCh instead of bc.ShellInputCh (because we want to be attached to *this* ch.  bc.ShellInputCh can be updated)
-		defer panichandler.PanicHandler("blockcontroller:shellproc-input-loop")
+		defer func() {
+			panichandler.PanicHandler("blockcontroller:shellproc-input-loop", recover())
+		}()
 		for ic := range shellInputCh {
 			if len(ic.InputData) > 0 {
 				shellProc.Cmd.Write(ic.InputData)
@@ -482,7 +486,9 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		}
 	}()
 	go func() {
-		defer panichandler.PanicHandler("blockcontroller:shellproc-output-loop")
+		defer func() {
+			panichandler.PanicHandler("blockcontroller:shellproc-output-loop", recover())
+		}()
 		// handles outputCh -> shellInputCh
 		for msg := range wshProxy.ToRemoteCh {
 			encodedMsg, err := wshutil.EncodeWaveOSCBytes(wshutil.WaveServerOSC, msg)
@@ -493,7 +499,9 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		}
 	}()
 	go func() {
-		defer panichandler.PanicHandler("blockcontroller:shellproc-wait-loop")
+		defer func() {
+			panichandler.PanicHandler("blockcontroller:shellproc-wait-loop", recover())
+		}()
 		// wait for the shell to finish
 		var exitCode int
 		defer func() {
@@ -649,7 +657,9 @@ func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, r
 		}
 		runningShellCommand = true
 		go func() {
-			defer panichandler.PanicHandler("blockcontroller:run-shell-command")
+			defer func() {
+				panichandler.PanicHandler("blockcontroller:run-shell-command", recover())
+			}()
 			defer bc.UnlockRunLock()
 			var termSize waveobj.TermSize
 			if rtOpts != nil {

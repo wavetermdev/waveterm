@@ -236,7 +236,9 @@ func (conn *WslConn) StartConnServer() error {
 	})
 	// service the I/O
 	go func() {
-		defer panichandler.PanicHandler("wsl:StartConnServer:wait")
+		defer func() {
+			panichandler.PanicHandler("wsl:StartConnServer:wait", recover())
+		}()
 		// wait for termination, clear the controller
 		defer conn.WithLock(func() {
 			conn.ConnController = nil
@@ -245,7 +247,9 @@ func (conn *WslConn) StartConnServer() error {
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
-		defer panichandler.PanicHandler("wsl:StartConnServer:handleStdIOClient")
+		defer func() {
+			panichandler.PanicHandler("wsl:StartConnServer:handleStdIOClient", recover())
+		}()
 		logName := fmt.Sprintf("conncontroller:%s", conn.GetName())
 		wshutil.HandleStdIOClient(logName, pipeRead, inputPipeWrite)
 	}()
