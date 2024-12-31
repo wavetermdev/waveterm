@@ -206,10 +206,7 @@ async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Pr
                 if (wc == null) {
                     return;
                 }
-                if (wc.getZoomFactor() >= 5) {
-                    return;
-                }
-                wc.setZoomFactor(wc.getZoomFactor() + 0.2);
+                wc.setZoomFactor(Math.min(5, wc.getZoomFactor() + 0.2));
             },
         },
         {
@@ -220,10 +217,7 @@ async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Pr
                 if (wc == null) {
                     return;
                 }
-                if (wc.getZoomFactor() >= 5) {
-                    return;
-                }
-                wc.setZoomFactor(wc.getZoomFactor() + 0.2);
+                wc.setZoomFactor(Math.min(5, wc.getZoomFactor() + 0.2));
             },
             visible: false,
             acceleratorWorksWhenHidden: true,
@@ -236,10 +230,7 @@ async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Pr
                 if (wc == null) {
                     return;
                 }
-                if (wc.getZoomFactor() <= 0.2) {
-                    return;
-                }
-                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
+                wc.setZoomFactor(Math.max(0.2, wc.getZoomFactor() - 0.2));
             },
         },
         {
@@ -250,10 +241,7 @@ async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Pr
                 if (wc == null) {
                     return;
                 }
-                if (wc.getZoomFactor() <= 0.2) {
-                    return;
-                }
-                wc.setZoomFactor(wc.getZoomFactor() - 0.2);
+                wc.setZoomFactor(Math.max(0.2, wc.getZoomFactor() - 0.2));
             },
             visible: false,
             acceleratorWorksWhenHidden: true,

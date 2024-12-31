@@ -964,3 +964,21 @@ func SafeDeref[T any](x *T) T {
 func Ptr[T any](x T) *T {
 	return &x
 }
+
+/**
+ * Utility function to convert know architecture patterns
+ * to the patterns we use. It returns an error if the
+ * provided name is unknown
+ */
+func FilterValidArch(arch string) (string, error) {
+	formatted := strings.TrimSpace(strings.ToLower(arch))
+	switch formatted {
+	case "amd64":
+	case "x86_64":
+	case "x64":
+		return "x64", nil
+	case "arm64":
+		return "arm64", nil
+	}
+	return "", fmt.Errorf("unknown architecture: %s", formatted)
+}

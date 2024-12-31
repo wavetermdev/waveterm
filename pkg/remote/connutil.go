@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -145,7 +146,7 @@ func GetClientOs(client *ssh.Client) (string, error) {
 		return "", err
 	}
 
-	out, unixErr := session.Output("uname -s")
+	out, unixErr := session.CombinedOutput("uname -s")
 	if unixErr == nil {
 		formatted := strings.ToLower(string(out))
 		formatted = strings.TrimSpace(formatted)
@@ -184,14 +185,9 @@ func GetClientArch(client *ssh.Client) (string, error) {
 		return "", err
 	}
 
-	out, unixErr := session.Output("uname -m")
+	out, unixErr := session.CombinedOutput("uname -m")
 	if unixErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		if formatted == "x86_64" {
-			return "x64", nil
-		}
-		return formatted, nil
+		return utilfn.FilterValidArch(string(out))
 	}
 
 	session, err = client.NewSession()
@@ -199,10 +195,9 @@ func GetClientArch(client *ssh.Client) (string, error) {
 		return "", err
 	}
 
-	out, cmdErr := session.Output("echo %PROCESSOR_ARCHITECTURE%")
-	if cmdErr == nil {
-		formatted := strings.ToLower(string(out))
-		return strings.TrimSpace(formatted), nil
+	out, cmdErr := session.CombinedOutput("echo %PROCESSOR_ARCHITECTURE%")
+	if cmdErr == nil && strings.TrimSpace(string(out)) != "%PROCESSOR_ARCHITECTURE%" {
+		return utilfn.FilterValidArch(string(out))
 	}
 
 	session, err = client.NewSession()
@@ -210,10 +205,9 @@ func GetClientArch(client *ssh.Client) (string, error) {
 		return "", err
 	}
 
-	out, psErr := session.Output("echo $env:PROCESSOR_ARCHITECTURE")
-	if psErr == nil {
-		formatted := strings.ToLower(string(out))
-		return strings.TrimSpace(formatted), nil
+	out, psErr := session.CombinedOutput("echo $env:PROCESSOR_ARCHITECTURE")
+	if psErr == nil && strings.TrimSpace(string(out)) != "$env:PROCESSOR_ARCHITECTURE" {
+		return utilfn.FilterValidArch(string(out))
 	}
 	return "", fmt.Errorf("unable to determine architecture: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
 }
