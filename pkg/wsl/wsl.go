@@ -51,7 +51,6 @@ type WslConn struct {
 	HasWaiter          *atomic.Bool
 	LastConnectTime    int64
 	ActiveConnNum      int
-	Context            context.Context
 	cancelFn           func()
 }
 
@@ -188,6 +187,13 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 }
 
 func (conn *WslConn) StartConnServer() error {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	conn.WithLock(func() {
+		if conn.cancelFn != nil {
+			conn.cancelFn()
+		}
+		conn.cancelFn = cancelFn
+	})
 	var allowed bool
 	conn.WithLock(func() {
 		if conn.Status != Status_Connecting {
@@ -200,7 +206,7 @@ func (conn *WslConn) StartConnServer() error {
 		return fmt.Errorf("cannot start conn server for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	client := conn.GetClient()
-	wshPath := GetWshPath(conn.Context, client)
+	wshPath := GetWshPath(ctx, client)
 	rpcCtx := wshrpc.RpcContext{
 		ClientType: wshrpc.ClientType_ConnServer,
 		Conn:       conn.GetName(),
@@ -210,7 +216,7 @@ func (conn *WslConn) StartConnServer() error {
 	if err != nil {
 		return fmt.Errorf("unable to create jwt token for conn controller: %w", err)
 	}
-	shellPath, err := DetectShell(conn.Context, client)
+	shellPath, err := DetectShell(ctx, client)
 	if err != nil {
 		return err
 	}
@@ -221,7 +227,7 @@ func (conn *WslConn) StartConnServer() error {
 		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver --router", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	}
 	log.Printf("starting conn controller: %s\n", cmdStr)
-	cmd := client.WslCommand(conn.Context, cmdStr)
+	cmd := client.WslCommand(ctx, cmdStr)
 	pipeRead, pipeWrite := io.Pipe()
 	inputPipeRead, inputPipeWrite := io.Pipe()
 	cmd.SetStdout(pipeWrite)
@@ -473,8 +479,7 @@ func getConnInternal(name string) *WslConn {
 	connName := WslName{Distro: name}
 	rtn := clientControllerMap[name]
 	if rtn == nil {
-		ctx, cancelFn := context.WithCancel(context.Background())
-		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, HasWaiter: &atomic.Bool{}, Context: ctx, cancelFn: cancelFn}
+		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, HasWaiter: &atomic.Bool{}, cancelFn: nil}
 		clientControllerMap[name] = rtn
 	}
 	return rtn
