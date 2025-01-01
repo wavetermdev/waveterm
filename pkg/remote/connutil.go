@@ -16,7 +16,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"golang.org/x/crypto/ssh"
 )
@@ -140,76 +141,41 @@ func hasBashInstalled(client *ssh.Client) (bool, error) {
 	return false, nil
 }
 
-func GetClientOs(client *ssh.Client) (string, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, unixErr := session.CombinedOutput("uname -s")
-	if unixErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		return formatted, nil
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, cmdErr := session.Output("echo %OS%")
-	if cmdErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		return strings.Split(formatted, "_")[0], nil
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, psErr := session.Output("echo $env:OS")
-	if psErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		return strings.Split(formatted, "_")[0], nil
-	}
-	return "", fmt.Errorf("unable to determine os: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
+func normalizeOs(os string) string {
+	os = strings.ToLower(strings.TrimSpace(os))
+	return os
 }
 
-func GetClientArch(client *ssh.Client) (string, error) {
-	session, err := client.NewSession()
+func normalizeArch(arch string) string {
+	arch = strings.ToLower(strings.TrimSpace(arch))
+	switch arch {
+	case "x86_64", "amd64":
+		arch = "x64"
+	case "arm64", "aarch64":
+		arch = "arm64"
+	}
+	return arch
+}
+
+// returns (os, arch, error)
+// guaranteed to return a supported platform
+func GetClientPlatform(ctx context.Context, shell genconn.ShellClient) (string, string, error) {
+	stdout, stderr, err := genconn.RunSimpleCommand(ctx, shell, genconn.CommandSpec{
+		Cmd: "uname -sm",
+	})
 	if err != nil {
-		return "", err
+		return "", "", fmt.Errorf("error running uname -sm: %w, stderr: %s", err, stderr)
 	}
-
-	out, unixErr := session.CombinedOutput("uname -m")
-	if unixErr == nil {
-		return utilfn.FilterValidArch(string(out))
+	// Parse and normalize output
+	parts := strings.Fields(strings.ToLower(strings.TrimSpace(stdout)))
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("unexpected output from uname: %s", stdout)
 	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "", err
+	os, arch := normalizeOs(parts[0]), normalizeArch(parts[1])
+	if err := wavebase.ValidateWshSupportedArch(os, arch); err != nil {
+		return "", "", err
 	}
-
-	out, cmdErr := session.CombinedOutput("echo %PROCESSOR_ARCHITECTURE%")
-	if cmdErr == nil && strings.TrimSpace(string(out)) != "%PROCESSOR_ARCHITECTURE%" {
-		return utilfn.FilterValidArch(string(out))
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, psErr := session.CombinedOutput("echo $env:PROCESSOR_ARCHITECTURE")
-	if psErr == nil && strings.TrimSpace(string(out)) != "$env:PROCESSOR_ARCHITECTURE" {
-		return utilfn.FilterValidArch(string(out))
-	}
-	return "", fmt.Errorf("unable to determine architecture: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
+	return os, arch, nil
 }
 
 var installTemplateRawDefault = strings.TrimSpace(`
@@ -219,6 +185,68 @@ mv {{.tempPath}} {{.installPath}} || exit 1
 chmod a+x {{.installPath}} || exit 1
 `)
 var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
+
+func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, clientArch string) error {
+	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	if err != nil {
+		return err
+	}
+	input, err := os.Open(wshLocalPath)
+	if err != nil {
+		return fmt.Errorf("cannot open local file %s: %w", wshLocalPath, err)
+	}
+	defer input.Close()
+	installWords := map[string]string{
+		"installDir":  filepath.ToSlash(filepath.Dir(wavebase.RemoteFullWshBinPath)),
+		"tempPath":    filepath.ToSlash(wavebase.RemoteFullWshBinPath + ".temp"),
+		"installPath": filepath.ToSlash(wavebase.RemoteFullWshBinPath),
+	}
+	var installCmd bytes.Buffer
+	if err := installTemplate.Execute(&installCmd, installWords); err != nil {
+		return fmt.Errorf("failed to prepare install command: %w", err)
+	}
+	genCmd, err := genconn.MakeSSHCmdClient(client, genconn.CommandSpec{
+		Cmd: installCmd.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create remote command: %w", err)
+	}
+	stdin, err := genCmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get stdin pipe: %w", err)
+	}
+	defer stdin.Close()
+	stderrBuf, err := genconn.MakeStderrSyncBuffer(genCmd)
+	if err != nil {
+		return fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+	if err := genCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start remote command: %w", err)
+	}
+	copyDone := make(chan error, 1)
+	go func() {
+		defer close(copyDone)
+		defer stdin.Close()
+		if _, err := io.Copy(stdin, input); err != nil && err != io.EOF {
+			copyDone <- fmt.Errorf("failed to copy data: %w", err)
+		} else {
+			copyDone <- nil
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		genCmd.Kill()
+		return ctx.Err()
+	case err := <-copyDone:
+		if err != nil {
+			return fmt.Errorf("failed to copy data: %w", err)
+		}
+	}
+	if err := genCmd.Wait(); err != nil {
+		return fmt.Errorf("remote command failed: %w (stderr: %s)", err, stderrBuf.String())
+	}
+	return nil
+}
 
 func CpHostToRemote(ctx context.Context, client *ssh.Client, sourcePath string, destPath string) error {
 	installWords := map[string]string{

@@ -20,6 +20,7 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
@@ -369,16 +370,15 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		}
 	}
 	log.Printf("attempting to install wsh to `%s`", clientDisplayName)
-	clientOs, err := remote.GetClientOs(client)
-	if err != nil {
-		return err
-	}
-	clientArch, err := remote.GetClientArch(client)
+	clientOs, clientArch, err := remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(client))
 	if err != nil {
 		return err
 	}
 	// attempt to install extension
-	wshLocalPath := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	if err != nil {
+		return err
+	}
 	err = remote.CpHostToRemote(ctx, client, wshLocalPath, wavebase.RemoteFullWshBinPath)
 	if err != nil {
 		return err

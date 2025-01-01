@@ -52,6 +52,15 @@ const AppPathBinDir = "bin"
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
 
+var SupportedWshBinaries = map[string]bool{
+	"darwin-x64":    true,
+	"darwin-arm64":  true,
+	"linux-x64":     true,
+	"linux-arm64":   true,
+	"windows-x64":   true,
+	"windows-arm64": true,
+}
+
 type FDLock interface {
 	Close() error
 }
@@ -264,4 +273,11 @@ func UnameKernelRelease() string {
 		osRelease = unameKernelRelease()
 	})
 	return osRelease
+}
+
+func ValidateWshSupportedArch(os string, arch string) error {
+	if SupportedWshBinaries[fmt.Sprintf("%s-%s", os, arch)] {
+		return nil
+	}
+	return fmt.Errorf("unsupported wsh platform: %s-%s", os, arch)
 }
