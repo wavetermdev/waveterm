@@ -321,21 +321,22 @@ function registerGlobalKeys() {
             return true;
         });
     }
-    function activateSearch(): boolean {
-        console.log("activateSearch");
+    function activateSearch(event: WaveKeyboardEvent): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        // Ctrl+f is reserved in most shells
+        if (event.control && bcm.viewModel.viewType == "term") {
+            return false;
+        }
         if (bcm.viewModel.searchAtoms) {
-            console.log("activateSearch2");
-            globalStore.set(bcm.viewModel.searchAtoms.isOpenAtom, true);
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
             return true;
         }
         return false;
     }
     function deactivateSearch(): boolean {
-        console.log("deactivateSearch");
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpenAtom)) {
-            globalStore.set(bcm.viewModel.searchAtoms.isOpenAtom, false);
+        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, false);
             return true;
         }
         return false;

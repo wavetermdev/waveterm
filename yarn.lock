@@ -7314,6 +7314,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@xterm/addon-search@npm:^0.15.0":
+  version: 0.15.0
+  resolution: "@xterm/addon-search@npm:0.15.0"
+  peerDependencies:
+    "@xterm/xterm": ^5.0.0
+  checksum: 10c0/2d68233d234eabc9ffe1bc9e4fcd28cd50c1f8c316b0e71a81ee2005b5e4da87c1c0361f2aa117ec566afbbbc35cd37456c7eb889ebc936416d14953c82e5a2a
+  languageName: node
+  linkType: hard
+
 "@xterm/addon-serialize@npm:^0.13.0":
   version: 0.13.0
   resolution: "@xterm/addon-serialize@npm:0.13.0"
@@ -21982,6 +21991,7 @@ __metadata:
     "@vitejs/plugin-react-swc": "npm:^3.7.2"
     "@vitest/coverage-istanbul": "npm:^2.1.8"
     "@xterm/addon-fit": "npm:^0.10.0"
+    "@xterm/addon-search": "npm:^0.15.0"
     "@xterm/addon-serialize": "npm:^0.13.0"
     "@xterm/addon-web-links": "npm:^0.11.0"
     "@xterm/addon-webgl": "npm:^0.18.0"

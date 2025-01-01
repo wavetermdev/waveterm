@@ -310,7 +310,7 @@ export class WebViewModel implements ViewModel {
         fireAndForget(() => ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
         globalStore.set(this.url, url);
         if (this.searchAtoms) {
-            globalStore.set(this.searchAtoms.isOpenAtom, false);
+            globalStore.set(this.searchAtoms.isOpen, false);
         }
     }
 
@@ -406,7 +406,7 @@ export class WebViewModel implements ViewModel {
 
     giveFocus(): boolean {
         console.log("webview giveFocus");
-        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpenAtom)) {
+        if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpen)) {
             console.log("search is open, not giving focus");
             return true;
         }
@@ -570,11 +570,11 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
 
     // Search
-    const searchProps = useSearch(model.webviewRef, model);
-    const searchVal = useAtomValue<string>(searchProps.searchAtom);
-    const setSearchIndex = useSetAtom(searchProps.indexAtom);
-    const setNumSearchResults = useSetAtom(searchProps.numResultsAtom);
-    const onSearch = useCallback((search: string) => {
+    const searchProps = useSearch({ anchorRef: model.webviewRef, viewModel: model });
+    const searchVal = useAtomValue<string>(searchProps.searchValue);
+    const setSearchIndex = useSetAtom(searchProps.resultsIndex);
+    const setNumSearchResults = useSetAtom(searchProps.resultsCount);
+    searchProps.onSearch = useCallback((search: string) => {
         try {
             if (search) {
                 model.webviewRef.current?.findInPage(search, { findNext: true });
@@ -585,7 +585,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             console.error("Failed to search", e);
         }
     }, []);
-    const onSearchNext = useCallback(() => {
+    searchProps.onNext = useCallback(() => {
         try {
             console.log("search next", searchVal);
             model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: true });
@@ -593,7 +593,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
             console.error("Failed to search next", e);
         }
     }, [searchVal]);
-    const onSearchPrev = useCallback(() => {
+    searchProps.onPrev = useCallback(() => {
         try {
             console.log("search prev", searchVal);
             model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: false });
@@ -782,7 +782,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                     <div>{errorText}</div>
                 </div>
             )}
-            <Search {...searchProps} onSearch={onSearch} onNext={onSearchNext} onPrev={onSearchPrev} />
+            <Search {...searchProps} />
         </Fragment>
     );
 });
