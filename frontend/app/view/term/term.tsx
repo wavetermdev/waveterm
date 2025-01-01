@@ -820,34 +820,32 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         }),
         [regex, wholeWord, caseSensitive]
     );
-    searchProps.onSearch = React.useCallback(
-        (searchText: string) => {
-            if (searchText == "") {
+    const handleSearchError = React.useCallback((e: Error) => {
+        console.warn("search error:", e);
+    }, []);
+    const executeSearch = React.useCallback(
+        (searchText: string, direction: "next" | "previous") => {
+            if (searchText === "") {
                 model.termRef.current?.searchAddon.clearDecorations();
                 return;
             }
             try {
-                model.termRef.current?.searchAddon.findPrevious(searchText, searchOpts);
+                model.termRef.current?.searchAddon[direction === "next" ? "findNext" : "findPrevious"](
+                    searchText,
+                    searchOpts
+                );
             } catch (e) {
-                console.warn("search error:", e);
+                handleSearchError(e);
             }
         },
-        [searchOpts]
+        [searchOpts, handleSearchError]
     );
-    searchProps.onPrev = React.useCallback(() => {
-        try {
-            model.termRef.current?.searchAddon.findPrevious(searchVal, searchOpts);
-        } catch (e) {
-            console.warn("search error:", e);
-        }
-    }, [searchVal, searchOpts]);
-    searchProps.onNext = React.useCallback(() => {
-        try {
-            model.termRef.current?.searchAddon.findNext(searchVal, searchOpts);
-        } catch (e) {
-            console.warn("search error:", e);
-        }
-    }, [searchVal, searchOpts]);
+    searchProps.onSearch = React.useCallback(
+        (searchText: string) => executeSearch(searchText, "previous"),
+        [executeSearch]
+    );
+    searchProps.onPrev = React.useCallback(() => executeSearch(searchVal, "previous"), [executeSearch, searchVal]);
+    searchProps.onNext = React.useCallback(() => executeSearch(searchVal, "next"), [executeSearch, searchVal]);
     // Return input focus to the terminal when the search is closed
     React.useEffect(() => {
         if (!searchIsOpen) {
