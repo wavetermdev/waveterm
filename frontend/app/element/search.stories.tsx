@@ -16,10 +16,35 @@ const meta: Meta<typeof Search> = {
 export default meta;
 type Story = StoryObj<typeof Popover>;
 
-export const DefaultSearch: Story = {
+export const Default: Story = {
     render: (args) => {
         const props = useSearch();
-        const setIsOpen = useSetAtom(props.isOpenAtom);
+        const setIsOpen = useSetAtom<boolean, [boolean], void>(props.isOpen);
+        useEffect(() => {
+            setIsOpen(true);
+        }, []);
+        return (
+            <div
+                className="viewbox"
+                ref={props.anchorRef as React.RefObject<HTMLDivElement>}
+                style={{
+                    border: "2px solid black",
+                    width: "100%",
+                    height: "200px",
+                    background: "var(--main-bg-color)",
+                }}
+            >
+                <Search {...args} {...props} />
+            </div>
+        );
+    },
+    args: {},
+};
+
+export const AdditionalButtons: Story = {
+    render: (args) => {
+        const props = useSearch({ regex: true, caseSensitive: true, wholeWord: true });
+        const setIsOpen = useSetAtom<boolean, [boolean], void>(props.isOpen);
         useEffect(() => {
             setIsOpen(true);
         }, []);
@@ -44,8 +69,8 @@ export const DefaultSearch: Story = {
 export const Results10: Story = {
     render: (args) => {
         const props = useSearch();
-        const setIsOpen = useSetAtom(props.isOpenAtom);
-        const setNumResults = useSetAtom(props.numResultsAtom);
+        const setIsOpen = useSetAtom<boolean, [boolean], void>(props.isOpen);
+        const setNumResults = useSetAtom<number, [number], void>(props.resultsCount);
         useEffect(() => {
             setIsOpen(true);
             setNumResults(10);
@@ -71,13 +96,13 @@ export const Results10: Story = {
 export const InputAndResults10: Story = {
     render: (args) => {
         const props = useSearch();
-        const setIsOpen = useSetAtom(props.isOpenAtom);
-        const setNumResults = useSetAtom(props.numResultsAtom);
-        const setSearch = useSetAtom(props.searchAtom);
+        const setIsOpen = useSetAtom<boolean, [boolean], void>(props.isOpen);
+        const setNumResults = useSetAtom<number, [number], void>(props.resultsCount);
+        const setSearch = useSetAtom<string, [string], void>(props.searchValue);
         useEffect(() => {
             setIsOpen(true);
-            setNumResults(10);
             setSearch("search term");
+            setTimeout(() => setNumResults(10), 10);
         }, []);
         return (
             <div
@@ -100,13 +125,13 @@ export const InputAndResults10: Story = {
 export const LongInputAndResults10: Story = {
     render: (args) => {
         const props = useSearch();
-        const setIsOpen = useSetAtom(props.isOpenAtom);
-        const setNumResults = useSetAtom(props.numResultsAtom);
-        const setSearch = useSetAtom(props.searchAtom);
+        const setIsOpen = useSetAtom<boolean, [boolean], void>(props.isOpen);
+        const setNumResults = useSetAtom<number, [number], void>(props.resultsCount);
+        const setSearch = useSetAtom<string, [string], void>(props.searchValue);
         useEffect(() => {
             setIsOpen(true);
-            setNumResults(10);
             setSearch("search term ".repeat(10).trimEnd());
+            setTimeout(() => setNumResults(10), 10);
         }, []);
         return (
             <div
