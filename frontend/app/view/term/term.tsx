@@ -890,7 +890,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 fontWeightBold: "bold",
                 allowTransparency: true,
                 scrollback: termScrollback,
-                allowProposedApi: true, // needed for search
+                allowProposedApi: true, // Required by @xterm/addon-search to enable search functionality and decorations
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
