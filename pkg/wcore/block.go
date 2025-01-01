@@ -94,7 +94,9 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		}
 	}
 	go func() {
-		defer panichandler.PanicHandler("CreateBlock:telemetry")
+		defer func() {
+			panichandler.PanicHandler("CreateBlock:telemetry", recover())
+		}()
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
 		if blockView == "" {
 			return

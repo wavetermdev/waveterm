@@ -44,7 +44,7 @@ func (WaveAICloudBackend) StreamCompletion(ctx context.Context, request wshrpc.W
 	wsEndpoint := wcloud.GetWSEndpoint()
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("WaveAICloudBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("WaveAICloudBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}

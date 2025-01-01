@@ -54,7 +54,7 @@ func (PerplexityBackend) StreamCompletion(ctx context.Context, request wshrpc.Wa
 
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("PerplexityBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("PerplexityBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}

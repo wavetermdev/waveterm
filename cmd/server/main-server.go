@@ -120,7 +120,9 @@ func panicTelemetryHandler() {
 }
 
 func sendTelemetryWrapper() {
-	defer panichandler.PanicHandler("sendTelemetryWrapper")
+	defer func() {
+		panichandler.PanicHandler("sendTelemetryWrapper", recover())
+	}()
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
@@ -270,7 +272,9 @@ func main() {
 	}
 	panichandler.PanicTelemetryHandler = panicTelemetryHandler
 	go func() {
-		defer panichandler.PanicHandler("InitCustomShellStartupFiles")
+		defer func() {
+			panichandler.PanicHandler("InitCustomShellStartupFiles", recover())
+		}()
 		err := shellutil.InitCustomShellStartupFiles()
 		if err != nil {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
