@@ -800,21 +800,22 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         wholeWord: false,
         regex: false,
     });
+    const searchIsOpen = jotai.useAtomValue<boolean>(searchProps.isOpen);
     const caseSensitive = useAtomValueSafe<boolean>(searchProps.caseSensitive);
     const wholeWord = useAtomValueSafe<boolean>(searchProps.wholeWord);
     const regex = useAtomValueSafe<boolean>(searchProps.regex);
     const searchVal = jotai.useAtomValue<string>(searchProps.searchValue);
-    const searchOpts: ISearchOptions = React.useMemo(
+    const searchOpts = React.useMemo<ISearchOptions>(
         () => ({
             incremental: true,
             regex,
             wholeWord,
             caseSensitive,
             decorations: {
-                matchOverviewRuler: "#e0e0e0",
-                activeMatchColorOverviewRuler: "#e0e0e0",
-                activeMatchBorder: "#58c142",
-                matchBorder: "#e0e0e0",
+                matchOverviewRuler: "#000000",
+                activeMatchColorOverviewRuler: "#000000",
+                activeMatchBorder: "#FF9632",
+                matchBorder: "#FFFF00",
             },
         }),
         [regex, wholeWord, caseSensitive]
@@ -826,7 +827,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 return;
             }
             try {
-                model.termRef.current?.searchAddon.findNext(searchText, searchOpts);
+                model.termRef.current?.searchAddon.findPrevious(searchText, searchOpts);
             } catch (e) {
                 console.warn("search error:", e);
             }
@@ -847,7 +848,12 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             console.warn("search error:", e);
         }
     }, [searchVal, searchOpts]);
-
+    // Return input focus to the terminal when the search is closed
+    React.useEffect(() => {
+        if (!searchIsOpen) {
+            model.giveFocus();
+        }
+    }, [searchIsOpen]);
     // rerun search when the searchOpts change
     React.useEffect(() => {
         model.termRef.current?.searchAddon.clearDecorations();
