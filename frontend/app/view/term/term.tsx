@@ -805,20 +805,29 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const wholeWord = useAtomValueSafe<boolean>(searchProps.wholeWord);
     const regex = useAtomValueSafe<boolean>(searchProps.regex);
     const searchVal = jotai.useAtomValue<string>(searchProps.searchValue);
-    const searchOpts = React.useMemo<ISearchOptions>(
+    const coreSearchOpts = React.useMemo<Pick<ISearchOptions, "regex" | "wholeWord" | "caseSensitive">>(
         () => ({
-            incremental: true,
             regex,
             wholeWord,
             caseSensitive,
-            decorations: {
-                matchOverviewRuler: "#000000",
-                activeMatchColorOverviewRuler: "#000000",
-                activeMatchBorder: "#FF9632",
-                matchBorder: "#FFFF00",
-            },
         }),
         [regex, wholeWord, caseSensitive]
+    );
+    const searchDecorations = React.useMemo(
+        () => ({
+            matchOverviewRuler: "#000000",
+            activeMatchColorOverviewRuler: "#000000",
+            activeMatchBorder: "#FF9632",
+            matchBorder: "#FFFF00",
+        }),
+        []
+    );
+    const searchOpts = React.useMemo<ISearchOptions>(
+        () => ({
+            ...coreSearchOpts,
+            decorations: searchDecorations,
+        }),
+        [coreSearchOpts]
     );
     const handleSearchError = React.useCallback((e: Error) => {
         console.warn("search error:", e);
