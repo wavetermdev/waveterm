@@ -93,6 +93,12 @@ $env:PATH = "{{.WSHBINDIR}}" + "{{.PATHSEP}}" + $env:PATH
 
 func DetectLocalShellPath() string {
 	if runtime.GOOS == "windows" {
+		if pwshPath, lpErr := exec.LookPath("pwsh"); lpErr == nil {
+			return pwshPath
+		}
+		if powershellPath, lpErr := exec.LookPath("powershell"); lpErr == nil {
+			return powershellPath
+		}
 		return "powershell.exe"
 	}
 	shellPath := GetMacUserShell()
@@ -213,7 +219,7 @@ func GetZshZDotDir() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), ZshIntegrationDir)
 }
 
-func GetWshBaseName(version string, goos string, goarch string) string {
+func GetWshBinaryPath(version string, goos string, goarch string) (string, error) {
 	ext := ""
 	if goarch == "amd64" {
 		goarch = "x64"
@@ -224,11 +230,11 @@ func GetWshBaseName(version string, goos string, goarch string) string {
 	if goos == "windows" {
 		ext = ".exe"
 	}
-	return fmt.Sprintf("wsh-%s-%s.%s%s", version, goos, goarch, ext)
-}
-
-func GetWshBinaryPath(version string, goos string, goarch string) string {
-	return filepath.Join(wavebase.GetWaveAppBinPath(), GetWshBaseName(version, goos, goarch))
+	if !wavebase.SupportedWshBinaries[fmt.Sprintf("%s-%s", goos, goarch)] {
+		return "", fmt.Errorf("unsupported wsh platform: %s-%s", goos, goarch)
+	}
+	baseName := fmt.Sprintf("wsh-%s-%s.%s%s", version, goos, goarch, ext)
+	return filepath.Join(wavebase.GetWaveAppBinPath(), baseName), nil
 }
 
 func InitRcFiles(waveHome string, wshBinDir string) error {
@@ -302,8 +308,10 @@ func initCustomShellStartupFilesInternal() error {
 	}
 
 	// copy the correct binary to bin
-	wshBaseName := GetWshBaseName(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
-	wshFullPath := GetWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
+	wshFullPath, err := GetWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		log.Printf("error (non-fatal), could not resolve wsh binary path: %v\n", err)
+	}
 	if _, err := os.Stat(wshFullPath); err != nil {
 		log.Printf("error (non-fatal), could not resolve wsh binary %q: %v\n", wshFullPath, err)
 		return nil
@@ -316,6 +324,7 @@ func initCustomShellStartupFilesInternal() error {
 	if err != nil {
 		return fmt.Errorf("error copying wsh binary to bin: %v", err)
 	}
+	wshBaseName := filepath.Base(wshFullPath)
 	log.Printf("wsh binary successfully copied from %q to %q\n", wshBaseName, wshDstPath)
 	return nil
 }

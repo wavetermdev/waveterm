@@ -5,8 +5,8 @@ package remote
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"os"
@@ -14,11 +14,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/mod/semver"
 )
 
 var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-zA-Z0-9][a-zA-Z0-9.-]*)(?::([0-9]+))?$`)
@@ -53,6 +55,7 @@ func DetectShell(client *ssh.Client) (string, error) {
 	return fmt.Sprintf(`"%s"`, strings.TrimSpace(string(out))), nil
 }
 
+// returns a valid semver version string
 func GetWshVersion(client *ssh.Client) (string, error) {
 	wshPath := GetWshPath(client)
 
@@ -65,8 +68,17 @@ func GetWshVersion(client *ssh.Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	return strings.TrimSpace(string(out)), nil
+	// output is expected to be in the form of "wsh v0.10.4"
+	// should strip off the "wsh" prefix, and return a semver object
+	fields := strings.Fields(strings.TrimSpace(string(out)))
+	if len(fields) != 2 {
+		return "", fmt.Errorf("unexpected output from wsh version: %s", out)
+	}
+	wshVersion := strings.TrimSpace(fields[1])
+	if !semver.IsValid(wshVersion) {
+		return "", fmt.Errorf("invalid semver version: %s", wshVersion)
+	}
+	return wshVersion, nil
 }
 
 func GetWshPath(client *ssh.Client) string {
@@ -140,148 +152,107 @@ func hasBashInstalled(client *ssh.Client) (bool, error) {
 	return false, nil
 }
 
-func GetClientOs(client *ssh.Client) (string, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, unixErr := session.CombinedOutput("uname -s")
-	if unixErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		return formatted, nil
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, cmdErr := session.Output("echo %OS%")
-	if cmdErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		return strings.Split(formatted, "_")[0], nil
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, psErr := session.Output("echo $env:OS")
-	if psErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		return strings.Split(formatted, "_")[0], nil
-	}
-	return "", fmt.Errorf("unable to determine os: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
+func normalizeOs(os string) string {
+	os = strings.ToLower(strings.TrimSpace(os))
+	return os
 }
 
-func GetClientArch(client *ssh.Client) (string, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
+func normalizeArch(arch string) string {
+	arch = strings.ToLower(strings.TrimSpace(arch))
+	switch arch {
+	case "x86_64", "amd64":
+		arch = "x64"
+	case "arm64", "aarch64":
+		arch = "arm64"
 	}
-
-	out, unixErr := session.CombinedOutput("uname -m")
-	if unixErr == nil {
-		return utilfn.FilterValidArch(string(out))
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, cmdErr := session.CombinedOutput("echo %PROCESSOR_ARCHITECTURE%")
-	if cmdErr == nil && strings.TrimSpace(string(out)) != "%PROCESSOR_ARCHITECTURE%" {
-		return utilfn.FilterValidArch(string(out))
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, psErr := session.CombinedOutput("echo $env:PROCESSOR_ARCHITECTURE")
-	if psErr == nil && strings.TrimSpace(string(out)) != "$env:PROCESSOR_ARCHITECTURE" {
-		return utilfn.FilterValidArch(string(out))
-	}
-	return "", fmt.Errorf("unable to determine architecture: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
+	return arch
 }
 
-var installTemplateRawBash = `bash -c ' \
-mkdir -p {{.installDir}}; \
-cat > {{.tempPath}}; \
-mv {{.tempPath}} {{.installPath}}; \
-chmod a+x {{.installPath}};' \
-`
+// returns (os, arch, error)
+// guaranteed to return a supported platform
+func GetClientPlatform(ctx context.Context, shell genconn.ShellClient) (string, string, error) {
+	stdout, stderr, err := genconn.RunSimpleCommand(ctx, shell, genconn.CommandSpec{
+		Cmd: "uname -sm",
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("error running uname -sm: %w, stderr: %s", err, stderr)
+	}
+	// Parse and normalize output
+	parts := strings.Fields(strings.ToLower(strings.TrimSpace(stdout)))
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("unexpected output from uname: %s", stdout)
+	}
+	os, arch := normalizeOs(parts[0]), normalizeArch(parts[1])
+	if err := wavebase.ValidateWshSupportedArch(os, arch); err != nil {
+		return "", "", err
+	}
+	return os, arch, nil
+}
 
-var installTemplateRawDefault = ` \
-mkdir -p {{.installDir}}; \
-cat > {{.tempPath}}; \
-mv {{.tempPath}} {{.installPath}}; \
-chmod a+x {{.installPath}}; \
-`
+var installTemplateRawDefault = strings.TrimSpace(`
+mkdir -p {{.installDir}} || exit 1
+cat > {{.tempPath}} || exit 1
+mv {{.tempPath}} {{.installPath}} || exit 1
+chmod a+x {{.installPath}} || exit 1
+`)
+var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
 
-func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) error {
-	// warning: does not work on windows remote yet
-	bashInstalled, err := hasBashInstalled(client)
+func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, clientArch string) error {
+	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
 	if err != nil {
 		return err
 	}
-
-	var selectedTemplateRaw string
-	if bashInstalled {
-		selectedTemplateRaw = installTemplateRawBash
-	} else {
-		log.Printf("bash is not installed on remote. attempting with default shell")
-		selectedTemplateRaw = installTemplateRawDefault
-	}
-
-	// I need to use toSlash here to force unix keybindings
-	// this means we can't guarantee it will work on a remote windows machine
-	var installWords = map[string]string{
-		"installDir":  filepath.ToSlash(filepath.Dir(destPath)),
-		"tempPath":    destPath + ".temp",
-		"installPath": destPath,
-	}
-
-	installCmd := &bytes.Buffer{}
-	installTemplate := template.Must(template.New("").Parse(selectedTemplateRaw))
-	installTemplate.Execute(installCmd, installWords)
-
-	session, err := client.NewSession()
+	input, err := os.Open(wshLocalPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot open local file %s: %w", wshLocalPath, err)
 	}
-
-	installStdin, err := session.StdinPipe()
+	defer input.Close()
+	installWords := map[string]string{
+		"installDir":  filepath.ToSlash(filepath.Dir(wavebase.RemoteFullWshBinPath)),
+		"tempPath":    filepath.ToSlash(wavebase.RemoteFullWshBinPath + ".temp"),
+		"installPath": filepath.ToSlash(wavebase.RemoteFullWshBinPath),
+	}
+	var installCmd bytes.Buffer
+	if err := installTemplate.Execute(&installCmd, installWords); err != nil {
+		return fmt.Errorf("failed to prepare install command: %w", err)
+	}
+	genCmd, err := genconn.MakeSSHCmdClient(client, genconn.CommandSpec{
+		Cmd: installCmd.String(),
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create remote command: %w", err)
 	}
-
-	err = session.Start(installCmd.String())
+	stdin, err := genCmd.StdinPipe()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get stdin pipe: %w", err)
 	}
-
-	input, err := os.Open(sourcePath)
+	defer stdin.Close()
+	stderrBuf, err := genconn.MakeStderrSyncBuffer(genCmd)
 	if err != nil {
-		return fmt.Errorf("cannot open local file %s to send to host: %v", sourcePath, err)
+		return fmt.Errorf("failed to get stderr pipe: %w", err)
 	}
-
+	if err := genCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start remote command: %w", err)
+	}
+	copyDone := make(chan error, 1)
 	go func() {
-		defer func() {
-			panichandler.PanicHandler("connutil:CpHostToRemote", recover())
-		}()
-		io.Copy(installStdin, input)
-		session.Close() // this allows the command to complete for reasons i don't fully understand
+		defer close(copyDone)
+		defer stdin.Close()
+		if _, err := io.Copy(stdin, input); err != nil && err != io.EOF {
+			copyDone <- fmt.Errorf("failed to copy data: %w", err)
+		} else {
+			copyDone <- nil
+		}
 	}()
-
-	return session.Wait()
+	procErr := genconn.ProcessContextWait(ctx, genCmd)
+	if procErr != nil {
+		return fmt.Errorf("remote command failed: %w (stderr: %s)", procErr, stderrBuf.String())
+	}
+	copyErr := <-copyDone
+	if copyErr != nil {
+		return fmt.Errorf("failed to copy data: %w (stderr: %s)", copyErr, stderrBuf.String())
+	}
+	return nil
 }
 
 func InstallClientRcFiles(client *ssh.Client) error {
