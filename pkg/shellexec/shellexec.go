@@ -148,12 +148,10 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 }
 
 func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wsl.WslConn) (*ShellProc, error) {
-	shellProcCtx, cancelFn := context.WithCancel(ctx)
-	defer cancelFn()
 	client := conn.GetClient()
 	shellPath := cmdOpts.ShellPath
 	if shellPath == "" {
-		remoteShellPath, err := wsl.DetectShell(shellProcCtx, client)
+		remoteShellPath, err := wsl.DetectShell(ctx, client)
 		if err != nil {
 			return nil, err
 		}
@@ -162,13 +160,13 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	var shellOpts []string
 	log.Printf("detected shell: %s", shellPath)
 
-	err := wsl.InstallClientRcFiles(shellProcCtx, client)
+	err := wsl.InstallClientRcFiles(ctx, client)
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err
 	}
 
-	homeDir := wsl.GetHomeDir(shellProcCtx, client)
+	homeDir := wsl.GetHomeDir(ctx, client)
 	shellOpts = append(shellOpts, "~", "-d", client.Name())
 
 	var subShellOpts []string
