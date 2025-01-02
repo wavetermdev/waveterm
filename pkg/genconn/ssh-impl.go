@@ -11,6 +11,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var _ ShellClient = (*SSHShellClient)(nil)
+
 type SSHShellClient struct {
 	client *ssh.Client
 }

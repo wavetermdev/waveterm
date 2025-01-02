@@ -6,8 +6,6 @@
 package genconn
 
 import (
-	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -15,101 +13,57 @@ import (
 	"github.com/ubuntu/gowsl"
 )
 
-// WSLSimpleCmdClient implements SimpleShellCmd for Ubuntu/WSL connections
-type WSLSimpleCmdClient struct {
-	client *gowsl.Distro
+var _ ShellClient = (*WSLShellClient)(nil)
+
+type WSLShellClient struct {
+	distro *gowsl.Distro
 }
 
-// NewWSLSimpleCmdClient creates a new instance of WSLSimpleCmdClient
-func NewWSLSimpleCmdClient(client *gowsl.Distro) *WSLSimpleCmdClient {
-	return &WSLSimpleCmdClient{client: client}
+func MakeWSLShellClient(distro *gowsl.Distro) *WSLShellClient {
+	return &WSLShellClient{distro: distro}
 }
 
-// Run executes the given shell command with options in the WSL environment
-func (w *WSLSimpleCmdClient) Run(ctx context.Context, cmdSpec CommandSpec) (string, string, error) {
-	if ctx == nil {
-		return "", "", fmt.Errorf("nil Context")
-	}
-
-	// Build the shell command using the shared helper
-	finalCmd, err := BuildShellCommand(cmdSpec)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to build shell command: %w", err)
-	}
-
-	// Create the command with context
-	cmd := w.client.Command(ctx, finalCmd)
-	if cmd == nil {
-		return "", "", fmt.Errorf("failed to create WSL command")
-	}
-
-	// Create buffers for stdout and stderr
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	// Run the command
-	if err := cmd.Run(); err != nil {
-		return stdout.String(), stderr.String(), fmt.Errorf("command failed: %w", err)
-	}
-
-	return stdout.String(), stderr.String(), nil
+func (c *WSLShellClient) MakeProcessController(cmdSpec CommandSpec) (ShellProcessController, error) {
+	return MakeWSLProcessController(c.distro, cmdSpec)
 }
 
-// WSLCmdClient implements the ShellCmd interface for WSL
-type WSLCmdClient struct {
-	client      *gowsl.Distro
+type WSLProcessController struct {
+	distro      *gowsl.Distro
 	cmd         *gowsl.Cmd
 	lock        *sync.Mutex
 	once        *sync.Once
+	stdinPiped  bool
+	stdoutPiped bool
+	stderrPiped bool
 	waitErr     error
-	initialized bool
 	started     bool
-	commandSpec CommandSpec
+	cmdSpec     CommandSpec
 }
 
-// NewWSLCmdClient creates a new instance of WSLCmdClient
-func NewWSLCmdClient(client *gowsl.Distro) *WSLCmdClient {
-	return &WSLCmdClient{
-		client: client,
-		lock:   &sync.Mutex{},
-		once:   &sync.Once{},
-	}
-}
-
-// Init prepares the command but doesn't start it
-func (w *WSLCmdClient) Init(cmd CommandSpec) error {
-	w.lock.Lock()
-	defer w.lock.Unlock()
-
-	if w.initialized {
-		return fmt.Errorf("command already initialized")
-	}
-
-	finalCmd, err := BuildShellCommand(cmd)
+func MakeWSLProcessController(distro *gowsl.Distro, cmdSpec CommandSpec) (*WSLProcessController, error) {
+	fullCmd, err := BuildShellCommand(cmdSpec)
 	if err != nil {
-		return fmt.Errorf("failed to build shell command: %w", err)
+		return nil, fmt.Errorf("failed to build shell command: %w", err)
 	}
 
-	// Create command without context since we'll manage lifecycle manually
-	w.cmd = w.client.Command(nil, finalCmd)
-	if w.cmd == nil {
-		return fmt.Errorf("failed to create WSL command")
+	cmd := distro.Command(nil, fullCmd)
+	if cmd == nil {
+		return nil, fmt.Errorf("failed to create WSL command")
 	}
 
-	w.commandSpec = cmd
-	w.initialized = true
-	return nil
+	return &WSLProcessController{
+		distro:  distro,
+		cmd:     cmd,
+		lock:    &sync.Mutex{},
+		once:    &sync.Once{},
+		cmdSpec: cmdSpec,
+	}, nil
 }
 
-// Start begins execution of the command
-func (w *WSLCmdClient) Start() error {
+func (w *WSLProcessController) Start() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	if !w.initialized {
-		return fmt.Errorf("command not initialized")
-	}
 	if w.started {
 		return fmt.Errorf("command already started")
 	}
@@ -122,19 +76,14 @@ func (w *WSLCmdClient) Start() error {
 	return nil
 }
 
-// Wait waits for the command to complete
-func (w *WSLCmdClient) Wait() error {
-	if !w.initialized {
-		panic("command not initialized")
-	}
+func (w *WSLProcessController) Wait() error {
 	w.once.Do(func() {
 		w.waitErr = w.cmd.Wait()
 	})
 	return w.waitErr
 }
 
-// Kill terminates the command
-func (w *WSLCmdClient) Kill() {
+func (w *WSLProcessController) Kill() {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -143,58 +92,55 @@ func (w *WSLCmdClient) Kill() {
 	}
 }
 
-// ExitCode returns the exit code of the command
-func (w *WSLCmdClient) ExitCode() int {
+func (w *WSLProcessController) StdinPipe() (io.WriteCloser, error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	if w.cmd == nil || w.cmd.ProcessState == nil {
-		return -1
-	}
-	return w.cmd.ProcessState.ExitCode()
-}
-
-// StdinPipe returns a pipe that will be connected to the command's standard input
-func (w *WSLCmdClient) StdinPipe() (io.WriteCloser, error) {
-	w.lock.Lock()
-	defer w.lock.Unlock()
-
-	if !w.initialized {
-		return nil, fmt.Errorf("command not initialized")
-	}
 	if w.started {
 		return nil, fmt.Errorf("command already started")
 	}
+	if w.stdinPiped {
+		return nil, fmt.Errorf("stdin already piped")
+	}
 
+	w.stdinPiped = true
 	return w.cmd.StdinPipe()
 }
 
-// StdoutPipe returns a pipe that will be connected to the command's standard output
-func (w *WSLCmdClient) StdoutPipe() (io.ReadCloser, error) {
+func (w *WSLProcessController) StdoutPipe() (io.Reader, error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	if !w.initialized {
-		return nil, fmt.Errorf("command not initialized")
-	}
 	if w.started {
 		return nil, fmt.Errorf("command already started")
 	}
+	if w.stdoutPiped {
+		return nil, fmt.Errorf("stdout already piped")
+	}
 
-	return w.cmd.StdoutPipe()
+	w.stdoutPiped = true
+	stdout, err := w.cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	return stdout, nil
 }
 
-// StderrPipe returns a pipe that will be connected to the command's standard error
-func (w *WSLCmdClient) StderrPipe() (io.ReadCloser, error) {
+func (w *WSLProcessController) StderrPipe() (io.Reader, error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	if !w.initialized {
-		return nil, fmt.Errorf("command not initialized")
-	}
 	if w.started {
 		return nil, fmt.Errorf("command already started")
 	}
+	if w.stderrPiped {
+		return nil, fmt.Errorf("stderr already piped")
+	}
 
-	return w.cmd.StderrPipe()
+	w.stderrPiped = true
+	stderr, err := w.cmd.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+	return stderr, nil
 }
