@@ -333,17 +333,8 @@ function registerGlobalKeys() {
         }
         return false;
     }
-    function deactivateSearch(): boolean {
-        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
-            globalStore.set(bcm.viewModel.searchAtoms.isOpen, false);
-            return true;
-        }
-        return false;
-    }
     globalKeyMap.set("Cmd:f", activateSearch);
     globalKeyMap.set("Ctrl:f", activateSearch);
-    globalKeyMap.set("Escape", deactivateSearch);
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft");

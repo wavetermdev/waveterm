@@ -42,11 +42,22 @@ const SearchComponent = ({
         setIsOpen(open);
     }, []);
 
+    const handleEscape = useCallback((event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+            setIsOpen(false);
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, []);
+
     useEffect(() => {
         if (!isOpen) {
             setSearch("");
             setIndex(0);
             setNumResults(0);
+            document.removeEventListener("keydown", handleEscape);
+        } else {
+            document.addEventListener("keydown", handleEscape);
         }
     }, [isOpen]);
 
