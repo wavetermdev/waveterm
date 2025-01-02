@@ -187,13 +187,8 @@ func (conn *WslConn) OpenDomainSocketListener() error {
 }
 
 func (conn *WslConn) StartConnServer() error {
-	ctx, cancelFn := context.WithCancel(context.Background())
-	conn.WithLock(func() {
-		if conn.cancelFn != nil {
-			conn.cancelFn()
-		}
-		conn.cancelFn = cancelFn
-	})
+	utilCtx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
 	var allowed bool
 	conn.WithLock(func() {
 		if conn.Status != Status_Connecting {
@@ -206,7 +201,7 @@ func (conn *WslConn) StartConnServer() error {
 		return fmt.Errorf("cannot start conn server for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	client := conn.GetClient()
-	wshPath := GetWshPath(ctx, client)
+	wshPath := GetWshPath(utilCtx, client)
 	rpcCtx := wshrpc.RpcContext{
 		ClientType: wshrpc.ClientType_ConnServer,
 		Conn:       conn.GetName(),
@@ -216,7 +211,7 @@ func (conn *WslConn) StartConnServer() error {
 	if err != nil {
 		return fmt.Errorf("unable to create jwt token for conn controller: %w", err)
 	}
-	shellPath, err := DetectShell(ctx, client)
+	shellPath, err := DetectShell(utilCtx, client)
 	if err != nil {
 		return err
 	}
@@ -227,7 +222,14 @@ func (conn *WslConn) StartConnServer() error {
 		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver --router", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	}
 	log.Printf("starting conn controller: %s\n", cmdStr)
-	cmd := client.WslCommand(ctx, cmdStr)
+	connServerCtx, cancelFn := context.WithCancel(context.Background())
+	conn.WithLock(func() {
+		if conn.cancelFn != nil {
+			conn.cancelFn()
+		}
+		conn.cancelFn = cancelFn
+	})
+	cmd := client.WslCommand(connServerCtx, cmdStr)
 	pipeRead, pipeWrite := io.Pipe()
 	inputPipeRead, inputPipeWrite := io.Pipe()
 	cmd.SetStdout(pipeWrite)
