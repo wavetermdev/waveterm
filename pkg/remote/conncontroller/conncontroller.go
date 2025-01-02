@@ -20,11 +20,11 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -33,6 +33,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -315,9 +316,9 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		return fmt.Errorf("client is nil")
 	}
 	// check that correct wsh extensions are installed
-	expectedVersion := fmt.Sprintf("wsh v%s", wavebase.WaveVersion)
+	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
 	clientVersion, err := remote.GetWshVersion(client)
-	if err == nil && clientVersion == expectedVersion && !opts.Force {
+	if err == nil && !opts.Force && semver.Compare(clientVersion, expectedVersion) >= 0 {
 		return nil
 	}
 	var queryText string
@@ -369,19 +370,13 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		}
 	}
 	log.Printf("attempting to install wsh to `%s`", clientDisplayName)
-	clientOs, err := remote.GetClientOs(client)
+	clientOs, clientArch, err := remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(client))
 	if err != nil {
 		return err
 	}
-	clientArch, err := remote.GetClientArch(client)
+	err = remote.CpWshToRemote(ctx, client, clientOs, clientArch)
 	if err != nil {
-		return err
-	}
-	// attempt to install extension
-	wshLocalPath := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
-	err = remote.CpHostToRemote(client, wshLocalPath, wavebase.RemoteFullWshBinPath)
-	if err != nil {
-		return err
+		return fmt.Errorf("error installing wsh to remote: %w", err)
 	}
 	log.Printf("successfully installed wsh on %s\n", conn.GetName())
 	return nil

@@ -372,7 +372,6 @@ function registerGlobalKeys() {
         return false;
     }
     globalKeyMap.set("Cmd:f", activateSearch);
-    globalKeyMap.set("Ctrl:f", activateSearch);
     globalKeyMap.set("Escape", deactivateSearch);
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view

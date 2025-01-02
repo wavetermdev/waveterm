@@ -273,27 +273,34 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType) (string,
 }
 
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
+	shellProc, err := bc.setupAndStartShellProcess(rc, blockMeta)
+	if err != nil {
+		return err
+	}
+	return bc.manageRunningShellProcess(shellProc, rc, blockMeta)
+}
+
+func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta waveobj.MetaMapType) (*shellexec.ShellProc, error) {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	err := filestore.WFS.MakeFile(ctx, bc.BlockId, BlockFile_Term, nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
-	if err != nil && err != fs.ErrExist {
-		err = fs.ErrExist
-		return fmt.Errorf("error creating blockfile: %w", err)
+	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, BlockFile_Term, nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
+	if fsErr != nil && fsErr != fs.ErrExist {
+		return nil, fmt.Errorf("error creating blockfile: %w", fsErr)
 	}
-	if err == fs.ErrExist {
+	if fsErr == fs.ErrExist {
 		// reset the terminal state
 		bc.resetTerminalState()
 	}
-	err = nil
 	bcInitStatus := bc.GetRuntimeStatus()
 	if bcInitStatus.ShellProcStatus == Status_Running {
-		return nil
+		return nil, nil
 	}
 	// TODO better sync here (don't let two starts happen at the same times)
 	remoteName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
 	var cmdStr string
 	var cmdOpts shellexec.CommandOptsType
+	var err error
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Env = make(map[string]string)
 		cmdOpts.Interactive = true
@@ -302,7 +309,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		if cmdOpts.Cwd != "" {
 			cwdPath, err := wavebase.ExpandHomeDir(cmdOpts.Cwd)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			cmdOpts.Cwd = cwdPath
 		}
@@ -310,11 +317,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		var cmdOptsPtr *shellexec.CommandOptsType
 		cmdStr, cmdOptsPtr, err = createCmdStrAndOpts(bc.BlockId, blockMeta)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		cmdOpts = *cmdOptsPtr
 	} else {
-		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
+		return nil, fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
 	if strings.HasPrefix(remoteName, "wsl://") {
@@ -325,20 +332,20 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		wslConn := wsl.GetWslConn(credentialCtx, wslName, false)
 		connStatus := wslConn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {
-			return fmt.Errorf("not connected, cannot start shellproc")
+			return nil, fmt.Errorf("not connected, cannot start shellproc")
 		}
 
 		// create jwt
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}, wslConn.GetDomainSocketName())
 			if err != nil {
-				return fmt.Errorf("error making jwt token: %w", err)
+				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else if remoteName != "" {
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
@@ -346,24 +353,24 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 
 		opts, err := remote.ParseOpts(remoteName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		conn := conncontroller.GetConn(credentialCtx, opts, false, &wshrpc.ConnKeywords{})
 		connStatus := conn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {
-			return fmt.Errorf("not connected, cannot start shellproc")
+			return nil, fmt.Errorf("not connected, cannot start shellproc")
 		}
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.GetDomainSocketName())
 			if err != nil {
-				return fmt.Errorf("error making jwt token: %w", err)
+				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		if !conn.WshEnabled.Load() {
 			shellProc, err = shellexec.StartRemoteShellProcNoWsh(rc.TermSize, cmdStr, cmdOpts, conn)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		} else {
 			shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, conn)
@@ -376,19 +383,16 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 				log.Print("attempting install without wsh")
 				shellProc, err = shellexec.StartRemoteShellProcNoWsh(rc.TermSize, cmdStr, cmdOpts, conn)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
-		}
-		if err != nil {
-			return err
 		}
 	} else {
 		// local terminal
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
 			if err != nil {
-				return fmt.Errorf("error making jwt token: %w", err)
+				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
@@ -407,7 +411,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		}
 		shellProc, err = shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	bc.UpdateControllerAndSendUpdate(func() bool {
@@ -415,6 +419,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		bc.ShellProcStatus = Status_Running
 		return true
 	})
+	return shellProc, nil
+}
+
+func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellProc, rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
 
@@ -473,14 +481,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 				shellProc.Cmd.Write(ic.InputData)
 			}
 			if ic.TermSize != nil {
-				err = setTermSize(ctx, bc.BlockId, *ic.TermSize)
-				if err != nil {
-					log.Printf("error setting pty size: %v\n", err)
-				}
-				err = shellProc.Cmd.SetSize(ic.TermSize.Rows, ic.TermSize.Cols)
-				if err != nil {
-					log.Printf("error setting pty size: %v\n", err)
-				}
+				updateTermSize(shellProc, bc.BlockId, *ic.TermSize)
 			}
 		}
 	}()
@@ -520,6 +521,17 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj
 		go checkCloseOnExit(bc.BlockId, exitCode)
 	}()
 	return nil
+}
+
+func updateTermSize(shellProc *shellexec.ShellProc, blockId string, termSize waveobj.TermSize) {
+	err := setTermSizeInDB(blockId, termSize)
+	if err != nil {
+		log.Printf("error setting pty size: %v\n", err)
+	}
+	err = shellProc.Cmd.SetSize(termSize.Rows, termSize.Cols)
+	if err != nil {
+		log.Printf("error setting pty size: %v\n", err)
+	}
 }
 
 func checkCloseOnExit(blockId string, exitCode int) {
@@ -569,16 +581,22 @@ func getTermSize(bdata *waveobj.Block) waveobj.TermSize {
 	}
 }
 
-func setTermSize(ctx context.Context, blockId string, termSize waveobj.TermSize) error {
+func setTermSizeInDB(blockId string, termSize waveobj.TermSize) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	bdata, err := wstore.DBMustGet[*waveobj.Block](context.Background(), blockId)
+	bdata, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block data: %v", err)
 	}
 	if bdata.RuntimeOpts == nil {
-		return fmt.Errorf("error from nil RuntimeOpts: %v", err)
+		bdata.RuntimeOpts = &waveobj.RuntimeOpts{}
 	}
 	bdata.RuntimeOpts.TermSize = termSize
+	err = wstore.DBUpdate(ctx, bdata)
+	if err != nil {
+		return fmt.Errorf("error updating block data: %v", err)
+	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	wps.Broker.SendUpdateEvents(updates)
 	return nil
