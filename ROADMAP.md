@@ -29,7 +29,7 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
 - 🔷 Monaco Theming
 - 🤞 Blockcontroller fixes for terminal escape sequences
 - 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
-- 🔷 Various Connection Bugs + Improvements
+- 🔧 Various Connection Bugs + Improvements
 - 🔧 More Connection Config Options
 
 ## Future Releases
