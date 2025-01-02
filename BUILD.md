@@ -112,7 +112,7 @@ All the methods below will install Node and Go dependencies when they run the fi
 Run the following command to build the app and run it via Vite's development server (this enables Hot Module Reloading):
 
 ```sh
-task electron:dev
+task dev
 ```
 
 ### Standalone
@@ -120,7 +120,7 @@ task electron:dev
 Run the following command to build the app and run it standalone, without the development server. This will not reload on change:
 
 ```sh
-task electron:start
+task start
 ```
 
 ### Packaged

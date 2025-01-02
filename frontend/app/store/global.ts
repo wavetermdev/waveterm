@@ -164,6 +164,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
+        isTermMultiInput: atom(false),
     };
 }
 
@@ -496,6 +497,10 @@ function getBlockComponentModel(blockId: string): BlockComponentModel {
     return blockComponentModelMap.get(blockId);
 }
 
+function getAllBlockComponentModels(): BlockComponentModel[] {
+    return Array.from(blockComponentModelMap.values());
+}
+
 function getFocusedBlockId(): string {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedLayoutNode = globalStore.get(layoutModel.focusedNode);
@@ -665,6 +670,7 @@ export {
     createBlock,
     createTab,
     fetchWaveFile,
+    getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,

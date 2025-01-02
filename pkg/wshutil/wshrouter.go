@@ -92,7 +92,9 @@ func noRouteErr(routeId string) error {
 }
 
 func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
-	defer panichandler.PanicHandler("WshRouter.SendEvent")
+	defer func() {
+		panichandler.PanicHandler("WshRouter.SendEvent", recover())
+	}()
 	rpc := router.GetRpc(routeId)
 	if rpc == nil {
 		return
@@ -298,7 +300,9 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 	}
 	router.RouteMap[routeId] = rpc
 	go func() {
-		defer panichandler.PanicHandler("WshRouter:registerRoute:recvloop")
+		defer func() {
+			panichandler.PanicHandler("WshRouter:registerRoute:recvloop", recover())
+		}()
 		// announce
 		if shouldAnnounce && !alreadyExists && router.GetUpstreamClient() != nil {
 			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
@@ -344,7 +348,9 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 		}
 	}
 	go func() {
-		defer panichandler.PanicHandler("WshRouter:unregisterRoute:routegone")
+		defer func() {
+			panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
+		}()
 		wps.Broker.UnsubscribeAll(routeId)
 		wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
 	}()

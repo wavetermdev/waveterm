@@ -113,7 +113,9 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		p.setRouteInfo(routeInfo.AuthToken, routeInfo)
 		p.sendAuthResponse(msg, routeId, routeInfo.AuthToken)
 		go func() {
-			defer panichandler.PanicHandler("WshRpcMultiProxy:handleUnauthMessage")
+			defer func() {
+				panichandler.PanicHandler("WshRpcMultiProxy:handleUnauthMessage", recover())
+			}()
 			for msgBytes := range routeInfo.Proxy.ToRemoteCh {
 				p.ToRemoteCh <- msgBytes
 			}

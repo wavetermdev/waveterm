@@ -495,6 +495,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "web:zoom"?: number;
+        "web:hidenav"?: boolean;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
         "vdom:*"?: boolean;
@@ -637,6 +638,8 @@ declare global {
         "window:magnifiedblockblursecondarypx"?: number;
         "window:confirmclose"?: boolean;
         "window:savelastwindow"?: boolean;
+        "window:dimensions"?: string;
+        "window:zoom"?: number;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
