@@ -409,6 +409,12 @@ class TermViewModel implements ViewModel {
             return false;
         }
         // deal with terminal specific keybindings
+        if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+            this.termRef.current?.terminal.paste("\x1b");
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
             const p = navigator.clipboard.readText();
             p.then((text) => {
