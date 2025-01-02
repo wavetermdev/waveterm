@@ -184,7 +184,14 @@ async function handleCmdN() {
     await createBlock(termBlockDef);
 }
 
+let lastHandledEvent: KeyboardEvent | null = null;
+
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
+    const nativeEvent = (waveEvent as any).nativeEvent;
+    if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
+        return false;
+    }
+    lastHandledEvent = nativeEvent;
     const handled = handleGlobalWaveKeyboardEvents(waveEvent);
     if (handled) {
         return true;
@@ -366,6 +373,7 @@ function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
             return handler(waveEvent);
         }
     }
+    return false;
 }
 
 export {
