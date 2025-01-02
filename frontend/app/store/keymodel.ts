@@ -184,7 +184,14 @@ async function handleCmdN() {
     await createBlock(termBlockDef);
 }
 
+let lastHandledEvent: KeyboardEvent | null = null;
+
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
+    const nativeEvent = (waveEvent as any).nativeEvent;
+    if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent.timeStamp == nativeEvent.timeStamp) {
+        return false;
+    }
+    lastHandledEvent = nativeEvent;
     const handled = handleGlobalWaveKeyboardEvents(waveEvent);
     if (handled) {
         return true;
@@ -357,6 +364,7 @@ function getAllGlobalKeyBindings(): string[] {
 
 // these keyboard events happen *anywhere*, even if you have focus in an input or somewhere else.
 function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
+    console.log("handleGlobalWaveKeyboardEvents", waveEvent);
     for (const key of globalKeyMap.keys()) {
         if (keyutil.checkKeyPressed(waveEvent, key)) {
             const handler = globalKeyMap.get(key);
@@ -366,6 +374,7 @@ function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
             return handler(waveEvent);
         }
     }
+    return false;
 }
 
 export {
