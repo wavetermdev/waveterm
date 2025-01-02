@@ -188,7 +188,7 @@ let lastHandledEvent: KeyboardEvent | null = null;
 
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     const nativeEvent = (waveEvent as any).nativeEvent;
-    if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent.timeStamp == nativeEvent.timeStamp) {
+    if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
         return false;
     }
     lastHandledEvent = nativeEvent;
@@ -364,6 +364,7 @@ function getAllGlobalKeyBindings(): string[] {
 
 // these keyboard events happen *anywhere*, even if you have focus in an input or somewhere else.
 function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
+    console.log("handleGlobalWaveKeyboardEvents", waveEvent);
     for (const key of globalKeyMap.keys()) {
         if (keyutil.checkKeyPressed(waveEvent, key)) {
             const handler = globalKeyMap.get(key);
