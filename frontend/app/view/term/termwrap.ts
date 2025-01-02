@@ -7,7 +7,6 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { PLATFORM, WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
-import * as util from "@/util/util";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
@@ -42,6 +41,7 @@ let loggedWebGL = false;
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
+    sendDataHandler?: (data: string) => void;
 };
 
 export class TermWrap {
@@ -58,6 +58,8 @@ export class TermWrap {
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
     hasResized: boolean;
+    multiInputCallback: (data: string) => void;
+    sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
     private toDispose: TermTypes.IDisposable[] = [];
 
@@ -69,6 +71,7 @@ export class TermWrap {
     ) {
         this.loaded = false;
         this.blockId = blockId;
+        this.sendDataHandler = waveOptions.sendDataHandler;
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
         this.hasResized = false;
@@ -146,6 +149,7 @@ export class TermWrap {
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
+        this.toDispose.push(this.terminal.onKey(this.onKeyHandler.bind(this)));
         this.toDispose.push(
             this.terminal.onSelectionChange(
                 debounce(50, () => {
@@ -186,8 +190,13 @@ export class TermWrap {
         if (!this.loaded) {
             return;
         }
-        const b64data = util.stringToBase64(data);
-        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
+        this.sendDataHandler?.(data);
+    }
+
+    onKeyHandler(data: { key: string; domEvent: KeyboardEvent }) {
+        if (this.multiInputCallback) {
+            this.multiInputCallback(data.key);
+        }
     }
 
     addFocusListener(focusFn: () => void) {

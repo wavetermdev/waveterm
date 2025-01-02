@@ -292,7 +292,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
         );
     } else if (elem.elemtype == "textbutton") {
         return (
-            <Button className={elem.className} onClick={(e) => elem.onClick(e)}>
+            <Button className={elem.className} onClick={(e) => elem.onClick(e)} title={elem.title}>
                 {elem.text}
             </Button>
         );

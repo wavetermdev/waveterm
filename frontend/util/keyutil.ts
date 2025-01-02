@@ -78,9 +78,6 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
                 rtn.mods.Option = true;
             }
             rtn.mods.Meta = true;
-        } else if (key == "Esc") {
-            rtn.key = "Escape";
-            rtn.keyType = KeyTypeKey;
         } else {
             let { key: parsedKey, type: keyType } = parseKey(key);
             rtn.key = parsedKey;
@@ -213,6 +210,7 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     rtn.code = event.code;
     rtn.key = event.key;
     rtn.location = event.location;
+    (rtn as any).nativeEvent = event;
     if (event.type == "keydown" || event.type == "keyup" || event.type == "keypress") {
         rtn.type = event.type;
     } else {

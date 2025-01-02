@@ -5,6 +5,7 @@ import {
     atoms,
     createBlock,
     createTab,
+    getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
     globalStore,
@@ -184,7 +185,14 @@ async function handleCmdN() {
     await createBlock(termBlockDef);
 }
 
+let lastHandledEvent: KeyboardEvent | null = null;
+
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
+    const nativeEvent = (waveEvent as any).nativeEvent;
+    if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
+        return false;
+    }
+    lastHandledEvent = nativeEvent;
     const handled = handleGlobalWaveKeyboardEvents(waveEvent);
     if (handled) {
         return true;
@@ -223,6 +231,19 @@ function registerElectronReinjectKeyHandler() {
 
 function tryReinjectKey(event: WaveKeyboardEvent): boolean {
     return appHandleKeyDown(event);
+}
+
+function countTermBlocks(): number {
+    const allBCMs = getAllBlockComponentModels();
+    let count = 0;
+    let gsGetBound = globalStore.get.bind(globalStore);
+    for (const bcm of allBCMs) {
+        const viewModel = bcm.viewModel;
+        if (viewModel.viewType == "term" && viewModel.isBasicTerm?.(gsGetBound)) {
+            count++;
+        }
+    }
+    return count;
 }
 
 function registerGlobalKeys() {
@@ -307,6 +328,15 @@ function registerGlobalKeys() {
             return true;
         }
     });
+    globalKeyMap.set("Ctrl:Shift:i", () => {
+        const curMI = globalStore.get(atoms.isTermMultiInput);
+        if (!curMI && countTermBlocks() <= 1) {
+            // don't turn on multi-input unless there are 2 or more basic term blocks
+            return true;
+        }
+        globalStore.set(atoms.isTermMultiInput, !curMI);
+        return true;
+    });
     for (let idx = 1; idx <= 9; idx++) {
         globalKeyMap.set(`Cmd:${idx}`, () => {
             switchTabAbs(idx);
@@ -366,6 +396,7 @@ function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
             return handler(waveEvent);
         }
     }
+    return false;
 }
 
 export {
