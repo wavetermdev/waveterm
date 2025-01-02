@@ -11,8 +11,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
-var WshBinDir = ".waveterm/bin"
-
 func init() {
 	rootCmd.AddCommand(rcfilesCmd)
 }
@@ -23,8 +21,8 @@ var rcfilesCmd = &cobra.Command{
 	Short:  "Generate the rc files needed for various shells",
 	Run: func(cmd *cobra.Command, args []string) {
 		home := wavebase.GetHomeDir()
-		waveDir := filepath.Join(home, ".waveterm")
-		winBinDir := filepath.Join(waveDir, "bin")
+		waveDir := filepath.Join(home, wavebase.RemoteWaveHomeDirName)
+		winBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
 		err := shellutil.InitRcFiles(waveDir, winBinDir)
 		if err != nil {
 			WriteStderr(err.Error())

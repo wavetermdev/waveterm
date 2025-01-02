@@ -13,7 +13,7 @@ yarn
 ### Local Development
 
 ```sh
-yarn start
+task docsite
 ```
 
 This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
@@ -21,7 +21,7 @@ This command starts a local development server and opens up a browser window. Mo
 ### Build
 
 ```sh
-yarn build
+task docsite:build:<embedded,public>
 ```
 
 This command generates static content into the `build` directory and can be served using any static contents hosting service.

@@ -347,7 +347,7 @@ export class WaveAiModel implements ViewModel {
             // Add a typing indicator
             globalStore.set(this.addMessageAtom, typingMessage);
             const history = await this.fetchAiData();
-            const beMsg: OpenAiStreamRequest = {
+            const beMsg: WaveAIStreamRequest = {
                 clientid: clientId,
                 opts: opts,
                 prompt: [...history, newPrompt],

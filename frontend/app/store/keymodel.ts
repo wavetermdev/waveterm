@@ -185,7 +185,14 @@ async function handleCmdN() {
     await createBlock(termBlockDef);
 }
 
+let lastHandledEvent: KeyboardEvent | null = null;
+
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
+    const nativeEvent = (waveEvent as any).nativeEvent;
+    if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
+        return false;
+    }
+    lastHandledEvent = nativeEvent;
     const handled = handleGlobalWaveKeyboardEvents(waveEvent);
     if (handled) {
         return true;
@@ -344,6 +351,29 @@ function registerGlobalKeys() {
             return true;
         });
     }
+    function activateSearch(event: WaveKeyboardEvent): boolean {
+        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        // Ctrl+f is reserved in most shells
+        if (event.control && bcm.viewModel.viewType == "term") {
+            return false;
+        }
+        if (bcm.viewModel.searchAtoms) {
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            return true;
+        }
+        return false;
+    }
+    function deactivateSearch(): boolean {
+        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, false);
+            return true;
+        }
+        return false;
+    }
+    globalKeyMap.set("Cmd:f", activateSearch);
+    globalKeyMap.set("Ctrl:f", activateSearch);
+    globalKeyMap.set("Escape", deactivateSearch);
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft");
@@ -366,6 +396,7 @@ function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
             return handler(waveEvent);
         }
     }
+    return false;
 }
 
 export {

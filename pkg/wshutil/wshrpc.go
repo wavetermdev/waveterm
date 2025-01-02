@@ -304,13 +304,15 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 	w.registerResponseHandler(req.ReqId, respHandler)
 	isAsync := false
 	defer func() {
-		panicErr := panichandler.PanicHandler("handleRequest")
+		panicErr := panichandler.PanicHandler("handleRequest", recover())
 		if panicErr != nil {
 			respHandler.SendResponseError(panicErr)
 		}
 		if isAsync {
 			go func() {
-				defer panichandler.PanicHandler("handleRequest:finalize")
+				defer func() {
+					panichandler.PanicHandler("handleRequest:finalize", recover())
+				}()
 				<-ctx.Done()
 				respHandler.Finalize()
 			}()
@@ -343,7 +345,9 @@ func (w *WshRpc) runServer() {
 		}
 		if msg.IsRpcRequest() {
 			go func() {
-				defer panichandler.PanicHandler("handleRequest:goroutine")
+				defer func() {
+					panichandler.PanicHandler("handleRequest:goroutine", recover())
+				}()
 				w.handleRequest(&msg)
 			}()
 		} else {
@@ -388,7 +392,9 @@ func (w *WshRpc) registerRpc(ctx context.Context, reqId string) chan *RpcMessage
 		Ctx:   ctx,
 	}
 	go func() {
-		defer panichandler.PanicHandler("registerRpc:timeout")
+		defer func() {
+			panichandler.PanicHandler("registerRpc:timeout", recover())
+		}()
 		<-ctx.Done()
 		w.unregisterRpc(reqId, fmt.Errorf("EC-TIME: timeout waiting for response"))
 	}()
@@ -458,7 +464,9 @@ func (handler *RpcRequestHandler) Context() context.Context {
 }
 
 func (handler *RpcRequestHandler) SendCancel() {
-	defer panichandler.PanicHandler("SendCancel")
+	defer func() {
+		panichandler.PanicHandler("SendCancel", recover())
+	}()
 	msg := &RpcMessage{
 		Cancel:    true,
 		ReqId:     handler.reqId,
@@ -563,7 +571,9 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 }
 
 func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
-	defer panichandler.PanicHandler("SendResponse")
+	defer func() {
+		panichandler.PanicHandler("SendResponse", recover())
+	}()
 	if handler.reqId == "" {
 		return nil // no response expected
 	}
@@ -588,7 +598,9 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 }
 
 func (handler *RpcResponseHandler) SendResponseError(err error) {
-	defer panichandler.PanicHandler("SendResponseError")
+	defer func() {
+		panichandler.PanicHandler("SendResponseError", recover())
+	}()
 	if handler.reqId == "" || handler.done.Load() {
 		return
 	}
@@ -637,7 +649,9 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 	if timeoutMs <= 0 {
 		timeoutMs = DefaultTimeoutMs
 	}
-	defer panichandler.PanicHandler("SendComplexRequest")
+	defer func() {
+		panichandler.PanicHandler("SendComplexRequest", recover())
+	}()
 	if command == "" {
 		return nil, fmt.Errorf("command cannot be empty")
 	}

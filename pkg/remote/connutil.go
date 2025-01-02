@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -68,8 +70,7 @@ func GetWshVersion(client *ssh.Client) (string, error) {
 }
 
 func GetWshPath(client *ssh.Client) string {
-	defaultPath := "~/.waveterm/bin/wsh"
-
+	defaultPath := wavebase.RemoteFullWshBinPath
 	session, err := client.NewSession()
 	if err != nil {
 		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
@@ -145,7 +146,7 @@ func GetClientOs(client *ssh.Client) (string, error) {
 		return "", err
 	}
 
-	out, unixErr := session.Output("uname -s")
+	out, unixErr := session.CombinedOutput("uname -s")
 	if unixErr == nil {
 		formatted := strings.ToLower(string(out))
 		formatted = strings.TrimSpace(formatted)
@@ -184,14 +185,9 @@ func GetClientArch(client *ssh.Client) (string, error) {
 		return "", err
 	}
 
-	out, unixErr := session.Output("uname -m")
+	out, unixErr := session.CombinedOutput("uname -m")
 	if unixErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		if formatted == "x86_64" {
-			return "x64", nil
-		}
-		return formatted, nil
+		return utilfn.FilterValidArch(string(out))
 	}
 
 	session, err = client.NewSession()
@@ -199,10 +195,9 @@ func GetClientArch(client *ssh.Client) (string, error) {
 		return "", err
 	}
 
-	out, cmdErr := session.Output("echo %PROCESSOR_ARCHITECTURE%")
-	if cmdErr == nil {
-		formatted := strings.ToLower(string(out))
-		return strings.TrimSpace(formatted), nil
+	out, cmdErr := session.CombinedOutput("echo %PROCESSOR_ARCHITECTURE%")
+	if cmdErr == nil && strings.TrimSpace(string(out)) != "%PROCESSOR_ARCHITECTURE%" {
+		return utilfn.FilterValidArch(string(out))
 	}
 
 	session, err = client.NewSession()
@@ -210,10 +205,9 @@ func GetClientArch(client *ssh.Client) (string, error) {
 		return "", err
 	}
 
-	out, psErr := session.Output("echo $env:PROCESSOR_ARCHITECTURE")
-	if psErr == nil {
-		formatted := strings.ToLower(string(out))
-		return strings.TrimSpace(formatted), nil
+	out, psErr := session.CombinedOutput("echo $env:PROCESSOR_ARCHITECTURE")
+	if psErr == nil && strings.TrimSpace(string(out)) != "$env:PROCESSOR_ARCHITECTURE" {
+		return utilfn.FilterValidArch(string(out))
 	}
 	return "", fmt.Errorf("unable to determine architecture: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
 }
@@ -280,7 +274,9 @@ func CpHostToRemote(client *ssh.Client, sourcePath string, destPath string) erro
 	}
 
 	go func() {
-		defer panichandler.PanicHandler("connutil:CpHostToRemote")
+		defer func() {
+			panichandler.PanicHandler("connutil:CpHostToRemote", recover())
+		}()
 		io.Copy(installStdin, input)
 		session.Close() // this allows the command to complete for reasons i don't fully understand
 	}()
@@ -306,21 +302,10 @@ func GetHomeDir(client *ssh.Client) string {
 	if err != nil {
 		return "~"
 	}
-
 	out, err := session.Output(`echo "$HOME"`)
 	if err == nil {
 		return strings.TrimSpace(string(out))
 	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return "~"
-	}
-	out, err = session.Output(`echo %userprofile%`)
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-
 	return "~"
 }
 

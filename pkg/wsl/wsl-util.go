@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 func DetectShell(ctx context.Context, client *Distro) (string, error) {
@@ -48,7 +50,7 @@ func GetWshVersion(ctx context.Context, client *Distro) (string, error) {
 }
 
 func GetWshPath(ctx context.Context, client *Distro) string {
-	defaultPath := "~/.waveterm/bin/wsh"
+	defaultPath := wavebase.RemoteFullWshBinPath
 
 	cmd := client.WslCommand(ctx, "which wsh")
 	out, whichErr := cmd.Output()
@@ -59,13 +61,6 @@ func GetWshPath(ctx context.Context, client *Distro) string {
 	cmd = client.WslCommand(ctx, "where.exe wsh")
 	out, whereErr := cmd.Output()
 	if whereErr == nil {
-		return strings.TrimSpace(string(out))
-	}
-
-	// check cmd on windows since it requires an absolute path with backslashes
-	cmd = client.WslCommand(ctx, "(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none")
-	out, cmdErr := cmd.Output()
-	if cmdErr == nil && strings.TrimSpace(string(out)) != "none" {
 		return strings.TrimSpace(string(out))
 	}
 
@@ -96,7 +91,7 @@ func hasBashInstalled(ctx context.Context, client *Distro) (bool, error) {
 
 func GetClientOs(ctx context.Context, client *Distro) (string, error) {
 	cmd := client.WslCommand(ctx, "uname -s")
-	out, unixErr := cmd.Output()
+	out, unixErr := cmd.CombinedOutput()
 	if unixErr == nil {
 		formatted := strings.ToLower(string(out))
 		formatted = strings.TrimSpace(formatted)
@@ -125,26 +120,19 @@ func GetClientArch(ctx context.Context, client *Distro) (string, error) {
 	cmd := client.WslCommand(ctx, "uname -m")
 	out, unixErr := cmd.Output()
 	if unixErr == nil {
-		formatted := strings.ToLower(string(out))
-		formatted = strings.TrimSpace(formatted)
-		if formatted == "x86_64" {
-			return "x64", nil
-		}
-		return formatted, nil
+		return utilfn.FilterValidArch(string(out))
 	}
 
 	cmd = client.WslCommand(ctx, "echo %PROCESSOR_ARCHITECTURE%")
-	out, cmdErr := cmd.Output()
+	out, cmdErr := cmd.CombinedOutput()
 	if cmdErr == nil && strings.TrimSpace(string(out)) != "%PROCESSOR_ARCHITECTURE%" {
-		formatted := strings.ToLower(string(out))
-		return strings.TrimSpace(formatted), nil
+		return utilfn.FilterValidArch(string(out))
 	}
 
 	cmd = client.WslCommand(ctx, "echo $env:PROCESSOR_ARCHITECTURE")
-	out, psErr := cmd.Output()
+	out, psErr := cmd.CombinedOutput()
 	if psErr == nil && strings.TrimSpace(string(out)) != "$env:PROCESSOR_ARCHITECTURE" {
-		formatted := strings.ToLower(string(out))
-		return strings.TrimSpace(formatted), nil
+		return utilfn.FilterValidArch(string(out))
 	}
 	return "", fmt.Errorf("unable to determine architecture: {unix: %s, cmd: %s, powershell: %s}", unixErr, cmdErr, psErr)
 }
@@ -235,7 +223,9 @@ func CpHostToRemote(ctx context.Context, client *Distro, sourcePath string, dest
 		return fmt.Errorf("cannot open local file %s to send to host: %v", sourcePath, err)
 	}
 	go func() {
-		defer panichandler.PanicHandler("wslutil:cpHostToRemote:catStdin")
+		defer func() {
+			panichandler.PanicHandler("wslutil:cpHostToRemote:catStdin", recover())
+		}()
 		io.Copy(catStdin, input)
 		installStepCmds["cat"].Cancel()
 

@@ -53,6 +53,12 @@ The WSH helper runs on the following platforms:
 - Windows 10 or later (arm64, x64)
 - Linux Kernel 2.6.32 or later (x64), Linux Kernel 3.1 or later (arm64)
 
+## Roadmap
+
+Wave is constantly improving! Our roadmap will be continuously updated with our goals for each release. You can find it [here](./ROADMAP.md).
+
+Want to provide input to our future releases? Connect with us on [Discord](https://discord.gg/XfvZ334gwU) or open a [Feature Request](https://github.com/wavetermdev/waveterm/issues/new/choose)!
+
 ## Links
 
 - Homepage &mdash; https://www.waveterm.dev

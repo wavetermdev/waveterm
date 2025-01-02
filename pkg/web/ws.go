@@ -81,7 +81,7 @@ func getStringFromMap(jmsg map[string]any, key string) string {
 func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
 	var rtnErr error
 	defer func() {
-		panicErr := panichandler.PanicHandler("processWSCommand")
+		panicErr := panichandler.PanicHandler("processWSCommand", recover())
 		if panicErr != nil {
 			rtnErr = panicErr
 		}
@@ -302,7 +302,9 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
-		defer panichandler.PanicHandler("HandleWsInternal:outputCh")
+		defer func() {
+			panichandler.PanicHandler("HandleWsInternal:outputCh", recover())
+		}()
 		// no waitgroup add here
 		// move values from rpcOutputCh to outputCh
 		for msgBytes := range wproxy.ToRemoteCh {
@@ -314,13 +316,17 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 		}
 	}()
 	go func() {
-		defer panichandler.PanicHandler("HandleWsInternal:ReadLoop")
+		defer func() {
+			panichandler.PanicHandler("HandleWsInternal:ReadLoop", recover())
+		}()
 		// read loop
 		defer wg.Done()
 		ReadLoop(conn, outputCh, closeCh, wproxy.FromRemoteCh, routeId)
 	}()
 	go func() {
-		defer panichandler.PanicHandler("HandleWsInternal:WriteLoop")
+		defer func() {
+			panichandler.PanicHandler("HandleWsInternal:WriteLoop", recover())
+		}()
 		// write loop
 		defer wg.Done()
 		WriteLoop(conn, outputCh, closeCh, routeId)
