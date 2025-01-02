@@ -78,9 +78,6 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
                 rtn.mods.Option = true;
             }
             rtn.mods.Meta = true;
-        } else if (key == "Esc") {
-            rtn.key = "Escape";
-            rtn.keyType = KeyTypeKey;
         } else {
             let { key: parsedKey, type: keyType } = parseKey(key);
             rtn.key = parsedKey;

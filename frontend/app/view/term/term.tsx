@@ -4,7 +4,7 @@
 import { Block, SubBlock } from "@/app/block/block";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Search, useSearch } from "@/app/element/search";
-import { getAllGlobalKeyBindings } from "@/app/store/keymodel";
+import { appHandleKeyDown } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -434,11 +434,11 @@ class TermViewModel implements ViewModel {
             this.forceRestartController();
             return false;
         }
-        const globalKeys = getAllGlobalKeyBindings();
-        for (const key of globalKeys) {
-            if (keyutil.checkKeyPressed(waveEvent, key)) {
-                return false;
-            }
+        const appHandled = appHandleKeyDown(waveEvent);
+        if (appHandled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
         }
         return true;
     }
