@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/mod/semver"
 )
 
 var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-zA-Z0-9][a-zA-Z0-9.-]*)(?::([0-9]+))?$`)
@@ -54,6 +55,7 @@ func DetectShell(client *ssh.Client) (string, error) {
 	return fmt.Sprintf(`"%s"`, strings.TrimSpace(string(out))), nil
 }
 
+// returns a valid semver version string
 func GetWshVersion(client *ssh.Client) (string, error) {
 	wshPath := GetWshPath(client)
 
@@ -66,8 +68,17 @@ func GetWshVersion(client *ssh.Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	return strings.TrimSpace(string(out)), nil
+	// output is expected to be in the form of "wsh v0.10.4"
+	// should strip off the "wsh" prefix, and return a semver object
+	fields := strings.Fields(strings.TrimSpace(string(out)))
+	if len(fields) != 2 {
+		return "", fmt.Errorf("unexpected output from wsh version: %s", out)
+	}
+	wshVersion := strings.TrimSpace(fields[1])
+	if !semver.IsValid(wshVersion) {
+		return "", fmt.Errorf("invalid semver version: %s", wshVersion)
+	}
+	return wshVersion, nil
 }
 
 func GetWshPath(client *ssh.Client) string {

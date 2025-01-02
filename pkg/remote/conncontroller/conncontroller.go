@@ -33,6 +33,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -315,9 +316,9 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		return fmt.Errorf("client is nil")
 	}
 	// check that correct wsh extensions are installed
-	expectedVersion := fmt.Sprintf("wsh v%s", wavebase.WaveVersion)
+	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
 	clientVersion, err := remote.GetWshVersion(client)
-	if err == nil && clientVersion == expectedVersion && !opts.Force {
+	if err == nil && !opts.Force && semver.Compare(clientVersion, expectedVersion) >= 0 {
 		return nil
 	}
 	var queryText string
