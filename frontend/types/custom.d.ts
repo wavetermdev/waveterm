@@ -27,6 +27,7 @@ declare global {
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
         notificationPopoverMode: jotia.atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
+        isTermMultiInput: jotai.PrimitiveAtom<boolean>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -143,6 +144,7 @@ declare global {
 
     type HeaderElem =
         | IconButtonDecl
+        | ToggleIconButtonDecl
         | HeaderText
         | HeaderInput
         | HeaderDiv
@@ -150,23 +152,32 @@ declare global {
         | ConnectionButton
         | MenuButton;
 
-    type IconButtonDecl = {
-        elemtype: "iconbutton";
+    type IconButtonCommon = {
         icon: string | React.ReactNode;
         iconColor?: string;
         iconSpin?: boolean;
         className?: string;
         title?: string;
-        click?: (e: React.MouseEvent<any>) => void;
-        longClick?: (e: React.MouseEvent<any>) => void;
         disabled?: boolean;
         noAction?: boolean;
+    };
+
+    type IconButtonDecl = IconButtonCommon & {
+        elemtype: "iconbutton";
+        click?: (e: React.MouseEvent<any>) => void;
+        longClick?: (e: React.MouseEvent<any>) => void;
+    };
+
+    type ToggleIconButtonDecl = IconButtonCommon & {
+        elemtype: "toggleiconbutton";
+        active: jotai.WritableAtom<boolean, [boolean], void>;
     };
 
     type HeaderTextButton = {
         elemtype: "textbutton";
         text: string;
         className?: string;
+        title?: string;
         onClick?: (e: React.MouseEvent<any>) => void;
     };
 
@@ -229,10 +240,13 @@ declare global {
     } & MenuButtonProps;
 
     type SearchAtoms = {
-        searchAtom: PrimitiveAtom<string>;
-        indexAtom: PrimitiveAtom<number>;
-        numResultsAtom: PrimitiveAtom<number>;
-        isOpenAtom: PrimitiveAtom<boolean>;
+        searchValue: PrimitiveAtom<string>;
+        resultsIndex: PrimitiveAtom<number>;
+        resultsCount: PrimitiveAtom<number>;
+        isOpen: PrimitiveAtom<boolean>;
+        regex?: PrimitiveAtom<boolean>;
+        caseSensitive?: PrimitiveAtom<boolean>;
+        wholeWord?: PrimitiveAtom<boolean>;
     };
 
     interface ViewModel {
@@ -247,6 +261,9 @@ declare global {
         noPadding?: jotai.Atom<boolean>;
         filterOutNowsh?: jotai.Atom<boolean>;
         searchAtoms?: SearchAtoms;
+
+        // just for terminal
+        isBasicTerm?: (getFn: jotai.Getter) => boolean;
 
         onBack?: () => void;
         onForward?: () => void;
