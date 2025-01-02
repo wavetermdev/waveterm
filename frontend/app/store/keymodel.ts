@@ -5,6 +5,7 @@ import {
     atoms,
     createBlock,
     createTab,
+    getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
     globalStore,
@@ -232,6 +233,19 @@ function tryReinjectKey(event: WaveKeyboardEvent): boolean {
     return appHandleKeyDown(event);
 }
 
+function countTermBlocks(): number {
+    const allBCMs = getAllBlockComponentModels();
+    let count = 0;
+    let gsGetBound = globalStore.get.bind(globalStore);
+    for (const bcm of allBCMs) {
+        const viewModel = bcm.viewModel;
+        if (viewModel.viewType == "term" && viewModel.isBasicTerm?.(gsGetBound)) {
+            count++;
+        }
+    }
+    return count;
+}
+
 function registerGlobalKeys() {
     globalKeyMap.set("Cmd:]", () => {
         switchTab(1);
@@ -313,6 +327,15 @@ function registerGlobalKeys() {
             bcm.openSwitchConnection();
             return true;
         }
+    });
+    globalKeyMap.set("Ctrl:Shift:i", () => {
+        const curMI = globalStore.get(atoms.isTermMultiInput);
+        if (!curMI && countTermBlocks() <= 1) {
+            // don't turn on multi-input unless there are 2 or more basic term blocks
+            return true;
+        }
+        globalStore.set(atoms.isTermMultiInput, !curMI);
+        return true;
     });
     for (let idx = 1; idx <= 9; idx++) {
         globalKeyMap.set(`Cmd:${idx}`, () => {

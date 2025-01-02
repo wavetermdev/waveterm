@@ -24,7 +24,7 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
 - ✅ Search in Web Views
 - ✅ Search in the Terminal
 - 🔷 Custom init files for widgets and terminal blocks
-- 🔧 Multi-Input between terminal blocks on the same tab
+- ✅ Multi-Input between terminal blocks on the same tab
 - ✅ Gemini AI support
 - 🔷 Monaco Theming
 - 🤞 Blockcontroller fixes for terminal escape sequences

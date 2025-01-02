@@ -13,6 +13,7 @@ import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import {
     atoms,
+    getAllBlockComponentModels,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
@@ -25,7 +26,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { boundNumber, fireAndForget, useAtomValueSafe } from "@/util/util";
+import { boundNumber, fireAndForget, stringToBase64, useAtomValueSafe } from "@/util/util";
 import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
@@ -132,7 +133,7 @@ class TermViewModel implements ViewModel {
                 ];
             }
             const vdomBlockId = get(this.vdomBlockId);
-            const rtn = [];
+            const rtn: HeaderElem[] = [];
             if (vdomBlockId) {
                 rtn.push({
                     elemtype: "iconbutton",
@@ -188,6 +189,18 @@ class TermViewModel implements ViewModel {
                         }
                     }
                 }
+            }
+            const isMI = get(atoms.isTermMultiInput);
+            if (isMI && this.isBasicTerm(get)) {
+                rtn.push({
+                    elemtype: "textbutton",
+                    text: "Multi Input ON",
+                    className: "yellow",
+                    title: "Input will be sent to all connected terminals (click to disable)",
+                    onClick: () => {
+                        globalStore.set(atoms.isTermMultiInput, false);
+                    },
+                });
             }
             return rtn;
         });
@@ -303,6 +316,36 @@ class TermViewModel implements ViewModel {
             const fullStatus = get(this.shellProcFullStatus);
             return fullStatus?.shellprocstatus ?? "init";
         });
+    }
+
+    isBasicTerm(getFn: jotai.Getter): boolean {
+        // needs to match "const isBasicTerm" in TerminalView()
+        const termMode = getFn(this.termMode);
+        if (termMode == "vdom") {
+            return false;
+        }
+        const blockData = getFn(this.blockAtom);
+        if (blockData?.meta?.controller == "cmd") {
+            return false;
+        }
+        return true;
+    }
+
+    multiInputHandler(data: string) {
+        let tvms = getAllBasicTermModels();
+        // filter out "this" from the list
+        tvms = tvms.filter((tvm) => tvm != this);
+        if (tvms.length == 0) {
+            return;
+        }
+        for (const tvm of tvms) {
+            tvm.sendDataToController(data);
+        }
+    }
+
+    sendDataToController(data: string) {
+        const b64data = stringToBase64(data);
+        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
     setTermMode(mode: "term" | "vdom") {
@@ -643,6 +686,21 @@ class TermViewModel implements ViewModel {
     }
 }
 
+function getAllBasicTermModels(): TermViewModel[] {
+    const allBCMs = getAllBlockComponentModels();
+    const rtn: TermViewModel[] = [];
+    for (const bcm of allBCMs) {
+        if (bcm.viewModel?.viewType != "term") {
+            continue;
+        }
+        const termVM = bcm.viewModel as TermViewModel;
+        if (termVM.isBasicTerm(globalStore.get)) {
+            rtn.push(termVM);
+        }
+    }
+    return rtn;
+}
+
 function makeTerminalModel(blockId: string, nodeModel: BlockNodeModel): TermViewModel {
     return new TermViewModel(blockId, nodeModel);
 }
@@ -791,6 +849,9 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const connFontFamily = fullConfig.connections?.[blockData?.meta?.connection]?.["term:fontfamily"];
+    const isFocused = jotai.useAtomValue(model.nodeModel.isFocused);
+    const isMI = jotai.useAtomValue(atoms.isTermMultiInput);
+    const isBasicTerm = termMode != "vdom" && blockData?.meta?.controller != "cmd"; // needs to match isBasicTerm
 
     // search
     const searchProps = useSearch({
@@ -898,6 +959,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
                 useWebGl: !termSettings?.["term:disablewebgl"],
+                sendDataHandler: model.sendDataToController.bind(model),
             }
         );
         (window as any).term = termWrap;
@@ -929,6 +991,18 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         }
         termModeRef.current = termMode;
     }, [termMode]);
+
+    React.useEffect(() => {
+        if (isMI && isBasicTerm && isFocused && model.termRef.current != null) {
+            model.termRef.current.multiInputCallback = (data: string) => {
+                model.multiInputHandler(data);
+            };
+        } else {
+            if (model.termRef.current != null) {
+                model.termRef.current.multiInputCallback = null;
+            }
+        }
+    }, [isMI, isBasicTerm, isFocused]);
 
     const scrollbarHideObserverRef = React.useRef<HTMLDivElement>(null);
     const onScrollbarShowObserver = React.useCallback(() => {
