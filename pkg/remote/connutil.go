@@ -233,86 +233,14 @@ func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, cli
 			copyDone <- nil
 		}
 	}()
-	select {
-	case <-ctx.Done():
-		genCmd.Kill()
-		return ctx.Err()
-	case err := <-copyDone:
-		if err != nil {
-			return fmt.Errorf("failed to copy data: %w", err)
-		}
+	procErr := genconn.ProcessContextWait(ctx, genCmd)
+	if procErr != nil {
+		return fmt.Errorf("remote command failed: %w (stderr: %s)", procErr, stderrBuf.String())
 	}
-	if err := genCmd.Wait(); err != nil {
-		return fmt.Errorf("remote command failed: %w (stderr: %s)", err, stderrBuf.String())
+	copyErr := <-copyDone
+	if copyErr != nil {
+		return fmt.Errorf("failed to copy data: %w (stderr: %s)", copyErr, stderrBuf.String())
 	}
-	return nil
-}
-
-func CpHostToRemote(ctx context.Context, client *ssh.Client, sourcePath string, destPath string) error {
-	installWords := map[string]string{
-		"installDir":  filepath.ToSlash(filepath.Dir(destPath)),
-		"tempPath":    filepath.ToSlash(destPath + ".temp"),
-		"installPath": filepath.ToSlash(destPath),
-	}
-
-	var installCmd bytes.Buffer
-	if err := installTemplate.Execute(&installCmd, installWords); err != nil {
-		return fmt.Errorf("failed to prepare install command: %w", err)
-	}
-
-	session, err := client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-	defer session.Close()
-
-	// Add stderr capture
-	var stderr bytes.Buffer
-	session.Stderr = &stderr
-
-	stdin, err := session.StdinPipe()
-	if err != nil {
-		return fmt.Errorf("failed to get stdin pipe: %w", err)
-	}
-
-	if err := session.Start(installCmd.String()); err != nil {
-		return fmt.Errorf("failed to start remote command: %w", err)
-	}
-
-	input, err := os.Open(sourcePath)
-	if err != nil {
-		return fmt.Errorf("cannot open local file %s: %w", sourcePath, err)
-	}
-	defer input.Close()
-
-	copyDone := make(chan error, 1)
-
-	go func() {
-		defer close(copyDone)
-		defer stdin.Close()
-
-		_, err := io.Copy(stdin, input)
-		if err != nil && err != io.EOF {
-			copyDone <- err
-			return
-		}
-		copyDone <- nil
-	}()
-
-	select {
-	case <-ctx.Done():
-		session.Close()
-		return ctx.Err()
-	case err := <-copyDone:
-		if err != nil {
-			return fmt.Errorf("failed to copy data: %w", err)
-		}
-	}
-
-	if err := session.Wait(); err != nil {
-		return fmt.Errorf("remote command failed: %w (stderr: %s)", err, stderr.String())
-	}
-
 	return nil
 }
 

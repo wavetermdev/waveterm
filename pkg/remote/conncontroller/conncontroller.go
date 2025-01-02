@@ -25,7 +25,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -374,14 +373,9 @@ func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 	if err != nil {
 		return err
 	}
-	// attempt to install extension
-	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	err = remote.CpWshToRemote(ctx, client, clientOs, clientArch)
 	if err != nil {
-		return err
-	}
-	err = remote.CpHostToRemote(ctx, client, wshLocalPath, wavebase.RemoteFullWshBinPath)
-	if err != nil {
-		return err
+		return fmt.Errorf("error installing wsh to remote: %w", err)
 	}
 	log.Printf("successfully installed wsh on %s\n", conn.GetName())
 	return nil

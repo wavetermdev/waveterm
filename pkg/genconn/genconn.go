@@ -70,24 +70,25 @@ func RunSimpleCommand(ctx context.Context, client ShellClient, spec CommandSpec)
 		io.Copy(stderrBuf, stderr)
 	}()
 
+	runErr := ProcessContextWait(ctx, proc)
+	wg.Wait()
+
+	return stdoutBuf.String(), stderrBuf.String(), runErr
+}
+
+func ProcessContextWait(ctx context.Context, proc ShellProcessController) error {
 	done := make(chan error, 1)
 	go func() {
 		done <- proc.Wait()
 	}()
 
-	var runErr error
 	select {
 	case <-ctx.Done():
 		proc.Kill()
-		runErr = ctx.Err()
+		return ctx.Err()
 	case err := <-done:
-		if err != nil {
-			runErr = fmt.Errorf("process failed: %w", err)
-		}
+		return err
 	}
-
-	wg.Wait()
-	return stdoutBuf.String(), stderrBuf.String(), runErr
 }
 
 func MakeStdoutSyncBuffer(proc ShellProcessController) (*syncbuf.SyncBuffer, error) {
