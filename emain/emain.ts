@@ -279,7 +279,7 @@ electron.ipcMain.on("webview-focus", (event: Electron.IpcMainEvent, focusedId: n
         hasBeforeInputRegisteredMap.set(focusedId, true);
         webviewWc.on("before-input-event", (e, input) => {
             let waveEvent = keyutil.adaptFromElectronKeyEvent(input);
-            console.log(`WEB ${focusedId}`, waveEvent.type, waveEvent.code);
+            // console.log(`WEB ${focusedId}`, waveEvent.type, waveEvent.code);
             handleCtrlShiftState(parentWc, waveEvent);
             if (webviewFocusId != focusedId) {
                 return;
@@ -289,7 +289,7 @@ electron.ipcMain.on("webview-focus", (event: Electron.IpcMainEvent, focusedId: n
             }
             for (let keyDesc of webviewKeys) {
                 if (keyutil.checkKeyPressed(waveEvent, keyDesc)) {
-                    // e.preventDefault();
+                    e.preventDefault();
                     parentWc.send("reinject-key", waveEvent);
                     console.log("webview reinject-key", keyDesc);
                     return;
