@@ -23,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -713,6 +714,84 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	})
 	conn.FireConnChangeEvent()
 	return nil
+}
+
+/**
+ * ForwardSessionCommands gets stdout and stderr channels for a remote session
+ */
+func (ws *WshServer) ForwardSessionCommand(ctx context.Context, inputData wshrpc.SessionForwardInputData) (output chan wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]) {
+	output = make(chan wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData])
+	termSize := waveobj.TermSize{
+		Rows: 25,
+		Cols: 80,
+	}
+	cmdOpts := shellexec.CommandOptsType{Interactive: true, Login: true}
+	shellProc, err := shellexec.StartShellProc(termSize, "", cmdOpts)
+	if err != nil {
+		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Error: err}
+		return
+	}
+	stdinPipe, err := shellProc.Cmd.StdinPipe()
+	if err != nil {
+		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Error: err}
+		return
+	}
+	stdoutPipe, err := shellProc.Cmd.StdoutPipe()
+	if err != nil {
+		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Error: err}
+		return
+	}
+	stderrPipe, err := shellProc.Cmd.StderrPipe()
+	if err != nil {
+		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Error: err}
+		return
+	}
+
+	processStdout := func(line []byte) {
+		data := wshrpc.SessionForwardOutputData{Stdout: line}
+		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Response: data}
+	}
+
+	processStderr := func(line []byte) {
+		data := wshrpc.SessionForwardOutputData{Stderr: line}
+		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Response: data}
+	}
+
+	// existing impl????
+	go wshutil.AdaptOutputChToStream(inputData.Stdin, stdinPipe)
+	go wshutil.StreamToLines(stdoutPipe, processStdout)
+	go wshutil.StreamToLines(stderrPipe, processStderr)
+
+	// my naive approach
+	/*
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case data, ok := <-inputData.Stdin:
+					if !ok {
+						return
+					}
+					_, err := stdinPipe.Write(data)
+					if err != nil {
+						return
+					}
+				}
+			}
+		}()
+
+		go func() {
+			for {
+				select {
+				case data := <-inputData.Stdin:
+					stdinPipe.Write([]byte(data))
+				}
+			}
+		}()
+	*/
+
+	return output
 }
 
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {

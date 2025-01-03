@@ -84,6 +84,7 @@ const (
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
 	Command_DismissWshFail   = "dismisswshfail"
+	Command_ForwardSession   = "forwardsession"
 
 	Command_WorkspaceList = "workspacelist"
 
@@ -162,6 +163,7 @@ type WshRpcInterface interface {
 	WslListCommand(ctx context.Context) ([]string, error)
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
+	ForwardSessionCommand(ctx context.Context, input chan string) chan RespOrErrorUnion[string]
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -605,6 +607,16 @@ type CommandVarResponseData struct {
 	Key    string `json:"key"`
 	Val    string `json:"val"`
 	Exists bool   `json:"exists"`
+}
+
+type SessionForwardInputData struct {
+	ConnName string      `json:"connname"`
+	Stdin    chan []byte `json:"stdin"`
+}
+
+type SessionForwardOutputData struct {
+	Stdout []byte `json:"stdout"`
+	Stderr []byte `json:"stderr"`
 }
 
 type PathCommandData struct {
