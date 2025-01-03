@@ -360,23 +360,23 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 
 		opts, err := remote.ParseOpts(remoteName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		conn := conncontroller.GetConn(credentialCtx, opts, false, &wshrpc.ConnKeywords{})
 		connStatus := conn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {
-			return fmt.Errorf("not connected, cannot start shellproc")
+			return nil, fmt.Errorf("not connected, cannot start shellproc")
 		}
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
 			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.GetDomainSocketName())
 			if err != nil {
-				return fmt.Errorf("error making jwt token: %w", err)
+				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		shellProc, err = shellexec.StartSingleSessionRemoteShellProc(rc.TermSize, conn)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// todo
 		// i have disabled the conn server for this type of connection
