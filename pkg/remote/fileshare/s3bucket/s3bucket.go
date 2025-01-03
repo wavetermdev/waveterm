@@ -22,7 +22,15 @@ func (s S3Bucket) GetFile(path string) ([]byte, error) {
 	return nil, nil
 }
 
+func (s S3Bucket) StatFile(path string) (any, error) {
+	return nil, nil
+}
+
 func (s S3Bucket) PutFile(path string, data []byte) error {
+	return nil
+}
+
+func (s S3Bucket) MoveFile(srcPath, destPath string) error {
 	return nil
 }
 
