@@ -283,7 +283,11 @@ export class LayoutModel {
         this.magnifiedNodeSizeAtom = getSettingsKeyAtom("window:magnifiedblocksize");
 
         this.focusedNode = atom((get) => {
+            const ephemeralNode = get(this.ephemeralNode);
             const treeState = get(this.treeStateAtom);
+            if (ephemeralNode) {
+                return ephemeralNode;
+            }
             if (treeState.focusedNodeId == null) {
                 return null;
             }
