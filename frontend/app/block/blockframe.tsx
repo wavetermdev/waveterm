@@ -39,12 +39,13 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
+import { JSX } from "react";
 import { BlockFrameProps } from "./blocktypes";
 
 const NumActiveConnColors = 8;
 
 function handleHeaderContextMenu(
-    e: React.MouseEvent<HTMLDivElement>,
+    e: React.PointerEvent<HTMLDivElement>,
     blockData: Block,
     viewModel: ViewModel,
     magnified: boolean,
@@ -116,7 +117,7 @@ const OptMagnifyButton = React.memo(
 function computeEndIcons(
     viewModel: ViewModel,
     nodeModel: NodeModel,
-    onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void
+    onContextMenu: (e: React.PointerEvent<HTMLDivElement>) => void
 ): JSX.Element[] {
     const endIconsElem: JSX.Element[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
@@ -206,7 +207,7 @@ const BlockFrame_Header = ({
     }
 
     const onContextMenu = React.useCallback(
-        (e: React.MouseEvent<HTMLDivElement>) => {
+        (e: React.PointerEvent<HTMLDivElement>) => {
             handleHeaderContextMenu(e, blockData, viewModel, magnified, nodeModel.toggleMagnify, nodeModel.onClose);
         },
         [magnified]
@@ -515,7 +516,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
     const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
-    const connBtnRef = React.useRef<HTMLDivElement>();
+    const connBtnRef = React.useRef<HTMLDivElement>(null);
     React.useEffect(() => {
         if (!manageConnection) {
             return;

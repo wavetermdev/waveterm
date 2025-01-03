@@ -16,7 +16,7 @@ import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { debounce, throttle } from "throttle-debounce";
 import "./waveai.scss";
 
@@ -508,108 +508,107 @@ interface ChatWindowProps {
     chatWindowRef: React.RefObject<HTMLDivElement>;
     msgWidths: Object;
     model: WaveAiModel;
+    ref: React.RefObject<OverlayScrollbarsComponentRef>;
 }
 
-const ChatWindow = memo(
-    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, msgWidths, model }, ref) => {
-        const isUserScrolling = useRef(false);
-        const osRef = useRef<OverlayScrollbarsComponentRef>(null);
-        const splitMessages = useAtomValue(model.messagesSplitAtom) as Atom<ChatMessageType>[];
-        const latestMessage = useAtomValue(model.latestMessageAtom);
-        const prevMessagesLenRef = useRef(splitMessages.length);
+const ChatWindow = memo(({ chatWindowRef, msgWidths, model, ref }: ChatWindowProps) => {
+    const isUserScrolling = useRef(false);
+    const osRef = useRef<OverlayScrollbarsComponentRef>(null);
+    const splitMessages = useAtomValue(model.messagesSplitAtom) as Atom<ChatMessageType>[];
+    const latestMessage = useAtomValue(model.latestMessageAtom);
+    const prevMessagesLenRef = useRef(splitMessages.length);
 
-        useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
+    useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
 
-        const handleNewMessage = useCallback(
-            throttle(100, (messagesLen: number) => {
-                if (osRef.current?.osInstance()) {
-                    console.log("handleNewMessage", messagesLen, isUserScrolling.current);
-                    const { viewport } = osRef.current.osInstance().elements();
-                    if (prevMessagesLenRef.current !== messagesLen || !isUserScrolling.current) {
-                        viewport.scrollTo({
-                            behavior: "auto",
-                            top: chatWindowRef.current?.scrollHeight || 0,
-                        });
-                    }
-
-                    prevMessagesLenRef.current = messagesLen;
-                }
-            }),
-            []
-        );
-
-        useEffect(() => {
-            handleNewMessage(splitMessages.length);
-        }, [splitMessages, latestMessage]);
-
-        // Wait 300 ms after the user stops scrolling to determine if the user is within 300px of the bottom of the chat window.
-        // If so, unset the user scrolling flag.
-        const determineUnsetScroll = useCallback(
-            debounce(300, () => {
-                const { viewport } = osRef.current.osInstance().elements();
-                if (viewport.scrollTop > chatWindowRef.current?.clientHeight - viewport.clientHeight - 100) {
-                    isUserScrolling.current = false;
-                }
-            }),
-            []
-        );
-
-        const handleUserScroll = useCallback(
-            throttle(100, () => {
-                isUserScrolling.current = true;
-                determineUnsetScroll();
-            }),
-            []
-        );
-
-        useEffect(() => {
+    const handleNewMessage = useCallback(
+        throttle(100, (messagesLen: number) => {
             if (osRef.current?.osInstance()) {
+                console.log("handleNewMessage", messagesLen, isUserScrolling.current);
                 const { viewport } = osRef.current.osInstance().elements();
+                if (prevMessagesLenRef.current !== messagesLen || !isUserScrolling.current) {
+                    viewport.scrollTo({
+                        behavior: "auto",
+                        top: chatWindowRef.current?.scrollHeight || 0,
+                    });
+                }
 
-                viewport.addEventListener("wheel", handleUserScroll, { passive: true });
-                viewport.addEventListener("touchmove", handleUserScroll, { passive: true });
-
-                return () => {
-                    viewport.removeEventListener("wheel", handleUserScroll);
-                    viewport.removeEventListener("touchmove", handleUserScroll);
-                    if (osRef.current && osRef.current.osInstance()) {
-                        osRef.current.osInstance().destroy();
-                    }
-                };
+                prevMessagesLenRef.current = messagesLen;
             }
-        }, []);
+        }),
+        []
+    );
 
-        const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
-            const { viewport } = instance.elements();
-            viewport.removeAttribute("tabindex");
-            viewport.scrollTo({
-                behavior: "auto",
-                top: chatWindowRef.current?.scrollHeight || 0,
-            });
-        };
+    useEffect(() => {
+        handleNewMessage(splitMessages.length);
+    }, [splitMessages, latestMessage]);
 
-        const handleScrollbarUpdated = (instance: OverlayScrollbars) => {
-            const { viewport } = instance.elements();
-            viewport.removeAttribute("tabindex");
-        };
+    // Wait 300 ms after the user stops scrolling to determine if the user is within 300px of the bottom of the chat window.
+    // If so, unset the user scrolling flag.
+    const determineUnsetScroll = useCallback(
+        debounce(300, () => {
+            const { viewport } = osRef.current.osInstance().elements();
+            if (viewport.scrollTop > chatWindowRef.current?.clientHeight - viewport.clientHeight - 100) {
+                isUserScrolling.current = false;
+            }
+        }),
+        []
+    );
 
-        return (
-            <OverlayScrollbarsComponent
-                ref={osRef}
-                className="chat-window-container"
-                options={{ scrollbars: { autoHide: "leave" } }}
-                events={{ initialized: handleScrollbarInitialized, updated: handleScrollbarUpdated }}
-            >
-                <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
-                    <div className="filler"></div>
-                    {splitMessages.map((chitem, idx) => (
-                        <ChatItem key={idx} chatItemAtom={chitem} model={model} />
-                    ))}
-                </div>
-            </OverlayScrollbarsComponent>
-        );
-    })
-);
+    const handleUserScroll = useCallback(
+        throttle(100, () => {
+            isUserScrolling.current = true;
+            determineUnsetScroll();
+        }),
+        []
+    );
+
+    useEffect(() => {
+        if (osRef.current?.osInstance()) {
+            const { viewport } = osRef.current.osInstance().elements();
+
+            viewport.addEventListener("wheel", handleUserScroll, { passive: true });
+            viewport.addEventListener("touchmove", handleUserScroll, { passive: true });
+
+            return () => {
+                viewport.removeEventListener("wheel", handleUserScroll);
+                viewport.removeEventListener("touchmove", handleUserScroll);
+                if (osRef.current && osRef.current.osInstance()) {
+                    osRef.current.osInstance().destroy();
+                }
+            };
+        }
+    }, []);
+
+    const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
+        const { viewport } = instance.elements();
+        viewport.removeAttribute("tabindex");
+        viewport.scrollTo({
+            behavior: "auto",
+            top: chatWindowRef.current?.scrollHeight || 0,
+        });
+    };
+
+    const handleScrollbarUpdated = (instance: OverlayScrollbars) => {
+        const { viewport } = instance.elements();
+        viewport.removeAttribute("tabindex");
+    };
+
+    return (
+        <OverlayScrollbarsComponent
+            ref={osRef}
+            className="chat-window-container"
+            options={{ scrollbars: { autoHide: "leave" } }}
+            events={{ initialized: handleScrollbarInitialized, updated: handleScrollbarUpdated }}
+        >
+            <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
+                <div className="filler"></div>
+                {splitMessages.map((chitem, idx) => (
+                    <ChatItem key={idx} chatItemAtom={chitem} model={model} />
+                ))}
+            </div>
+        </OverlayScrollbarsComponent>
+    );
+});
 
 interface ChatInputProps {
     value: string;
@@ -618,63 +617,62 @@ interface ChatInputProps {
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
     model: WaveAiModel;
+    ref: React.RefObject<HTMLTextAreaElement>;
 }
 
-const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
-    ({ value, onChange, onKeyDown, onMouseDown, baseFontSize, model }, ref) => {
-        const textAreaRef = useRef<HTMLTextAreaElement>(null);
+const ChatInput = ({ value, onChange, onKeyDown, onMouseDown, baseFontSize, model, ref }: ChatInputProps) => {
+    const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
-        useImperativeHandle(ref, () => textAreaRef.current as HTMLTextAreaElement);
+    useImperativeHandle(ref, () => textAreaRef.current as HTMLTextAreaElement);
 
-        useEffect(() => {
-            model.textAreaRef = textAreaRef;
-        }, []);
+    useEffect(() => {
+        model.textAreaRef = textAreaRef;
+    }, []);
 
-        const adjustTextAreaHeight = useCallback(
-            (value: string) => {
-                if (textAreaRef.current == null) {
-                    return;
-                }
+    const adjustTextAreaHeight = useCallback(
+        (value: string) => {
+            if (textAreaRef.current == null) {
+                return;
+            }
 
-                // Adjust the height of the textarea to fit the text
-                const textAreaMaxLines = 5;
-                const textAreaLineHeight = baseFontSize * 1.5;
-                const textAreaMinHeight = textAreaLineHeight;
-                const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
+            // Adjust the height of the textarea to fit the text
+            const textAreaMaxLines = 5;
+            const textAreaLineHeight = baseFontSize * 1.5;
+            const textAreaMinHeight = textAreaLineHeight;
+            const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
 
-                if (value === "") {
-                    textAreaRef.current.style.height = `${textAreaLineHeight}px`;
-                    return;
-                }
-
+            if (value === "") {
                 textAreaRef.current.style.height = `${textAreaLineHeight}px`;
-                const scrollHeight = textAreaRef.current.scrollHeight;
-                const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
-                textAreaRef.current.style.height = newHeight + "px";
-            },
-            [baseFontSize]
-        );
+                return;
+            }
 
-        useEffect(() => {
-            adjustTextAreaHeight(value);
-        }, [value]);
+            textAreaRef.current.style.height = `${textAreaLineHeight}px`;
+            const scrollHeight = textAreaRef.current.scrollHeight;
+            const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
+            textAreaRef.current.style.height = newHeight + "px";
+        },
+        [baseFontSize]
+    );
 
-        return (
-            <textarea
-                ref={textAreaRef}
-                autoComplete="off"
-                autoCorrect="off"
-                className="waveai-input"
-                onMouseDown={onMouseDown} // When the user clicks on the textarea
-                onChange={onChange}
-                onKeyDown={onKeyDown}
-                style={{ fontSize: baseFontSize }}
-                placeholder="Ask anything..."
-                value={value}
-            ></textarea>
-        );
-    }
-);
+    useEffect(() => {
+        adjustTextAreaHeight(value);
+    }, [value]);
+
+    return (
+        <textarea
+            ref={textAreaRef}
+            autoComplete="off"
+            autoCorrect="off"
+            className="waveai-input"
+            onMouseDown={onMouseDown} // When the user clicks on the textarea
+            onChange={onChange}
+            onKeyDown={onKeyDown}
+            style={{ fontSize: baseFontSize }}
+            placeholder="Ask anything..."
+            value={value}
+        ></textarea>
+    );
+};
 
 const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const { sendMessage } = model.useWaveAi();

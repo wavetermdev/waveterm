@@ -1,10 +1,14 @@
 import { Button } from "@/element/button";
 import { atoms, getApi } from "@/store/global";
 import { useAtomValue } from "jotai";
-import { forwardRef, memo, useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import "./updatebanner.scss";
 
-const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
+type UpdateStatusBannerProps = {
+    ref: React.RefObject<HTMLButtonElement>;
+};
+
+const UpdateStatusBannerComponent = ({ ref }: UpdateStatusBannerProps) => {
     const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
     let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
@@ -65,6 +69,6 @@ const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
             </Button>
         );
     }
-});
+};
 
 export const UpdateStatusBanner = memo(UpdateStatusBannerComponent) as typeof UpdateStatusBannerComponent;

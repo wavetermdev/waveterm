@@ -5,7 +5,7 @@ import { Input, InputGroup, InputRightElement } from "@/app/element/input";
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import React, { forwardRef, useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 
 import "./typeaheadmodal.scss";
@@ -14,62 +14,60 @@ interface SuggestionsProps {
     suggestions?: SuggestionsType[];
     onSelect?: (_: string) => void;
     selectIndex: number;
+    ref: React.RefObject<HTMLDivElement>;
 }
 
-const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(
-    ({ suggestions, onSelect, selectIndex }: SuggestionsProps, ref) => {
-        const renderIcon = (icon: string | React.ReactNode, color: string) => {
-            if (typeof icon === "string") {
-                return <i className={makeIconClass(icon, false)} style={{ color: color }}></i>;
-            }
-            return icon;
-        };
+const Suggestions = ({ suggestions, onSelect, selectIndex, ref }: SuggestionsProps) => {
+    const renderIcon = (icon: string | React.ReactNode, color: string) => {
+        if (typeof icon === "string") {
+            return <i className={makeIconClass(icon, false)} style={{ color: color }}></i>;
+        }
+        return icon;
+    };
 
-        const renderItem = (item: SuggestionBaseItem | SuggestionConnectionItem, index: number) => (
-            <div
-                key={index}
-                onClick={() => {
-                    if ("onSelect" in item && item.onSelect) {
-                        item.onSelect(item.value);
-                    } else {
-                        onSelect(item.value);
-                    }
-                }}
-                className={clsx("suggestion-item", { selected: selectIndex === index })}
-            >
-                <div className="typeahead-item-name">
-                    {item.icon &&
-                        renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
-                    {item.label}
-                </div>
-                {"current" in item && item.current && (
-                    <i className={clsx(makeIconClass("check", false), "typeahead-current-checkbox")} />
-                )}
+    const renderItem = (item: SuggestionBaseItem | SuggestionConnectionItem, index: number) => (
+        <div
+            key={index}
+            onClick={() => {
+                if ("onSelect" in item && item.onSelect) {
+                    item.onSelect(item.value);
+                } else {
+                    onSelect(item.value);
+                }
+            }}
+            className={clsx("suggestion-item", { selected: selectIndex === index })}
+        >
+            <div className="typeahead-item-name">
+                {item.icon && renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
+                {item.label}
             </div>
-        );
+            {"current" in item && item.current && (
+                <i className={clsx(makeIconClass("check", false), "typeahead-current-checkbox")} />
+            )}
+        </div>
+    );
 
-        let fullIndex = -1;
-        return (
-            <div ref={ref} className="suggestions">
-                {suggestions.map((item, index) => {
-                    if ("headerText" in item) {
-                        return (
-                            <div key={index}>
-                                {item.headerText && <div className="suggestion-header">{item.headerText}</div>}
-                                {item.items.map((subItem, subIndex) => {
-                                    fullIndex += 1;
-                                    return renderItem(subItem, fullIndex);
-                                })}
-                            </div>
-                        );
-                    }
-                    fullIndex += 1;
-                    return renderItem(item as SuggestionBaseItem, fullIndex);
-                })}
-            </div>
-        );
-    }
-);
+    let fullIndex = -1;
+    return (
+        <div ref={ref} className="suggestions">
+            {suggestions.map((item, index) => {
+                if ("headerText" in item) {
+                    return (
+                        <div key={index}>
+                            {item.headerText && <div className="suggestion-header">{item.headerText}</div>}
+                            {item.items.map((subItem, subIndex) => {
+                                fullIndex += 1;
+                                return renderItem(subItem, fullIndex);
+                            })}
+                        </div>
+                    );
+                }
+                fullIndex += 1;
+                return renderItem(item as SuggestionBaseItem, fullIndex);
+            })}
+        </div>
+    );
+};
 
 interface TypeAheadModalProps {
     anchorRef: React.RefObject<HTMLElement>;

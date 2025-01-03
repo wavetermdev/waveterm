@@ -16,6 +16,7 @@ import {
     validateAndWrapCss,
     validateAndWrapReactStyle,
 } from "@/app/view/vdom/vdom-utils";
+import { JSX } from "react";
 import "./vdom.scss";
 
 const TextTag = "#text";
