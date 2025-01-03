@@ -462,6 +462,7 @@ type ConnKeywords struct {
 	ConnWshEnabled          *bool `json:"conn:wshenabled,omitempty"`
 	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
 	ConnOverrideConfig      bool  `json:"conn:overrideconfig,omitempty"`
+	ConnSingleSession       bool  `json:"conn:singlesession,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`

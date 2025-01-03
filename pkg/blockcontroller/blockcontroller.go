@@ -323,6 +323,13 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 	} else {
 		return nil, fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
+
+	var singleSession bool
+	fullConfig := wconfig.ReadFullConfig()
+	existingConnection, ok := fullConfig.Connections[remoteName]
+	if ok {
+		singleSession = existingConnection.ConnSingleSession
+	}
 	var shellProc *shellexec.ShellProc
 	if strings.HasPrefix(remoteName, "wsl://") {
 		wslName := strings.TrimPrefix(remoteName, "wsl://")
@@ -347,6 +354,36 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 		if err != nil {
 			return nil, err
 		}
+	} else if remoteName != "" && singleSession {
+		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFunc()
+
+		opts, err := remote.ParseOpts(remoteName)
+		if err != nil {
+			return err
+		}
+		conn := conncontroller.GetConn(credentialCtx, opts, false, &wshrpc.ConnKeywords{})
+		connStatus := conn.DeriveConnStatus()
+		if connStatus.Status != conncontroller.Status_Connected {
+			return fmt.Errorf("not connected, cannot start shellproc")
+		}
+		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
+			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.GetDomainSocketName())
+			if err != nil {
+				return fmt.Errorf("error making jwt token: %w", err)
+			}
+			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+		}
+		shellProc, err = shellexec.StartSingleSessionRemoteShellProc(rc.TermSize, conn)
+		if err != nil {
+			return err
+		}
+		// todo
+		// i have disabled the conn server for this type of connection
+		// this means we need to receive a signal from the process once it has
+		// opened a domain socket. then, once that is done, we can forward the
+		// unix domain socket here. also, we need to set the wsh boolean true as
+		// is done in the current connserver implementation
 	} else if remoteName != "" {
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
