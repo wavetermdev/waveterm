@@ -189,7 +189,7 @@ func (conn *SSHConn) OpenDomainSocketListener() error {
 		return fmt.Errorf("error generating random string: %w", err)
 	}
 	sockName := fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
-	log.Printf("remote domain socket %s %q\n", conn.GetName(), conn.GetDomainSocketName())
+	log.Printf("remote domain socket %s %q\n", conn.GetName(), sockName)
 	listener, err := client.ListenUnix(sockName)
 	if err != nil {
 		return fmt.Errorf("unable to request connection domain socket: %v", err)
@@ -241,18 +241,10 @@ func (conn *SSHConn) StartConnServer() error {
 	pipeRead, pipeWrite := io.Pipe()
 	sshSession.Stdout = pipeWrite
 	sshSession.Stderr = pipeWrite
-	shellPath, err := remote.DetectShell(client)
-	if err != nil {
-		return err
-	}
-	var cmdStr string
-	if remote.IsPowershell(shellPath) {
-		cmdStr = fmt.Sprintf("$env:%s=\"%s\"; %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
-	} else {
-		cmdStr = fmt.Sprintf("%s=\"%s\" %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
-	}
+	cmdStr := fmt.Sprintf("%s=\"%s\" %s connserver", wshutil.WaveJwtTokenVarName, jwtToken, wshPath)
 	log.Printf("starting conn controller: %s\n", cmdStr)
-	err = sshSession.Start(cmdStr)
+	shWrappedCmdStr := fmt.Sprintf("sh -c %s", genconn.HardQuote(cmdStr))
+	err = sshSession.Start(shWrappedCmdStr)
 	if err != nil {
 		return fmt.Errorf("unable to start conn controller: %w", err)
 	}
@@ -523,6 +515,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 		}
 	}
 	if enableWsh {
+
 		installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !askBeforeInstall})
 		if errors.Is(installErr, &WshInstallSkipError{}) {
 			// skips are not true errors
