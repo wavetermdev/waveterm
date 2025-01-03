@@ -4,34 +4,47 @@ This roadmap outlines major upcoming features and improvements for Wave Terminal
 
 Want input on the roadmap? Join the discussion on [Discord](https://discord.gg/XfvZ334gwU).
 
-## v0.11
-
-Targeting a release during the week of Jan 13th 2024, betas possible at the end of the prior week.
-
 Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
+
+## v0.11.0
+
+Targeting first betas during the week of Jan 6th, 2025. Release at the end of the week or early the following week.
 
 - 🔷 File/Directory Preview improvements
   - 🔷 Remote S3 bucket browsing (directory + files)
   - 🔷 Drag & drop between preview blocks
   - 🔷 Drag into a preview directory from the native file browser or desktop to copy a file
   - ✅ EC-TIME timeout when transferring large files
-  - 🤞 log viewer
-  - 🤞 binary viewer
 - 🔷 Wave Apps (Go SDK)
 - 🔷 Fixes for reducing 2FA requests on connect
-- 🔷 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
 - ✅ WebLinks in the terminal working again
 - ✅ Search in Web Views
 - ✅ Search in the Terminal
 - 🔷 Custom init files for widgets and terminal blocks
 - ✅ Multi-Input between terminal blocks on the same tab
 - ✅ Gemini AI support
-- 🔷 Monaco Theming
-- 🤞 Blockcontroller fixes for terminal escape sequences
-- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
 - 🔧 Various Connection Bugs + Improvements
 - 🔧 More Connection Config Options
 
-## Future Releases
+## v0.11.1
 
-Check back soon for longer-term roadmap items.
+Likely to follow v0.11 by 1 week.
+
+- 🔷 Reduce main-line 2FA requests to 1 per connection
+- 🔷 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
+- 🔷 Monaco Theming
+- 🤞 log viewer
+- 🤞 binary viewer
+- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
+
+## v0.12
+
+- 🔷 Import/Export Tab Layouts and Widgets
+
+## Planned (Unscheduled)
+
+- 🔷 Customizable Keybindings
+  - 🔷 Launch widgets with custom keybindings
+  - 🔷 Re-assign system keybindings
+- 🔷 Command Palette
+- 🔷 AI Context
