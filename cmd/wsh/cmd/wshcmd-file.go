@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -33,6 +34,8 @@ const (
 
 	DefaultFileTimeout = 5000
 )
+
+var fileUrlRe = regexp.MustCompile(`(?'fs'.+(?=:\/\/))?(?>:\/\/)?(?'path'\N+)`)
 
 var fileCmd = &cobra.Command{
 	Use:   "file",
@@ -145,9 +148,9 @@ var fileWriteCmd = &cobra.Command{
 }
 
 var fileAppendCmd = &cobra.Command{
-	Use:     "append wavefile://zone/file",
-	Short:   "append stdin to a wave file",
-	Long:    "append stdin to a wave file, buffering input and respecting 10MB total file size limit",
+	Use:     "append <filepath>",
+	Short:   "append stdin to a file",
+	Long:    "append stdin to a file in the specified file system, buffering input and respecting 10MB total file size limit",
 	Example: "  tail -f log.txt | wsh file append wavefile://block/app.log",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileAppendRun),
@@ -155,10 +158,9 @@ var fileAppendCmd = &cobra.Command{
 }
 
 var fileCpCmd = &cobra.Command{
-	Use:   "cp source destination",
-	Short: "copy between wave files and local files",
-	Long: `Copy files between wave storage and local filesystem.
-Exactly one of source or destination must be a wavefile:// URL.`,
+	Use:     "cp source destination",
+	Short:   "copy between file systems",
+	Long:    `Copy files between the internal Wave Storage, local, and remote file systems.`,
 	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt",
 	Args:    cobra.ExactArgs(2),
 	RunE:    activityWrap("file", fileCpRun),
