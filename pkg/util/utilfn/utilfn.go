@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package utilfn
@@ -938,7 +938,7 @@ func FormatLsTime(t time.Time) string {
 		// Recent files: "Nov 18 18:40"
 		return t.Format("Jan _2 15:04")
 	} else {
-		// Older files: "Apr 12  2024"
+		// Older files: "Apr 12  2025"
 		return t.Format("Jan _2  2006")
 	}
 }
