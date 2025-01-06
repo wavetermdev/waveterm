@@ -43,6 +43,7 @@ const WCloudWebShareUpdateTimeout = 15 * time.Second
 const MaxUpdatePayloadSize = 1 * (1024 * 1024)
 
 const TelemetryUrl = "/telemetry"
+const TEventsUrl = "/tevents"
 const NoTelemetryUrl = "/no-telemetry"
 const WebShareUpdateUrl = "/auth/web-share-update"
 
@@ -146,6 +147,68 @@ func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error)
 		}
 	}
 	return resp, nil
+}
+
+type TDataInputType struct {
+	ClientId string              `json:"clientId"`
+	TEvents  []*telemetry.TEvent `json:"tevents"`
+}
+
+const TEventsBatchSize = 1000
+
+// returns (done, error)
+func sendTEventsBatch(clientId string) (bool, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), WCloudDefaultTimeout)
+	defer cancelFn()
+	events, err := telemetry.GetNonUploadedTEvents(ctx, TEventsBatchSize)
+	if err != nil {
+		return true, fmt.Errorf("cannot get events: %v", err)
+	}
+	if len(events) == 0 {
+		return true, nil
+	}
+	log.Printf("[wcloud] sending %d tevents\n", len(events))
+	input := TDataInputType{
+		ClientId: clientId,
+		TEvents:  events,
+	}
+	req, err := makeAnonPostReq(ctx, TEventsUrl, input)
+	if err != nil {
+		return true, err
+	}
+	_, err = doRequest(req, nil)
+	if err != nil {
+		return true, err
+	}
+	err = telemetry.MarkTEventsAsUploaded(ctx, events)
+	if err != nil {
+		return true, fmt.Errorf("error marking activity as uploaded: %v", err)
+	}
+	return len(events) < TEventsBatchSize, nil
+}
+
+func SendTEvents(clientId string) error {
+	if !telemetry.IsTelemetryEnabled() {
+		log.Printf("telemetry disabled, not sending\n")
+		return nil
+	}
+	numIters := 0
+	for {
+		numIters++
+		done, err := sendTEventsBatch(clientId)
+		if err != nil {
+			log.Printf("error sending telemetry events: %v\n", err)
+			break
+		}
+		if done {
+			break
+		}
+		if numIters > 10 {
+			log.Printf("hit 10 iterations, stopping\n")
+			break
+		}
+	}
+	return nil
 }
 
 func SendTelemetry(ctx context.Context, clientId string) error {

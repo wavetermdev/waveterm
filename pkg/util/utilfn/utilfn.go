@@ -984,3 +984,26 @@ func FilterValidArch(arch string) (string, error) {
 	}
 	return "", fmt.Errorf("unknown architecture: %s", formatted)
 }
+
+func ConvertUUIDv4Tov7(uuidv4 string) (string, error) {
+	// Parse the UUIDv4
+	parts := strings.Split(uuidv4, "-")
+	if len(parts) != 5 {
+		return "", fmt.Errorf("invalid UUIDv4 format")
+	}
+
+	// Section 1 and 2: Fixed timestamp for Jan 1, 2024
+	section1 := "01823a80" // High 32 bits of the timestamp
+	section2 := "0000"     // Middle 16 bits of the timestamp
+
+	// Section 3: Version (7) and the last 3 bytes of randomness from UUIDv4
+	section3 := "7" + parts[2][1:] // Replace the first nibble with '7' for version
+
+	// Section 4 and 5: Copy from the original UUIDv4
+	section4 := parts[3]
+	section5 := parts[4]
+
+	// Combine sections to form UUIDv7
+	uuidv7 := fmt.Sprintf("%s-%s-%s-%s-%s", section1, section2, section3, section4, section5)
+	return uuidv7, nil
+}

@@ -6,6 +6,8 @@ package telemetry
 import (
 	"context"
 	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -19,6 +21,40 @@ import (
 )
 
 const MaxTzNameLen = 50
+
+type TEvent struct {
+	Ts    int64          `json:"ts" db:"ts"`
+	Event string         `json:"event" db:"event"`
+	Props map[string]any `json:"-" db:"-"` // Don't scan directly to map
+
+	// DB fields
+	Id       int64 `json:"-" db:"id"`
+	Uploaded bool  `json:"-" db:"uploaded"`
+
+	// For database scanning
+	RawProps string `json:"-" db:"props"`
+}
+
+func NewTEvent(event string, props map[string]any) *TEvent {
+	if event == "" {
+		panic("TEvent.Event cannot be empty")
+	}
+	if props == nil {
+		props = make(map[string]any)
+	}
+	return &TEvent{
+		Ts:    time.Now().UnixMilli(),
+		Event: event,
+		Props: props,
+	}
+}
+
+func (t *TEvent) convertRawJSON() error {
+	if t.RawProps != "" {
+		return json.Unmarshal([]byte(t.RawProps), &t.Props)
+	}
+	return nil
+}
 
 type ActivityType struct {
 	Day           string        `json:"day"`
@@ -92,6 +128,41 @@ func GoUpdateActivityWrap(update wshrpc.ActivityUpdate, debugStr string) {
 			log.Printf("error updating current activity (%s): %v\n", debugStr, err)
 		}
 	}()
+}
+
+func InsertTEvent(ctx context.Context, event *TEvent) error {
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		query := `INSERT INTO db_tevent (ts, event, props)
+				  VALUES (?, ?, ?)`
+		tx.Exec(query, event.Ts, event.Event, dbutil.QuickJson(event.Props))
+		return nil
+	})
+}
+
+func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*TEvent, error) {
+	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) ([]*TEvent, error) {
+		var rtn []*TEvent
+		query := `SELECT id, ts, event, props, uploaded FROM db_tevent WHERE uploaded = 0 ORDER BY ts LIMIT ?`
+		tx.Select(&rtn, query, maxEvents)
+		for _, event := range rtn {
+			if err := event.convertRawJSON(); err != nil {
+				return nil, fmt.Errorf("scan json for event %d: %w", event.Id, err)
+			}
+		}
+		return rtn, nil
+	})
+}
+
+func MarkTEventsAsUploaded(ctx context.Context, events []*TEvent) error {
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		ids := make([]int64, 0, len(events))
+		for _, event := range events {
+			ids = append(ids, event.Id)
+		}
+		query := `UPDATE db_tevent SET uploaded = 1 WHERE id IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, dbutil.QuickJson(ids))
+		return nil
+	})
 }
 
 func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
