@@ -236,13 +236,6 @@ func determineLang() string {
 		}
 
 		return preferredLang
-	} else if runtime.GOOS == "win32" {
-		out, err := exec.CommandContext(ctx, "Get-Culture", "|", "select", "-exp", "Name").CombinedOutput()
-		if err != nil {
-			log.Printf("error executing 'Get-Culture | select -exp Name': %v\n", err)
-			return ""
-		}
-		return strings.TrimSpace(string(out)) + ".UTF-8"
 	} else {
 		// this is specifically to get the wavesrv LANG so waveshell
 		// on a remote uses the same LANG
