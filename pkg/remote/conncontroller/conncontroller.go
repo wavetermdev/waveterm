@@ -457,7 +457,7 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords
 	// logic for saving connection and potential flags (we only save once a connection has been made successfully)
 	// at the moment, identity files is the only saved flag
 	var identityFiles []string
-	existingConfig := wconfig.ReadFullConfig()
+	existingConfig := wconfig.GetWatcher().GetFullConfig()
 	existingConnection, ok := existingConfig.Connections[conn.GetName()]
 	if ok {
 		identityFiles = existingConnection.SshIdentityFile
@@ -491,6 +491,10 @@ func (conn *SSHConn) WithLock(fn func()) {
 	fn()
 }
 
+func (conn *SSHConn) requiresWshUserConfirmation() bool {
+	return true
+}
+
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
 	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
@@ -502,7 +506,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 	conn.WithLock(func() {
 		conn.Client = client
 	})
-	config := wconfig.ReadFullConfig()
+	config := wconfig.GetWatcher().GetFullConfig()
 	enableWsh := config.Settings.ConnWshEnabled
 	askBeforeInstall := config.Settings.ConnAskBeforeWshInstall
 	connSettings, ok := config.Connections[conn.GetName()]
@@ -728,7 +732,7 @@ func GetConnectionsList() ([]string, error) {
 
 func GetConnectionsFromInternalConfig() []string {
 	var internalNames []string
-	config := wconfig.ReadFullConfig()
+	config := wconfig.GetWatcher().GetFullConfig()
 	for internalName := range config.Connections {
 		if strings.HasPrefix(internalName, "wsl://") {
 			// don't add wsl conns to this list

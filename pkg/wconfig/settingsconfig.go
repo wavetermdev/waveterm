@@ -306,6 +306,8 @@ func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []C
 	return mergeMetaMap(rtn, homeConfigs, simpleMerge), allErrs
 }
 
+// this function should only be called by the wconfig code.
+// in golang code, the best way to get the current config is via the watcher -- wconfig.GetWatcher().GetFullConfig()
 func ReadFullConfig() FullConfigType {
 	var fullConfig FullConfigType
 	configRType := reflect.TypeOf(fullConfig)

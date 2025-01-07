@@ -660,7 +660,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	}
 
 	rawName := opts.String()
-	fullConfig := wconfig.ReadFullConfig()
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	internalSshConfigKeywords, ok := fullConfig.Connections[rawName]
 	if !ok {
 		internalSshConfigKeywords = wshrpc.ConnKeywords{}
