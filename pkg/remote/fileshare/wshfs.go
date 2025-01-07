@@ -111,5 +111,5 @@ func (c WshClient) Delete(path string) error {
 }
 
 func (c WshClient) GetFileShareName() string {
-	return "S3Client"
+	return "WshClient"
 }
