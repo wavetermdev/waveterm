@@ -1,4 +1,4 @@
-package wshfs
+package fileshare
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
@@ -18,19 +17,19 @@ type WshClient struct {
 	connRoute string
 }
 
-var _ fileshare.FileShare = WshClient{}
+var _ FileShareClient = WshClient{}
 
-func NewClient(connection string) *WshClient {
+func NewWshClient(connection string) *WshClient {
 	return &WshClient{
 		connRoute: wshutil.MakeConnectionRouteId(connection),
 	}
 }
 
-func (c WshClient) Read(path string) (*fileshare.FullFile, error) {
+func (c WshClient) Read(path string) (*FullFile, error) {
 	client := wshserver.GetMainRpcClient()
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
 	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: c.connRoute})
-	fullFile := &fileshare.FullFile{}
+	fullFile := &FullFile{}
 	firstPk := true
 	isDir := false
 	var fileBuf bytes.Buffer

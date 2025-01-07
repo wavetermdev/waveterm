@@ -388,7 +388,7 @@ declare global {
         configerrors: ConfigError[];
     };
 
-    // fileservice.FullFile
+    // fileshare.FullFile
     type FullFile = {
         info: FileInfo;
         data64: string;

@@ -7,7 +7,7 @@ type FullFile struct {
 	Data64 string           `json:"data64"` // base64 encoded
 }
 
-type FileShare interface {
+type FileShareClient interface {
 	// Stat returns the file info at the given path
 	Stat(path string) (*wshrpc.FileInfo, error)
 	// Read returns the file info at the given path, if it's a dir, then the file data will be a serialized array of FileInfo
@@ -28,6 +28,6 @@ type FileShare interface {
 	GetFileShareName() string
 }
 
-func CreateFileShare(connection string) FileShare {
-	return nil
+func CreateFileShareClient(connection string) FileShareClient {
+	return NewWshClient(connection)
 }
