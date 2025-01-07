@@ -927,6 +927,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemeName = globalStore.get(model.termThemeNameAtom);
         const termTransparency = globalStore.get(model.termTransparencyAtom);
+        const termBPMAtom = getOverrideConfigAtom(blockId, "term:allowbracketedpaste");
         const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
         let termScrollback = 1000;
         if (termSettings?.["term:scrollback"]) {
@@ -941,6 +942,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         if (termScrollback > 10000) {
             termScrollback = 10000;
         }
+        const termAllowBPM = globalStore.get(termBPMAtom) ?? false;
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             blockId,
@@ -955,6 +957,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 allowTransparency: true,
                 scrollback: termScrollback,
                 allowProposedApi: true, // Required by @xterm/addon-search to enable search functionality and decorations
+                ignoreBracketedPasteMode: !termAllowBPM,
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),

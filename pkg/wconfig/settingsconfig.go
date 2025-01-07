@@ -51,16 +51,17 @@ type SettingsType struct {
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 
-	TermClear          bool     `json:"term:*,omitempty"`
-	TermFontSize       float64  `json:"term:fontsize,omitempty"`
-	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
-	TermTheme          string   `json:"term:theme,omitempty"`
-	TermDisableWebGl   bool     `json:"term:disablewebgl,omitempty"`
-	TermLocalShellPath string   `json:"term:localshellpath,omitempty"`
-	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"`
-	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
-	TermCopyOnSelect   *bool    `json:"term:copyonselect,omitempty"`
-	TermTransparency   *float64 `json:"term:transparency,omitempty"`
+	TermClear               bool     `json:"term:*,omitempty"`
+	TermFontSize            float64  `json:"term:fontsize,omitempty"`
+	TermFontFamily          string   `json:"term:fontfamily,omitempty"`
+	TermTheme               string   `json:"term:theme,omitempty"`
+	TermDisableWebGl        bool     `json:"term:disablewebgl,omitempty"`
+	TermLocalShellPath      string   `json:"term:localshellpath,omitempty"`
+	TermLocalShellOpts      []string `json:"term:localshellopts,omitempty"`
+	TermScrollback          *int64   `json:"term:scrollback,omitempty"`
+	TermCopyOnSelect        *bool    `json:"term:copyonselect,omitempty"`
+	TermTransparency        *float64 `json:"term:transparency,omitempty"`
+	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
