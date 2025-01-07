@@ -497,6 +497,7 @@ declare global {
         "term:vdomblockid"?: string;
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
+        "term:allowbracketedpaste"?: boolean;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "markdown:fontsize"?: number;
@@ -603,6 +604,7 @@ declare global {
         "term:scrollback"?: number;
         "term:copyonselect"?: boolean;
         "term:transparency"?: number;
+        "term:allowbracketedpaste"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;

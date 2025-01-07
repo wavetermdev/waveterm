@@ -34,6 +34,7 @@ const (
 	ConfigKey_TermScrollback                 = "term:scrollback"
 	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
 	ConfigKey_TermTransparency               = "term:transparency"
+	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
