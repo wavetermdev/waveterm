@@ -491,8 +491,21 @@ func (conn *SSHConn) WithLock(fn func()) {
 	fn()
 }
 
-func (conn *SSHConn) requiresWshUserConfirmation() bool {
-	return true
+// returns (enable-wsh, ask-before-install)
+func (conn *SSHConn) getConnWshSettings() (bool, bool) {
+	config := wconfig.GetWatcher().GetFullConfig()
+	enableWsh := config.Settings.ConnWshEnabled
+	askBeforeInstall := wconfig.DefaultBoolPtr(config.Settings.ConnAskBeforeWshInstall, true)
+	connSettings, ok := config.Connections[conn.GetName()]
+	if ok {
+		if connSettings.ConnWshEnabled != nil {
+			enableWsh = *connSettings.ConnWshEnabled
+		}
+		if connSettings.ConnAskBeforeWshInstall != nil {
+			askBeforeInstall = *connSettings.ConnAskBeforeWshInstall
+		}
+	}
+	return enableWsh, askBeforeInstall
 }
 
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
@@ -506,20 +519,8 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 	conn.WithLock(func() {
 		conn.Client = client
 	})
-	config := wconfig.GetWatcher().GetFullConfig()
-	enableWsh := config.Settings.ConnWshEnabled
-	askBeforeInstall := config.Settings.ConnAskBeforeWshInstall
-	connSettings, ok := config.Connections[conn.GetName()]
-	if ok {
-		if connSettings.ConnWshEnabled != nil {
-			enableWsh = *connSettings.ConnWshEnabled
-		}
-		if connSettings.ConnAskBeforeWshInstall != nil {
-			askBeforeInstall = *connSettings.ConnAskBeforeWshInstall
-		}
-	}
+	enableWsh, askBeforeInstall := conn.getConnWshSettings()
 	if enableWsh {
-
 		installErr := conn.CheckAndInstallWsh(ctx, clientDisplayName, &WshInstallOpts{NoUserPrompt: !askBeforeInstall})
 		if errors.Is(installErr, &WshInstallSkipError{}) {
 			// skips are not true errors
