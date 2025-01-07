@@ -22,8 +22,6 @@ type FileShareClient interface {
 	Copy(srcPath, destPath string, recursive bool) error
 	// Delete deletes the entry at the given path
 	Delete(path string) error
-	// ListEntries returns a list of entries in the given directory
-	ListEntries(path string) ([]wshrpc.FileInfo, error)
 	// GetFileShareName returns the name of the fileshare
 	GetFileShareName() string
 }

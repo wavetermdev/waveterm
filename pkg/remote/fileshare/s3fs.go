@@ -46,10 +46,6 @@ func (c S3Client) Delete(path string) error {
 	return nil
 }
 
-func (c S3Client) ListEntries(path string) ([]wshrpc.FileInfo, error) {
-	return nil, nil
-}
-
 func (c S3Client) GetFileShareName() string {
 	return "S3Client"
 }

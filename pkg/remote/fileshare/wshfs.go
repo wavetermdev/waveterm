@@ -110,10 +110,6 @@ func (c WshClient) Delete(path string) error {
 	return wshclient.RemoteFileDeleteCommand(client, path, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) ListEntries(path string) ([]wshrpc.FileInfo, error) {
-	return nil, nil
-}
-
 func (c WshClient) GetFileShareName() string {
 	return "S3Client"
 }
