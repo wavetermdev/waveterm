@@ -321,6 +321,13 @@ tasks:
             - task: dev:cleardata:linux
             - task: dev:cleardata:macos
 
+    init:
+        desc: Initialize the project for development.
+        cmds:
+            - yarn
+            - go mod tidy
+            - cd docs && yarn
+
     dev:cleardata:windows:
         internal: true
         platforms: [windows]

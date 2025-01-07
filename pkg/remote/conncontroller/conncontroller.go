@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package conncontroller
@@ -550,8 +550,16 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 			}
 			if dsErr != nil || csErr != nil {
 				log.Print("attempting to run with nowsh instead")
+				var errmsgs []string
+				if dsErr != nil {
+					errmsgs = append(errmsgs, fmt.Sprintf("domain socket error: %s", dsErr.Error()))
+				}
+				if csErr != nil {
+					errmsgs = append(errmsgs, fmt.Sprintf("conn server error: %s", csErr.Error()))
+				}
+				combinedErr := fmt.Errorf("%s", strings.Join(errmsgs, " | "))
 				conn.WithLock(func() {
-					conn.WshError = csErr.Error()
+					conn.WshError = combinedErr.Error()
 				})
 				conn.WshEnabled.Store(false)
 			}
