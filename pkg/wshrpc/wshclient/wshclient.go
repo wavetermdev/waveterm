@@ -217,6 +217,16 @@ func FocusWindowCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) er
 	return err
 }
 
+// command "forwardsessioninput", wshserver.ForwardSessionInputCommand
+func ForwardSessionInputCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionInputData] {
+	return sendRpcRequestResponseStreamHelper[wshrpc.ForwardSessionInputData](w, "forwardsessioninput", nil, opts)
+}
+
+// command "forwardsessionoutput", wshserver.ForwardSessionOutputCommand
+func ForwardSessionOutputCommand(w *wshutil.WshRpc, data wshrpc.ForwardSessionRequest, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData] {
+	return sendRpcRequestResponseStreamHelper[wshrpc.ForwardSessionOutputData](w, "forwardsessionoutput", data, opts)
+}
+
 // command "getmeta", wshserver.GetMetaCommand
 func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wshrpc.RpcOpts) (waveobj.MetaMapType, error) {
 	resp, err := sendRpcRequestCallHelper[waveobj.MetaMapType](w, "getmeta", data, opts)

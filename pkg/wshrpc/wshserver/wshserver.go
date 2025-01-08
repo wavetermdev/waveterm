@@ -34,6 +34,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -719,77 +720,74 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 /**
  * ForwardSessionCommands gets stdout and stderr channels for a remote session
  */
-func (ws *WshServer) ForwardSessionCommand(ctx context.Context, inputData wshrpc.SessionForwardInputData) (output chan wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]) {
-	output = make(chan wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData])
+func (ws *WshServer) ForwardSessionOutputCommand(ctx context.Context, request wshrpc.ForwardSessionRequest) (output chan wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]) {
+	output = make(chan wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData])
 	termSize := waveobj.TermSize{
 		Rows: 25,
 		Cols: 80,
 	}
 	cmdOpts := shellexec.CommandOptsType{Interactive: true, Login: true}
+	// TODO: see if getting the shellProc and input output pipes in this order works
 	shellProc, err := shellexec.StartShellProc(termSize, "", cmdOpts)
 	if err != nil {
-		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Error: err}
+		output <- wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]{Error: err}
 		return
 	}
 	stdinPipe, err := shellProc.Cmd.StdinPipe()
 	if err != nil {
-		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Error: err}
+		output <- wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]{Error: err}
 		return
 	}
 	stdoutPipe, err := shellProc.Cmd.StdoutPipe()
 	if err != nil {
-		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Error: err}
+		output <- wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]{Error: err}
 		return
 	}
 	stderrPipe, err := shellProc.Cmd.StderrPipe()
 	if err != nil {
-		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Error: err}
+		output <- wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]{Error: err}
 		return
 	}
 
 	processStdout := func(line []byte) {
-		data := wshrpc.SessionForwardOutputData{Stdout: line}
-		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Response: data}
+		data := wshrpc.ForwardSessionOutputData{Stdout: line}
+		output <- wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]{Response: data}
 	}
 
 	processStderr := func(line []byte) {
-		data := wshrpc.SessionForwardOutputData{Stderr: line}
-		output <- wshrpc.RespOrErrorUnion[wshrpc.SessionForwardOutputData]{Response: data}
+		data := wshrpc.ForwardSessionOutputData{Stderr: line}
+		output <- wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]{Response: data}
 	}
 
 	// existing impl????
-	go wshutil.AdaptOutputChToStream(inputData.Stdin, stdinPipe)
 	go wshutil.StreamToLines(stdoutPipe, processStdout)
 	go wshutil.StreamToLines(stderrPipe, processStderr)
 
-	// my naive approach
-	/*
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case data, ok := <-inputData.Stdin:
-					if !ok {
-						return
-					}
-					_, err := stdinPipe.Write(data)
-					if err != nil {
-						return
-					}
-				}
-			}
-		}()
+	// make an rpc request to open stdin from the wavesrv side
+	// use the supplied route to request input forwarding
+	RpcClient := &wshutil.WshRpc{} //TODO
+	inputDataCh := wshclient.ForwardSessionInputCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
 
-		go func() {
-			for {
-				select {
-				case data := <-inputData.Stdin:
-					stdinPipe.Write([]byte(data))
-				}
+	//create client
+	// this client does no writing to stdin/out/err. not completely sure how to do that yet
+	//inputDataCh := RpcClient.SendRpcRequest(wshrpc.Command_ForwardSessionInput, &wshrpc.RpcOpts{Timeout: 2000})
+	//go wshutil.AdaptOutputChToStream(inputData, stdinPipe)
+	for msg := range inputDataCh {
+		if msg.Error != nil {
+			output <- wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]{Error: err}
+			return
+		}
+		if len(msg.Response.Stdin) != 0 {
+			if _, err := stdinPipe.Write(msg.Response.Stdin); err != nil {
+				err = fmt.Errorf("error writing to output (AdaptOutputChToStream): %w", err)
+				output <- wshrpc.RespOrErrorUnion[wshrpc.ForwardSessionOutputData]{Error: err}
+				return
 			}
-		}()
-	*/
+		}
+		if msg.Response.TermSize.Cols != 0 || msg.Response.TermSize.Rows != 0 {
+			// TODO: code that changes the term size goes here
+		}
+	}
 
 	return output
 }

@@ -74,17 +74,18 @@ const (
 	Command_SetVar               = "setvar"
 	Command_RemoteMkdir          = "remotemkdir"
 
-	Command_ConnStatus       = "connstatus"
-	Command_WslStatus        = "wslstatus"
-	Command_ConnEnsure       = "connensure"
-	Command_ConnReinstallWsh = "connreinstallwsh"
-	Command_ConnConnect      = "connconnect"
-	Command_ConnDisconnect   = "conndisconnect"
-	Command_ConnList         = "connlist"
-	Command_WslList          = "wsllist"
-	Command_WslDefaultDistro = "wsldefaultdistro"
-	Command_DismissWshFail   = "dismisswshfail"
-	Command_ForwardSession   = "forwardsession"
+	Command_ConnStatus           = "connstatus"
+	Command_WslStatus            = "wslstatus"
+	Command_ConnEnsure           = "connensure"
+	Command_ConnReinstallWsh     = "connreinstallwsh"
+	Command_ConnConnect          = "connconnect"
+	Command_ConnDisconnect       = "conndisconnect"
+	Command_ConnList             = "connlist"
+	Command_WslList              = "wsllist"
+	Command_WslDefaultDistro     = "wsldefaultdistro"
+	Command_DismissWshFail       = "dismisswshfail"
+	Command_ForwardSessionOutput = "forwardsessionoutput"
+	Command_ForwardSessionInput  = "forwardsessioninput"
 
 	Command_WorkspaceList = "workspacelist"
 
@@ -163,7 +164,8 @@ type WshRpcInterface interface {
 	WslListCommand(ctx context.Context) ([]string, error)
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
-	ForwardSessionCommand(ctx context.Context, input chan string) chan RespOrErrorUnion[string]
+	ForwardSessionOutputCommand(ctx context.Context, request ForwardSessionRequest) chan RespOrErrorUnion[ForwardSessionOutputData]
+	ForwardSessionInputCommand(ctx context.Context) chan RespOrErrorUnion[ForwardSessionInputData]
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -609,14 +611,19 @@ type CommandVarResponseData struct {
 	Exists bool   `json:"exists"`
 }
 
-type SessionForwardInputData struct {
-	ConnName string      `json:"connname"`
-	Stdin    chan []byte `json:"stdin"`
+type ForwardSessionInputData struct {
+	Stdin    []byte           `json:"stdin"`
+	TermSize waveobj.TermSize `json:"termsize"`
 }
 
-type SessionForwardOutputData struct {
+type ForwardSessionOutputData struct {
 	Stdout []byte `json:"stdout"`
 	Stderr []byte `json:"stderr"`
+}
+
+type ForwardSessionRequest struct {
+	ConnName   string `json:"connname"`
+	StdinRoute string `json:"stdinroute"`
 }
 
 type PathCommandData struct {

@@ -177,6 +177,16 @@ class RpcApiType {
         return client.wshRpcCall("focuswindow", data, opts);
     }
 
+    // command "forwardsessioninput" [responsestream]
+	ForwardSessionInputCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<SessionForwardInputData, void, boolean> {
+        return client.wshRpcStream("forwardsessioninput", null, opts);
+    }
+
+    // command "forwardsessionoutput" [responsestream]
+	ForwardSessionOutputCommand(client: WshClient, data: SessionForwardRequest, opts?: RpcOpts): AsyncGenerator<SessionForwardOutputData, void, boolean> {
+        return client.wshRpcStream("forwardsessionoutput", data, opts);
+    }
+
     // command "getmeta" [call]
     GetMetaCommand(client: WshClient, data: CommandGetMetaData, opts?: RpcOpts): Promise<MetaType> {
         return client.wshRpcCall("getmeta", data, opts);

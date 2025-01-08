@@ -564,6 +564,23 @@ declare global {
         winsize?: WinSize;
     };
 
+    // wshrpc.SessionForwardInputData
+    type SessionForwardInputData = {
+        stdin: string;
+        termsize: TermSize;
+    };
+
+    // wshrpc.SessionForwardOutputData
+    type SessionForwardOutputData = {
+        stdout: string;
+        stderr: string;
+    };
+
+    // wshrpc.SessionForwardRequest
+    type SessionForwardRequest = {
+        connname: string;
+    };
+
     // webcmd.SetBlockTermSizeWSCommand
     type SetBlockTermSizeWSCommand = {
         wscommand: "setblocktermsize";
