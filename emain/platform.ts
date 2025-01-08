@@ -4,7 +4,7 @@
 import { fireAndForget } from "@/util/util";
 import { app, dialog, ipcMain, shell } from "electron";
 import envPaths from "env-paths";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync } from "fs";
 import os from "os";
 import path from "path";
 import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
@@ -148,6 +148,40 @@ function getWaveDataDir(): string {
     return ensurePathExists(retVal);
 }
 
+function readXdgConfigDirs(): Record<string, string> {
+    const xdgConfigPath = path.join(app.getPath("home"), ".config", "user-dirs.dirs");
+    if (existsSync(xdgConfigPath)) {
+        const xdgConfig = readFileSync(xdgConfigPath, "utf8");
+        const lines = xdgConfig.split("\n");
+        const dirs: Record<string, string> = {};
+        for (const line of lines) {
+            const match = line.match(/^XDG_([[:upper:]]+)_DIR="(.*)"$/);
+            if (match) {
+                dirs[match[1]] = match[2];
+            }
+        }
+        return dirs;
+    }
+    return {};
+}
+
+function correctSnapXdgVars() {
+    if (process.env.SNAP) {
+        if (!process.env[WaveConfigHomeVarName]) {
+            process.env[WaveConfigHomeVarName] = process.env.XDG_CONFIG_HOME;
+            process.env.XDG_CONFIG_HOME = "";
+        }
+        if (!process.env[WaveDataHomeVarName]) {
+            process.env[WaveDataHomeVarName] = process.env.XDG_DATA_HOME;
+            process.env.XDG_DATA_HOME = "";
+        }
+        const xdgDirs = readXdgConfigDirs();
+        for (const dir in xdgDirs) {
+            process.env[dir] = xdgDirs[dir];
+        }
+    }
+}
+
 function getElectronAppBasePath(): string {
     return path.dirname(import.meta.dirname);
 }
@@ -195,6 +229,7 @@ ipcMain.on("get-config-dir", (event) => {
 });
 
 export {
+    correctSnapXdgVars,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
