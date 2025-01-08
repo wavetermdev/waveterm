@@ -166,6 +166,7 @@ function readXdgConfigDirs(): Record<string, string> {
 }
 
 function correctSnapXdgVars() {
+    console.log("Correcting XDG_* variables for Snap", process.env.SNAP);
     if (process.env.SNAP) {
         if (!process.env[WaveConfigHomeVarName]) {
             process.env[WaveConfigHomeVarName] = path.join(process.env.XDG_CONFIG_HOME, waveDirName);
