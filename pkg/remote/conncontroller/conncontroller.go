@@ -111,6 +111,11 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	}
 }
 
+func (conn *SSHConn) Logf(debugLevel int, format string, args ...interface{}) {
+	logStr := fmt.Sprintf("[debug%d] ", debugLevel) + fmt.Sprintf(format, args...)
+	log.Printf("[conncontroller:%s] %s", conn.GetName(), logStr)
+}
+
 func (conn *SSHConn) FireConnChangeEvent() {
 	status := conn.DeriveConnStatus()
 	event := wps.WaveEvent{

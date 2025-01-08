@@ -50,7 +50,7 @@ func ConnDisconnectCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts)
 }
 
 // command "connensure", wshserver.ConnEnsureCommand
-func ConnEnsureCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+func ConnEnsureCommand(w *wshutil.WshRpc, data wshrpc.ConnEnsureData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connensure", data, opts)
 	return err
 }

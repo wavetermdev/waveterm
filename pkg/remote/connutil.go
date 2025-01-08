@@ -25,6 +25,10 @@ import (
 
 var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-zA-Z0-9][a-zA-Z0-9.-]*)(?::([0-9]+))?$`)
 
+type logBlockIdContextKeyType struct{}
+
+var logBlockIdContextKey = logBlockIdContextKeyType{}
+
 func ParseOpts(input string) (*SSHOpts, error) {
 	m := userHostRe.FindStringSubmatch(input)
 	if m == nil {
@@ -34,6 +38,15 @@ func ParseOpts(input string) (*SSHOpts, error) {
 	remoteUser = strings.Trim(remoteUser, "@")
 
 	return &SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}, nil
+}
+
+func ContextWithLogBlockId(ctx context.Context, blockId string) context.Context {
+	return context.WithValue(ctx, logBlockIdContextKey, blockId)
+}
+
+func GetLogBlockIdFromContext(ctx context.Context) string {
+	blockId, _ := ctx.Value(logBlockIdContextKey).(string)
+	return blockId
 }
 
 func DetectShell(client *ssh.Client) (string, error) {

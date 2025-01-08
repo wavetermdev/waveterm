@@ -154,7 +154,7 @@ type WshRpcInterface interface {
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	WslStatusCommand(ctx context.Context) ([]ConnStatus, error)
-	ConnEnsureCommand(ctx context.Context, connName string) error
+	ConnEnsureCommand(ctx context.Context, data ConnEnsureData) error
 	ConnReinstallWshCommand(ctx context.Context, connName string) error
 	ConnConnectCommand(ctx context.Context, connRequest ConnRequest) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
@@ -645,4 +645,9 @@ type ActivityUpdate struct {
 	Blocks        map[string]int        `json:"blocks,omitempty"`
 	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
 	Conn          map[string]int        `json:"conn,omitempty"`
+}
+
+type ConnEnsureData struct {
+	ConnName   string `json:"connname"`
+	LogBlockId string `json:"logblockid,omitempty"`
 }

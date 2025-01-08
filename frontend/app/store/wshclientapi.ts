@@ -38,7 +38,7 @@ class RpcApiType {
     }
 
     // command "connensure" [call]
-    ConnEnsureCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+    ConnEnsureCommand(client: WshClient, data: ConnEnsureData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connensure", data, opts);
     }
 

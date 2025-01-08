@@ -286,6 +286,12 @@ declare global {
         metamaptype: MetaType;
     };
 
+    // wshrpc.ConnEnsureData
+    type ConnEnsureData = {
+        connname: string;
+        logblockid?: string;
+    };
+
     // wshrpc.ConnKeywords
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;

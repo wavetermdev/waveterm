@@ -596,12 +596,15 @@ func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus,
 	return rtn, nil
 }
 
-func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
-	if strings.HasPrefix(connName, "wsl://") {
-		distroName := strings.TrimPrefix(connName, "wsl://")
+func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnEnsureData) error {
+	if data.LogBlockId != "" {
+		ctx = remote.ContextWithLogBlockId(ctx, data.LogBlockId)
+	}
+	if strings.HasPrefix(data.ConnName, "wsl://") {
+		distroName := strings.TrimPrefix(data.ConnName, "wsl://")
 		return wsl.EnsureConnection(ctx, distroName)
 	}
-	return conncontroller.EnsureConnection(ctx, connName)
+	return conncontroller.EnsureConnection(ctx, data.ConnName)
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {

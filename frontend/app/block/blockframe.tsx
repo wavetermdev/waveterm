@@ -541,7 +541,11 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         const connName = blockData?.meta?.connection;
         if (!util.isBlank(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
-            RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 }).catch((e) => {
+            RpcApi.ConnEnsureCommand(
+                TabRpcClient,
+                { connname: connName, logblockid: nodeModel.blockId },
+                { timeout: 60000 }
+            ).catch((e) => {
                 console.log("error ensuring connection", nodeModel.blockId, connName, e);
             });
         }
@@ -691,7 +695,11 @@ const ChangeConnectionBlockModal = React.memo(
                     meta: { connection: connName, file: newCwd },
                 });
                 try {
-                    await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
+                    await RpcApi.ConnEnsureCommand(
+                        TabRpcClient,
+                        { connname: connName, logblockid: blockId },
+                        { timeout: 60000 }
+                    );
                 } catch (e) {
                     console.log("error connecting", blockId, connName, e);
                 }
