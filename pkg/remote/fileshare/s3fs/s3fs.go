@@ -1,8 +1,12 @@
-package fileshare
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package s3fs
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -10,7 +14,7 @@ type S3Client struct {
 	client *s3.Client
 }
 
-var _ FileShareClient = S3Client{}
+var _ fstype.FileShareClient = S3Client{}
 
 func NewS3Client(config *aws.Config) *S3Client {
 	return &S3Client{
@@ -18,7 +22,7 @@ func NewS3Client(config *aws.Config) *S3Client {
 	}
 }
 
-func (c S3Client) Read(path string) (*FullFile, error) {
+func (c S3Client) Read(path string) (*fstype.FullFile, error) {
 	return nil, nil
 }
 

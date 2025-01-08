@@ -1,4 +1,7 @@
-package fileshare
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package wshfs
 
 import (
 	"bytes"
@@ -7,6 +10,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
@@ -17,7 +21,7 @@ type WshClient struct {
 	connRoute string
 }
 
-var _ FileShareClient = WshClient{}
+var _ fstype.FileShareClient = WshClient{}
 
 func NewWshClient(connection string) *WshClient {
 	return &WshClient{
@@ -25,11 +29,11 @@ func NewWshClient(connection string) *WshClient {
 	}
 }
 
-func (c WshClient) Read(path string) (*FullFile, error) {
+func (c WshClient) Read(path string) (*fstype.FullFile, error) {
 	client := wshserver.GetMainRpcClient()
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
 	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: c.connRoute})
-	fullFile := &FullFile{}
+	fullFile := &fstype.FullFile{}
 	firstPk := true
 	isDir := false
 	var fileBuf bytes.Buffer

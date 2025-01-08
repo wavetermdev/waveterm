@@ -7,6 +7,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -78,7 +79,7 @@ func (fs *FileService) ReadFile_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (fs *FileService) ReadFile(ctx context.Context, connection string, path string) (*fileshare.FullFile, error) {
+func (fs *FileService) ReadFile(ctx context.Context, connection string, path string) (*fstype.FullFile, error) {
 	if connection == "" {
 		connection = wshrpc.LocalConnName
 	}
