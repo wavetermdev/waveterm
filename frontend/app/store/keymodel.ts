@@ -175,11 +175,7 @@ async function handleCmdN() {
             "cmd:closeonexitdelay": termAutoCloseDelay ?? 2000,
         },
     };
-    if (termAutoClose && !termAutoCloseOnError) {
-        termBlockDef.meta["cmd:closeonexitforce"] = false;
-        termBlockDef.meta["cmd:closeonexitdelay"] = termAutoCloseDelay ?? 2000;
-        termBlockDef.meta["cmd:closeonexit"] = true;
-    }
+
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode != null) {

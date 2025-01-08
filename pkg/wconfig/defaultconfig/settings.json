@@ -21,5 +21,8 @@
     "window:confirmclose": true,
     "window:savelastwindow": true,
     "telemetry:enabled": true,
-    "term:copyonselect": true
+    "term:copyonselect": true,
+    "term:autoclose": true,
+    "term:autocloseonerror": false,
+    "term:autoclosedelay": 2000
 }
