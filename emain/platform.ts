@@ -157,7 +157,7 @@ function readXdgConfigDirs(): Record<string, string> {
         const dirs: Record<string, string> = {};
         for (const line of lines) {
             console.log("Reading XDG_* line", line);
-            const match = line.match(/^(XDG_[[:upper:]]+_DIR)="(.*)"/);
+            const match = line.match(/^(XDG_\w+_DIR)="(.*)"/);
             if (match) {
                 dirs[match[1]] = match[2];
             }
