@@ -177,6 +177,7 @@ function correctSnapXdgVars() {
             process.env.XDG_DATA_HOME = "";
         }
         const xdgDirs = readXdgConfigDirs();
+        console.log("Corrected XDG_* variables", xdgDirs);
         for (const dir in xdgDirs) {
             process.env[dir] = xdgDirs[dir];
         }
