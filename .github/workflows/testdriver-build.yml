@@ -7,17 +7,17 @@ on:
         tags:
             - "v[0-9]+.[0-9]+.[0-9]+*"
     pull_request:
-        branches:
-            - main
-        paths-ignore:
-            - "docs/**"
-            - ".storybook/**"
-            - ".vscode/**"
-            - ".editorconfig"
-            - ".gitignore"
-            - ".prettierrc"
-            - ".eslintrc.js"
-            - "**/*.md"
+        # branches:
+        #     - main
+        # paths-ignore:
+        #     - "docs/**"
+        #     - ".storybook/**"
+        #     - ".vscode/**"
+        #     - ".editorconfig"
+        #     - ".gitignore"
+        #     - ".prettierrc"
+        #     - ".eslintrc.js"
+        #     - "**/*.md"
     schedule:
         - cron: 0 21 * * *
     workflow_dispatch: null
