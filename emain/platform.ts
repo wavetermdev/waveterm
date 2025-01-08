@@ -232,8 +232,6 @@ ipcMain.on("get-config-dir", (event) => {
     event.returnValue = getWaveConfigDir();
 });
 
-correctSnapXdgVars();
-
 export {
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,

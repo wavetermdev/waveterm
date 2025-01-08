@@ -104,6 +104,10 @@ const config = {
         confinement: "classic",
         allowNativeWayland: true,
         artifactName: "${name}_${version}_${arch}.${ext}",
+        environment: {
+            XDG_CONFIG_HOME: "$XDG_CONFIG_HOME",
+            XDG_DATA_HOME: "$XDG_DATA_HOME",
+        },
     },
     publish: {
         provider: "generic",
