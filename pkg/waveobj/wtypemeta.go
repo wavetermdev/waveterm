@@ -96,7 +96,7 @@ type MetaTSType struct {
 	TermVDomToolbarBlockId  string   `json:"term:vdomtoolbarblockid,omitempty"`
 	TermTransparency        *float64 `json:"term:transparency,omitempty"` // default 0.5
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
-	TermDebugConn           bool     `json:"term:debugconn,omitempty"`
+	TermDebugConn           string   `json:"term:debugconn,omitempty"` // null, info, debug
 
 	WebZoom    float64 `json:"web:zoom,omitempty"`
 	WebHideNav *bool   `json:"web:hidenav,omitempty"`

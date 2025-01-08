@@ -687,17 +687,6 @@ class TermViewModel implements ViewModel {
             label: "Debug Connection",
             submenu: [
                 {
-                    label: "On",
-                    type: "checkbox",
-                    checked: debugConn,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "term:debugconn": true },
-                        });
-                    },
-                },
-                {
                     label: "Off",
                     type: "checkbox",
                     checked: !debugConn,
@@ -705,6 +694,28 @@ class TermViewModel implements ViewModel {
                         RpcApi.SetMetaCommand(TabRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
                             meta: { "term:debugconn": null },
+                        });
+                    },
+                },
+                {
+                    label: "Info",
+                    type: "checkbox",
+                    checked: debugConn == "info",
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:debugconn": "info" },
+                        });
+                    },
+                },
+                {
+                    label: "Verbose",
+                    type: "checkbox",
+                    checked: debugConn == "debug",
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:debugconn": "debug" },
                         });
                     },
                 },

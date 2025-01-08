@@ -17,29 +17,49 @@ type logBlockIdContextKeyType struct{}
 
 var logBlockIdContextKey = logBlockIdContextKeyType{}
 
-func ContextWithLogBlockId(ctx context.Context, blockId string) context.Context {
-	return context.WithValue(ctx, logBlockIdContextKey, blockId)
+type logBlockIdData struct {
+	BlockId string
+	Verbose bool
 }
 
-func GetLogBlockIdFromContext(ctx context.Context) string {
+func ContextWithLogBlockId(ctx context.Context, blockId string, verbose bool) context.Context {
+	return context.WithValue(ctx, logBlockIdContextKey, &logBlockIdData{BlockId: blockId, Verbose: verbose})
+}
+
+func getLogBlockData(ctx context.Context) *logBlockIdData {
 	if ctx == nil {
-		return ""
+		return nil
 	}
-	blockId, _ := ctx.Value(logBlockIdContextKey).(string)
-	return blockId
+	dataPtr := ctx.Value(logBlockIdContextKey)
+	if dataPtr == nil {
+		return nil
+	}
+	return dataPtr.(*logBlockIdData)
 }
 
-func Logf(ctx context.Context, format string, args ...interface{}) {
-	logBlockId := GetLogBlockIdFromContext(ctx)
-	if logBlockId == "" {
-		return
-	}
+func writeLogf(blockId string, format string, args []any) {
 	logStr := fmt.Sprintf(format, args...)
 	logStr = strings.ReplaceAll(logStr, "\n", "\r\n")
 	client := wshclient.GetBareRpcClient()
 	data := wshrpc.CommandControllerAppendOutputData{
-		BlockId: logBlockId,
+		BlockId: blockId,
 		Data64:  base64.StdEncoding.EncodeToString([]byte(logStr)),
 	}
 	wshclient.ControllerAppendOutputCommand(client, data, &wshrpc.RpcOpts{NoResponse: true})
+}
+
+func Infof(ctx context.Context, format string, args ...any) {
+	logData := getLogBlockData(ctx)
+	if logData == nil {
+		return
+	}
+	writeLogf(logData.BlockId, format, args)
+}
+
+func Debugf(ctx context.Context, format string, args ...interface{}) {
+	logData := getLogBlockData(ctx)
+	if logData == nil || !logData.Verbose {
+		return
+	}
+	writeLogf(logData.BlockId, format, args)
 }

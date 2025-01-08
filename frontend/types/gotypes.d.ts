@@ -506,7 +506,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
-        "term:debugconn"?: boolean;
+        "term:debugconn"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "markdown:fontsize"?: number;

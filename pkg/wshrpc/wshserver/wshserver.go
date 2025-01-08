@@ -614,9 +614,9 @@ func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnEnsu
 	if data.LogBlockId != "" {
 		block, err := wstore.DBMustGet[*waveobj.Block](ctx, data.LogBlockId)
 		if err == nil {
-			connDebug := block.Meta.GetBool(waveobj.MetaKey_TermDebugConn, false)
-			if connDebug {
-				ctx = blocklogger.ContextWithLogBlockId(ctx, data.LogBlockId)
+			connDebug := block.Meta.GetString(waveobj.MetaKey_TermDebugConn, "")
+			if connDebug != "" {
+				ctx = blocklogger.ContextWithLogBlockId(ctx, data.LogBlockId, connDebug == "debug")
 			}
 		}
 	}
