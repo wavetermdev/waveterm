@@ -486,10 +486,7 @@ type ConnKeywords struct {
 	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
 	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
 
-	AwsAccessKeyId     *string `json:"aws:access_key_id,omitempty"`
-	AwsSecretAccessKey *string `json:"aws:secret_access_key,omitempty"`
-	AwsRegion          *string `json:"aws:region,omitempty"`
-	AwsSessionToken    *string `json:"aws:session_token,omitempty"`
+	AwsConfig *string `json:"aws:config,omitempty"`
 }
 
 type ConnRequest struct {
