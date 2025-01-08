@@ -8,6 +8,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/s3fs"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 )
 
@@ -20,6 +21,9 @@ func CreateFileShareClient(ctx context.Context, connection string) fstype.FileSh
 			return nil
 		}
 		return s3fs.NewS3Client(config)
+	} else if connType == remote.ConnectionTypeWave {
+		return wavefs.NewWaveClient()
+	} else {
+		return wshfs.NewWshClient(connection)
 	}
-	return wshfs.NewWshClient(connection)
 }

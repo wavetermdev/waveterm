@@ -22,6 +22,6 @@ type FileShareClient interface {
 	Copy(srcPath, destPath string, recursive bool) error
 	// Delete deletes the entry at the given path
 	Delete(path string) error
-	// GetFileShareName returns the name of the fileshare
-	GetFileShareName() string
+	// GetConnectionType returns the type of connection for the fileshare
+	GetConnectionType() string
 }

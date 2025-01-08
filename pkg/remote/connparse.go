@@ -6,8 +6,9 @@ package remote
 import "regexp"
 
 const (
-	ConnectionTypeWsh = "wsh"
-	ConnectionTypeAws = "aws"
+	ConnectionTypeWsh  = "wsh"
+	ConnectionTypeAws  = "aws"
+	ConnectionTypeWave = "wave"
 )
 
 var connectionRe = regexp.MustCompile(`^(\w+):\/\/(.*)$`)

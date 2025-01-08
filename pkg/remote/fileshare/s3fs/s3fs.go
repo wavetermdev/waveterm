@@ -6,6 +6,7 @@ package s3fs
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -50,6 +51,6 @@ func (c S3Client) Delete(path string) error {
 	return nil
 }
 
-func (c S3Client) GetFileShareName() string {
-	return "S3Client"
+func (c S3Client) GetConnectionType() string {
+	return remote.ConnectionTypeWsh
 }

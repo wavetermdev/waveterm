@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -114,6 +115,6 @@ func (c WshClient) Delete(path string) error {
 	return wshclient.RemoteFileDeleteCommand(client, path, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) GetFileShareName() string {
-	return "WshClient"
+func (c WshClient) GetConnectionType() string {
+	return remote.ConnectionTypeWsh
 }
