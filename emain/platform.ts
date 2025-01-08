@@ -4,7 +4,7 @@
 import { fireAndForget } from "@/util/util";
 import { app, dialog, ipcMain, shell } from "electron";
 import envPaths from "env-paths";
-import { existsSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import os from "os";
 import path from "path";
 import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
@@ -146,44 +146,6 @@ function getWaveDataDir(): string {
         retVal = paths.data;
     }
     return ensurePathExists(retVal);
-}
-
-function readXdgConfigDirs(): Record<string, string> {
-    const xdgConfigPath = path.join(app.getPath("home"), ".config", "user-dirs.dirs");
-    if (existsSync(xdgConfigPath)) {
-        console.log("Reading XDG_* variables from", xdgConfigPath);
-        const xdgConfig = readFileSync(xdgConfigPath, "utf8");
-        const lines = xdgConfig.split("\n");
-        const dirs: Record<string, string> = {};
-        for (const line of lines) {
-            console.log("Reading XDG_* line", line);
-            const match = line.match(/^(XDG_\w+_DIR)="(.*)"/);
-            if (match) {
-                dirs[match[1]] = match[2];
-            }
-        }
-        return dirs;
-    }
-    return {};
-}
-
-function correctSnapXdgVars() {
-    if (process.env.SNAP) {
-        console.log("Correcting XDG_* variables for Snap", process.env.SNAP);
-        if (!process.env[WaveConfigHomeVarName] && process.env.XDG_CONFIG_HOME) {
-            process.env[WaveConfigHomeVarName] = path.join(process.env.XDG_CONFIG_HOME, waveDirName);
-            process.env.XDG_CONFIG_HOME = "";
-        }
-        if (!process.env[WaveDataHomeVarName] && process.env.XDG_DATA_HOME) {
-            process.env[WaveDataHomeVarName] = path.join(process.env.XDG_DATA_HOME, waveDirName);
-            process.env.XDG_DATA_HOME = "";
-        }
-        const xdgDirs = readXdgConfigDirs();
-        console.log("Corrected XDG_* variables", xdgDirs);
-        for (const dir in xdgDirs) {
-            process.env[dir] = xdgDirs[dir];
-        }
-    }
 }
 
 function getElectronAppBasePath(): string {

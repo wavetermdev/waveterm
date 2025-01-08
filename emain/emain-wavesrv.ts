@@ -104,6 +104,11 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
             }
             process.env[WSServerEndpointVarName] = startParams[1];
             process.env[WebServerEndpointVarName] = startParams[2];
+            delete process.env.XDG_DATA_HOME;
+            delete process.env.XDG_CONFIG_HOME;
+            delete process.env.XDG_RUNTIME_DIR;
+            delete process.env.XDG_CACHE_HOME;
+            delete process.env.XDG_STATE_HOME;
             WaveVersion = startParams[3];
             WaveBuildTime = parseInt(startParams[4]);
             waveSrvReadyResolve(true);
