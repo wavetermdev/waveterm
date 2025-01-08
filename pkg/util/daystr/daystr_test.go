@@ -36,11 +36,11 @@ func TestGetCustomDayStr(t *testing.T) {
 		{"yesterday", time.Now().AddDate(0, 0, -1).Format("2006-01-02")},
 		{"bom", time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.Now().Location()).Format("2006-01-02")},
 		{"bow", time.Now().AddDate(0, 0, -int(time.Now().Weekday())).Format("2006-01-02")},
-		{"2024-04-01", "2024-04-01"},
-		{"2024-04-01+1w", "2024-04-08"},
-		{"2024-04-01+1w-1d", "2024-04-07"},
-		{"2024-04-01+1m", "2024-05-01"},
-		{"2024-04-01+1m-1d", "2024-04-30"},
+		{"2025-04-01", "2025-04-01"},
+		{"2025-04-01+1w", "2025-04-08"},
+		{"2025-04-01+1w-1d", "2025-04-07"},
+		{"2025-04-01+1m", "2025-05-01"},
+		{"2025-04-01+1m-1d", "2025-04-30"},
 	}
 
 	for _, test := range tests {
@@ -55,8 +55,8 @@ func TestGetCustomDayStr(t *testing.T) {
 
 	invalidTests := []string{
 		"invalid",
-		"2024-04-01+1x",
-		"2024-04-01+1m-1x",
+		"2025-04-01+1x",
+		"2025-04-01+1m-1x",
 	}
 
 	for _, test := range invalidTests {

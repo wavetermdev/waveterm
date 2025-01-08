@@ -31,7 +31,7 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            width: 100%;
+            width: fit-content;
             border-bottom: 1px solid var(--border-color);
 
             .dir-table-head-row {
