@@ -59,7 +59,7 @@ class FileServiceType {
     GetWaveFile(arg1: string, arg2: string): Promise<any> {
         return WOS.callBackendService("file", "GetWaveFile", Array.from(arguments))
     }
-    Mkdir(arg1: string, arg2: string): Promise<void> {
+    Mkdir(arg2: string, arg3: string): Promise<void> {
         return WOS.callBackendService("file", "Mkdir", Array.from(arguments))
     }
 
@@ -67,7 +67,7 @@ class FileServiceType {
     ReadFile(connection: string, path: string): Promise<FullFile> {
         return WOS.callBackendService("file", "ReadFile", Array.from(arguments))
     }
-    Rename(arg1: string, arg2: string, arg3: string): Promise<void> {
+    Rename(arg2: string, arg3: string, arg4: string): Promise<void> {
         return WOS.callBackendService("file", "Rename", Array.from(arguments))
     }
 
@@ -80,7 +80,7 @@ class FileServiceType {
     StatFile(connection: string, path: string): Promise<FileInfo> {
         return WOS.callBackendService("file", "StatFile", Array.from(arguments))
     }
-    TouchFile(arg1: string, arg2: string): Promise<void> {
+    TouchFile(arg2: string, arg3: string): Promise<void> {
         return WOS.callBackendService("file", "TouchFile", Array.from(arguments))
     }
 }

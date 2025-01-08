@@ -311,10 +311,7 @@ declare global {
         "ssh:proxyjump"?: string[];
         "ssh:userknownhostsfile"?: string[];
         "ssh:globalknownhostsfile"?: string[];
-        "aws:access_key_id"?: string;
-        "aws:secret_access_key"?: string;
-        "aws:region"?: string;
-        "aws:session_token"?: string;
+        "aws:config"?: string;
     };
 
     // wshrpc.ConnRequest

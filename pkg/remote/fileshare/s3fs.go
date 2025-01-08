@@ -12,9 +12,9 @@ type S3Client struct {
 
 var _ FileShareClient = S3Client{}
 
-func NewS3Client(config aws.Config) *S3Client {
+func NewS3Client(config *aws.Config) *S3Client {
 	return &S3Client{
-		client: s3.NewFromConfig(config),
+		client: s3.NewFromConfig(*config),
 	}
 }
 

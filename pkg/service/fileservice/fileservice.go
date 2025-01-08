@@ -20,69 +20,69 @@ type FileService struct{}
 func (fs *FileService) SaveFile_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "save file",
-		ArgNames: []string{"connection", "path", "data64"},
+		ArgNames: []string{"ctx", "connection", "path", "data64"},
 	}
 }
 
-func (fs *FileService) SaveFile(connection string, path string, data64 string) error {
+func (fs *FileService) SaveFile(ctx context.Context, connection string, path string, data64 string) error {
 	if connection == "" {
 		connection = wshrpc.LocalConnName
 	}
-	fsclient := fileshare.CreateFileShareClient(connection)
+	fsclient := fileshare.CreateFileShareClient(ctx, connection)
 	return fsclient.PutFile(path, data64)
 }
 
 func (fs *FileService) StatFile_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "get file info",
-		ArgNames: []string{"connection", "path"},
+		ArgNames: []string{"ctx", "connection", "path"},
 	}
 }
 
-func (fs *FileService) StatFile(connection string, path string) (*wshrpc.FileInfo, error) {
+func (fs *FileService) StatFile(ctx context.Context, connection string, path string) (*wshrpc.FileInfo, error) {
 	if connection == "" {
 		connection = wshrpc.LocalConnName
 	}
-	fsclient := fileshare.CreateFileShareClient(connection)
+	fsclient := fileshare.CreateFileShareClient(ctx, connection)
 	return fsclient.Stat(path)
 }
 
-func (fs *FileService) Mkdir(connection string, path string) error {
+func (fs *FileService) Mkdir(ctx context.Context, connection string, path string) error {
 	if connection == "" {
 		connection = wshrpc.LocalConnName
 	}
-	fsclient := fileshare.CreateFileShareClient(connection)
+	fsclient := fileshare.CreateFileShareClient(ctx, connection)
 	return fsclient.Mkdir(path)
 }
 
-func (fs *FileService) TouchFile(connection string, path string) error {
+func (fs *FileService) TouchFile(ctx context.Context, connection string, path string) error {
 	if connection == "" {
 		connection = wshrpc.LocalConnName
 	}
-	fsclient := fileshare.CreateFileShareClient(connection)
+	fsclient := fileshare.CreateFileShareClient(ctx, connection)
 	return fsclient.PutFile(path, "")
 }
 
-func (fs *FileService) Rename(connection string, path string, newPath string) error {
+func (fs *FileService) Rename(ctx context.Context, connection string, path string, newPath string) error {
 	if connection == "" {
 		connection = wshrpc.LocalConnName
 	}
-	fsclient := fileshare.CreateFileShareClient(connection)
+	fsclient := fileshare.CreateFileShareClient(ctx, connection)
 	return fsclient.Move(path, newPath, false)
 }
 
 func (fs *FileService) ReadFile_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "read file",
-		ArgNames: []string{"connection", "path"},
+		ArgNames: []string{"ctx", "connection", "path"},
 	}
 }
 
-func (fs *FileService) ReadFile(connection string, path string) (*fileshare.FullFile, error) {
+func (fs *FileService) ReadFile(ctx context.Context, connection string, path string) (*fileshare.FullFile, error) {
 	if connection == "" {
 		connection = wshrpc.LocalConnName
 	}
-	fsclient := fileshare.CreateFileShareClient(connection)
+	fsclient := fileshare.CreateFileShareClient(ctx, connection)
 	return fsclient.Read(path)
 }
 
@@ -99,15 +99,15 @@ func (fs *FileService) GetWaveFile(id string, path string) (any, error) {
 func (fs *FileService) DeleteFile_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "delete file",
-		ArgNames: []string{"connection", "path"},
+		ArgNames: []string{"ctx", "connection", "path"},
 	}
 }
 
-func (fs *FileService) DeleteFile(connection string, path string) error {
+func (fs *FileService) DeleteFile(ctx context.Context, connection string, path string) error {
 	if connection == "" {
 		connection = wshrpc.LocalConnName
 	}
-	fsclient := fileshare.CreateFileShareClient(connection)
+	fsclient := fileshare.CreateFileShareClient(ctx, connection)
 	return fsclient.Delete(path)
 }
 

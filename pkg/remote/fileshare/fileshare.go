@@ -1,6 +1,13 @@
 package fileshare
 
-import "github.com/wavetermdev/waveterm/pkg/wshrpc"
+import (
+	"context"
+	"log"
+
+	"github.com/wavetermdev/waveterm/pkg/remote"
+	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+)
 
 type FullFile struct {
 	Info   *wshrpc.FileInfo `json:"info"`
@@ -26,6 +33,15 @@ type FileShareClient interface {
 	GetFileShareName() string
 }
 
-func CreateFileShareClient(connection string) FileShareClient {
+func CreateFileShareClient(ctx context.Context, connection string) FileShareClient {
+	connType := remote.ParseConnectionType(connection)
+	if connType == remote.ConnectionTypeAws {
+		config, err := awsconn.GetConfigForConnection(ctx, connection)
+		if err != nil {
+			log.Printf("error getting aws config: %v", err)
+			return nil
+		}
+		return NewS3Client(config)
+	}
 	return NewWshClient(connection)
 }
