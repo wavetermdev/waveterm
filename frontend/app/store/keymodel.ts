@@ -8,6 +8,7 @@ import {
     getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
+    getSettingsKeyAtom,
     globalStore,
     refocusNode,
     WOS,
@@ -162,12 +163,23 @@ function globalRefocus() {
 }
 
 async function handleCmdN() {
+    const termAutoClose = globalStore.get(getSettingsKeyAtom("term:autoclose")) as boolean | undefined;
+    const termAutoCloseOnError = globalStore.get(getSettingsKeyAtom("term:autocloseonerror")) as boolean | undefined;
+    const termAutoCloseDelay = globalStore.get(getSettingsKeyAtom("term:autoclosedelay")) as number | undefined;
+
     const termBlockDef: BlockDef = {
         meta: {
             view: "term",
             controller: "shell",
+            "cmd:closeonexitforce": termAutoCloseOnError ?? false,
+            "cmd:closeonexitdelay": termAutoCloseDelay ?? 2000,
         },
     };
+    if (termAutoClose && !termAutoCloseOnError) {
+        termBlockDef.meta["cmd:closeonexitforce"] = false;
+        termBlockDef.meta["cmd:closeonexitdelay"] = termAutoCloseDelay ?? 2000;
+        termBlockDef.meta["cmd:closeonexit"] = true;
+    }
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode != null) {

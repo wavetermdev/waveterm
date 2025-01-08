@@ -601,6 +601,9 @@ declare global {
         "term:copyonselect"?: boolean;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
+        "term:autoclose"?: boolean;
+        "term:autocloseonerror"?: boolean;
+        "term:autoclosedelay"?: number;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
