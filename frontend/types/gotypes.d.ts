@@ -125,6 +125,12 @@ declare global {
         view: string;
     };
 
+    // wshrpc.CommandControllerAppendOutputData
+    type CommandControllerAppendOutputData = {
+        blockid: string;
+        data64: string;
+    };
+
     // wshrpc.CommandControllerResyncData
     type CommandControllerResyncData = {
         forcerestart?: boolean;
@@ -500,6 +506,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
+        "term:debugconn"?: boolean;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "markdown:fontsize"?: number;

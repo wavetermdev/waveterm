@@ -19,6 +19,7 @@ import (
 
 	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
@@ -258,6 +259,19 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 		inputUnion.InputData = inputBuf[:nw]
 	}
 	return bc.SendInput(inputUnion)
+}
+
+func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wshrpc.CommandControllerAppendOutputData) error {
+	outputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(data.Data64)))
+	nw, err := base64.StdEncoding.Decode(outputBuf, []byte(data.Data64))
+	if err != nil {
+		return fmt.Errorf("error decoding output data: %w", err)
+	}
+	err = blockcontroller.HandleAppendBlockFile(data.BlockId, blockcontroller.BlockFile_Term, outputBuf[:nw])
+	if err != nil {
+		return fmt.Errorf("error appending to block file: %w", err)
+	}
+	return nil
 }
 
 func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.CommandFileCreateData) error {
@@ -598,7 +612,13 @@ func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus,
 
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnEnsureData) error {
 	if data.LogBlockId != "" {
-		ctx = remote.ContextWithLogBlockId(ctx, data.LogBlockId)
+		block, err := wstore.DBMustGet[*waveobj.Block](ctx, data.LogBlockId)
+		if err == nil {
+			connDebug := block.Meta.GetBool(waveobj.MetaKey_TermDebugConn, false)
+			if connDebug {
+				ctx = blocklogger.ContextWithLogBlockId(ctx, data.LogBlockId)
+			}
+		}
 	}
 	if strings.HasPrefix(data.ConnName, "wsl://") {
 		distroName := strings.TrimPrefix(data.ConnName, "wsl://")

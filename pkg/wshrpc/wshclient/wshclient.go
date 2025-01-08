@@ -73,6 +73,12 @@ func ConnStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnSt
 	return resp, err
 }
 
+// command "controllerappendoutput", wshserver.ControllerAppendOutputCommand
+func ControllerAppendOutputCommand(w *wshutil.WshRpc, data wshrpc.CommandControllerAppendOutputData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "controllerappendoutput", data, opts)
+	return err
+}
+
 // command "controllerinput", wshserver.ControllerInputCommand
 func ControllerInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInputData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "controllerinput", data, opts)

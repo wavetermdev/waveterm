@@ -682,6 +682,34 @@ class TermViewModel implements ViewModel {
                 },
             });
         }
+        const debugConn = blockData?.meta?.["term:debugconn"];
+        fullMenu.push({
+            label: "Debug Connection",
+            submenu: [
+                {
+                    label: "On",
+                    type: "checkbox",
+                    checked: debugConn,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:debugconn": true },
+                        });
+                    },
+                },
+                {
+                    label: "Off",
+                    type: "checkbox",
+                    checked: !debugConn,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:debugconn": null },
+                        });
+                    },
+                },
+            ],
+        });
         return fullMenu;
     }
 }

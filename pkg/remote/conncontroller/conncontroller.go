@@ -20,6 +20,7 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
@@ -109,11 +110,6 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 		Error:         conn.Error,
 		WshError:      conn.WshError,
 	}
-}
-
-func (conn *SSHConn) Logf(debugLevel int, format string, args ...interface{}) {
-	logStr := fmt.Sprintf("[debug%d] ", debugLevel) + fmt.Sprintf(format, args...)
-	log.Printf("[conncontroller:%s] %s", conn.GetName(), logStr)
 }
 
 func (conn *SSHConn) FireConnChangeEvent() {
@@ -508,6 +504,7 @@ func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
 
 // does not return an error since that error is stored inside of SSHConn
 func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
+	blocklogger.Logf(ctx, "\n")
 	var connectAllowed bool
 	conn.WithLock(func() {
 		if conn.Status == Status_Connecting || conn.Status == Status_Connected {
@@ -650,6 +647,7 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 }
 
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
+	blocklogger.Logf(ctx, "[conndebug] connecting to %s\n", conn.GetName())
 	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)

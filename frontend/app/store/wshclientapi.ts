@@ -57,6 +57,11 @@ class RpcApiType {
         return client.wshRpcCall("connstatus", null, opts);
     }
 
+    // command "controllerappendoutput" [call]
+    ControllerAppendOutputCommand(client: WshClient, data: CommandControllerAppendOutputData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("controllerappendoutput", data, opts);
+    }
+
     // command "controllerinput" [call]
     ControllerInputCommand(client: WshClient, data: CommandBlockInputData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("controllerinput", data, opts);
