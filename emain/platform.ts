@@ -151,10 +151,12 @@ function getWaveDataDir(): string {
 function readXdgConfigDirs(): Record<string, string> {
     const xdgConfigPath = path.join(app.getPath("home"), ".config", "user-dirs.dirs");
     if (existsSync(xdgConfigPath)) {
+        console.log("Reading XDG_* variables from", xdgConfigPath);
         const xdgConfig = readFileSync(xdgConfigPath, "utf8");
         const lines = xdgConfig.split("\n");
         const dirs: Record<string, string> = {};
         for (const line of lines) {
+            console.log("Reading XDG_* line", line);
             const match = line.match(/^XDG_([[:upper:]]+)_DIR="(.*)"/);
             if (match) {
                 dirs[match[1]] = match[2];
