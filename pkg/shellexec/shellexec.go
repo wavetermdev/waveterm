@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/pamparse"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -443,9 +444,13 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 			}
 		}
 		ecmd = exec.Command(shellPath, shellOpts...)
-		ecmd.Env = os.Environ()
+		ecmd.Env = make([]string, 0)
 		if isZshShell(shellPath) {
 			shellutil.UpdateCmdEnv(ecmd, map[string]string{"ZDOTDIR": shellutil.GetZshZDotDir()})
+		}
+		pamEnvs := tryGetPamEnvVars()
+		if len(pamEnvs) > 0 {
+			shellutil.UpdateCmdEnv(ecmd, pamEnvs)
 		}
 	} else {
 		shellOpts = append(shellOpts, "-c", cmdStr)
@@ -511,4 +516,30 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error
 	}
 	<-ioDone
 	return outputBuf.Bytes(), nil
+}
+
+const etcEnvironmentPath = "/etc/environment"
+const etcSecurityPath = "/etc/security/pam_env.conf"
+const userEnvironmentPath = "~/.pam_environment"
+
+func tryGetPamEnvVars() map[string]string {
+	envVars, err := pamparse.ParseEnvironmentFile(etcEnvironmentPath)
+	if err != nil {
+		log.Printf("error parsing %s: %v", etcEnvironmentPath, err)
+	}
+	envVars2, err := pamparse.ParseEnvironmentConfFile(etcSecurityPath)
+	if err != nil {
+		log.Printf("error parsing %s: %v", etcSecurityPath, err)
+	}
+	envVars3, err := pamparse.ParseEnvironmentConfFile(userEnvironmentPath)
+	if err != nil {
+		log.Printf("error parsing %s: %v", userEnvironmentPath, err)
+	}
+	for k, v := range envVars2 {
+		envVars[k] = v
+	}
+	for k, v := range envVars3 {
+		envVars[k] = v
+	}
+	return envVars
 }
