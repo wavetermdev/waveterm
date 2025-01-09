@@ -729,6 +729,14 @@ declare global {
         activetabid: string;
     };
 
+    // wshrpc.UpdateInfo
+    type UpdateInfo = {
+        host: string;
+        clientarch: string;
+        clientos: string;
+        string: string;
+    };
+
     // userinput.UserInputRequest
     type UserInputRequest = {
         requestid: string;

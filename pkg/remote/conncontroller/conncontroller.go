@@ -307,6 +307,28 @@ func (wise *WshInstallSkipError) Error() string {
 	return "skipping wsh installation"
 }
 
+func (conn *SSHConn) UpdateWsh(ctx context.Context, clientDisplayName string, opts *WshInstallOpts) error {
+	if opts == nil {
+		opts = &WshInstallOpts{}
+	}
+	client := conn.GetClient()
+	if client == nil {
+		return fmt.Errorf("client is nil")
+	}
+	clientOs, clientArch, err := remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(client))
+	if err != nil {
+		return err
+	}
+	// should be able to GetClientPlatform in other ways, but this works for now
+	err = remote.CpWshToRemote(ctx, client, clientOs, clientArch)
+	if err != nil {
+		return fmt.Errorf("error installing wsh to remote: %w", err)
+	}
+	log.Printf("successfully installed wsh on %s\n", conn.GetName())
+	return nil
+
+}
+
 func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName string, opts *WshInstallOpts) error {
 	if opts == nil {
 		opts = &WshInstallOpts{}

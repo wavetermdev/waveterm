@@ -73,6 +73,12 @@ func ConnStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnSt
 	return resp, err
 }
 
+// command "connupdatewsh", wshserver.ConnUpdateWshCommand
+func ConnUpdateWshCommand(w *wshutil.WshRpc, data wshrpc.UpdateInfo, opts *wshrpc.RpcOpts) (bool, error) {
+	resp, err := sendRpcRequestCallHelper[bool](w, "connupdatewsh", data, opts)
+	return resp, err
+}
+
 // command "controllerinput", wshserver.ControllerInputCommand
 func ControllerInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInputData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "controllerinput", data, opts)

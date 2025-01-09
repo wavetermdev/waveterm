@@ -36,6 +36,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"golang.org/x/mod/semver"
 )
 
 var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data"}
@@ -663,6 +664,36 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 		return fmt.Errorf("connection not found: %s", connName)
 	}
 	return conn.CheckAndInstallWsh(ctx, connName, &conncontroller.WshInstallOpts{Force: true, NoUserPrompt: true})
+}
+
+func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, updateInfo wshrpc.UpdateInfo) (bool, error) {
+	connName := updateInfo.ConnName
+	// check version number, return now if update not necessary
+	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
+	if semver.Compare(updateInfo.ClientVersion, expectedVersion) < 0 {
+		return false, nil
+	}
+
+	// todo: need to add user input code here for validation
+
+	if strings.HasPrefix(connName, "wsl://") {
+		return false, fmt.Errorf("cannot use this command for wsl connections")
+	}
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return false, fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	if conn == nil {
+		return false, fmt.Errorf("connection not found: %s", connName)
+	}
+	err = conn.UpdateWsh(ctx, connName, &conncontroller.WshInstallOpts{Force: true, NoUserPrompt: true})
+	if err != nil {
+		return false, fmt.Errorf("update failed: %w", err)
+	}
+
+	// todo: need to add code for modifying configs?
+	return true, nil
 }
 
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
