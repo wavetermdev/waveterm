@@ -1159,6 +1159,7 @@ declare global {
         color?: string;
         label?: string;
         description?: string;
+        magnified?: boolean;
         blockdef: BlockDef;
     };
 
