@@ -444,19 +444,25 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 			}
 		}
 		ecmd = exec.Command(shellPath, shellOpts...)
-		ecmd.Env = make([]string, 0)
+		ecmd.Env = os.Environ()
 		if isZshShell(shellPath) {
 			shellutil.UpdateCmdEnv(ecmd, map[string]string{"ZDOTDIR": shellutil.GetZshZDotDir()})
-		}
-		pamEnvs := tryGetPamEnvVars()
-		if len(pamEnvs) > 0 {
-			shellutil.UpdateCmdEnv(ecmd, pamEnvs)
 		}
 	} else {
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		ecmd = exec.Command(shellPath, shellOpts...)
 		ecmd.Env = os.Environ()
 	}
+
+	// For Snap installations, we need to unset XDG environment variables as Snap overrides them to point to snap directories
+	if os.Getenv("SNAP") != "" {
+		shellutil.UpdateCmdEnv(ecmd, map[string]string{"XDG_CONFIG_HOME": "", "XDG_DATA_HOME": "", "XDG_CACHE_HOME": "", "XDG_RUNTIME_DIR": "", "XDG_CONFIG_DIRS": "", "XDG_DATA_DIRS": ""})
+		pamEnvs := tryGetPamEnvVars()
+		if len(pamEnvs) > 0 {
+			shellutil.UpdateCmdEnv(ecmd, pamEnvs)
+		}
+	}
+
 	if cmdOpts.Cwd != "" {
 		ecmd.Dir = cmdOpts.Cwd
 	}
