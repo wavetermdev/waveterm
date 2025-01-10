@@ -31,14 +31,12 @@ FOO11="foo#bar"
 	}
 
 	// parse the file
-	env, err := pamparse.ParseEnvironmentFile(tempFile)
+	got, err := pamparse.ParseEnvironmentFile(tempFile)
 	if err != nil {
 		t.Fatalf("failed to parse pam environment file: %v", err)
 	}
-	if len(env) != 10 {
-		t.Fatalf("expected 10 environment variables, got %d", len(env))
-	}
-	for k, v := range map[string]string{
+
+	want := map[string]string{
 		"FOO1":  "bar",
 		"FOO2":  "bar",
 		"FOO3":  "bar",
@@ -49,9 +47,14 @@ FOO11="foo#bar"
 		"FOO8":  "bar bar bar",
 		"FOO10": "$PATH",
 		"FOO11": "foo",
-	} {
-		if env[k] != v {
-			t.Errorf("expected %q to be %q, got %q", k, v, env[k])
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("expected %d environment variables, got %d", len(want), len(got))
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("expected %q to be %q, got %q", k, v, got[k])
 		}
 	}
 }
@@ -62,6 +65,7 @@ TEST   DEFAULT=@{HOME}/.config\ state   OVERRIDE=./config\ s
 FOO   DEFAULT=@{HOME}/.config\ s
 STRING   DEFAULT="string"
 STRINGOVERRIDE   DEFAULT="string"   OVERRIDE="string2"
+FOO11="foo#bar"
 	`
 
 	// create a temporary file with the content
@@ -71,21 +75,25 @@ STRINGOVERRIDE   DEFAULT="string"   OVERRIDE="string2"
 	}
 
 	// parse the file
-	env, err := pamparse.ParseEnvironmentConfFile(tempFile)
+	got, err := pamparse.ParseEnvironmentConfFile(tempFile)
 	if err != nil {
 		t.Fatalf("failed to parse pam environment conf file: %v", err)
 	}
-	if len(env) != 4 {
-		t.Fatalf("expected 4 environment variables, got %d", len(env))
-	}
-	for k, v := range map[string]string{
+
+	want := map[string]string{
 		"TEST":           "./config\\ s:@{HOME}/.config\\ state",
 		"FOO":            "@{HOME}/.config\\ s",
 		"STRING":         "string",
 		"STRINGOVERRIDE": "string2:string",
-	} {
-		if env[k] != v {
-			t.Errorf("expected %q to be %q, got %q", k, v, env[k])
+		"FOO11":          "foo",
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("expected %d environment variables, got %d", len(want), len(got))
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("expected %q to be %q, got %q", k, v, got[k])
 		}
 	}
 }
