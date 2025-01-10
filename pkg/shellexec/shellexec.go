@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/pamparse"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -452,6 +453,30 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 		ecmd = exec.Command(shellPath, shellOpts...)
 		ecmd.Env = os.Environ()
 	}
+
+	/*
+	  For Snap installations, we need to correct the XDG environment variables as Snap
+	  overrides them to point to snap directories. We will get the correct values, if
+	  set, from the PAM environment. If the XDG variables are set in profile or in an
+	  RC file, it will be overridden when the shell initializes.
+	*/
+	if os.Getenv("SNAP") != "" {
+		varsToReplace := map[string]string{"XDG_CONFIG_HOME": "", "XDG_DATA_HOME": "", "XDG_CACHE_HOME": "", "XDG_RUNTIME_DIR": "", "XDG_CONFIG_DIRS": "", "XDG_DATA_DIRS": ""}
+		pamEnvs := tryGetPamEnvVars()
+		log.Printf("PAM environment: %v", pamEnvs)
+		if len(pamEnvs) > 0 {
+			// We only want to set the XDG variables from the PAM environment, all others should already be correct or may have been overridden by something else out of our control
+			for k := range pamEnvs {
+				if _, ok := varsToReplace[k]; ok {
+					log.Printf("Setting %s to %s", k, pamEnvs[k])
+					varsToReplace[k] = pamEnvs[k]
+				}
+			}
+		}
+		log.Printf("Replacing XDG environment variables: %v", varsToReplace)
+		shellutil.UpdateCmdEnv(ecmd, varsToReplace)
+	}
+
 	if cmdOpts.Cwd != "" {
 		ecmd.Dir = cmdOpts.Cwd
 	}
@@ -511,4 +536,40 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error
 	}
 	<-ioDone
 	return outputBuf.Bytes(), nil
+}
+
+const etcEnvironmentPath = "/etc/environment"
+const etcSecurityPath = "/etc/security/pam_env.conf"
+const userEnvironmentPath = "~/.pam_environment"
+
+/*
+tryGetPamEnvVars tries to get the environment variables from /etc/environment,
+/etc/security/pam_env.conf, and ~/.pam_environment.
+
+It then returns a map of the environment variables, overriding duplicates with
+the following order of precedence:
+1. /etc/environment
+2. /etc/security/pam_env.conf
+3. ~/.pam_environment
+*/
+func tryGetPamEnvVars() map[string]string {
+	envVars, err := pamparse.ParseEnvironmentFile(etcEnvironmentPath)
+	if err != nil {
+		log.Printf("error parsing %s: %v", etcEnvironmentPath, err)
+	}
+	envVars2, err := pamparse.ParseEnvironmentConfFile(etcSecurityPath)
+	if err != nil {
+		log.Printf("error parsing %s: %v", etcSecurityPath, err)
+	}
+	envVars3, err := pamparse.ParseEnvironmentConfFile(wavebase.ExpandHomeDirSafe(userEnvironmentPath))
+	if err != nil {
+		log.Printf("error parsing %s: %v", userEnvironmentPath, err)
+	}
+	for k, v := range envVars2 {
+		envVars[k] = v
+	}
+	for k, v := range envVars3 {
+		envVars[k] = v
+	}
+	return envVars
 }
