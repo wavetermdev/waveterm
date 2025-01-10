@@ -621,6 +621,12 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 // does not return "application/octet-stream" as this is considered a detection failure
 // can pass an existing fileInfo to avoid re-statting the file
 // falls back to text/plain for 0 byte files
+
+func isWinSymlink(bits os.FileMode) bool {
+	WIN_SYMLINK := os.ModeSymlink
+	return (bits&WIN_SYMLINK > 0)
+}
+
 func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	if fileInfo == nil {
 		statRtn, err := os.Stat(path)
@@ -629,7 +635,7 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 		}
 		fileInfo = statRtn
 	}
-	if fileInfo.IsDir() {
+	if fileInfo.IsDir() || isWinSymlink(fileInfo.Mode()) {
 		return "directory"
 	}
 	if fileInfo.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
