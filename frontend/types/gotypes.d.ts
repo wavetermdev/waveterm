@@ -303,6 +303,7 @@ declare global {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:overrideconfig"?: boolean;
+        "conn:wshpath"?: string;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;
@@ -508,7 +509,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
-        "term:debugconn"?: string;
+        "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "markdown:fontsize"?: number;

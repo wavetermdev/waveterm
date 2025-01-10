@@ -619,7 +619,7 @@ func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Conte
 	if err != nil {
 		return ctx
 	}
-	connDebug := block.Meta.GetString(waveobj.MetaKey_TermDebugConn, "")
+	connDebug := block.Meta.GetString(waveobj.MetaKey_TermConnDebug, "")
 	if connDebug == "" {
 		return ctx
 	}

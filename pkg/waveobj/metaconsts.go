@@ -95,7 +95,7 @@ const (
 	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
 	MetaKey_TermTransparency                 = "term:transparency"
 	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
-	MetaKey_TermDebugConn                    = "term:debugconn"
+	MetaKey_TermConnDebug                    = "term:conndebug"
 
 	MetaKey_WebZoom                          = "web:zoom"
 	MetaKey_WebHideNav                       = "web:hidenav"

@@ -682,7 +682,7 @@ class TermViewModel implements ViewModel {
                 },
             });
         }
-        const debugConn = blockData?.meta?.["term:debugconn"];
+        const debugConn = blockData?.meta?.["term:conndebug"];
         fullMenu.push({
             label: "Debug Connection",
             submenu: [
@@ -693,7 +693,7 @@ class TermViewModel implements ViewModel {
                     click: () => {
                         RpcApi.SetMetaCommand(TabRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
-                            meta: { "term:debugconn": null },
+                            meta: { "term:conndebug": null },
                         });
                     },
                 },
@@ -704,7 +704,7 @@ class TermViewModel implements ViewModel {
                     click: () => {
                         RpcApi.SetMetaCommand(TabRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
-                            meta: { "term:debugconn": "info" },
+                            meta: { "term:conndebug": "info" },
                         });
                     },
                 },
@@ -715,7 +715,7 @@ class TermViewModel implements ViewModel {
                     click: () => {
                         RpcApi.SetMetaCommand(TabRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
-                            meta: { "term:debugconn": "debug" },
+                            meta: { "term:conndebug": "debug" },
                         });
                     },
                 },
