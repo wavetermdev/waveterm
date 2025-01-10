@@ -541,6 +541,8 @@ const etcEnvironmentPath = "/etc/environment"
 const etcSecurityPath = "/etc/security/pam_env.conf"
 const userEnvironmentPath = "~/.pam_environment"
 
+var pamParseOpts *pamparse.PamParseOpts = pamparse.ParsePasswdSafe()
+
 /*
 tryGetPamEnvVars tries to get the environment variables from /etc/environment,
 /etc/security/pam_env.conf, and ~/.pam_environment.
@@ -556,11 +558,11 @@ func tryGetPamEnvVars() map[string]string {
 	if err != nil {
 		log.Printf("error parsing %s: %v", etcEnvironmentPath, err)
 	}
-	envVars2, err := pamparse.ParseEnvironmentConfFile(etcSecurityPath)
+	envVars2, err := pamparse.ParseEnvironmentConfFile(etcSecurityPath, pamParseOpts)
 	if err != nil {
 		log.Printf("error parsing %s: %v", etcSecurityPath, err)
 	}
-	envVars3, err := pamparse.ParseEnvironmentConfFile(wavebase.ExpandHomeDirSafe(userEnvironmentPath))
+	envVars3, err := pamparse.ParseEnvironmentConfFile(wavebase.ExpandHomeDirSafe(userEnvironmentPath), pamParseOpts)
 	if err != nil {
 		log.Printf("error parsing %s: %v", userEnvironmentPath, err)
 	}

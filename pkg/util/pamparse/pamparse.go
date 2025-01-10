@@ -12,6 +12,11 @@ import (
 	"strings"
 )
 
+type PamParseOpts struct {
+	Home  string
+	Shell string
+}
+
 // Parses a file in the format of /etc/environment. Accepts a path to the file and returns a map of environment variables.
 func ParseEnvironmentFile(path string) (map[string]string, error) {
 	rtn := make(map[string]string)
@@ -33,14 +38,19 @@ func ParseEnvironmentFile(path string) (map[string]string, error) {
 }
 
 // Parses a file in the format of /etc/security/pam_env.conf or ~/.pam_environment. Accepts a path to the file and returns a map of environment variables.
-func ParseEnvironmentConfFile(path string) (map[string]string, error) {
+func ParseEnvironmentConfFile(path string, opts *PamParseOpts) (map[string]string, error) {
 	rtn := make(map[string]string)
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	home, shell, err := parsePasswd()
+	if opts == nil {
+		opts, err = ParsePasswd()
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -56,16 +66,16 @@ func ParseEnvironmentConfFile(path string) (map[string]string, error) {
 				continue
 			}
 		}
-		rtn[key] = replaceHomeAndShell(val, home, shell)
+		rtn[key] = replaceHomeAndShell(val, opts.Home, opts.Shell)
 	}
 	return rtn, nil
 }
 
 // Gets the home directory and shell from /etc/passwd for the current user.
-func parsePasswd() (string, string, error) {
+func ParsePasswd() (*PamParseOpts, error) {
 	file, err := os.Open("/etc/passwd")
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	defer file.Close()
 	userPrefix := fmt.Sprintf("%s:", os.Getenv("USER"))
@@ -75,15 +85,30 @@ func parsePasswd() (string, string, error) {
 		if strings.HasPrefix(line, userPrefix) {
 			parts := strings.Split(line, ":")
 			if len(parts) < 7 {
-				return "", "", fmt.Errorf("invalid passwd entry: insufficient fields")
+				return nil, fmt.Errorf("invalid passwd entry: insufficient fields")
 			}
-			return parts[5], parts[6], nil
+			return &PamParseOpts{
+				Home:  parts[5],
+				Shell: parts[6],
+			}, nil
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return "", "", fmt.Errorf("error reading passwd file: %w", err)
+		return nil, fmt.Errorf("error reading passwd file: %w", err)
 	}
-	return "", "", nil
+	return nil, nil
+}
+
+/*
+Gets the home directory and shell from /etc/passwd for the current user and returns a map of environment variables from /etc/security/pam_env.conf or ~/.pam_environment.
+Returns nil if an error occurs.
+*/
+func ParsePasswdSafe() *PamParseOpts {
+	opts, err := ParsePasswd()
+	if err != nil {
+		return nil
+	}
+	return opts
 }
 
 // Replaces @{HOME} and @{SHELL} placeholders in a string with the provided values. Follows guidance from https://wiki.archlinux.org/title/Environment_variables#Using_pam_env
@@ -105,7 +130,7 @@ func parseEnvironmentLine(line string) (string, string) {
 }
 
 // Regex to parse a line from /etc/security/pam_env.conf or ~/.pam_environment. Follows the guidance from https://wiki.archlinux.org/title/Environment_variables#Using_pam_env
-var confFileLineRe = regexp.MustCompile(`^([A-Z0-9_]+[A-Za-z0-9]*)\s+(?:(?:DEFAULT=)([^\s]+(?: \w+)*))\s*(?:(?:OVERRIDE=)([^\s]+(?: \w+)*))?\s*$`)
+var confFileLineRe = regexp.MustCompile(`^([A-Z0-9_]+[A-Za-z0-9]*)\s+(?:(?:DEFAULT=)(\S+(?: \S+)*))\s*(?:(?:OVERRIDE=)(\S+(?: \S+)*))?\s*$`)
 
 func parseEnvironmentConfLine(line string) (string, string) {
 	m := confFileLineRe.FindStringSubmatch(line)
