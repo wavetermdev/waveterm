@@ -461,19 +461,18 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 	  RC file, it will be overridden when the shell initializes.
 	*/
 	if os.Getenv("SNAP") != "" {
+		log.Printf("Detected Snap installation, correcting XDG environment variables")
 		varsToReplace := map[string]string{"XDG_CONFIG_HOME": "", "XDG_DATA_HOME": "", "XDG_CACHE_HOME": "", "XDG_RUNTIME_DIR": "", "XDG_CONFIG_DIRS": "", "XDG_DATA_DIRS": ""}
 		pamEnvs := tryGetPamEnvVars()
-		log.Printf("PAM environment: %v", pamEnvs)
 		if len(pamEnvs) > 0 {
 			// We only want to set the XDG variables from the PAM environment, all others should already be correct or may have been overridden by something else out of our control
 			for k := range pamEnvs {
 				if _, ok := varsToReplace[k]; ok {
-					log.Printf("Setting %s to %s", k, pamEnvs[k])
 					varsToReplace[k] = pamEnvs[k]
 				}
 			}
 		}
-		log.Printf("Replacing XDG environment variables: %v", varsToReplace)
+		log.Printf("Setting XDG environment variables to: %v", varsToReplace)
 		shellutil.UpdateCmdEnv(ecmd, varsToReplace)
 	}
 
