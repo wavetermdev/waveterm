@@ -78,14 +78,17 @@ FOO11="foo#bar"
 	}
 
 	// parse the file
-	got, err := pamparse.ParseEnvironmentConfFile(tempFile)
+	got, err := pamparse.ParseEnvironmentConfFile(tempFile, &pamparse.PamParseOpts{
+		Home:  "/home/user",
+		Shell: "/bin/bash"},
+	)
 	if err != nil {
 		t.Fatalf("failed to parse pam environment conf file: %v", err)
 	}
 
 	want := map[string]string{
-		"TEST":           "./config\\ s:@{HOME}/.config\\ state",
-		"FOO":            "@{HOME}/.config\\ s",
+		"TEST":           "./config\\ s:/home/user/.config\\ state",
+		"FOO":            "/home/user/.config\\ s",
 		"STRING":         "string",
 		"STRINGOVERRIDE": "string2:string",
 		"FOO11":          "foo",
