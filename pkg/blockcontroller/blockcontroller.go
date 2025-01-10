@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
@@ -757,6 +758,13 @@ func getOrCreateBlockController(tabId string, blockId string, controllerName str
 	return bc
 }
 
+func formatConnNameForLog(connName string) string {
+	if connName == "" {
+		return "local"
+	}
+	return connName
+}
+
 func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts, force bool) error {
 	if tabId == "" || blockId == "" {
 		return fmt.Errorf("invalid tabId or blockId passed to ResyncController")
@@ -767,6 +775,7 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	}
 	if force {
 		StopBlockController(blockId)
+		time.Sleep(100 * time.Millisecond) // TODO see if we can remove this (the "process finished with exit code" message comes out after we start reconnecting otherwise)
 	}
 	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
 	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
@@ -782,8 +791,10 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	if curBc != nil {
 		bcStatus := curBc.GetRuntimeStatus()
 		if bcStatus.ShellProcStatus == Status_Running && bcStatus.ShellProcConnName != connName {
+			blocklogger.Infof(ctx, "\n[conndebug] stopping blockcontroller due to conn change %q => %q\n", formatConnNameForLog(bcStatus.ShellProcConnName), formatConnNameForLog(connName))
 			log.Printf("stopping blockcontroller %s due to conn change\n", blockId)
 			StopBlockControllerAndSetStatus(blockId, Status_Init)
+			time.Sleep(100 * time.Millisecond) // TODO see if we can remove this (the "process finished with exit code" message comes out after we start reconnecting otherwise)
 		}
 	}
 	// now if there is a conn, ensure it is connected

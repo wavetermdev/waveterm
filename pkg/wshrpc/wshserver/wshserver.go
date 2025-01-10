@@ -238,6 +238,7 @@ func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) 
 }
 
 func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.CommandControllerResyncData) error {
+	ctx = termCtxWithLogBlockId(ctx, data.BlockId)
 	return blockcontroller.ResyncController(ctx, data.TabId, data.BlockId, data.RtOpts, data.ForceRestart)
 }
 
