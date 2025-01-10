@@ -13,7 +13,10 @@ updates:
               exclude-patterns:
                   - "*storybook*"
                   - "*electron*"
+                  - "jotai"
+                  - "react"
                   - "@types/react"
+                  - "*docusaurus*"
               update-types:
                   - "minor"
                   - "patch"
@@ -22,25 +25,34 @@ updates:
               exclude-patterns:
                   - "*storybook*"
                   - "*electron*"
+                  - "jotai"
+                  - "react"
                   - "@types/react"
+                  - "*docusaurus*"
               update-types:
                   - "major"
 
           prod-dependencies:
               dependency-type: "production"
               exclude-patterns:
+                  - "*storybook*"
                   - "*electron*"
                   - "jotai"
                   - "react"
+                  - "@types/react"
+                  - "*docusaurus*"
               update-types:
                   - "minor"
                   - "patch"
           prod-dependencies-major:
               dependency-type: "production"
               exclude-patterns:
+                  - "*storybook*"
                   - "*electron*"
                   - "jotai"
                   - "react"
+                  - "@types/react"
+                  - "*docusaurus*"
               update-types:
                   - "major"
 
