@@ -292,8 +292,8 @@ declare global {
         metamaptype: MetaType;
     };
 
-    // wshrpc.ConnEnsureData
-    type ConnEnsureData = {
+    // wshrpc.ConnExtData
+    type ConnExtData = {
         connname: string;
         logblockid?: string;
     };

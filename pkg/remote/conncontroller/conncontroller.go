@@ -418,84 +418,20 @@ func (conn *SSHConn) getPermissionToInstallWsh(ctx context.Context, clientDispla
 	return true, nil
 }
 
-func (conn *SSHConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName string, opts *WshInstallOpts) error {
-	if opts == nil {
-		opts = &WshInstallOpts{}
-	}
+func (conn *SSHConn) InstallWsh(ctx context.Context) error {
+	conn.Infof(ctx, "running installWsh...\n")
 	client := conn.GetClient()
 	if client == nil {
-		return fmt.Errorf("client is nil")
+		conn.Infof(ctx, "ERROR ssh client is not connected, cannot install\n")
+		return fmt.Errorf("ssh client is not connected, cannot install")
 	}
-	// check that correct wsh extensions are installed
-	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
-	clientVersion, err := remote.GetWshVersion(client)
-	if err == nil && !opts.Force && semver.Compare(clientVersion, expectedVersion) >= 0 {
-		return nil
-	}
-	var queryText string
-	var title string
-	if opts.Force {
-		queryText = fmt.Sprintf("ReInstalling Wave Shell Extensions (%s) on `%s`\n", wavebase.WaveVersion, clientDisplayName)
-		title = "Install Wave Shell Extensions"
-	} else if err != nil {
-		queryText = fmt.Sprintf("Wave requires Wave Shell Extensions to be  \n"+
-			"installed on `%s`  \n"+
-			"to ensure a seamless experience.  \n\n"+
-			"Would you like to install them?", clientDisplayName)
-		title = "Install Wave Shell Extensions"
-	} else {
-		// don't ask for upgrading the version
-		opts.NoUserPrompt = true
-	}
-	if !opts.NoUserPrompt {
-		request := &userinput.UserInputRequest{
-			ResponseType: "confirm",
-			QueryText:    queryText,
-			Title:        title,
-			Markdown:     true,
-			CheckBoxMsg:  "Automatically install for all connections",
-			OkLabel:      "Install wsh",
-			CancelLabel:  "No wsh",
-		}
-		response, err := userinput.GetUserInput(ctx, request)
-		if err != nil {
-			return err
-		}
-		if !response.Confirm {
-			meta := make(map[string]any)
-			meta["conn:wshenabled"] = false
-			err = wconfig.SetConnectionsConfigValue(conn.GetName(), meta)
-			if err != nil {
-				log.Printf("warning: error writing to connections file: %v", err)
-			}
-			return &WshInstallSkipError{}
-		}
-		if response.CheckboxStat {
-			meta := waveobj.MetaMapType{
-				wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
-			}
-			err := wconfig.SetBaseConfigValue(meta)
-			if err != nil {
-				return fmt.Errorf("error setting conn:askbeforewshinstall value: %w", err)
-			}
-		}
-	}
-	err = conn.installWsh(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (conn *SSHConn) installWsh(ctx context.Context) error {
-	conn.Infof(ctx, "running installWsh...\n")
-	clientOs, clientArch, err := remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(conn.GetClient()))
+	clientOs, clientArch, err := remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(client))
 	if err != nil {
 		conn.Infof(ctx, "ERROR detecting client platform: %v\n", err)
 		return err
 	}
 	conn.Infof(ctx, "detected remote platform os:%s arch:%s\n", clientOs, clientArch)
-	err = remote.CpWshToRemote(ctx, conn.GetClient(), clientOs, clientArch)
+	err = remote.CpWshToRemote(ctx, client, clientOs, clientArch)
 	if err != nil {
 		conn.Infof(ctx, "ERROR copying wsh binary to remote: %v\n", err)
 		return fmt.Errorf("error copying wsh binary to remote: %w", err)
@@ -682,7 +618,7 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 	}
 	if needsInstall {
 		conn.Infof(ctx, "connserver needs to be (re)installed\n")
-		err = conn.installWsh(ctx)
+		err = conn.InstallWsh(ctx)
 		if err != nil {
 			conn.Infof(ctx, "ERROR installing wsh: %v\n", err)
 			return false, "error installing connserver", fmt.Errorf("error installing wsh: %w", err)

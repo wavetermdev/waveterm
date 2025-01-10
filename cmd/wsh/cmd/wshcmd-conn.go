@@ -128,7 +128,11 @@ func connReinstallRun(cmd *cobra.Command, args []string) error {
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	err := wshclient.ConnReinstallWshCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 60000})
+	data := wshrpc.ConnExtData{
+		ConnName:   connName,
+		LogBlockId: RpcContext.BlockId,
+	}
+	err := wshclient.ConnReinstallWshCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("reinstalling connection: %w", err)
 	}
@@ -190,7 +194,7 @@ func connEnsureRun(cmd *cobra.Command, args []string) error {
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	data := wshrpc.ConnEnsureData{
+	data := wshrpc.ConnExtData{
 		ConnName:   connName,
 		LogBlockId: RpcContext.BlockId,
 	}

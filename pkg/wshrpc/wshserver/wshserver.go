@@ -626,7 +626,7 @@ func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Conte
 	return blocklogger.ContextWithLogBlockId(ctx, logBlockId, connDebug == "debug")
 }
 
-func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnEnsureData) error {
+func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtData) error {
 	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
 	if strings.HasPrefix(data.ConnName, "wsl://") {
 		distroName := strings.TrimPrefix(data.ConnName, "wsl://")
@@ -677,7 +677,9 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 	return conn.Connect(ctx, &connRequest.Keywords)
 }
 
-func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
+func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
+	connName := data.ConnName
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(ctx, distroName, false)
@@ -694,7 +696,7 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
-	return conn.CheckAndInstallWsh(ctx, connName, &conncontroller.WshInstallOpts{Force: true, NoUserPrompt: true})
+	return conn.InstallWsh(ctx)
 }
 
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
