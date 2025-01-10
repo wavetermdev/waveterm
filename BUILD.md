@@ -50,11 +50,9 @@ For packaging, the following additional packages are required:
 
 #### Windows
 
-You will need the GNU build toolchain installed in order for Go to work on Windows. In most cases, this requires installing MinGW-w64.
+You will need the Zig [Zig](https://ziglang.org/) compiler for statically linking CGO.
 
-The easiest way to install this is using MSYS2: https://www.msys2.org/
-
-If you prefer an alternative method, you can find other methods here: https://www.mingw-w64.org/downloads/
+You can find installation instructions for Zig on Windows [here](https://ziglang.org/learn/getting-started/#managers).
 
 ### Task
 

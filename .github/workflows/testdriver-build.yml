@@ -57,6 +57,8 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Install Zig
+              uses: mlugg/setup-zig@v1
 
             - name: Build
               run: task package
