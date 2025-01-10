@@ -74,8 +74,14 @@ func parsePasswd() (string, string, error) {
 		line := scanner.Text()
 		if strings.HasPrefix(line, userPrefix) {
 			parts := strings.Split(line, ":")
+			if len(parts) < 7 {
+				return "", "", fmt.Errorf("invalid passwd entry: insufficient fields")
+			}
 			return parts[5], parts[6], nil
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", "", fmt.Errorf("error reading passwd file: %w", err)
 	}
 	return "", "", nil
 }
