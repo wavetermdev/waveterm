@@ -15,7 +15,7 @@ import (
 // Parses a file in the format of /etc/environment. Accepts a path to the file and returns a map of environment variables.
 func ParseEnvironmentFile(path string) (map[string]string, error) {
 	rtn := make(map[string]string)
-	file, err := os.OpenFile(path, os.O_RDONLY, 0)
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func ParseEnvironmentFile(path string) (map[string]string, error) {
 // Parses a file in the format of /etc/security/pam_env.conf or ~/.pam_environment. Accepts a path to the file and returns a map of environment variables.
 func ParseEnvironmentConfFile(path string) (map[string]string, error) {
 	rtn := make(map[string]string)
-	file, err := os.OpenFile(path, os.O_RDONLY, 0)
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func ParseEnvironmentConfFile(path string) (map[string]string, error) {
 
 // Gets the home directory and shell from /etc/passwd for the current user.
 func parsePasswd() (string, string, error) {
-	file, err := os.OpenFile("/etc/passwd", os.O_RDONLY, 0)
+	file, err := os.Open("/etc/passwd")
 	if err != nil {
 		return "", "", err
 	}
