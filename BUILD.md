@@ -20,7 +20,7 @@ Debian/Ubuntu:
 
 ```sh
 sudo apt install zip snapd
-sudo snap install zig --classic
+sudo snap install zig --classic --beta
 ```
 
 Fedora/RHEL:
