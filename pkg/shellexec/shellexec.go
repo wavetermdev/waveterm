@@ -466,8 +466,8 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 					varsToReplace[k] = pamEnvs[k]
 				}
 			}
-			shellutil.UpdateCmdEnv(ecmd, varsToReplace)
 		}
+		shellutil.UpdateCmdEnv(ecmd, varsToReplace)
 	}
 
 	if cmdOpts.Cwd != "" {
