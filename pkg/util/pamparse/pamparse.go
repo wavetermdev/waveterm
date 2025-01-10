@@ -56,6 +56,7 @@ func ParseEnvironmentConfFile(path string) (map[string]string, error) {
 	return rtn, nil
 }
 
+// Regex to parse a line from /etc/environment. Follows the guidance from https://wiki.archlinux.org/title/Environment_variables
 var envFileLineRe = regexp.MustCompile(`^(?:export\s+)?([A-Z0-9_]+[A-Za-z0-9]*)=(.*)$`)
 
 func parseEnvironmentLine(line string) (string, string) {
@@ -66,6 +67,7 @@ func parseEnvironmentLine(line string) (string, string) {
 	return m[1], sanitizeEnvVarValue(m[2])
 }
 
+// Regex to parse a line from /etc/security/pam_env.conf or ~/.pam_environment. Follows the guidance from https://wiki.archlinux.org/title/Environment_variables
 var confFileLineRe = regexp.MustCompile(`^([A-Z0-9_]+[A-Za-z0-9]*)\s+(?:(?:DEFAULT=)([^\s]+(?: \w+)*))\s*(?:(?:OVERRIDE=)([^\s]+(?: \w+)*))?\s*$`)
 
 func parseEnvironmentConfLine(line string) (string, string) {
