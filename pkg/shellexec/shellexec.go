@@ -538,6 +538,11 @@ const etcEnvironmentPath = "/etc/environment"
 const etcSecurityPath = "/etc/security/pam_env.conf"
 const userEnvironmentPath = "~/.pam_environment"
 
+// tryGetPamEnvVars tries to get the environment variables from /etc/environment, /etc/security/pam_env.conf, and ~/.pam_environment.
+// It then returns a map of the environment variables, overriding duplicates with the following order of precedence:
+// 1. /etc/environment
+// 2. /etc/security/pam_env.conf
+// 3. ~/.pam_environment
 func tryGetPamEnvVars() map[string]string {
 	envVars, err := pamparse.ParseEnvironmentFile(etcEnvironmentPath)
 	if err != nil {
