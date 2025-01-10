@@ -112,6 +112,7 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 		WshEnabled:    conn.WshEnabled.Load(),
 		WshError:      conn.WshError,
 		NoWshReason:   conn.NoWshReason,
+		WshVersion:    conn.WshVersion,
 	}
 }
 

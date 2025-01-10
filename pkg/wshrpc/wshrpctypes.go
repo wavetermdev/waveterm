@@ -543,6 +543,7 @@ type ConnStatus struct {
 	Error         string `json:"error,omitempty"`
 	WshError      string `json:"wsherror,omitempty"`
 	NoWshReason   string `json:"nowshreason,omitempty"`
+	WshVersion    string `json:"wshversion,omitempty"`
 }
 
 type WebSelectorOpts struct {

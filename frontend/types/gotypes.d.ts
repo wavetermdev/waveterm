@@ -344,6 +344,7 @@ declare global {
         error?: string;
         wsherror?: string;
         nowshreason?: string;
+        wshversion?: string;
     };
 
     // wshrpc.CpuDataRequest
