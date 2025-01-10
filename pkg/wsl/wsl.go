@@ -446,8 +446,9 @@ func (conn *WslConn) connectInternal(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	config := wconfig.ReadFullConfig()
-	installErr := conn.CheckAndInstallWsh(ctx, conn.GetName(), &WshInstallOpts{NoUserPrompt: !config.Settings.ConnAskBeforeWshInstall})
+	config := wconfig.GetWatcher().GetFullConfig()
+	wshAsk := wconfig.DefaultBoolPtr(config.Settings.ConnAskBeforeWshInstall, true)
+	installErr := conn.CheckAndInstallWsh(ctx, conn.GetName(), &WshInstallOpts{NoUserPrompt: !wshAsk})
 	if installErr != nil {
 		return fmt.Errorf("conncontroller %s wsh install error: %v", conn.GetName(), installErr)
 	}

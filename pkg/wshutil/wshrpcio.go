@@ -5,8 +5,10 @@ package wshutil
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"time"
 )
 
 // special I/O wrappers for wshrpc
@@ -52,6 +54,38 @@ func StreamToLines(input io.Reader, lineFn func([]byte)) error {
 		if err != nil {
 			return err
 		}
+	}
+}
+
+type LineOutput struct {
+	Line  string
+	Error error
+}
+
+// starts a goroutine to drive the channel
+func StreamToLinesChan(input io.Reader) chan LineOutput {
+	ch := make(chan LineOutput)
+	go func() {
+		defer close(ch)
+		err := StreamToLines(input, func(line []byte) {
+			ch <- LineOutput{Line: string(line)}
+		})
+		if err != nil && err != io.EOF {
+			ch <- LineOutput{Error: err}
+		}
+	}()
+	return ch
+}
+
+func ReadLineWithTimeout(ch chan LineOutput, timeout time.Duration) (string, error) {
+	select {
+	case output := <-ch:
+		if output.Error != nil {
+			return "", output.Error
+		}
+		return output.Line, nil
+	case <-time.After(timeout):
+		return "", context.DeadlineExceeded
 	}
 }
 

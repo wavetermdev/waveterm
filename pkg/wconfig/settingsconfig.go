@@ -115,9 +115,9 @@ type SettingsType struct {
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
 
-	ConnClear               bool `json:"conn:*,omitempty"`
-	ConnAskBeforeWshInstall bool `json:"conn:askbeforewshinstall,omitempty"`
-	ConnWshEnabled          bool `json:"conn:wshenabled,omitempty"`
+	ConnClear               bool  `json:"conn:*,omitempty"`
+	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
+	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
 }
 
 type ConfigError struct {
@@ -134,6 +134,13 @@ type FullConfigType struct {
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
 	Connections    map[string]wshrpc.ConnKeywords `json:"connections"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
+}
+
+func DefaultBoolPtr(arg *bool, def bool) bool {
+	if arg == nil {
+		return def
+	}
+	return *arg
 }
 
 func goBackWS(barr []byte, offset int) int {
@@ -307,6 +314,8 @@ func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []C
 	return mergeMetaMap(rtn, homeConfigs, simpleMerge), allErrs
 }
 
+// this function should only be called by the wconfig code.
+// in golang code, the best way to get the current config is via the watcher -- wconfig.GetWatcher().GetFullConfig()
 func ReadFullConfig() FullConfigType {
 	var fullConfig FullConfigType
 	configRType := reflect.TypeOf(fullConfig)

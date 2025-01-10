@@ -119,6 +119,7 @@ type WshRpcInterface interface {
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
 	ControllerStopCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
+	ControllerAppendOutputCommand(ctx context.Context, data CommandControllerAppendOutputData) error
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
 	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (waveobj.ORef, error)
 	CreateSubBlockCommand(ctx context.Context, data CommandCreateSubBlockData) (waveobj.ORef, error)
@@ -155,8 +156,8 @@ type WshRpcInterface interface {
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	WslStatusCommand(ctx context.Context) ([]ConnStatus, error)
-	ConnEnsureCommand(ctx context.Context, connName string) error
-	ConnReinstallWshCommand(ctx context.Context, connName string) error
+	ConnEnsureCommand(ctx context.Context, data ConnExtData) error
+	ConnReinstallWshCommand(ctx context.Context, data ConnExtData) error
 	ConnConnectCommand(ctx context.Context, connRequest ConnRequest) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
@@ -313,6 +314,11 @@ type CommandControllerResyncData struct {
 	RtOpts       *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 }
 
+type CommandControllerAppendOutputData struct {
+	BlockId string `json:"blockid"`
+	Data64  string `json:"data64"`
+}
+
 type CommandBlockInputData struct {
 	BlockId     string            `json:"blockid" wshcontext:"BlockId"`
 	InputData64 string            `json:"inputdata64,omitempty"`
@@ -461,9 +467,10 @@ type CommandRemoteWriteFileData struct {
 }
 
 type ConnKeywords struct {
-	ConnWshEnabled          *bool `json:"conn:wshenabled,omitempty"`
-	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
-	ConnOverrideConfig      bool  `json:"conn:overrideconfig,omitempty"`
+	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
+	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
+	ConnOverrideConfig      bool   `json:"conn:overrideconfig,omitempty"`
+	ConnWshPath             string `json:"conn:wshpath,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`
@@ -490,8 +497,9 @@ type ConnKeywords struct {
 }
 
 type ConnRequest struct {
-	Host     string       `json:"host"`
-	Keywords ConnKeywords `json:"keywords,omitempty"`
+	Host       string       `json:"host"`
+	Keywords   ConnKeywords `json:"keywords,omitempty"`
+	LogBlockId string       `json:"logblockid,omitempty"`
 }
 
 type UpdateInfo struct {
@@ -543,6 +551,8 @@ type ConnStatus struct {
 	ActiveConnNum int    `json:"activeconnnum"`
 	Error         string `json:"error,omitempty"`
 	WshError      string `json:"wsherror,omitempty"`
+	NoWshReason   string `json:"nowshreason,omitempty"`
+	WshVersion    string `json:"wshversion,omitempty"`
 }
 
 type WebSelectorOpts struct {
@@ -654,4 +664,9 @@ type ActivityUpdate struct {
 	Blocks        map[string]int        `json:"blocks,omitempty"`
 	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
 	Conn          map[string]int        `json:"conn,omitempty"`
+}
+
+type ConnExtData struct {
+	ConnName   string `json:"connname"`
+	LogBlockId string `json:"logblockid,omitempty"`
 }
