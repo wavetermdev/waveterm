@@ -13,6 +13,25 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
+// Buffer size for the output channel
+const outputBufferSize = 1000
+
+var outputChan chan wshrpc.CommandControllerAppendOutputData
+
+func InitBlockLogger() {
+	outputChan = make(chan wshrpc.CommandControllerAppendOutputData, outputBufferSize)
+	// Start the output runner
+	go outputRunner()
+}
+
+func outputRunner() {
+	client := wshclient.GetBareRpcClient()
+	for data := range outputChan {
+		// Process each output request synchronously, waiting for response
+		wshclient.ControllerAppendOutputCommand(client, data, nil)
+	}
+}
+
 type logBlockIdContextKeyType struct{}
 
 var logBlockIdContextKey = logBlockIdContextKeyType{}
@@ -37,15 +56,21 @@ func getLogBlockData(ctx context.Context) *logBlockIdData {
 	return dataPtr.(*logBlockIdData)
 }
 
+func queueLogData(data wshrpc.CommandControllerAppendOutputData) {
+	select {
+	case outputChan <- data:
+	default:
+	}
+}
+
 func writeLogf(blockId string, format string, args []any) {
 	logStr := fmt.Sprintf(format, args...)
 	logStr = strings.ReplaceAll(logStr, "\n", "\r\n")
-	client := wshclient.GetBareRpcClient()
 	data := wshrpc.CommandControllerAppendOutputData{
 		BlockId: blockId,
 		Data64:  base64.StdEncoding.EncodeToString([]byte(logStr)),
 	}
-	wshclient.ControllerAppendOutputCommand(client, data, &wshrpc.RpcOpts{NoResponse: true})
+	queueLogData(data)
 }
 
 func Infof(ctx context.Context, format string, args ...any) {
