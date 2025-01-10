@@ -11,18 +11,23 @@ import { LayoutModel } from "./layoutModel";
 import { LayoutNode, NodeModel, TileLayoutContents } from "./types";
 
 const layoutModelMap: Map<string, LayoutModel> = new Map();
-const timeoutMap: Map<string, NodeJS.Timeout | null> = new Map();
+const timeoutMap: Map<string, NodeJS.Timeout> = new Map();
 
 export function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
     const tabData = globalStore.get(tabAtom);
     if (!tabData) return;
     const tabId = tabData.oid;
-    return computeIfAbsent(layoutModelMap, tabId, (_) => {
-        const layoutTreeStateAtom = withLayoutTreeStateAtomFromTab(tabAtom);
-        const layoutModel = new LayoutModel(layoutTreeStateAtom, globalStore.get, globalStore.set);
-        globalStore.sub(layoutTreeStateAtom, () => fireAndForget(layoutModel.onTreeStateAtomUpdated.bind(layoutModel)));
-        return layoutModel;
-    })
+    if (layoutModelMap.has(tabId)) {
+        const layoutModel = layoutModelMap.get(tabData.oid);
+        if (layoutModel) {
+            return layoutModel;
+        }
+    }
+    const layoutTreeStateAtom = withLayoutTreeStateAtomFromTab(tabAtom);
+    const layoutModel = new LayoutModel(layoutTreeStateAtom, globalStore.get, globalStore.set);
+    globalStore.sub(layoutTreeStateAtom, () => fireAndForget(layoutModel.onTreeStateAtomUpdated.bind(layoutModel)));
+    layoutModelMap.set(tabId, layoutModel);
+    return layoutModel;
 }
 
 export function getLayoutModelForTabById(tabId: string) {
@@ -76,7 +81,7 @@ export function useDebouncedNodeInnerRect(nodeModel: NodeModel): CSSProperties {
             const timeout = setTimeout(() => {
                 setInnerRect(nodeInnerRect);
             }, animationTimeS * 1000);
-            computeIfAbsent(timeoutMap, nodeModel.blockId, (_) => timeout)
+            timeoutMap.set(nodeModel.blockId, timeout);
         },
         [animationTimeS]
     );
@@ -100,12 +105,4 @@ export function useDebouncedNodeInnerRect(nodeModel: NodeModel): CSSProperties {
     }, [nodeInnerRect]);
 
     return innerRect;
-}
-
-function computeIfAbsent<V, F>(map: Map<V, F>, key: V, mappingFunction: (a: V) => F): F {
-    if (!map.has(key)) {
-        const newValue = mappingFunction(key);
-        map.set(key, newValue);
-    }
-    return map.get(key);
 }
