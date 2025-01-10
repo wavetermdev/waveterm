@@ -39,7 +39,8 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 	// first, make a connection independent of the block
 	connOpts := wshrpc.ConnRequest{
-		Host: sshArg,
+		Host:       sshArg,
+		LogBlockId: blockId,
 		Keywords: wshrpc.ConnKeywords{
 			SshIdentityFile: identityFiles,
 		},

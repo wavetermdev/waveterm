@@ -23,10 +23,10 @@ import {
     getSettingsKeyAtom,
     getUserName,
     globalStore,
-    refocusNode,
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
+import { globalRefocusWithTimeout } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -356,7 +356,11 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, { host: connName }, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(
+                TabRpcClient,
+                { host: connName, logblockid: nodeModel.blockId },
+                { timeout: 60000 }
+            );
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -541,7 +545,11 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         const connName = blockData?.meta?.connection;
         if (!util.isBlank(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
-            RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 }).catch((e) => {
+            RpcApi.ConnEnsureCommand(
+                TabRpcClient,
+                { connname: connName, logblockid: nodeModel.blockId },
+                { timeout: 60000 }
+            ).catch((e) => {
                 console.log("error ensuring connection", nodeModel.blockId, connName, e);
             });
         }
@@ -691,7 +699,11 @@ const ChangeConnectionBlockModal = React.memo(
                     meta: { connection: connName, file: newCwd },
                 });
                 try {
-                    await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
+                    await RpcApi.ConnEnsureCommand(
+                        TabRpcClient,
+                        { connname: connName, logblockid: blockId },
+                        { timeout: 60000 }
+                    );
                 } catch (e) {
                     console.log("error connecting", blockId, connName, e);
                 }
@@ -756,7 +768,7 @@ const ChangeConnectionBlockModal = React.memo(
             onSelect: async (_: string) => {
                 const prtn = RpcApi.ConnConnectCommand(
                     TabRpcClient,
-                    { host: connStatus.connection },
+                    { host: connStatus.connection, logblockid: blockId },
                     { timeout: 60000 }
                 );
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
@@ -879,12 +891,13 @@ const ChangeConnectionBlockModal = React.memo(
                     } else {
                         changeConnection(rowItem.value);
                         globalStore.set(changeConnModalAtom, false);
+                        globalRefocusWithTimeout(10);
                     }
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                     globalStore.set(changeConnModalAtom, false);
                     setConnSelected("");
-                    refocusNode(blockId);
+                    globalRefocusWithTimeout(10);
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
@@ -916,6 +929,7 @@ const ChangeConnectionBlockModal = React.memo(
                 onSelect={(selected: string) => {
                     changeConnection(selected);
                     globalStore.set(changeConnModalAtom, false);
+                    globalRefocusWithTimeout(10);
                 }}
                 selectIndex={rowIndex}
                 autoFocus={isNodeFocused}

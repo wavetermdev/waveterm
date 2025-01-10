@@ -23,6 +23,7 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/trimquotes"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
@@ -72,9 +73,19 @@ type ConnectionError struct {
 
 func (ce ConnectionError) Error() string {
 	if ce.CurrentClient == nil {
-		return fmt.Sprintf("Connecting to %+#v, Error: %v", ce.NextOpts, ce.Err)
+		return fmt.Sprintf("Connecting to %s, Error: %v", ce.NextOpts, ce.Err)
 	}
-	return fmt.Sprintf("Connecting from %v to %+#v (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
+	return fmt.Sprintf("Connecting from %v to %s (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
+}
+
+func SimpleMessageFromPossibleConnectionError(err error) string {
+	if err == nil {
+		return ""
+	}
+	if ce, ok := err.(ConnectionError); ok {
+		return ce.Err.Error()
+	}
+	return err.Error()
 }
 
 // This exists to trick the ssh library into continuing to try
@@ -142,6 +153,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 			return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: fmt.Errorf("no identity files remaining")}
 		}
 		identityFile := (*identityFilesPtr)[0]
+		blocklogger.Infof(connCtx, "[conndebug] trying keyfile %q...\n", identityFile)
 		*identityFilesPtr = (*identityFilesPtr)[1:]
 		privateKey, ok := existingKeys[identityFile]
 		if !ok {
@@ -208,6 +220,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 
 func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string, debugInfo *ConnectionDebugInfo) func() (secret string, err error) {
 	return func() (secret string, err error) {
+		blocklogger.Infof(connCtx, "[conndebug] Password Authentication requested from connection %s...\n", remoteDisplayName)
 		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
 		queryText := fmt.Sprintf(
@@ -222,8 +235,10 @@ func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisp
 		}
 		response, err := userinput.GetUserInput(ctx, request)
 		if err != nil {
+			blocklogger.Infof(connCtx, "[conndebug] ERROR Password Authentication failed: %v\n", SimpleMessageFromPossibleConnectionError(err))
 			return "", ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
+		blocklogger.Infof(connCtx, "[conndebug] got password from user, sending to ssh\n")
 		return response.Text, nil
 	}
 }
@@ -557,7 +572,10 @@ func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeyword
 	chosenUser := utilfn.SafeDeref(sshKeywords.SshUser)
 	chosenHostName := utilfn.SafeDeref(sshKeywords.SshHostName)
 	chosenPort := utilfn.SafeDeref(sshKeywords.SshPort)
-	remoteName := chosenUser + xknownhosts.Normalize(chosenHostName+":"+chosenPort)
+	remoteName := xknownhosts.Normalize(chosenHostName + ":" + chosenPort)
+	if chosenUser != "" {
+		remoteName = chosenUser + "@" + remoteName
+	}
 
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
@@ -619,24 +637,31 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	var err error
 	if currentClient == nil {
 		d := net.Dialer{Timeout: clientConfig.Timeout}
+		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", networkAddr)
 		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
 			return nil, err
 		}
 	} else {
+		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
 			return nil, err
 		}
 	}
 	c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
 	if err != nil {
+		blocklogger.Infof(ctx, "[conndebug] ERROR ssh auth/negotiation: %s\n", SimpleMessageFromPossibleConnectionError(err))
 		return nil, err
 	}
+	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", networkAddr)
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
 func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wshrpc.ConnKeywords) (*ssh.Client, int32, error) {
+	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", opts.String(), jumpNum)
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
 		NextOpts:      opts,
@@ -660,7 +685,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	}
 
 	rawName := opts.String()
-	fullConfig := wconfig.ReadFullConfig()
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	internalSshConfigKeywords, ok := fullConfig.Connections[rawName]
 	if !ok {
 		internalSshConfigKeywords = wshrpc.ConnKeywords{}

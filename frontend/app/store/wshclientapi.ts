@@ -38,7 +38,7 @@ class RpcApiType {
     }
 
     // command "connensure" [call]
-    ConnEnsureCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+    ConnEnsureCommand(client: WshClient, data: ConnExtData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connensure", data, opts);
     }
 
@@ -48,13 +48,18 @@ class RpcApiType {
     }
 
     // command "connreinstallwsh" [call]
-    ConnReinstallWshCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+    ConnReinstallWshCommand(client: WshClient, data: ConnExtData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connreinstallwsh", data, opts);
     }
 
     // command "connstatus" [call]
     ConnStatusCommand(client: WshClient, opts?: RpcOpts): Promise<ConnStatus[]> {
         return client.wshRpcCall("connstatus", null, opts);
+    }
+
+    // command "controllerappendoutput" [call]
+    ControllerAppendOutputCommand(client: WshClient, data: CommandControllerAppendOutputData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("controllerappendoutput", data, opts);
     }
 
     // command "controllerinput" [call]

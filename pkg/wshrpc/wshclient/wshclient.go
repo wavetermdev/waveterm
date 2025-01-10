@@ -50,7 +50,7 @@ func ConnDisconnectCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts)
 }
 
 // command "connensure", wshserver.ConnEnsureCommand
-func ConnEnsureCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+func ConnEnsureCommand(w *wshutil.WshRpc, data wshrpc.ConnExtData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connensure", data, opts)
 	return err
 }
@@ -62,7 +62,7 @@ func ConnListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) 
 }
 
 // command "connreinstallwsh", wshserver.ConnReinstallWshCommand
-func ConnReinstallWshCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+func ConnReinstallWshCommand(w *wshutil.WshRpc, data wshrpc.ConnExtData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connreinstallwsh", data, opts)
 	return err
 }
@@ -71,6 +71,12 @@ func ConnReinstallWshCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpt
 func ConnStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnStatus, error) {
 	resp, err := sendRpcRequestCallHelper[[]wshrpc.ConnStatus](w, "connstatus", nil, opts)
 	return resp, err
+}
+
+// command "controllerappendoutput", wshserver.ControllerAppendOutputCommand
+func ControllerAppendOutputCommand(w *wshutil.WshRpc, data wshrpc.CommandControllerAppendOutputData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "controllerappendoutput", data, opts)
+	return err
 }
 
 // command "controllerinput", wshserver.ControllerInputCommand
