@@ -610,16 +610,23 @@ func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus,
 	return rtn, nil
 }
 
-func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnEnsureData) error {
-	if data.LogBlockId != "" {
-		block, err := wstore.DBMustGet[*waveobj.Block](ctx, data.LogBlockId)
-		if err == nil {
-			connDebug := block.Meta.GetString(waveobj.MetaKey_TermDebugConn, "")
-			if connDebug != "" {
-				ctx = blocklogger.ContextWithLogBlockId(ctx, data.LogBlockId, connDebug == "debug")
-			}
-		}
+func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Context {
+	if logBlockId == "" {
+		return ctx
 	}
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, logBlockId)
+	if err != nil {
+		return ctx
+	}
+	connDebug := block.Meta.GetString(waveobj.MetaKey_TermDebugConn, "")
+	if connDebug == "" {
+		return ctx
+	}
+	return blocklogger.ContextWithLogBlockId(ctx, logBlockId, connDebug == "debug")
+}
+
+func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnEnsureData) error {
+	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
 	if strings.HasPrefix(data.ConnName, "wsl://") {
 		distroName := strings.TrimPrefix(data.ConnName, "wsl://")
 		return wsl.EnsureConnection(ctx, distroName)
@@ -648,6 +655,7 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
+	ctx = termCtxWithLogBlockId(ctx, connRequest.LogBlockId)
 	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
@@ -731,9 +739,7 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	if conn == nil {
 		return fmt.Errorf("connection %s not found", connName)
 	}
-	conn.WithLock(func() {
-		conn.WshError = ""
-	})
+	conn.ClearWshError()
 	conn.FireConnChangeEvent()
 	return nil
 }

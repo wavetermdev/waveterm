@@ -62,6 +62,7 @@ type SSHConn struct {
 	ConnController     *ssh.Session
 	Error              string
 	WshError           string
+	NoWshReason        string
 	HasWaiter          *atomic.Bool
 	LastConnectTime    int64
 	ActiveConnNum      int
@@ -103,12 +104,13 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	return wshrpc.ConnStatus{
 		Status:        conn.Status,
 		Connected:     conn.Status == Status_Connected,
-		WshEnabled:    conn.WshEnabled.Load(),
 		Connection:    conn.Opts.String(),
 		HasConnected:  (conn.LastConnectTime > 0),
 		ActiveConnNum: conn.ActiveConnNum,
 		Error:         conn.Error,
+		WshEnabled:    conn.WshEnabled.Load(),
 		WshError:      conn.WshError,
+		NoWshReason:   conn.NoWshReason,
 	}
 }
 
@@ -310,10 +312,18 @@ func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, error) {
 			panichandler.PanicHandler("conncontroller:sshSession.Wait", recover())
 		}()
 		// wait for termination, clear the controller
+		var waitErr error
 		defer conn.WithLock(func() {
+			if conn.ConnController != nil {
+				conn.WshEnabled.Store(false)
+				conn.NoWshReason = "connserver terminated"
+				if waitErr != nil {
+					conn.WshError = fmt.Sprintf("connserver terminated unexpectedly with error: %v", waitErr)
+				}
+			}
 			conn.ConnController = nil
 		})
-		waitErr := sshSession.Wait()
+		waitErr = sshSession.Wait()
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
 	}()
 	go func() {
@@ -642,56 +652,60 @@ func (conn *SSHConn) getConnWshSettings() (bool, bool) {
 	return enableWsh, askBeforeInstall
 }
 
-func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string) (bool, error) {
+// returns (wsh-enabled, text-reason, wshError)
+func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string) (bool, string, error) {
 	conn.Infof(ctx, "running tryEnableWsh...\n")
 	enableWsh, askBeforeInstall := conn.getConnWshSettings()
 	conn.Infof(ctx, "wsh settings enable:%v ask:%v\n", enableWsh, askBeforeInstall)
 	if !enableWsh {
-		return false, nil
+		return false, "conn:wshenabled set to false", nil
 	}
 	if askBeforeInstall {
 		allowInstall, err := conn.getPermissionToInstallWsh(ctx, clientDisplayName)
 		if err != nil {
 			log.Printf("error getting permission to install wsh: %v\n", err)
-			return false, err
+			return false, "error getting user permission to install", err
 		}
 		if !allowInstall {
-			return false, nil
+			return false, "user selected not to install wsh extensions", nil
 		}
 	}
-	// TODO make sure installed
 	err := conn.OpenDomainSocketListener(ctx)
 	if err != nil {
 		conn.Infof(ctx, "ERROR opening domain socket listener: %v\n", err)
-		return false, fmt.Errorf("error opening domain socket listener: %w", err)
+		return false, "could not open domain socket", fmt.Errorf("error opening domain socket listener: %w", err)
 	}
 	needsInstall, err := conn.StartConnServer(ctx)
 	if err != nil {
 		conn.Infof(ctx, "ERROR starting conn server: %v\n", err)
-		return false, fmt.Errorf("error starting conn server: %w", err)
+		return false, "error starting connserver", fmt.Errorf("error starting conn server: %w", err)
 	}
 	if needsInstall {
 		conn.Infof(ctx, "connserver needs to be (re)installed\n")
 		err = conn.installWsh(ctx)
 		if err != nil {
 			conn.Infof(ctx, "ERROR installing wsh: %v\n", err)
-			return false, fmt.Errorf("error installing wsh: %w", err)
+			return false, "error installing connserver", fmt.Errorf("error installing wsh: %w", err)
 		}
 		needsInstall, err = conn.StartConnServer(ctx)
 		if err != nil {
 			conn.Infof(ctx, "ERROR starting conn server (after install): %v\n", err)
-			return false, fmt.Errorf("error starting conn server (after install): %w", err)
+			return false, "error starting connserver", fmt.Errorf("error starting conn server (after install): %w", err)
 		}
 		if needsInstall {
 			conn.Infof(ctx, "conn server not installed correctly (after install)\n")
-			return false, fmt.Errorf("conn server not installed correctly (after install)")
+			return false, "connserver not installed properly", fmt.Errorf("conn server not installed correctly (after install)")
 		}
 	}
-	return true, nil
+	return true, "", nil
 }
 
-func (conn *SSHConn) persistWshInstalled(ctx context.Context, wshEnabled bool) {
+func (conn *SSHConn) persistWshInstalled(ctx context.Context, wshEnabled bool, noWshReason string, wshEnableErr error) {
 	conn.WshEnabled.Store(wshEnabled)
+	conn.SetWshError(wshEnableErr)
+	conn.WithLock(func() {
+		conn.NoWshReason = noWshReason
+	})
 	config := wconfig.GetWatcher().GetFullConfig()
 	connSettings, ok := config.Connections[conn.GetName()]
 	if ok && connSettings.ConnWshEnabled != nil {
@@ -707,10 +721,12 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, wshEnabled bool) {
 	// doesn't return an error since none of this is required for connection to work
 }
 
+// returns (connect-error)
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
 	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
 	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
+		conn.Infof(ctx, "ERROR ConnectToClient: %s\n", remote.SimpleMessageFromPossibleConnectionError(err))
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
 		return err
 	}
@@ -721,12 +737,16 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 	fmtAddr := knownhosts.Normalize(fmt.Sprintf("%s@%s", client.User(), client.RemoteAddr().String()))
 	conn.Infof(ctx, "normalized knownhosts address: %s\n", fmtAddr)
 	clientDisplayName := fmt.Sprintf("%s (%s)", conn.GetName(), fmtAddr)
-	wshInstalled, enableErr := conn.tryEnableWsh(ctx, clientDisplayName)
-	if enableErr != nil {
-		conn.Infof(ctx, "ERROR enabling wsh: %v\n", enableErr)
-		conn.Infof(ctx, "will connect with wsh disabled\n")
+	wshInstalled, noWshReason, enableErr := conn.tryEnableWsh(ctx, clientDisplayName)
+	if !wshInstalled {
+		if enableErr != nil {
+			conn.Infof(ctx, "ERROR enabling wsh: %v\n", enableErr)
+			conn.Infof(ctx, "will connect with wsh disabled\n")
+		} else {
+			conn.Infof(ctx, "wsh not enabled: %s\n", noWshReason)
+		}
 	}
-	conn.persistWshInstalled(ctx, wshInstalled)
+	conn.persistWshInstalled(ctx, wshInstalled, noWshReason, enableErr)
 	return nil
 }
 
@@ -749,6 +769,22 @@ func (conn *SSHConn) waitForDisconnect() {
 			conn.Status = Status_Disconnected
 		}
 		conn.close_nolock()
+	})
+}
+
+func (conn *SSHConn) SetWshError(err error) {
+	conn.WithLock(func() {
+		if err == nil {
+			conn.WshError = ""
+		} else {
+			conn.WshError = err.Error()
+		}
+	})
+}
+
+func (conn *SSHConn) ClearWshError() {
+	conn.WithLock(func() {
+		conn.WshError = ""
 	})
 }
 

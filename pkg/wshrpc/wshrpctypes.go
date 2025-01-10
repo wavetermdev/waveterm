@@ -494,8 +494,9 @@ type ConnKeywords struct {
 }
 
 type ConnRequest struct {
-	Host     string       `json:"host"`
-	Keywords ConnKeywords `json:"keywords,omitempty"`
+	Host       string       `json:"host"`
+	Keywords   ConnKeywords `json:"keywords,omitempty"`
+	LogBlockId string       `json:"logblockid,omitempty"`
 }
 
 const (
@@ -540,6 +541,7 @@ type ConnStatus struct {
 	ActiveConnNum int    `json:"activeconnnum"`
 	Error         string `json:"error,omitempty"`
 	WshError      string `json:"wsherror,omitempty"`
+	NoWshReason   string `json:"nowshreason,omitempty"`
 }
 
 type WebSelectorOpts struct {

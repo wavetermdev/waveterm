@@ -356,7 +356,11 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, { host: connName }, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(
+                TabRpcClient,
+                { host: connName, logblockid: nodeModel.blockId },
+                { timeout: 60000 }
+            );
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -764,7 +768,7 @@ const ChangeConnectionBlockModal = React.memo(
             onSelect: async (_: string) => {
                 const prtn = RpcApi.ConnConnectCommand(
                     TabRpcClient,
-                    { host: connStatus.connection },
+                    { host: connStatus.connection, logblockid: blockId },
                     { timeout: 60000 }
                 );
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));

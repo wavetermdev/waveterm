@@ -375,9 +375,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 		} else {
 			shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, conn)
 			if err != nil {
-				conn.WithLock(func() {
-					conn.WshError = err.Error()
-				})
+				conn.SetWshError(err)
 				conn.WshEnabled.Store(false)
 				log.Printf("error starting remote shell proc with wsh: %v", err)
 				log.Print("attempting install without wsh")

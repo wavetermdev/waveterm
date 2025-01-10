@@ -329,6 +329,7 @@ declare global {
     type ConnRequest = {
         host: string;
         keywords?: ConnKeywords;
+        logblockid?: string;
     };
 
     // wshrpc.ConnStatus
@@ -341,6 +342,7 @@ declare global {
         activeconnnum: number;
         error?: string;
         wsherror?: string;
+        nowshreason?: string;
     };
 
     // wshrpc.CpuDataRequest

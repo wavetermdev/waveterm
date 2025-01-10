@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -25,6 +26,7 @@ func InitBlockLogger() {
 }
 
 func outputRunner() {
+	defer log.Printf("blocklogger: outputRunner exiting")
 	client := wshclient.GetBareRpcClient()
 	for data := range outputChan {
 		// Process each output request synchronously, waiting for response
