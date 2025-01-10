@@ -50,7 +50,7 @@ For packaging, the following additional packages are required:
 
 #### Windows
 
-You will need the Zig [Zig](https://ziglang.org/) compiler for statically linking CGO.
+You will need the [Zig](https://ziglang.org/) compiler for statically linking CGO.
 
 You can find installation instructions for Zig on Windows [here](https://ziglang.org/learn/getting-started/#managers).
 
