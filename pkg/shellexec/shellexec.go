@@ -547,7 +547,7 @@ func tryGetPamEnvVars() map[string]string {
 	if err != nil {
 		log.Printf("error parsing %s: %v", etcSecurityPath, err)
 	}
-	envVars3, err := pamparse.ParseEnvironmentConfFile(userEnvironmentPath)
+	envVars3, err := pamparse.ParseEnvironmentConfFile(wavebase.ExpandHomeDirSafe(userEnvironmentPath))
 	if err != nil {
 		log.Printf("error parsing %s: %v", userEnvironmentPath, err)
 	}

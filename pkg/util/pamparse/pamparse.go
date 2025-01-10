@@ -6,6 +6,7 @@ package pamparse
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -39,6 +40,10 @@ func ParseEnvironmentConfFile(path string) (map[string]string, error) {
 		return nil, err
 	}
 	defer file.Close()
+	home, shell, err := parsePasswd()
+	if err != nil {
+		return nil, err
+	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -51,12 +56,38 @@ func ParseEnvironmentConfFile(path string) (map[string]string, error) {
 				continue
 			}
 		}
-		rtn[key] = val
+		rtn[key] = replaceHomeAndShell(val, home, shell)
 	}
 	return rtn, nil
 }
 
-// Regex to parse a line from /etc/environment. Follows the guidance from https://wiki.archlinux.org/title/Environment_variables
+// Gets the home directory and shell from /etc/passwd for the current user.
+func parsePasswd() (string, string, error) {
+	file, err := os.OpenFile("/etc/passwd", os.O_RDONLY, 0)
+	if err != nil {
+		return "", "", err
+	}
+	defer file.Close()
+	userPrefix := fmt.Sprintf("%s:", os.Getenv("USER"))
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, userPrefix) {
+			parts := strings.Split(line, ":")
+			return parts[5], parts[6], nil
+		}
+	}
+	return "", "", nil
+}
+
+// Replaces @{HOME} and @{SHELL} placeholders in a string with the provided values. Follows guidance from https://wiki.archlinux.org/title/Environment_variables#Using_pam_env
+func replaceHomeAndShell(val string, home string, shell string) string {
+	val = strings.ReplaceAll(val, "@{HOME}", home)
+	val = strings.ReplaceAll(val, "@{SHELL}", shell)
+	return val
+}
+
+// Regex to parse a line from /etc/environment. Follows the guidance from https://wiki.archlinux.org/title/Environment_variables#Using_pam_env
 var envFileLineRe = regexp.MustCompile(`^(?:export\s+)?([A-Z0-9_]+[A-Za-z0-9]*)=(.*)$`)
 
 func parseEnvironmentLine(line string) (string, string) {
@@ -67,7 +98,7 @@ func parseEnvironmentLine(line string) (string, string) {
 	return m[1], sanitizeEnvVarValue(m[2])
 }
 
-// Regex to parse a line from /etc/security/pam_env.conf or ~/.pam_environment. Follows the guidance from https://wiki.archlinux.org/title/Environment_variables
+// Regex to parse a line from /etc/security/pam_env.conf or ~/.pam_environment. Follows the guidance from https://wiki.archlinux.org/title/Environment_variables#Using_pam_env
 var confFileLineRe = regexp.MustCompile(`^([A-Z0-9_]+[A-Za-z0-9]*)\s+(?:(?:DEFAULT=)([^\s]+(?: \w+)*))\s*(?:(?:OVERRIDE=)([^\s]+(?: \w+)*))?\s*$`)
 
 func parseEnvironmentConfLine(line string) (string, string) {
