@@ -146,6 +146,12 @@ function handleCmdI() {
     globalRefocus();
 }
 
+function globalRefocusWithTimeout(timeoutVal: number) {
+    setTimeout(() => {
+        globalRefocus();
+    }, timeoutVal);
+}
+
 function globalRefocus() {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
@@ -403,6 +409,7 @@ export {
     getAllGlobalKeyBindings,
     getSimpleControlShiftAtom,
     globalRefocus,
+    globalRefocusWithTimeout,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,

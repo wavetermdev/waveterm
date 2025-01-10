@@ -125,6 +125,12 @@ declare global {
         view: string;
     };
 
+    // wshrpc.CommandControllerAppendOutputData
+    type CommandControllerAppendOutputData = {
+        blockid: string;
+        data64: string;
+    };
+
     // wshrpc.CommandControllerResyncData
     type CommandControllerResyncData = {
         forcerestart?: boolean;
@@ -286,11 +292,18 @@ declare global {
         metamaptype: MetaType;
     };
 
+    // wshrpc.ConnExtData
+    type ConnExtData = {
+        connname: string;
+        logblockid?: string;
+    };
+
     // wshrpc.ConnKeywords
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:overrideconfig"?: boolean;
+        "conn:wshpath"?: string;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;
@@ -317,6 +330,7 @@ declare global {
     type ConnRequest = {
         host: string;
         keywords?: ConnKeywords;
+        logblockid?: string;
     };
 
     // wshrpc.ConnStatus
@@ -329,6 +343,8 @@ declare global {
         activeconnnum: number;
         error?: string;
         wsherror?: string;
+        nowshreason?: string;
+        wshversion?: string;
     };
 
     // wshrpc.CpuDataRequest
@@ -494,6 +510,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
+        "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "markdown:fontsize"?: number;
