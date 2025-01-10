@@ -23,10 +23,10 @@ import {
     getSettingsKeyAtom,
     getUserName,
     globalStore,
-    refocusNode,
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
+import { globalRefocusWithTimeout } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -887,12 +887,13 @@ const ChangeConnectionBlockModal = React.memo(
                     } else {
                         changeConnection(rowItem.value);
                         globalStore.set(changeConnModalAtom, false);
+                        globalRefocusWithTimeout(10);
                     }
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                     globalStore.set(changeConnModalAtom, false);
                     setConnSelected("");
-                    refocusNode(blockId);
+                    globalRefocusWithTimeout(10);
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
@@ -924,6 +925,7 @@ const ChangeConnectionBlockModal = React.memo(
                 onSelect={(selected: string) => {
                     changeConnection(selected);
                     globalStore.set(changeConnModalAtom, false);
+                    globalRefocusWithTimeout(10);
                 }}
                 selectIndex={rowIndex}
                 autoFocus={isNodeFocused}
