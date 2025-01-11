@@ -378,16 +378,17 @@ Would you like to install them?
 `)
 
 func (conn *SSHConn) UpdateWsh(ctx context.Context, clientDisplayName string, remoteInfo *wshrpc.RemoteInfo) error {
-	log.Printf("attempting to update wsh for connection %v", remoteInfo)
+	conn.Infof(ctx, "attempting to update wsh for connection %s (os:%s arch:%s version:%s)\n",
+		remoteInfo.ConnName, remoteInfo.ClientOs, remoteInfo.ClientArch, remoteInfo.ClientVersion)
 	client := conn.GetClient()
 	if client == nil {
-		return fmt.Errorf("client is nil")
+		return fmt.Errorf("cannot update wsh: ssh client is not connected")
 	}
 	err := remote.CpWshToRemote(ctx, client, remoteInfo.ClientOs, remoteInfo.ClientArch)
 	if err != nil {
 		return fmt.Errorf("error installing wsh to remote: %w", err)
 	}
-	log.Printf("successfully installed wsh on %s\n", conn.GetName())
+	conn.Infof(ctx, "successfully updated wsh on %s\n", conn.GetName())
 	return nil
 
 }
