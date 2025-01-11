@@ -1,6 +1,10 @@
 package fstype
 
-import "github.com/wavetermdev/waveterm/pkg/wshrpc"
+import (
+	"context"
+
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+)
 
 type FullFile struct {
 	Info   *wshrpc.FileInfo `json:"info"`
@@ -9,19 +13,19 @@ type FullFile struct {
 
 type FileShareClient interface {
 	// Stat returns the file info at the given path
-	Stat(path string) (*wshrpc.FileInfo, error)
+	Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error)
 	// Read returns the file info at the given path, if it's a dir, then the file data will be a serialized array of FileInfo
-	Read(path string) (*FullFile, error)
+	Read(ctx context.Context, path string) (*FullFile, error)
 	// PutFile writes the given data to the file at the given path
-	PutFile(path string, data64 string) error
+	PutFile(ctx context.Context, data wshrpc.FileData) error
 	// Mkdir creates a directory at the given path
-	Mkdir(path string) error
+	Mkdir(ctx context.Context, path string) error
 	// Move moves the file from srcPath to destPath
-	Move(srcPath, destPath string, recursive bool) error
+	Move(ctx context.Context, srcPath, destPath string, recursive bool) error
 	// Copy copies the file from srcPath to destPath
-	Copy(srcPath, destPath string, recursive bool) error
+	Copy(ctx context.Context, srcPath, destPath string, recursive bool) error
 	// Delete deletes the entry at the given path
-	Delete(path string) error
+	Delete(ctx context.Context, path string) error
 	// GetConnectionType returns the type of connection for the fileshare
 	GetConnectionType() string
 }

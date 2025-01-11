@@ -24,6 +24,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -91,7 +92,7 @@ func MakePlotData(ctx context.Context, blockId string) error {
 	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
-	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, filestore.FileOptsType{})
+	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, wshrpc.FileOptsType{})
 }
 
 func SavePlotData(ctx context.Context, blockId string, history string) error {
@@ -275,46 +276,34 @@ func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wsh
 	return nil
 }
 
-func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.CommandFileCreateData) error {
-	var fileOpts filestore.FileOptsType
+func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileCreateData) error {
+	var fileOpts wshrpc.FileOptsType
 	if data.Opts != nil {
 		fileOpts = *data.Opts
 	}
-	err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, data.Meta, fileOpts)
-	if err != nil {
-		return fmt.Errorf("error creating blockfile: %w", err)
-	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Create,
-		},
+	client := fileshare.CreateFileShareClient(ctx, remote.ConnectionTypeWave)
+	err := client.PutFile(ctx, wshrpc.FileData{
+		Path:   data.Path,
+		Data64: "",
+		Opts:   &fileOpts,
 	})
+	if err != nil {
+		return fmt.Errorf("error creating file: %w", err)
+	}
 	return nil
 }
 
-func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
-	err := filestore.WFS.DeleteFile(ctx, data.ZoneId, data.FileName)
+func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.FileData) error {
+	client := fileshare.CreateFileShareClient(ctx, remote.ConnectionTypeWave)
+	err := client.Delete(ctx, data.Path)
 	if err != nil {
-		return fmt.Errorf("error deleting blockfile: %w", err)
+		return fmt.Errorf("error deleting file: %w", err)
 	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Delete,
-		},
-	})
 	return nil
 }
 
-func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
-	return &wshrpc.WaveFileInfo{
+func waveFileToFileInfo(wf *filestore.WaveFile) *wshrpc.FileInfo {
+	return &wshrpc.FileInfo{
 		ZoneId:    wf.ZoneId,
 		Name:      wf.Name,
 		Opts:      wf.Opts,
@@ -325,7 +314,7 @@ func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
 	}
 }
 
-func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFileData) (*wshrpc.WaveFileInfo, error) {
+func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFileData) (*wshrpc.FileInfo, error) {
 	fileInfo, err := filestore.WFS.Stat(ctx, data.ZoneId, data.FileName)
 	if err != nil {
 		if err == fs.ErrNotExist {
@@ -333,20 +322,20 @@ func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFil
 		}
 		return nil, fmt.Errorf("error getting file info: %w", err)
 	}
-	return waveFileToWaveFileInfo(fileInfo), nil
+	return waveFileToFileInfo(fileInfo), nil
 }
 
-func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFileListData) ([]*wshrpc.WaveFileInfo, error) {
+func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFileListData) ([]*wshrpc.FileInfo, error) {
 	fileListOrig, err := filestore.WFS.ListFiles(ctx, data.ZoneId)
 	if err != nil {
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
 	}
-	var fileList []*wshrpc.WaveFileInfo
+	var fileList []*wshrpc.FileInfo
 	for _, wf := range fileListOrig {
-		fileList = append(fileList, waveFileToWaveFileInfo(wf))
+		fileList = append(fileList, waveFileToFileInfo(wf))
 	}
 	if data.Prefix != "" {
-		var filteredList []*wshrpc.WaveFileInfo
+		var filteredList []*wshrpc.FileInfo
 		for _, file := range fileList {
 			if strings.HasPrefix(file.Name, data.Prefix) {
 				filteredList = append(filteredList, file)
@@ -355,7 +344,7 @@ func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFil
 		fileList = filteredList
 	}
 	if !data.All {
-		var filteredList []*wshrpc.WaveFileInfo
+		var filteredList []*wshrpc.FileInfo
 		dirMap := make(map[string]int64) // the value is max modtime
 		for _, file := range fileList {
 			// if there is an extra "/" after the prefix, don't include it
@@ -373,7 +362,7 @@ func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFil
 			filteredList = append(filteredList, file)
 		}
 		for dir := range dirMap {
-			filteredList = append(filteredList, &wshrpc.WaveFileInfo{
+			filteredList = append(filteredList, &wshrpc.FileInfo{
 				ZoneId:    data.ZoneId,
 				Name:      data.Prefix + dir + "/",
 				Size:      0,

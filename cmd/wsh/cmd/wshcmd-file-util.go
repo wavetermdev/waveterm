@@ -100,7 +100,7 @@ func streamReadFromWaveFile(fileData wshrpc.CommandFileData, size int64, writer 
 		}
 
 		// Set up the ReadAt request
-		fileData.At = &wshrpc.CommandFileDataAt{
+		fileData.At = &wshrpc.FileDataAt{
 			Offset: offset,
 			Size:   int64(length),
 		}

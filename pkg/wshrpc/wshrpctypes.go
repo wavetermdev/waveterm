@@ -12,7 +12,6 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -125,14 +124,14 @@ type WshRpcInterface interface {
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
-	FileCreateCommand(ctx context.Context, data CommandFileCreateData) error
-	FileDeleteCommand(ctx context.Context, data CommandFileData) error
-	FileAppendCommand(ctx context.Context, data CommandFileData) error
+	FileCreateCommand(ctx context.Context, data FileData) error
+	FileDeleteCommand(ctx context.Context, data FileData) error
+	FileAppendCommand(ctx context.Context, data FileData) error
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
-	FileWriteCommand(ctx context.Context, data CommandFileData) error
-	FileReadCommand(ctx context.Context, data CommandFileData) (string, error)
-	FileInfoCommand(ctx context.Context, data CommandFileData) (*WaveFileInfo, error)
-	FileListCommand(ctx context.Context, data CommandFileListData) ([]*WaveFileInfo, error)
+	FileWriteCommand(ctx context.Context, data FileData) error
+	FileReadCommand(ctx context.Context, data FileData) (string, error)
+	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
+	FileListCommand(ctx context.Context, data CommandFileListData) ([]*FileInfo, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -324,42 +323,29 @@ type CommandBlockInputData struct {
 	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
-type CommandFileDataAt struct {
+type FileDataAt struct {
 	Offset int64 `json:"offset"`
 	Size   int64 `json:"size,omitempty"`
 }
 
-type CommandFileData struct {
-	ZoneId   string             `json:"zoneid" wshcontext:"BlockId"`
-	FileName string             `json:"filename"`
-	Data64   string             `json:"data64,omitempty"`
-	At       *CommandFileDataAt `json:"at,omitempty"` // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
-}
-
-type WaveFileInfo struct {
-	ZoneId    string                 `json:"zoneid"`
-	Name      string                 `json:"name"`
-	Opts      filestore.FileOptsType `json:"opts,omitempty"`
-	Size      int64                  `json:"size,omitempty"`
-	CreatedTs int64                  `json:"createdts,omitempty"`
-	ModTs     int64                  `json:"modts,omitempty"`
-	Meta      map[string]any         `json:"meta,omitempty"`
-	IsDir     bool                   `json:"isdir,omitempty"`
+type FileData struct {
+	Path   string        `json:"path"`
+	Data64 string        `json:"data64,omitempty"`
+	Opts   *FileOptsType `json:"opts,omitempty"`
+	At     *FileDataAt   `json:"at,omitempty"` // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
 }
 
 type CommandFileListData struct {
-	ZoneId string `json:"zoneid"`
-	Prefix string `json:"prefix,omitempty"`
+	Path   string `json:"path"`
 	All    bool   `json:"all,omitempty"`
 	Offset int    `json:"offset,omitempty"`
 	Limit  int    `json:"limit,omitempty"`
 }
 
-type CommandFileCreateData struct {
-	ZoneId   string                  `json:"zoneid"`
-	FileName string                  `json:"filename"`
-	Meta     map[string]any          `json:"meta,omitempty"`
-	Opts     *filestore.FileOptsType `json:"opts,omitempty"`
+type FileCreateData struct {
+	Path string         `json:"path"`
+	Meta map[string]any `json:"meta,omitempty"`
+	Opts *FileOptsType  `json:"opts,omitempty"`
 }
 
 type CommandAppendIJsonData struct {
@@ -435,18 +421,29 @@ type CpuDataType struct {
 }
 
 type FileInfo struct {
-	Path     string      `json:"path"` // cleaned path (may have "~")
-	Dir      string      `json:"dir"`  // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
-	Name     string      `json:"name"`
-	NotFound bool        `json:"notfound,omitempty"`
-	Size     int64       `json:"size"`
-	Mode     os.FileMode `json:"mode"`
-	ModeStr  string      `json:"modestr"`
-	ModTime  int64       `json:"modtime"`
-	IsDir    bool        `json:"isdir,omitempty"`
-	MimeType string      `json:"mimetype,omitempty"`
-	ReadOnly bool        `json:"readonly,omitempty"` // this is not set for fileinfo's returned from directory listings
+	Path     string       `json:"path"` // cleaned path (may have "~")
+	Dir      string       `json:"dir"`  // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
+	Name     string       `json:"name"`
+	NotFound bool         `json:"notfound,omitempty"`
+	Opts     FileOptsType `json:"opts,omitempty"`
+	Size     int64        `json:"size"`
+	Meta     FileMeta     `json:"meta,omitempty"`
+	Mode     os.FileMode  `json:"mode"`
+	ModeStr  string       `json:"modestr"`
+	ModTime  int64        `json:"modtime"`
+	IsDir    bool         `json:"isdir,omitempty"`
+	MimeType string       `json:"mimetype,omitempty"`
+	ReadOnly bool         `json:"readonly,omitempty"` // this is not set for fileinfo's returned from directory listings
 }
+
+type FileOptsType struct {
+	MaxSize     int64 `json:"maxsize,omitempty"`
+	Circular    bool  `json:"circular,omitempty"`
+	IJson       bool  `json:"ijson,omitempty"`
+	IJsonBudget int   `json:"ijsonbudget,omitempty"`
+}
+
+type FileMeta = map[string]any
 
 type CommandRemoteStreamFileData struct {
 	Path      string `json:"path"`
@@ -562,11 +559,11 @@ type CommandWebSelectorData struct {
 }
 
 type BlockInfoData struct {
-	BlockId     string                `json:"blockid"`
-	TabId       string                `json:"tabid"`
-	WorkspaceId string                `json:"workspaceid"`
-	Block       *waveobj.Block        `json:"block"`
-	Files       []*filestore.WaveFile `json:"files"`
+	BlockId     string         `json:"blockid"`
+	TabId       string         `json:"tabid"`
+	WorkspaceId string         `json:"workspaceid"`
+	Block       *waveobj.Block `json:"block"`
+	Files       []*FileInfo    `json:"files"`
 }
 
 type WaveNotificationOptions struct {

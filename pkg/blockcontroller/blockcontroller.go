@@ -285,7 +285,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, BlockFile_Term, nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
+	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, BlockFile_Term, nil, wshrpc.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
 	if fsErr != nil && fsErr != fs.ErrExist {
 		return nil, fmt.Errorf("error creating blockfile: %w", fsErr)
 	}

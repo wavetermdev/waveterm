@@ -4,6 +4,8 @@
 package s3fs
 
 import (
+	"context"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/wavetermdev/waveterm/pkg/remote"
@@ -23,31 +25,31 @@ func NewS3Client(config *aws.Config) *S3Client {
 	}
 }
 
-func (c S3Client) Read(path string) (*fstype.FullFile, error) {
+func (c S3Client) Read(ctx context.Context, path string) (*fstype.FullFile, error) {
 	return nil, nil
 }
 
-func (c S3Client) Stat(path string) (*wshrpc.FileInfo, error) {
+func (c S3Client) Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
 	return nil, nil
 }
 
-func (c S3Client) PutFile(path string, data64 string) error {
+func (c S3Client) PutFile(ctx context.Context, data wshrpc.FileData) error {
 	return nil
 }
 
-func (c S3Client) Mkdir(path string) error {
+func (c S3Client) Mkdir(ctx context.Context, path string) error {
 	return nil
 }
 
-func (c S3Client) Move(srcPath, destPath string, recursive bool) error {
+func (c S3Client) Move(ctx context.Context, srcPath, destPath string, recursive bool) error {
 	return nil
 }
 
-func (c S3Client) Copy(srcPath, destPath string, recursive bool) error {
+func (c S3Client) Copy(ctx context.Context, srcPath, destPath string, recursive bool) error {
 	return nil
 }
 
-func (c S3Client) Delete(path string) error {
+func (c S3Client) Delete(ctx context.Context, path string) error {
 	return nil
 }
 

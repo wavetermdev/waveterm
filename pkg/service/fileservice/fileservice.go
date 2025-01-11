@@ -30,7 +30,7 @@ func (fs *FileService) SaveFile(ctx context.Context, connection string, path str
 		connection = wshrpc.LocalConnName
 	}
 	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.PutFile(path, data64)
+	return fsclient.PutFile(ctx, wshrpc.FileData{Path: path, Data64: data64})
 }
 
 func (fs *FileService) StatFile_Meta() tsgenmeta.MethodMeta {
@@ -45,7 +45,7 @@ func (fs *FileService) StatFile(ctx context.Context, connection string, path str
 		connection = wshrpc.LocalConnName
 	}
 	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Stat(path)
+	return fsclient.Stat(ctx, path)
 }
 
 func (fs *FileService) Mkdir(ctx context.Context, connection string, path string) error {
@@ -53,7 +53,7 @@ func (fs *FileService) Mkdir(ctx context.Context, connection string, path string
 		connection = wshrpc.LocalConnName
 	}
 	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Mkdir(path)
+	return fsclient.Mkdir(ctx, path)
 }
 
 func (fs *FileService) TouchFile(ctx context.Context, connection string, path string) error {
@@ -61,7 +61,7 @@ func (fs *FileService) TouchFile(ctx context.Context, connection string, path st
 		connection = wshrpc.LocalConnName
 	}
 	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.PutFile(path, "")
+	return fsclient.PutFile(ctx, wshrpc.FileData{Path: path, Data64: ""})
 }
 
 func (fs *FileService) Rename(ctx context.Context, connection string, path string, newPath string) error {
@@ -69,7 +69,7 @@ func (fs *FileService) Rename(ctx context.Context, connection string, path strin
 		connection = wshrpc.LocalConnName
 	}
 	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Move(path, newPath, false)
+	return fsclient.Move(ctx, path, newPath, false)
 }
 
 func (fs *FileService) ReadFile_Meta() tsgenmeta.MethodMeta {
@@ -84,7 +84,7 @@ func (fs *FileService) ReadFile(ctx context.Context, connection string, path str
 		connection = wshrpc.LocalConnName
 	}
 	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Read(path)
+	return fsclient.Read(ctx, path)
 }
 
 func (fs *FileService) GetWaveFile(id string, path string) (any, error) {
@@ -109,7 +109,7 @@ func (fs *FileService) DeleteFile(ctx context.Context, connection string, path s
 		connection = wshrpc.LocalConnName
 	}
 	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Delete(path)
+	return fsclient.Delete(ctx, path)
 }
 
 func (fs *FileService) GetFullConfig() wconfig.FullConfigType {

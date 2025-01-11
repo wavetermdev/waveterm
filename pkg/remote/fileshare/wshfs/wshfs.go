@@ -5,6 +5,7 @@ package wshfs
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -30,7 +31,7 @@ func NewWshClient(connection string) *WshClient {
 	}
 }
 
-func (c WshClient) Read(path string) (*fstype.FullFile, error) {
+func (c WshClient) Read(ctx context.Context, path string) (*fstype.FullFile, error) {
 	client := wshserver.GetMainRpcClient()
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
 	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: c.connRoute})
@@ -85,32 +86,32 @@ func (c WshClient) Read(path string) (*fstype.FullFile, error) {
 	return fullFile, nil
 }
 
-func (c WshClient) Stat(path string) (*wshrpc.FileInfo, error) {
+func (c WshClient) Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
 	client := wshserver.GetMainRpcClient()
 	return wshclient.RemoteFileInfoCommand(client, path, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) PutFile(path string, data64 string) error {
+func (c WshClient) PutFile(ctx context.Context, data wshrpc.FileData) error {
 	client := wshserver.GetMainRpcClient()
-	writeData := wshrpc.CommandRemoteWriteFileData{Path: path, Data64: data64}
+	writeData := wshrpc.CommandRemoteWriteFileData{Path: data.Path, Data64: data.Data64}
 	return wshclient.RemoteWriteFileCommand(client, writeData, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) Mkdir(path string) error {
+func (c WshClient) Mkdir(ctx context.Context, path string) error {
 	client := wshserver.GetMainRpcClient()
 	return wshclient.RemoteMkdirCommand(client, path, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) Move(srcPath, destPath string, recursive bool) error {
+func (c WshClient) Move(ctx context.Context, srcPath, destPath string, recursive bool) error {
 	client := wshserver.GetMainRpcClient()
 	return wshclient.RemoteFileRenameCommand(client, [2]string{srcPath, destPath}, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) Copy(srcPath, destPath string, recursive bool) error {
+func (c WshClient) Copy(ctx context.Context, srcPath, destPath string, recursive bool) error {
 	return nil
 }
 
-func (c WshClient) Delete(path string) error {
+func (c WshClient) Delete(ctx context.Context, path string) error {
 	client := wshserver.GetMainRpcClient()
 	return wshclient.RemoteFileDeleteCommand(client, path, &wshrpc.RpcOpts{Route: c.connRoute})
 }
