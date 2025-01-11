@@ -699,6 +699,45 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.Co
 	return conn.InstallWsh(ctx)
 }
 
+func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc.RemoteInfo) (bool, error) {
+	connName := remoteInfo.ConnName
+	if connName == "" {
+		return false, fmt.Errorf("invalid remote info: missing connection name")
+	}
+
+	log.Printf("checking wsh version for connection %s (current: %s)", connName, remoteInfo.ClientVersion)
+	upToDate, _, err := conncontroller.IsWshVersionUpToDate(remoteInfo.ClientVersion)
+	if err != nil {
+		return false, fmt.Errorf("unable to compare wsh version: %w", err)
+	}
+	if upToDate {
+		// no need to update
+		log.Printf("wsh is already up to date for connection %s", connName)
+		return false, nil
+	}
+
+	// todo: need to add user input code here for validation
+
+	if strings.HasPrefix(connName, "wsl://") {
+		return false, fmt.Errorf("connupdatewshcommand is not supported for wsl connections")
+	}
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return false, fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	if conn == nil {
+		return false, fmt.Errorf("connection not found: %s", connName)
+	}
+	err = conn.UpdateWsh(ctx, connName, &remoteInfo)
+	if err != nil {
+		return false, fmt.Errorf("wsh update failed for connection %s: %w", connName, err)
+	}
+
+	// todo: need to add code for modifying configs?
+	return true, nil
+}
+
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
 	return conncontroller.GetConnectionsList()
 }

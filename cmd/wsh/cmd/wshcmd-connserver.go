@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -33,9 +34,11 @@ var serverCmd = &cobra.Command{
 }
 
 var connServerRouter bool
+var singleServerRouter bool
 
 func init() {
 	serverCmd.Flags().BoolVar(&connServerRouter, "router", false, "run in local router mode")
+	serverCmd.Flags().BoolVar(&singleServerRouter, "single", false, "run in local single mode")
 	rootCmd.AddCommand(serverCmd)
 }
 
@@ -186,6 +189,39 @@ func serverRunRouter() error {
 	select {}
 }
 
+func checkForUpdate() error {
+	remoteInfo := wshutil.GetInfo(RpcContext)
+	needsRestartRaw, err := RpcClient.SendRpcRequest(wshrpc.Command_ConnUpdateWsh, remoteInfo, &wshrpc.RpcOpts{Timeout: 60000})
+	if err != nil {
+		return fmt.Errorf("could not update: %w", err)
+	}
+	needsRestart, ok := needsRestartRaw.(bool)
+	if !ok {
+		return fmt.Errorf("wrong return type from update")
+	}
+	if needsRestart {
+		// run the restart command here
+		// how to get the correct path?
+		return syscall.Exec("~/.waveterm/bin/wsh", []string{"wsh", "connserver", "--single"}, []string{})
+	}
+	return nil
+}
+
+func serverRunSingle() error {
+	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout})
+	if err != nil {
+		return err
+	}
+	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
+	err = checkForUpdate()
+	if err != nil {
+		return err
+	}
+
+	go wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
+	select {} // run forever
+}
+
 func serverRunNormal() error {
 	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout})
 	if err != nil {
@@ -197,7 +233,9 @@ func serverRunNormal() error {
 }
 
 func serverRun(cmd *cobra.Command, args []string) error {
-	if connServerRouter {
+	if singleServerRouter {
+		return serverRunSingle()
+	} else if connServerRouter {
 		return serverRunRouter()
 	} else {
 		return serverRunNormal()

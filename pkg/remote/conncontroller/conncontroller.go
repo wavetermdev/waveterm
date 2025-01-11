@@ -228,7 +228,7 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 // expects the output of `wsh version` which looks like `wsh v0.10.4` or "not-installed"
 // returns (up-to-date, semver, error)
 // if not up to date, or error, version might be ""
-func isWshVersionUpToDate(wshVersionLine string) (bool, string, error) {
+func IsWshVersionUpToDate(wshVersionLine string) (bool, string, error) {
 	wshVersionLine = strings.TrimSpace(wshVersionLine)
 	if wshVersionLine == "not-installed" {
 		return false, "", nil
@@ -290,7 +290,7 @@ func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, error) 
 		return false, "", fmt.Errorf("error reading wsh version: %w", err)
 	}
 	conn.Infof(ctx, "got connserver version: %s\n", strings.TrimSpace(versionLine))
-	isUpToDate, clientVersion, err := isWshVersionUpToDate(versionLine)
+	isUpToDate, clientVersion, err := IsWshVersionUpToDate(versionLine)
 	if err != nil {
 		sshSession.Close()
 		return false, "", fmt.Errorf("error checking wsh version: %w", err)
@@ -376,6 +376,22 @@ to ensure a seamless experience.
 
 Would you like to install them?
 `)
+
+func (conn *SSHConn) UpdateWsh(ctx context.Context, clientDisplayName string, remoteInfo *wshrpc.RemoteInfo) error {
+	conn.Infof(ctx, "attempting to update wsh for connection %s (os:%s arch:%s version:%s)\n",
+		remoteInfo.ConnName, remoteInfo.ClientOs, remoteInfo.ClientArch, remoteInfo.ClientVersion)
+	client := conn.GetClient()
+	if client == nil {
+		return fmt.Errorf("cannot update wsh: ssh client is not connected")
+	}
+	err := remote.CpWshToRemote(ctx, client, remoteInfo.ClientOs, remoteInfo.ClientArch)
+	if err != nil {
+		return fmt.Errorf("error installing wsh to remote: %w", err)
+	}
+	conn.Infof(ctx, "successfully updated wsh on %s\n", conn.GetName())
+	return nil
+
+}
 
 // returns (allowed, error)
 func (conn *SSHConn) getPermissionToInstallWsh(ctx context.Context, clientDisplayName string) (bool, error) {

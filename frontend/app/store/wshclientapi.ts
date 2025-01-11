@@ -57,6 +57,11 @@ class RpcApiType {
         return client.wshRpcCall("connstatus", null, opts);
     }
 
+    // command "connupdatewsh" [call]
+    ConnUpdateWshCommand(client: WshClient, data: RemoteInfo, opts?: RpcOpts): Promise<boolean> {
+        return client.wshRpcCall("connupdatewsh", data, opts);
+    }
+
     // command "controllerappendoutput" [call]
     ControllerAppendOutputCommand(client: WshClient, data: CommandControllerAppendOutputData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("controllerappendoutput", data, opts);
