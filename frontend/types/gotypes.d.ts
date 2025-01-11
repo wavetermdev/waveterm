@@ -558,7 +558,7 @@ declare global {
         host: string;
         clientarch: string;
         clientos: string;
-        string: string;
+        clientversion: string;
         shell: string;
     };
 
