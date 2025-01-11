@@ -164,7 +164,7 @@ type WshRpcInterface interface {
 	WslListCommand(ctx context.Context) ([]string, error)
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
-	ConnUpdateWshCommand(ctx context.Context, updateInfo UpdateInfo) (bool, error)
+	ConnUpdateWshCommand(ctx context.Context, updateInfo RemoteInfo) (bool, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -502,11 +502,12 @@ type ConnRequest struct {
 	LogBlockId string       `json:"logblockid,omitempty"`
 }
 
-type UpdateInfo struct {
+type RemoteInfo struct {
 	ConnName      string `json:"host"`
 	ClientArch    string `json:"clientarch"`
 	ClientOs      string `json:"clientos"`
 	ClientVersion string `json:"string"`
+	Shell         string `json:"shell"`
 }
 
 const (

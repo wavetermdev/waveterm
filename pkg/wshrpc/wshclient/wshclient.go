@@ -74,7 +74,7 @@ func ConnStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnSt
 }
 
 // command "connupdatewsh", wshserver.ConnUpdateWshCommand
-func ConnUpdateWshCommand(w *wshutil.WshRpc, data wshrpc.UpdateInfo, opts *wshrpc.RpcOpts) (bool, error) {
+func ConnUpdateWshCommand(w *wshutil.WshRpc, data wshrpc.RemoteInfo, opts *wshrpc.RpcOpts) (bool, error) {
 	resp, err := sendRpcRequestCallHelper[bool](w, "connupdatewsh", data, opts)
 	return resp, err
 }

@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -535,4 +536,15 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	}
 	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	return sockName, nil
+}
+
+func GetInfo(rpcContext wshrpc.RpcContext) wshrpc.RemoteInfo {
+	return wshrpc.RemoteInfo{
+		ConnName:      rpcContext.Conn,
+		ClientArch:    runtime.GOARCH,
+		ClientOs:      runtime.GOOS,
+		ClientVersion: wavebase.WaveVersion,
+		Shell:         os.Getenv("SHELL"),
+	}
+
 }

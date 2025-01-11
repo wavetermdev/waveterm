@@ -11,7 +11,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -191,13 +190,8 @@ func serverRunRouter() error {
 }
 
 func checkForUpdate() error {
-	updateInfo := wshrpc.UpdateInfo{
-		ConnName:      RpcContext.Conn,
-		ClientArch:    runtime.GOARCH,
-		ClientOs:      runtime.GOOS,
-		ClientVersion: wavebase.WaveVersion,
-	}
-	needsRestartRaw, err := RpcClient.SendRpcRequest(wshrpc.Command_ConnUpdateWsh, updateInfo, &wshrpc.RpcOpts{Timeout: 2000})
+	remoteInfo := wshutil.GetInfo(RpcContext)
+	needsRestartRaw, err := RpcClient.SendRpcRequest(wshrpc.Command_ConnUpdateWsh, remoteInfo, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("could not update: %w", err)
 	}

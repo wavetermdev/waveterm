@@ -228,7 +228,7 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 // expects the output of `wsh version` which looks like `wsh v0.10.4` or "not-installed"
 // returns (up-to-date, semver, error)
 // if not up to date, or error, version might be ""
-func isWshVersionUpToDate(wshVersionLine string) (bool, string, error) {
+func IsWshVersionUpToDate(wshVersionLine string) (bool, string, error) {
 	wshVersionLine = strings.TrimSpace(wshVersionLine)
 	if wshVersionLine == "not-installed" {
 		return false, "", nil
@@ -290,7 +290,7 @@ func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, error) 
 		return false, "", fmt.Errorf("error reading wsh version: %w", err)
 	}
 	conn.Infof(ctx, "got connserver version: %s\n", strings.TrimSpace(versionLine))
-	isUpToDate, clientVersion, err := isWshVersionUpToDate(versionLine)
+	isUpToDate, clientVersion, err := IsWshVersionUpToDate(versionLine)
 	if err != nil {
 		sshSession.Close()
 		return false, "", fmt.Errorf("error checking wsh version: %w", err)

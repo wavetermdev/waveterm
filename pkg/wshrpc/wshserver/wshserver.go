@@ -37,7 +37,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
-	"golang.org/x/mod/semver"
 )
 
 var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data"}
@@ -700,11 +699,15 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.Co
 	return conn.InstallWsh(ctx)
 }
 
-func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, updateInfo wshrpc.UpdateInfo) (bool, error) {
+func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, updateInfo wshrpc.RemoteInfo) (bool, error) {
 	connName := updateInfo.ConnName
 	// check version number, return now if update not necessary
-	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
-	if semver.Compare(updateInfo.ClientVersion, expectedVersion) < 0 {
+	upToDate, _, err := conncontroller.IsWshVersionUpToDate(updateInfo.ClientVersion)
+	if err != nil {
+		return false, fmt.Errorf("unable to compare wsh version: %w", err)
+	}
+	if upToDate {
+		// no need to update
 		return false, nil
 	}
 
