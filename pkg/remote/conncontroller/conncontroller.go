@@ -377,20 +377,13 @@ to ensure a seamless experience.
 Would you like to install them?
 `)
 
-func (conn *SSHConn) UpdateWsh(ctx context.Context, clientDisplayName string, opts *WshInstallOpts) error {
-	if opts == nil {
-		opts = &WshInstallOpts{}
-	}
+func (conn *SSHConn) UpdateWsh(ctx context.Context, clientDisplayName string, remoteInfo *wshrpc.RemoteInfo) error {
+	log.Printf("attempting to update wsh for connection %v", remoteInfo)
 	client := conn.GetClient()
 	if client == nil {
 		return fmt.Errorf("client is nil")
 	}
-	clientOs, clientArch, err := remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(client))
-	if err != nil {
-		return err
-	}
-	// should be able to GetClientPlatform in other ways, but this works for now
-	err = remote.CpWshToRemote(ctx, client, clientOs, clientArch)
+	err := remote.CpWshToRemote(ctx, client, remoteInfo.ClientOs, remoteInfo.ClientArch)
 	if err != nil {
 		return fmt.Errorf("error installing wsh to remote: %w", err)
 	}

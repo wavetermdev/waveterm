@@ -708,6 +708,7 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 	}
 	if upToDate {
 		// no need to update
+		log.Printf("wsh update is not needed for connection %s", connName)
 		return false, nil
 	}
 
@@ -724,7 +725,7 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 	if conn == nil {
 		return false, fmt.Errorf("connection not found: %s", connName)
 	}
-	err = conn.UpdateWsh(ctx, connName, &conncontroller.WshInstallOpts{Force: true, NoUserPrompt: true})
+	err = conn.UpdateWsh(ctx, connName, &remoteInfo)
 	if err != nil {
 		return false, fmt.Errorf("update failed: %w", err)
 	}

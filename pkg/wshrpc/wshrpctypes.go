@@ -506,7 +506,7 @@ type RemoteInfo struct {
 	ConnName      string `json:"host"`
 	ClientArch    string `json:"clientarch"`
 	ClientOs      string `json:"clientos"`
-	ClientVersion string `json:"string"`
+	ClientVersion string `json:"clientversion"`
 	Shell         string `json:"shell"`
 }
 
