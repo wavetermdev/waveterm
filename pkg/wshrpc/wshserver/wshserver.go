@@ -699,10 +699,10 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.Co
 	return conn.InstallWsh(ctx)
 }
 
-func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, updateInfo wshrpc.RemoteInfo) (bool, error) {
-	connName := updateInfo.ConnName
+func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc.RemoteInfo) (bool, error) {
+	connName := remoteInfo.ConnName
 	// check version number, return now if update not necessary
-	upToDate, _, err := conncontroller.IsWshVersionUpToDate(updateInfo.ClientVersion)
+	upToDate, _, err := conncontroller.IsWshVersionUpToDate(remoteInfo.ClientVersion)
 	if err != nil {
 		return false, fmt.Errorf("unable to compare wsh version: %w", err)
 	}

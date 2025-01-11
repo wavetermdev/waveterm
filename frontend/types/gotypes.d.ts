@@ -553,6 +553,15 @@ declare global {
         y: number;
     };
 
+    // wshrpc.RemoteInfo
+    type RemoteInfo = {
+        host: string;
+        clientarch: string;
+        clientos: string;
+        string: string;
+        shell: string;
+    };
+
     // wshutil.RpcMessage
     type RpcMessage = {
         command?: string;
@@ -744,14 +753,6 @@ declare global {
     type UIContext = {
         windowid: string;
         activetabid: string;
-    };
-
-    // wshrpc.UpdateInfo
-    type UpdateInfo = {
-        host: string;
-        clientarch: string;
-        clientos: string;
-        string: string;
     };
 
     // userinput.UserInputRequest

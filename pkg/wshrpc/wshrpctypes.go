@@ -164,7 +164,7 @@ type WshRpcInterface interface {
 	WslListCommand(ctx context.Context) ([]string, error)
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
-	ConnUpdateWshCommand(ctx context.Context, updateInfo RemoteInfo) (bool, error)
+	ConnUpdateWshCommand(ctx context.Context, remoteInfo RemoteInfo) (bool, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
