@@ -301,6 +301,12 @@ func RemoteGetInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.Remot
 	return resp, err
 }
 
+// command "remoteinstallrcfiles", wshserver.RemoteInstallRcFilesCommand
+func RemoteInstallRcFilesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remoteinstallrcfiles", nil, opts)
+	return err
+}
+
 // command "remotemkdir", wshserver.RemoteMkdirCommand
 func RemoteMkdirCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotemkdir", data, opts)
