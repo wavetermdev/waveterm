@@ -190,7 +190,7 @@ func serverRunRouter() error {
 }
 
 func checkForUpdate() error {
-	remoteInfo := wshutil.GetInfo(RpcContext)
+	remoteInfo := wshutil.GetInfo()
 	needsRestartRaw, err := RpcClient.SendRpcRequest(wshrpc.Command_ConnUpdateWsh, remoteInfo, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("could not update: %w", err)

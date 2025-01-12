@@ -379,7 +379,7 @@ Would you like to install them?
 
 func (conn *SSHConn) UpdateWsh(ctx context.Context, clientDisplayName string, remoteInfo *wshrpc.RemoteInfo) error {
 	conn.Infof(ctx, "attempting to update wsh for connection %s (os:%s arch:%s version:%s)\n",
-		remoteInfo.ConnName, remoteInfo.ClientOs, remoteInfo.ClientArch, remoteInfo.ClientVersion)
+		conn.GetName(), remoteInfo.ClientOs, remoteInfo.ClientArch, remoteInfo.ClientVersion)
 	client := conn.GetClient()
 	if client == nil {
 		return fmt.Errorf("cannot update wsh: ssh client is not connected")

@@ -538,9 +538,8 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	return sockName, nil
 }
 
-func GetInfo(rpcContext wshrpc.RpcContext) wshrpc.RemoteInfo {
+func GetInfo() wshrpc.RemoteInfo {
 	return wshrpc.RemoteInfo{
-		ConnName:      rpcContext.Conn,
 		ClientArch:    runtime.GOARCH,
 		ClientOs:      runtime.GOOS,
 		ClientVersion: wavebase.WaveVersion,
