@@ -241,18 +241,6 @@ func InstallClientRcFiles(client *ssh.Client) error {
 	return err
 }
 
-func GetHomeDir(client *ssh.Client) string {
-	session, err := client.NewSession()
-	if err != nil {
-		return "~"
-	}
-	out, err := session.Output(`echo "$HOME"`)
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-	return "~"
-}
-
 func IsPowershell(shellPath string) bool {
 	// get the base path, and then check contains
 	shellBase := filepath.Base(shellPath)
