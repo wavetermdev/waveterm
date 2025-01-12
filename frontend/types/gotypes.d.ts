@@ -555,7 +555,6 @@ declare global {
 
     // wshrpc.RemoteInfo
     type RemoteInfo = {
-        host: string;
         clientarch: string;
         clientos: string;
         clientversion: string;
