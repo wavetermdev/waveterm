@@ -28,6 +28,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 )
@@ -287,19 +289,23 @@ func StartRemoteShellProcNoWsh(termSize waveobj.TermSize, cmdStr string, cmdOpts
 
 func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	client := conn.GetClient()
+	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
+	rpcClient := wshclient.GetBareRpcClient()
+	remoteInfo, err := wshclient.RemoteGetInfoCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
+	if err != nil {
+		return nil, fmt.Errorf("unable to obtain client info: %w", err)
+	}
+	log.Printf("client info collected: %+#v", remoteInfo)
+
 	shellPath := cmdOpts.ShellPath
 	if shellPath == "" {
-		remoteShellPath, err := remote.DetectShell(client)
-		if err != nil {
-			return nil, err
-		}
-		shellPath = remoteShellPath
+		shellPath = remoteInfo.Shell
 	}
 	var shellOpts []string
 	var cmdCombined string
-	log.Printf("detected shell: %s", shellPath)
+	log.Printf("using shell: %s", shellPath)
 
-	err := remote.InstallClientRcFiles(client)
+	err = remote.InstallClientRcFiles(client)
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err

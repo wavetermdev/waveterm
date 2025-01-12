@@ -243,7 +243,7 @@ class RpcApiType {
     }
 
     // command "remotegetinfo" [call]
-    RemoteGetInfoCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+    RemoteGetInfoCommand(client: WshClient, opts?: RpcOpts): Promise<RemoteInfo> {
         return client.wshRpcCall("remotegetinfo", null, opts);
     }
 

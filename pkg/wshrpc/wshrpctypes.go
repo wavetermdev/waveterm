@@ -180,7 +180,7 @@ type WshRpcInterface interface {
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteMkdirCommand(ctx context.Context, path string) error
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
-	RemoteGetInfoCommand(ctx context.Context) RemoteInfo
+	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)

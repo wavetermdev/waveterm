@@ -389,6 +389,6 @@ func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, path string) err
 	return nil
 }
 
-func (*ServerImpl) RemoteGetInfoCommand(ctx context.Context) wshrpc.RemoteInfo {
-	return wshutil.GetInfo()
+func (*ServerImpl) RemoteGetInfoCommand(ctx context.Context) (wshrpc.RemoteInfo, error) {
+	return wshutil.GetInfo(), nil
 }
