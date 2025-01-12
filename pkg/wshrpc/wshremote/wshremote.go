@@ -18,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 const MaxFileSize = 50 * 1024 * 1024 // 10M
@@ -386,4 +387,8 @@ func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, path string) err
 		return fmt.Errorf("cannot delete file %q: %w", path, err)
 	}
 	return nil
+}
+
+func (*ServerImpl) RemoteGetInfoCommand(ctx context.Context) (wshrpc.RemoteInfo, error) {
+	return wshutil.GetInfo(), nil
 }

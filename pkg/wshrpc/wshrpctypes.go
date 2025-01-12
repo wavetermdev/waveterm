@@ -73,6 +73,7 @@ const (
 	Command_GetVar               = "getvar"
 	Command_SetVar               = "setvar"
 	Command_RemoteMkdir          = "remotemkdir"
+	Command_RemoteGetInfo        = "remotegetinfo"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -179,6 +180,7 @@ type WshRpcInterface interface {
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteMkdirCommand(ctx context.Context, path string) error
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
+	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -503,7 +505,6 @@ type ConnRequest struct {
 }
 
 type RemoteInfo struct {
-	ConnName      string `json:"host"`
 	ClientArch    string `json:"clientarch"`
 	ClientOs      string `json:"clientos"`
 	ClientVersion string `json:"clientversion"`

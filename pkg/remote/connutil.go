@@ -35,25 +35,6 @@ func ParseOpts(input string) (*SSHOpts, error) {
 	return &SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}, nil
 }
 
-func DetectShell(client *ssh.Client) (string, error) {
-	wshPath := GetWshPath(client)
-
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	log.Printf("shell detecting using command: %s shell", wshPath)
-	out, err := session.Output(wshPath + " shell")
-	if err != nil {
-		log.Printf("unable to determine shell. defaulting to /bin/bash: %s", err)
-		return "/bin/bash", nil
-	}
-	log.Printf("detecting shell: %s", out)
-
-	return fmt.Sprintf(`"%s"`, strings.TrimSpace(string(out))), nil
-}
-
 func GetWshPath(client *ssh.Client) string {
 	defaultPath := wavebase.RemoteFullWshBinPath
 	session, err := client.NewSession()
@@ -239,18 +220,6 @@ func InstallClientRcFiles(client *ssh.Client) error {
 
 	_, err = session.Output(path + " rcfiles")
 	return err
-}
-
-func GetHomeDir(client *ssh.Client) string {
-	session, err := client.NewSession()
-	if err != nil {
-		return "~"
-	}
-	out, err := session.Output(`echo "$HOME"`)
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-	return "~"
 }
 
 func IsPowershell(shellPath string) bool {

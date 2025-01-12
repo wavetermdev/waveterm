@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -27,6 +28,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 )
@@ -286,26 +289,28 @@ func StartRemoteShellProcNoWsh(termSize waveobj.TermSize, cmdStr string, cmdOpts
 
 func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	client := conn.GetClient()
+	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
+	rpcClient := wshclient.GetBareRpcClient()
+	remoteInfo, err := wshclient.RemoteGetInfoCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
+	if err != nil {
+		return nil, fmt.Errorf("unable to obtain client info: %w", err)
+	}
+	log.Printf("client info collected: %+#v", remoteInfo)
+
 	shellPath := cmdOpts.ShellPath
 	if shellPath == "" {
-		remoteShellPath, err := remote.DetectShell(client)
-		if err != nil {
-			return nil, err
-		}
-		shellPath = remoteShellPath
+		shellPath = remoteInfo.Shell
 	}
 	var shellOpts []string
 	var cmdCombined string
-	log.Printf("detected shell: %s", shellPath)
+	log.Printf("using shell: %s", shellPath)
 
-	err := remote.InstallClientRcFiles(client)
+	err = remote.InstallClientRcFiles(client)
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err
 	}
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
-
-	homeDir := remote.GetHomeDir(client)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -313,14 +318,17 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 			log.Printf("recognized as bash shell")
 			// add --rcfile
 			// cant set -l or -i with --rcfile
-			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`"%s"/.waveterm/%s/.bashrc`, homeDir, shellutil.BashIntegrationDir))
+			bashPath := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s/.bashrc", shellutil.BashIntegrationDir))
+			shellOpts = append(shellOpts, "--rcfile", bashPath)
 		} else if isFishShell(shellPath) {
-			carg := fmt.Sprintf(`"set -x PATH \"%s\"/.waveterm/%s $PATH"`, homeDir, shellutil.WaveHomeBinDir)
+			fishDir := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s", shellutil.WaveHomeBinDir))
+			carg := fmt.Sprintf(`"set -x PATH %s $PATH"`, fishDir)
 			shellOpts = append(shellOpts, "-C", carg)
 		} else if remote.IsPowershell(shellPath) {
+			pwshPath := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
-			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", fmt.Sprintf("%s/.waveterm/%s/wavepwsh.ps1", homeDir, shellutil.PwshIntegrationDir))
+			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", pwshPath)
 		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
@@ -374,7 +382,8 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 	}
 
 	if isZshShell(shellPath) {
-		cmdCombined = fmt.Sprintf(`ZDOTDIR="%s/.waveterm/%s" %s`, homeDir, shellutil.ZshIntegrationDir, cmdCombined)
+		zshDir := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir))
+		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
 
 	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]

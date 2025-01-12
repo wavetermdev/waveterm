@@ -700,7 +700,11 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc.RemoteInfo) (bool, error) {
-	connName := remoteInfo.ConnName
+	handler := wshutil.GetRpcResponseHandlerFromContext(ctx)
+	if handler == nil {
+		return false, fmt.Errorf("could not determine handler from context")
+	}
+	connName := handler.GetRpcContext().Conn
 	if connName == "" {
 		return false, fmt.Errorf("invalid remote info: missing connection name")
 	}

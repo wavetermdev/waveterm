@@ -242,6 +242,11 @@ class RpcApiType {
         return client.wshRpcCall("remotefiletouch", data, opts);
     }
 
+    // command "remotegetinfo" [call]
+    RemoteGetInfoCommand(client: WshClient, opts?: RpcOpts): Promise<RemoteInfo> {
+        return client.wshRpcCall("remotegetinfo", null, opts);
+    }
+
     // command "remotemkdir" [call]
     RemoteMkdirCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotemkdir", data, opts);

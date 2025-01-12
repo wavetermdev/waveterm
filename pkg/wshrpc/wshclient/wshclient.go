@@ -295,6 +295,12 @@ func RemoteFileTouchCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts
 	return err
 }
 
+// command "remotegetinfo", wshserver.RemoteGetInfoCommand
+func RemoteGetInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.RemoteInfo, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.RemoteInfo](w, "remotegetinfo", nil, opts)
+	return resp, err
+}
+
 // command "remotemkdir", wshserver.RemoteMkdirCommand
 func RemoteMkdirCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotemkdir", data, opts)

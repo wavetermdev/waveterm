@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
@@ -538,13 +540,24 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	return sockName, nil
 }
 
-func GetInfo(rpcContext wshrpc.RpcContext) wshrpc.RemoteInfo {
+func getShell() string {
+	if runtime.GOOS == "darwin" {
+		return shellutil.GetMacUserShell()
+	}
+
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		return "/bin/bash"
+	}
+	return strings.TrimSpace(shell)
+}
+
+func GetInfo() wshrpc.RemoteInfo {
 	return wshrpc.RemoteInfo{
-		ConnName:      rpcContext.Conn,
 		ClientArch:    runtime.GOARCH,
 		ClientOs:      runtime.GOOS,
 		ClientVersion: wavebase.WaveVersion,
-		Shell:         os.Getenv("SHELL"),
+		Shell:         getShell(),
 	}
 
 }
