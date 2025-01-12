@@ -542,14 +542,14 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 
 func getShell() string {
 	if runtime.GOOS == "darwin" {
-		return shellutil.GetMacUserShell() + "\n"
+		return shellutil.GetMacUserShell()
 	}
 
 	shell := os.Getenv("SHELL")
 	if shell == "" {
-		return "/bin/bash\n"
+		return "/bin/bash"
 	}
-	return strings.TrimSpace(shell) + "\n"
+	return strings.TrimSpace(shell)
 }
 
 func GetInfo() wshrpc.RemoteInfo {
