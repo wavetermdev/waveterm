@@ -24,6 +24,7 @@ import (
 
 const SettingsFile = "settings.json"
 const ConnectionsFile = "connections.json"
+const ProfilesFile = "profiles.json"
 
 const AnySchema = `
 {

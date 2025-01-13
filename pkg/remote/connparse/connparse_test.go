@@ -9,7 +9,7 @@ import (
 func TestParseURI_BasicWSH(t *testing.T) {
 	t.Parallel()
 	cstr := "wsh://localhost:8080/path/to/file"
-	c, err := connparse.ParseURI(cstr, "")
+	c, err := connparse.ParseURI(cstr)
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestParseURI_BasicWSH(t *testing.T) {
 func TestParseURI_FullConnectionWSH(t *testing.T) {
 	t.Parallel()
 	cstr := "wsh://user@192.168.0.1:22/path/to/file?foo=bar&baz=qux"
-	c, err := connparse.ParseURI(cstr, "")
+	c, err := connparse.ParseURI(cstr)
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
@@ -68,16 +68,16 @@ func TestParseURI_FullConnectionWSH(t *testing.T) {
 	if len(*c.Params) != 2 {
 		t.Fatalf("expected params to have 2 items, got %v", *c.Params)
 	}
-	got := c.GetFullPath()
+	got := c.GetFullURI()
 	if len(got) != len(cstr) {
-		t.Fatalf("expected full path to be %q, got %q (looking at string length since params can be out of order)", cstr, got)
+		t.Fatalf("expected full uri to be %q, got %q (looking at string length since params can be out of order)", cstr, got)
 	}
 }
 
 func TestParseURI_MissingScheme(t *testing.T) {
 	t.Parallel()
 	cstr := "localhost:8080/path/to/file"
-	c, err := connparse.ParseURI(cstr, "")
+	c, err := connparse.ParseURI(cstr)
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestParseURI_MissingScheme(t *testing.T) {
 func TestParseURI_WSHShorthand(t *testing.T) {
 	t.Parallel()
 	cstr := "//conn/path/to/file"
-	c, err := connparse.ParseURI(cstr, "")
+	c, err := connparse.ParseURI(cstr)
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestParseURI_WSHShorthand(t *testing.T) {
 func TestParseURI_WSHLocalHomeShorthand(t *testing.T) {
 	t.Parallel()
 	cstr := "/~/path/to/file"
-	c, err := connparse.ParseURI(cstr, "")
+	c, err := connparse.ParseURI(cstr)
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestParseURI_WSHLocalHomeShorthand(t *testing.T) {
 func TestParseURI_WSHCurrentAbsolutePath(t *testing.T) {
 	t.Parallel()
 	cstr := t.TempDir()
-	c, err := connparse.ParseURI(cstr, "")
+	c, err := connparse.ParseURI(cstr)
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestParseURI_WSHCurrentAbsolutePath(t *testing.T) {
 func TestParseURI_BasicS3(t *testing.T) {
 	t.Parallel()
 	cstr := "profile:s3://bucket/path/to/file"
-	c, err := connparse.ParseURI(cstr, "")
+	c, err := connparse.ParseURI(cstr)
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}

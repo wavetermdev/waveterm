@@ -11,44 +11,53 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"gopkg.in/ini.v1"
+)
+
+const (
+	ProfileConfigKey = "profile:config"
+	ProfilePrefix    = "aws:"
+	TempFilePattern  = "waveterm-awsconfig-%s"
 )
 
 var connectionRe = regexp.MustCompile(`^aws:\/\/(.*)$`)
 
 var tempfiles map[string]string = make(map[string]string)
 
-func GetConfigForConnection(ctx context.Context, connection string) (*aws.Config, error) {
-	connMatch := connectionRe.FindStringSubmatch(connection)
-	if connMatch == nil {
-		return nil, fmt.Errorf("invalid connection string: %s)", connection)
-	}
-	connection = connMatch[1]
-	connfile, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ConnectionsFile)
-	if len(cerrs) > 0 {
-		return nil, fmt.Errorf("error reading config file: %v", cerrs[0])
-	}
+func GetConfig(ctx context.Context, profile string) (*aws.Config, error) {
 	optfns := []func(*config.LoadOptions) error{}
-	if connfile[connection] != nil {
-		connectionconfig := connfile.GetMap(connection)
-		if connectionconfig["aws:config"] != "" {
-			var tempfile string
-			if tempfiles[connection] != "" {
-				tempfile = tempfiles[connection]
-			} else {
-				awsConfig := connectionconfig.GetString("aws:config", "")
-				tempfile, err := os.CreateTemp("", fmt.Sprintf("waveterm-awsconfig-%s", connection))
-				if err != nil {
-					return nil, fmt.Errorf("error creating temp file: %v", err)
-				}
-				tempfile.WriteString(awsConfig)
-			}
-			optfns = append(optfns, config.WithSharedCredentialsFiles([]string{tempfile}))
+	// If profile is empty, use default config
+	if profile != "" {
+		connMatch := connectionRe.FindStringSubmatch(profile)
+		if connMatch == nil {
+			return nil, fmt.Errorf("invalid connection string: %s)", profile)
 		}
+		profile = connMatch[1]
+		profiles, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ProfilesFile)
+		if len(cerrs) > 0 {
+			return nil, fmt.Errorf("error reading config file: %v", cerrs[0])
+		}
+		if profiles[profile] != nil {
+			connectionconfig := profiles.GetMap(profile)
+			if connectionconfig[ProfileConfigKey] != "" {
+				var tempfile string
+				if tempfiles[profile] != "" {
+					tempfile = tempfiles[profile]
+				} else {
+					awsConfig := connectionconfig.GetString(ProfileConfigKey, "")
+					tempfile, err := os.CreateTemp("", fmt.Sprintf(TempFilePattern, profile))
+					if err != nil {
+						return nil, fmt.Errorf("error creating temp file: %v", err)
+					}
+					tempfile.WriteString(awsConfig)
+				}
+				optfns = append(optfns, config.WithSharedCredentialsFiles([]string{tempfile}))
+			}
+		}
+		trimmedProfile := strings.TrimPrefix(profile, ProfilePrefix)
+		optfns = append(optfns, config.WithSharedConfigProfile(trimmedProfile))
 	}
-	optfns = append(optfns, config.WithSharedConfigProfile(connection))
 	cfg, err := config.LoadDefaultConfig(ctx, optfns...)
 	if err != nil {
 		return nil, fmt.Errorf("error loading config: %v", err)
@@ -56,31 +65,19 @@ func GetConfigForConnection(ctx context.Context, connection string) (*aws.Config
 	return &cfg, nil
 }
 
-func ParseProfiles() []string {
-	connfile, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ConnectionsFile)
-	profiles := map[string]any{}
-	if len(cerrs) > 0 {
-		log.Printf("error reading wave connections file: %v", cerrs[0])
-	} else {
-		for k, _ := range connfile {
-			connMatch := connectionRe.FindStringSubmatch(k)
-			if connMatch != nil {
-				profiles[connMatch[1]] = struct{}{}
-			}
-		}
-	}
-
+func ParseProfiles() map[string]struct{} {
+	profiles := make(map[string]struct{})
 	fname := config.DefaultSharedConfigFilename() // Get aws.config default shared configuration file name
 	f, err := ini.Load(fname)                     // Load ini file
 	if err != nil {
 		log.Printf("error reading aws config file: %v", err)
-		return iterfn.MapKeysToSorted(profiles)
+		return nil
 	}
 	for _, v := range f.Sections() {
 		if len(v.Keys()) != 0 { // Get only the sections having Keys
 			parts := strings.Split(v.Name(), " ")
 			if len(parts) == 2 && parts[0] == "profile" { // skip default
-				profiles[parts[1]] = struct{}{}
+				profiles[ProfilePrefix+parts[1]] = struct{}{}
 			}
 		}
 	}
@@ -89,10 +86,10 @@ func ParseProfiles() []string {
 	f, err = ini.Load(fname)
 	if err != nil {
 		log.Printf("error reading aws credentials file: %v", err)
-		return iterfn.MapKeysToSorted(profiles)
+		return profiles
 	}
 	for _, v := range f.Sections() {
-		profiles[v.Name()] = struct{}{}
+		profiles[ProfilePrefix+v.Name()] = struct{}{}
 	}
-	return iterfn.MapKeysToSorted(profiles)
+	return profiles
 }

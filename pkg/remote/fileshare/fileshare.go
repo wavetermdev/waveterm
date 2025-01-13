@@ -24,7 +24,7 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	}
 	conntype := conn.GetType()
 	if conntype == connparse.ConnectionTypeS3 {
-		config, err := awsconn.GetConfigForConnection(ctx, connection)
+		config, err := awsconn.GetConfig(ctx, connection)
 		if err != nil {
 			log.Printf("error getting aws config: %v", err)
 			return nil, nil
@@ -33,7 +33,7 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	} else if conntype == connparse.ConnectionTypeWave {
 		return wavefs.NewWaveClient(), conn
 	} else {
-		return wshfs.NewWshClient(connection), conn
+		return wshfs.NewWshClient(), conn
 	}
 }
 

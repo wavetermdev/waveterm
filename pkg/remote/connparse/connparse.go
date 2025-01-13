@@ -53,12 +53,12 @@ func (c *Connection) GetPathWithHost() string {
 	return c.Host + "/" + c.Path
 }
 
-func (c *Connection) GetFullPath() string {
+func (c *Connection) GetFullURI() string {
 	return c.Scheme + "://" + c.GetPathWithHost() + "?" + c.Params.Encode()
 }
 
 // ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
-func ParseURI(uri string, connConfigPath string) (*Connection, error) {
+func ParseURI(uri string) (*Connection, error) {
 	split := strings.SplitN(uri, "://", 2)
 	var scheme string
 	var rest string

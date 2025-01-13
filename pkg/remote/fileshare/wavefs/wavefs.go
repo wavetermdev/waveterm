@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/fs"
 	"regexp"
-	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
@@ -42,10 +41,11 @@ func (c WaveClient) PutFile(ctx context.Context, data fstype.FileData) error {
 	if err != nil {
 		return fmt.Errorf("error decoding data64: %w", err)
 	}
-	zoneId, fileName, err := parseFilePath(data.Path)
-	if err != nil {
-		return fmt.Errorf("error parsing path: %w", err)
+	zoneId := data.Conn.GetParam("zoneid")
+	if zoneId == "" {
+		return fmt.Errorf("zoneid not found in connection")
 	}
+	fileName := data.Conn.GetPathWithHost()
 	if data.At != nil {
 		err = filestore.WFS.WriteAt(ctx, zoneId, fileName, data.At.Offset, dataBuf)
 		if err == fs.ErrNotExist {
@@ -88,16 +88,21 @@ func (c WaveClient) Copy(ctx context.Context, srcConn, destConn *connparse.Conne
 }
 
 func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) error {
-	err := filestore.WFS.DeleteFile(ctx, wshrpc.RpcContext.BlockId, path)
+	zoneId := conn.GetParam("zoneid")
+	if zoneId == "" {
+		return fmt.Errorf("zoneid not found in connection")
+	}
+	fileName := conn.GetPathWithHost()
+	err := filestore.WFS.DeleteFile(ctx, zoneId, fileName)
 	if err != nil {
 		return fmt.Errorf("error deleting blockfile: %w", err)
 	}
 	wps.Broker.Publish(wps.WaveEvent{
 		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
 		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
+			ZoneId:   zoneId,
+			FileName: fileName,
 			FileOp:   wps.FileOp_Delete,
 		},
 	})
@@ -106,12 +111,4 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) erro
 
 func (c WaveClient) GetConnectionType() string {
 	return connparse.ConnectionTypeWave
-}
-
-func parseFilePath(conn *connparse.Connection) (zoneId, fileName string, err error) {
-	parts := strings.SplitN(path, "/", 2)
-	if len(parts) < 2 {
-		return "", "", fmt.Errorf("invalid path: %s", path)
-	}
-	return parts[0], parts[1], nil
 }
