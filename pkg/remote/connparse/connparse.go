@@ -4,7 +4,6 @@
 package connparse
 
 import (
-	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -92,6 +91,7 @@ func ParseURI(uri string) (*Connection, error) {
 		host = "current"
 		path = rest
 	} else {
+		// trick url parser into parsing the rest of the string as a URL
 		parsedUrl, err := url.Parse("http://" + rest)
 		if err != nil {
 			return nil, err
@@ -100,15 +100,10 @@ func ParseURI(uri string) (*Connection, error) {
 		if parsedUrl.User != nil {
 			host = parsedUrl.User.Username() + "@" + host
 		}
-		log.Printf("parsedUrl: %v", parsedUrl)
-		log.Printf("parsedUrl.Host: %v", parsedUrl.Host)
-		log.Printf("parsedUrl.Path: %v", parsedUrl.Path)
-		log.Printf("parsedUrl.User: %v", parsedUrl.User)
 		params = parsedUrl.Query()
 		path = parsedUrl.Path
 	}
 
-	log.Printf("scheme: %v", scheme)
 	return &Connection{
 		Scheme: scheme,
 		Host:   host,

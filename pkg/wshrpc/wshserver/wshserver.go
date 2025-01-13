@@ -281,8 +281,7 @@ func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileCrea
 	if data.Opts != nil {
 		fileOpts = *data.Opts
 	}
-	client := fileshare.CreateFileShareClient(ctx, remote.ConnectionTypeWave)
-	err := client.PutFile(ctx, wshrpc.FileData{
+	err := fileshare.PutFile(ctx, wshrpc.FileData{
 		Path:   data.Path,
 		Data64: "",
 		Opts:   &fileOpts,
@@ -294,99 +293,15 @@ func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileCrea
 }
 
 func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.FileData) error {
-	client := fileshare.CreateFileShareClient(ctx, remote.ConnectionTypeWave)
-	err := client.Delete(ctx, data.Path)
-	if err != nil {
-		return fmt.Errorf("error deleting file: %w", err)
-	}
-	return nil
+	return fileshare.Delete(ctx, data.Path)
 }
 
-func waveFileToFileInfo(wf *filestore.WaveFile) *wshrpc.FileInfo {
-	return &wshrpc.FileInfo{
-		ZoneId:    wf.ZoneId,
-		Name:      wf.Name,
-		Opts:      wf.Opts,
-		Size:      wf.Size,
-		CreatedTs: wf.CreatedTs,
-		ModTs:     wf.ModTs,
-		Meta:      wf.Meta,
-	}
-}
-
-func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFileData) (*wshrpc.FileInfo, error) {
-	fileInfo, err := filestore.WFS.Stat(ctx, data.ZoneId, data.FileName)
-	if err != nil {
-		if err == fs.ErrNotExist {
-			return nil, fmt.Errorf("NOTFOUND: %w", err)
-		}
-		return nil, fmt.Errorf("error getting file info: %w", err)
-	}
-	return waveFileToFileInfo(fileInfo), nil
+func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileInfo, error) {
+	return fileshare.Stat(ctx, data.Path)
 }
 
 func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFileListData) ([]*wshrpc.FileInfo, error) {
-	fileListOrig, err := filestore.WFS.ListFiles(ctx, data.ZoneId)
-	if err != nil {
-		return nil, fmt.Errorf("error listing blockfiles: %w", err)
-	}
-	var fileList []*wshrpc.FileInfo
-	for _, wf := range fileListOrig {
-		fileList = append(fileList, waveFileToFileInfo(wf))
-	}
-	if data.Prefix != "" {
-		var filteredList []*wshrpc.FileInfo
-		for _, file := range fileList {
-			if strings.HasPrefix(file.Name, data.Prefix) {
-				filteredList = append(filteredList, file)
-			}
-		}
-		fileList = filteredList
-	}
-	if !data.All {
-		var filteredList []*wshrpc.FileInfo
-		dirMap := make(map[string]int64) // the value is max modtime
-		for _, file := range fileList {
-			// if there is an extra "/" after the prefix, don't include it
-			// first strip the prefix
-			relPath := strings.TrimPrefix(file.Name, data.Prefix)
-			// then check if there is a "/" after the prefix
-			if strings.Contains(relPath, "/") {
-				dirPath := strings.Split(relPath, "/")[0]
-				modTime := dirMap[dirPath]
-				if file.ModTs > modTime {
-					dirMap[dirPath] = file.ModTs
-				}
-				continue
-			}
-			filteredList = append(filteredList, file)
-		}
-		for dir := range dirMap {
-			filteredList = append(filteredList, &wshrpc.FileInfo{
-				ZoneId:    data.ZoneId,
-				Name:      data.Prefix + dir + "/",
-				Size:      0,
-				Meta:      nil,
-				ModTs:     dirMap[dir],
-				CreatedTs: dirMap[dir],
-				IsDir:     true,
-			})
-		}
-		fileList = filteredList
-	}
-	if data.Offset > 0 {
-		if data.Offset >= len(fileList) {
-			fileList = nil
-		} else {
-			fileList = fileList[data.Offset:]
-		}
-	}
-	if data.Limit > 0 {
-		if data.Limit < len(fileList) {
-			fileList = fileList[:data.Limit]
-		}
-	}
-	return fileList, nil
+	return fileshare.Read(ctx, data.Path)
 }
 
 func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
@@ -423,26 +338,8 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFi
 	return nil
 }
 
-func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.CommandFileData) (string, error) {
-	if data.At != nil {
-		_, dataBuf, err := filestore.WFS.ReadAt(ctx, data.ZoneId, data.FileName, data.At.Offset, data.At.Size)
-		if err == fs.ErrNotExist {
-			return "", fmt.Errorf("NOTFOUND: %w", err)
-		}
-		if err != nil {
-			return "", fmt.Errorf("error reading blockfile: %w", err)
-		}
-		return base64.StdEncoding.EncodeToString(dataBuf), nil
-	} else {
-		_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
-		if err == fs.ErrNotExist {
-			return "", fmt.Errorf("NOTFOUND: %w", err)
-		}
-		if err != nil {
-			return "", fmt.Errorf("error reading blockfile: %w", err)
-		}
-		return base64.StdEncoding.EncodeToString(dataBuf), nil
-	}
+func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) (string, error) {
+
 }
 
 func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandFileData) error {

@@ -25,7 +25,7 @@ func NewS3Client(config *aws.Config) *S3Client {
 	}
 }
 
-func (c S3Client) Read(ctx context.Context, conn *connparse.Connection) (*fstype.FullFile, error) {
+func (c S3Client) Read(ctx context.Context, data fstype.FileData) (*fstype.FullFile, error) {
 	return nil, nil
 }
 

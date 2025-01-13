@@ -23,7 +23,7 @@ type FileShareClient interface {
 	// Stat returns the file info at the given parsed connection path
 	Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error)
 	// Read returns the file info at the given path, if it's a dir, then the file data will be a serialized array of FileInfo
-	Read(ctx context.Context, conn *connparse.Connection) (*FullFile, error)
+	Read(ctx context.Context, data FileData) (*FullFile, error)
 	// PutFile writes the given data to the file at the given path
 	PutFile(ctx context.Context, data FileData) error
 	// Mkdir creates a directory at the given path

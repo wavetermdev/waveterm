@@ -26,10 +26,10 @@ func NewWshClient() *WshClient {
 	return &WshClient{}
 }
 
-func (c WshClient) Read(ctx context.Context, conn *connparse.Connection) (*fstype.FullFile, error) {
+func (c WshClient) Read(ctx context.Context, data fstype.FileData) (*fstype.FullFile, error) {
 	client := wshclient.GetBareRpcClient()
-	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path}
-	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: data.Conn.Path}
+	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(data.Conn.Host)})
 	fullFile := &fstype.FullFile{}
 	firstPk := true
 	isDir := false
@@ -71,7 +71,7 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection) (*fstyp
 	if isDir {
 		fiBytes, err := json.Marshal(fileInfoArr)
 		if err != nil {
-			return nil, fmt.Errorf("unable to serialize files %s", conn.Path)
+			return nil, fmt.Errorf("unable to serialize files %s", data.Conn.Path)
 		}
 		fullFile.Data64 = base64.StdEncoding.EncodeToString(fiBytes)
 	} else {
