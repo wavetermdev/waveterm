@@ -57,6 +57,11 @@ class RpcApiType {
         return client.wshRpcCall("connstatus", null, opts);
     }
 
+    // command "connupdatewsh" [call]
+    ConnUpdateWshCommand(client: WshClient, data: RemoteInfo, opts?: RpcOpts): Promise<boolean> {
+        return client.wshRpcCall("connupdatewsh", data, opts);
+    }
+
     // command "controllerappendoutput" [call]
     ControllerAppendOutputCommand(client: WshClient, data: CommandControllerAppendOutputData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("controllerappendoutput", data, opts);
@@ -235,6 +240,16 @@ class RpcApiType {
     // command "remotefiletouch" [call]
     RemoteFileTouchCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefiletouch", data, opts);
+    }
+
+    // command "remotegetinfo" [call]
+    RemoteGetInfoCommand(client: WshClient, opts?: RpcOpts): Promise<RemoteInfo> {
+        return client.wshRpcCall("remotegetinfo", null, opts);
+    }
+
+    // command "remoteinstallrcfiles" [call]
+    RemoteInstallRcFilesCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remoteinstallrcfiles", null, opts);
     }
 
     // command "remotemkdir" [call]

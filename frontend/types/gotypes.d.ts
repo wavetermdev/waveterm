@@ -553,6 +553,14 @@ declare global {
         y: number;
     };
 
+    // wshrpc.RemoteInfo
+    type RemoteInfo = {
+        clientarch: string;
+        clientos: string;
+        clientversion: string;
+        shell: string;
+    };
+
     // wshutil.RpcMessage
     type RpcMessage = {
         command?: string;

@@ -9,7 +9,6 @@ import {
     FullSubBlockProps,
     SubBlockProps,
 } from "@/app/block/blocktypes";
-import { PlotView } from "@/app/view/plotview/plotview";
 import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
 import { SysinfoView, SysinfoViewModel, makeSysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { VDomView, makeVDomModel } from "@/app/view/vdom/vdom";
@@ -87,9 +86,6 @@ function getViewElem(
                 model={viewModel as PreviewModel}
             />
         );
-    }
-    if (blockView === "plot") {
-        return <PlotView key={blockId} />;
     }
     if (blockView === "web") {
         return <WebView key={blockId} blockId={blockId} model={viewModel as WebViewModel} />;
