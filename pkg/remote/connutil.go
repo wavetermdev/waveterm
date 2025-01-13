@@ -209,19 +209,6 @@ func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, cli
 	return nil
 }
 
-func InstallClientRcFiles(client *ssh.Client) error {
-	path := GetWshPath(client)
-	log.Printf("path to wsh searched is: %s", path)
-	session, err := client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return err
-	}
-
-	_, err = session.Output(path + " rcfiles")
-	return err
-}
-
 func IsPowershell(shellPath string) bool {
 	// get the base path, and then check contains
 	shellBase := filepath.Base(shellPath)

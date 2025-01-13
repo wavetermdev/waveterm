@@ -305,7 +305,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 	var cmdCombined string
 	log.Printf("using shell: %s", shellPath)
 
-	err = remote.InstallClientRcFiles(client)
+	err = wshclient.RemoteInstallRcFilesCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err

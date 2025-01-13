@@ -392,3 +392,7 @@ func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, path string) err
 func (*ServerImpl) RemoteGetInfoCommand(ctx context.Context) (wshrpc.RemoteInfo, error) {
 	return wshutil.GetInfo(), nil
 }
+
+func (*ServerImpl) RemoteInstallRcFilesCommand(ctx context.Context) error {
+	return wshutil.InstallRcFiles()
+}

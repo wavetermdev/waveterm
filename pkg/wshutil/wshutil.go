@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -560,4 +561,11 @@ func GetInfo() wshrpc.RemoteInfo {
 		Shell:         getShell(),
 	}
 
+}
+
+func InstallRcFiles() error {
+	home := wavebase.GetHomeDir()
+	waveDir := filepath.Join(home, wavebase.RemoteWaveHomeDirName)
+	winBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
+	return shellutil.InitRcFiles(waveDir, winBinDir)
 }

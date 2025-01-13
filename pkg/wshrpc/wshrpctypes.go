@@ -74,6 +74,7 @@ const (
 	Command_SetVar               = "setvar"
 	Command_RemoteMkdir          = "remotemkdir"
 	Command_RemoteGetInfo        = "remotegetinfo"
+	Command_RemoteInstallRcfiles = "remoteinstallrcfiles"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -181,6 +182,7 @@ type WshRpcInterface interface {
 	RemoteMkdirCommand(ctx context.Context, path string) error
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
+	RemoteInstallRcFilesCommand(ctx context.Context) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
