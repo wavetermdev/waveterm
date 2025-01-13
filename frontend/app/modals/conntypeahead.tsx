@@ -215,6 +215,34 @@ function getConnectionsEditItem(
     return connectionsEditItem;
 }
 
+function getNewConnectionSuggestionItem(
+    connSelected: string,
+    localName: string,
+    remoteConns: Array<string>,
+    wslConns: Array<string>,
+    changeConnection: (connName: string) => Promise<void>,
+    changeConnModalAtom: jotai.PrimitiveAtom<boolean>
+): SuggestionConnectionItem | null {
+    const allCons = ["", localName, ...remoteConns, ...wslConns];
+    if (allCons.includes(connSelected)) {
+        // do not offer to create a new connection if one
+        // with the exact name already exists
+        return null;
+    }
+    const newConnectionSuggestion: SuggestionConnectionItem = {
+        status: "connected",
+        icon: "plus",
+        iconColor: "var(--grey-text-color)",
+        label: `${connSelected} (New Connection)`,
+        value: "",
+        onSelect: (_: string) => {
+            changeConnection(connSelected);
+            globalStore.set(changeConnModalAtom, false);
+        },
+    };
+    return newConnectionSuggestion;
+}
+
 const ChangeConnectionBlockModal = React.memo(
     ({
         blockId,
@@ -308,26 +336,6 @@ const ChangeConnectionBlockModal = React.memo(
             [blockId, blockData]
         );
 
-        let createNew: boolean = true;
-        let showReconnect: boolean = true;
-        if (connSelected == "") {
-            createNew = false;
-        } else {
-            showReconnect = false;
-        }
-        // priority handles special suggestions when necessary
-        // for instance, when reconnecting
-        const newConnectionSuggestion: SuggestionConnectionItem = {
-            status: "connected",
-            icon: "plus",
-            iconColor: "var(--grey-text-color)",
-            label: `${connSelected} (New Connection)`,
-            value: "",
-            onSelect: (_: string) => {
-                changeConnection(connSelected);
-                globalStore.set(changeConnModalAtom, false);
-            },
-        };
         const reconnectSuggestionItem = getReconnectItem(connStatus, connSelected, blockId);
         const localName = getUserName() + "@" + getHostName();
         const localSuggestions = getLocalSuggestions(
@@ -347,18 +355,22 @@ const ChangeConnectionBlockModal = React.memo(
             fullConfig,
             filterOutNowsh
         );
-
         const connectionsEditItem = getConnectionsEditItem(changeConnModalAtom, connSelected);
-
-        // new function to determine createNew
-        // need to know, is the typed word (new, hidden, existing)
+        const newConnectionSuggestionItem = getNewConnectionSuggestionItem(
+            connSelected,
+            localName,
+            connList,
+            wslList,
+            changeConnection,
+            changeConnModalAtom
+        );
 
         const suggestions: Array<SuggestionsType> = [
             ...(reconnectSuggestionItem ? [reconnectSuggestionItem] : []),
             ...(localSuggestions ? [localSuggestions] : []),
             ...(remoteSuggestions ? [remoteSuggestions] : []),
             ...(connectionsEditItem ? [connectionsEditItem] : []),
-            ...(createNew ? [newConnectionSuggestion] : []),
+            ...(newConnectionSuggestionItem ? [newConnectionSuggestionItem] : []),
         ];
 
         let selectionList: Array<SuggestionConnectionItem> = suggestions.flatMap((item) => {
