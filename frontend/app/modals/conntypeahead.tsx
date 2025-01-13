@@ -39,7 +39,7 @@ function filterConnections(
     });
 }
 
-function sortConnSuggestions(
+function sortConnSuggestionItems(
     connSuggestions: Array<SuggestionConnectionItem>,
     fullConfig: FullConfigType
 ): Array<SuggestionConnectionItem> {
@@ -74,7 +74,7 @@ function createRemoteSuggestionItems(
     });
 }
 
-function createWslSuggestion(
+function createWslSuggestionItems(
     filteredList: Array<string>,
     connection: string,
     connStatusMap: Map<string, ConnStatus>
@@ -95,7 +95,7 @@ function createWslSuggestion(
     });
 }
 
-function createFilteredLocalSuggestion(
+function createFilteredLocalSuggestionItem(
     localName: string,
     connection: string,
     connSelected: string
@@ -114,7 +114,33 @@ function createFilteredLocalSuggestion(
     return [];
 }
 
-function getLocalSuggestionItems(
+function getReconnectItem(
+    connStatus: ConnStatus,
+    connSelected: string,
+    blockId: string
+): SuggestionConnectionItem | null {
+    if (connSelected != "" || (connStatus.status != "disconnected" && connStatus.status != "error")) {
+        return null;
+    }
+    const reconnectSuggestionItem: SuggestionConnectionItem = {
+        status: "connected",
+        icon: "arrow-right-arrow-left",
+        iconColor: "var(--grey-text-color)",
+        label: `Reconnect to ${connStatus.connection}`,
+        value: "",
+        onSelect: async (_: string) => {
+            const prtn = RpcApi.ConnConnectCommand(
+                TabRpcClient,
+                { host: connStatus.connection, logblockid: blockId },
+                { timeout: 60000 }
+            );
+            prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
+        },
+    };
+    return reconnectSuggestionItem;
+}
+
+function getLocalSuggestions(
     localName: string,
     connList: Array<string>,
     connection: string,
@@ -122,25 +148,71 @@ function getLocalSuggestionItems(
     connStatusMap: Map<string, ConnStatus>,
     fullConfig: FullConfigType,
     filterOutNowsh: boolean
-): Array<SuggestionConnectionItem> {
+): SuggestionConnectionScope | null {
     const wslFiltered = filterConnections(connList, connSelected, fullConfig, filterOutNowsh);
-    const wslSuggestions = createWslSuggestion(wslFiltered, connection, connStatusMap);
-    const localSuggestion = createFilteredLocalSuggestion(localName, connection, connSelected);
-    const combinedSuggestions = [...localSuggestion, ...wslSuggestions];
-    return sortConnSuggestions(combinedSuggestions, fullConfig);
+    const wslSuggestionItems = createWslSuggestionItems(wslFiltered, connection, connStatusMap);
+    const localSuggestionItem = createFilteredLocalSuggestionItem(localName, connection, connSelected);
+    const combinedSuggestionItems = [...localSuggestionItem, ...wslSuggestionItems];
+    const sortedSuggestionItems = sortConnSuggestionItems(combinedSuggestionItems, fullConfig);
+    if (sortedSuggestionItems.length == 0) {
+        return null;
+    }
+    const localSuggestions: SuggestionConnectionScope = {
+        headerText: "Local",
+        items: sortedSuggestionItems,
+    };
+    return localSuggestions;
 }
 
-function getRemoteSuggestionItems(
+function getRemoteSuggestions(
     connList: Array<string>,
     connection: string,
     connSelected: string,
     connStatusMap: Map<string, ConnStatus>,
     fullConfig: FullConfigType,
     filterOutNowsh: boolean
-): Array<SuggestionConnectionItem> {
+): SuggestionConnectionScope | null {
     const filtered = filterConnections(connList, connSelected, fullConfig, filterOutNowsh);
-    const suggestions = createRemoteSuggestionItems(filtered, connection, connStatusMap);
-    return sortConnSuggestions(suggestions, fullConfig);
+    const suggestionItems = createRemoteSuggestionItems(filtered, connection, connStatusMap);
+    const sortedSuggestionItems = sortConnSuggestionItems(suggestionItems, fullConfig);
+    if (sortedSuggestionItems.length == 0) {
+        return null;
+    }
+    const remoteSuggestions: SuggestionConnectionScope = {
+        headerText: "Remote",
+        items: sortedSuggestionItems,
+    };
+    return remoteSuggestions;
+}
+
+function getConnectionsEditItem(
+    changeConnModalAtom: jotai.PrimitiveAtom<boolean>,
+    connSelected: string
+): SuggestionConnectionItem | null {
+    if (connSelected != "") {
+        return null;
+    }
+    const connectionsEditItem: SuggestionConnectionItem = {
+        status: "disconnected",
+        icon: "gear",
+        iconColor: "var(--grey-text-color)",
+        value: "Edit Connections",
+        label: "Edit Connections",
+        onSelect: () => {
+            util.fireAndForget(async () => {
+                globalStore.set(changeConnModalAtom, false);
+                const path = `${getApi().getConfigDir()}/connections.json`;
+                const blockDef: BlockDef = {
+                    meta: {
+                        view: "preview",
+                        file: path,
+                    },
+                };
+                await createBlock(blockDef, false, true);
+            });
+        },
+    };
+    return connectionsEditItem;
 }
 
 const ChangeConnectionBlockModal = React.memo(
@@ -256,43 +328,9 @@ const ChangeConnectionBlockModal = React.memo(
                 globalStore.set(changeConnModalAtom, false);
             },
         };
-        const reconnectSuggestion: SuggestionConnectionItem = {
-            status: "connected",
-            icon: "arrow-right-arrow-left",
-            iconColor: "var(--grey-text-color)",
-            label: `Reconnect to ${connStatus.connection}`,
-            value: "",
-            onSelect: async (_: string) => {
-                const prtn = RpcApi.ConnConnectCommand(
-                    TabRpcClient,
-                    { host: connStatus.connection, logblockid: blockId },
-                    { timeout: 60000 }
-                );
-                prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
-            },
-        };
-        const connectionsEditItem: SuggestionConnectionItem = {
-            status: "disconnected",
-            icon: "gear",
-            iconColor: "var(--grey-text-color",
-            value: "Edit Connections",
-            label: "Edit Connections",
-            onSelect: () => {
-                util.fireAndForget(async () => {
-                    globalStore.set(changeConnModalAtom, false);
-                    const path = `${getApi().getConfigDir()}/connections.json`;
-                    const blockDef: BlockDef = {
-                        meta: {
-                            view: "preview",
-                            file: path,
-                        },
-                    };
-                    await createBlock(blockDef, false, true);
-                });
-            },
-        };
+        const reconnectSuggestionItem = getReconnectItem(connStatus, connSelected, blockId);
         const localName = getUserName() + "@" + getHostName();
-        const localItems = getLocalSuggestionItems(
+        const localSuggestions = getLocalSuggestions(
             localName,
             wslList,
             connection,
@@ -301,11 +339,7 @@ const ChangeConnectionBlockModal = React.memo(
             fullConfig,
             filterOutNowsh
         );
-        const localSuggestion: SuggestionConnectionScope = {
-            headerText: "Local",
-            items: localItems,
-        };
-        const remoteItems = getRemoteSuggestionItems(
+        const remoteSuggestions = getRemoteSuggestions(
             connList,
             connection,
             connSelected,
@@ -313,21 +347,17 @@ const ChangeConnectionBlockModal = React.memo(
             fullConfig,
             filterOutNowsh
         );
-        const remoteSuggestions: SuggestionConnectionScope = {
-            headerText: "Remote",
-            items: remoteItems,
-        };
+
+        const connectionsEditItem = getConnectionsEditItem(changeConnModalAtom, connSelected);
 
         // new function to determine createNew
         // need to know, is the typed word (new, hidden, existing)
 
         const suggestions: Array<SuggestionsType> = [
-            ...(showReconnect && (connStatus.status == "disconnected" || connStatus.status == "error")
-                ? [reconnectSuggestion]
-                : []),
-            ...(localSuggestion.items.length > 0 ? [localSuggestion] : []),
-            ...(remoteSuggestions.items.length > 0 ? [remoteSuggestions] : []),
-            ...(connSelected == "" ? [connectionsEditItem] : []),
+            ...(reconnectSuggestionItem ? [reconnectSuggestionItem] : []),
+            ...(localSuggestions ? [localSuggestions] : []),
+            ...(remoteSuggestions ? [remoteSuggestions] : []),
+            ...(connectionsEditItem ? [connectionsEditItem] : []),
             ...(createNew ? [newConnectionSuggestion] : []),
         ];
 
