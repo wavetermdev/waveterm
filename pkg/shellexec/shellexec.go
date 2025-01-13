@@ -272,6 +272,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 
 func StartRemoteShellProcNoWsh(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	client := conn.GetClient()
+	log.Printf("SSH-NEWSESSION (StartRemoteShellProcNoWsh)\n")
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
@@ -371,7 +372,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 		log.Printf("combined command is: %s", cmdCombined)
 	}
-
+	log.Printf("SSH-NEWSESSION (StartRemoteShellProc)\n")
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err

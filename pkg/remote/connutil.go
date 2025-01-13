@@ -16,6 +16,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -33,46 +34,6 @@ func ParseOpts(input string) (*SSHOpts, error) {
 	remoteUser = strings.Trim(remoteUser, "@")
 
 	return &SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}, nil
-}
-
-func GetWshPath(client *ssh.Client) string {
-	defaultPath := wavebase.RemoteFullWshBinPath
-	session, err := client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, whichErr := session.Output("which wsh")
-	if whichErr == nil {
-		return strings.TrimSpace(string(out))
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, whereErr := session.Output("where.exe wsh")
-	if whereErr == nil {
-		return strings.TrimSpace(string(out))
-	}
-
-	// check cmd on windows since it requires an absolute path with backslashes
-	session, err = client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, cmdErr := session.Output("(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none") //todo
-	if cmdErr == nil && strings.TrimSpace(string(out)) != "none" {
-		return strings.TrimSpace(string(out))
-	}
-
-	// no custom install, use default path
-	return defaultPath
 }
 
 func normalizeOs(os string) string {
@@ -94,6 +55,7 @@ func normalizeArch(arch string) string {
 // returns (os, arch, error)
 // guaranteed to return a supported platform
 func GetClientPlatform(ctx context.Context, shell genconn.ShellClient) (string, string, error) {
+	blocklogger.Infof(ctx, "[conndebug] running `uname -sm` to detect client platform\n")
 	stdout, stderr, err := genconn.RunSimpleCommand(ctx, shell, genconn.CommandSpec{
 		Cmd: "uname -sm",
 	})
@@ -104,6 +66,18 @@ func GetClientPlatform(ctx context.Context, shell genconn.ShellClient) (string, 
 	parts := strings.Fields(strings.ToLower(strings.TrimSpace(stdout)))
 	if len(parts) != 2 {
 		return "", "", fmt.Errorf("unexpected output from uname: %s", stdout)
+	}
+	os, arch := normalizeOs(parts[0]), normalizeArch(parts[1])
+	if err := wavebase.ValidateWshSupportedArch(os, arch); err != nil {
+		return "", "", err
+	}
+	return os, arch, nil
+}
+
+func GetClientPlatformFromOsArchStr(ctx context.Context, osArchStr string) (string, string, error) {
+	parts := strings.Fields(strings.TrimSpace(osArchStr))
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("unexpected output from uname: %s", osArchStr)
 	}
 	os, arch := normalizeOs(parts[0]), normalizeArch(parts[1])
 	if err := wavebase.ValidateWshSupportedArch(os, arch); err != nil {

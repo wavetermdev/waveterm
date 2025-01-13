@@ -696,7 +696,7 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.Co
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
-	return conn.InstallWsh(ctx)
+	return conn.InstallWsh(ctx, "")
 }
 
 func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc.RemoteInfo) (bool, error) {
@@ -710,7 +710,7 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 	}
 
 	log.Printf("checking wsh version for connection %s (current: %s)", connName, remoteInfo.ClientVersion)
-	upToDate, _, err := conncontroller.IsWshVersionUpToDate(remoteInfo.ClientVersion)
+	upToDate, _, _, err := conncontroller.IsWshVersionUpToDate(remoteInfo.ClientVersion)
 	if err != nil {
 		return false, fmt.Errorf("unable to compare wsh version: %w", err)
 	}
