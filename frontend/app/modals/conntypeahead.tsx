@@ -114,6 +114,33 @@ function createFilteredLocalSuggestionItem(
     return [];
 }
 
+function createS3SuggestionItems(
+    s3Profiles: Array<string>,
+    connStatusMap: Map<string, ConnStatus>,
+    connection: string
+): Array<SuggestionConnectionItem> {
+    // TODO-S3 rewrite this so it fits the way the
+    // s3 connections work. is there a connection status?
+    // probably not, so color may be weird
+    // also, this currently only changes the connection
+    // an onSelect option must be added for different
+    // behavior
+    return s3Profiles.map((profileName) => {
+        const connStatus = connStatusMap.get(profileName);
+        const connColorNum = computeConnColorNum(connStatus);
+        const item: SuggestionConnectionItem = {
+            status: "connected",
+            icon: "arrow-right-arrow-left",
+            iconColor:
+                connStatus?.status == "connected" ? `var(--conn-icon-color-${connColorNum})` : "var(--grey-text-color)",
+            value: profileName,
+            label: profileName,
+            current: profileName == connection,
+        };
+        return item;
+    });
+}
+
 function getReconnectItem(
     connStatus: ConnStatus,
     connSelected: string,
@@ -183,6 +210,27 @@ function getRemoteSuggestions(
         items: sortedSuggestionItems,
     };
     return remoteSuggestions;
+}
+
+function getS3Suggestions(
+    s3Profiles: Array<string>,
+    connection: string,
+    connSelected: string,
+    connStatusMap: Map<string, ConnStatus>,
+    fullConfig: FullConfigType,
+    filterOutNowsh: boolean
+): SuggestionConnectionScope | null {
+    const filtered = filterConnections(s3Profiles, connSelected, fullConfig, filterOutNowsh);
+    const s3Items = createS3SuggestionItems(filtered, connStatusMap, connection);
+    const sortedS3Items = sortConnSuggestionItems(s3Items, fullConfig);
+    if (sortedS3Items.length == 0) {
+        return null;
+    }
+    const s3Suggestions: SuggestionConnectionScope = {
+        headerText: "S3",
+        items: sortedS3Items,
+    };
+    return s3Suggestions;
 }
 
 function getConnectionsEditItem(
@@ -268,6 +316,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatus = jotai.useAtomValue(connStatusAtom);
         const [connList, setConnList] = React.useState<Array<string>>([]);
         const [wslList, setWslList] = React.useState<Array<string>>([]);
+        const [s3List, setS3List] = React.useState<Array<string>>([]);
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
@@ -302,6 +351,12 @@ const ChangeConnectionBlockModal = React.memo(
                     // typeahead was opened. good candidate for verbose log level.
                     //console.log("unable to load wsl list from backend. using blank list: ", e)
                 });
+            /////////
+            // TODO-S3
+            // this needs an rpc call to generate a list of s3 profiles
+            const newS3List = [];
+            setS3List(newS3List);
+            /////////
         }, [changeConnModalOpen, setConnList]);
 
         const changeConnection = React.useCallback(
@@ -355,6 +410,14 @@ const ChangeConnectionBlockModal = React.memo(
             fullConfig,
             filterOutNowsh
         );
+        const s3Suggestions = getS3Suggestions(
+            s3List,
+            connection,
+            connSelected,
+            connStatusMap,
+            fullConfig,
+            filterOutNowsh
+        );
         const connectionsEditItem = getConnectionsEditItem(changeConnModalAtom, connSelected);
         const newConnectionSuggestionItem = getNewConnectionSuggestionItem(
             connSelected,
@@ -369,6 +432,7 @@ const ChangeConnectionBlockModal = React.memo(
             ...(reconnectSuggestionItem ? [reconnectSuggestionItem] : []),
             ...(localSuggestions ? [localSuggestions] : []),
             ...(remoteSuggestions ? [remoteSuggestions] : []),
+            ...(s3Suggestions ? [s3Suggestions] : []),
             ...(connectionsEditItem ? [connectionsEditItem] : []),
             ...(newConnectionSuggestionItem ? [newConnectionSuggestionItem] : []),
         ];
