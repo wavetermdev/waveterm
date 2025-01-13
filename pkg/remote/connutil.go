@@ -75,37 +75,6 @@ func GetWshPath(client *ssh.Client) string {
 	return defaultPath
 }
 
-func hasBashInstalled(client *ssh.Client) (bool, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return false, err
-	}
-
-	out, whichErr := session.Output("which bash")
-	if whichErr == nil && len(out) != 0 {
-		return true, nil
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return false, err
-	}
-
-	out, whereErr := session.Output("where.exe bash")
-	if whereErr == nil && len(out) != 0 {
-		return true, nil
-	}
-
-	// note: we could also check in /bin/bash explicitly
-	// just in case that wasn't added to the path. but if
-	// that's true, we will most likely have worse
-	// problems going forward
-
-	return false, nil
-}
-
 func normalizeOs(os string) string {
 	os = strings.ToLower(strings.TrimSpace(os))
 	return os
