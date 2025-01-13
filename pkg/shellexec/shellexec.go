@@ -33,6 +33,14 @@ import (
 
 const DefaultGracefulKillWait = 400 * time.Millisecond
 
+const (
+	ShellType_bash    = "bash"
+	ShellType_zsh     = "zsh"
+	ShellType_fish    = "fish"
+	ShellType_pwsh    = "pwsh"
+	ShellType_unknown = "unknown"
+)
+
 type CommandOptsType struct {
 	Interactive bool              `json:"interactive,omitempty"`
 	Login       bool              `json:"login,omitempty"`
@@ -146,6 +154,23 @@ func (pp *PipePty) Close() error {
 
 func (pp *PipePty) WriteString(s string) (n int, err error) {
 	return pp.Write([]byte(s))
+}
+
+func getShellTypeFromShellPath(shellPath string) string {
+	shellBase := filepath.Base(shellPath)
+	if strings.Contains(shellBase, "bash") {
+		return ShellType_bash
+	}
+	if strings.Contains(shellBase, "zsh") {
+		return ShellType_zsh
+	}
+	if strings.Contains(shellBase, "fish") {
+		return ShellType_fish
+	}
+	if strings.Contains(shellBase, "pwsh") || strings.Contains(shellBase, "powershell") {
+		return ShellType_pwsh
+	}
+	return ShellType_unknown
 }
 
 func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wsl.WslConn) (*ShellProc, error) {
@@ -296,7 +321,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 	}
 	var shellOpts []string
 	var cmdCombined string
-	log.Printf("detected shell: %s", shellPath)
+	log.Printf("detected shell %q for conn %q\n", shellPath, conn.GetName())
 
 	err := remote.InstallClientRcFiles(client)
 	if err != nil {
@@ -304,23 +329,22 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		return nil, err
 	}
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
-
-	homeDir := remote.GetHomeDir(client)
+	shellType := getShellTypeFromShellPath(shellPath)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
-		if isBashShell(shellPath) {
+		if shellType == ShellType_bash {
 			log.Printf("recognized as bash shell")
 			// add --rcfile
 			// cant set -l or -i with --rcfile
-			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`"%s"/.waveterm/%s/.bashrc`, homeDir, shellutil.BashIntegrationDir))
-		} else if isFishShell(shellPath) {
-			carg := fmt.Sprintf(`"set -x PATH \"%s\"/.waveterm/%s $PATH"`, homeDir, shellutil.WaveHomeBinDir)
+			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`~/.waveterm/%s/.bashrc`, shellutil.BashIntegrationDir))
+		} else if shellType == ShellType_fish {
+			carg := fmt.Sprintf(`"set -x PATH ~/.waveterm/%s $PATH"`, shellutil.WaveHomeBinDir)
 			shellOpts = append(shellOpts, "-C", carg)
-		} else if remote.IsPowershell(shellPath) {
+		} else if shellType == ShellType_pwsh {
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
-			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", fmt.Sprintf("%s/.waveterm/%s/wavepwsh.ps1", homeDir, shellutil.PwshIntegrationDir))
+			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", fmt.Sprintf("~/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
 		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
@@ -373,20 +397,15 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		session.Setenv(envKey, envVal)
 	}
 
-	if isZshShell(shellPath) {
-		cmdCombined = fmt.Sprintf(`ZDOTDIR="%s/.waveterm/%s" %s`, homeDir, shellutil.ZshIntegrationDir, cmdCombined)
+	if shellType == ShellType_zsh {
+		cmdCombined = fmt.Sprintf(`ZDOTDIR=~/.waveterm/%s %s`, shellutil.ZshIntegrationDir, cmdCombined)
 	}
 
 	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
 	if !ok {
 		return nil, fmt.Errorf("no jwt token provided to connection")
 	}
-
-	if remote.IsPowershell(shellPath) {
-		cmdCombined = fmt.Sprintf(`$env:%s="%s"; %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
-	} else {
-		cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
-	}
+	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
 
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 	sessionWrap := MakeSessionWrap(session, cmdCombined, pipePty)
