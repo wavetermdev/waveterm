@@ -8,10 +8,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/fs"
+	"regexp"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/remote"
+	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -22,19 +23,21 @@ type WaveClient struct{}
 
 var _ fstype.FileShareClient = WaveClient{}
 
+var wavefilePathRe = regexp.MustCompile(`^wavefile:\/\/([^?]+)(?:\?(?:([^=]+)=([^&]+))(?:&([^=]+)=([^&]+))*)$`)
+
 func NewWaveClient() *WaveClient {
 	return &WaveClient{}
 }
 
-func (c WaveClient) Read(ctx context.Context, path string) (*fstype.FullFile, error) {
+func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection) (*fstype.FullFile, error) {
 	return nil, nil
 }
 
-func (c WaveClient) Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
+func (c WaveClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
 	return nil, nil
 }
 
-func (c WaveClient) PutFile(ctx context.Context, data wshrpc.FileData) error {
+func (c WaveClient) PutFile(ctx context.Context, data fstype.FileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("error decoding data64: %w", err)
@@ -72,19 +75,19 @@ func (c WaveClient) PutFile(ctx context.Context, data wshrpc.FileData) error {
 	return nil
 }
 
-func (c WaveClient) Mkdir(ctx context.Context, path string) error {
+func (c WaveClient) Mkdir(ctx context.Context, conn *connparse.Connection) error {
 	return nil
 }
 
-func (c WaveClient) Move(ctx context.Context, srcPath, destPath string, recursive bool) error {
+func (c WaveClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
 	return nil
 }
 
-func (c WaveClient) Copy(ctx context.Context, srcPath, destPath string, recursive bool) error {
+func (c WaveClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
 	return nil
 }
 
-func (c WaveClient) Delete(ctx context.Context, path string) error {
+func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) error {
 	err := filestore.WFS.DeleteFile(ctx, wshrpc.RpcContext.BlockId, path)
 	if err != nil {
 		return fmt.Errorf("error deleting blockfile: %w", err)
@@ -102,10 +105,10 @@ func (c WaveClient) Delete(ctx context.Context, path string) error {
 }
 
 func (c WaveClient) GetConnectionType() string {
-	return remote.ConnectionTypeWave
+	return connparse.ConnectionTypeWave
 }
 
-func parseFilePath(path string) (zoneId, fileName string, err error) {
+func parseFilePath(conn *connparse.Connection) (zoneId, fileName string, err error) {
 	parts := strings.SplitN(path, "/", 2)
 	if len(parts) < 2 {
 		return "", "", fmt.Errorf("invalid path: %s", path)

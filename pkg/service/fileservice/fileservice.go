@@ -26,11 +26,7 @@ func (fs *FileService) SaveFile_Meta() tsgenmeta.MethodMeta {
 }
 
 func (fs *FileService) SaveFile(ctx context.Context, connection string, path string, data64 string) error {
-	if connection == "" {
-		connection = wshrpc.LocalConnName
-	}
-	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.PutFile(ctx, wshrpc.FileData{Path: path, Data64: data64})
+	return fileshare.PutFile(ctx, wshrpc.FileData{Path: path, Data64: data64})
 }
 
 func (fs *FileService) StatFile_Meta() tsgenmeta.MethodMeta {
@@ -41,35 +37,19 @@ func (fs *FileService) StatFile_Meta() tsgenmeta.MethodMeta {
 }
 
 func (fs *FileService) StatFile(ctx context.Context, connection string, path string) (*wshrpc.FileInfo, error) {
-	if connection == "" {
-		connection = wshrpc.LocalConnName
-	}
-	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Stat(ctx, path)
+	return fileshare.Stat(ctx, path)
 }
 
 func (fs *FileService) Mkdir(ctx context.Context, connection string, path string) error {
-	if connection == "" {
-		connection = wshrpc.LocalConnName
-	}
-	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Mkdir(ctx, path)
+	return fileshare.Mkdir(ctx, path)
 }
 
 func (fs *FileService) TouchFile(ctx context.Context, connection string, path string) error {
-	if connection == "" {
-		connection = wshrpc.LocalConnName
-	}
-	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.PutFile(ctx, wshrpc.FileData{Path: path, Data64: ""})
+	return fileshare.PutFile(ctx, wshrpc.FileData{Path: path, Data64: ""})
 }
 
 func (fs *FileService) Rename(ctx context.Context, connection string, path string, newPath string) error {
-	if connection == "" {
-		connection = wshrpc.LocalConnName
-	}
-	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Move(ctx, path, newPath, false)
+	return fileshare.Move(ctx, path, newPath, false)
 }
 
 func (fs *FileService) ReadFile_Meta() tsgenmeta.MethodMeta {
@@ -80,11 +60,7 @@ func (fs *FileService) ReadFile_Meta() tsgenmeta.MethodMeta {
 }
 
 func (fs *FileService) ReadFile(ctx context.Context, connection string, path string) (*fstype.FullFile, error) {
-	if connection == "" {
-		connection = wshrpc.LocalConnName
-	}
-	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Read(ctx, path)
+	return fileshare.Read(ctx, path)
 }
 
 func (fs *FileService) GetWaveFile(id string, path string) (any, error) {
@@ -105,11 +81,7 @@ func (fs *FileService) DeleteFile_Meta() tsgenmeta.MethodMeta {
 }
 
 func (fs *FileService) DeleteFile(ctx context.Context, connection string, path string) error {
-	if connection == "" {
-		connection = wshrpc.LocalConnName
-	}
-	fsclient := fileshare.CreateFileShareClient(ctx, connection)
-	return fsclient.Delete(ctx, path)
+	return fileshare.Delete(ctx, path)
 }
 
 func (fs *FileService) GetFullConfig() wconfig.FullConfigType {

@@ -11,30 +11,24 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/wavetermdev/waveterm/pkg/remote"
+	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-type WshClient struct {
-	connRoute string
-}
+type WshClient struct{}
 
 var _ fstype.FileShareClient = WshClient{}
 
-func NewWshClient(connection string) *WshClient {
-	return &WshClient{
-		connRoute: wshutil.MakeConnectionRouteId(connection),
-	}
+func NewWshClient() *WshClient {
+	return &WshClient{}
 }
 
-func (c WshClient) Read(ctx context.Context, path string) (*fstype.FullFile, error) {
-	client := wshserver.GetMainRpcClient()
-	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
-	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: c.connRoute})
+func (c WshClient) Read(ctx context.Context, conn *connparse.Connection) (*fstype.FullFile, error) {
+	client := wshclient.GetBareRpcClient()
+	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path}
+	// rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: conn.})
 	fullFile := &fstype.FullFile{}
 	firstPk := true
 	isDir := false
@@ -86,36 +80,36 @@ func (c WshClient) Read(ctx context.Context, path string) (*fstype.FullFile, err
 	return fullFile, nil
 }
 
-func (c WshClient) Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
-	client := wshserver.GetMainRpcClient()
+func (c WshClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
+	client := wshclient.GetBareRpcClient()
 	return wshclient.RemoteFileInfoCommand(client, path, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) PutFile(ctx context.Context, data wshrpc.FileData) error {
-	client := wshserver.GetMainRpcClient()
-	writeData := wshrpc.CommandRemoteWriteFileData{Path: data.Path, Data64: data.Data64}
+func (c WshClient) PutFile(ctx context.Context, data fstype.FileData) error {
+	client := wshclient.GetBareRpcClient()
+	writeData := wshrpc.CommandRemoteWriteFileData{Path: data.Conn.Path, Data64: data.Data64}
 	return wshclient.RemoteWriteFileCommand(client, writeData, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) Mkdir(ctx context.Context, path string) error {
-	client := wshserver.GetMainRpcClient()
+func (c WshClient) Mkdir(ctx context.Context, conn *connparse.Connection) error {
+	client := wshclient.GetBareRpcClient()
 	return wshclient.RemoteMkdirCommand(client, path, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) Move(ctx context.Context, srcPath, destPath string, recursive bool) error {
-	client := wshserver.GetMainRpcClient()
-	return wshclient.RemoteFileRenameCommand(client, [2]string{srcPath, destPath}, &wshrpc.RpcOpts{Route: c.connRoute})
+func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
+	client := wshclient.GetBareRpcClient()
+	return wshclient.RemoteFileRenameCommand(client, [2]string{srcConn, destPath}, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
-func (c WshClient) Copy(ctx context.Context, srcPath, destPath string, recursive bool) error {
+func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
 	return nil
 }
 
-func (c WshClient) Delete(ctx context.Context, path string) error {
-	client := wshserver.GetMainRpcClient()
+func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection) error {
+	client := wshclient.GetBareRpcClient()
 	return wshclient.RemoteFileDeleteCommand(client, path, &wshrpc.RpcOpts{Route: c.connRoute})
 }
 
 func (c WshClient) GetConnectionType() string {
-	return remote.ConnectionTypeWsh
+	return connparse.ConnectionTypeWsh
 }
