@@ -138,7 +138,7 @@ class RpcApiType {
     }
 
     // command "fileappend" [call]
-    FileAppendCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<void> {
+    FileAppendCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("fileappend", data, opts);
     }
 
@@ -148,32 +148,32 @@ class RpcApiType {
     }
 
     // command "filecreate" [call]
-    FileCreateCommand(client: WshClient, data: CommandFileCreateData, opts?: RpcOpts): Promise<void> {
+    FileCreateCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filecreate", data, opts);
     }
 
     // command "filedelete" [call]
-    FileDeleteCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<void> {
+    FileDeleteCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filedelete", data, opts);
     }
 
     // command "fileinfo" [call]
-    FileInfoCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<WaveFileInfo> {
+    FileInfoCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<FileInfo> {
         return client.wshRpcCall("fileinfo", data, opts);
     }
 
     // command "filelist" [call]
-    FileListCommand(client: WshClient, data: CommandFileListData, opts?: RpcOpts): Promise<WaveFileInfo[]> {
+    FileListCommand(client: WshClient, data: CommandFileListData, opts?: RpcOpts): Promise<FileInfo[]> {
         return client.wshRpcCall("filelist", data, opts);
     }
 
     // command "fileread" [call]
-    FileReadCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<string> {
+    FileReadCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("fileread", data, opts);
     }
 
     // command "filewrite" [call]
-    FileWriteCommand(client: WshClient, data: CommandFileData, opts?: RpcOpts): Promise<void> {
+    FileWriteCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filewrite", data, opts);
     }
 

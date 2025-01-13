@@ -74,7 +74,7 @@ declare global {
         tabid: string;
         workspaceid: string;
         block: Block;
-        files: WaveFile[];
+        files: FileInfo[];
     };
 
     // webcmd.BlockInputWSCommand
@@ -171,32 +171,9 @@ declare global {
         maxitems: number;
     };
 
-    // wshrpc.CommandFileCreateData
-    type CommandFileCreateData = {
-        zoneid: string;
-        filename: string;
-        meta?: {[key: string]: any};
-        opts?: FileOptsType;
-    };
-
-    // wshrpc.CommandFileData
-    type CommandFileData = {
-        zoneid: string;
-        filename: string;
-        data64?: string;
-        at?: CommandFileDataAt;
-    };
-
-    // wshrpc.CommandFileDataAt
-    type CommandFileDataAt = {
-        offset: number;
-        size?: number;
-    };
-
     // wshrpc.CommandFileListData
     type CommandFileListData = {
-        zoneid: string;
-        prefix?: string;
+        path: string;
         all?: boolean;
         offset?: number;
         limit?: number;
@@ -364,6 +341,20 @@ declare global {
         height: number;
     };
 
+    // wshrpc.FileData
+    type FileData = {
+        path: string;
+        data64?: string;
+        opts?: FileOptsType;
+        at?: FileDataAt;
+    };
+
+    // wshrpc.FileDataAt
+    type FileDataAt = {
+        offset: number;
+        size?: number;
+    };
+
     // waveobj.FileDef
     type FileDef = {
         content?: string;
@@ -376,7 +367,9 @@ declare global {
         dir: string;
         name: string;
         notfound?: boolean;
+        opts?: FileOptsType;
         size: number;
+        meta?: {[key: string]: any};
         mode: number;
         modestr: string;
         modtime: number;
@@ -385,7 +378,7 @@ declare global {
         readonly?: boolean;
     };
 
-    // filestore.FileOptsType
+    // wshrpc.FileOptsType
     type FileOptsType = {
         maxsize?: number;
         circular?: boolean;
@@ -405,7 +398,7 @@ declare global {
         configerrors: ConfigError[];
     };
 
-    // fileshare.FullFile
+    // fstype.FullFile
     type FullFile = {
         info: FileInfo;
         data64: string;
@@ -1058,18 +1051,6 @@ declare global {
         size: number;
         modts: number;
         meta: {[key: string]: any};
-    };
-
-    // wshrpc.WaveFileInfo
-    type WaveFileInfo = {
-        zoneid: string;
-        name: string;
-        opts?: FileOptsType;
-        size?: number;
-        createdts?: number;
-        modts?: number;
-        meta?: {[key: string]: any};
-        isdir?: boolean;
     };
 
     // wshrpc.WaveInfoData
