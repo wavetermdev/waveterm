@@ -22,6 +22,127 @@ import * as util from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 
+// newConnList -> connList => filteredList -> remoteItems -> sortedRemoteItems => remoteSuggestion
+// filteredList -> createNew
+
+function filterConnections(
+    connList: Array<string>,
+    connSelected: string,
+    fullConfig: FullConfigType,
+    filterOutNowsh: boolean
+): Array<string> {
+    const connectionsConfig = fullConfig.connections;
+    return connList.filter((conn) => {
+        const hidden = connectionsConfig?.[conn]?.["display:hidden"] ?? false;
+        const wshEnabled = connectionsConfig?.[conn]?.["conn:wshenabled"] ?? true;
+        return conn.includes(connSelected) && !hidden && (wshEnabled || !filterOutNowsh);
+    });
+}
+
+function sortConnSuggestions(
+    connSuggestions: Array<SuggestionConnectionItem>,
+    fullConfig: FullConfigType
+): Array<SuggestionConnectionItem> {
+    const connectionsConfig = fullConfig.connections;
+    return connSuggestions.sort((itemA: SuggestionConnectionItem, itemB: SuggestionConnectionItem) => {
+        const connNameA = itemA.value;
+        const connNameB = itemB.value;
+        const valueA = connectionsConfig?.[connNameA]?.["display:order"] ?? 0;
+        const valueB = connectionsConfig?.[connNameB]?.["display:order"] ?? 0;
+        return valueA - valueB;
+    });
+}
+
+function createRemoteSuggestionItems(
+    filteredList: Array<string>,
+    connection: string,
+    connStatusMap: Map<string, ConnStatus>
+): Array<SuggestionConnectionItem> {
+    return filteredList.map((connName) => {
+        const connStatus = connStatusMap.get(connName);
+        const connColorNum = computeConnColorNum(connStatus);
+        const item: SuggestionConnectionItem = {
+            status: "connected",
+            icon: "arrow-right-arrow-left",
+            iconColor:
+                connStatus?.status == "connected" ? `var(--conn-icon-color-${connColorNum})` : "var(--grey-text-color)",
+            value: connName,
+            label: connName,
+            current: connName == connection,
+        };
+        return item;
+    });
+}
+
+function createWslSuggestion(
+    filteredList: Array<string>,
+    connection: string,
+    connStatusMap: Map<string, ConnStatus>
+): Array<SuggestionConnectionItem> {
+    return filteredList.map((connName) => {
+        const connStatus = connStatusMap.get(connName);
+        const connColorNum = computeConnColorNum(connStatus);
+        const item: SuggestionConnectionItem = {
+            status: "connected",
+            icon: "arrow-right-arrow-left",
+            iconColor:
+                connStatus?.status == "connected" ? `var(--conn-icon-color-${connColorNum})` : "var(--grey-text-color)",
+            value: "wsl://" + connName,
+            label: "wsl://" + connName,
+            current: "wsl://" + connName == connection,
+        };
+        return item;
+    });
+}
+
+function createFilteredLocalSuggestion(
+    localName: string,
+    connection: string,
+    connSelected: string
+): Array<SuggestionConnectionItem> {
+    if (localName.includes(connSelected)) {
+        const localSuggestion: SuggestionConnectionItem = {
+            status: "connected",
+            icon: "laptop",
+            iconColor: "var(--grey-text-color)",
+            value: "",
+            label: localName,
+            current: connection == null,
+        };
+        return [localSuggestion];
+    }
+    return [];
+}
+
+function getLocalSuggestionItems(
+    localName: string,
+    connList: Array<string>,
+    connection: string,
+    connSelected: string,
+    connStatusMap: Map<string, ConnStatus>,
+    fullConfig: FullConfigType,
+    filterOutNowsh: boolean
+): Array<SuggestionConnectionItem> {
+    const wslFiltered = filterConnections(connList, connSelected, fullConfig, filterOutNowsh);
+    const wslSuggestions = createWslSuggestion(wslFiltered, connection, connStatusMap);
+    const localSuggestion = createFilteredLocalSuggestion(localName, connection, connSelected);
+    const combinedSuggestions = [...localSuggestion, ...wslSuggestions];
+    return sortConnSuggestions(combinedSuggestions, fullConfig);
+}
+
+function getRemoteSuggestionItems(
+    connList: Array<string>,
+    connection: string,
+    connSelected: string,
+    connStatusMap: Map<string, ConnStatus>,
+    fullConfig: FullConfigType,
+    filterOutNowsh: boolean
+): Array<SuggestionConnectionItem> {
+    const filtered = filterConnections(connList, connSelected, fullConfig, filterOutNowsh);
+    const suggestions = createRemoteSuggestionItems(filtered, connection, connStatusMap);
+    return sortConnSuggestions(suggestions, fullConfig);
+}
+
 const ChangeConnectionBlockModal = React.memo(
     ({
         blockId,
@@ -51,7 +172,6 @@ const ChangeConnectionBlockModal = React.memo(
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
-        const connectionsConfig = fullConfig.connections;
         let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) ?? true;
 
         let maxActiveConnNum = 1;
@@ -123,34 +243,6 @@ const ChangeConnectionBlockModal = React.memo(
         } else {
             showReconnect = false;
         }
-        const filteredList: Array<string> = [];
-        for (const conn of connList) {
-            if (
-                conn.includes(connSelected) &&
-                connectionsConfig?.[conn]?.["display:hidden"] != true &&
-                (connectionsConfig?.[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
-                // != false is necessary because of defaults
-            ) {
-                filteredList.push(conn);
-                if (conn === connSelected) {
-                    createNew = false;
-                }
-            }
-        }
-        const filteredWslList: Array<string> = [];
-        for (const conn of wslList) {
-            if (
-                conn.includes(connSelected) &&
-                connectionsConfig?.[conn]?.["display:hidden"] != true &&
-                (connectionsConfig?.[conn]?.["conn:wshenabled"] != false || !filterOutNowsh)
-                // != false is necessary because of defaults
-            ) {
-                filteredWslList.push(conn);
-                if (conn === connSelected) {
-                    createNew = false;
-                }
-            }
-        }
         // priority handles special suggestions when necessary
         // for instance, when reconnecting
         const newConnectionSuggestion: SuggestionConnectionItem = {
@@ -179,55 +271,6 @@ const ChangeConnectionBlockModal = React.memo(
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
             },
         };
-        const localName = getUserName() + "@" + getHostName();
-        const localSuggestion: SuggestionConnectionScope = {
-            headerText: "Local",
-            items: [],
-        };
-        if (localName.includes(connSelected)) {
-            localSuggestion.items.push({
-                status: "connected",
-                icon: "laptop",
-                iconColor: "var(--grey-text-color)",
-                value: "",
-                label: localName,
-                current: connection == null,
-            });
-        }
-        if (localName == connSelected) {
-            createNew = false;
-        }
-        for (const wslConn of filteredWslList) {
-            const connStatus = connStatusMap.get(wslConn);
-            const connColorNum = computeConnColorNum(connStatus);
-            localSuggestion.items.push({
-                status: "connected",
-                icon: "arrow-right-arrow-left",
-                iconColor:
-                    connStatus?.status == "connected"
-                        ? `var(--conn-icon-color-${connColorNum})`
-                        : "var(--grey-text-color)",
-                value: "wsl://" + wslConn,
-                label: "wsl://" + wslConn,
-                current: "wsl://" + wslConn == connection,
-            });
-        }
-        const remoteItems = filteredList.map((connName) => {
-            const connStatus = connStatusMap.get(connName);
-            const connColorNum = computeConnColorNum(connStatus);
-            const item: SuggestionConnectionItem = {
-                status: "connected",
-                icon: "arrow-right-arrow-left",
-                iconColor:
-                    connStatus?.status == "connected"
-                        ? `var(--conn-icon-color-${connColorNum})`
-                        : "var(--grey-text-color)",
-                value: connName,
-                label: connName,
-                current: connName == connection,
-            };
-            return item;
-        });
         const connectionsEditItem: SuggestionConnectionItem = {
             status: "disconnected",
             icon: "gear",
@@ -248,19 +291,35 @@ const ChangeConnectionBlockModal = React.memo(
                 });
             },
         };
-        const sortedRemoteItems = remoteItems.sort(
-            (itemA: SuggestionConnectionItem, itemB: SuggestionConnectionItem) => {
-                const connNameA = itemA.value;
-                const connNameB = itemB.value;
-                const valueA = connectionsConfig?.[connNameA]?.["display:order"] ?? 0;
-                const valueB = connectionsConfig?.[connNameB]?.["display:order"] ?? 0;
-                return valueA - valueB;
-            }
+        const localName = getUserName() + "@" + getHostName();
+        const localItems = getLocalSuggestionItems(
+            localName,
+            wslList,
+            connection,
+            connSelected,
+            connStatusMap,
+            fullConfig,
+            filterOutNowsh
+        );
+        const localSuggestion: SuggestionConnectionScope = {
+            headerText: "Local",
+            items: localItems,
+        };
+        const remoteItems = getRemoteSuggestionItems(
+            connList,
+            connection,
+            connSelected,
+            connStatusMap,
+            fullConfig,
+            filterOutNowsh
         );
         const remoteSuggestions: SuggestionConnectionScope = {
             headerText: "Remote",
-            items: [...sortedRemoteItems],
+            items: remoteItems,
         };
+
+        // new function to determine createNew
+        // need to know, is the typed word (new, hidden, existing)
 
         const suggestions: Array<SuggestionsType> = [
             ...(showReconnect && (connStatus.status == "disconnected" || connStatus.status == "error")
