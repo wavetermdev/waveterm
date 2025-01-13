@@ -254,6 +254,14 @@ func (conn *SSHConn) getWshPath() string {
 	return wavebase.RemoteFullWshBinPath
 }
 
+func (conn *SSHConn) GetConfigShellPath() string {
+	config, ok := conn.getConnectionConfig()
+	if !ok {
+		return ""
+	}
+	return config.ConnShellPath
+}
+
 // returns (needsInstall, clientVersion, osArchStr, error)
 // if wsh is not installed, the clientVersion will be "not-installed", and it will also return an osArchStr
 // if clientVersion is set, then no osArchStr will be returned

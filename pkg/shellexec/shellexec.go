@@ -270,9 +270,9 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	return &ShellProc{Cmd: cmdWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
-func StartRemoteShellProcNoWsh(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
+func StartRemoteShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	client := conn.GetClient()
-	log.Printf("SSH-NEWSESSION (StartRemoteShellProcNoWsh)\n")
+	conn.Infof(ctx, "SSH-NEWSESSION (StartRemoteShellProcNoWsh)")
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
@@ -313,7 +313,7 @@ func StartRemoteShellProcNoWsh(termSize waveobj.TermSize, cmdStr string, cmdOpts
 	return &ShellProc{Cmd: sessionWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
-func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
+func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	client := conn.GetClient()
 	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
 	rpcClient := wshclient.GetBareRpcClient()
@@ -322,10 +322,23 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		return nil, fmt.Errorf("unable to obtain client info: %w", err)
 	}
 	log.Printf("client info collected: %+#v", remoteInfo)
-
-	shellPath := cmdOpts.ShellPath
-	if shellPath == "" {
+	var shellPath string
+	if cmdOpts.ShellPath != "" {
+		conn.Infof(ctx, "using shell path from command opts: %s\n", cmdOpts.ShellPath)
+		shellPath = cmdOpts.ShellPath
+	}
+	configShellPath := conn.GetConfigShellPath()
+	if shellPath == "" && configShellPath != "" {
+		conn.Infof(ctx, "using shell path from config (conn:shellpath): %s\n", configShellPath)
+		shellPath = configShellPath
+	}
+	if shellPath == "" && remoteInfo.Shell != "" {
+		conn.Infof(ctx, "using shell path detected on remote machine: %s\n", remoteInfo.Shell)
 		shellPath = remoteInfo.Shell
+	}
+	if shellPath == "" {
+		conn.Infof(ctx, "no shell path detected, using default (/bin/bash)\n")
+		shellPath = "/bin/bash"
 	}
 	var shellOpts []string
 	var cmdCombined string
@@ -338,11 +351,11 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 	}
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := getShellTypeFromShellPath(shellPath)
+	conn.Infof(ctx, "detected shell type: %s\n", shellType)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
 		if shellType == ShellType_bash {
-			log.Printf("recognized as bash shell")
 			// add --rcfile
 			// cant set -l or -i with --rcfile
 			bashPath := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s/.bashrc", shellutil.BashIntegrationDir))
@@ -359,25 +372,24 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
-			} else if cmdOpts.Interactive {
+			}
+			if cmdOpts.Interactive {
 				shellOpts = append(shellOpts, "-i")
 			}
 			// zdotdir setting moved to after session is created
 		}
 		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
-		log.Printf("combined command is: %s", cmdCombined)
 	} else {
 		shellPath = cmdStr
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
-		log.Printf("combined command is: %s", cmdCombined)
 	}
-	log.Printf("SSH-NEWSESSION (StartRemoteShellProc)\n")
+	conn.Infof(ctx, "starting shell, using command: %s\n", cmdCombined)
+	conn.Infof(ctx, "SSH-NEWSESSION (StartRemoteShellProc)\n")
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
 	}
-
 	remoteStdinRead, remoteStdinWriteOurs, err := os.Pipe()
 	if err != nil {
 		return nil, err
@@ -410,6 +422,7 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 
 	if shellType == ShellType_zsh {
 		zshDir := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir))
+		conn.Infof(ctx, "setting ZDOTDIR to %s\n", zshDir)
 		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
 
@@ -418,7 +431,6 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 		return nil, fmt.Errorf("no jwt token provided to connection")
 	}
 	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
-
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 	sessionWrap := MakeSessionWrap(session, cmdCombined, pipePty)
 	err = sessionWrap.Start()
