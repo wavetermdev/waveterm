@@ -8,13 +8,6 @@ import "regexp"
 var (
 	safePattern   = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
 	psSafePattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
-
-	needsEscape = map[byte]bool{
-		'"':  true,
-		'\\': true,
-		'$':  true,
-		'`':  true,
-	}
 )
 
 func HardQuote(s string) string {
@@ -30,10 +23,14 @@ func HardQuote(s string) string {
 	buf = append(buf, '"')
 
 	for i := 0; i < len(s); i++ {
-		if needsEscape[s[i]] {
-			buf = append(buf, '\\')
+		switch s[i] {
+		case '"', '\\', '$', '`':
+			buf = append(buf, '\\', s[i])
+		case '\n':
+			buf = append(buf, '\\', '\n')
+		default:
+			buf = append(buf, s[i])
 		}
-		buf = append(buf, s[i])
 	}
 
 	buf = append(buf, '"')
@@ -58,6 +55,8 @@ func HardQuotePowerShell(s string) string {
 		switch c {
 		case '"', '`', '$':
 			buf = append(buf, '`')
+		case '\n':
+			buf = append(buf, '`', 'n') // PowerShell uses `n for newline
 		}
 		buf = append(buf, c)
 	}
