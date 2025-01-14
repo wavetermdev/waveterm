@@ -12,6 +12,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -21,6 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
@@ -535,4 +539,33 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	}
 	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	return sockName, nil
+}
+
+func getShell() string {
+	if runtime.GOOS == "darwin" {
+		return shellutil.GetMacUserShell()
+	}
+
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		return "/bin/bash"
+	}
+	return strings.TrimSpace(shell)
+}
+
+func GetInfo() wshrpc.RemoteInfo {
+	return wshrpc.RemoteInfo{
+		ClientArch:    runtime.GOARCH,
+		ClientOs:      runtime.GOOS,
+		ClientVersion: wavebase.WaveVersion,
+		Shell:         getShell(),
+	}
+
+}
+
+func InstallRcFiles() error {
+	home := wavebase.GetHomeDir()
+	waveDir := filepath.Join(home, wavebase.RemoteWaveHomeDirName)
+	winBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
+	return shellutil.InitRcFiles(waveDir, winBinDir)
 }

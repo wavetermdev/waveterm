@@ -38,25 +38,6 @@ func ParseOpts(input string) (*SSHOpts, error) {
 	return &SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}, nil
 }
 
-func DetectShell(client *ssh.Client) (string, error) {
-	wshPath := GetWshPath(client)
-
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	log.Printf("shell detecting using command: %s shell", wshPath)
-	out, err := session.Output(wshPath + " shell")
-	if err != nil {
-		log.Printf("unable to determine shell. defaulting to /bin/bash: %s", err)
-		return "/bin/bash", nil
-	}
-	log.Printf("detecting shell: %s", out)
-
-	return fmt.Sprintf(`"%s"`, strings.TrimSpace(string(out))), nil
-}
-
 func GetWshPath(client *ssh.Client) string {
 	defaultPath := wavebase.RemoteFullWshBinPath
 	session, err := client.NewSession()
@@ -95,37 +76,6 @@ func GetWshPath(client *ssh.Client) string {
 
 	// no custom install, use default path
 	return defaultPath
-}
-
-func hasBashInstalled(client *ssh.Client) (bool, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return false, err
-	}
-
-	out, whichErr := session.Output("which bash")
-	if whichErr == nil && len(out) != 0 {
-		return true, nil
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return false, err
-	}
-
-	out, whereErr := session.Output("where.exe bash")
-	if whereErr == nil && len(out) != 0 {
-		return true, nil
-	}
-
-	// note: we could also check in /bin/bash explicitly
-	// just in case that wasn't added to the path. but if
-	// that's true, we will most likely have worse
-	// problems going forward
-
-	return false, nil
 }
 
 func normalizeOs(os string) string {
@@ -229,31 +179,6 @@ func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, cli
 		return fmt.Errorf("failed to copy data: %w (stderr: %s)", copyErr, stderrBuf.String())
 	}
 	return nil
-}
-
-func InstallClientRcFiles(client *ssh.Client) error {
-	path := GetWshPath(client)
-	log.Printf("path to wsh searched is: %s", path)
-	session, err := client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return err
-	}
-
-	_, err = session.Output(path + " rcfiles")
-	return err
-}
-
-func GetHomeDir(client *ssh.Client) string {
-	session, err := client.NewSession()
-	if err != nil {
-		return "~"
-	}
-	out, err := session.Output(`echo "$HOME"`)
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-	return "~"
 }
 
 func IsPowershell(shellPath string) bool {
