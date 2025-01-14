@@ -12,6 +12,9 @@ const (
 	ConnectionTypeWsh  = "wsh"
 	ConnectionTypeS3   = "s3"
 	ConnectionTypeWave = "wavefile"
+
+	ConnHostLocal   = "local"
+	ConnHostWaveSrv = "wavesrv"
 )
 
 type Connection struct {
@@ -58,7 +61,7 @@ func ParseURI(uri string) (*Connection, error) {
 		rest = split[0]
 	}
 	if scheme == "" {
-		scheme = "wsh"
+		scheme = ConnectionTypeWsh
 	}
 
 	var host string
@@ -74,10 +77,10 @@ func ParseURI(uri string) (*Connection, error) {
 			path = "/"
 		}
 	} else if strings.HasPrefix(rest, "/~") {
-		host = "local"
+		host = ConnHostWaveSrv
 		path = strings.TrimPrefix(rest, "/")
 	} else if stat, _ := os.Stat(rest); stat != nil {
-		host = "current"
+		host = ConnHostLocal
 		path = rest
 	} else {
 		split = strings.SplitN(rest, "/", 2)

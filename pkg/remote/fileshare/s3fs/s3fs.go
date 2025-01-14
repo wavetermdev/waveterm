@@ -33,6 +33,10 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 	return nil, nil
 }
 
+func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+	return nil
+}
+
 func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
 	return nil, nil
 }

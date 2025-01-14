@@ -19,6 +19,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
+const DirChunkSize = 128
+
 type WaveClient struct{}
 
 var _ fstype.FileShareClient = WaveClient{}
@@ -55,6 +57,22 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
 	}
 	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil
+}
+
+func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData])
+	go func() {
+		defer close(ch)
+		list, err := c.ListEntries(ctx, conn, opts)
+		if err != nil {
+			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Error: err}
+			return
+		}
+		for i := 0; i < len(list); i += DirChunkSize {
+			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: list[i:min(i+DirChunkSize, len(list))]}}
+		}
+	}()
+	return ch
 }
 
 func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {

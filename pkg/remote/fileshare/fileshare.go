@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 // CreateFileShareClient creates a fileshare client based on the connection string
@@ -21,6 +22,13 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	if err != nil {
 		log.Printf("error parsing connection: %v", err)
 		return nil, nil
+	}
+	if conn.Host == connparse.ConnHostLocal {
+		handler := wshutil.GetRpcResponseHandlerFromContext(ctx)
+		if handler == nil {
+			conn.Host = connparse.ConnHostWaveSrv
+		}
+		conn.Host = handler.GetSource()
 	}
 	conntype := conn.GetType()
 	if conntype == connparse.ConnectionTypeS3 {
@@ -51,6 +59,14 @@ func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([
 		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
 	}
 	return client.ListEntries(ctx, conn, opts)
+}
+
+func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOpts) (<-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], error) {
+	client, conn := CreateFileShareClient(ctx, path)
+	if conn == nil || client == nil {
+		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
+	}
+	return client.ListEntriesStream(ctx, conn, opts), nil
 }
 
 func Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {

@@ -302,6 +302,10 @@ function makeConnRoute(conn: string): string {
     return "conn:" + conn;
 }
 
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -321,6 +325,7 @@ export {
     makeConnRoute,
     makeExternLink,
     makeIconClass,
+    sleep,
     stringToBase64,
     useAtomValueSafe,
 };

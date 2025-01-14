@@ -6,11 +6,12 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"io/fs"
-	"net/url"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/util/colprint"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -64,36 +66,6 @@ func init() {
 type waveFileRef struct {
 	zoneId   string
 	fileName string
-}
-
-func parseWaveFileURL(fileURL string) (*waveFileRef, error) {
-	if !strings.HasPrefix(fileURL, WaveFilePrefix) {
-		return nil, fmt.Errorf("invalid file reference %q: must use wavefile:// URL format", fileURL)
-	}
-
-	u, err := url.Parse(fileURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid wavefile URL: %w", err)
-	}
-
-	if u.Scheme != WaveFileScheme {
-		return nil, fmt.Errorf("invalid URL scheme %q: must be wavefile://", u.Scheme)
-	}
-
-	// Path must start with /
-	if !strings.HasPrefix(u.Path, "/") {
-		return nil, fmt.Errorf("invalid wavefile URL: path must start with /")
-	}
-
-	// Must have a host (zone)
-	if u.Host == "" {
-		return nil, fmt.Errorf("invalid wavefile URL: must specify zone (e.g., wavefile://block/file.txt)")
-	}
-
-	return &waveFileRef{
-		zoneId:   u.Host,
-		fileName: strings.TrimPrefix(u.Path, "/"),
-	}, nil
 }
 
 func resolveWaveFile(ref *waveFileRef) (*waveobj.ORef, error) {
@@ -424,7 +396,7 @@ func copyFromLocalToWave(src, dst string) error {
 	return nil
 }
 
-func filePrintColumns(filesChan <-chan fileListResult) error {
+func filePrintColumns(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]) error {
 	width := 80 // default if we can't get terminal
 	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil {
 		width = w
@@ -435,37 +407,35 @@ func filePrintColumns(filesChan <-chan fileListResult) error {
 		numCols = 1
 	}
 
-	return colprint.PrintColumns(
+	return colprint.PrintColumnsArray(
 		filesChan,
 		numCols,
 		100, // sample size
-		func(f fileListResult) (string, error) {
-			if f.err != nil {
-				return "", f.err
+		func(respUnion wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]) ([]string, error) {
+			if respUnion.Error != nil {
+				return []string{}, respUnion.Error
 			}
-			return f.info.Name, nil
+			strs := make([]string, len(respUnion.Response.FileInfo))
+			for i, f := range respUnion.Response.FileInfo {
+				strs[i] = f.Name
+			}
+			return strs, nil
 		},
 		os.Stdout,
 	)
 }
 
-func filePrintLong(filesChan <-chan fileListResult) error {
+func filePrintLong(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]) error {
 	// Sample first 100 files to determine name width
 	maxNameLen := 0
 	var samples []*wshrpc.FileInfo
 
-	for f := range filesChan {
-		if f.err != nil {
-			return f.err
+	for respUnion := range filesChan {
+		if respUnion.Error != nil {
+			return respUnion.Error
 		}
-		samples = append(samples, f.info)
-		if len(f.info.Name) > maxNameLen {
-			maxNameLen = len(f.info.Name)
-		}
-
-		if len(samples) >= 100 {
-			break
-		}
+		resp := respUnion.Response
+		samples = append(samples, resp.FileInfo...)
 	}
 
 	// Use sampled width, but cap it at 60 chars to prevent excessive width
@@ -487,16 +457,19 @@ func filePrintLong(filesChan <-chan fileListResult) error {
 	}
 
 	// Continue with remaining files
-	for f := range filesChan {
-		if f.err != nil {
-			return f.err
+	for respUnion := range filesChan {
+		if respUnion.Error != nil {
+			return respUnion.Error
 		}
-		name := f.info.Name
-		timestamp := time.Unix(f.info.ModTime/1000, 0).Format("Jan 02 15:04")
-		if f.info.Size == 0 && strings.HasSuffix(name, "/") {
-			fmt.Fprintf(os.Stdout, "%-*s  %8s  %s\n", nameWidth, name, "-", timestamp)
-		} else {
-			fmt.Fprintf(os.Stdout, "%-*s  %8d  %s\n", nameWidth, name, f.info.Size, timestamp)
+		for _, f := range respUnion.Response.FileInfo {
+			name := f.Name
+			t := time.Unix(f.ModTime/1000, 0)
+			timestamp := utilfn.FormatLsTime(t)
+			if f.Size == 0 && strings.HasSuffix(name, "/") {
+				fmt.Fprintf(os.Stdout, "%-*s  %8s  %s\n", nameWidth, name, "-", timestamp)
+			} else {
+				fmt.Fprintf(os.Stdout, "%-*s  %8d  %s\n", nameWidth, name, f.Size, timestamp)
+			}
 		}
 	}
 
@@ -507,7 +480,6 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 	recursive, _ := cmd.Flags().GetBool("recursive")
 	longForm, _ := cmd.Flags().GetBool("long")
 	onePerLine, _ := cmd.Flags().GetBool("one")
-	filesOnly, _ := cmd.Flags().GetBool("files")
 
 	// Check if we're in a pipe
 	stat, _ := os.Stdout.Stat()
@@ -516,24 +488,12 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 		onePerLine = true
 	}
 
-	// Default to listing everything if no path specified
-	if len(args) == 0 {
-		args = append(args, "wavefile://client/")
-	}
-
-	ref, err := parseWaveFileURL(args[0])
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fileTimeout)*time.Millisecond)
+	defer cancel()
+	filesChan, err := fileshare.ListEntriesStream(ctx, args[0], &wshrpc.FileListOpts{All: recursive})
+	log.Printf("listEntriesStream: %v", err)
 	if err != nil {
-		return err
-	}
-
-	fullORef, err := resolveWaveFile(ref)
-	if err != nil {
-		return err
-	}
-
-	filesChan, err := streamFileList(fullORef.OID, ref.fileName, recursive, filesOnly)
-	if err != nil {
-		return err
+		return fmt.Errorf("listing files: %w", err)
 	}
 
 	if longForm {
@@ -541,13 +501,18 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	if onePerLine {
-		for f := range filesChan {
-			if f.err != nil {
-				return f.err
+		log.Printf("onePerLine")
+		for respUnion := range filesChan {
+			if respUnion.Error != nil {
+				log.Printf("error: %v", respUnion.Error)
+				return respUnion.Error
 			}
-			fmt.Fprintln(os.Stdout, f.info.Name)
+			for _, f := range respUnion.Response.FileInfo {
+				log.Printf("file: %s", f.Name)
+				fmt.Fprintln(os.Stdout, f.Name)
+			}
+			return nil
 		}
-		return nil
 	}
 
 	return filePrintColumns(filesChan)

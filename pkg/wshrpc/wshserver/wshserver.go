@@ -305,6 +305,10 @@ func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.FileListDa
 	return fileshare.ListEntries(ctx, data.Path, data.Opts)
 }
 
+func (ws *WshServer) FileListStreamCommand(ctx context.Context, data wshrpc.FileListData) (<-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], error) {
+	return fileshare.ListEntriesStream(ctx, data.Path, data.Opts)
+}
+
 func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.FileData) error {
 	return fileshare.PutFile(ctx, data)
 }
@@ -567,7 +571,7 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 	if err != nil {
 		return false, fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wconfig.ConnKeywords{})
 	if conn == nil {
 		return false, fmt.Errorf("connection not found: %s", connName)
 	}
