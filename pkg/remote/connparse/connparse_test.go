@@ -33,14 +33,11 @@ func TestParseURI_BasicWSH(t *testing.T) {
 	if len(c.GetSchemeParts()) != 1 {
 		t.Fatalf("expected scheme parts to be 1, got %d", len(c.GetSchemeParts()))
 	}
-	if len(*c.Params) != 0 {
-		t.Fatalf("expected params to be empty, got %v", *c.Params)
-	}
 }
 
 func TestParseURI_FullConnectionWSH(t *testing.T) {
 	t.Parallel()
-	cstr := "wsh://user@192.168.0.1:22/path/to/file?foo=bar&baz=qux"
+	cstr := "wsh://user@192.168.0.1:22/path/to/file"
 	c, err := connparse.ParseURI(cstr)
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
@@ -65,12 +62,9 @@ func TestParseURI_FullConnectionWSH(t *testing.T) {
 	if len(c.GetSchemeParts()) != 1 {
 		t.Fatalf("expected scheme parts to be 1, got %d", len(c.GetSchemeParts()))
 	}
-	if len(*c.Params) != 2 {
-		t.Fatalf("expected params to have 2 items, got %v", *c.Params)
-	}
 	got := c.GetFullURI()
-	if len(got) != len(cstr) {
-		t.Fatalf("expected full uri to be %q, got %q (looking at string length since params can be out of order)", cstr, got)
+	if got != cstr {
+		t.Fatalf("expected full URI to be %q, got %q", cstr, got)
 	}
 }
 
@@ -182,8 +176,5 @@ func TestParseURI_BasicS3(t *testing.T) {
 	}
 	if len(c.GetSchemeParts()) != 2 {
 		t.Fatalf("expected scheme parts to be 2, got %d", len(c.GetSchemeParts()))
-	}
-	if len(*c.Params) != 0 {
-		t.Fatalf("expected params to be empty, got %v", *c.Params)
 	}
 }

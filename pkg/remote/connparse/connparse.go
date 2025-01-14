@@ -4,7 +4,6 @@
 package connparse
 
 import (
-	"net/url"
 	"os"
 	"strings"
 )
@@ -19,15 +18,6 @@ type Connection struct {
 	Scheme string
 	Host   string
 	Path   string
-	Params *url.Values
-}
-
-func (c *Connection) GetParam(key string) string {
-	return c.Params.Get(key)
-}
-
-func (c *Connection) SetParam(key, value string) {
-	c.Params.Set(key, value)
 }
 
 func (c *Connection) GetSchemeParts() []string {
@@ -53,7 +43,7 @@ func (c *Connection) GetPathWithHost() string {
 }
 
 func (c *Connection) GetFullURI() string {
-	return c.Scheme + "://" + c.GetPathWithHost() + "?" + c.Params.Encode()
+	return c.Scheme + "://" + c.GetPathWithHost()
 }
 
 // ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
@@ -73,7 +63,6 @@ func ParseURI(uri string) (*Connection, error) {
 
 	var host string
 	var path string
-	var params url.Values
 	if strings.HasPrefix(rest, "//") {
 		rest = strings.TrimPrefix(rest, "//")
 		split = strings.SplitN(rest, "/", 2)
@@ -91,23 +80,19 @@ func ParseURI(uri string) (*Connection, error) {
 		host = "current"
 		path = rest
 	} else {
-		// trick url parser into parsing the rest of the string as a URL
-		parsedUrl, err := url.Parse("http://" + rest)
-		if err != nil {
-			return nil, err
+		split = strings.SplitN(rest, "/", 2)
+		if len(split) > 1 {
+			host = split[0]
+			path = "/" + split[1]
+		} else {
+			host = split[0]
+			path = "/"
 		}
-		host = parsedUrl.Host
-		if parsedUrl.User != nil {
-			host = parsedUrl.User.Username() + "@" + host
-		}
-		params = parsedUrl.Query()
-		path = parsedUrl.Path
 	}
 
 	return &Connection{
 		Scheme: scheme,
 		Host:   host,
 		Path:   path,
-		Params: &params,
 	}, nil
 }

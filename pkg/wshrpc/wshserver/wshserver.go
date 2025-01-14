@@ -304,67 +304,12 @@ func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFil
 	return fileshare.Read(ctx, data.Path)
 }
 
-func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
-	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
-	if err != nil {
-		return fmt.Errorf("error decoding data64: %w", err)
-	}
-	if data.At != nil {
-		err = filestore.WFS.WriteAt(ctx, data.ZoneId, data.FileName, data.At.Offset, dataBuf)
-		if err == fs.ErrNotExist {
-			return fmt.Errorf("NOTFOUND: %w", err)
-		}
-		if err != nil {
-			return fmt.Errorf("error writing to blockfile: %w", err)
-		}
-	} else {
-		err = filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, dataBuf)
-		if err == fs.ErrNotExist {
-			return fmt.Errorf("NOTFOUND: %w", err)
-		}
-		if err != nil {
-			return fmt.Errorf("error writing to blockfile: %w", err)
-		}
-	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Invalidate,
-		},
-	})
-	return nil
+func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.FileData) error {
+	return fileshare.PutFile(ctx, data)
 }
 
 func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) (string, error) {
 
-}
-
-func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandFileData) error {
-	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
-	if err != nil {
-		return fmt.Errorf("error decoding data64: %w", err)
-	}
-	err = filestore.WFS.AppendData(ctx, data.ZoneId, data.FileName, dataBuf)
-	if err == fs.ErrNotExist {
-		return fmt.Errorf("NOTFOUND: %w", err)
-	}
-	if err != nil {
-		return fmt.Errorf("error appending to blockfile: %w", err)
-	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Append,
-			Data64:   base64.StdEncoding.EncodeToString(dataBuf),
-		},
-	})
-	return nil
 }
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {

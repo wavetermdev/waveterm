@@ -18,6 +18,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
+const (
+	WaveFilePathPattern = "wavefile://%s/%s"
+)
+
 type WaveClient struct{}
 
 var _ fstype.FileShareClient = WaveClient{}
@@ -26,16 +30,16 @@ func NewWaveClient() *WaveClient {
 	return &WaveClient{}
 }
 
-func (c WaveClient) Read(ctx context.Context, data fstype.FileData) (*fstype.FullFile, error) {
-	zoneId := data.Conn.GetParam("zoneid")
+func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	zoneId := conn.Host
 	if zoneId == "" {
 		return nil, fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := data.Conn.GetPathWithHost()
+	fileName := conn.Path
 	if data.At != nil {
 		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, data.At.Size)
 		if err == nil {
-			return &fstype.FullFile{Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
+			return &wshrpc.FileData{Info: data.Info, Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
 		} else if err == fs.ErrNotExist {
 			return nil, fmt.Errorf("NOTFOUND: %w", err)
 		} else {
@@ -44,22 +48,35 @@ func (c WaveClient) Read(ctx context.Context, data fstype.FileData) (*fstype.Ful
 	} else {
 		_, dataBuf, err := filestore.WFS.ReadFile(ctx, zoneId, fileName)
 		if err == nil {
-			return &fstype.FullFile{Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
+			return &wshrpc.FileData{Info: data.Info, Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
 		} else if err != fs.ErrNotExist {
 			return nil, fmt.Errorf("error reading blockfile: %w", err)
 		}
 	}
+	list, err := c.ListEntries(ctx, conn, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error listing blockfiles: %w", err)
+	}
+	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil
+}
+
+func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
+	zoneId := conn.Host
+	if zoneId == "" {
+		return nil, fmt.Errorf("zoneid not found in connection")
+	}
+	fileName := conn.Path
 	prefix := fileName
 	fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
 	if err != nil {
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
 	}
-	var fileList []*filestore.WaveFile
+	var fileList []*wshrpc.FileInfo
 	for _, wf := range fileListOrig {
-		fileList = append(fileList, wf)
+		fileList = append(fileList, waveFileToFileInfo(wf))
 	}
 	if prefix != "" {
-		var filteredList []*filestore.WaveFile
+		var filteredList []*wshrpc.FileInfo
 		for _, file := range fileList {
 			if strings.HasPrefix(file.Name, prefix) {
 				filteredList = append(filteredList, file)
@@ -67,9 +84,9 @@ func (c WaveClient) Read(ctx context.Context, data fstype.FileData) (*fstype.Ful
 		}
 		fileList = filteredList
 	}
-	if !data.All {
+	if !opts.All {
 		var filteredList []*wshrpc.FileInfo
-		dirMap := make(map[string]int64) // the value is max modtime
+		dirMap := make(map[string]any) // the value is max modtime
 		for _, file := range fileList {
 			// if there is an extra "/" after the prefix, don't include it
 			// first strip the prefix
@@ -77,48 +94,44 @@ func (c WaveClient) Read(ctx context.Context, data fstype.FileData) (*fstype.Ful
 			// then check if there is a "/" after the prefix
 			if strings.Contains(relPath, "/") {
 				dirPath := strings.Split(relPath, "/")[0]
-				modTime := dirMap[dirPath]
-				if file.ModTs > modTime {
-					dirMap[dirPath] = file.ModTs
-				}
+				dirMap[dirPath] = struct{}{}
 				continue
 			}
-			filteredList = append(filteredList, waveFileToFileInfo(file))
+			filteredList = append(filteredList, file)
 		}
 		for dir := range dirMap {
+			dirName := prefix + dir + "/"
 			filteredList = append(filteredList, &wshrpc.FileInfo{
-				ZoneId:    data.ZoneId,
-				Name:      data.Prefix + dir + "/",
-				Size:      0,
-				Meta:      nil,
-				ModTs:     dirMap[dir],
-				CreatedTs: dirMap[dir],
-				IsDir:     true,
+				Path:  fmt.Sprintf(WaveFilePathPattern, zoneId, dirName),
+				Name:  dirName,
+				Dir:   dirName,
+				Size:  0,
+				IsDir: true,
 			})
 		}
 		fileList = filteredList
 	}
-	if data.Offset > 0 {
-		if data.Offset >= len(fileList) {
+	if opts.Offset > 0 {
+		if opts.Offset >= len(fileList) {
 			fileList = nil
 		} else {
-			fileList = fileList[data.Offset:]
+			fileList = fileList[opts.Offset:]
 		}
 	}
-	if data.Limit > 0 {
-		if data.Limit < len(fileList) {
-			fileList = fileList[:data.Limit]
+	if opts.Limit > 0 {
+		if opts.Limit < len(fileList) {
+			fileList = fileList[:opts.Limit]
 		}
 	}
 	return fileList, nil
 }
 
 func (c WaveClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
-	zoneId := conn.GetParam("zoneid")
+	zoneId := conn.Host
 	if zoneId == "" {
 		return nil, fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := conn.GetPathWithHost()
+	fileName := conn.Path
 	fileInfo, err := filestore.WFS.Stat(ctx, zoneId, fileName)
 	if err != nil {
 		if err == fs.ErrNotExist {
@@ -129,16 +142,16 @@ func (c WaveClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshr
 	return waveFileToFileInfo(fileInfo), nil
 }
 
-func (c WaveClient) PutFile(ctx context.Context, data fstype.FileData) error {
+func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("error decoding data64: %w", err)
 	}
-	zoneId := data.Conn.GetParam("zoneid")
+	zoneId := conn.Host
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := data.Conn.GetPathWithHost()
+	fileName := conn.Path
 	if data.At != nil {
 		err = filestore.WFS.WriteAt(ctx, zoneId, fileName, data.At.Offset, dataBuf)
 		if err == fs.ErrNotExist {
@@ -182,11 +195,11 @@ func (c WaveClient) Copy(ctx context.Context, srcConn, destConn *connparse.Conne
 }
 
 func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) error {
-	zoneId := conn.GetParam("zoneid")
+	zoneId := conn.Host
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := conn.GetPathWithHost()
+	fileName := conn.Path
 	err := filestore.WFS.DeleteFile(ctx, zoneId, fileName)
 	if err != nil {
 		return fmt.Errorf("error deleting blockfile: %w", err)
@@ -208,12 +221,12 @@ func (c WaveClient) GetConnectionType() string {
 }
 
 func waveFileToFileInfo(wf *filestore.WaveFile) *wshrpc.FileInfo {
-	path := fmt.Sprintf("wavefile://%s?zoneid=%s", wf.Name, wf.ZoneId)
+	path := fmt.Sprintf(WaveFilePathPattern, wf.ZoneId, wf.Name)
 	return &wshrpc.FileInfo{
 		Path: path,
 		Name: wf.Name,
-		Opts: wf.Opts,
+		Opts: &wf.Opts,
 		Size: wf.Size,
-		Meta: wf.Meta,
+		Meta: &wf.Meta,
 	}
 }

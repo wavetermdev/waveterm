@@ -12,20 +12,14 @@ type FullFile struct {
 	Data64 string           `json:"data64"` // base64 encoded
 }
 
-type FileData struct {
-	Conn   *connparse.Connection
-	Data64 string
-	Opts   *wshrpc.FileOptsType
-	At     *wshrpc.FileDataAt // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
-}
-
 type FileShareClient interface {
 	// Stat returns the file info at the given parsed connection path
 	Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error)
 	// Read returns the file info at the given path, if it's a dir, then the file data will be a serialized array of FileInfo
-	Read(ctx context.Context, data FileData) (*FullFile, error)
+	Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error)
+	ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error)
 	// PutFile writes the given data to the file at the given path
-	PutFile(ctx context.Context, data FileData) error
+	PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error
 	// Mkdir creates a directory at the given path
 	Mkdir(ctx context.Context, conn *connparse.Connection) error
 	// Move moves the file from srcPath to destPath
