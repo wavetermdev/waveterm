@@ -142,8 +142,8 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if message.Len() == 0 {
 		return fmt.Errorf("message is empty")
 	}
-	if message.Len() > 10*1024 {
-		return fmt.Errorf("current max message size is 10k")
+	if message.Len() > 50*1024 {
+		return fmt.Errorf("current max message size is 50k")
 	}
 
 	messageData := wshrpc.AiMessageData{

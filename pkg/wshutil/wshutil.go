@@ -566,6 +566,6 @@ func GetInfo() wshrpc.RemoteInfo {
 func InstallRcFiles() error {
 	home := wavebase.GetHomeDir()
 	waveDir := filepath.Join(home, wavebase.RemoteWaveHomeDirName)
-	winBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
-	return shellutil.InitRcFiles(waveDir, winBinDir)
+	wshBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
+	return shellutil.InitRcFiles(waveDir, wshBinDir)
 }

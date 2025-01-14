@@ -69,11 +69,12 @@ type SSHConn struct {
 	ActiveConnNum      int
 }
 
-var ConnServerCmdTemplate = strings.TrimSpace(`
-%s version || echo "not-installed"
-read jwt_token
-WAVETERM_JWT="$jwt_token" %s connserver
-`)
+var ConnServerCmdTemplate = strings.TrimSpace(
+	strings.Join([]string{
+		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm);",
+		"read jwt_token;",
+		"WAVETERM_JWT=\"$jwt_token\" %s connserver",
+	}, "\n"))
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
 	globalLock.Lock()
@@ -225,37 +226,55 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 	return nil
 }
 
-// expects the output of `wsh version` which looks like `wsh v0.10.4` or "not-installed"
-// returns (up-to-date, semver, error)
+// expects the output of `wsh version` which looks like `wsh v0.10.4` or "not-installed [os] [arch]"
+// returns (up-to-date, semver, osArchStr, error)
 // if not up to date, or error, version might be ""
-func IsWshVersionUpToDate(wshVersionLine string) (bool, string, error) {
+func IsWshVersionUpToDate(wshVersionLine string) (bool, string, string, error) {
 	wshVersionLine = strings.TrimSpace(wshVersionLine)
-	if wshVersionLine == "not-installed" {
-		return false, "", nil
+	if strings.HasPrefix(wshVersionLine, "not-installed") {
+		return false, "not-installed", strings.TrimSpace(strings.TrimPrefix(wshVersionLine, "not-installed")), nil
 	}
 	parts := strings.Fields(wshVersionLine)
 	if len(parts) != 2 {
-		return false, "", fmt.Errorf("unexpected version format: %s", wshVersionLine)
+		return false, "", "", fmt.Errorf("unexpected version format: %s", wshVersionLine)
 	}
 	clientVersion := parts[1]
 	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
 	if semver.Compare(clientVersion, expectedVersion) < 0 {
-		return false, clientVersion, nil
+		return false, clientVersion, "", nil
 	}
-	return true, clientVersion, nil
+	return true, clientVersion, "", nil
 }
 
-// returns (needsInstall, clientVersion, error)
-func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, error) {
+func (conn *SSHConn) getWshPath() string {
+	config, ok := conn.getConnectionConfig()
+	if ok && config.ConnWshPath != "" {
+		return config.ConnWshPath
+	}
+	return wavebase.RemoteFullWshBinPath
+}
+
+func (conn *SSHConn) GetConfigShellPath() string {
+	config, ok := conn.getConnectionConfig()
+	if !ok {
+		return ""
+	}
+	return config.ConnShellPath
+}
+
+// returns (needsInstall, clientVersion, osArchStr, error)
+// if wsh is not installed, the clientVersion will be "not-installed", and it will also return an osArchStr
+// if clientVersion is set, then no osArchStr will be returned
+func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, string, error) {
 	conn.Infof(ctx, "running StartConnServer...\n")
 	allowed := WithLockRtn(conn, func() bool {
 		return conn.Status == Status_Connecting
 	})
 	if !allowed {
-		return false, "", fmt.Errorf("cannot start conn server for %q when status is %q", conn.GetName(), conn.GetStatus())
+		return false, "", "", fmt.Errorf("cannot start conn server for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	client := conn.GetClient()
-	wshPath := remote.GetWshPath(client)
+	wshPath := conn.getWshPath()
 	rpcCtx := wshrpc.RpcContext{
 		ClientType: wshrpc.ClientType_ConnServer,
 		Conn:       conn.GetName(),
@@ -263,49 +282,51 @@ func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, error) 
 	sockName := conn.GetDomainSocketName()
 	jwtToken, err := wshutil.MakeClientJWTToken(rpcCtx, sockName)
 	if err != nil {
-		return false, "", fmt.Errorf("unable to create jwt token for conn controller: %w", err)
+		return false, "", "", fmt.Errorf("unable to create jwt token for conn controller: %w", err)
 	}
+	conn.Infof(ctx, "SSH-NEWSESSION (StartConnServer)\n")
 	sshSession, err := client.NewSession()
 	if err != nil {
-		return false, "", fmt.Errorf("unable to create ssh session for conn controller: %w", err)
+		return false, "", "", fmt.Errorf("unable to create ssh session for conn controller: %w", err)
 	}
 	pipeRead, pipeWrite := io.Pipe()
 	sshSession.Stdout = pipeWrite
 	sshSession.Stderr = pipeWrite
 	stdinPipe, err := sshSession.StdinPipe()
 	if err != nil {
-		return false, "", fmt.Errorf("unable to get stdin pipe: %w", err)
+		return false, "", "", fmt.Errorf("unable to get stdin pipe: %w", err)
 	}
 	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath)
-	log.Printf("starting conn controller: %s\n", cmdStr)
+	log.Printf("starting conn controller: %q\n", cmdStr)
 	shWrappedCmdStr := fmt.Sprintf("sh -c %s", genconn.HardQuote(cmdStr))
+	blocklogger.Debugf(ctx, "[conndebug] wrapped command:\n%s\n", shWrappedCmdStr)
 	err = sshSession.Start(shWrappedCmdStr)
 	if err != nil {
-		return false, "", fmt.Errorf("unable to start conn controller command: %w", err)
+		return false, "", "", fmt.Errorf("unable to start conn controller command: %w", err)
 	}
 	linesChan := wshutil.StreamToLinesChan(pipeRead)
 	versionLine, err := wshutil.ReadLineWithTimeout(linesChan, 2*time.Second)
 	if err != nil {
 		sshSession.Close()
-		return false, "", fmt.Errorf("error reading wsh version: %w", err)
+		return false, "", "", fmt.Errorf("error reading wsh version: %w", err)
 	}
 	conn.Infof(ctx, "got connserver version: %s\n", strings.TrimSpace(versionLine))
-	isUpToDate, clientVersion, err := IsWshVersionUpToDate(versionLine)
+	isUpToDate, clientVersion, osArchStr, err := IsWshVersionUpToDate(versionLine)
 	if err != nil {
 		sshSession.Close()
-		return false, "", fmt.Errorf("error checking wsh version: %w", err)
+		return false, "", "", fmt.Errorf("error checking wsh version: %w", err)
 	}
-	conn.Infof(ctx, "connserver update to date: %v\n", isUpToDate)
+	conn.Infof(ctx, "connserver up-to-date: %v\n", isUpToDate)
 	if !isUpToDate {
 		sshSession.Close()
-		return true, clientVersion, nil
+		return true, clientVersion, osArchStr, nil
 	}
 	// write the jwt
 	conn.Infof(ctx, "writing jwt token to connserver\n")
 	_, err = fmt.Fprintf(stdinPipe, "%s\n", jwtToken)
 	if err != nil {
 		sshSession.Close()
-		return false, clientVersion, fmt.Errorf("failed to write JWT token: %w", err)
+		return false, clientVersion, "", fmt.Errorf("failed to write JWT token: %w", err)
 	}
 	conn.WithLock(func() {
 		conn.ConnController = sshSession
@@ -351,11 +372,11 @@ func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, error) 
 	defer cancelFn()
 	err = wshutil.DefaultRouter.WaitForRegister(regCtx, wshutil.MakeConnectionRouteId(rpcCtx.Conn))
 	if err != nil {
-		return false, clientVersion, fmt.Errorf("timeout waiting for connserver to register")
+		return false, clientVersion, "", fmt.Errorf("timeout waiting for connserver to register")
 	}
 	time.Sleep(300 * time.Millisecond) // TODO remove this sleep (but we need to wait until connserver is "ready")
 	conn.Infof(ctx, "connserver is registered and ready\n")
-	return false, clientVersion, nil
+	return false, clientVersion, "", nil
 }
 
 type WshInstallOpts struct {
@@ -438,17 +459,22 @@ func (conn *SSHConn) getPermissionToInstallWsh(ctx context.Context, clientDispla
 	return true, nil
 }
 
-func (conn *SSHConn) InstallWsh(ctx context.Context) error {
+func (conn *SSHConn) InstallWsh(ctx context.Context, osArchStr string) error {
 	conn.Infof(ctx, "running installWsh...\n")
 	client := conn.GetClient()
 	if client == nil {
 		conn.Infof(ctx, "ERROR ssh client is not connected, cannot install\n")
 		return fmt.Errorf("ssh client is not connected, cannot install")
 	}
-	clientOs, clientArch, err := remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(client))
+	var clientOs, clientArch string
+	var err error
+	if osArchStr != "" {
+		clientOs, clientArch, err = remote.GetClientPlatformFromOsArchStr(ctx, osArchStr)
+	} else {
+		clientOs, clientArch, err = remote.GetClientPlatform(ctx, genconn.MakeSSHShellClient(client))
+	}
 	if err != nil {
 		conn.Infof(ctx, "ERROR detecting client platform: %v\n", err)
-		return err
 	}
 	conn.Infof(ctx, "detected remote platform os:%s arch:%s\n", clientOs, clientArch)
 	err = remote.CpWshToRemote(ctx, client, clientOs, clientArch)
@@ -547,8 +573,7 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords
 	// logic for saving connection and potential flags (we only save once a connection has been made successfully)
 	// at the moment, identity files is the only saved flag
 	var identityFiles []string
-	existingConfig := wconfig.GetWatcher().GetFullConfig()
-	existingConnection, ok := existingConfig.Connections[conn.GetName()]
+	existingConnection, ok := conn.getConnectionConfig()
 	if ok {
 		identityFiles = existingConnection.SshIdentityFile
 	}
@@ -592,7 +617,7 @@ func (conn *SSHConn) getConnWshSettings() (bool, bool) {
 	config := wconfig.GetWatcher().GetFullConfig()
 	enableWsh := config.Settings.ConnWshEnabled
 	askBeforeInstall := wconfig.DefaultBoolPtr(config.Settings.ConnAskBeforeWshInstall, true)
-	connSettings, ok := config.Connections[conn.GetName()]
+	connSettings, ok := conn.getConnectionConfig()
 	if ok {
 		if connSettings.ConnWshEnabled != nil {
 			enableWsh = *connSettings.ConnWshEnabled
@@ -639,7 +664,7 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 		err = fmt.Errorf("error opening domain socket listener: %w", err)
 		return WshCheckResult{NoWshReason: "error opening domain socket", WshError: err}
 	}
-	needsInstall, clientVersion, err := conn.StartConnServer(ctx)
+	needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx)
 	if err != nil {
 		conn.Infof(ctx, "ERROR starting conn server: %v\n", err)
 		err = fmt.Errorf("error starting conn server: %w", err)
@@ -647,13 +672,13 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 	}
 	if needsInstall {
 		conn.Infof(ctx, "connserver needs to be (re)installed\n")
-		err = conn.InstallWsh(ctx)
+		err = conn.InstallWsh(ctx, osArchStr)
 		if err != nil {
 			conn.Infof(ctx, "ERROR installing wsh: %v\n", err)
 			err = fmt.Errorf("error installing wsh: %w", err)
 			return WshCheckResult{NoWshReason: "error installing wsh/connserver", WshError: err}
 		}
-		needsInstall, clientVersion, err = conn.StartConnServer(ctx)
+		needsInstall, clientVersion, _, err = conn.StartConnServer(ctx)
 		if err != nil {
 			conn.Infof(ctx, "ERROR starting conn server (after install): %v\n", err)
 			err = fmt.Errorf("error starting conn server (after install): %w", err)
@@ -670,6 +695,15 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 	}
 }
 
+func (conn *SSHConn) getConnectionConfig() (wshrpc.ConnKeywords, bool) {
+	config := wconfig.GetWatcher().GetFullConfig()
+	connSettings, ok := config.Connections[conn.GetName()]
+	if !ok {
+		return wshrpc.ConnKeywords{}, false
+	}
+	return connSettings, true
+}
+
 func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckResult) {
 	conn.WshEnabled.Store(result.WshEnabled)
 	conn.SetWshError(result.WshError)
@@ -677,9 +711,8 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 		conn.NoWshReason = result.NoWshReason
 		conn.WshVersion = result.ClientVersion
 	})
-	config := wconfig.GetWatcher().GetFullConfig()
-	connSettings, ok := config.Connections[conn.GetName()]
-	if ok && connSettings.ConnWshEnabled != nil {
+	connConfig, ok := conn.getConnectionConfig()
+	if ok && connConfig.ConnWshEnabled != nil {
 		return
 	}
 	meta := make(map[string]any)

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -33,46 +34,6 @@ func ParseOpts(input string) (*SSHOpts, error) {
 	remoteUser = strings.Trim(remoteUser, "@")
 
 	return &SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}, nil
-}
-
-func GetWshPath(client *ssh.Client) string {
-	defaultPath := wavebase.RemoteFullWshBinPath
-	session, err := client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, whichErr := session.Output("which wsh")
-	if whichErr == nil {
-		return strings.TrimSpace(string(out))
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, whereErr := session.Output("where.exe wsh")
-	if whereErr == nil {
-		return strings.TrimSpace(string(out))
-	}
-
-	// check cmd on windows since it requires an absolute path with backslashes
-	session, err = client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, cmdErr := session.Output("(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none") //todo
-	if cmdErr == nil && strings.TrimSpace(string(out)) != "none" {
-		return strings.TrimSpace(string(out))
-	}
-
-	// no custom install, use default path
-	return defaultPath
 }
 
 func normalizeOs(os string) string {
@@ -94,6 +55,7 @@ func normalizeArch(arch string) string {
 // returns (os, arch, error)
 // guaranteed to return a supported platform
 func GetClientPlatform(ctx context.Context, shell genconn.ShellClient) (string, string, error) {
+	blocklogger.Infof(ctx, "[conndebug] running `uname -sm` to detect client platform\n")
 	stdout, stderr, err := genconn.RunSimpleCommand(ctx, shell, genconn.CommandSpec{
 		Cmd: "uname -sm",
 	})
@@ -112,16 +74,28 @@ func GetClientPlatform(ctx context.Context, shell genconn.ShellClient) (string, 
 	return os, arch, nil
 }
 
+func GetClientPlatformFromOsArchStr(ctx context.Context, osArchStr string) (string, string, error) {
+	parts := strings.Fields(strings.TrimSpace(osArchStr))
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("unexpected output from uname: %s", osArchStr)
+	}
+	os, arch := normalizeOs(parts[0]), normalizeArch(parts[1])
+	if err := wavebase.ValidateWshSupportedArch(os, arch); err != nil {
+		return "", "", err
+	}
+	return os, arch, nil
+}
+
 var installTemplateRawDefault = strings.TrimSpace(`
-mkdir -p {{.installDir}} || exit 1
-cat > {{.tempPath}} || exit 1
-mv {{.tempPath}} {{.installPath}} || exit 1
-chmod a+x {{.installPath}} || exit 1
+mkdir -p {{.installDir}} || exit 1;
+cat > {{.tempPath}} || exit 1;
+mv {{.tempPath}} {{.installPath}} || exit 1;
+chmod a+x {{.installPath}} || exit 1;
 `)
 var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
 
 func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, clientArch string) error {
-	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	wshLocalPath, err := shellutil.GetLocalWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
 	if err != nil {
 		return err
 	}
@@ -132,13 +106,14 @@ func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, cli
 	defer input.Close()
 	installWords := map[string]string{
 		"installDir":  filepath.ToSlash(filepath.Dir(wavebase.RemoteFullWshBinPath)),
-		"tempPath":    filepath.ToSlash(wavebase.RemoteFullWshBinPath + ".temp"),
-		"installPath": filepath.ToSlash(wavebase.RemoteFullWshBinPath),
+		"tempPath":    wavebase.RemoteFullWshBinPath + ".temp",
+		"installPath": wavebase.RemoteFullWshBinPath,
 	}
 	var installCmd bytes.Buffer
 	if err := installTemplate.Execute(&installCmd, installWords); err != nil {
 		return fmt.Errorf("failed to prepare install command: %w", err)
 	}
+	blocklogger.Infof(ctx, "[conndebug] copying %q to remote server %q\n", wshLocalPath, wavebase.RemoteFullWshBinPath)
 	genCmd, err := genconn.MakeSSHCmdClient(client, genconn.CommandSpec{
 		Cmd: installCmd.String(),
 	})
