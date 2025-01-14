@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -33,9 +34,11 @@ var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 const DefaultShellPath = "/bin/bash"
 
 const (
+	// there must be no spaces in these integration dir paths
 	ZshIntegrationDir  = "shell/zsh"
 	BashIntegrationDir = "shell/bash"
 	PwshIntegrationDir = "shell/pwsh"
+	FishIntegrationDir = "shell/fish"
 	WaveHomeBinDir     = "bin"
 
 	ZshStartup_Zprofile = `
@@ -44,9 +47,12 @@ const (
 `
 
 	ZshStartup_Zshrc = `
-# Source the original zshrc
-[ -f ~/.zshrc ] && source ~/.zshrc
+# Source the original zshrc only if ZDOTDIR has not been changed
+if [ "$ZDOTDIR" = "$WAVETERM_ZDOTDIR" ]; then
+  [ -f ~/.zshrc ] && source ~/.zshrc
+fi
 
+# Custom additions
 export PATH={{.WSHBINDIR}}:$PATH
 if [[ -n ${_comps+x} ]]; then
   source <(wsh completion zsh)
@@ -56,10 +62,26 @@ fi
 	ZshStartup_Zlogin = `
 # Source the original zlogin
 [ -f ~/.zlogin ] && source ~/.zlogin
+
+# Unset ZDOTDIR only if it hasn't been modified
+if [ "$ZDOTDIR" = "$WAVETERM_ZDOTDIR" ]; then
+  unset ZDOTDIR
+fi
 `
 
 	ZshStartup_Zshenv = `
+# Store the initial ZDOTDIR value
+WAVETERM_ZDOTDIR="$ZDOTDIR"
+
+# Source the original zshenv
 [ -f ~/.zshenv ] && source ~/.zshenv
+
+# Detect if ZDOTDIR has changed
+if [ "$ZDOTDIR" != "$WAVETERM_ZDOTDIR" ]; then
+  # If changed, manually source your custom zshrc from the original WAVETERM_ZDOTDIR
+  [ -f "$WAVETERM_ZDOTDIR/.zshrc" ] && source "$WAVETERM_ZDOTDIR/.zshrc"
+fi
+
 `
 
 	BashStartup_Bashrc = `
@@ -83,11 +105,22 @@ if type _init_completion &>/dev/null; then
 fi
 
 `
+
+	FishStartup_Wavefish = `
+# this file is sourced with -C
+# Add Wave binary directory to PATH
+set -x PATH {{.WSHBINDIR}} $PATH
+
+# Load Wave completions
+wsh completion fish | source
+`
+
 	PwshStartup_wavepwsh = `
-# no need to source regular profiles since we cannot
-# overwrite those with powershell. Instead we will source
-# this file with -NoExit
-$env:PATH = "{{.WSHBINDIR}}" + "{{.PATHSEP}}" + $env:PATH
+# We source this file with -NoExit -File
+$env:PATH = {{.WSHBINDIR_PWSH}} + "{{.PATHSEP}}" + $env:PATH
+
+# Load Wave completions
+wsh completion powershell | Out-String | Invoke-Expression
 `
 )
 
@@ -207,19 +240,23 @@ func InitCustomShellStartupFiles() error {
 	return err
 }
 
-func GetBashRcFileOverride() string {
+func GetLocalBashRcFileOverride() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), BashIntegrationDir, ".bashrc")
 }
 
-func GetWavePowershellEnv() string {
+func GetLocalWaveFishFilePath() string {
+	return filepath.Join(wavebase.GetWaveDataDir(), FishIntegrationDir, "wave.fish")
+}
+
+func GetLocalWavePowershellEnv() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), PwshIntegrationDir, "wavepwsh.ps1")
 }
 
-func GetZshZDotDir() string {
+func GetLocalZshZDotDir() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), ZshIntegrationDir)
 }
 
-func GetWshBinaryPath(version string, goos string, goarch string) (string, error) {
+func GetLocalWshBinaryPath(version string, goos string, goarch string) (string, error) {
 	ext := ""
 	if goarch == "amd64" {
 		goarch = "x64"
@@ -237,8 +274,10 @@ func GetWshBinaryPath(version string, goos string, goarch string) (string, error
 	return filepath.Join(wavebase.GetWaveAppBinPath(), baseName), nil
 }
 
-func InitRcFiles(waveHome string, wshBinDir string) error {
-	// ensure directiries exist
+// absWshBinDir must be an absolute, expanded path (no ~ or $HOME, etc.)
+// it will be hard-quoted appropriately for the shell
+func InitRcFiles(waveHome string, absWshBinDir string) error {
+	// ensure directories exist
 	zshDir := filepath.Join(waveHome, ZshIntegrationDir)
 	err := wavebase.CacheEnsureDir(zshDir, ZshIntegrationDir, 0755, ZshIntegrationDir)
 	if err != nil {
@@ -249,43 +288,55 @@ func InitRcFiles(waveHome string, wshBinDir string) error {
 	if err != nil {
 		return err
 	}
+	fishDir := filepath.Join(waveHome, FishIntegrationDir)
+	err = wavebase.CacheEnsureDir(fishDir, FishIntegrationDir, 0755, FishIntegrationDir)
+	if err != nil {
+		return err
+	}
 	pwshDir := filepath.Join(waveHome, PwshIntegrationDir)
 	err = wavebase.CacheEnsureDir(pwshDir, PwshIntegrationDir, 0755, PwshIntegrationDir)
 	if err != nil {
 		return err
 	}
 
-	// write files to directory
-	zprofilePath := filepath.Join(zshDir, ".zprofile")
-	err = os.WriteFile(zprofilePath, []byte(ZshStartup_Zprofile), 0644)
-	if err != nil {
-		return fmt.Errorf("error writing zsh-integration .zprofile: %v", err)
-	}
-	err = utilfn.WriteTemplateToFile(filepath.Join(zshDir, ".zshrc"), ZshStartup_Zshrc, map[string]string{"WSHBINDIR": fmt.Sprintf(`"%s"`, wshBinDir)})
-	if err != nil {
-		return fmt.Errorf("error writing zsh-integration .zshrc: %v", err)
-	}
-	zloginPath := filepath.Join(zshDir, ".zlogin")
-	err = os.WriteFile(zloginPath, []byte(ZshStartup_Zlogin), 0644)
-	if err != nil {
-		return fmt.Errorf("error writing zsh-integration .zlogin: %v", err)
-	}
-	zshenvPath := filepath.Join(zshDir, ".zshenv")
-	err = os.WriteFile(zshenvPath, []byte(ZshStartup_Zshenv), 0644)
-	if err != nil {
-		return fmt.Errorf("error writing zsh-integration .zshenv: %v", err)
-	}
-	err = utilfn.WriteTemplateToFile(filepath.Join(bashDir, ".bashrc"), BashStartup_Bashrc, map[string]string{"WSHBINDIR": fmt.Sprintf(`"%s"`, wshBinDir)})
-	if err != nil {
-		return fmt.Errorf("error writing bash-integration .bashrc: %v", err)
-	}
 	var pathSep string
 	if runtime.GOOS == "windows" {
 		pathSep = ";"
 	} else {
 		pathSep = ":"
 	}
-	err = utilfn.WriteTemplateToFile(filepath.Join(pwshDir, "wavepwsh.ps1"), PwshStartup_wavepwsh, map[string]string{"WSHBINDIR": toPwshEnvVarRef(wshBinDir), "PATHSEP": pathSep})
+	params := map[string]string{
+		"WSHBINDIR":      genconn.HardQuote(absWshBinDir),
+		"WSHBINDIR_PWSH": genconn.HardQuotePowerShell(absWshBinDir),
+		"PATHSEP":        pathSep,
+	}
+
+	// write files to directory
+	err = utilfn.WriteTemplateToFile(filepath.Join(zshDir, ".zprofile"), ZshStartup_Zprofile, params)
+	if err != nil {
+		return fmt.Errorf("error writing zsh-integration .zprofile: %v", err)
+	}
+	err = utilfn.WriteTemplateToFile(filepath.Join(zshDir, ".zshrc"), ZshStartup_Zshrc, params)
+	if err != nil {
+		return fmt.Errorf("error writing zsh-integration .zshrc: %v", err)
+	}
+	err = utilfn.WriteTemplateToFile(filepath.Join(zshDir, ".zlogin"), ZshStartup_Zlogin, params)
+	if err != nil {
+		return fmt.Errorf("error writing zsh-integration .zlogin: %v", err)
+	}
+	err = utilfn.WriteTemplateToFile(filepath.Join(zshDir, ".zshenv"), ZshStartup_Zshenv, params)
+	if err != nil {
+		return fmt.Errorf("error writing zsh-integration .zshenv: %v", err)
+	}
+	err = utilfn.WriteTemplateToFile(filepath.Join(bashDir, ".bashrc"), BashStartup_Bashrc, params)
+	if err != nil {
+		return fmt.Errorf("error writing bash-integration .bashrc: %v", err)
+	}
+	err = utilfn.WriteTemplateToFile(filepath.Join(fishDir, "wave.fish"), FishStartup_Wavefish, params)
+	if err != nil {
+		return fmt.Errorf("error writing fish-integration wave.fish: %v", err)
+	}
+	err = utilfn.WriteTemplateToFile(filepath.Join(pwshDir, "wavepwsh.ps1"), PwshStartup_wavepwsh, params)
 	if err != nil {
 		return fmt.Errorf("error writing pwsh-integration wavepwsh.ps1: %v", err)
 	}
@@ -297,7 +348,7 @@ func initCustomShellStartupFilesInternal() error {
 	log.Printf("initializing wsh and shell startup files\n")
 	waveDataHome := wavebase.GetWaveDataDir()
 	binDir := filepath.Join(waveDataHome, WaveHomeBinDir)
-	err := InitRcFiles(waveDataHome, `$WAVETERM_WSHBINDIR`)
+	err := InitRcFiles(waveDataHome, binDir)
 	if err != nil {
 		return err
 	}
@@ -308,7 +359,7 @@ func initCustomShellStartupFilesInternal() error {
 	}
 
 	// copy the correct binary to bin
-	wshFullPath, err := GetWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
+	wshFullPath, err := GetLocalWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		log.Printf("error (non-fatal), could not resolve wsh binary path: %v\n", err)
 	}
@@ -327,8 +378,4 @@ func initCustomShellStartupFilesInternal() error {
 	wshBaseName := filepath.Base(wshFullPath)
 	log.Printf("wsh binary successfully copied from %q to %q\n", wshBaseName, wshDstPath)
 	return nil
-}
-
-func toPwshEnvVarRef(input string) string {
-	return strings.Replace(input, "$", "$env:", -1)
 }

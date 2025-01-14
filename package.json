@@ -150,7 +150,7 @@
         "cookie@0.6.0": "^0.7.0",
         "path-to-regexp@npm:0.1.10": "^0.1.12"
     },
-    "packageManager": "yarn@4.5.1",
+    "packageManager": "yarn@4.6.0",
     "workspaces": [
         "docs"
     ]

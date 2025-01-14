@@ -337,7 +337,7 @@ func (conn *WslConn) CheckAndInstallWsh(ctx context.Context, clientDisplayName s
 		return err
 	}
 	// attempt to install extension
-	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	wshLocalPath, err := shellutil.GetLocalWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
 	if err != nil {
 		return err
 	}

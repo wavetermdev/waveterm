@@ -304,6 +304,7 @@ declare global {
         "conn:askbeforewshinstall"?: boolean;
         "conn:overrideconfig"?: boolean;
         "conn:wshpath"?: string;
+        "conn:shellpath"?: string;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;
