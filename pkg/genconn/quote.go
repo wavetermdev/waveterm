@@ -6,7 +6,8 @@ package genconn
 import "regexp"
 
 var (
-	safePattern = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
+	safePattern   = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
+	psSafePattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 
 	needsEscape = map[byte]bool{
 		'"':  true,
@@ -33,6 +34,32 @@ func HardQuote(s string) string {
 			buf = append(buf, '\\')
 		}
 		buf = append(buf, s[i])
+	}
+
+	buf = append(buf, '"')
+	return string(buf)
+}
+
+func HardQuotePowerShell(s string) string {
+	if s == "" {
+		return "\"\""
+	}
+
+	if psSafePattern.MatchString(s) {
+		return s
+	}
+
+	buf := make([]byte, 0, len(s)+5)
+	buf = append(buf, '"')
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		// In PowerShell, backtick (`) is the escape character
+		switch c {
+		case '"', '`', '$':
+			buf = append(buf, '`')
+		}
+		buf = append(buf, c)
 	}
 
 	buf = append(buf, '"')
