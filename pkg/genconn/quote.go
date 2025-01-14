@@ -10,6 +10,9 @@ var (
 	psSafePattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 )
 
+// TODO: fish quoting is slightly different
+// specifically \` will cause an inconsistency between fish and bash/zsh :/
+// might need a specific fish quoting function, and an explicit fish shell detection
 func HardQuote(s string) string {
 	if s == "" {
 		return "\"\""
