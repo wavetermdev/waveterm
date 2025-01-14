@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -32,6 +31,14 @@ var macUserShellOnce = &sync.Once{}
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 
 const DefaultShellPath = "/bin/bash"
+
+const (
+	ShellType_bash    = "bash"
+	ShellType_zsh     = "zsh"
+	ShellType_fish    = "fish"
+	ShellType_pwsh    = "pwsh"
+	ShellType_unknown = "unknown"
+)
 
 const (
 	// there must be no spaces in these integration dir paths
@@ -306,8 +313,8 @@ func InitRcFiles(waveHome string, absWshBinDir string) error {
 		pathSep = ":"
 	}
 	params := map[string]string{
-		"WSHBINDIR":      genconn.HardQuote(absWshBinDir),
-		"WSHBINDIR_PWSH": genconn.HardQuotePowerShell(absWshBinDir),
+		"WSHBINDIR":      HardQuote(absWshBinDir),
+		"WSHBINDIR_PWSH": HardQuotePowerShell(absWshBinDir),
 		"PATHSEP":        pathSep,
 	}
 
@@ -378,4 +385,21 @@ func initCustomShellStartupFilesInternal() error {
 	wshBaseName := filepath.Base(wshFullPath)
 	log.Printf("wsh binary successfully copied from %q to %q\n", wshBaseName, wshDstPath)
 	return nil
+}
+
+func GetShellTypeFromShellPath(shellPath string) string {
+	shellBase := filepath.Base(shellPath)
+	if strings.Contains(shellBase, "bash") {
+		return ShellType_bash
+	}
+	if strings.Contains(shellBase, "zsh") {
+		return ShellType_zsh
+	}
+	if strings.Contains(shellBase, "fish") {
+		return ShellType_fish
+	}
+	if strings.Contains(shellBase, "pwsh") || strings.Contains(shellBase, "powershell") {
+		return ShellType_pwsh
+	}
+	return ShellType_unknown
 }
