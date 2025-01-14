@@ -7,11 +7,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-type FullFile struct {
-	Info   *wshrpc.FileInfo `json:"info"`
-	Data64 string           `json:"data64"` // base64 encoded
-}
-
 type FileShareClient interface {
 	// Stat returns the file info at the given parsed connection path
 	Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error)

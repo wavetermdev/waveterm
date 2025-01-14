@@ -47,12 +47,6 @@ class ClientServiceType {
 
 export const ClientService = new ClientServiceType();
 
-// fileservice.FileService (file)
-class FileServiceType {
-}
-
-export const FileService = new FileServiceType();
-
 // objectservice.ObjectService (object)
 class ObjectServiceType {
     // @returns blockId (and object updates)

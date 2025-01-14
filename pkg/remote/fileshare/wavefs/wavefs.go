@@ -13,13 +13,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-)
-
-const (
-	WaveFilePathPattern = "wavefile://%s/%s"
 )
 
 type WaveClient struct{}
@@ -73,7 +70,7 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 	}
 	var fileList []*wshrpc.FileInfo
 	for _, wf := range fileListOrig {
-		fileList = append(fileList, waveFileToFileInfo(wf))
+		fileList = append(fileList, wavefileutil.WaveFileToFileInfo(wf))
 	}
 	if prefix != "" {
 		var filteredList []*wshrpc.FileInfo
@@ -102,7 +99,7 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 		for dir := range dirMap {
 			dirName := prefix + dir + "/"
 			filteredList = append(filteredList, &wshrpc.FileInfo{
-				Path:          fmt.Sprintf(WaveFilePathPattern, zoneId, dirName),
+				Path:          fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, dirName),
 				Name:          dirName,
 				Dir:           dirName,
 				Size:          0,
@@ -140,7 +137,7 @@ func (c WaveClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshr
 		}
 		return nil, fmt.Errorf("error getting file info: %w", err)
 	}
-	return waveFileToFileInfo(fileInfo), nil
+	return wavefileutil.WaveFileToFileInfo(fileInfo), nil
 }
 
 func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
@@ -219,16 +216,4 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) erro
 
 func (c WaveClient) GetConnectionType() string {
 	return connparse.ConnectionTypeWave
-}
-
-func waveFileToFileInfo(wf *filestore.WaveFile) *wshrpc.FileInfo {
-	path := fmt.Sprintf(WaveFilePathPattern, wf.ZoneId, wf.Name)
-	return &wshrpc.FileInfo{
-		Path:          path,
-		Name:          wf.Name,
-		Opts:          &wf.Opts,
-		Size:          wf.Size,
-		Meta:          &wf.Meta,
-		SupportsMkdir: false,
-	}
 }

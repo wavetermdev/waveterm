@@ -278,7 +278,7 @@ declare global {
         logblockid?: string;
     };
 
-    // wshrpc.ConnKeywords
+    // wconfig.ConnKeywords
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;

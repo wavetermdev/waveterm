@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
@@ -60,6 +61,7 @@ const (
 	Command_Test                 = "test"
 	Command_SetConfig            = "setconfig"
 	Command_SetConnectionsConfig = "connectionsconfig"
+	Command_GetFullConfig        = "getfullconfig"
 	Command_RemoteStreamFile     = "remotestreamfile"
 	Command_RemoteFileInfo       = "remotefileinfo"
 	Command_RemoteFileTouch      = "remotefiletouch"
@@ -143,6 +145,7 @@ type WshRpcInterface interface {
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
+	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
@@ -477,42 +480,10 @@ type CommandRemoteWriteFileData struct {
 	CreateMode os.FileMode `json:"createmode,omitempty"`
 }
 
-type ConnKeywords struct {
-	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
-	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
-	ConnOverrideConfig      bool   `json:"conn:overrideconfig,omitempty"`
-	ConnWshPath             string `json:"conn:wshpath,omitempty"`
-
-	DisplayHidden *bool   `json:"display:hidden,omitempty"`
-	DisplayOrder  float32 `json:"display:order,omitempty"`
-
-	TermClear      bool    `json:"term:*,omitempty"`
-	TermFontSize   float64 `json:"term:fontsize,omitempty"`
-	TermFontFamily string  `json:"term:fontfamily,omitempty"`
-	TermTheme      string  `json:"term:theme,omitempty"`
-
-	SshUser                         *string  `json:"ssh:user,omitempty"`
-	SshHostName                     *string  `json:"ssh:hostname,omitempty"`
-	SshPort                         *string  `json:"ssh:port,omitempty"`
-	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
-	SshBatchMode                    *bool    `json:"ssh:batchmode,omitempty"`
-	SshPubkeyAuthentication         *bool    `json:"ssh:pubkeyauthentication,omitempty"`
-	SshPasswordAuthentication       *bool    `json:"ssh:passwordauthentication,omitempty"`
-	SshKbdInteractiveAuthentication *bool    `json:"ssh:kbdinteractiveauthentication,omitempty"`
-	SshPreferredAuthentications     []string `json:"ssh:preferredauthentications,omitempty"`
-	SshAddKeysToAgent               *bool    `json:"ssh:addkeystoagent,omitempty"`
-	SshIdentityAgent                *string  `json:"ssh:identityagent,omitempty"`
-	SshProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
-	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
-	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
-
-	AwsConfig *string `json:"aws:config,omitempty"`
-}
-
 type ConnRequest struct {
-	Host       string       `json:"host"`
-	Keywords   ConnKeywords `json:"keywords,omitempty"`
-	LogBlockId string       `json:"logblockid,omitempty"`
+	Host       string               `json:"host"`
+	Keywords   wconfig.ConnKeywords `json:"keywords,omitempty"`
+	LogBlockId string               `json:"logblockid,omitempty"`
 }
 
 const (

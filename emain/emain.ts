@@ -94,7 +94,7 @@ function handleWSEvent(evtMsg: WSEventType) {
             if (windowData == null) {
                 return;
             }
-            const fullConfig = await services.FileService.GetFullConfig();
+            const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
             const newWin = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
             newWin.show();
         } else if (evtMsg.eventtype == "electron:closewindow") {
@@ -311,7 +311,7 @@ if (unamePlatform !== "darwin") {
 
     electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
         // Bail out if the user requests the native titlebar
-        const fullConfig = await services.FileService.GetFullConfig();
+        const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
         if (fullConfig.settings["window:nativetitlebar"]) return;
 
         const zoomFactor = event.sender.getZoomFactor();
@@ -588,18 +588,19 @@ async function appMain() {
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
-    const fullConfig = await services.FileService.GetFullConfig();
-    checkIfRunningUnderARM64Translation(fullConfig);
-    ensureHotSpareTab(fullConfig);
-    await relaunchBrowserWindows();
-    await initDocsite();
-    setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     try {
         initElectronWshClient();
         initElectronWshrpc(ElectronWshClient, { authKey: AuthKey });
     } catch (e) {
         console.log("error initializing wshrpc", e);
     }
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+    checkIfRunningUnderARM64Translation(fullConfig);
+    ensureHotSpareTab(fullConfig);
+    await relaunchBrowserWindows();
+    await initDocsite();
+    setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
+
     makeAppMenu();
     await configureAutoUpdater();
     setGlobalIsStarting(false);

@@ -356,7 +356,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 		if err != nil {
 			return nil, err
 		}
-		conn := conncontroller.GetConn(credentialCtx, opts, false, &wshrpc.ConnKeywords{})
+		conn := conncontroller.GetConn(credentialCtx, opts, false, &wconfig.ConnKeywords{})
 		connStatus := conn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {
 			return nil, fmt.Errorf("not connected, cannot start shellproc")
@@ -708,7 +708,7 @@ func CheckConnStatus(blockId string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(context.Background(), opts, false, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(context.Background(), opts, false, &wconfig.ConnKeywords{})
 	connStatus := conn.DeriveConnStatus()
 	if connStatus.Status != conncontroller.Status_Connected {
 		return fmt.Errorf("not connected: %s", connStatus.Status)

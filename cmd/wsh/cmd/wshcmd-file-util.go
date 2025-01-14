@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
@@ -24,15 +25,11 @@ func convertNotFoundErr(err error) error {
 	return err
 }
 
-func ensureWaveFile(origName string, fileData wshrpc.CommandFileData) (*wshrpc.WaveFileInfo, error) {
+func ensureWaveFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
-		createData := wshrpc.CommandFileCreateData{
-			ZoneId:   fileData.ZoneId,
-			FileName: fileData.FileName,
-		}
-		err = wshclient.FileCreateCommand(RpcClient, createData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+		err = wshclient.FileCreateCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 		if err != nil {
 			return nil, fmt.Errorf("creating file: %w", err)
 		}
@@ -48,7 +45,7 @@ func ensureWaveFile(origName string, fileData wshrpc.CommandFileData) (*wshrpc.W
 	return info, nil
 }
 
-func streamWriteToWaveFile(fileData wshrpc.CommandFileData, reader io.Reader) error {
+func streamWriteToWaveFile(fileData wshrpc.FileData, reader io.Reader) error {
 	// First truncate the file with an empty write
 	emptyWrite := fileData
 	emptyWrite.Data64 = ""
@@ -90,7 +87,7 @@ func streamWriteToWaveFile(fileData wshrpc.CommandFileData, reader io.Reader) er
 	return nil
 }
 
-func streamReadFromWaveFile(fileData wshrpc.CommandFileData, size int64, writer io.Writer) error {
+func streamReadFromWaveFile(fileData wshrpc.FileData, size int64, writer io.Writer) error {
 	const chunkSize = 32 * 1024 // 32KB chunks
 	for offset := int64(0); offset < size; offset += chunkSize {
 		// Calculate the length of this chunk
@@ -127,7 +124,7 @@ func streamReadFromWaveFile(fileData wshrpc.CommandFileData, size int64, writer 
 }
 
 type fileListResult struct {
-	info *wshrpc.WaveFileInfo
+	info *wshrpc.FileInfo
 	err  error
 }
 
@@ -139,9 +136,9 @@ func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) 
 		go func() {
 			defer close(resultChan)
 
-			fileData := wshrpc.CommandFileData{
-				ZoneId:   zoneId,
-				FileName: path,
+			fileData := wshrpc.FileData{
+				Info: &wshrpc.FileInfo{
+					Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, path)},
 			}
 
 			info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
@@ -169,13 +166,12 @@ func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) 
 		foundAny := false
 
 		for {
-			listData := wshrpc.CommandFileListData{
-				ZoneId: zoneId,
-				Prefix: prefix,
-				All:    recursive,
-				Offset: offset,
-				Limit:  100,
-			}
+			listData := wshrpc.FileListData{
+				Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, prefix),
+				Opts: &wshrpc.FileListOpts{
+					All:    recursive,
+					Offset: offset,
+					Limit:  100}}
 
 			files, err := wshclient.FileListCommand(RpcClient, listData, &wshrpc.RpcOpts{Timeout: 2000})
 			if err != nil {

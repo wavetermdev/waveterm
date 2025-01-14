@@ -182,6 +182,11 @@ class RpcApiType {
         return client.wshRpcCall("focuswindow", data, opts);
     }
 
+    // command "getfullconfig" [call]
+    GetFullConfigCommand(client: WshClient, opts?: RpcOpts): Promise<FullConfigType> {
+        return client.wshRpcCall("getfullconfig", null, opts);
+    }
+
     // command "getmeta" [call]
     GetMetaCommand(client: WshClient, data: CommandGetMetaData, opts?: RpcOpts): Promise<MetaType> {
         return client.wshRpcCall("getmeta", data, opts);
