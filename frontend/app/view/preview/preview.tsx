@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
@@ -364,7 +364,7 @@ export class PreviewModel implements ViewModel {
         this.connection = atom<Promise<string>>(async (get) => {
             const connName = get(this.blockAtom)?.meta?.connection;
             try {
-                await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
+                await RpcApi.ConnEnsureCommand(TabRpcClient, { connname: connName }, { timeout: 60000 });
                 globalStore.set(this.connectionError, "");
             } catch (e) {
                 globalStore.set(this.connectionError, e as string);

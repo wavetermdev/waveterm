@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshclient
@@ -40,7 +40,9 @@ func sendRpcRequestCallHelper[T any](w *wshutil.WshRpc, command string, data int
 
 func rtnErr[T any](ch chan wshrpc.RespOrErrorUnion[T], err error) {
 	go func() {
-		defer panichandler.PanicHandler("wshclientutil:rtnErr")
+		defer func() {
+			panichandler.PanicHandler("wshclientutil:rtnErr", recover())
+		}()
 		ch <- wshrpc.RespOrErrorUnion[T]{Error: err}
 		close(ch)
 	}()
@@ -65,7 +67,9 @@ func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string
 		reqHandler.SendCancel()
 	}
 	go func() {
-		defer panichandler.PanicHandler("sendRpcRequestResponseStreamHelper")
+		defer func() {
+			panichandler.PanicHandler("sendRpcRequestResponseStreamHelper", recover())
+		}()
 		defer close(respChan)
 		for {
 			if reqHandler.ResponseDone() {

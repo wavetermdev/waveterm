@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { ClientService, FileService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
@@ -18,6 +18,7 @@ import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-uti
 import { log } from "./log";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
+
 export type WindowOpts = {
     unamePlatform: string;
 };
@@ -72,11 +73,37 @@ export class WaveBrowserWindow extends BaseWindow {
     private actionQueue: WindowActionQueueEntry[];
 
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
+        const settings = fullConfig?.settings;
+
         console.log("create win", waveWindow.oid);
         let winWidth = waveWindow?.winsize?.width;
         let winHeight = waveWindow?.winsize?.height;
         let winPosX = waveWindow.pos.x;
         let winPosY = waveWindow.pos.y;
+
+        if (
+            (winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) &&
+            settings?.["window:dimensions"]
+        ) {
+            const dimensions = settings["window:dimensions"];
+            const match = dimensions.match(/^(\d+)[xX](\d+)$/);
+
+            if (match) {
+                const [, dimensionWidth, dimensionHeight] = match;
+                const parsedWidth = parseInt(dimensionWidth, 10);
+                const parsedHeight = parseInt(dimensionHeight, 10);
+
+                if ((!winWidth || winWidth === 0) && Number.isFinite(parsedWidth) && parsedWidth > 0) {
+                    winWidth = parsedWidth;
+                }
+                if ((!winHeight || winHeight === 0) && Number.isFinite(parsedHeight) && parsedHeight > 0) {
+                    winHeight = parsedHeight;
+                }
+            } else {
+                console.warn('Invalid window:dimensions format. Expected "widthxheight".');
+            }
+        }
+
         if (winWidth == null || winWidth == 0) {
             const primaryDisplay = screen.getPrimaryDisplay();
             const { width } = primaryDisplay.workAreaSize;
@@ -100,7 +127,6 @@ export class WaveBrowserWindow extends BaseWindow {
             height: winHeight,
         };
         winBounds = ensureBoundsAreVisible(winBounds);
-        const settings = fullConfig?.settings;
         const winOpts: BaseWindowConstructorOptions = {
             titleBarStyle:
                 opts.unamePlatform === "darwin"
@@ -303,7 +329,8 @@ export class WaveBrowserWindow extends BaseWindow {
         const workspaceList = await WorkspaceService.ListWorkspaces();
         if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
             const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-            if (isNonEmptyUnsavedWorkspace(curWorkspace)) {
+
+            if (curWorkspace && isNonEmptyUnsavedWorkspace(curWorkspace)) {
                 console.log(
                     `existing unsaved workspace ${this.workspaceId} has content, opening workspace ${workspaceId} in new window`
                 );
@@ -693,17 +720,22 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
             type: "question",
             buttons: ["Cancel", "Delete Workspace"],
             title: "Confirm",
-            message: `Deleting workspace will also delete its contents.${workspaceHasWindow ? "\nWorkspace is open in a window, which will be closed." : ""}\n\nContinue?`,
+            message: `Deleting workspace will also delete its contents.\n\nContinue?`,
         });
         if (choice === 0) {
             console.log("user cancelled workspace delete", workspaceId, ww?.waveWindowId);
             return;
         }
-        await WorkspaceService.DeleteWorkspace(workspaceId);
+
+        const newWorkspaceId = await WorkspaceService.DeleteWorkspace(workspaceId);
         console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
         if (ww?.workspaceId == workspaceId) {
-            console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-            ww.destroy();
+            if (newWorkspaceId) {
+                await ww.switchWorkspace(newWorkspaceId);
+            } else {
+                console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
+                ww.destroy();
+            }
         }
     });
 });

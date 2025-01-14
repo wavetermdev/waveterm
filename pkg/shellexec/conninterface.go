@@ -76,7 +76,9 @@ func (cw CmdWrap) KillGraceful(timeout time.Duration) {
 		cw.Cmd.Process.Signal(syscall.SIGTERM)
 	}
 	go func() {
-		defer panichandler.PanicHandler("KillGraceful:Kill")
+		defer func() {
+			panichandler.PanicHandler("KillGraceful:Kill", recover())
+		}()
 		time.Sleep(timeout)
 		if cw.Cmd.ProcessState == nil || !cw.Cmd.ProcessState.Exited() {
 			cw.Cmd.Process.Kill() // force kill if it is already not exited
@@ -208,7 +210,9 @@ func (wcw WslCmdWrap) KillGraceful(timeout time.Duration) {
 	}
 	process.Signal(os.Interrupt)
 	go func() {
-		defer panichandler.PanicHandler("KillGraceful-wsl:Kill")
+		defer func() {
+			panichandler.PanicHandler("KillGraceful-wsl:Kill", recover())
+		}()
 		time.Sleep(timeout)
 		process := wcw.WslCmd.GetProcess()
 		processState := wcw.WslCmd.GetProcessState()

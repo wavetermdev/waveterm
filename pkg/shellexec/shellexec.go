@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package shellexec
@@ -19,13 +19,17 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/pamparse"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 )
@@ -52,7 +56,9 @@ type ShellProc struct {
 func (sp *ShellProc) Close() {
 	sp.Cmd.KillGraceful(DefaultGracefulKillWait)
 	go func() {
-		defer panichandler.PanicHandler("ShellProc.Close")
+		defer func() {
+			panichandler.PanicHandler("ShellProc.Close", recover())
+		}()
 		waitErr := sp.Cmd.Wait()
 		sp.SetWaitErrorAndSignalDone(waitErr)
 
@@ -146,10 +152,12 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 }
 
 func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wsl.WslConn) (*ShellProc, error) {
+	utilCtx, cancelFn := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelFn()
 	client := conn.GetClient()
 	shellPath := cmdOpts.ShellPath
 	if shellPath == "" {
-		remoteShellPath, err := wsl.DetectShell(conn.Context, client)
+		remoteShellPath, err := wsl.DetectShell(utilCtx, client)
 		if err != nil {
 			return nil, err
 		}
@@ -158,13 +166,13 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	var shellOpts []string
 	log.Printf("detected shell: %s", shellPath)
 
-	err := wsl.InstallClientRcFiles(conn.Context, client)
+	err := wsl.InstallClientRcFiles(utilCtx, client)
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err
 	}
 
-	homeDir := wsl.GetHomeDir(conn.Context, client)
+	homeDir := wsl.GetHomeDir(utilCtx, client)
 	shellOpts = append(shellOpts, "~", "-d", client.Name())
 
 	var subShellOpts []string
@@ -182,7 +190,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		} else if wsl.IsPowershell(shellPath) {
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
-			subShellOpts = append(subShellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", homeDir+fmt.Sprintf("/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
+			subShellOpts = append(subShellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", fmt.Sprintf("%s/.waveterm/%s/wavepwsh.ps1", homeDir, shellutil.PwshIntegrationDir))
 		} else {
 			if cmdOpts.Login {
 				subShellOpts = append(subShellOpts, "-l")
@@ -281,26 +289,28 @@ func StartRemoteShellProcNoWsh(termSize waveobj.TermSize, cmdStr string, cmdOpts
 
 func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	client := conn.GetClient()
+	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
+	rpcClient := wshclient.GetBareRpcClient()
+	remoteInfo, err := wshclient.RemoteGetInfoCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
+	if err != nil {
+		return nil, fmt.Errorf("unable to obtain client info: %w", err)
+	}
+	log.Printf("client info collected: %+#v", remoteInfo)
+
 	shellPath := cmdOpts.ShellPath
 	if shellPath == "" {
-		remoteShellPath, err := remote.DetectShell(client)
-		if err != nil {
-			return nil, err
-		}
-		shellPath = remoteShellPath
+		shellPath = remoteInfo.Shell
 	}
 	var shellOpts []string
 	var cmdCombined string
-	log.Printf("detected shell: %s", shellPath)
+	log.Printf("using shell: %s", shellPath)
 
-	err := remote.InstallClientRcFiles(client)
+	err = wshclient.RemoteInstallRcFilesCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
 	if err != nil {
 		log.Printf("error installing rc files: %v", err)
 		return nil, err
 	}
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
-
-	homeDir := remote.GetHomeDir(client)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -308,14 +318,17 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 			log.Printf("recognized as bash shell")
 			// add --rcfile
 			// cant set -l or -i with --rcfile
-			shellOpts = append(shellOpts, "--rcfile", fmt.Sprintf(`"%s"/.waveterm/%s/.bashrc`, homeDir, shellutil.BashIntegrationDir))
+			bashPath := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s/.bashrc", shellutil.BashIntegrationDir))
+			shellOpts = append(shellOpts, "--rcfile", bashPath)
 		} else if isFishShell(shellPath) {
-			carg := fmt.Sprintf(`"set -x PATH \"%s\"/.waveterm/%s $PATH"`, homeDir, shellutil.WaveHomeBinDir)
+			fishDir := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s", shellutil.WaveHomeBinDir))
+			carg := fmt.Sprintf(`"set -x PATH %s $PATH"`, fishDir)
 			shellOpts = append(shellOpts, "-C", carg)
 		} else if remote.IsPowershell(shellPath) {
+			pwshPath := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
-			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", homeDir+fmt.Sprintf("/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
+			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", pwshPath)
 		} else {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
@@ -369,7 +382,8 @@ func StartRemoteShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comm
 	}
 
 	if isZshShell(shellPath) {
-		cmdCombined = fmt.Sprintf(`ZDOTDIR="%s/.waveterm/%s" %s`, homeDir, shellutil.ZshIntegrationDir, cmdCombined)
+		zshDir := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir))
+		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
 
 	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
@@ -448,6 +462,29 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 		ecmd = exec.Command(shellPath, shellOpts...)
 		ecmd.Env = os.Environ()
 	}
+
+	/*
+	  For Snap installations, we need to correct the XDG environment variables as Snap
+	  overrides them to point to snap directories. We will get the correct values, if
+	  set, from the PAM environment. If the XDG variables are set in profile or in an
+	  RC file, it will be overridden when the shell initializes.
+	*/
+	if os.Getenv("SNAP") != "" {
+		log.Printf("Detected Snap installation, correcting XDG environment variables")
+		varsToReplace := map[string]string{"XDG_CONFIG_HOME": "", "XDG_DATA_HOME": "", "XDG_CACHE_HOME": "", "XDG_RUNTIME_DIR": "", "XDG_CONFIG_DIRS": "", "XDG_DATA_DIRS": ""}
+		pamEnvs := tryGetPamEnvVars()
+		if len(pamEnvs) > 0 {
+			// We only want to set the XDG variables from the PAM environment, all others should already be correct or may have been overridden by something else out of our control
+			for k := range pamEnvs {
+				if _, ok := varsToReplace[k]; ok {
+					varsToReplace[k] = pamEnvs[k]
+				}
+			}
+		}
+		log.Printf("Setting XDG environment variables to: %v", varsToReplace)
+		shellutil.UpdateCmdEnv(ecmd, varsToReplace)
+	}
+
 	if cmdOpts.Cwd != "" {
 		ecmd.Dir = cmdOpts.Cwd
 	}
@@ -496,7 +533,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error
 	ioDone := make(chan bool)
 	var outputBuf bytes.Buffer
 	go func() {
-		panichandler.PanicHandler("RunSimpleCmdInPty:ioCopy")
+		panichandler.PanicHandler("RunSimpleCmdInPty:ioCopy", recover())
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer close(ioDone)
 		io.Copy(&outputBuf, cmdPty)
@@ -507,4 +544,42 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error
 	}
 	<-ioDone
 	return outputBuf.Bytes(), nil
+}
+
+const etcEnvironmentPath = "/etc/environment"
+const etcSecurityPath = "/etc/security/pam_env.conf"
+const userEnvironmentPath = "~/.pam_environment"
+
+var pamParseOpts *pamparse.PamParseOpts = pamparse.ParsePasswdSafe()
+
+/*
+tryGetPamEnvVars tries to get the environment variables from /etc/environment,
+/etc/security/pam_env.conf, and ~/.pam_environment.
+
+It then returns a map of the environment variables, overriding duplicates with
+the following order of precedence:
+1. /etc/environment
+2. /etc/security/pam_env.conf
+3. ~/.pam_environment
+*/
+func tryGetPamEnvVars() map[string]string {
+	envVars, err := pamparse.ParseEnvironmentFile(etcEnvironmentPath)
+	if err != nil {
+		log.Printf("error parsing %s: %v", etcEnvironmentPath, err)
+	}
+	envVars2, err := pamparse.ParseEnvironmentConfFile(etcSecurityPath, pamParseOpts)
+	if err != nil {
+		log.Printf("error parsing %s: %v", etcSecurityPath, err)
+	}
+	envVars3, err := pamparse.ParseEnvironmentConfFile(wavebase.ExpandHomeDirSafe(userEnvironmentPath), pamParseOpts)
+	if err != nil {
+		log.Printf("error parsing %s: %v", userEnvironmentPath, err)
+	}
+	for k, v := range envVars2 {
+		envVars[k] = v
+	}
+	for k, v := range envVars3 {
+		envVars[k] = v
+	}
+	return envVars
 }

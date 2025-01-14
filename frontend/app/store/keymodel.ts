@@ -1,10 +1,11 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import {
     atoms,
     createBlock,
     createTab,
+    getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
     globalStore,
@@ -145,6 +146,12 @@ function handleCmdI() {
     globalRefocus();
 }
 
+function globalRefocusWithTimeout(timeoutVal: number) {
+    setTimeout(() => {
+        globalRefocus();
+    }, timeoutVal);
+}
+
 function globalRefocus() {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
@@ -184,7 +191,14 @@ async function handleCmdN() {
     await createBlock(termBlockDef);
 }
 
+let lastHandledEvent: KeyboardEvent | null = null;
+
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
+    const nativeEvent = (waveEvent as any).nativeEvent;
+    if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
+        return false;
+    }
+    lastHandledEvent = nativeEvent;
     const handled = handleGlobalWaveKeyboardEvents(waveEvent);
     if (handled) {
         return true;
@@ -223,6 +237,19 @@ function registerElectronReinjectKeyHandler() {
 
 function tryReinjectKey(event: WaveKeyboardEvent): boolean {
     return appHandleKeyDown(event);
+}
+
+function countTermBlocks(): number {
+    const allBCMs = getAllBlockComponentModels();
+    let count = 0;
+    let gsGetBound = globalStore.get.bind(globalStore);
+    for (const bcm of allBCMs) {
+        const viewModel = bcm.viewModel;
+        if (viewModel.viewType == "term" && viewModel.isBasicTerm?.(gsGetBound)) {
+            count++;
+        }
+    }
+    return count;
 }
 
 function registerGlobalKeys() {
@@ -307,6 +334,15 @@ function registerGlobalKeys() {
             return true;
         }
     });
+    globalKeyMap.set("Ctrl:Shift:i", () => {
+        const curMI = globalStore.get(atoms.isTermMultiInput);
+        if (!curMI && countTermBlocks() <= 1) {
+            // don't turn on multi-input unless there are 2 or more basic term blocks
+            return true;
+        }
+        globalStore.set(atoms.isTermMultiInput, !curMI);
+        return true;
+    });
     for (let idx = 1; idx <= 9; idx++) {
         globalKeyMap.set(`Cmd:${idx}`, () => {
             switchTabAbs(idx);
@@ -321,6 +357,28 @@ function registerGlobalKeys() {
             return true;
         });
     }
+    function activateSearch(event: WaveKeyboardEvent): boolean {
+        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        // Ctrl+f is reserved in most shells
+        if (event.control && bcm.viewModel.viewType == "term") {
+            return false;
+        }
+        if (bcm.viewModel.searchAtoms) {
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            return true;
+        }
+        return false;
+    }
+    function deactivateSearch(): boolean {
+        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, false);
+            return true;
+        }
+        return false;
+    }
+    globalKeyMap.set("Cmd:f", activateSearch);
+    globalKeyMap.set("Escape", deactivateSearch);
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft");
@@ -343,6 +401,7 @@ function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
             return handler(waveEvent);
         }
     }
+    return false;
 }
 
 export {
@@ -350,6 +409,7 @@ export {
     getAllGlobalKeyBindings,
     getSimpleControlShiftAtom,
     globalRefocus,
+    globalRefocusWithTimeout,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,

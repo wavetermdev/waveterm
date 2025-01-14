@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // types and methods for wsh rpc calls
@@ -73,6 +73,8 @@ const (
 	Command_GetVar               = "getvar"
 	Command_SetVar               = "setvar"
 	Command_RemoteMkdir          = "remotemkdir"
+	Command_RemoteGetInfo        = "remotegetinfo"
+	Command_RemoteInstallRcfiles = "remoteinstallrcfiles"
 
 	Command_ConnStatus       = "connstatus"
 	Command_WslStatus        = "wslstatus"
@@ -84,6 +86,7 @@ const (
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
 	Command_DismissWshFail   = "dismisswshfail"
+	Command_ConnUpdateWsh    = "updatewsh"
 
 	Command_WorkspaceList = "workspacelist"
 
@@ -118,6 +121,7 @@ type WshRpcInterface interface {
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
 	ControllerStopCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
+	ControllerAppendOutputCommand(ctx context.Context, data CommandControllerAppendOutputData) error
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
 	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (waveobj.ORef, error)
 	CreateSubBlockCommand(ctx context.Context, data CommandCreateSubBlockData) (waveobj.ORef, error)
@@ -154,14 +158,15 @@ type WshRpcInterface interface {
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
 	WslStatusCommand(ctx context.Context) ([]ConnStatus, error)
-	ConnEnsureCommand(ctx context.Context, connName string) error
-	ConnReinstallWshCommand(ctx context.Context, connName string) error
+	ConnEnsureCommand(ctx context.Context, data ConnExtData) error
+	ConnReinstallWshCommand(ctx context.Context, data ConnExtData) error
 	ConnConnectCommand(ctx context.Context, connRequest ConnRequest) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
 	WslListCommand(ctx context.Context) ([]string, error)
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
+	ConnUpdateWshCommand(ctx context.Context, remoteInfo RemoteInfo) (bool, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -176,6 +181,8 @@ type WshRpcInterface interface {
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteMkdirCommand(ctx context.Context, path string) error
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
+	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
+	RemoteInstallRcFilesCommand(ctx context.Context) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -309,6 +316,11 @@ type CommandControllerResyncData struct {
 	TabId        string               `json:"tabid" wshcontext:"TabId"`
 	BlockId      string               `json:"blockid" wshcontext:"BlockId"`
 	RtOpts       *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
+}
+
+type CommandControllerAppendOutputData struct {
+	BlockId string `json:"blockid"`
+	Data64  string `json:"data64"`
 }
 
 type CommandBlockInputData struct {
@@ -459,9 +471,10 @@ type CommandRemoteWriteFileData struct {
 }
 
 type ConnKeywords struct {
-	ConnWshEnabled          *bool `json:"conn:wshenabled,omitempty"`
-	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
-	ConnOverrideConfig      bool  `json:"conn:overrideconfig,omitempty"`
+	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
+	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
+	ConnOverrideConfig      bool   `json:"conn:overrideconfig,omitempty"`
+	ConnWshPath             string `json:"conn:wshpath,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`
@@ -488,8 +501,16 @@ type ConnKeywords struct {
 }
 
 type ConnRequest struct {
-	Host     string       `json:"host"`
-	Keywords ConnKeywords `json:"keywords,omitempty"`
+	Host       string       `json:"host"`
+	Keywords   ConnKeywords `json:"keywords,omitempty"`
+	LogBlockId string       `json:"logblockid,omitempty"`
+}
+
+type RemoteInfo struct {
+	ClientArch    string `json:"clientarch"`
+	ClientOs      string `json:"clientos"`
+	ClientVersion string `json:"clientversion"`
+	Shell         string `json:"shell"`
 }
 
 const (
@@ -534,6 +555,8 @@ type ConnStatus struct {
 	ActiveConnNum int    `json:"activeconnnum"`
 	Error         string `json:"error,omitempty"`
 	WshError      string `json:"wsherror,omitempty"`
+	NoWshReason   string `json:"nowshreason,omitempty"`
+	WshVersion    string `json:"wshversion,omitempty"`
 }
 
 type WebSelectorOpts struct {
@@ -645,4 +668,9 @@ type ActivityUpdate struct {
 	Blocks        map[string]int        `json:"blocks,omitempty"`
 	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
 	Conn          map[string]int        `json:"conn,omitempty"`
+}
+
+type ConnExtData struct {
+	ConnName   string `json:"connname"`
+	LogBlockId string `json:"logblockid,omitempty"`
 }

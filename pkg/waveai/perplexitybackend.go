@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -54,7 +54,7 @@ func (PerplexityBackend) StreamCompletion(ctx context.Context, request wshrpc.Wa
 
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("PerplexityBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("PerplexityBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}

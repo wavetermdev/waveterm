@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshserver
@@ -19,6 +19,7 @@ import (
 
 	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
@@ -47,7 +48,9 @@ func (*WshServer) WshServerImpl() {}
 var WshServerImpl = WshServer{}
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
-	defer panichandler.PanicHandler("TestCommand")
+	defer func() {
+		panichandler.PanicHandler("TestCommand", recover())
+	}()
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	log.Printf("TEST src:%s | %s\n", rpcSource, data)
 	return nil
@@ -63,7 +66,9 @@ func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMess
 func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrErrorUnion[int] {
 	rtn := make(chan wshrpc.RespOrErrorUnion[int])
 	go func() {
-		defer panichandler.PanicHandler("StreamTestCommand")
+		defer func() {
+			panichandler.PanicHandler("StreamTestCommand", recover())
+		}()
 		for i := 1; i <= 5; i++ {
 			rtn <- wshrpc.RespOrErrorUnion[int]{Response: i}
 			time.Sleep(1 * time.Second)
@@ -233,6 +238,7 @@ func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) 
 }
 
 func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.CommandControllerResyncData) error {
+	ctx = termCtxWithLogBlockId(ctx, data.BlockId)
 	return blockcontroller.ResyncController(ctx, data.TabId, data.BlockId, data.RtOpts, data.ForceRestart)
 }
 
@@ -254,6 +260,19 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 		inputUnion.InputData = inputBuf[:nw]
 	}
 	return bc.SendInput(inputUnion)
+}
+
+func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wshrpc.CommandControllerAppendOutputData) error {
+	outputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(data.Data64)))
+	nw, err := base64.StdEncoding.Decode(outputBuf, []byte(data.Data64))
+	if err != nil {
+		return fmt.Errorf("error decoding output data: %w", err)
+	}
+	err = blockcontroller.HandleAppendBlockFile(data.BlockId, blockcontroller.BlockFile_Term, outputBuf[:nw])
+	if err != nil {
+		return fmt.Errorf("error appending to block file: %w", err)
+	}
+	return nil
 }
 
 func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.CommandFileCreateData) error {
@@ -592,12 +611,28 @@ func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus,
 	return rtn, nil
 }
 
-func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
-	if strings.HasPrefix(connName, "wsl://") {
-		distroName := strings.TrimPrefix(connName, "wsl://")
+func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Context {
+	if logBlockId == "" {
+		return ctx
+	}
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, logBlockId)
+	if err != nil {
+		return ctx
+	}
+	connDebug := block.Meta.GetString(waveobj.MetaKey_TermConnDebug, "")
+	if connDebug == "" {
+		return ctx
+	}
+	return blocklogger.ContextWithLogBlockId(ctx, logBlockId, connDebug == "debug")
+}
+
+func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
+	if strings.HasPrefix(data.ConnName, "wsl://") {
+		distroName := strings.TrimPrefix(data.ConnName, "wsl://")
 		return wsl.EnsureConnection(ctx, distroName)
 	}
-	return conncontroller.EnsureConnection(ctx, connName)
+	return conncontroller.EnsureConnection(ctx, data.ConnName)
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
@@ -621,6 +656,7 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
+	ctx = termCtxWithLogBlockId(ctx, connRequest.LogBlockId)
 	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
@@ -641,7 +677,9 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 	return conn.Connect(ctx, &connRequest.Keywords)
 }
 
-func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
+func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
+	connName := data.ConnName
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wsl.GetWslConn(ctx, distroName, false)
@@ -658,7 +696,50 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName strin
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
-	return conn.CheckAndInstallWsh(ctx, connName, &conncontroller.WshInstallOpts{Force: true, NoUserPrompt: true})
+	return conn.InstallWsh(ctx)
+}
+
+func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc.RemoteInfo) (bool, error) {
+	handler := wshutil.GetRpcResponseHandlerFromContext(ctx)
+	if handler == nil {
+		return false, fmt.Errorf("could not determine handler from context")
+	}
+	connName := handler.GetRpcContext().Conn
+	if connName == "" {
+		return false, fmt.Errorf("invalid remote info: missing connection name")
+	}
+
+	log.Printf("checking wsh version for connection %s (current: %s)", connName, remoteInfo.ClientVersion)
+	upToDate, _, err := conncontroller.IsWshVersionUpToDate(remoteInfo.ClientVersion)
+	if err != nil {
+		return false, fmt.Errorf("unable to compare wsh version: %w", err)
+	}
+	if upToDate {
+		// no need to update
+		log.Printf("wsh is already up to date for connection %s", connName)
+		return false, nil
+	}
+
+	// todo: need to add user input code here for validation
+
+	if strings.HasPrefix(connName, "wsl://") {
+		return false, fmt.Errorf("connupdatewshcommand is not supported for wsl connections")
+	}
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return false, fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	if conn == nil {
+		return false, fmt.Errorf("connection not found: %s", connName)
+	}
+	err = conn.UpdateWsh(ctx, connName, &remoteInfo)
+	if err != nil {
+		return false, fmt.Errorf("wsh update failed for connection %s: %w", connName, err)
+	}
+
+	// todo: need to add code for modifying configs?
+	return true, nil
 }
 
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
@@ -704,9 +785,7 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	if conn == nil {
 		return fmt.Errorf("connection %s not found", connName)
 	}
-	conn.WithLock(func() {
-		conn.WshError = ""
-	})
+	conn.ClearWshError()
 	conn.FireConnChangeEvent()
 	return nil
 }

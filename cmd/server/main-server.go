@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package main
@@ -17,6 +17,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -120,7 +121,9 @@ func panicTelemetryHandler() {
 }
 
 func sendTelemetryWrapper() {
-	defer panichandler.PanicHandler("sendTelemetryWrapper")
+	defer func() {
+		panichandler.PanicHandler("sendTelemetryWrapper", recover())
+	}()
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
@@ -270,7 +273,9 @@ func main() {
 	}
 	panichandler.PanicTelemetryHandler = panicTelemetryHandler
 	go func() {
-		defer panichandler.PanicHandler("InitCustomShellStartupFiles")
+		defer func() {
+			panichandler.PanicHandler("InitCustomShellStartupFiles", recover())
+		}()
 		err := shellutil.InitCustomShellStartupFiles()
 		if err != nil {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
@@ -293,6 +298,7 @@ func main() {
 	go stdinReadWatch()
 	go telemetryLoop()
 	configWatcher()
+	blocklogger.InitBlockLogger()
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {
 		log.Printf("error creating web listener: %v\n", err)

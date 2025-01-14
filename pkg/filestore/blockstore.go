@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package filestore
@@ -514,7 +514,9 @@ func (s *FileStore) runFlushWithNewContext() (FlushStats, error) {
 }
 
 func (s *FileStore) runFlusher() {
-	defer panichandler.PanicHandler("filestore flusher")
+	defer func() {
+		panichandler.PanicHandler("filestore flusher", recover())
+	}()
 	for {
 		stats, err := s.runFlushWithNewContext()
 		if err != nil || stats.NumDirtyEntries > 0 {

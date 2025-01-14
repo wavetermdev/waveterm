@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package utilfn
@@ -938,7 +938,7 @@ func FormatLsTime(t time.Time) string {
 		// Recent files: "Nov 18 18:40"
 		return t.Format("Jan _2 15:04")
 	} else {
-		// Older files: "Apr 12  2024"
+		// Older files: "Apr 12  2025"
 		return t.Format("Jan _2  2006")
 	}
 }
@@ -963,4 +963,24 @@ func SafeDeref[T any](x *T) T {
  */
 func Ptr[T any](x T) *T {
 	return &x
+}
+
+/**
+ * Utility function to convert know architecture patterns
+ * to the patterns we use. It returns an error if the
+ * provided name is unknown
+ */
+func FilterValidArch(arch string) (string, error) {
+	formatted := strings.TrimSpace(strings.ToLower(arch))
+	switch formatted {
+	case "amd64":
+		return "x64", nil
+	case "x86_64":
+		return "x64", nil
+	case "x64":
+		return "x64", nil
+	case "arm64":
+		return "arm64", nil
+	}
+	return "", fmt.Errorf("unknown architecture: %s", formatted)
 }

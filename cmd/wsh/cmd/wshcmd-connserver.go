@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -10,7 +10,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -32,14 +34,21 @@ var serverCmd = &cobra.Command{
 }
 
 var connServerRouter bool
+var singleServerRouter bool
 
 func init() {
 	serverCmd.Flags().BoolVar(&connServerRouter, "router", false, "run in local router mode")
+	serverCmd.Flags().BoolVar(&singleServerRouter, "single", false, "run in local single mode")
 	rootCmd.AddCommand(serverCmd)
 }
 
+func getRemoteDomainSocketName() string {
+	homeDir := wavebase.GetHomeDir()
+	return filepath.Join(homeDir, wavebase.RemoteWaveHomeDirName, wavebase.RemoteDomainSocketBaseName)
+}
+
 func MakeRemoteUnixListener() (net.Listener, error) {
-	serverAddr := wavebase.GetRemoteDomainSocketName()
+	serverAddr := getRemoteDomainSocketName()
 	os.Remove(serverAddr) // ignore error
 	rtn, err := net.Listen("unix", serverAddr)
 	if err != nil {
@@ -54,7 +63,9 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 	var routeIdContainer atomic.Pointer[string]
 	proxy := wshutil.MakeRpcProxy()
 	go func() {
-		defer panichandler.PanicHandler("handleNewListenerConn:AdaptOutputChToStream")
+		defer func() {
+			panichandler.PanicHandler("handleNewListenerConn:AdaptOutputChToStream", recover())
+		}()
 		writeErr := wshutil.AdaptOutputChToStream(proxy.ToRemoteCh, conn)
 		if writeErr != nil {
 			log.Printf("error writing to domain socket: %v\n", writeErr)
@@ -62,7 +73,9 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 	}()
 	go func() {
 		// when input is closed, close the connection
-		defer panichandler.PanicHandler("handleNewListenerConn:AdaptStreamToMsgCh")
+		defer func() {
+			panichandler.PanicHandler("handleNewListenerConn:AdaptStreamToMsgCh", recover())
+		}()
 		defer func() {
 			conn.Close()
 			routeIdPtr := routeIdContainer.Load()
@@ -139,7 +152,9 @@ func serverRunRouter() error {
 	rawCh := make(chan []byte, wshutil.DefaultOutputChSize)
 	go packetparser.Parse(os.Stdin, termProxy.FromRemoteCh, rawCh)
 	go func() {
-		defer panichandler.PanicHandler("serverRunRouter:WritePackets")
+		defer func() {
+			panichandler.PanicHandler("serverRunRouter:WritePackets", recover())
+		}()
 		for msg := range termProxy.ToRemoteCh {
 			packetparser.WritePacket(os.Stdout, msg)
 		}
@@ -174,6 +189,39 @@ func serverRunRouter() error {
 	select {}
 }
 
+func checkForUpdate() error {
+	remoteInfo := wshutil.GetInfo()
+	needsRestartRaw, err := RpcClient.SendRpcRequest(wshrpc.Command_ConnUpdateWsh, remoteInfo, &wshrpc.RpcOpts{Timeout: 60000})
+	if err != nil {
+		return fmt.Errorf("could not update: %w", err)
+	}
+	needsRestart, ok := needsRestartRaw.(bool)
+	if !ok {
+		return fmt.Errorf("wrong return type from update")
+	}
+	if needsRestart {
+		// run the restart command here
+		// how to get the correct path?
+		return syscall.Exec("~/.waveterm/bin/wsh", []string{"wsh", "connserver", "--single"}, []string{})
+	}
+	return nil
+}
+
+func serverRunSingle() error {
+	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout})
+	if err != nil {
+		return err
+	}
+	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
+	err = checkForUpdate()
+	if err != nil {
+		return err
+	}
+
+	go wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
+	select {} // run forever
+}
+
 func serverRunNormal() error {
 	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout})
 	if err != nil {
@@ -185,7 +233,9 @@ func serverRunNormal() error {
 }
 
 func serverRun(cmd *cobra.Command, args []string) error {
-	if connServerRouter {
+	if singleServerRouter {
+		return serverRunSingle()
+	} else if connServerRouter {
 		return serverRunRouter()
 	} else {
 		return serverRunNormal()

@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 .search-container {
     display: flex;
     flex-direction: row;
@@ -31,13 +34,25 @@
         }
     }
 
-    .right-buttons {
+    .right-buttons,
+    .additional-buttons {
         display: flex;
-        gap: 5px;
-        padding-left: 5px;
         border-left: 1px solid var(--modal-border-color);
+    }
+
+    .right-buttons {
+        gap: 5px;
+        padding-left: 4px;
         button {
             font-size: 12px;
+        }
+    }
+
+    .additional-buttons {
+        gap: 1px;
+        padding-left: 5px;
+        button {
+            font-size: 14px;
         }
     }
 }

@@ -50,11 +50,9 @@ For packaging, the following additional packages are required:
 
 #### Windows
 
-You will need the GNU build toolchain installed in order for Go to work on Windows. In most cases, this requires installing MinGW-w64.
+You will need the [Zig](https://ziglang.org/) compiler for statically linking CGO.
 
-The easiest way to install this is using MSYS2: https://www.msys2.org/
-
-If you prefer an alternative method, you can find other methods here: https://www.mingw-w64.org/downloads/
+You can find installation instructions for Zig on Windows [here](https://ziglang.org/learn/getting-started/#managers).
 
 ### Task
 
@@ -103,6 +101,14 @@ or
 git clone https://github.com/wavetermdev/waveterm.git
 ```
 
+## Install code dependencies
+
+The first time you clone the repo, you'll need to run the following to load the dependencies. If you ever have issues building the app, try running this again:
+
+```sh
+task init
+```
+
 ## Build and Run
 
 All the methods below will install Node and Go dependencies when they run the first time. All these should be run from within the Git repository.
@@ -112,7 +118,7 @@ All the methods below will install Node and Go dependencies when they run the fi
 Run the following command to build the app and run it via Vite's development server (this enables Hot Module Reloading):
 
 ```sh
-task electron:dev
+task dev
 ```
 
 ### Standalone
@@ -120,7 +126,7 @@ task electron:dev
 Run the following command to build the app and run it standalone, without the development server. This will not reload on change:
 
 ```sh
-task electron:start
+task start
 ```
 
 ### Packaged

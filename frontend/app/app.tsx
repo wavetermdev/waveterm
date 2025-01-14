@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Workspace } from "@/app/workspace/workspace";
@@ -6,11 +6,11 @@ import { ContextMenuModel } from "@/store/contextmenu";
 import {
     atoms,
     createBlock,
+    getSettingsPrefixAtom,
     globalStore,
     isDev,
     PLATFORM,
     removeFlashError,
-    useSettingsPrefixAtom,
 } from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
@@ -123,7 +123,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
 }
 
 function AppSettingsUpdater() {
-    const windowSettingsAtom = useSettingsPrefixAtom("window");
+    const windowSettingsAtom = getSettingsPrefixAtom("window");
     const windowSettings = useAtomValue(windowSettingsAtom);
     useEffect(() => {
         const isTransparentOrBlur =

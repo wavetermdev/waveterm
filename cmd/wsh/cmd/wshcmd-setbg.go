@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -140,7 +140,8 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			}
 
 			// Create URL-safe path
-			escapedPath := strings.ReplaceAll(absPath, "'", "\\'")
+			escapedPath := strings.ReplaceAll(absPath, "\\", "\\\\")
+			escapedPath = strings.ReplaceAll(escapedPath, "'", "\\'")
 			bgStyle = fmt.Sprintf("url('%s')", escapedPath)
 
 			switch {

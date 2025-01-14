@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { FileService } from "@/app/store/services";
@@ -263,7 +263,7 @@ export function ensureHotSpareTab(fullConfig: FullConfigType) {
 }
 
 export function getSpareTab(fullConfig: FullConfigType): WaveTabView {
-    setTimeout(ensureHotSpareTab, 500);
+    setTimeout(() => ensureHotSpareTab(fullConfig), 500);
     if (HotSpareTab != null) {
         const rtn = HotSpareTab;
         HotSpareTab = null;

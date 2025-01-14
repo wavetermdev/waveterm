@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshutil
@@ -12,6 +12,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -21,6 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
@@ -151,7 +155,7 @@ func installShutdownSignalHandlers(quiet bool) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
-		defer panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers")
+		defer panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers", recover())
 		for sig := range sigCh {
 			DoShutdown(fmt.Sprintf("got signal %v", sig), 1, quiet)
 			break
@@ -200,7 +204,9 @@ func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
 	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	go func() {
-		defer panichandler.PanicHandler("SetupTerminalRpcClient")
+		defer func() {
+			panichandler.PanicHandler("SetupTerminalRpcClient", recover())
+		}()
 		for msg := range outputCh {
 			barr, err := EncodeWaveOSCBytes(WaveOSC, msg)
 			if err != nil {
@@ -221,7 +227,9 @@ func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerIm
 	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
 	go packetparser.Parse(input, messageCh, rawCh)
 	go func() {
-		defer panichandler.PanicHandler("SetupPacketRpcClient:outputloop")
+		defer func() {
+			panichandler.PanicHandler("SetupPacketRpcClient:outputloop", recover())
+		}()
 		for msg := range outputCh {
 			packetparser.WritePacket(output, msg)
 		}
@@ -234,7 +242,9 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan err
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	writeErrCh := make(chan error, 1)
 	go func() {
-		defer panichandler.PanicHandler("SetupConnRpcClient:AdaptOutputChToStream")
+		defer func() {
+			panichandler.PanicHandler("SetupConnRpcClient:AdaptOutputChToStream", recover())
+		}()
 		writeErr := AdaptOutputChToStream(outputCh, conn)
 		if writeErr != nil {
 			writeErrCh <- writeErr
@@ -242,7 +252,9 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan err
 		}
 	}()
 	go func() {
-		defer panichandler.PanicHandler("SetupConnRpcClient:AdaptStreamToMsgCh")
+		defer func() {
+			panichandler.PanicHandler("SetupConnRpcClient:AdaptStreamToMsgCh", recover())
+		}()
 		// when input is closed, close the connection
 		defer conn.Close()
 		AdaptStreamToMsgCh(conn, inputCh)
@@ -270,7 +282,9 @@ func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc
 	}
 	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl)
 	go func() {
-		defer panichandler.PanicHandler("SetupDomainSocketRpcClient:closeConn")
+		defer func() {
+			panichandler.PanicHandler("SetupDomainSocketRpcClient:closeConn", recover())
+		}()
 		defer conn.Close()
 		err := <-errCh
 		if err != nil && err != io.EOF {
@@ -417,11 +431,15 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 		proxy.DisposeRoutes()
 	}
 	go func() {
-		defer panichandler.PanicHandler("HandleStdIOClient:RunUnauthLoop")
+		defer func() {
+			panichandler.PanicHandler("HandleStdIOClient:RunUnauthLoop", recover())
+		}()
 		proxy.RunUnauthLoop()
 	}()
 	go func() {
-		defer panichandler.PanicHandler("HandleStdIOClient:ToRemoteChLoop")
+		defer func() {
+			panichandler.PanicHandler("HandleStdIOClient:ToRemoteChLoop", recover())
+		}()
 		defer closeDoneCh()
 		for msg := range proxy.ToRemoteCh {
 			err := packetparser.WritePacket(output, msg)
@@ -432,7 +450,9 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 		}
 	}()
 	go func() {
-		defer panichandler.PanicHandler("HandleStdIOClient:RawChLoop")
+		defer func() {
+			panichandler.PanicHandler("HandleStdIOClient:RawChLoop", recover())
+		}()
 		defer closeDoneCh()
 		for msg := range rawCh {
 			log.Printf("[%s:stdout] %s", logName, msg)
@@ -445,7 +465,9 @@ func handleDomainSocketClient(conn net.Conn) {
 	var routeIdContainer atomic.Pointer[string]
 	proxy := MakeRpcProxy()
 	go func() {
-		defer panichandler.PanicHandler("handleDomainSocketClient:AdaptOutputChToStream")
+		defer func() {
+			panichandler.PanicHandler("handleDomainSocketClient:AdaptOutputChToStream", recover())
+		}()
 		writeErr := AdaptOutputChToStream(proxy.ToRemoteCh, conn)
 		if writeErr != nil {
 			log.Printf("error writing to domain socket: %v\n", writeErr)
@@ -453,7 +475,9 @@ func handleDomainSocketClient(conn net.Conn) {
 	}()
 	go func() {
 		// when input is closed, close the connection
-		defer panichandler.PanicHandler("handleDomainSocketClient:AdaptStreamToMsgCh")
+		defer func() {
+			panichandler.PanicHandler("handleDomainSocketClient:AdaptStreamToMsgCh", recover())
+		}()
 		defer func() {
 			conn.Close()
 			routeIdPtr := routeIdContainer.Load()
@@ -515,4 +539,33 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	}
 	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	return sockName, nil
+}
+
+func getShell() string {
+	if runtime.GOOS == "darwin" {
+		return shellutil.GetMacUserShell()
+	}
+
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		return "/bin/bash"
+	}
+	return strings.TrimSpace(shell)
+}
+
+func GetInfo() wshrpc.RemoteInfo {
+	return wshrpc.RemoteInfo{
+		ClientArch:    runtime.GOARCH,
+		ClientOs:      runtime.GOOS,
+		ClientVersion: wavebase.WaveVersion,
+		Shell:         getShell(),
+	}
+
+}
+
+func InstallRcFiles() error {
+	home := wavebase.GetHomeDir()
+	waveDir := filepath.Join(home, wavebase.RemoteWaveHomeDirName)
+	winBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
+	return shellutil.InitRcFiles(waveDir, winBinDir)
 }

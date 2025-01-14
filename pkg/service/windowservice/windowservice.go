@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package windowservice
@@ -151,7 +151,9 @@ func (svc *WindowService) SwitchWorkspace(ctx context.Context, windowId string, 
 
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WindowService:SwitchWorkspace:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WindowService:SwitchWorkspace:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return ws, err

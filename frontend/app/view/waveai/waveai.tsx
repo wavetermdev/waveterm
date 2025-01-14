@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
@@ -347,7 +347,7 @@ export class WaveAiModel implements ViewModel {
             // Add a typing indicator
             globalStore.set(this.addMessageAtom, typingMessage);
             const history = await this.fetchAiData();
-            const beMsg: OpenAiStreamRequest = {
+            const beMsg: WaveAIStreamRequest = {
                 clientid: clientId,
                 opts: opts,
                 prompt: [...history, newPrompt],

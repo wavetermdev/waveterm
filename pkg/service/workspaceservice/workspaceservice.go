@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package workspaceservice
@@ -54,11 +54,14 @@ func (svc *WorkspaceService) UpdateWorkspace(ctx context.Context, workspaceId st
 	}
 
 	wps.Broker.Publish(wps.WaveEvent{
-		Event: wps.Event_WorkspaceUpdate})
+		Event: wps.Event_WorkspaceUpdate,
+	})
 
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:UpdateWorkspace:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:UpdateWorkspace:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return updates, nil
@@ -87,23 +90,28 @@ func (svc *WorkspaceService) DeleteWorkspace_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.UpdatesRtnType, error) {
+func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.UpdatesRtnType, string, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	deleted, err := wcore.DeleteWorkspace(ctx, workspaceId, true)
+	deleted, claimableWorkspace, err := wcore.DeleteWorkspace(ctx, workspaceId, true)
+	if claimableWorkspace != "" {
+		return nil, claimableWorkspace, nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("error deleting workspace: %w", err)
+		return nil, claimableWorkspace, fmt.Errorf("error deleting workspace: %w", err)
 	}
 	if !deleted {
-		return nil, nil
+		return nil, claimableWorkspace, nil
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:DeleteWorkspace:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:DeleteWorkspace:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
-	return updates, nil
+	return updates, claimableWorkspace, nil
 }
 
 func (svc *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
@@ -149,7 +157,9 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:CreateTab:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:CreateTab:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return tabId, updates, nil
@@ -170,7 +180,9 @@ func (svc *WorkspaceService) ChangeTabPinning(ctx context.Context, workspaceId s
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:ChangeTabPinning:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:ChangeTabPinning:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return updates, nil
@@ -220,7 +232,9 @@ func (svc *WorkspaceService) SetActiveTab(workspaceId string, tabId string) (wav
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:SetActiveTab:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:SetActiveTab:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	var extraUpdates waveobj.UpdatesRtnType
@@ -266,7 +280,9 @@ func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, t
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
-		defer panichandler.PanicHandler("WorkspaceService:CloseTab:SendUpdateEvents")
+		defer func() {
+			panichandler.PanicHandler("WorkspaceService:CloseTab:SendUpdateEvents", recover())
+		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return rtn, updates, nil
