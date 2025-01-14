@@ -102,11 +102,12 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 		for dir := range dirMap {
 			dirName := prefix + dir + "/"
 			filteredList = append(filteredList, &wshrpc.FileInfo{
-				Path:  fmt.Sprintf(WaveFilePathPattern, zoneId, dirName),
-				Name:  dirName,
-				Dir:   dirName,
-				Size:  0,
-				IsDir: true,
+				Path:          fmt.Sprintf(WaveFilePathPattern, zoneId, dirName),
+				Name:          dirName,
+				Dir:           dirName,
+				Size:          0,
+				IsDir:         true,
+				SupportsMkdir: false,
 			})
 		}
 		fileList = filteredList
@@ -223,10 +224,11 @@ func (c WaveClient) GetConnectionType() string {
 func waveFileToFileInfo(wf *filestore.WaveFile) *wshrpc.FileInfo {
 	path := fmt.Sprintf(WaveFilePathPattern, wf.ZoneId, wf.Name)
 	return &wshrpc.FileInfo{
-		Path: path,
-		Name: wf.Name,
-		Opts: &wf.Opts,
-		Size: wf.Size,
-		Meta: &wf.Meta,
+		Path:          path,
+		Name:          wf.Name,
+		Opts:          &wf.Opts,
+		Size:          wf.Size,
+		Meta:          &wf.Meta,
+		SupportsMkdir: false,
 	}
 }

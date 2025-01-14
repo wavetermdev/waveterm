@@ -277,15 +277,16 @@ func listFilesInternal(path string, fileInfoArr []*fs.DirEntry, seen *int, opts 
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
 	mimeType := utilfn.DetectMimeType(fullPath, finfo, extended)
 	rtn := &wshrpc.FileInfo{
-		Path:     wavebase.ReplaceHomeDir(fullPath),
-		Dir:      computeDirPart(fullPath, finfo.IsDir()),
-		Name:     finfo.Name(),
-		Size:     finfo.Size(),
-		Mode:     finfo.Mode(),
-		ModeStr:  finfo.Mode().String(),
-		ModTime:  finfo.ModTime().UnixMilli(),
-		IsDir:    finfo.IsDir(),
-		MimeType: mimeType,
+		Path:          wavebase.ReplaceHomeDir(fullPath),
+		Dir:           computeDirPart(fullPath, finfo.IsDir()),
+		Name:          finfo.Name(),
+		Size:          finfo.Size(),
+		Mode:          finfo.Mode(),
+		ModeStr:       finfo.Mode().String(),
+		ModTime:       finfo.ModTime().UnixMilli(),
+		IsDir:         finfo.IsDir(),
+		MimeType:      mimeType,
+		SupportsMkdir: true,
 	}
 	if finfo.IsDir() {
 		rtn.Size = -1
@@ -338,10 +339,11 @@ func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInf
 	finfo, err := os.Stat(cleanedPath)
 	if os.IsNotExist(err) {
 		return &wshrpc.FileInfo{
-			Path:     wavebase.ReplaceHomeDir(path),
-			Dir:      computeDirPart(path, false),
-			NotFound: true,
-			ReadOnly: checkIsReadOnly(cleanedPath, finfo, false),
+			Path:          wavebase.ReplaceHomeDir(path),
+			Dir:           computeDirPart(path, false),
+			NotFound:      true,
+			ReadOnly:      checkIsReadOnly(cleanedPath, finfo, false),
+			SupportsMkdir: true,
 		}, nil
 	}
 	if err != nil {

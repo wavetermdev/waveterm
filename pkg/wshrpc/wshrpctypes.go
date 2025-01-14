@@ -349,7 +349,7 @@ type FileInfo struct {
 	ModeStr       string        `json:"modestr"`
 	ModTime       int64         `json:"modtime"`
 	IsDir         bool          `json:"isdir,omitempty"`
-	SupportsMkdir *bool         `json:"supportsmkdir,omitempty"`
+	SupportsMkdir bool          `json:"supportsmkdir,omitempty"`
 	MimeType      string        `json:"mimetype,omitempty"`
 	ReadOnly      bool          `json:"readonly,omitempty"` // this is not set for fileinfo's returned from directory listings
 }
