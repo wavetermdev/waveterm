@@ -37,7 +37,6 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         );
         modalsModel.popModal();
     }, [responseText, userInputRequest]);
-    console.log("bar");
 
     const handleSendConfirm = useCallback(
         (response: boolean) => {
@@ -64,7 +63,6 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 break;
         }
     }, [handleSendConfirm, handleSendText, userInputRequest.responsetype]);
-    console.log("baz");
 
     const handleKeyDown = useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
@@ -86,7 +84,6 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
         return <span className="userinput-text">{userInputRequest.querytext}</span>;
     }, [userInputRequest.markdown, userInputRequest.querytext]);
-    console.log("foobarbaz");
 
     const inputBox = useMemo(() => {
         if (userInputRequest.responsetype === "confirm") {
@@ -104,7 +101,6 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             />
         );
     }, [userInputRequest.responsetype, userInputRequest.publictext, responseText, handleKeyDown, setResponseText]);
-    console.log("mem1");
 
     const optionalCheckbox = useMemo(() => {
         if (userInputRequest.checkboxmsg == "") {
@@ -124,7 +120,6 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             </div>
         );
     }, []);
-    console.log("mem2");
 
     useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
@@ -139,7 +134,6 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         }
         return () => clearTimeout(timeout);
     }, [countdown]);
-    console.log("count");
 
     const handleNegativeResponse = useCallback(() => {
         switch (userInputRequest.responsetype) {
@@ -151,7 +145,6 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 break;
         }
     }, [userInputRequest.responsetype, handleSendErrResponse, handleSendConfirm]);
-    console.log("before end");
 
     return (
         <Modal
