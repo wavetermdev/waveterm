@@ -749,6 +749,13 @@ declare global {
         values: {[key: string]: number};
     };
 
+    // wshrpc.TokenSwapEntry
+    type TokenSwapEntry = {
+        token: string;
+        env?: {[key: string]: string};
+        scripttext?: string;
+    };
+
     // waveobj.UIContext
     type UIContext = {
         windowid: string;

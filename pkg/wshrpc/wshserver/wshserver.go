@@ -26,6 +26,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -946,4 +947,9 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 		}
 	}
 	return path, nil
+}
+
+func (ws *WshServer) TokenSwapCommand(ctx context.Context, token string) (*wshrpc.TokenSwapEntry, error) {
+	entry := shellutil.GetAndRemoveTokenSwapEntry(token)
+	return entry, nil
 }

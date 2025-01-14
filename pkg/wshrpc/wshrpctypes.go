@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
@@ -154,6 +155,7 @@ type WshRpcInterface interface {
 	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 	PathCommand(ctx context.Context, data PathCommandData) (string, error)
+	TokenSwapCommand(ctx context.Context, token string) (*TokenSwapEntry, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -674,4 +676,11 @@ type ActivityUpdate struct {
 type ConnExtData struct {
 	ConnName   string `json:"connname"`
 	LogBlockId string `json:"logblockid,omitempty"`
+}
+
+type TokenSwapEntry struct {
+	Token      string            `json:"token"`
+	Env        map[string]string `json:"env,omitempty"`
+	ScriptText string            `json:"scripttext,omitempty"`
+	Exp        time.Time         `json:"-"`
 }

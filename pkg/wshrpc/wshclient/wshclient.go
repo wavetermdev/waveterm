@@ -398,6 +398,12 @@ func TestCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	return err
 }
 
+// command "tokenswap", wshserver.TokenSwapCommand
+func TokenSwapCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.TokenSwapEntry, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.TokenSwapEntry](w, "tokenswap", data, opts)
+	return resp, err
+}
+
 // command "vdomasyncinitiation", wshserver.VDomAsyncInitiationCommand
 func VDomAsyncInitiationCommand(w *wshutil.WshRpc, data vdom.VDomAsyncInitiationRequest, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "vdomasyncinitiation", data, opts)

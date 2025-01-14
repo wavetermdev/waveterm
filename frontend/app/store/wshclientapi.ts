@@ -332,6 +332,11 @@ class RpcApiType {
         return client.wshRpcCall("test", data, opts);
     }
 
+    // command "tokenswap" [call]
+    TokenSwapCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<TokenSwapEntry> {
+        return client.wshRpcCall("tokenswap", data, opts);
+    }
+
     // command "vdomasyncinitiation" [call]
     VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("vdomasyncinitiation", data, opts);
