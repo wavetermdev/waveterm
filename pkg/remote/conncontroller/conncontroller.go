@@ -284,7 +284,7 @@ func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, string,
 	if err != nil {
 		return false, "", "", fmt.Errorf("unable to create jwt token for conn controller: %w", err)
 	}
-	log.Printf("SSH-NEWSESSION (StartConnServer)\n")
+	conn.Infof(ctx, "SSH-NEWSESSION (StartConnServer)\n")
 	sshSession, err := client.NewSession()
 	if err != nil {
 		return false, "", "", fmt.Errorf("unable to create ssh session for conn controller: %w", err)

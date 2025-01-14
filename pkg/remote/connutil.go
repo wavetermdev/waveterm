@@ -106,13 +106,14 @@ func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, cli
 	defer input.Close()
 	installWords := map[string]string{
 		"installDir":  filepath.ToSlash(filepath.Dir(wavebase.RemoteFullWshBinPath)),
-		"tempPath":    filepath.ToSlash(wavebase.RemoteFullWshBinPath + ".temp"),
-		"installPath": filepath.ToSlash(wavebase.RemoteFullWshBinPath),
+		"tempPath":    wavebase.RemoteFullWshBinPath + ".temp",
+		"installPath": wavebase.RemoteFullWshBinPath,
 	}
 	var installCmd bytes.Buffer
 	if err := installTemplate.Execute(&installCmd, installWords); err != nil {
 		return fmt.Errorf("failed to prepare install command: %w", err)
 	}
+	blocklogger.Infof(ctx, "[conndebug] copying %q to remote server %q\n", wshLocalPath, wavebase.RemoteFullWshBinPath)
 	genCmd, err := genconn.MakeSSHCmdClient(client, genconn.CommandSpec{
 		Cmd: installCmd.String(),
 	})
