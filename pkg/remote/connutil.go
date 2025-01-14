@@ -95,7 +95,7 @@ chmod a+x {{.installPath}} || exit 1
 var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
 
 func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, clientArch string) error {
-	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	wshLocalPath, err := shellutil.GetLocalWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
 	if err != nil {
 		return err
 	}

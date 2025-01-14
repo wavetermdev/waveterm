@@ -240,19 +240,23 @@ func InitCustomShellStartupFiles() error {
 	return err
 }
 
-func GetBashRcFileOverride() string {
+func GetLocalBashRcFileOverride() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), BashIntegrationDir, ".bashrc")
 }
 
-func GetWavePowershellEnv() string {
+func GetLocalWaveFishFilePath() string {
+	return filepath.Join(wavebase.GetWaveDataDir(), FishIntegrationDir, "wave.fish")
+}
+
+func GetLocalWavePowershellEnv() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), PwshIntegrationDir, "wavepwsh.ps1")
 }
 
-func GetZshZDotDir() string {
+func GetLocalZshZDotDir() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), ZshIntegrationDir)
 }
 
-func GetWshBinaryPath(version string, goos string, goarch string) (string, error) {
+func GetLocalWshBinaryPath(version string, goos string, goarch string) (string, error) {
 	ext := ""
 	if goarch == "amd64" {
 		goarch = "x64"
@@ -355,7 +359,7 @@ func initCustomShellStartupFilesInternal() error {
 	}
 
 	// copy the correct binary to bin
-	wshFullPath, err := GetWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
+	wshFullPath, err := GetLocalWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		log.Printf("error (non-fatal), could not resolve wsh binary path: %v\n", err)
 	}

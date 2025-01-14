@@ -408,7 +408,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 		if len(blockMeta.GetStringList(waveobj.MetaKey_TermLocalShellOpts)) > 0 {
 			cmdOpts.ShellOpts = append([]string{}, blockMeta.GetStringList(waveobj.MetaKey_TermLocalShellOpts)...)
 		}
-		shellProc, err = shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
+		shellProc, err = shellexec.StartLocalShellProc(rc.TermSize, cmdStr, cmdOpts)
 		if err != nil {
 			return nil, err
 		}
