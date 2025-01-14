@@ -282,7 +282,7 @@ func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileCrea
 		fileOpts = *data.Opts
 	}
 	err := fileshare.PutFile(ctx, wshrpc.FileData{
-		Path:   data.Path,
+		Info:   &wshrpc.FileInfo{Path: data.Path},
 		Data64: "",
 		Opts:   &fileOpts,
 	})
@@ -293,15 +293,15 @@ func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileCrea
 }
 
 func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.FileData) error {
-	return fileshare.Delete(ctx, data.Path)
+	return fileshare.Delete(ctx, data.Info.Path)
 }
 
 func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileInfo, error) {
-	return fileshare.Stat(ctx, data.Path)
+	return fileshare.Stat(ctx, data.Info.Path)
 }
 
-func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFileListData) ([]*wshrpc.FileInfo, error) {
-	return fileshare.Read(ctx, data.Path)
+func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.FileListData) ([]*wshrpc.FileInfo, error) {
+	return fileshare.ListEntries(ctx, data.Path, data.Opts)
 }
 
 func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.FileData) error {
@@ -309,13 +309,14 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.FileData)
 }
 
 func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) (string, error) {
-
+	// TODO: implement this
+	return "", nil
 }
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
 	if data.FileName == blockcontroller.BlockFile_VDom && tryCreate {
-		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
+		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
 		if err != nil && err != fs.ErrExist {
 			return fmt.Errorf("error creating blockfile[vdom]: %w", err)
 		}

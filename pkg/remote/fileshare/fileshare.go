@@ -45,6 +45,14 @@ func Read(ctx context.Context, path string) (*wshrpc.FileData, error) {
 	return client.Read(ctx, conn, wshrpc.FileData{})
 }
 
+func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
+	client, conn := CreateFileShareClient(ctx, path)
+	if conn == nil || client == nil {
+		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
+	}
+	return client.ListEntries(ctx, conn, opts)
+}
+
 func Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
