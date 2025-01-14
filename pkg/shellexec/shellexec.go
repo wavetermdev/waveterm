@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -34,14 +33,6 @@ import (
 )
 
 const DefaultGracefulKillWait = 400 * time.Millisecond
-
-const (
-	ShellType_bash    = "bash"
-	ShellType_zsh     = "zsh"
-	ShellType_fish    = "fish"
-	ShellType_pwsh    = "pwsh"
-	ShellType_unknown = "unknown"
-)
 
 type CommandOptsType struct {
 	Interactive bool              `json:"interactive,omitempty"`
@@ -156,23 +147,6 @@ func (pp *PipePty) Close() error {
 
 func (pp *PipePty) WriteString(s string) (n int, err error) {
 	return pp.Write([]byte(s))
-}
-
-func getShellTypeFromShellPath(shellPath string) string {
-	shellBase := filepath.Base(shellPath)
-	if strings.Contains(shellBase, "bash") {
-		return ShellType_bash
-	}
-	if strings.Contains(shellBase, "zsh") {
-		return ShellType_zsh
-	}
-	if strings.Contains(shellBase, "fish") {
-		return ShellType_fish
-	}
-	if strings.Contains(shellBase, "pwsh") || strings.Contains(shellBase, "powershell") {
-		return ShellType_pwsh
-	}
-	return ShellType_unknown
 }
 
 func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wsl.WslConn) (*ShellProc, error) {
@@ -349,17 +323,17 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 		return nil, err
 	}
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
-	shellType := getShellTypeFromShellPath(shellPath)
+	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
 	conn.Infof(ctx, "detected shell type: %s\n", shellType)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
-		if shellType == ShellType_bash {
+		if shellType == shellutil.ShellType_bash {
 			// add --rcfile
 			// cant set -l or -i with --rcfile
 			bashPath := fmt.Sprintf("~/.waveterm/%s/.bashrc", shellutil.BashIntegrationDir)
 			shellOpts = append(shellOpts, "--rcfile", bashPath)
-		} else if shellType == ShellType_fish {
+		} else if shellType == shellutil.ShellType_fish {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
 			}
@@ -367,7 +341,7 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 			waveFishPath := fmt.Sprintf("~/.waveterm/%s/wave.fish", shellutil.FishIntegrationDir)
 			carg := fmt.Sprintf(`"source %s"`, waveFishPath)
 			shellOpts = append(shellOpts, "-C", carg)
-		} else if shellType == ShellType_pwsh {
+		} else if shellType == shellutil.ShellType_pwsh {
 			pwshPath := fmt.Sprintf("~/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir)
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
@@ -424,7 +398,7 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 		session.Setenv(envKey, envVal)
 	}
 
-	if shellType == ShellType_zsh {
+	if shellType == shellutil.ShellType_zsh {
 		zshDir := fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir)
 		conn.Infof(ctx, "setting ZDOTDIR to %s\n", zshDir)
 		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
@@ -471,21 +445,21 @@ func StartLocalShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comma
 	if shellPath == "" {
 		shellPath = shellutil.DetectLocalShellPath()
 	}
-	shellType := getShellTypeFromShellPath(shellPath)
+	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	if cmdStr == "" {
-		if shellType == ShellType_bash {
+		if shellType == shellutil.ShellType_bash {
 			// add --rcfile
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", shellutil.GetLocalBashRcFileOverride())
-		} else if shellType == ShellType_fish {
+		} else if shellType == shellutil.ShellType_fish {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
 			}
 			waveFishPath := shellutil.GetLocalWaveFishFilePath()
-			carg := fmt.Sprintf("source %s", genconn.HardQuote(waveFishPath))
+			carg := fmt.Sprintf("source %s", shellutil.HardQuoteFish(waveFishPath))
 			shellOpts = append(shellOpts, "-C", carg)
-		} else if shellType == ShellType_pwsh {
+		} else if shellType == shellutil.ShellType_pwsh {
 			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", shellutil.GetLocalWavePowershellEnv())
 		} else {
 			if cmdOpts.Login {
@@ -497,7 +471,7 @@ func StartLocalShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comma
 		}
 		ecmd = exec.Command(shellPath, shellOpts...)
 		ecmd.Env = os.Environ()
-		if shellType == ShellType_zsh {
+		if shellType == shellutil.ShellType_zsh {
 			shellutil.UpdateCmdEnv(ecmd, map[string]string{"ZDOTDIR": shellutil.GetLocalZshZDotDir()})
 		}
 	} else {

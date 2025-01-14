@@ -1,14 +1,19 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package genconn
+package shellutil
 
 import "regexp"
 
 var (
-	safePattern   = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
-	psSafePattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+	safePattern       = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
+	psSafePattern     = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+	envVarNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
+
+func IsValidEnvVarName(name string) bool {
+	return envVarNamePattern.MatchString(name)
+}
 
 // TODO: fish quoting is slightly different
 // specifically \` will cause an inconsistency between fish and bash/zsh :/
@@ -31,6 +36,31 @@ func HardQuote(s string) string {
 			buf = append(buf, '\\', s[i])
 		case '\n':
 			buf = append(buf, '\\', '\n')
+		default:
+			buf = append(buf, s[i])
+		}
+	}
+
+	buf = append(buf, '"')
+	return string(buf)
+}
+
+func HardQuoteFish(s string) string {
+	if s == "" {
+		return "\"\""
+	}
+
+	if safePattern.MatchString(s) {
+		return s
+	}
+
+	buf := make([]byte, 0, len(s)+5)
+	buf = append(buf, '"')
+
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '"', '\\', '$': // Escape only these characters
+			buf = append(buf, '\\', s[i])
 		default:
 			buf = append(buf, s[i])
 		}
