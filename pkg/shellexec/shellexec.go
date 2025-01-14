@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -358,14 +357,18 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 		if shellType == ShellType_bash {
 			// add --rcfile
 			// cant set -l or -i with --rcfile
-			bashPath := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s/.bashrc", shellutil.BashIntegrationDir))
+			bashPath := fmt.Sprintf("~/.waveterm/%s/.bashrc", shellutil.BashIntegrationDir)
 			shellOpts = append(shellOpts, "--rcfile", bashPath)
 		} else if shellType == ShellType_fish {
-			fishDir := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s", shellutil.WaveHomeBinDir))
-			carg := fmt.Sprintf(`"set -x PATH %s $PATH"`, fishDir)
+			if cmdOpts.Login {
+				shellOpts = append(shellOpts, "-l")
+			}
+			// source the wave.fish file
+			waveFishPath := fmt.Sprintf("~/.waveterm/%s/wave.fish", shellutil.FishIntegrationDir)
+			carg := fmt.Sprintf(`"source %s"`, waveFishPath)
 			shellOpts = append(shellOpts, "-C", carg)
 		} else if shellType == ShellType_pwsh {
-			pwshPath := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir))
+			pwshPath := fmt.Sprintf("~/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir)
 			// powershell is weird about quoted path executables and requires an ampersand first
 			shellPath = "& " + shellPath
 			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", pwshPath)
@@ -421,7 +424,7 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 	}
 
 	if shellType == ShellType_zsh {
-		zshDir := genconn.SoftQuote(fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir))
+		zshDir := fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir)
 		conn.Infof(ctx, "setting ZDOTDIR to %s\n", zshDir)
 		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
@@ -474,6 +477,9 @@ func StartShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOpt
 			// cant set -l or -i with --rcfile
 			shellOpts = append(shellOpts, "--rcfile", shellutil.GetBashRcFileOverride())
 		} else if isFishShell(shellPath) {
+			if cmdOpts.Login {
+				shellOpts = append(shellOpts, "-l")
+			}
 			wshBinDir := filepath.Join(wavebase.GetWaveDataDir(), shellutil.WaveHomeBinDir)
 			quotedWshBinDir := utilfn.ShellQuote(wshBinDir, false, 300)
 			shellOpts = append(shellOpts, "-C", fmt.Sprintf("set -x PATH %s $PATH", quotedWshBinDir))
