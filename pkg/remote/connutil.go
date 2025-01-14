@@ -87,10 +87,10 @@ func GetClientPlatformFromOsArchStr(ctx context.Context, osArchStr string) (stri
 }
 
 var installTemplateRawDefault = strings.TrimSpace(`
-mkdir -p {{.installDir}} || exit 1
-cat > {{.tempPath}} || exit 1
-mv {{.tempPath}} {{.installPath}} || exit 1
-chmod a+x {{.installPath}} || exit 1
+mkdir -p {{.installDir}} || exit 1;
+cat > {{.tempPath}} || exit 1;
+mv {{.tempPath}} {{.installPath}} || exit 1;
+chmod a+x {{.installPath}} || exit 1;
 `)
 var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
 

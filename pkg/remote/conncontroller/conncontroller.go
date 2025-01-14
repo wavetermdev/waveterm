@@ -71,8 +71,8 @@ type SSHConn struct {
 
 var ConnServerCmdTemplate = strings.TrimSpace(
 	strings.Join([]string{
-		"%s version 2> /dev/null || echo \"not-installed `uname -sm`\"",
-		"read jwt_token",
+		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm);",
+		"read jwt_token;",
 		"WAVETERM_JWT=\"$jwt_token\" %s connserver",
 	}, "\n"))
 
@@ -297,8 +297,9 @@ func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, string,
 		return false, "", "", fmt.Errorf("unable to get stdin pipe: %w", err)
 	}
 	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath)
-	log.Printf("starting conn controller: %s\n", cmdStr)
+	log.Printf("starting conn controller: %q\n", cmdStr)
 	shWrappedCmdStr := fmt.Sprintf("sh -c %s", genconn.HardQuote(cmdStr))
+	blocklogger.Debugf(ctx, "[conndebug] wrapped command:\n%s\n", shWrappedCmdStr)
 	err = sshSession.Start(shWrappedCmdStr)
 	if err != nil {
 		return false, "", "", fmt.Errorf("unable to start conn controller command: %w", err)
