@@ -163,7 +163,7 @@ class RpcApiType {
     }
 
     // command "filelist" [call]
-    FileListCommand(client: WshClient, data: CommandFileListData, opts?: RpcOpts): Promise<FileInfo[]> {
+    FileListCommand(client: WshClient, data: FileListData, opts?: RpcOpts): Promise<FileInfo[]> {
         return client.wshRpcCall("filelist", data, opts);
     }
 
@@ -235,6 +235,11 @@ class RpcApiType {
     // command "remotefiletouch" [call]
     RemoteFileTouchCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefiletouch", data, opts);
+    }
+
+    // command "remotelistentries" [responsestream]
+	RemoteListEntriesCommand(client: WshClient, data: CommandRemoteListEntriesData, opts?: RpcOpts): AsyncGenerator<CommandRemoteListEntriesRtnData, void, boolean> {
+        return client.wshRpcStream("remotelistentries", data, opts);
     }
 
     // command "remotemkdir" [call]

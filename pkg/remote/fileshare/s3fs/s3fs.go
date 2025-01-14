@@ -25,7 +25,11 @@ func NewS3Client(config *aws.Config) *S3Client {
 	}
 }
 
-func (c S3Client) Read(ctx context.Context, data fstype.FileData) (*fstype.FullFile, error) {
+func (c S3Client) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	return nil, nil
+}
+
+func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
 	return nil, nil
 }
 
@@ -33,7 +37,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 	return nil, nil
 }
 
-func (c S3Client) PutFile(ctx context.Context, data fstype.FileData) error {
+func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
 	return nil
 }
 

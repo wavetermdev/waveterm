@@ -68,7 +68,11 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		}
 	}
 	if isDir {
-
+		entries, err := listEntriesInternal(client, conn, &wshrpc.FileListOpts{}, &wshrpc.FileData{Entries: fileInfoArr})
+		if err != nil {
+			return nil, fmt.Errorf("stream file, failed to list entries: %w", err)
+		}
+		fullFile.Entries = entries
 	} else {
 		// we can avoid this re-encoding if we ensure the remote side always encodes chunks of 3 bytes so we don't get padding chars
 		fullFile.Data64 = base64.StdEncoding.EncodeToString(fileBuf.Bytes())
@@ -77,13 +81,34 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 }
 
 func (c WshClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
-
+	return listEntriesInternal(wshclient.GetBareRpcClient(), conn, opts, nil)
 }
 
 func listEntriesInternal(client *wshutil.WshRpc, conn *connparse.Connection, opts *wshrpc.FileListOpts, data *wshrpc.FileData) ([]*wshrpc.FileInfo, error) {
-	entries := data.Entries
-	if opts.All {
-
+	var entries []*wshrpc.FileInfo
+	if opts.All || data == nil {
+		rtnCh := wshclient.RemoteListEntriesCommand(client, wshrpc.CommandRemoteListEntriesData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+		for respUnion := range rtnCh {
+			if respUnion.Error != nil {
+				return nil, respUnion.Error
+			}
+			resp := respUnion.Response
+			entries = append(entries, resp.FileInfo...)
+		}
+	} else {
+		entries = append(entries, data.Entries...)
+		if opts.Offset > 0 {
+			if opts.Offset >= len(entries) {
+				entries = nil
+			} else {
+				entries = entries[opts.Offset:]
+			}
+		}
+		if opts.Limit > 0 {
+			if opts.Limit < len(entries) {
+				entries = entries[:opts.Limit]
+			}
+		}
 	}
 	return entries, nil
 }

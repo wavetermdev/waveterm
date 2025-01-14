@@ -171,14 +171,6 @@ declare global {
         maxitems: number;
     };
 
-    // wshrpc.CommandFileListData
-    type CommandFileListData = {
-        path: string;
-        all?: boolean;
-        offset?: number;
-        limit?: number;
-    };
-
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
@@ -188,6 +180,17 @@ declare global {
     type CommandMessageData = {
         oref: ORef;
         message: string;
+    };
+
+    // wshrpc.CommandRemoteListEntriesData
+    type CommandRemoteListEntriesData = {
+        path: string;
+        opts?: FileListOpts;
+    };
+
+    // wshrpc.CommandRemoteListEntriesRtnData
+    type CommandRemoteListEntriesRtnData = {
+        fileinfo?: FileInfo[];
     };
 
     // wshrpc.CommandRemoteStreamFileData
@@ -343,8 +346,9 @@ declare global {
 
     // wshrpc.FileData
     type FileData = {
-        path: string;
+        info?: FileInfo;
         data64?: string;
+        entries?: FileInfo[];
         opts?: FileOptsType;
         at?: FileDataAt;
     };
@@ -374,8 +378,22 @@ declare global {
         modestr: string;
         modtime: number;
         isdir?: boolean;
+        supportsmkdir?: boolean;
         mimetype?: string;
         readonly?: boolean;
+    };
+
+    // wshrpc.FileListData
+    type FileListData = {
+        path: string;
+        opts?: FileListOpts;
+    };
+
+    // wshrpc.FileListOpts
+    type FileListOpts = {
+        all?: boolean;
+        offset?: number;
+        limit?: number;
     };
 
     // wshrpc.FileOptsType
@@ -396,12 +414,6 @@ declare global {
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         configerrors: ConfigError[];
-    };
-
-    // fstype.FullFile
-    type FullFile = {
-        info: FileInfo;
-        data64: string;
     };
 
     // waveobj.LayoutActionData

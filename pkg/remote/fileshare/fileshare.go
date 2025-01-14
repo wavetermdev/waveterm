@@ -37,12 +37,12 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	}
 }
 
-func Read(ctx context.Context, path string) (*fstype.FullFile, error) {
+func Read(ctx context.Context, path string) (*wshrpc.FileData, error) {
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
 	}
-	return client.Read(ctx, conn)
+	return client.Read(ctx, conn, wshrpc.FileData{})
 }
 
 func Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
@@ -54,12 +54,11 @@ func Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
 }
 
 func PutFile(ctx context.Context, data wshrpc.FileData) error {
-	client, conn := CreateFileShareClient(ctx, data.Path)
+	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
-		return fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Path)
+		return fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Info.Path)
 	}
-	return client.PutFile(ctx, fstype.FileData{
-		Conn:   conn,
+	return client.PutFile(ctx, conn, wshrpc.FileData{
 		Data64: data.Data64,
 		Opts:   data.Opts,
 		At:     data.At,
