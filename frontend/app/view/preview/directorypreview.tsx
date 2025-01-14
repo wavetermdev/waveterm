@@ -5,7 +5,6 @@ import { Button } from "@/app/element/button";
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
-import { FileService } from "@/app/store/services";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { base64ToString, fireAndForget, isBlank } from "@/util/util";

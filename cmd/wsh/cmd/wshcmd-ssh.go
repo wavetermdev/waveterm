@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
@@ -41,7 +42,7 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	connOpts := wshrpc.ConnRequest{
 		Host:       sshArg,
 		LogBlockId: blockId,
-		Keywords: wshrpc.ConnKeywords{
+		Keywords: wconfig.ConnKeywords{
 			SshIdentityFile: identityFiles,
 		},
 	}

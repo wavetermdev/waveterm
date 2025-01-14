@@ -25,7 +25,7 @@ func convertNotFoundErr(err error) error {
 	return err
 }
 
-func ensureWaveFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
+func ensureFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
@@ -45,7 +45,7 @@ func ensureWaveFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo
 	return info, nil
 }
 
-func streamWriteToWaveFile(fileData wshrpc.FileData, reader io.Reader) error {
+func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 	// First truncate the file with an empty write
 	emptyWrite := fileData
 	emptyWrite.Data64 = ""
@@ -87,7 +87,7 @@ func streamWriteToWaveFile(fileData wshrpc.FileData, reader io.Reader) error {
 	return nil
 }
 
-func streamReadFromWaveFile(fileData wshrpc.FileData, size int64, writer io.Writer) error {
+func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) error {
 	const chunkSize = 32 * 1024 // 32KB chunks
 	for offset := int64(0); offset < size; offset += chunkSize {
 		// Calculate the length of this chunk

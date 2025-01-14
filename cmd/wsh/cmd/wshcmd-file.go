@@ -166,20 +166,10 @@ Exactly one of source or destination must be a wavefile:// URL.`,
 }
 
 func fileCatRun(cmd *cobra.Command, args []string) error {
-	ref, err := parseWaveFileURL(args[0])
-	if err != nil {
-		return err
-	}
 
-	fullORef, err := resolveWaveFile(ref)
-	if err != nil {
-		return err
-	}
-
-	fileData := wshrpc.CommandFileData{
-		ZoneId:   fullORef.OID,
-		FileName: ref.fileName,
-	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: args[0]}}
 
 	// Get file info first to check existence and get size
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
@@ -191,7 +181,7 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting file info: %w", err)
 	}
 
-	err = streamReadFromWaveFile(fileData, info.Size, os.Stdout)
+	err = streamReadFromFile(fileData, info.Size, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
 	}
@@ -200,20 +190,9 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileInfoRun(cmd *cobra.Command, args []string) error {
-	ref, err := parseWaveFileURL(args[0])
-	if err != nil {
-		return err
-	}
-
-	fullORef, err := resolveWaveFile(ref)
-	if err != nil {
-		return err
-	}
-
-	fileData := wshrpc.CommandFileData{
-		ZoneId:   fullORef.OID,
-		FileName: ref.fileName,
-	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: args[0]}}
 
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
@@ -226,11 +205,10 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 
 	WriteStdout("filename: %s\n", info.Name)
 	WriteStdout("size:     %d\n", info.Size)
-	WriteStdout("ctime:    %s\n", time.Unix(info.CreatedTs/1000, 0).Format(time.DateTime))
-	WriteStdout("mtime:    %s\n", time.Unix(info.ModTs/1000, 0).Format(time.DateTime))
-	if len(info.Meta) > 0 {
+	WriteStdout("mtime:    %s\n", time.Unix(info.ModTime/1000, 0).Format(time.DateTime))
+	if len(*info.Meta) > 0 {
 		WriteStdout("metadata:\n")
-		for k, v := range info.Meta {
+		for k, v := range *info.Meta {
 			WriteStdout("  %s: %v\n", k, v)
 		}
 	}
@@ -238,22 +216,11 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileRmRun(cmd *cobra.Command, args []string) error {
-	ref, err := parseWaveFileURL(args[0])
-	if err != nil {
-		return err
-	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: args[0]}}
 
-	fullORef, err := resolveWaveFile(ref)
-	if err != nil {
-		return err
-	}
-
-	fileData := wshrpc.CommandFileData{
-		ZoneId:   fullORef.OID,
-		FileName: ref.fileName,
-	}
-
-	_, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	_, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
 		return fmt.Errorf("%s: no such file", args[0])
@@ -271,27 +238,16 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileWriteRun(cmd *cobra.Command, args []string) error {
-	ref, err := parseWaveFileURL(args[0])
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: args[0]}}
+
+	_, err := ensureFile(args[0], fileData)
 	if err != nil {
 		return err
 	}
 
-	fullORef, err := resolveWaveFile(ref)
-	if err != nil {
-		return err
-	}
-
-	fileData := wshrpc.CommandFileData{
-		ZoneId:   fullORef.OID,
-		FileName: ref.fileName,
-	}
-
-	_, err = ensureWaveFile(args[0], fileData)
-	if err != nil {
-		return err
-	}
-
-	err = streamWriteToWaveFile(fileData, WrappedStdin)
+	err = streamWriteToFile(fileData, WrappedStdin)
 	if err != nil {
 		return fmt.Errorf("writing file: %w", err)
 	}
@@ -300,22 +256,11 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileAppendRun(cmd *cobra.Command, args []string) error {
-	ref, err := parseWaveFileURL(args[0])
-	if err != nil {
-		return err
-	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: args[0]}}
 
-	fullORef, err := resolveWaveFile(ref)
-	if err != nil {
-		return err
-	}
-
-	fileData := wshrpc.CommandFileData{
-		ZoneId:   fullORef.OID,
-		FileName: ref.fileName,
-	}
-
-	info, err := ensureWaveFile(args[0], fileData)
+	info, err := ensureFile(args[0], fileData)
 	if err != nil {
 		return err
 	}
@@ -415,20 +360,9 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 }
 
 func copyFromWaveToLocal(src, dst string) error {
-	ref, err := parseWaveFileURL(src)
-	if err != nil {
-		return err
-	}
-
-	fullORef, err := resolveWaveFile(ref)
-	if err != nil {
-		return err
-	}
-
-	fileData := wshrpc.CommandFileData{
-		ZoneId:   fullORef.OID,
-		FileName: ref.fileName,
-	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: src}}
 
 	// Get file info first to check existence and get size
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
@@ -447,7 +381,7 @@ func copyFromWaveToLocal(src, dst string) error {
 	}
 	defer f.Close()
 
-	err = streamReadFromWaveFile(fileData, info.Size, f)
+	err = streamReadFromFile(fileData, info.Size, f)
 	if err != nil {
 		return fmt.Errorf("reading wave file: %w", err)
 	}
@@ -456,15 +390,9 @@ func copyFromWaveToLocal(src, dst string) error {
 }
 
 func copyFromLocalToWave(src, dst string) error {
-	ref, err := parseWaveFileURL(dst)
-	if err != nil {
-		return err
-	}
-
-	fullORef, err := resolveWaveFile(ref)
-	if err != nil {
-		return err
-	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: dst}}
 
 	// stat local file
 	stat, err := os.Stat(src)
@@ -477,13 +405,7 @@ func copyFromLocalToWave(src, dst string) error {
 	if stat.IsDir() {
 		return fmt.Errorf("%s: is a directory", src)
 	}
-
-	fileData := wshrpc.CommandFileData{
-		ZoneId:   fullORef.OID,
-		FileName: ref.fileName,
-	}
-
-	_, err = ensureWaveFile(dst, fileData)
+	_, err = ensureFile(dst, fileData)
 	if err != nil {
 		return err
 	}
@@ -494,7 +416,7 @@ func copyFromLocalToWave(src, dst string) error {
 	}
 	defer file.Close()
 
-	err = streamWriteToWaveFile(fileData, file)
+	err = streamWriteToFile(fileData, file)
 	if err != nil {
 		return fmt.Errorf("writing wave file: %w", err)
 	}
@@ -530,7 +452,7 @@ func filePrintColumns(filesChan <-chan fileListResult) error {
 func filePrintLong(filesChan <-chan fileListResult) error {
 	// Sample first 100 files to determine name width
 	maxNameLen := 0
-	var samples []*wshrpc.WaveFileInfo
+	var samples []*wshrpc.FileInfo
 
 	for f := range filesChan {
 		if f.err != nil {
@@ -555,7 +477,7 @@ func filePrintLong(filesChan <-chan fileListResult) error {
 	// Print samples
 	for _, f := range samples {
 		name := f.Name
-		t := time.Unix(f.ModTs/1000, 0)
+		t := time.Unix(f.ModTime/1000, 0)
 		timestamp := utilfn.FormatLsTime(t)
 		if f.Size == 0 && strings.HasSuffix(name, "/") {
 			fmt.Fprintf(os.Stdout, "%-*s  %8s  %s\n", nameWidth, name, "-", timestamp)
@@ -570,7 +492,7 @@ func filePrintLong(filesChan <-chan fileListResult) error {
 			return f.err
 		}
 		name := f.info.Name
-		timestamp := time.Unix(f.info.ModTs/1000, 0).Format("Jan 02 15:04")
+		timestamp := time.Unix(f.info.ModTime/1000, 0).Format("Jan 02 15:04")
 		if f.info.Size == 0 && strings.HasSuffix(name, "/") {
 			fmt.Fprintf(os.Stdout, "%-*s  %8s  %s\n", nameWidth, name, "-", timestamp)
 		} else {
