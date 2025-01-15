@@ -47,8 +47,8 @@ Supported URI schemes:
   wsh:
     Used to access files on remotes via the WSH helper. Allows for file streaming to Wave and other remotes.
     Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
-	If a profile is provided, it must be defined in "profiles.json" in the Wave configuration directory.
-	
+    If a profile is provided, it must be defined in "profiles.json" in the Wave configuration directory.
+
     Format: wsh://[remote]/[path]
 
     Shorthands can be used for the current remote and your local machine:
@@ -58,9 +58,9 @@ Supported URI schemes:
 
   s3:
     Used to access files on S3-compatible systems.
-	Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
+    Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
     If no profile is provided, the default from your AWS CLI configuration will be used. Profiles from the AWS CLI must be prefixed with "aws:".
-	
+
     Format: s3://[bucket]/[path]
             aws:[profile]:s3://[bucket]/[path]
             [profile]:s3://[bucket]/[path]`
