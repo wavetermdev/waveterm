@@ -268,10 +268,11 @@ function getNewConnectionSuggestionItem(
     localName: string,
     remoteConns: Array<string>,
     wslConns: Array<string>,
+    s3Conns: Array<string>,
     changeConnection: (connName: string) => Promise<void>,
     changeConnModalAtom: jotai.PrimitiveAtom<boolean>
 ): SuggestionConnectionItem | null {
-    const allCons = ["", localName, ...remoteConns, ...wslConns];
+    const allCons = ["", localName, ...remoteConns, ...wslConns, ...s3Conns];
     if (allCons.includes(connSelected)) {
         // do not offer to create a new connection if one
         // with the exact name already exists
@@ -424,6 +425,7 @@ const ChangeConnectionBlockModal = React.memo(
             localName,
             connList,
             wslList,
+            s3List,
             changeConnection,
             changeConnModalAtom
         );
