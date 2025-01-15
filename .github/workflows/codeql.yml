@@ -20,7 +20,6 @@ on:
             - opened
             - synchronize
             - reopened
-            - edited
             - ready_for_review
     schedule:
         - cron: "36 5 * * 5"
