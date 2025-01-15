@@ -6,6 +6,12 @@ on:
         branches:
             - main
             - master
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - edited
+            - ready_for_review
 
 jobs:
     merge-gatekeeper:

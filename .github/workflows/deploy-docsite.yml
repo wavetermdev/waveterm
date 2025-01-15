@@ -14,6 +14,12 @@ on:
     pull_request:
         branches:
             - main
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - edited
+            - ready_for_review
         paths:
             - "docs/**"
             - "storybook/**"
