@@ -40,10 +40,6 @@ const (
 URI format: [profile]:[uri-scheme]://[connection]/[path]
 
 Supported URI schemes:
-  wavefile:
-    Used to retrieve blockfiles from the internal Wave filesystem.
-
-    Format: wavefile://[zoneid]/[path]
   wsh:
     Used to access files on remotes via the WSH helper. Allows for file streaming to Wave and other remotes.
     Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
@@ -62,7 +58,11 @@ Supported URI schemes:
 
     Format: s3://[bucket]/[path]
             aws:[profile]:s3://[bucket]/[path]
-            [profile]:s3://[bucket]/[path]`
+            [profile]:s3://[bucket]/[path]
+  wavefile:
+    Used to retrieve blockfiles from the internal Wave filesystem.
+
+    Format: wavefile://[zoneid]/[path]`
 )
 
 var fileCmd = &cobra.Command{
