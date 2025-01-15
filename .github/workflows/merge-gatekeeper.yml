@@ -6,10 +6,17 @@ on:
         branches:
             - main
             - master
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - edited
+            - ready_for_review
 
 jobs:
     merge-gatekeeper:
         runs-on: ubuntu-latest
+        if: github.event.pull_request.draft == false
         # Restrict permissions of the GITHUB_TOKEN.
         # Docs: https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
         permissions:
