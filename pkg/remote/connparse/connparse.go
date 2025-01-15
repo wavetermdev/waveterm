@@ -6,7 +6,7 @@ package connparse
 import (
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const (
@@ -77,7 +77,7 @@ func ParseURI(uri string) (*Connection, error) {
 				remotePath = "/"
 			}
 		} else if strings.HasPrefix(rest, "/~") {
-			host = wshutil.DefaultRoute
+			host = wshrpc.LocalConnName
 			remotePath = strings.TrimPrefix(rest, "/")
 		} else {
 			host = ConnHostCurrent

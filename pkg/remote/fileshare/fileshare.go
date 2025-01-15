@@ -26,9 +26,14 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	if conn.Host == connparse.ConnHostCurrent {
 		handler := wshutil.GetRpcResponseHandlerFromContext(ctx)
 		if handler == nil {
-			conn.Host = connparse.ConnHostWaveSrv
+			log.Printf("error getting rpc response handler from context")
+			return nil, nil
 		}
-		conn.Host = handler.GetSource()
+		source := handler.GetRpcContext().Conn
+		if source == "" {
+			source = wshrpc.LocalConnName
+		}
+		conn.Host = source
 	}
 	conntype := conn.GetType()
 	if conntype == connparse.ConnectionTypeS3 {

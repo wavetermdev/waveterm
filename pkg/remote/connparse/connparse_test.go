@@ -201,7 +201,7 @@ func TestParseURI_WSHLocalShorthand(t *testing.T) {
 	if c.Path != expected {
 		t.Fatalf("expected path to be %q, got %q", expected, c.Path)
 	}
-	if c.Host != "wavesrv" {
+	if c.Host != "local" {
 		t.Fatalf("expected host to be empty, got %q", c.Host)
 	}
 	expected = "wsh"
