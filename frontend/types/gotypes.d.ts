@@ -368,15 +368,15 @@ declare global {
     // wshrpc.FileInfo
     type FileInfo = {
         path: string;
-        dir: string;
-        name: string;
+        dir?: string;
+        name?: string;
         notfound?: boolean;
         opts?: FileOptsType;
-        size: number;
+        size?: number;
         meta?: {[key: string]: any};
-        mode: number;
-        modestr: string;
-        modtime: number;
+        mode?: number;
+        modestr?: string;
+        modtime?: number;
         isdir?: boolean;
         supportsmkdir?: boolean;
         mimetype?: string;

@@ -208,6 +208,28 @@ func TestParseURI_WSHLocalShorthand(t *testing.T) {
 	if c.Scheme != expected {
 		t.Fatalf("expected scheme to be %q, got %q", expected, c.Scheme)
 	}
+
+	cstr = "wsh:///~/path/to/file"
+	c, err = connparse.ParseURI(cstr)
+	if err != nil {
+		t.Fatalf("failed to parse URI: %v", err)
+	}
+	expected = "~/path/to/file"
+	if c.Path != expected {
+		t.Fatalf("expected path to be %q, got %q", expected, c.Path)
+	}
+	if c.Host != "local" {
+		t.Fatalf("expected host to be empty, got %q", c.Host)
+	}
+	expected = "wsh"
+	if c.Scheme != expected {
+		t.Fatalf("expected scheme to be %q, got %q", expected, c.Scheme)
+	}
+	expected = "wsh://local/~/path/to/file"
+	if c.GetFullURI() != expected {
+		t.Fatalf("expected full URI to be %q, got %q", expected, c.GetFullURI())
+	}
+
 }
 
 func TestParseURI_BasicS3(t *testing.T) {

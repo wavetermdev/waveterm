@@ -5,9 +5,11 @@ import { Button } from "@/app/element/button";
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank } from "@/util/util";
+import { fireAndForget, isBlank } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -293,7 +295,7 @@ function DirectoryTable({
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
                         const connection = await globalStore.get(model.connection);
-                        await FileService.Rename(connection, path, newPath);
+                        // await FileService.Rename(connection, path, newPath);
                         model.refreshCallback();
                     });
                 }
@@ -617,7 +619,11 @@ function TableBody({
                     label: "Delete",
                     click: () => {
                         fireAndForget(async () => {
-                            await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
+                            await RpcApi.FileDeleteCommand(TabRpcClient, {
+                                info: {
+                                    path: finfo.path,
+                                },
+                            }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);
                         });
                     },
@@ -710,10 +716,16 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await FileService.ReadFile(conn, dirPath);
-            const serializedContent = base64ToString(file?.data64);
-            const content: FileInfo[] = JSON.parse(serializedContent);
-            setUnfilteredData(content);
+            const file = await RpcApi.FileReadCommand(
+                TabRpcClient,
+                {
+                    info: {
+                        path: dirPath,
+                    },
+                },
+                null
+            );
+            setUnfilteredData(file.entries);
         };
         getContent();
     }, [conn, dirPath, refreshVersion]);
@@ -805,7 +817,15 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 console.log(`newFile: ${newName}`);
                 fireAndForget(async () => {
                     const connection = await globalStore.get(model.connection);
-                    await FileService.TouchFile(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileCreateCommand(
+                        TabRpcClient,
+                        {
+                            info: {
+                                path: `wsh://${connection}/${dirPath}/${newName}`,
+                            },
+                        },
+                        null
+                    );
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
@@ -819,7 +839,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 console.log(`newDirectory: ${newName}`);
                 fireAndForget(async () => {
                     const connection = await globalStore.get(model.connection);
-                    await FileService.Mkdir(connection, `${dirPath}/${newName}`);
+                    // await FileService.Mkdir(connection, `${dirPath}/${newName}`);
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);

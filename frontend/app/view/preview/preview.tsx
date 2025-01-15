@@ -139,7 +139,7 @@ export class PreviewModel implements ViewModel {
     loadableFileInfo: Atom<Loadable<FileInfo>>;
     connection: Atom<Promise<string>>;
     statFile: Atom<Promise<FileInfo>>;
-    fullFile: Atom<Promise<FullFile>>;
+    fullFile: Atom<Promise<FileData>>;
     fileMimeType: Atom<Promise<string>>;
     fileMimeTypeLoadable: Atom<Loadable<string>>;
     fileContentSaved: PrimitiveAtom<string | null>;
@@ -369,7 +369,11 @@ export class PreviewModel implements ViewModel {
                 return null;
             }
             const conn = (await get(this.connection)) ?? "";
-            const statFile = await services.FileService.StatFile(conn, fileName);
+            const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
+                info: {
+                    path: `wsh://${conn}/${fileName}`,
+                },
+            });
             return statFile;
         });
         this.fileMimeType = atom<Promise<string>>(async (get) => {
@@ -380,13 +384,17 @@ export class PreviewModel implements ViewModel {
         this.newFileContent = atom(null) as PrimitiveAtom<string | null>;
         this.goParentDirectory = this.goParentDirectory.bind(this);
 
-        const fullFileAtom = atom<Promise<FullFile>>(async (get) => {
+        const fullFileAtom = atom<Promise<FileData>>(async (get) => {
             const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
             }
             const conn = (await get(this.connection)) ?? "";
-            const file = await services.FileService.ReadFile(conn, fileName);
+            const file = await RpcApi.FileReadCommand(TabRpcClient, {
+                info: {
+                    path: `wsh://${conn}/${fileName}`,
+                },
+            });
             return file;
         });
 
@@ -593,7 +601,12 @@ export class PreviewModel implements ViewModel {
         }
         const conn = (await globalStore.get(this.connection)) ?? "";
         try {
-            await services.FileService.SaveFile(conn, filePath, stringToBase64(newFileContent));
+            await RpcApi.FileWriteCommand(TabRpcClient, {
+                info: {
+                    path: `wsh://${conn}/${filePath}`,
+                },
+                data64: stringToBase64(newFileContent),
+            });
             globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);

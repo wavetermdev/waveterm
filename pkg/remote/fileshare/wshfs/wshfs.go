@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
@@ -28,7 +29,7 @@ func NewWshClient() *WshClient {
 func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
 	client := wshclient.GetBareRpcClient()
 	byteRange := ""
-	if data.At.Size > 0 {
+	if data.At != nil && data.At.Size > 0 {
 		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+data.At.Size)
 	}
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path, ByteRange: byteRange}
@@ -36,6 +37,7 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 	fullFile := &wshrpc.FileData{}
 	firstPk := true
 	isDir := false
+	log.Printf("stream file: %s", conn.Path)
 	var fileBuf bytes.Buffer
 	var fileInfoArr []*wshrpc.FileInfo
 	for respUnion := range rtnCh {

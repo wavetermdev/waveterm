@@ -348,16 +348,16 @@ type FileData struct {
 }
 
 type FileInfo struct {
-	Path          string        `json:"path"` // cleaned path (may have "~")
-	Dir           string        `json:"dir"`  // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
-	Name          string        `json:"name"`
+	Path          string        `json:"path"`          // cleaned path (may have "~")
+	Dir           string        `json:"dir,omitempty"` // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
+	Name          string        `json:"name,omitempty"`
 	NotFound      bool          `json:"notfound,omitempty"`
 	Opts          *FileOptsType `json:"opts,omitempty"`
-	Size          int64         `json:"size"`
+	Size          int64         `json:"size,omitempty"`
 	Meta          *FileMeta     `json:"meta,omitempty"`
-	Mode          os.FileMode   `json:"mode"`
-	ModeStr       string        `json:"modestr"`
-	ModTime       int64         `json:"modtime"`
+	Mode          os.FileMode   `json:"mode,omitempty"`
+	ModeStr       string        `json:"modestr,omitempty"`
+	ModTime       int64         `json:"modtime,omitempty"`
 	IsDir         bool          `json:"isdir,omitempty"`
 	SupportsMkdir bool          `json:"supportsmkdir,omitempty"`
 	MimeType      string        `json:"mimetype,omitempty"`

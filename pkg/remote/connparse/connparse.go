@@ -94,6 +94,11 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 	}
 
+	if host == "" && scheme == ConnectionTypeWsh {
+		host = wshrpc.LocalConnName
+		remotePath = strings.TrimPrefix(rest, "/")
+	}
+
 	return &Connection{
 		Scheme: scheme,
 		Host:   host,
