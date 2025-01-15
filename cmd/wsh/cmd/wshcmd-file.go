@@ -55,7 +55,6 @@ Supported URI schemes:
       - [path] is a relative or absolute path on the current remote
       - //[remote]/[path] is a path on a remote
       - /~/[path] is a path relative to your home directory on your local machine
-
   s3:
     Used to access files on S3-compatible systems.
     Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
