@@ -10,7 +10,6 @@ on:
             - opened
             - synchronize
             - reopened
-            - edited
             - ready_for_review
 
 jobs:
