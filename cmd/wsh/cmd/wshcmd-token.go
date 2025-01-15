@@ -17,6 +17,7 @@ var tokenCmd = &cobra.Command{
 	Short:   "exchange token for shell initialization script",
 	RunE:    tokenCmdRun,
 	PreRunE: preRunSetupRpcClient,
+	Hidden:  true,
 }
 
 func init() {

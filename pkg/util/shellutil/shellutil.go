@@ -54,13 +54,21 @@ const (
 `
 
 	ZshStartup_Zshrc = `
+
+# add wsh to path, source dynamic script from wsh token
+export PATH={{.WSHBINDIR}}:$PATH
+source <(wsh token $WAVETERM_SWAPTOKEN zsh)
+unset WAVETERM_SWAPTOKEN
+
 # Source the original zshrc only if ZDOTDIR has not been changed
 if [ "$ZDOTDIR" = "$WAVETERM_ZDOTDIR" ]; then
   [ -f ~/.zshrc ] && source ~/.zshrc
 fi
 
-# Custom additions
-export PATH={{.WSHBINDIR}}:$PATH
+# re-add wsh to path if it got clobbered, and source completions
+if [[ ":$PATH:" != *":{{.WSHBINDIR}}:"* ]]; then
+  export PATH={{.WSHBINDIR}}:$PATH
+fi
 if [[ -n ${_comps+x} ]]; then
   source <(wsh completion zsh)
 fi
@@ -128,6 +136,10 @@ fi
 # Add Wave binary directory to PATH
 set -x PATH {{.WSHBINDIR}} $PATH
 
+# Source dynamic script from wsh token
+wsh token $WAVETERM_SWAPTOKEN fish | source
+set -e WAVETERM_SWAPTOKEN
+
 # Load Wave completions
 wsh completion fish | source
 `
@@ -135,6 +147,10 @@ wsh completion fish | source
 	PwshStartup_wavepwsh = `
 # We source this file with -NoExit -File
 $env:PATH = {{.WSHBINDIR_PWSH}} + "{{.PATHSEP}}" + $env:PATH
+
+# Source dynamic script from wsh token
+wsh token $env:WAVETERM_SWAPTOKEN pwsh | Out-String | Invoke-Expression
+Remove-Item Env:WAVETERM_SWAPTOKEN
 
 # Load Wave completions
 wsh completion powershell | Out-String | Invoke-Expression
