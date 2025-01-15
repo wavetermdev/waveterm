@@ -18,6 +18,12 @@ on:
         #     - ".prettierrc"
         #     - ".eslintrc.js"
         #     - "**/*.md"
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - edited
+            - ready_for_review
     schedule:
         - cron: 0 21 * * *
     workflow_dispatch: null
@@ -34,6 +40,7 @@ jobs:
     build_and_upload:
         name: Build for TestDriver.ai
         runs-on: windows-latest
+        if: github.event.pull_request.draft == false
         steps:
             - uses: actions/checkout@v4
 

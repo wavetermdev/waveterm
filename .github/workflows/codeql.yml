@@ -16,6 +16,12 @@ on:
         branches: ["main"]
     pull_request:
         branches: ["main"]
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - edited
+            - ready_for_review
     schedule:
         - cron: "36 5 * * 5"
 
@@ -31,6 +37,7 @@ jobs:
         #   - https://gh.io/supported-runners-and-hardware-resources
         #   - https://gh.io/using-larger-runners
         # Consider using larger runners for possible analysis time improvements.
+        if: github.event.pull_request.draft == false
         runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
         timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
         permissions:
