@@ -286,7 +286,11 @@ func StartRemoteShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, c
 	return &ShellProc{Cmd: sessionWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
-func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
+func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn, swapToken *wshrpc.TokenSwapEntry) (*ShellProc, error) {
+	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
+	if !ok {
+		return nil, fmt.Errorf("no jwt token provided to connection")
+	}
 	client := conn.GetClient()
 	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
 	rpcClient := wshclient.GetBareRpcClient()
@@ -316,15 +320,10 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 	var shellOpts []string
 	var cmdCombined string
 	log.Printf("detected shell %q for conn %q\n", shellPath, conn.GetName())
-
-	err = wshclient.RemoteInstallRcFilesCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
-	if err != nil {
-		log.Printf("error installing rc files: %v", err)
-		return nil, err
-	}
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
 	conn.Infof(ctx, "detected shell type: %s\n", shellType)
+	conn.Infof(ctx, "swaptoken: %s\n", swapToken.Token)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -403,12 +402,9 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 		conn.Infof(ctx, "setting ZDOTDIR to %s\n", zshDir)
 		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
-
-	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
-	if !ok {
-		return nil, fmt.Errorf("no jwt token provided to connection")
-	}
 	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
+	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveSwapTokenVarName, swapToken.Token, cmdCombined)
+	shellutil.AddTokenSwapEntry(swapToken)
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 	sessionWrap := MakeSessionWrap(session, cmdCombined, pipePty)
 	err = sessionWrap.Start()

@@ -97,6 +97,13 @@ if [ -f /etc/profile ]; then
     . /etc/profile
 fi
 
+# after /etc/profile which is likely to clobber the path
+export PATH={{.WSHBINDIR}}:$PATH
+
+# Source the dynamic script from wsh token
+source <(wsh token $WAVETERM_SWAPTOKEN bash)
+unset WAVETERM_SWAPTOKEN
+
 # Source the first of ~/.bash_profile, ~/.bash_login, or ~/.profile that exists
 if [ -f ~/.bash_profile ]; then
     . ~/.bash_profile
@@ -106,7 +113,10 @@ elif [ -f ~/.profile ]; then
     . ~/.profile
 fi
 
-export PATH={{.WSHBINDIR}}:$PATH
+# re-add to path if it got clobbered
+if [[ ":$PATH:" != *":{{.WSHBINDIR}}:"* ]]; then
+    export PATH={{.WSHBINDIR}}:$PATH
+fi
 if type _init_completion &>/dev/null; then
   source <(wsh completion bash)
 fi

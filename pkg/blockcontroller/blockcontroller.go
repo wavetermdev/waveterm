@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -273,15 +274,48 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType) (string,
 	return cmdStr, &cmdOpts, nil
 }
 
-func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
-	shellProc, err := bc.setupAndStartShellProcess(rc, blockMeta)
+func (bc *BlockController) DoRunShellCommand(logCtx context.Context, rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
+	shellProc, err := bc.setupAndStartShellProcess(logCtx, rc, blockMeta)
 	if err != nil {
 		return err
 	}
 	return bc.manageRunningShellProcess(shellProc, rc, blockMeta)
 }
 
-func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta waveobj.MetaMapType) (*shellexec.ShellProc, error) {
+func (bc *BlockController) makeSwapToken(ctx context.Context) *wshrpc.TokenSwapEntry {
+	token := &wshrpc.TokenSwapEntry{
+		Token: uuid.New().String(),
+		Env:   make(map[string]string),
+		Exp:   time.Now().Add(5 * time.Minute),
+	}
+	token.Env["TERM_PROGRAM"] = "waveterm"
+	token.Env["WAVETERM_BLOCKID"] = bc.BlockId
+	token.Env["WAVETERM_VERSION"] = wavebase.WaveVersion
+	token.Env["WAVETERM"] = "1"
+	tabId, err := wstore.DBFindTabForBlockId(ctx, bc.BlockId)
+	if err != nil {
+		log.Printf("error finding tab for block: %v\n", err)
+	} else {
+		token.Env["WAVETERM_TABID"] = tabId
+	}
+	if tabId != "" {
+		wsId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+		if err != nil {
+			log.Printf("error finding workspace for tab: %v\n", err)
+		} else {
+			token.Env["WAVETERM_WSID"] = wsId
+		}
+	}
+	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		log.Printf("error getting client data: %v\n", err)
+	} else {
+		token.Env["WAVETERM_CLIENTID"] = clientData.OID
+	}
+	return token
+}
+
+func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc *RunShellOpts, blockMeta waveobj.MetaMapType) (*shellexec.ShellProc, error) {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
@@ -325,6 +359,8 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 		return nil, fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
+	swapToken := bc.makeSwapToken(ctx)
+	blocklogger.Infof(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
 	if strings.HasPrefix(remoteName, "wsl://") {
 		wslName := strings.TrimPrefix(remoteName, "wsl://")
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
@@ -342,6 +378,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
+			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
@@ -366,6 +403,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
+			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		if !conn.WshEnabled.Load() {
@@ -374,7 +412,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 				return nil, err
 			}
 		} else {
-			shellProc, err = shellexec.StartRemoteShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
+			shellProc, err = shellexec.StartRemoteShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, conn, swapToken)
 			if err != nil {
 				conn.SetWshError(err)
 				conn.WshEnabled.Store(false)
@@ -393,6 +431,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
+			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		settings := wconfig.GetWatcher().GetFullConfig().Settings
@@ -614,7 +653,7 @@ func (bc *BlockController) UnlockRunLock() {
 	log.Printf("block %q run() unlock\n", bc.BlockId)
 }
 
-func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, rtOpts *waveobj.RuntimeOpts, force bool) {
+func (bc *BlockController) run(logCtx context.Context, bdata *waveobj.Block, blockMeta map[string]any, rtOpts *waveobj.RuntimeOpts, force bool) {
 	runningShellCommand := false
 	ok := bc.LockRunLock()
 	if !ok {
@@ -666,9 +705,9 @@ func (bc *BlockController) run(bdata *waveobj.Block, blockMeta map[string]any, r
 			} else {
 				termSize = getTermSize(bdata)
 			}
-			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: termSize}, bdata.Meta)
+			err := bc.DoRunShellCommand(logCtx, &RunShellOpts{TermSize: termSize}, bdata.Meta)
 			if err != nil {
-				log.Printf("error running shell: %v\n", err)
+				debugLog(logCtx, "error running shell: %v\n", err)
 			}
 		}()
 	}
@@ -814,6 +853,11 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	return nil
 }
 
+func debugLog(ctx context.Context, fmtStr string, args ...interface{}) {
+	blocklogger.Infof(ctx, "[conndebg] "+fmtStr, args...)
+	log.Printf(fmtStr, args...)
+}
+
 func startBlockController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts, force bool) error {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
@@ -834,9 +878,9 @@ func startBlockController(ctx context.Context, tabId string, blockId string, rtO
 	}
 	bc := getOrCreateBlockController(tabId, blockId, controllerName)
 	bcStatus := bc.GetRuntimeStatus()
-	log.Printf("start blockcontroller %s %q (%q) (curstatus %s) (force %v)\n", blockId, controllerName, connName, bcStatus.ShellProcStatus, force)
+	debugLog(ctx, "[conndebug] start blockcontroller %s %q (%q) (curstatus %s) (force %v)\n", blockId, controllerName, connName, bcStatus.ShellProcStatus, force)
 	if bcStatus.ShellProcStatus == Status_Init || bcStatus.ShellProcStatus == Status_Done {
-		go bc.run(blockData, blockData.Meta, rtOpts, force)
+		go bc.run(ctx, blockData, blockData.Meta, rtOpts, force)
 	}
 	return nil
 }

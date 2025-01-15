@@ -233,6 +233,10 @@ func serverRunNormal() error {
 }
 
 func serverRun(cmd *cobra.Command, args []string) error {
+	installErr := wshutil.InstallRcFiles()
+	if installErr != nil {
+		log.Printf("error installing rc files: %v", installErr)
+	}
 	if singleServerRouter {
 		return serverRunSingle()
 	} else if connServerRouter {

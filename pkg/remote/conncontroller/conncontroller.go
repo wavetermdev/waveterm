@@ -74,7 +74,7 @@ var ConnServerCmdTemplate = strings.TrimSpace(
 	strings.Join([]string{
 		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm);",
 		"read jwt_token;",
-		"WAVETERM_JWT=\"$jwt_token\" %s connserver",
+		"WAVETERM_JWT=\"$jwt_token\" exec %s connserver",
 	}, "\n"))
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
