@@ -336,9 +336,11 @@
                         gap: 4px;
                         flex-grow: 1;
                         width: 100%;
+                        text-wrap: wrap;
+                        overflow: auto;
+                        max-height: 80px;
 
                         .connstatus-status-text {
-                            @include mixins.ellipsis();
                             max-width: 100%;
                             font-size: 11px;
                             font-style: normal;
@@ -349,7 +351,6 @@
                         }
 
                         .connstatus-error {
-                            @include mixins.ellipsis();
                             width: 94%;
                             font-size: 11px;
                             font-style: normal;
