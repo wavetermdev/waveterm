@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
@@ -27,7 +26,6 @@ func NewWshClient() *WshClient {
 }
 
 func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
-	log.Printf("WshClient:Read: path=%s; conn=%v; data=%v", conn.Path, conn, data)
 	client := wshclient.GetBareRpcClient()
 	byteRange := ""
 	if data.At.Size > 0 {
@@ -94,7 +92,6 @@ func listEntriesInternal(client *wshutil.WshRpc, conn *connparse.Connection, opt
 	var entries []*wshrpc.FileInfo
 	if opts.All || data == nil {
 		rtnCh := wshclient.RemoteListEntriesCommand(client, wshrpc.CommandRemoteListEntriesData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
-		log.Printf("listEntriesInternal: remote list entries")
 		for respUnion := range rtnCh {
 			if respUnion.Error != nil {
 				return nil, respUnion.Error
@@ -102,7 +99,6 @@ func listEntriesInternal(client *wshutil.WshRpc, conn *connparse.Connection, opt
 			resp := respUnion.Response
 			entries = append(entries, resp.FileInfo...)
 		}
-		log.Printf("listEntriesInternal: remote list entries done")
 	} else {
 		entries = append(entries, data.Entries...)
 		if opts.Offset > 0 {

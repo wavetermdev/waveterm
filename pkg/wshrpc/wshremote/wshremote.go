@@ -210,11 +210,9 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrpc.CommandRemoteListEntriesData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 16)
 	go func() {
-		log.Printf("RemoteListEntriesCommand: path=%s\n", data.Path)
 		defer close(ch)
 		path, err := wavebase.ExpandHomeDir(data.Path)
 		if err != nil {
-			log.Printf("cannot expand path %q: %v\n", data.Path, err)
 			ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
 		}
@@ -225,6 +223,15 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 		}
 		if data.Opts.All {
 			fs.WalkDir(os.DirFS(path), ".", func(path string, d fs.DirEntry, err error) error {
+				defer func() {
+					seen++
+				}()
+				if seen < data.Opts.Offset {
+					return nil
+				}
+				if seen >= data.Opts.Offset+data.Opts.Limit {
+					return io.EOF
+				}
 				if err != nil {
 					return err
 				}
@@ -232,26 +239,18 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 					return nil
 				}
 				innerFilesEntries = append(innerFilesEntries, d)
-				seen++
-				if seen >= data.Opts.Limit {
-					return io.EOF
-				}
 				return nil
 			})
 		} else {
 			innerFilesEntries, err = os.ReadDir(path)
 			if err != nil {
-				log.Printf("cannot open dir %q: %v\n", path, err)
 				ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("cannot open dir %q: %w", path, err))
 				return
 			}
 		}
-		log.Printf("innerFilesEntries: %v\n", innerFilesEntries)
 		var fileInfoArr []*wshrpc.FileInfo
 		for _, innerFileEntry := range innerFilesEntries {
-			log.Printf("innerFileEntry: %v\n", innerFileEntry)
 			if ctx.Err() != nil {
-				log.Printf("context error\n")
 				ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](ctx.Err())
 				return
 			}
@@ -269,7 +268,6 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 			}
 		}
 		if len(fileInfoArr) > 0 {
-			log.Printf("sending final chunk: %v\n", fileInfoArr)
 			resp := wshrpc.CommandRemoteListEntriesRtnData{FileInfo: fileInfoArr}
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: resp}
 		}

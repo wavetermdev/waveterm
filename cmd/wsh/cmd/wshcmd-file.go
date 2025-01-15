@@ -557,6 +557,10 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 		onePerLine = true
 	}
 
+	if len(args) == 0 {
+		args = []string{"."}
+	}
+
 	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
