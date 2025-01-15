@@ -182,13 +182,18 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting file info: %w", err)
 	}
 
-	WriteStdout("filename: %s\n", info.Name)
-	WriteStdout("size:     %d\n", info.Size)
-	WriteStdout("mtime:    %s\n", time.Unix(info.ModTime/1000, 0).Format(time.DateTime))
-	if len(*info.Meta) > 0 {
+	WriteStdout("name:\t%s\n", info.Name)
+	if info.Mode != 0 {
+		WriteStdout("mode:\t%s\n", info.Mode.String())
+	}
+	WriteStdout("mtime:\t%s\n", time.Unix(info.ModTime/1000, 0).Format(time.DateTime))
+	if !info.IsDir {
+		WriteStdout("size:\t%d\n", info.Size)
+	}
+	if info.Meta != nil && len(*info.Meta) > 0 {
 		WriteStdout("metadata:\n")
 		for k, v := range *info.Meta {
-			WriteStdout("  %s: %v\n", k, v)
+			WriteStdout("\t\t\t%s: %v\n", k, v)
 		}
 	}
 	return nil

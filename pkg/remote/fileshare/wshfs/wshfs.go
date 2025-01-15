@@ -122,16 +122,13 @@ func listEntriesInternal(client *wshutil.WshRpc, conn *connparse.Connection, opt
 }
 
 func (c WshClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
-	log.Printf("WshClient:ListEntriesStream: path=%s", conn.Path)
 	client := wshclient.GetBareRpcClient()
 	return wshclient.RemoteListEntriesCommand(client, wshrpc.CommandRemoteListEntriesData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
 	client := wshclient.GetBareRpcClient()
-	resp, err := wshclient.RemoteFileInfoCommand(client, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
-	log.Printf("WshClient:Stat: path=%s; resp: %v, err: %v", conn.Path, resp, err)
-	return resp, err
+	return wshclient.RemoteFileInfoCommand(client, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
