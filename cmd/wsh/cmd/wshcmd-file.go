@@ -41,16 +41,16 @@ URI format: [profile]:[uri-scheme]://[connection]/[path]
 
 Supported URI schemes:
   wsh:
-    Used to access files on remotes via the WSH helper. Allows for file streaming to Wave and other remotes.
+    Used to access files on remote hosts over SSH via the WSH helper. Allows for file streaming to Wave and other remotes.
     Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
     If a profile is provided, it must be defined in "profiles.json" in the Wave configuration directory.
 
     Format: wsh://[remote]/[path]
 
-    Shorthands can be used for the current remote and your local machine:
+    Shorthands can be used for the current remote and your local computer:
       [path]              a relative or absolute path on the current remote
       //[remote]/[path]   a path on a remote
-      /~/[path]           a path relative to your home directory on your local machine
+      /~/[path]           a path relative to your home directory on your local computer
   s3:
     Used to access files on S3-compatible systems.
     Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
@@ -67,8 +67,8 @@ Supported URI schemes:
 
 var fileCmd = &cobra.Command{
 	Use:   "file",
-	Short: "manage Wave Terminal files",
-	Long:  "Commands to manage files across different storage systems." + UriHelpText}
+	Short: "manage files across different storage systems",
+	Long:  "Manage files across different storage systems.\n\nWave Terminal is capable of managing files from remote SSH hosts, S3-compatible systems, and the internal Wave filesystem.\nFiles are addressed via URIs, which vary depending on the storage system." + UriHelpText}
 
 var fileTimeout int
 
