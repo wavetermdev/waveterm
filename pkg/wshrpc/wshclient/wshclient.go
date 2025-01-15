@@ -218,8 +218,8 @@ func FileListStreamCommand(w *wshutil.WshRpc, data wshrpc.FileListData, opts *ws
 }
 
 // command "fileread", wshserver.FileReadCommand
-func FileReadCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) (string, error) {
-	resp, err := sendRpcRequestCallHelper[string](w, "fileread", data, opts)
+func FileReadCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) (*wshrpc.FileData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.FileData](w, "fileread", data, opts)
 	return resp, err
 }
 

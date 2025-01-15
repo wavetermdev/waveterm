@@ -31,12 +31,12 @@ func runReadFile(cmd *cobra.Command, args []string) {
 		WriteStderr("[error] %v\n", err)
 		return
 	}
-	resp64, err := wshclient.FileReadCommand(RpcClient, wshrpc.FileData{Info: &wshrpc.FileInfo{Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, fullORef.OID, args[0])}}, &wshrpc.RpcOpts{Timeout: 5000})
+	data, err := wshclient.FileReadCommand(RpcClient, wshrpc.FileData{Info: &wshrpc.FileInfo{Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, fullORef.OID, args[0])}}, &wshrpc.RpcOpts{Timeout: 5000})
 	if err != nil {
 		WriteStderr("[error] reading file: %v\n", err)
 		return
 	}
-	resp, err := base64.StdEncoding.DecodeString(resp64)
+	resp, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		WriteStderr("[error] decoding file: %v\n", err)
 		return

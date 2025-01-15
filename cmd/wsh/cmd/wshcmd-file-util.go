@@ -103,13 +103,13 @@ func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) 
 		}
 
 		// Read the chunk
-		content64, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+		data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 		if err != nil {
 			return fmt.Errorf("reading chunk at offset %d: %w", offset, err)
 		}
 
 		// Decode and write the chunk
-		chunk, err := base64.StdEncoding.DecodeString(content64)
+		chunk, err := base64.StdEncoding.DecodeString(data.Data64)
 		if err != nil {
 			return fmt.Errorf("decoding chunk at offset %d: %w", offset, err)
 		}

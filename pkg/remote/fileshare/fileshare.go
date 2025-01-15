@@ -18,6 +18,7 @@ import (
 // CreateFileShareClient creates a fileshare client based on the connection string
 // Returns the client and the parsed connection
 func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileShareClient, *connparse.Connection) {
+	log.Printf("CreateFileShareClient: connection=%s", connection)
 	conn, err := connparse.ParseURI(connection)
 	if err != nil {
 		log.Printf("error parsing connection: %v", err)
@@ -30,6 +31,8 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 			return nil, nil
 		}
 		source := handler.GetRpcContext().Conn
+
+		// RPC context connection is empty for local connections
 		if source == "" {
 			source = wshrpc.LocalConnName
 		}
@@ -50,15 +53,16 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	}
 }
 
-func Read(ctx context.Context, path string) (*wshrpc.FileData, error) {
-	client, conn := CreateFileShareClient(ctx, path)
+func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
-		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
+		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Info.Path)
 	}
-	return client.Read(ctx, conn, wshrpc.FileData{})
+	return client.Read(ctx, conn, data)
 }
 
 func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
+	log.Printf("ListEntries: path=%s", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
@@ -67,6 +71,7 @@ func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([
 }
 
 func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+	log.Printf("ListEntriesStream: path=%s", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData])
@@ -78,6 +83,7 @@ func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOp
 }
 
 func Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
+	log.Printf("Stat: path=%s", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
@@ -86,6 +92,7 @@ func Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
 }
 
 func PutFile(ctx context.Context, data wshrpc.FileData) error {
+	log.Printf("PutFile: path=%s", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
 		return fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Info.Path)
@@ -98,6 +105,7 @@ func PutFile(ctx context.Context, data wshrpc.FileData) error {
 }
 
 func Mkdir(ctx context.Context, path string) error {
+	log.Printf("Mkdir: path=%s", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
@@ -107,6 +115,7 @@ func Mkdir(ctx context.Context, path string) error {
 
 // TODO: Implement move across different fileshare types
 func Move(ctx context.Context, srcPath, destPath string, recursive bool) error {
+	log.Printf("Move: src=%s, dest=%s", srcPath, destPath)
 	srcClient, srcConn := CreateFileShareClient(ctx, srcPath)
 	if srcConn == nil || srcClient == nil {
 		return fmt.Errorf("error creating fileshare client, could not parse connection %s or %s", srcPath, destPath)
@@ -120,10 +129,12 @@ func Move(ctx context.Context, srcPath, destPath string, recursive bool) error {
 
 // TODO: Implement copy across different fileshare types
 func Copy(ctx context.Context, srcPath, destPath string, recursive bool) error {
+	log.Printf("Copy: src=%s, dest=%s", srcPath, destPath)
 	return nil
 }
 
 func Delete(ctx context.Context, path string) error {
+	log.Printf("Delete: path=%s", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return fmt.Errorf("error creating fileshare client, could not parse connection %s", path)

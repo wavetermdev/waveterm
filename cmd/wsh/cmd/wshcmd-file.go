@@ -445,6 +445,7 @@ func filePrintColumns(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRem
 			strs := make([]string, len(respUnion.Response.FileInfo))
 			for i, f := range respUnion.Response.FileInfo {
 				strs[i] = f.Name
+				log.Printf("file: %s", f.Name)
 			}
 			return strs, nil
 		},

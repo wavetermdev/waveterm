@@ -134,7 +134,7 @@ type WshRpcInterface interface {
 	FileAppendCommand(ctx context.Context, data FileData) error
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
-	FileReadCommand(ctx context.Context, data FileData) (string, error)
+	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]

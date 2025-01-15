@@ -178,7 +178,7 @@ class RpcApiType {
     }
 
     // command "fileread" [call]
-    FileReadCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<string> {
+    FileReadCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<FileData> {
         return client.wshRpcCall("fileread", data, opts);
     }
 

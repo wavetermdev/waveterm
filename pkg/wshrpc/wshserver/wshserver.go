@@ -313,9 +313,8 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.FileData)
 	return fileshare.PutFile(ctx, data)
 }
 
-func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) (string, error) {
-	// TODO: implement this
-	return "", nil
+func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	return fileshare.Read(ctx, data)
 }
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {

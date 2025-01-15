@@ -117,7 +117,7 @@ func getAllVariables(zoneId string) error {
 		Info: &wshrpc.FileInfo{
 			Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, getVarFileName)}}
 
-	envStr64, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+	data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
 		return nil
@@ -125,7 +125,7 @@ func getAllVariables(zoneId string) error {
 	if err != nil {
 		return fmt.Errorf("reading variables: %w", err)
 	}
-	envBytes, err := base64.StdEncoding.DecodeString(envStr64)
+	envBytes, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("decoding variables: %w", err)
 	}

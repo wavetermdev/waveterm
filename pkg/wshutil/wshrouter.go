@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strings"
 	"sync"
 	"time"
 
@@ -56,27 +55,6 @@ type WshRouter struct {
 	RpcMap           map[string]*routeInfo        // rpcid => routeinfo
 	SimpleRequestMap map[string]chan *RpcMessage  // simple reqid => response channel
 	InputCh          chan msgAndRoute
-}
-
-func IsRouteId(routeId string) bool {
-	if routeId == "" {
-		return false
-	}
-	if len(routeId) < 5 {
-		return false
-	}
-	if routeId == DefaultRoute ||
-		routeId == UpstreamRoute ||
-		routeId == SysRoute ||
-		routeId == ElectronRoute ||
-		strings.HasPrefix(routeId, RoutePrefix_Conn) ||
-		strings.HasPrefix(routeId, RoutePrefix_Controller) ||
-		strings.HasPrefix(routeId, RoutePrefix_Proc) ||
-		strings.HasPrefix(routeId, RoutePrefix_Tab) ||
-		strings.HasPrefix(routeId, RoutePrefix_FeBlock) {
-		return true
-	}
-	return true
 }
 
 func MakeConnectionRouteId(connId string) string {
