@@ -11,9 +11,10 @@ env:
     NODE_VERSION: 22
 
 permissions:
-    contents: read # To allow the action to read repository contents
-    pull-requests: write # To allow the action to create/update pull request comments
+    contents: read
+    pull-requests: write
     checks: write
+    actions: read
 
 jobs:
     context:
@@ -46,7 +47,22 @@ jobs:
     run_testdriver:
         name: Run TestDriver.ai
         runs-on: windows-latest
+        if: github.event.workflow_run.conclusion == 'success'
         steps:
+            - name: Create Check Run
+              id: create-check
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const check = await github.rest.checks.create({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          name: 'TestDriver.ai Run',
+                          head_sha: '${{ github.event.workflow_run.head_sha }}',
+                          status: 'in_progress'
+                      });
+                      return check.data.id;
+
             - uses: testdriverai/action@main
               id: testdriver
               env:
@@ -138,3 +154,23 @@ jobs:
 
                   prompt: |
                       1. /run testdriver/onboarding.yml
+
+            - name: Update Check Run
+              if: always()
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const checkId = steps['create-check'].outputs.result;
+                      await github.rest.checks.update({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          check_run_id: checkId,
+                          status: 'completed',
+                          conclusion: steps.testdriver.outcome === 'success' ? 'success' : 'failure',
+                          output: {
+                              title: 'TestDriver.ai Results',
+                              summary: steps.testdriver.outcome === 'success'
+                                  ? '✅ All tests passed'
+                                  : '❌ Tests failed'
+                          }
+                      });
