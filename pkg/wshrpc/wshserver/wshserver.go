@@ -305,7 +305,7 @@ func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.FileListDa
 	return fileshare.ListEntries(ctx, data.Path, data.Opts)
 }
 
-func (ws *WshServer) FileListStreamCommand(ctx context.Context, data wshrpc.FileListData) (<-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], error) {
+func (ws *WshServer) FileListStreamCommand(ctx context.Context, data wshrpc.FileListData) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	return fileshare.ListEntriesStream(ctx, data.Path, data.Opts)
 }
 

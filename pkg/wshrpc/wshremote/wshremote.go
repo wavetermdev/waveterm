@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -276,7 +277,7 @@ func listFilesInternal(path string, fileInfoArr []*fs.DirEntry, seen *int, opts 
 }
 
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
-	mimeType := utilfn.DetectMimeType(fullPath, finfo, extended)
+	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
 	rtn := &wshrpc.FileInfo{
 		Path:          wavebase.ReplaceHomeDir(fullPath),
 		Dir:           computeDirPart(fullPath, finfo.IsDir()),

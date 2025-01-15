@@ -137,6 +137,7 @@ type WshRpcInterface interface {
 	FileReadCommand(ctx context.Context, data FileData) (string, error)
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
+	FileListStreamCommand(ctx context.Context, data FileListData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -371,6 +372,8 @@ type FileOptsType struct {
 }
 
 type FileMeta = map[string]any
+
+type FileListStreamResponse <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 
 type FileListData struct {
 	Path string        `json:"path"`

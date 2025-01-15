@@ -4,8 +4,9 @@
 package connparse
 
 import (
-	"os"
 	"strings"
+
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 	ConnectionTypeS3   = "s3"
 	ConnectionTypeWave = "wavefile"
 
-	ConnHostLocal   = "local"
+	ConnHostCurrent = "current"
 	ConnHostWaveSrv = "wavesrv"
 )
 
@@ -60,42 +61,42 @@ func ParseURI(uri string) (*Connection, error) {
 	} else {
 		rest = split[0]
 	}
-	if scheme == "" {
-		scheme = ConnectionTypeWsh
-	}
 
 	var host string
-	var path string
-	if strings.HasPrefix(rest, "//") {
-		rest = strings.TrimPrefix(rest, "//")
-		split = strings.SplitN(rest, "/", 2)
-		if len(split) > 1 {
-			host = split[0]
-			path = "/" + split[1]
+	var remotePath string
+	if scheme == "" {
+		scheme = ConnectionTypeWsh
+		if strings.HasPrefix(rest, "//") {
+			rest = strings.TrimPrefix(rest, "//")
+			split = strings.SplitN(rest, "/", 2)
+			if len(split) > 1 {
+				host = split[0]
+				remotePath = "/" + split[1]
+			} else {
+				host = split[0]
+				remotePath = "/"
+			}
+		} else if strings.HasPrefix(rest, "/~") {
+			host = wshutil.DefaultRoute
+			remotePath = strings.TrimPrefix(rest, "/")
 		} else {
-			host = split[0]
-			path = "/"
+			host = ConnHostCurrent
+			remotePath = rest
 		}
-	} else if strings.HasPrefix(rest, "/~") {
-		host = ConnHostWaveSrv
-		path = strings.TrimPrefix(rest, "/")
-	} else if stat, _ := os.Stat(rest); stat != nil {
-		host = ConnHostLocal
-		path = rest
 	} else {
 		split = strings.SplitN(rest, "/", 2)
 		if len(split) > 1 {
 			host = split[0]
-			path = "/" + split[1]
+			remotePath = "/" + split[1]
 		} else {
 			host = split[0]
-			path = "/"
+			remotePath = "/"
 		}
 	}
 
 	return &Connection{
 		Scheme: scheme,
 		Host:   host,
-		Path:   path,
+		Path:   remotePath,
 	}, nil
 }

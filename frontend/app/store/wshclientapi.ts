@@ -172,6 +172,11 @@ class RpcApiType {
         return client.wshRpcCall("filelist", data, opts);
     }
 
+    // command "fileliststream" [responsestream]
+	FileListStreamCommand(client: WshClient, data: FileListData, opts?: RpcOpts): AsyncGenerator<CommandRemoteListEntriesRtnData, void, boolean> {
+        return client.wshRpcStream("fileliststream", data, opts);
+    }
+
     // command "fileread" [call]
     FileReadCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("fileread", data, opts);

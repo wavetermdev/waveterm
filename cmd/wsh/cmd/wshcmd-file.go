@@ -6,7 +6,6 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -19,8 +18,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/colprint"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -138,16 +138,19 @@ Exactly one of source or destination must be a wavefile:// URL.`,
 }
 
 func fileCatRun(cmd *cobra.Command, args []string) error {
-
+	path, err := fixRelativePaths(args[0])
+	if err != nil {
+		return err
+	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
-			Path: args[0]}}
+			Path: path}}
 
 	// Get file info first to check existence and get size
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", args[0])
+		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
@@ -162,14 +165,18 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileInfoRun(cmd *cobra.Command, args []string) error {
+	path, err := fixRelativePaths(args[0])
+	if err != nil {
+		return err
+	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
-			Path: args[0]}}
+			Path: path}}
 
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", args[0])
+		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
@@ -188,14 +195,18 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileRmRun(cmd *cobra.Command, args []string) error {
+	path, err := fixRelativePaths(args[0])
+	if err != nil {
+		return err
+	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
-			Path: args[0]}}
+			Path: path}}
 
-	_, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	_, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", args[0])
+		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
@@ -210,11 +221,15 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileWriteRun(cmd *cobra.Command, args []string) error {
+	path, err := fixRelativePaths(args[0])
+	if err != nil {
+		return err
+	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
-			Path: args[0]}}
+			Path: path}}
 
-	_, err := ensureFile(args[0], fileData)
+	_, err = ensureFile(path, fileData)
 	if err != nil {
 		return err
 	}
@@ -228,11 +243,15 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 }
 
 func fileAppendRun(cmd *cobra.Command, args []string) error {
+	path, err := fixRelativePaths(args[0])
+	if err != nil {
+		return err
+	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
-			Path: args[0]}}
+			Path: path}}
 
-	info, err := ensureFile(args[0], fileData)
+	info, err := ensureFile(path, fileData)
 	if err != nil {
 		return err
 	}
@@ -332,9 +351,13 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 }
 
 func copyFromWaveToLocal(src, dst string) error {
+	path, err := fixRelativePaths(src)
+	if err != nil {
+		return err
+	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
-			Path: src}}
+			Path: path}}
 
 	// Get file info first to check existence and get size
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
@@ -362,9 +385,13 @@ func copyFromWaveToLocal(src, dst string) error {
 }
 
 func copyFromLocalToWave(src, dst string) error {
+	path, err := fixRelativePaths(dst)
+	if err != nil {
+		return err
+	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
-			Path: dst}}
+			Path: path}}
 
 	// stat local file
 	stat, err := os.Stat(src)
@@ -488,13 +515,13 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 		onePerLine = true
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(fileTimeout)*time.Millisecond)
-	defer cancel()
-	filesChan, err := fileshare.ListEntriesStream(ctx, args[0], &wshrpc.FileListOpts{All: recursive})
-	log.Printf("listEntriesStream: %v", err)
+	path, err := fixRelativePaths(args[0])
 	if err != nil {
-		return fmt.Errorf("listing files: %w", err)
+		return err
 	}
+
+	filesChan := wshclient.FileListStreamCommand(RpcClient, wshrpc.FileListData{Path: path, Opts: &wshrpc.FileListOpts{All: recursive}}, &wshrpc.RpcOpts{Timeout: 2000})
+	log.Printf("list entries stream")
 
 	if longForm {
 		return filePrintLong(filesChan)
@@ -516,4 +543,15 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	return filePrintColumns(filesChan)
+}
+
+func fixRelativePaths(path string) (string, error) {
+	conn, err := connparse.ParseURI(path)
+	if err != nil {
+		return "", err
+	}
+	if conn.Scheme == connparse.ConnectionTypeWsh && conn.Host == connparse.ConnHostCurrent {
+		return fileutil.FixPath(conn.Path)
+	}
+	return path, nil
 }

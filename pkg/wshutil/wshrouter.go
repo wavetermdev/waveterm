@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,10 +20,18 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const DefaultRoute = "wavesrv"
-const UpstreamRoute = "upstream"
-const SysRoute = "sys" // this route doesn't exist, just a placeholder for system messages
-const ElectronRoute = "electron"
+const (
+	DefaultRoute  = "wavesrv"
+	UpstreamRoute = "upstream"
+	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
+	ElectronRoute = "electron"
+
+	RoutePrefix_Conn       = "conn:"
+	RoutePrefix_Controller = "controller:"
+	RoutePrefix_Proc       = "proc:"
+	RoutePrefix_Tab        = "tab:"
+	RoutePrefix_FeBlock    = "feblock:"
+)
 
 // this works like a network switch
 
@@ -47,6 +56,27 @@ type WshRouter struct {
 	RpcMap           map[string]*routeInfo        // rpcid => routeinfo
 	SimpleRequestMap map[string]chan *RpcMessage  // simple reqid => response channel
 	InputCh          chan msgAndRoute
+}
+
+func IsRouteId(routeId string) bool {
+	if routeId == "" {
+		return false
+	}
+	if len(routeId) < 5 {
+		return false
+	}
+	if routeId == DefaultRoute ||
+		routeId == UpstreamRoute ||
+		routeId == SysRoute ||
+		routeId == ElectronRoute ||
+		strings.HasPrefix(routeId, RoutePrefix_Conn) ||
+		strings.HasPrefix(routeId, RoutePrefix_Controller) ||
+		strings.HasPrefix(routeId, RoutePrefix_Proc) ||
+		strings.HasPrefix(routeId, RoutePrefix_Tab) ||
+		strings.HasPrefix(routeId, RoutePrefix_FeBlock) {
+		return true
+	}
+	return true
 }
 
 func MakeConnectionRouteId(connId string) string {
