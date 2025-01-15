@@ -102,6 +102,7 @@ func resolveWaveFile(ref *waveFileRef) (*waveobj.ORef, error) {
 
 var fileListCmd = &cobra.Command{
 	Use:     "ls [uri]",
+	Aliases: []string{"list"},
 	Short:   "list files",
 	Long:    "List files in a directory. By default, lists files in the current directory." + UriHelpText,
 	Example: "  wsh file ls wsh://user@ec2/home/user/\n  wsh file ls wavefile://client/configs/",
@@ -123,7 +124,7 @@ var fileInfoCmd = &cobra.Command{
 	Use:     "info [uri]",
 	Short:   "show wave file information",
 	Long:    "Show information about a file." + UriHelpText,
-	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n wsh file info wavefile://client/settings.json",
+	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n  wsh file info wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileInfoRun),
 	PreRunE: preRunSetupRpcClient,
@@ -162,7 +163,7 @@ var fileCpCmd = &cobra.Command{
 	Use:     "cp [source-uri] [destination-uri]" + UriHelpText,
 	Short:   "copy files between storage systems",
 	Long:    "Copy files between different storage systems." + UriHelpText,
-	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt\n wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
+	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt\n  wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
 	Args:    cobra.ExactArgs(2),
 	RunE:    activityWrap("file", fileCpRun),
 	PreRunE: preRunSetupRpcClient,
