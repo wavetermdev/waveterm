@@ -34,13 +34,40 @@ const (
 	WaveFilePrefix = "wavefile://"
 
 	DefaultFileTimeout = 5000
+
+	UriHelpText = `
+
+URI format: [profile]:[uri-scheme]://[connection]/[path]
+
+Supported URI schemes:
+  wavefile:
+    Used to retrieve blockfiles from the internal Wave filesystem.
+
+    Format: wsh://[zoneid]/[path]
+  wsh:
+    Used to access files on remotes via the WSH helper. Allows for file streaming to Wave and other remotes.
+    Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
+	
+    Format: wsh://[remote]/[path]
+
+    Shorthands can be used for the current remote and your local machine:
+      - [path] is a relative or absolute path on the current remote
+      - //[remote]/[path] is a path on a remote
+      - /~/[path] is a path relative to your home directory on your local machine
+
+  s3:
+    Used to access files on S3. Requires S3 credentials to be set up, either in "profiles.json" or in the AWS CLI.
+    If no profile is provided, the default from your AWS CLI configuration will be used. Profiles from the AWS CLI must be prefixed with "aws:".
+	
+    Format: s3://[bucket]/[path]
+            aws:[profile]:s3://[bucket]/[path]
+            [profile]:s3://[bucket]/[path]`
 )
 
 var fileCmd = &cobra.Command{
 	Use:   "file",
 	Short: "manage Wave Terminal files",
-	Long:  "Commands to manage Wave Terminal files stored in blocks",
-}
+	Long:  "Commands to manage Wave Terminal files stored in blocks." + UriHelpText}
 
 var fileTimeout int
 
@@ -73,43 +100,47 @@ func resolveWaveFile(ref *waveFileRef) (*waveobj.ORef, error) {
 }
 
 var fileListCmd = &cobra.Command{
-	Use:     "ls [wavefile://zone[/path]]",
-	Short:   "list wave files",
-	Example: "  wsh file ls wavefile://block/\n  wsh file ls wavefile://client/configs/",
+	Use:     "ls [uri]",
+	Short:   "list files",
+	Long:    "List files in a directory. By default, lists files in the current directory." + UriHelpText,
+	Example: "  wsh file ls wsh://user@ec2/home/user/\n  wsh file ls wavefile://client/configs/",
 	RunE:    activityWrap("file", fileListRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileCatCmd = &cobra.Command{
-	Use:     "cat wavefile://zone/file",
-	Short:   "display contents of a wave file",
-	Example: "  wsh file cat wavefile://block/config.txt\n  wsh file cat wavefile://client/settings.json",
+	Use:     "cat [uri]",
+	Short:   "display contents of a file",
+	Long:    "Display the contents of a file." + UriHelpText,
+	Example: "  wsh file cat wsh://user@ec2/home/user/config.txt\n  wsh file cat wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileCatRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileInfoCmd = &cobra.Command{
-	Use:     "info wavefile://zone/file",
+	Use:     "info [uri]",
 	Short:   "show wave file information",
-	Example: "  wsh file info wavefile://block/config.txt",
+	Long:    "Show information about a file." + UriHelpText,
+	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n wsh file info wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileInfoRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileRmCmd = &cobra.Command{
-	Use:     "rm wavefile://zone/file",
-	Short:   "remove a wave file",
-	Example: "  wsh file rm wavefile://block/config.txt",
+	Use:     "rm [uri]",
+	Short:   "remove a file",
+	Example: "  wsh file rm wsh://user@ec2/home/user/config.txt\n  wsh file rm wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileRmRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileWriteCmd = &cobra.Command{
-	Use:     "write wavefile://zone/file",
-	Short:   "write stdin into a wave file (up to 10MB)",
+	Use:     "write [uri]",
+	Short:   "write stdin into a file (up to 10MB)",
+	Long:    "Write stdin into a file, buffering input and respecting 10MB total file size limit." + UriHelpText,
 	Example: "  echo 'hello' | wsh file write wavefile://block/greeting.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileWriteRun),
@@ -117,9 +148,9 @@ var fileWriteCmd = &cobra.Command{
 }
 
 var fileAppendCmd = &cobra.Command{
-	Use:     "append wavefile://zone/file",
-	Short:   "append stdin to a wave file",
-	Long:    "append stdin to a wave file, buffering input and respecting 10MB total file size limit",
+	Use:     "append [uri]",
+	Short:   "append stdin to a file",
+	Long:    "Append stdin to a file, buffering input and respecting 10MB total file size limit" + UriHelpText,
 	Example: "  tail -f log.txt | wsh file append wavefile://block/app.log",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileAppendRun),
@@ -127,11 +158,10 @@ var fileAppendCmd = &cobra.Command{
 }
 
 var fileCpCmd = &cobra.Command{
-	Use:   "cp source destination",
-	Short: "copy between wave files and local files",
-	Long: `Copy files between wave storage and local filesystem.
-Exactly one of source or destination must be a wavefile:// URL.`,
-	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt",
+	Use:     "cp [source-uri] [destination-uri]" + UriHelpText,
+	Short:   "copy between files on different storage systems",
+	Long:    "Copy between files on different storage systems." + UriHelpText,
+	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt\n wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
 	Args:    cobra.ExactArgs(2),
 	RunE:    activityWrap("file", fileCpRun),
 	PreRunE: preRunSetupRpcClient,
