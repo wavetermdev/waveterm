@@ -43,7 +43,7 @@ Supported URI schemes:
   wavefile:
     Used to retrieve blockfiles from the internal Wave filesystem.
 
-    Format: wsh://[zoneid]/[path]
+    Format: wavefile://[zoneid]/[path]
   wsh:
     Used to access files on remotes via the WSH helper. Allows for file streaming to Wave and other remotes.
     Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
