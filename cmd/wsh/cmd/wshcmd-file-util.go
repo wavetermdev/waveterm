@@ -10,6 +10,8 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -205,4 +207,15 @@ func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) 
 	}()
 
 	return resultChan, nil
+}
+
+func fixRelativePaths(path string) (string, error) {
+	conn, err := connparse.ParseURI(path)
+	if err != nil {
+		return "", err
+	}
+	if conn.Scheme == connparse.ConnectionTypeWsh && conn.Host == connparse.ConnHostCurrent {
+		return fileutil.FixPath(conn.Path)
+	}
+	return path, nil
 }

@@ -19,9 +19,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/colprint"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -586,15 +584,4 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	return filePrintColumns(filesChan)
-}
-
-func fixRelativePaths(path string) (string, error) {
-	conn, err := connparse.ParseURI(path)
-	if err != nil {
-		return "", err
-	}
-	if conn.Scheme == connparse.ConnectionTypeWsh && conn.Host == connparse.ConnHostCurrent {
-		return fileutil.FixPath(conn.Path)
-	}
-	return path, nil
 }
