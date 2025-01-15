@@ -70,13 +70,13 @@ func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([
 	return client.ListEntries(ctx, conn, opts)
 }
 
-func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOpts) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	log.Printf("ListEntriesStream: path=%s", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
-		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData])
-		defer close(rtn)
+		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 1)
 		rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Error: fmt.Errorf("error creating fileshare client, could not parse connection %s", path)}
+		close(rtn)
 		return rtn
 	}
 	return client.ListEntriesStream(ctx, conn, opts)

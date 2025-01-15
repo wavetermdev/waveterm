@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -133,6 +134,7 @@ var fileInfoCmd = &cobra.Command{
 var fileRmCmd = &cobra.Command{
 	Use:     "rm [uri]",
 	Short:   "remove a file",
+	Long:    "Remove a file." + UriHelpText,
 	Example: "  wsh file rm wsh://user@ec2/home/user/config.txt\n  wsh file rm wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileRmRun),
@@ -152,7 +154,7 @@ var fileWriteCmd = &cobra.Command{
 var fileAppendCmd = &cobra.Command{
 	Use:     "append [uri]",
 	Short:   "append stdin to a file",
-	Long:    "Append stdin to a file, buffering input and respecting 10MB total file size limit" + UriHelpText,
+	Long:    "Append stdin to a file, buffering input and respecting 10MB total file size limit." + UriHelpText,
 	Example: "  tail -f log.txt | wsh file append wavefile://block/app.log",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileAppendRun),
@@ -482,7 +484,6 @@ func filePrintColumns(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRem
 			strs := make([]string, len(respUnion.Response.FileInfo))
 			for i, f := range respUnion.Response.FileInfo {
 				strs[i] = f.Name
-				log.Printf("file: %s", f.Name)
 			}
 			return strs, nil
 		},
@@ -509,15 +510,17 @@ func filePrintLong(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemote
 		nameWidth = 60
 	}
 
+	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', 0)
+
 	// Print samples
 	for _, f := range samples {
 		name := f.Name
 		t := time.Unix(f.ModTime/1000, 0)
 		timestamp := utilfn.FormatLsTime(t)
 		if f.Size == 0 && strings.HasSuffix(name, "/") {
-			fmt.Fprintf(os.Stdout, "%-*s  %8s  %s\n", nameWidth, name, "-", timestamp)
+			fmt.Fprintf(writer, "%-*s\t%8s\t%s\n", nameWidth, name, "-", timestamp)
 		} else {
-			fmt.Fprintf(os.Stdout, "%-*s  %8d  %s\n", nameWidth, name, f.Size, timestamp)
+			fmt.Fprintf(writer, "%-*s\t%8d\t%s\n", nameWidth, name, f.Size, timestamp)
 		}
 	}
 
@@ -531,12 +534,13 @@ func filePrintLong(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemote
 			t := time.Unix(f.ModTime/1000, 0)
 			timestamp := utilfn.FormatLsTime(t)
 			if f.Size == 0 && strings.HasSuffix(name, "/") {
-				fmt.Fprintf(os.Stdout, "%-*s  %8s  %s\n", nameWidth, name, "-", timestamp)
+				fmt.Fprintf(writer, "%-*s\t%8s\t%s\n", nameWidth, name, "-", timestamp)
 			} else {
-				fmt.Fprintf(os.Stdout, "%-*s  %8d  %s\n", nameWidth, name, f.Size, timestamp)
+				fmt.Fprintf(writer, "%-*s\t%8d\t%s\n", nameWidth, name, f.Size, timestamp)
 			}
 		}
 	}
+	writer.Flush()
 
 	return nil
 }
@@ -559,21 +563,18 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	filesChan := wshclient.FileListStreamCommand(RpcClient, wshrpc.FileListData{Path: path, Opts: &wshrpc.FileListOpts{All: recursive}}, &wshrpc.RpcOpts{Timeout: 2000})
-	log.Printf("list entries stream")
 
 	if longForm {
 		return filePrintLong(filesChan)
 	}
 
 	if onePerLine {
-		log.Printf("onePerLine")
 		for respUnion := range filesChan {
 			if respUnion.Error != nil {
 				log.Printf("error: %v", respUnion.Error)
 				return respUnion.Error
 			}
 			for _, f := range respUnion.Response.FileInfo {
-				log.Printf("file: %s", f.Name)
 				fmt.Fprintln(os.Stdout, f.Name)
 			}
 			return nil

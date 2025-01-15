@@ -210,29 +210,54 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrpc.CommandRemoteListEntriesData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 16)
 	go func() {
+		log.Printf("RemoteListEntriesCommand: path=%s\n", data.Path)
 		defer close(ch)
 		path, err := wavebase.ExpandHomeDir(data.Path)
 		if err != nil {
+			log.Printf("cannot expand path %q: %v\n", data.Path, err)
 			ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
 		}
-		innerFilesEntries := []*fs.DirEntry{}
+		innerFilesEntries := []os.DirEntry{}
 		seen := 0
 		if data.Opts.Limit == 0 {
 			data.Opts.Limit = MaxDirSize
 		}
-		err = listFilesInternal(path, innerFilesEntries, &seen, data.Opts)
-		if err != nil {
-			ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("cannot list entries in dir %q: %w", path, err))
-			return
-		}
-		var fileInfoArr []*wshrpc.FileInfo
-		for _, innerFileEntry := range innerFilesEntries {
-			if ctx.Err() != nil {
+		if data.Opts.All {
+			fs.WalkDir(os.DirFS(path), ".", func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if d.IsDir() {
+					return nil
+				}
+				innerFilesEntries = append(innerFilesEntries, d)
+				seen++
+				if seen >= data.Opts.Limit {
+					return io.EOF
+				}
+				return nil
+			})
+		} else {
+			innerFilesEntries, err = os.ReadDir(path)
+			if err != nil {
+				log.Printf("cannot open dir %q: %v\n", path, err)
+				ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("cannot open dir %q: %w", path, err))
 				return
 			}
-			innerFileInfoInt, err := (*innerFileEntry).Info()
+		}
+		log.Printf("innerFilesEntries: %v\n", innerFilesEntries)
+		var fileInfoArr []*wshrpc.FileInfo
+		for _, innerFileEntry := range innerFilesEntries {
+			log.Printf("innerFileEntry: %v\n", innerFileEntry)
+			if ctx.Err() != nil {
+				log.Printf("context error\n")
+				ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](ctx.Err())
+				return
+			}
+			innerFileInfoInt, err := innerFileEntry.Info()
 			if err != nil {
+				log.Printf("cannot stat file %q: %v\n", innerFileEntry.Name(), err)
 				continue
 			}
 			innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt, false)
@@ -244,36 +269,12 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 			}
 		}
 		if len(fileInfoArr) > 0 {
+			log.Printf("sending final chunk: %v\n", fileInfoArr)
 			resp := wshrpc.CommandRemoteListEntriesRtnData{FileInfo: fileInfoArr}
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: resp}
 		}
 	}()
 	return ch
-}
-
-func listFilesInternal(path string, fileInfoArr []*fs.DirEntry, seen *int, opts *wshrpc.FileListOpts) error {
-	innerFilesEntries, err := os.ReadDir(path)
-	if err != nil {
-		return fmt.Errorf("cannot open dir %q: %w", path, err)
-	}
-	for _, innerFileEntry := range innerFilesEntries {
-		if err != nil {
-			continue
-		}
-		if innerFileEntry.IsDir() && opts.All {
-			err = listFilesInternal(filepath.Join(path, innerFileEntry.Name()), fileInfoArr, seen, opts)
-			if err != nil {
-				return err
-			}
-		} else {
-			fileInfoArr = append(fileInfoArr, &innerFileEntry)
-		}
-		*seen++
-		if *seen >= opts.Offset || *seen >= opts.Offset+opts.Limit {
-			break
-		}
-	}
-	return nil
 }
 
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
