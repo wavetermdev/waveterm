@@ -45,7 +45,7 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			SshIdentityFile: identityFiles,
 		},
 	}
-	wshclient.ConnConnectCommand(RpcClient, connOpts, nil)
+	wshclient.ConnConnectCommand(RpcClient, connOpts, &wshrpc.RpcOpts{Timeout: 60000})
 
 	// now, with that made, it will be straightforward to connect
 	data := wshrpc.CommandSetMetaData{
