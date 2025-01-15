@@ -162,7 +162,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		if err != nil {
 			return fmt.Errorf("error formatting metadata: %v", err)
 		}
-		WriteStdout(string(jsonBytes) + "\n")
+		WriteStdout("%s\n", string(jsonBytes))
 		return nil
 	}
 

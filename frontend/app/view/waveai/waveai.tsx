@@ -523,7 +523,6 @@ const ChatWindow = memo(
         const handleNewMessage = useCallback(
             throttle(100, (messagesLen: number) => {
                 if (osRef.current?.osInstance()) {
-                    console.log("handleNewMessage", messagesLen, isUserScrolling.current);
                     const { viewport } = osRef.current.osInstance().elements();
                     if (prevMessagesLenRef.current !== messagesLen || !isUserScrolling.current) {
                         viewport.scrollTo({

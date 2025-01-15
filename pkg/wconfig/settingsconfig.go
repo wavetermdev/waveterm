@@ -135,12 +135,12 @@ type FullConfigType struct {
 	Connections    map[string]ConnKeywords        `json:"connections"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
-
 type ConnKeywords struct {
 	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
 	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
 	ConnOverrideConfig      bool   `json:"conn:overrideconfig,omitempty"`
 	ConnWshPath             string `json:"conn:wshpath,omitempty"`
+	ConnShellPath           string `json:"conn:shellpath,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`
@@ -164,8 +164,6 @@ type ConnKeywords struct {
 	SshProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
 	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
 	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
-
-	AwsConfig *string `json:"aws:config,omitempty"`
 }
 
 func DefaultBoolPtr(arg *bool, def bool) bool {

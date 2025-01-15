@@ -284,6 +284,7 @@ declare global {
         "conn:askbeforewshinstall"?: boolean;
         "conn:overrideconfig"?: boolean;
         "conn:wshpath"?: string;
+        "conn:shellpath"?: string;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;
@@ -304,7 +305,6 @@ declare global {
         "ssh:proxyjump"?: string[];
         "ssh:userknownhostsfile"?: string[];
         "ssh:globalknownhostsfile"?: string[];
-        "aws:config"?: string;
     };
 
     // wshrpc.ConnRequest
