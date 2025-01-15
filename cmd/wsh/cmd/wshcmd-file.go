@@ -67,7 +67,7 @@ Supported URI schemes:
 var fileCmd = &cobra.Command{
 	Use:   "file",
 	Short: "manage Wave Terminal files",
-	Long:  "Commands to manage Wave Terminal files stored in blocks." + UriHelpText}
+	Long:  "Commands to manage files across different storage systems." + UriHelpText}
 
 var fileTimeout int
 
@@ -159,8 +159,8 @@ var fileAppendCmd = &cobra.Command{
 
 var fileCpCmd = &cobra.Command{
 	Use:     "cp [source-uri] [destination-uri]" + UriHelpText,
-	Short:   "copy between files on different storage systems",
-	Long:    "Copy between files on different storage systems." + UriHelpText,
+	Short:   "copy files between storage systems",
+	Long:    "Copy files between different storage systems." + UriHelpText,
 	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt\n wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
 	Args:    cobra.ExactArgs(2),
 	RunE:    activityWrap("file", fileCpRun),
