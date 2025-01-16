@@ -322,12 +322,20 @@ func (conn *SSHConn) StartConnServer(ctx context.Context) (bool, string, string,
 		sshSession.Close()
 		return true, clientVersion, osArchStr, nil
 	}
-	// write the jwt
-	conn.Infof(ctx, "writing jwt token to connserver\n")
-	_, err = fmt.Fprintf(stdinPipe, "%s\n", jwtToken)
+	jwtLine, err := wshutil.ReadLineWithTimeout(linesChan, 3*time.Second)
 	if err != nil {
 		sshSession.Close()
-		return false, clientVersion, "", fmt.Errorf("failed to write JWT token: %w", err)
+		return false, clientVersion, "", fmt.Errorf("error reading jwt status line: %w", err)
+	}
+	conn.Infof(ctx, "got jwt status line: %s\n", jwtLine)
+	if strings.TrimSpace(jwtLine) == wavebase.NeedJwtConst {
+		// write the jwt
+		conn.Infof(ctx, "writing jwt token to connserver\n")
+		_, err = fmt.Fprintf(stdinPipe, "%s\n", jwtToken)
+		if err != nil {
+			sshSession.Close()
+			return false, clientVersion, "", fmt.Errorf("failed to write JWT token: %w", err)
+		}
 	}
 	conn.WithLock(func() {
 		conn.ConnController = sshSession

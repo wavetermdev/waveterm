@@ -24,6 +24,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -282,8 +283,8 @@ func (bc *BlockController) DoRunShellCommand(logCtx context.Context, rc *RunShel
 	return bc.manageRunningShellProcess(shellProc, rc, blockMeta)
 }
 
-func (bc *BlockController) makeSwapToken(ctx context.Context) *wshrpc.TokenSwapEntry {
-	token := &wshrpc.TokenSwapEntry{
+func (bc *BlockController) makeSwapToken(ctx context.Context) *shellutil.TokenSwapEntry {
+	token := &shellutil.TokenSwapEntry{
 		Token: uuid.New().String(),
 		Env:   make(map[string]string),
 		Exp:   time.Now().Add(5 * time.Minute),
@@ -360,6 +361,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	}
 	var shellProc *shellexec.ShellProc
 	swapToken := bc.makeSwapToken(ctx)
+	cmdOpts.SwapToken = swapToken
 	blocklogger.Infof(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
 	if strings.HasPrefix(remoteName, "wsl://") {
 		wslName := strings.TrimPrefix(remoteName, "wsl://")
@@ -412,7 +414,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 				return nil, err
 			}
 		} else {
-			shellProc, err = shellexec.StartRemoteShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, conn, swapToken)
+			shellProc, err = shellexec.StartRemoteShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
 			if err != nil {
 				conn.SetWshError(err)
 				conn.WshEnabled.Store(false)
@@ -854,7 +856,7 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 }
 
 func debugLog(ctx context.Context, fmtStr string, args ...interface{}) {
-	blocklogger.Infof(ctx, "[conndebg] "+fmtStr, args...)
+	blocklogger.Infof(ctx, "[conndebug] "+fmtStr, args...)
 	log.Printf(fmtStr, args...)
 }
 
@@ -878,7 +880,7 @@ func startBlockController(ctx context.Context, tabId string, blockId string, rtO
 	}
 	bc := getOrCreateBlockController(tabId, blockId, controllerName)
 	bcStatus := bc.GetRuntimeStatus()
-	debugLog(ctx, "[conndebug] start blockcontroller %s %q (%q) (curstatus %s) (force %v)\n", blockId, controllerName, connName, bcStatus.ShellProcStatus, force)
+	debugLog(ctx, "start blockcontroller %s %q (%q) (curstatus %s) (force %v)\n", blockId, controllerName, connName, bcStatus.ShellProcStatus, force)
 	if bcStatus.ShellProcStatus == Status_Init || bcStatus.ShellProcStatus == Status_Done {
 		go bc.run(ctx, blockData, blockData.Meta, rtOpts, force)
 	}

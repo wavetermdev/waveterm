@@ -22,6 +22,11 @@ class RpcApiType {
         return client.wshRpcCall("authenticate", data, opts);
     }
 
+    // command "authenticatetoken" [call]
+    AuthenticateTokenCommand(client: WshClient, data: CommandAuthenticateTokenData, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
+        return client.wshRpcCall("authenticatetoken", data, opts);
+    }
+
     // command "blockinfo" [call]
     BlockInfoCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BlockInfoData> {
         return client.wshRpcCall("blockinfo", data, opts);
@@ -330,11 +335,6 @@ class RpcApiType {
     // command "test" [call]
     TestCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("test", data, opts);
-    }
-
-    // command "tokenswap" [call]
-    TokenSwapCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<TokenSwapEntry> {
-        return client.wshRpcCall("tokenswap", data, opts);
     }
 
     // command "vdomasyncinitiation" [call]

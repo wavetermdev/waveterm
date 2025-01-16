@@ -46,8 +46,7 @@ const ESC = 0x1b
 const DefaultOutputChSize = 32
 const DefaultInputChSize = 32
 
-const WaveJwtTokenVarName = "WAVETERM_JWT"
-const WaveSwapTokenVarName = "WAVETERM_SWAPTOKEN"
+const WaveJwtTokenVarName = wavebase.WaveJwtTokenVarName
 
 // OSC escape types
 // OSC 23198 ; (JSON | base64-JSON) ST

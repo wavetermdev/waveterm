@@ -109,6 +109,14 @@ declare global {
     type CommandAuthenticateRtnData = {
         routeid: string;
         authtoken?: string;
+        newjwttoken?: string;
+        env?: {[key: string]: any};
+        initscripttext?: string;
+    };
+
+    // wshrpc.CommandAuthenticateTokenData
+    type CommandAuthenticateTokenData = {
+        token: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -747,13 +755,6 @@ declare global {
     type TimeSeriesData = {
         ts: number;
         values: {[key: string]: number};
-    };
-
-    // wshrpc.TokenSwapEntry
-    type TokenSwapEntry = {
-        token: string;
-        env?: {[key: string]: string};
-        scripttext?: string;
     };
 
     // waveobj.UIContext

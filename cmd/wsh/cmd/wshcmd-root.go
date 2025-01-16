@@ -81,7 +81,14 @@ func OutputHelpMessage(cmd *cobra.Command) {
 }
 
 func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
-	err := setupRpcClient(nil)
+	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
+	if jwtToken == "" {
+		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
+		UsingTermWshMode = true
+		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(nil)
+		return nil
+	}
+	err := setupRpcClient(nil, jwtToken)
 	if err != nil {
 		return err
 	}
@@ -128,14 +135,7 @@ func resolveBlockArg() (*waveobj.ORef, error) {
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
-func setupRpcClient(serverImpl wshutil.ServerImpl) error {
-	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
-	if jwtToken == "" {
-		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
-		UsingTermWshMode = true
-		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(serverImpl)
-		return nil
-	}
+func setupRpcClient(serverImpl wshutil.ServerImpl, jwtToken string) error {
 	rpcCtx, err := wshutil.ExtractUnverifiedRpcContext(jwtToken)
 	if err != nil {
 		return fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)

@@ -56,8 +56,9 @@ const (
 	ZshStartup_Zshrc = `
 
 # add wsh to path, source dynamic script from wsh token
-export PATH={{.WSHBINDIR}}:$PATH
-source <(wsh token $WAVETERM_SWAPTOKEN zsh)
+WAVETERM_WSHBINDIR={{.WSHBINDIR}}
+export PATH="$WAVETERM_WSHBINDIR:$PATH"
+source <(wsh token $WAVETERM_SWAPTOKEN zsh 2>/dev/null)
 unset WAVETERM_SWAPTOKEN
 
 # Source the original zshrc only if ZDOTDIR has not been changed
@@ -65,10 +66,11 @@ if [ "$ZDOTDIR" = "$WAVETERM_ZDOTDIR" ]; then
   [ -f ~/.zshrc ] && source ~/.zshrc
 fi
 
-# re-add wsh to path if it got clobbered, and source completions
-if [[ ":$PATH:" != *":{{.WSHBINDIR}}:"* ]]; then
-  export PATH={{.WSHBINDIR}}:$PATH
+if [[ ":$PATH:" != *":$WAVETERM_WSHBINDIR:"* ]]; then
+  export PATH="$WAVETERM_WSHBINDIR:$PATH"
 fi
+unset WAVETERM_WSHBINDIR
+
 if [[ -n ${_comps+x} ]]; then
   source <(wsh completion zsh)
 fi
@@ -105,11 +107,13 @@ if [ -f /etc/profile ]; then
     . /etc/profile
 fi
 
+WAVETERM_WSHBINDIR={{.WSHBINDIR}}
+
 # after /etc/profile which is likely to clobber the path
-export PATH={{.WSHBINDIR}}:$PATH
+export PATH="$WAVETERM_WSHBINDIR:$PATH"
 
 # Source the dynamic script from wsh token
-source <(wsh token $WAVETERM_SWAPTOKEN bash)
+source <(wsh token $WAVETERM_SWAPTOKEN bash 2>/dev/null)
 unset WAVETERM_SWAPTOKEN
 
 # Source the first of ~/.bash_profile, ~/.bash_login, or ~/.profile that exists
@@ -121,10 +125,10 @@ elif [ -f ~/.profile ]; then
     . ~/.profile
 fi
 
-# re-add to path if it got clobbered
-if [[ ":$PATH:" != *":{{.WSHBINDIR}}:"* ]]; then
-    export PATH={{.WSHBINDIR}}:$PATH
+if [[ ":$PATH:" != *":$WAVETERM_WSHBINDIR:"* ]]; then
+    export PATH="$WAVETERM_WSHBINDIR:$PATH"
 fi
+unset WAVETERM_WSHBINDIR
 if type _init_completion &>/dev/null; then
   source <(wsh completion bash)
 fi
@@ -137,7 +141,7 @@ fi
 set -x PATH {{.WSHBINDIR}} $PATH
 
 # Source dynamic script from wsh token
-wsh token $WAVETERM_SWAPTOKEN fish | source
+source (wsh token $WAVETERM_SWAPTOKEN fish 2>/dev/null)
 set -e WAVETERM_SWAPTOKEN
 
 # Load Wave completions
@@ -149,7 +153,11 @@ wsh completion fish | source
 $env:PATH = {{.WSHBINDIR_PWSH}} + "{{.PATHSEP}}" + $env:PATH
 
 # Source dynamic script from wsh token
-wsh token $env:WAVETERM_SWAPTOKEN pwsh | Out-String | Invoke-Expression
+$waveterm_swaptoken_output = wsh token $env:WAVETERM_SWAPTOKEN pwsh 2>$null
+if ($waveterm_swaptoken_output -and $waveterm_swaptoken_output -ne "") {
+    Invoke-Expression $waveterm_swaptoken_output
+}
+Remove-Variable -Name waveterm_swaptoken_output
 Remove-Item Env:WAVETERM_SWAPTOKEN
 
 # Load Wave completions

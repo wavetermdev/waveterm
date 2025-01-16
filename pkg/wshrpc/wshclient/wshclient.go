@@ -31,6 +31,12 @@ func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (
 	return resp, err
 }
 
+// command "authenticatetoken", wshserver.AuthenticateTokenCommand
+func AuthenticateTokenCommand(w *wshutil.WshRpc, data wshrpc.CommandAuthenticateTokenData, opts *wshrpc.RpcOpts) (wshrpc.CommandAuthenticateRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandAuthenticateRtnData](w, "authenticatetoken", data, opts)
+	return resp, err
+}
+
 // command "blockinfo", wshserver.BlockInfoCommand
 func BlockInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.BlockInfoData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.BlockInfoData](w, "blockinfo", data, opts)
@@ -396,12 +402,6 @@ func StreamWaveAiCommand(w *wshutil.WshRpc, data wshrpc.WaveAIStreamRequest, opt
 func TestCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "test", data, opts)
 	return err
-}
-
-// command "tokenswap", wshserver.TokenSwapCommand
-func TokenSwapCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.TokenSwapEntry, error) {
-	resp, err := sendRpcRequestCallHelper[*wshrpc.TokenSwapEntry](w, "tokenswap", data, opts)
-	return resp, err
 }
 
 // command "vdomasyncinitiation", wshserver.VDomAsyncInitiationCommand

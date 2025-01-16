@@ -31,7 +31,12 @@ const (
 	WaveAppPathVarName   = "WAVETERM_APP_PATH"
 	WaveDevVarName       = "WAVETERM_DEV"
 	WaveDevViteVarName   = "WAVETERM_DEV_VITE"
+
+	WaveJwtTokenVarName  = "WAVETERM_JWT"
+	WaveSwapTokenVarName = "WAVETERM_SWAPTOKEN"
 )
+
+const NeedJwtConst = "NEED-JWT"
 
 var ConfigHome_VarCache string // caches WAVETERM_CONFIG_HOME
 var DataHome_VarCache string   // caches WAVETERM_DATA_HOME

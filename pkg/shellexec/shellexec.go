@@ -35,12 +35,13 @@ import (
 const DefaultGracefulKillWait = 400 * time.Millisecond
 
 type CommandOptsType struct {
-	Interactive bool              `json:"interactive,omitempty"`
-	Login       bool              `json:"login,omitempty"`
-	Cwd         string            `json:"cwd,omitempty"`
-	Env         map[string]string `json:"env,omitempty"`
-	ShellPath   string            `json:"shellPath,omitempty"`
-	ShellOpts   []string          `json:"shellOpts,omitempty"`
+	Interactive bool                      `json:"interactive,omitempty"`
+	Login       bool                      `json:"login,omitempty"`
+	Cwd         string                    `json:"cwd,omitempty"`
+	Env         map[string]string         `json:"env,omitempty"`
+	ShellPath   string                    `json:"shellPath,omitempty"`
+	ShellOpts   []string                  `json:"shellOpts,omitempty"`
+	SwapToken   *shellutil.TokenSwapEntry `json:"swapToken,omitempty"`
 }
 
 type ShellProc struct {
@@ -286,7 +287,7 @@ func StartRemoteShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, c
 	return &ShellProc{Cmd: sessionWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
-func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn, swapToken *wshrpc.TokenSwapEntry) (*ShellProc, error) {
+func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
 	if !ok {
 		return nil, fmt.Errorf("no jwt token provided to connection")
@@ -323,7 +324,7 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
 	conn.Infof(ctx, "detected shell type: %s\n", shellType)
-	conn.Infof(ctx, "swaptoken: %s\n", swapToken.Token)
+	conn.Infof(ctx, "swaptoken: %s\n", cmdOpts.SwapToken.Token)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -402,9 +403,9 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 		conn.Infof(ctx, "setting ZDOTDIR to %s\n", zshDir)
 		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
-	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
-	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveSwapTokenVarName, swapToken.Token, cmdCombined)
-	shellutil.AddTokenSwapEntry(swapToken)
+	cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveJwtTokenVarName, jwtToken, cmdCombined)
+	cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveSwapTokenVarName, cmdOpts.SwapToken.Token, cmdCombined)
+	shellutil.AddTokenSwapEntry(cmdOpts.SwapToken)
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 	sessionWrap := MakeSessionWrap(session, cmdCombined, pipePty)
 	err = sessionWrap.Start()

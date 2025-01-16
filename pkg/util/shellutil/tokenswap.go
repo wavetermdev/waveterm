@@ -4,6 +4,8 @@
 package shellutil
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -11,8 +13,56 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-var tokenSwapMap map[string]*wshrpc.TokenSwapEntry = make(map[string]*wshrpc.TokenSwapEntry)
+var tokenSwapMap map[string]*TokenSwapEntry = make(map[string]*TokenSwapEntry)
 var tokenMapLock = &sync.Mutex{}
+
+type TokenSwapEntry struct {
+	Token      string             `json:"token"`
+	SockName   string             `json:"sockname,omitempty"`
+	RpcContext *wshrpc.RpcContext `json:"rpccontext,omitempty"`
+	AuthToken  string             `json:"authtoken"`
+	Env        map[string]string  `json:"env,omitempty"`
+	ScriptText string             `json:"scripttext,omitempty"`
+	Exp        time.Time          `json:"-"`
+}
+
+type UnpackedTokenType struct {
+	Token      string             `json:"token"` // uuid
+	SockName   string             `json:"sockname,omitempty"`
+	RpcContext *wshrpc.RpcContext `json:"rpccontext,omitempty"`
+}
+
+func (t *UnpackedTokenType) Pack() (string, error) {
+	// convert to json, and then base64 encode
+	barr, err := json.Marshal(t)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(barr), nil
+}
+
+func UnpackSwapToken(token string) (*UnpackedTokenType, error) {
+	// base64 decode, then convert from json
+	barr, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, err
+	}
+	var unpacked UnpackedTokenType
+	err = json.Unmarshal(barr, &unpacked)
+	if err != nil {
+		return nil, err
+	}
+	return &unpacked, nil
+}
+
+func (t *TokenSwapEntry) PackForClient() (string, error) {
+	unpackedToken := &UnpackedTokenType{
+		Token:      t.Token,
+		SockName:   t.SockName,
+		RpcContext: t.RpcContext,
+	}
+	return unpackedToken.Pack()
+}
 
 func removeExpiredTokens() {
 	now := time.Now()
@@ -25,7 +75,7 @@ func removeExpiredTokens() {
 	}
 }
 
-func AddTokenSwapEntry(entry *wshrpc.TokenSwapEntry) error {
+func AddTokenSwapEntry(entry *TokenSwapEntry) error {
 	removeExpiredTokens()
 	if entry.Token == "" {
 		return fmt.Errorf("token cannot be empty")
@@ -39,7 +89,7 @@ func AddTokenSwapEntry(entry *wshrpc.TokenSwapEntry) error {
 	return nil
 }
 
-func GetAndRemoveTokenSwapEntry(token string) *wshrpc.TokenSwapEntry {
+func GetAndRemoveTokenSwapEntry(token string) *TokenSwapEntry {
 	removeExpiredTokens()
 	tokenMapLock.Lock()
 	defer tokenMapLock.Unlock()
@@ -97,12 +147,4 @@ func EncodeEnvVarsForShell(shellType string, env map[string]string) (string, err
 	default:
 		return "", fmt.Errorf("unknown or unsupported shell type for env var encoding: %s", shellType)
 	}
-}
-
-func EncodeTokenSwapEntryForShell(entry *wshrpc.TokenSwapEntry, shellType string) (string, error) {
-	encodedEnv, err := EncodeEnvVarsForShell(shellType, entry.Env)
-	if err != nil {
-		return "", err
-	}
-	return encodedEnv + "\n" + entry.ScriptText, nil
 }

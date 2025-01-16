@@ -127,28 +127,30 @@ func (p *WshRpcProxy) HandleClientProxyAuth(router *WshRouter) (string, error) {
 			// this message is not allowed (protocol error at this point), ignore
 			continue
 		}
-		// we only allow one command "authenticate", everything else returns an error
-		if origMsg.Command != wshrpc.Command_Authenticate {
-			respErr := fmt.Errorf("connection not authenticated")
-			p.sendResponseError(origMsg, respErr)
-			continue
+		if origMsg.Command == wshrpc.Command_Authenticate {
+			authRtn, err := router.HandleProxyAuth(origMsg.Data)
+			if err != nil {
+				respErr := fmt.Errorf("error handling proxy auth: %w", err)
+				p.sendResponseError(origMsg, respErr)
+				return "", respErr
+			}
+			p.SetAuthToken(authRtn.AuthToken)
+			announceMsg := RpcMessage{
+				Command:   wshrpc.Command_RouteAnnounce,
+				Source:    authRtn.RouteId,
+				AuthToken: authRtn.AuthToken,
+			}
+			announceBytes, _ := json.Marshal(announceMsg)
+			router.InjectMessage(announceBytes, authRtn.RouteId)
+			p.sendAuthenticateResponse(origMsg, authRtn.RouteId)
+			return authRtn.RouteId, nil
 		}
-		authRtn, err := router.HandleProxyAuth(origMsg.Data)
-		if err != nil {
-			respErr := fmt.Errorf("error handling proxy auth: %w", err)
-			p.sendResponseError(origMsg, respErr)
-			return "", respErr
+		if origMsg.Command == wshrpc.Command_AuthenticateToken {
+
 		}
-		p.SetAuthToken(authRtn.AuthToken)
-		announceMsg := RpcMessage{
-			Command:   wshrpc.Command_RouteAnnounce,
-			Source:    authRtn.RouteId,
-			AuthToken: authRtn.AuthToken,
-		}
-		announceBytes, _ := json.Marshal(announceMsg)
-		router.InjectMessage(announceBytes, authRtn.RouteId)
-		p.sendAuthenticateResponse(origMsg, authRtn.RouteId)
-		return authRtn.RouteId, nil
+		respErr := fmt.Errorf("connection not authenticated")
+		p.sendResponseError(origMsg, respErr)
+		continue
 	}
 }
 
