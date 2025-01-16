@@ -195,33 +195,30 @@ func (conn *WslConn) OpenDomainSocketListener(ctx context.Context) error {
 	if !allowed {
 		return fmt.Errorf("cannot open domain socket for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
-	randStr, err := utilfn.RandomHexString(16) // 64-bits of randomness
-	if err != nil {
-		return fmt.Errorf("error generating random string: %w", err)
-	}
-	sockName := fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
-	conn.Infof(ctx, "generated domain socket name %s\n", sockName)
 	/*
 		listener, err := client.ListenUnix(sockName)
 		if err != nil {
 			return fmt.Errorf("unable to request connection domain socket: %v", err)
 		}
 	*/
+	conn.Infof(ctx, "setting domain socket to %s\n", wavebase.RemoteFullDomainSocketPath)
 	conn.WithLock(func() {
-		conn.DomainSockName = sockName
+		conn.DomainSockName = wavebase.RemoteFullDomainSocketPath
 		//conn.DomainSockListener = listener
 	})
 	conn.Infof(ctx, "successfully connected domain socket\n")
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("wslconn:OpenDomainSocketListener", recover())
+	/*
+		go func() {
+			defer func() {
+				panichandler.PanicHandler("wslconn:OpenDomainSocketListener", recover())
+			}()
+			defer conn.WithLock(func() {
+				conn.DomainSockListener = nil
+				conn.DomainSockName = ""
+			})
+			wshutil.RunWshRpcOverListener(listener)
 		}()
-		defer conn.WithLock(func() {
-			conn.DomainSockListener = nil
-			conn.DomainSockName = ""
-		})
-		//wshutil.RunWshRpcOverListener(listener)
-	}()
+	*/
 	return nil
 }
 
