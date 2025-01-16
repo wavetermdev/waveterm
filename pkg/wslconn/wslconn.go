@@ -743,7 +743,7 @@ func getConnInternal(name string) *WslConn {
 	connName := wsl.WslName{Distro: name}
 	rtn := clientControllerMap[name]
 	if rtn == nil {
-		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, HasWaiter: &atomic.Bool{}, cancelFn: nil}
+		rtn = &WslConn{Lock: &sync.Mutex{}, Status: Status_Init, Name: connName, WshEnabled: &atomic.Bool{}, HasWaiter: &atomic.Bool{}, cancelFn: nil}
 		clientControllerMap[name] = rtn
 	}
 	return rtn
