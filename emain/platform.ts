@@ -212,6 +212,7 @@ function getXdgCurrentDesktop(): string {
 
 /**
  * Calls the given callback with the value of the XDG_CURRENT_DESKTOP environment variable set to ORIGINAL_XDG_CURRENT_DESKTOP if it is set.
+ * @see https://www.electronjs.org/docs/latest/api/environment-variables#original_xdg_current_desktop
  * @param callback The callback to call.
  */
 function callWithOriginalXdgCurrentDesktop(callback: () => void) {
@@ -228,6 +229,7 @@ function callWithOriginalXdgCurrentDesktop(callback: () => void) {
 
 /**
  * Calls the given async callback with the value of the XDG_CURRENT_DESKTOP environment variable set to ORIGINAL_XDG_CURRENT_DESKTOP if it is set.
+ * @see https://www.electronjs.org/docs/latest/api/environment-variables#original_xdg_current_desktop
  * @param callback The async callback to call.
  */
 async function callWithOriginalXdgCurrentDesktopAsync(callback: () => Promise<void>) {
