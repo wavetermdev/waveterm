@@ -377,10 +377,14 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 
 		// create jwt
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}, wslConn.GetDomainSocketName())
+			sockName := wslConn.GetDomainSocketName()
+			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
+			swapToken.SockName = sockName
+			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}

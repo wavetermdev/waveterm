@@ -254,6 +254,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	if termSize.Rows <= 0 || termSize.Cols <= 0 {
 		return nil, fmt.Errorf("invalid term size: %v", termSize)
 	}
+	shellutil.AddTokenSwapEntry(cmdOpts.SwapToken)
 	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
 	if err != nil {
 		return nil, err
