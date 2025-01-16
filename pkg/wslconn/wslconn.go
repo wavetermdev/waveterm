@@ -720,7 +720,12 @@ func (conn *WslConn) connectInternal(ctx context.Context) error {
 	conn.WithLock(func() {
 		conn.Client = client
 	})
-	go conn.waitForDisconnect()
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("wsl-waitForDisconnect", recover())
+		}()
+		conn.waitForDisconnect()
+	}()
 	wshResult := conn.tryEnableWsh(ctx, conn.GetName())
 	if !wshResult.WshEnabled {
 		if wshResult.WshError != nil {
