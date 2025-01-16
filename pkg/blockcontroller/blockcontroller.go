@@ -283,7 +283,7 @@ func (bc *BlockController) DoRunShellCommand(logCtx context.Context, rc *RunShel
 	return bc.manageRunningShellProcess(shellProc, rc, blockMeta)
 }
 
-func (bc *BlockController) makeSwapToken(ctx context.Context) *shellutil.TokenSwapEntry {
+func (bc *BlockController) makeSwapToken(ctx context.Context, remoteName string) *shellutil.TokenSwapEntry {
 	token := &shellutil.TokenSwapEntry{
 		Token: uuid.New().String(),
 		Env:   make(map[string]string),
@@ -313,6 +313,7 @@ func (bc *BlockController) makeSwapToken(ctx context.Context) *shellutil.TokenSw
 	} else {
 		token.Env["WAVETERM_CLIENTID"] = clientData.OID
 	}
+	token.Env["WAVETERM_CONN"] = remoteName
 	return token
 }
 
@@ -360,7 +361,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 		return nil, fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	swapToken := bc.makeSwapToken(ctx)
+	swapToken := bc.makeSwapToken(ctx, remoteName)
 	cmdOpts.SwapToken = swapToken
 	blocklogger.Infof(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
 	if strings.HasPrefix(remoteName, "wsl://") {

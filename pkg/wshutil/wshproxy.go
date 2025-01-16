@@ -6,7 +6,6 @@ package wshutil
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/google/uuid"
@@ -141,7 +140,6 @@ func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, string, er
 }
 
 func handleAuthenticateTokenCommand(msg RpcMessage) (*shellutil.TokenSwapEntry, error) {
-	log.Printf("got AUTHENTICATETOKEN command %v\n", msg.Data)
 	if msg.Data == nil {
 		return nil, fmt.Errorf("no data in authenticatetoken message")
 	}
@@ -200,7 +198,7 @@ func (p *WshRpcProxy) HandleClientProxyAuth(router *WshRouter) (string, error) {
 			return authRtn.RouteId, nil
 		}
 		if origMsg.Command == wshrpc.Command_AuthenticateToken {
-
+			// TODO implement authenticatetoken for proxyauth
 		}
 		respErr := fmt.Errorf("connection not authenticated")
 		p.sendResponseError(origMsg, respErr)

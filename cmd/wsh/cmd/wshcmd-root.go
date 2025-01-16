@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"runtime/debug"
 
@@ -153,7 +152,6 @@ func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtn
 	if err != nil {
 		return rtn, fmt.Errorf("error setting up domain socket rpc client: %w", err)
 	}
-	log.Printf("# sending authenticate token command, token: %s\n", token.Token)
 	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, nil)
 }
 
