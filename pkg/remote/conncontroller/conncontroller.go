@@ -748,7 +748,12 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.Conn
 	conn.WithLock(func() {
 		conn.Client = client
 	})
-	go conn.waitForDisconnect()
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("conncontroller:waitForDisconnect", recover())
+		}()
+		conn.waitForDisconnect()
+	}()
 	fmtAddr := knownhosts.Normalize(fmt.Sprintf("%s@%s", client.User(), client.RemoteAddr().String()))
 	conn.Infof(ctx, "normalized knownhosts address: %s\n", fmtAddr)
 	clientDisplayName := fmt.Sprintf("%s (%s)", conn.GetName(), fmtAddr)
