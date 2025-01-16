@@ -702,7 +702,6 @@ func (conn *WslConn) waitForDisconnect() {
 	log.Printf("wait for disconnect in %+#v", conn)
 	defer conn.FireConnChangeEvent()
 	defer conn.HasWaiter.Store(false)
-	time.Sleep(999999999 * time.Second)
 	err := conn.ConnController.Wait()
 	conn.WithLock(func() {
 		// disconnects happen for a variety of reasons (like network, etc. and are typically transient)
