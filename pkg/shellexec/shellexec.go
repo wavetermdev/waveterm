@@ -287,7 +287,7 @@ func StartRemoteShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, c
 	return &ShellProc{Cmd: sessionWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
-func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
+func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
 	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
 	if !ok {
 		return nil, fmt.Errorf("no jwt token provided to connection")
@@ -302,20 +302,20 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 	log.Printf("client info collected: %+#v", remoteInfo)
 	var shellPath string
 	if cmdOpts.ShellPath != "" {
-		conn.Infof(ctx, "using shell path from command opts: %s\n", cmdOpts.ShellPath)
+		conn.Infof(logCtx, "using shell path from command opts: %s\n", cmdOpts.ShellPath)
 		shellPath = cmdOpts.ShellPath
 	}
 	configShellPath := conn.GetConfigShellPath()
 	if shellPath == "" && configShellPath != "" {
-		conn.Infof(ctx, "using shell path from config (conn:shellpath): %s\n", configShellPath)
+		conn.Infof(logCtx, "using shell path from config (conn:shellpath): %s\n", configShellPath)
 		shellPath = configShellPath
 	}
 	if shellPath == "" && remoteInfo.Shell != "" {
-		conn.Infof(ctx, "using shell path detected on remote machine: %s\n", remoteInfo.Shell)
+		conn.Infof(logCtx, "using shell path detected on remote machine: %s\n", remoteInfo.Shell)
 		shellPath = remoteInfo.Shell
 	}
 	if shellPath == "" {
-		conn.Infof(ctx, "no shell path detected, using default (/bin/bash)\n")
+		conn.Infof(logCtx, "no shell path detected, using default (/bin/bash)\n")
 		shellPath = "/bin/bash"
 	}
 	var shellOpts []string
@@ -323,8 +323,8 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 	log.Printf("detected shell %q for conn %q\n", shellPath, conn.GetName())
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
-	conn.Infof(ctx, "detected shell type: %s\n", shellType)
-	conn.Infof(ctx, "swaptoken: %s\n", cmdOpts.SwapToken.Token)
+	conn.Infof(logCtx, "detected shell type: %s\n", shellType)
+	conn.Infof(logCtx, "swaptoken: %s\n", cmdOpts.SwapToken.Token)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -362,8 +362,8 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 	}
-	conn.Infof(ctx, "starting shell, using command: %s\n", cmdCombined)
-	conn.Infof(ctx, "SSH-NEWSESSION (StartRemoteShellProc)\n")
+	conn.Infof(logCtx, "starting shell, using command: %s\n", cmdCombined)
+	conn.Infof(logCtx, "SSH-NEWSESSION (StartRemoteShellProc)\n")
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, err
@@ -400,11 +400,17 @@ func StartRemoteShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr
 
 	if shellType == shellutil.ShellType_zsh {
 		zshDir := fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir)
-		conn.Infof(ctx, "setting ZDOTDIR to %s\n", zshDir)
+		conn.Infof(logCtx, "setting ZDOTDIR to %s\n", zshDir)
 		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
 	cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveJwtTokenVarName, jwtToken, cmdCombined)
-	cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveSwapTokenVarName, cmdOpts.SwapToken.Token, cmdCombined)
+	packedToken, err := cmdOpts.SwapToken.PackForClient()
+	if err != nil {
+		conn.Infof(logCtx, "error packing swap token: %v", err)
+	} else {
+		conn.Infof(logCtx, "packed swaptoken %s\n", packedToken)
+		cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveSwapTokenVarName, packedToken, cmdCombined)
+	}
 	shellutil.AddTokenSwapEntry(cmdOpts.SwapToken)
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 	sessionWrap := MakeSessionWrap(session, cmdCombined, pipePty)

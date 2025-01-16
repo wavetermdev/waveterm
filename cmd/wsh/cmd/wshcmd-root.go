@@ -6,10 +6,12 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"runtime/debug"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -132,6 +134,27 @@ func resolveBlockArg() (*waveobj.ORef, error) {
 		return nil, fmt.Errorf("resolving blockid: %w", err)
 	}
 	return fullORef, nil
+}
+
+func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtnData, error) {
+	var rtn wshrpc.CommandAuthenticateRtnData
+	token, err := shellutil.UnpackSwapToken(swapTokenStr)
+	if err != nil {
+		return rtn, fmt.Errorf("error unpacking token: %w", err)
+	}
+	if token.SockName == "" {
+		return rtn, fmt.Errorf("no sockname in token")
+	}
+	if token.RpcContext == nil {
+		return rtn, fmt.Errorf("no rpccontext in token")
+	}
+	RpcContext = *token.RpcContext
+	RpcClient, err = wshutil.SetupDomainSocketRpcClient(token.SockName, nil)
+	if err != nil {
+		return rtn, fmt.Errorf("error setting up domain socket rpc client: %w", err)
+	}
+	log.Printf("# sending authenticate token command, token: %s\n", token.Token)
+	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, &wshrpc.RpcOpts{NoResponse: true})
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)

@@ -401,10 +401,14 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			return nil, fmt.Errorf("not connected, cannot start shellproc")
 		}
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}, conn.GetDomainSocketName())
+			sockName := conn.GetDomainSocketName()
+			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
+			swapToken.SockName = sockName
+			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
@@ -414,7 +418,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 				return nil, err
 			}
 		} else {
-			shellProc, err = shellexec.StartRemoteShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
+			shellProc, err = shellexec.StartRemoteShellProc(ctx, logCtx, rc.TermSize, cmdStr, cmdOpts, conn)
 			if err != nil {
 				conn.SetWshError(err)
 				conn.WshEnabled.Store(false)

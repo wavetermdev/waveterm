@@ -7,14 +7,14 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 )
 
 var tokenCmd = &cobra.Command{
-	Use:     "token [token] [shell-type]",
-	Short:   "exchange token for shell initialization script",
-	RunE:    tokenCmdRun,
-	PreRunE: preRunSetupRpcClient,
-	Hidden:  true,
+	Use:    "token [token] [shell-type]",
+	Short:  "exchange token for shell initialization script",
+	RunE:   tokenCmdRun,
+	Hidden: true,
 }
 
 func init() {
@@ -29,18 +29,20 @@ func tokenCmdRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		OutputHelpMessage(cmd)
 		return fmt.Errorf("wsh token requires exactly 2 arguments, got %d", len(args))
 	}
-	// token, shellType := args[0], args[1]
-	// entry, err := wshclient.TokenSwapCommand(RpcClient, token, &wshrpc.RpcOpts{Timeout: 5000})
-	// if err != nil {
-	// 	return fmt.Errorf("error swapping token: %w", err)
-	// }
-	// if entry == nil {
-	// 	return fmt.Errorf("no token entry found")
-	// }
-	// scriptText, err := shellutil.EncodeTokenSwapEntryForShell(entry, shellType)
-	// if err != nil {
-	// 	return fmt.Errorf("error encoding token entry: %w", err)
-	// }
-	// WriteStdout("%s\n", scriptText)
+	tokenStr, shellType := args[0], args[1]
+	if tokenStr == "" || shellType == "" {
+		OutputHelpMessage(cmd)
+		return fmt.Errorf("wsh token requires non-empty arguments")
+	}
+	rtnData, err := setupRpcClientWithToken(tokenStr)
+	if err != nil {
+		return fmt.Errorf("error setting up rpc client: %w", err)
+	}
+	envScriptText, err := shellutil.EncodeEnvVarsForShell(shellType, rtnData.Env)
+	if err != nil {
+		return fmt.Errorf("error encoding env vars: %w", err)
+	}
+	WriteStdout("%s\n", envScriptText)
+	WriteStdout("%s\n", rtnData.InitScriptText)
 	return nil
 }

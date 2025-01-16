@@ -109,8 +109,7 @@ declare global {
     type CommandAuthenticateRtnData = {
         routeid: string;
         authtoken?: string;
-        newjwttoken?: string;
-        env?: {[key: string]: any};
+        env?: {[key: string]: string};
         initscripttext?: string;
     };
 

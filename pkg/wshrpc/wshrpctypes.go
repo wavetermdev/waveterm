@@ -268,9 +268,8 @@ type CommandAuthenticateRtnData struct {
 	AuthToken string `json:"authtoken,omitempty"`
 
 	// these fields are only set when doing a token swap
-	NewJwtToken    string         `json:"newjwttoken,omitempty"`
-	Env            map[string]any `json:"env,omitempty"`
-	InitScriptText string         `json:"initscripttext,omitempty"`
+	Env            map[string]string `json:"env,omitempty"`
+	InitScriptText string            `json:"initscripttext,omitempty"`
 }
 
 type CommandAuthenticateTokenData struct {
