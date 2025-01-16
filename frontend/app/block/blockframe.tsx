@@ -38,7 +38,9 @@ import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
+import { CopyButton } from "../element/copybutton";
 import { BlockFrameProps } from "./blocktypes";
 
 const NumActiveConnColors = 8;
@@ -431,15 +433,19 @@ const ConnStatusOverlay = React.memo(
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
                         <div className="connstatus-status">
                             <div className="connstatus-status-text">{statusText}</div>
-                            {showError ? <div className="connstatus-error">error: {connStatus.error}</div> : null}
-                            {showWshError ? (
-                                <div className="connstatus-error">unable to use wsh: {connStatus.wsherror}</div>
-                            ) : null}
-                            {showWshError && (
-                                <Button className={reconClassName} onClick={handleDisableWsh}>
-                                    always disable wsh
-                                </Button>
-                            )}
+                            <OverlayScrollbarsComponent
+                                className="connstatus-error"
+                                options={{ scrollbars: { autoHide: "leave" } }}
+                            >
+                                <CopyButton className="copy-button" onClick={() => {}} title="Copy" />
+                                {showError ? <div>error: {connStatus.error}</div> : null}
+                                {showWshError ? <div>unable to use wsh: {connStatus.wsherror}</div> : null}
+                                {showWshError && (
+                                    <Button className={reconClassName} onClick={handleDisableWsh}>
+                                        always disable wsh
+                                    </Button>
+                                )}
+                            </OverlayScrollbarsComponent>
                         </div>
                     </div>
                     {showReconnect ? (
