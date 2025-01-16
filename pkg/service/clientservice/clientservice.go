@@ -15,7 +15,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -42,7 +42,7 @@ func (cs *ClientService) GetTab(tabId string) (*waveobj.Tab, error) {
 
 func (cs *ClientService) GetAllConnStatus(ctx context.Context) ([]wshrpc.ConnStatus, error) {
 	sshStatuses := conncontroller.GetAllConnStatus()
-	wslStatuses := wsl.GetAllConnStatus()
+	wslStatuses := wslconn.GetAllConnStatus()
 	return append(sshStatuses, wslStatuses...), nil
 }
 

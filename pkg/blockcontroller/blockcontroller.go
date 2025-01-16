@@ -31,7 +31,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -330,7 +330,7 @@ func (bc *BlockController) setupAndStartShellProcess(rc *RunShellOpts, blockMeta
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFunc()
 
-		wslConn := wsl.GetWslConn(credentialCtx, wslName, false)
+		wslConn := wslconn.GetWslConn(credentialCtx, wslName, false)
 		connStatus := wslConn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {
 			return nil, fmt.Errorf("not connected, cannot start shellproc")
@@ -697,7 +697,7 @@ func CheckConnStatus(blockId string) error {
 	}
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(context.Background(), distroName, false)
+		conn := wslconn.GetWslConn(context.Background(), distroName, false)
 		connStatus := conn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {
 			return fmt.Errorf("not connected: %s", connStatus.Status)

@@ -10,16 +10,16 @@ import (
 	"io"
 	"sync"
 
-	"github.com/ubuntu/gowsl"
+	"github.com/wavetermdev/waveterm/pkg/wsl"
 )
 
 var _ ShellClient = (*WSLShellClient)(nil)
 
 type WSLShellClient struct {
-	distro *gowsl.Distro
+	distro *wsl.Distro
 }
 
-func MakeWSLShellClient(distro *gowsl.Distro) *WSLShellClient {
+func MakeWSLShellClient(distro *wsl.Distro) *WSLShellClient {
 	return &WSLShellClient{distro: distro}
 }
 
@@ -28,8 +28,8 @@ func (c *WSLShellClient) MakeProcessController(cmdSpec CommandSpec) (ShellProces
 }
 
 type WSLProcessController struct {
-	distro      *gowsl.Distro
-	cmd         *gowsl.Cmd
+	distro      *wsl.Distro
+	cmd         *wsl.WslCmd
 	lock        *sync.Mutex
 	once        *sync.Once
 	stdinPiped  bool
@@ -40,13 +40,13 @@ type WSLProcessController struct {
 	cmdSpec     CommandSpec
 }
 
-func MakeWSLProcessController(distro *gowsl.Distro, cmdSpec CommandSpec) (*WSLProcessController, error) {
+func MakeWSLProcessController(distro *wsl.Distro, cmdSpec CommandSpec) (*WSLProcessController, error) {
 	fullCmd, err := BuildShellCommand(cmdSpec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build shell command: %w", err)
 	}
 
-	cmd := distro.Command(nil, fullCmd)
+	cmd := distro.WslCommand(nil, fullCmd)
 	if cmd == nil {
 		return nil, fmt.Errorf("failed to create WSL command")
 	}
@@ -87,9 +87,14 @@ func (w *WSLProcessController) Kill() {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	if w.cmd != nil && w.cmd.Process != nil {
-		w.cmd.Process.Kill()
+	if w.cmd == nil {
+		return
 	}
+	process := w.cmd.GetProcess()
+	if process == nil {
+		return
+	}
+	process.Kill()
 }
 
 func (w *WSLProcessController) StdinPipe() (io.WriteCloser, error) {
