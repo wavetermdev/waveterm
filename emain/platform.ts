@@ -216,14 +216,19 @@ function getXdgCurrentDesktop(): string {
  * @param callback The callback to call.
  */
 function callWithOriginalXdgCurrentDesktop(callback: () => void) {
+    const currXdgCurrentDesktopDefined = "XDG_CURRENT_DESKTOP" in process.env;
     const currXdgCurrentDesktop = process.env.XDG_CURRENT_DESKTOP;
     const originalXdgCurrentDesktop = getXdgCurrentDesktop();
-    if (currXdgCurrentDesktop) {
+    if (originalXdgCurrentDesktop) {
         process.env.XDG_CURRENT_DESKTOP = originalXdgCurrentDesktop;
     }
     callback();
-    if (currXdgCurrentDesktop) {
-        process.env.XDG_CURRENT_DESKTOP = currXdgCurrentDesktop;
+    if (originalXdgCurrentDesktop) {
+        if (currXdgCurrentDesktopDefined) {
+            process.env.XDG_CURRENT_DESKTOP = currXdgCurrentDesktop;
+        } else {
+            delete process.env.XDG_CURRENT_DESKTOP;
+        }
     }
 }
 
@@ -233,14 +238,19 @@ function callWithOriginalXdgCurrentDesktop(callback: () => void) {
  * @param callback The async callback to call.
  */
 async function callWithOriginalXdgCurrentDesktopAsync(callback: () => Promise<void>) {
+    const currXdgCurrentDesktopDefined = "XDG_CURRENT_DESKTOP" in process.env;
     const currXdgCurrentDesktop = process.env.XDG_CURRENT_DESKTOP;
     const originalXdgCurrentDesktop = getXdgCurrentDesktop();
-    if (currXdgCurrentDesktop) {
+    if (originalXdgCurrentDesktop) {
         process.env.XDG_CURRENT_DESKTOP = originalXdgCurrentDesktop;
     }
     await callback();
-    if (currXdgCurrentDesktop) {
-        process.env.XDG_CURRENT_DESKTOP = currXdgCurrentDesktop;
+    if (originalXdgCurrentDesktop) {
+        if (currXdgCurrentDesktopDefined) {
+            process.env.XDG_CURRENT_DESKTOP = currXdgCurrentDesktop;
+        } else {
+            delete process.env.XDG_CURRENT_DESKTOP;
+        }
     }
 }
 
