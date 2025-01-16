@@ -37,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -609,7 +610,7 @@ func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus
 }
 
 func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
-	rtn := wsl.GetAllConnStatus()
+	rtn := wslconn.GetAllConnStatus()
 	return rtn, nil
 }
 
@@ -633,7 +634,7 @@ func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtD
 	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
 	if strings.HasPrefix(data.ConnName, "wsl://") {
 		distroName := strings.TrimPrefix(data.ConnName, "wsl://")
-		return wsl.EnsureConnection(ctx, distroName)
+		return wslconn.EnsureConnection(ctx, distroName)
 	}
 	return conncontroller.EnsureConnection(ctx, data.ConnName)
 }
@@ -641,7 +642,7 @@ func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtD
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("distro not found: %s", connName)
 		}
@@ -664,7 +665,7 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
@@ -687,11 +688,11 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.Co
 	connName := data.ConnName
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
-		return conn.CheckAndInstallWsh(ctx, connName, &wsl.WshInstallOpts{Force: true, NoUserPrompt: true})
+		return conn.InstallWsh(ctx, "")
 	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {

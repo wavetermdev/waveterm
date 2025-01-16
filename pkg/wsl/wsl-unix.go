@@ -13,6 +13,10 @@ import (
 	"os/exec"
 )
 
+type WslName struct {
+	Distro string `json:"distro"`
+}
+
 func RegisteredDistros(ctx context.Context) (distros []Distro, err error) {
 	return nil, fmt.Errorf("RegisteredDistros not implemented on this system")
 }

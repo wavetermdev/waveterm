@@ -7,7 +7,6 @@ import "regexp"
 
 var (
 	safePattern       = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
-	psSafePattern     = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
 	envVarNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
 
@@ -71,10 +70,6 @@ func HardQuoteFish(s string) string {
 func HardQuotePowerShell(s string) string {
 	if s == "" {
 		return "\"\""
-	}
-
-	if psSafePattern.MatchString(s) {
-		return s
 	}
 
 	buf := make([]byte, 0, len(s)+5)
