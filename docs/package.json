@@ -27,7 +27,7 @@
         "clsx": "^2.1.1",
         "prism-react-renderer": "^2.3.0",
         "react": "^18.0.0",
-        "react-dom": "^18.0.0",
+        "react-dom": "^19.0.0",
         "remark-gfm": "^4.0.0",
         "remark-typescript-code-import": "^1.0.1",
         "ua-parser-js": "^2.0.0"
