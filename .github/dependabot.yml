@@ -8,7 +8,7 @@ updates:
           time: "09:00"
           timezone: "America/Los_Angeles"
       groups:
-          dev-dependencies:
+          dev-dependencies-patch:
               dependency-type: "development"
               exclude-patterns:
                   - "*storybook*"
@@ -16,11 +16,11 @@ updates:
                   - "jotai"
                   - "react"
                   - "@types/react"
+                  - "*react-dom"
                   - "*docusaurus*"
               update-types:
-                  - "minor"
                   - "patch"
-          dev-dependencies-major:
+          dev-dependencies-minor:
               dependency-type: "development"
               exclude-patterns:
                   - "*storybook*"
@@ -28,23 +28,12 @@ updates:
                   - "jotai"
                   - "react"
                   - "@types/react"
-                  - "*docusaurus*"
-              update-types:
-                  - "major"
-
-          prod-dependencies:
-              dependency-type: "production"
-              exclude-patterns:
-                  - "*storybook*"
-                  - "*electron*"
-                  - "jotai"
-                  - "react"
-                  - "@types/react"
+                  - "*react-dom"
                   - "*docusaurus*"
               update-types:
                   - "minor"
-                  - "patch"
-          prod-dependencies-major:
+
+          prod-dependencies-patch:
               dependency-type: "production"
               exclude-patterns:
                   - "*storybook*"
@@ -52,66 +41,103 @@ updates:
                   - "jotai"
                   - "react"
                   - "@types/react"
+                  - "*react-dom"
                   - "*docusaurus*"
               update-types:
-                  - "major"
+                  - "patch"
+          prod-dependencies-minor:
+              dependency-type: "production"
+              exclude-patterns:
+                  - "*storybook*"
+                  - "*electron*"
+                  - "jotai"
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
+                  - "*docusaurus*"
+              update-types:
+                  - "minor"
 
-          storybook:
+          storybook-patch:
+              patterns:
+                  - "*storybook*"
+              update-types:
+                  - "patch"
+          storybook-minor:
               patterns:
                   - "*storybook*"
               update-types:
                   - "minor"
-                  - "patch"
           storybook-major:
               patterns:
                   - "*storybook*"
               update-types:
                   - "major"
 
-          electron:
+          electron-patch:
+              patterns:
+                  - "*electron*"
+              update-types:
+                  - "patch"
+          electron-minor:
               patterns:
                   - "*electron*"
               update-types:
                   - "minor"
-                  - "patch"
           electron-major:
               patterns:
                   - "*electron*"
               update-types:
                   - "major"
 
-          docusaurus:
+          docusaurus-patch:
+              patterns:
+                  - "*docusaurus*"
+              update-types:
+                  - "patch"
+          docusaurus-minor:
               patterns:
                   - "*docusaurus*"
               update-types:
                   - "minor"
-                  - "patch"
           docusaurus-major:
               patterns:
                   - "*docusaurus*"
               update-types:
                   - "major"
 
-          react:
+          react-patch:
               patterns:
                   - "react"
                   - "@types/react"
+                  - "*react-dom"
+              update-types:
+                  - "patch"
+          react-minor:
+              patterns:
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
               update-types:
                   - "minor"
-                  - "patch"
           react-major:
               patterns:
                   - "react"
                   - "@types/react"
+                  - "*react-dom"
               update-types:
                   - "major"
 
-          jotai:
+          jotai-patch:
+              patterns:
+                  - "jotai"
+              update-types:
+                  - "patch"
+          jotai-minor:
               patterns:
                   - "jotai"
               update-types:
                   - "minor"
-                  - "patch"
           jotai-major:
               patterns:
                   - "jotai"
@@ -131,4 +157,3 @@ updates:
           day: "friday"
           time: "09:00"
           timezone: "America/Los_Angeles"
-
