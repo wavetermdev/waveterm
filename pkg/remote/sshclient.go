@@ -579,7 +579,7 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
 
-	// IdentitiesOnly indicates that only the keys listed in IdentityFile should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
+	// IdentitiesOnly indicates that only the keys listed in the identity and certificate files or passed as arguments should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
 	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
 	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) {
 		conn, err := net.Dial("unix", utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
