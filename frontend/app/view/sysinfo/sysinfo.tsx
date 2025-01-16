@@ -447,7 +447,7 @@ function SingleLinePlot({
     );
     if (title) {
         marks.push(
-            Plot.text([yvalMeta.name], {
+            Plot.text([yvalMeta?.name], {
                 frameAnchor: "top-left",
                 dx: 4,
                 fill: "var(--grey-text-color)",
