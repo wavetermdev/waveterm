@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -28,7 +30,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
-	"golang.org/x/mod/semver"
 )
 
 const (
@@ -225,26 +226,6 @@ func (conn *WslConn) OpenDomainSocketListener(ctx context.Context) error {
 	return nil
 }
 
-// expects the output of `wsh version` which looks like `wsh v0.10.4` or "not-installed [os] [arch]"
-// returns (up-to-date, semver, osArchStr, error)
-// if not up to date, or error, version might be ""
-func IsWshVersionUpToDate(wshVersionLine string) (bool, string, string, error) {
-	wshVersionLine = strings.TrimSpace(wshVersionLine)
-	if strings.HasPrefix(wshVersionLine, "not-installed") {
-		return false, "not-installed", strings.TrimSpace(strings.TrimPrefix(wshVersionLine, "not-installed")), nil
-	}
-	parts := strings.Fields(wshVersionLine)
-	if len(parts) != 2 {
-		return false, "", "", fmt.Errorf("unexpected version format: %s", wshVersionLine)
-	}
-	clientVersion := parts[1]
-	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
-	if semver.Compare(clientVersion, expectedVersion) < 0 {
-		return false, clientVersion, "", nil
-	}
-	return true, clientVersion, "", nil
-}
-
 func (conn *WslConn) getWshPath() string {
 	config, ok := conn.getConnectionConfig()
 	if ok && config.ConnWshPath != "" {
@@ -264,7 +245,7 @@ func (conn *WslConn) GetConfigShellPath() string {
 // returns (needsInstall, clientVersion, osArchStr, error)
 // if wsh is not installed, the clientVersion will be "not-installed", and it will also return an osArchStr
 // if clientVersion is set, then no osArchStr will be returned
-func (conn *WslConn) StartConnServer(ctx context.Context) (bool, string, string, error) {
+func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (bool, string, string, error) {
 	conn.Infof(ctx, "running StartConnServer...\n")
 	allowed := WithLockRtn(conn, func() bool {
 		return conn.Status == Status_Connecting
@@ -318,10 +299,14 @@ func (conn *WslConn) StartConnServer(ctx context.Context) (bool, string, string,
 		return false, "", "", fmt.Errorf("error reading wsh version: %w", err)
 	}
 	conn.Infof(ctx, "got connserver version: %s\n", strings.TrimSpace(versionLine))
-	isUpToDate, clientVersion, osArchStr, err := IsWshVersionUpToDate(versionLine)
+	isUpToDate, clientVersion, osArchStr, err := conncontroller.IsWshVersionUpToDate(ctx, versionLine)
 	if err != nil {
 		cancelFn()
 		return false, "", "", fmt.Errorf("error checking wsh version: %w", err)
+	}
+	if isUpToDate && !afterUpdate && os.Getenv(wavebase.WaveWshForceUpdateVarName) != "" {
+		isUpToDate = false
+		conn.Infof(ctx, "%s set, forcing wsh update\n", wavebase.WaveWshForceUpdateVarName)
 	}
 	conn.Infof(ctx, "connserver up-to-date: %v\n", isUpToDate)
 	if !isUpToDate {
@@ -648,7 +633,7 @@ func (conn *WslConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 		err = fmt.Errorf("error opening domain socket listener: %w", err)
 		return WshCheckResult{NoWshReason: "error opening domain socket", WshError: err}
 	}
-	needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx)
+	needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx, false)
 	if err != nil {
 		conn.Infof(ctx, "ERROR starting conn server: %v\n", err)
 		err = fmt.Errorf("error starting conn server: %w", err)
@@ -662,7 +647,7 @@ func (conn *WslConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 			err = fmt.Errorf("error installing wsh: %w", err)
 			return WshCheckResult{NoWshReason: "error installing wsh/connserver", WshError: err}
 		}
-		needsInstall, clientVersion, _, err = conn.StartConnServer(ctx)
+		needsInstall, clientVersion, _, err = conn.StartConnServer(ctx, true)
 		if err != nil {
 			conn.Infof(ctx, "ERROR starting conn server (after install): %v\n", err)
 			err = fmt.Errorf("error starting conn server (after install): %w", err)

@@ -326,7 +326,6 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	}
 	conn.Infof(ctx, "connserver up-to-date: %v\n", isUpToDate)
 	if !isUpToDate {
-
 		sshSession.Close()
 		return true, clientVersion, osArchStr, nil
 	}
