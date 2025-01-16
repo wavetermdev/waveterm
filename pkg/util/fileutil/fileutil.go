@@ -6,9 +6,10 @@ import (
 	"mime"
 	"net/http"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
+
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 // on error just returns ""
@@ -70,11 +71,7 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 
 func FixPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
-		curUser, err := user.Current()
-		if err != nil {
-			return "", err
-		}
-		return filepath.Join(curUser.HomeDir, path[1:]), nil
+		return filepath.Join(wavebase.GetHomeDir(), path[1:]), nil
 	} else if !filepath.IsAbs(path) {
 		path, err := filepath.Abs(path)
 		if err != nil {

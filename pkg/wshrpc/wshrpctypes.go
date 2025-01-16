@@ -475,6 +475,11 @@ type CpuDataType struct {
 	Value float64 `json:"value"`
 }
 
+type FileRemoteStreamOpts struct {
+	UseTar      bool `json:"usetar,omitempty"`
+	DeleteAfter bool `json:"deleteafter,omitempty"`
+}
+
 type CommandRemoteStreamFileData struct {
 	Path      string `json:"path"`
 	ByteRange string `json:"byterange,omitempty"`

@@ -189,6 +189,7 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 			resp := wshrpc.FileData{}
 			fileInfoLen := len(fileInfo)
 			if fileInfoLen > 1 {
+				resp.Info = fileInfo[0]
 				resp.Entries = fileInfo
 			} else if fileInfoLen == 1 {
 				resp.Info = fileInfo[0]
