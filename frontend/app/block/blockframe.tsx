@@ -422,6 +422,22 @@ const ConnStatusOverlay = React.memo(
             setShowWshError(showWshErrorTemp);
         }, [connStatus, wshConfigEnabled]);
 
+        const errorText = React.useMemo(() => {
+            const errTexts = [];
+            if (showError) {
+                errTexts.push(`error: ${connStatus.error}`);
+            }
+            if (showWshError) {
+                errTexts.push(`unable to use wsh: ${connStatus.error}`);
+            }
+            return errTexts.join("\n");
+        }, [showError, connStatus.error, showWshError, connStatus.wsherror]);
+
+        const handleCopy = async (e: React.MouseEvent) => {
+            let textToCopy = errorText;
+            await navigator.clipboard.writeText(textToCopy);
+        };
+
         if (!showWshError && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
@@ -437,15 +453,15 @@ const ConnStatusOverlay = React.memo(
                                 className="connstatus-error"
                                 options={{ scrollbars: { autoHide: "leave" } }}
                             >
-                                <CopyButton className="copy-button" onClick={() => {}} title="Copy" />
+                                <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
                                 {showError ? <div>error: {connStatus.error}</div> : null}
                                 {showWshError ? <div>unable to use wsh: {connStatus.wsherror}</div> : null}
-                                {showWshError && (
-                                    <Button className={reconClassName} onClick={handleDisableWsh}>
-                                        always disable wsh
-                                    </Button>
-                                )}
                             </OverlayScrollbarsComponent>
+                            {showWshError && (
+                                <Button className={reconClassName} onClick={handleDisableWsh}>
+                                    always disable wsh
+                                </Button>
+                            )}
                         </div>
                     </div>
                     {showReconnect ? (
