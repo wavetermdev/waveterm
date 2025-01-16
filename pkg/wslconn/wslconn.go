@@ -214,7 +214,7 @@ func (conn *WslConn) OpenDomainSocketListener(ctx context.Context) error {
 	conn.Infof(ctx, "successfully connected domain socket\n")
 	go func() {
 		defer func() {
-			panichandler.PanicHandler("conncontroller:OpenDomainSocketListener", recover())
+			panichandler.PanicHandler("wslconn:OpenDomainSocketListener", recover())
 		}()
 		defer conn.WithLock(func() {
 			conn.DomainSockListener = nil
@@ -299,10 +299,12 @@ func (conn *WslConn) StartConnServer(ctx context.Context) (bool, string, string,
 	cmd.SetStdout(pipeWrite)
 	cmd.SetStderr(pipeWrite)
 	cmd.SetStdin(inputPipeRead)
-	//stdinPipe, err := cmd.StdinPipe()
-	if err != nil {
-		return false, "", "", fmt.Errorf("unable to get stdin pipe: %w", err)
-	}
+	/*
+		stdinPipe, err := cmd.StdinPipe()
+		if err != nil {
+			return false, "", "", fmt.Errorf("unable to get stdin pipe: %w", err)
+		}
+	*/
 	log.Printf("starting conn controller: %q\n", cmdStr)
 	blocklogger.Debugf(ctx, "[conndebug] wrapped command:\n%s\n", shWrappedCmdStr)
 	err = cmd.Start()
@@ -326,12 +328,20 @@ func (conn *WslConn) StartConnServer(ctx context.Context) (bool, string, string,
 		cancelFn()
 		return true, clientVersion, osArchStr, nil
 	}
-	// write the jwt
-	conn.Infof(ctx, "writing jwt token to connserver\n")
-	_, err = fmt.Fprintf(inputPipeWrite, "%s\n", jwtToken)
+	jwtLine, err := wshutil.ReadLineWithTimeout(linesChan, 3*time.Second)
 	if err != nil {
 		cancelFn()
-		return false, clientVersion, "", fmt.Errorf("failed to write JWT token: %w", err)
+		return false, clientVersion, "", fmt.Errorf("error reading jwt status line: %w", err)
+	}
+	conn.Infof(ctx, "got jwt status line: %s\n", jwtLine)
+	if strings.TrimSpace(jwtLine) == wavebase.NeedJwtConst {
+		// write the jwt
+		conn.Infof(ctx, "writing jwt token to connserver\n")
+		_, err = fmt.Fprintf(inputPipeWrite, "%s\n", jwtToken)
+		if err != nil {
+			cancelFn()
+			return false, clientVersion, "", fmt.Errorf("failed to write JWT token: %w", err)
+		}
 	}
 	conn.WithLock(func() {
 		conn.ConnController = cmd
@@ -339,7 +349,7 @@ func (conn *WslConn) StartConnServer(ctx context.Context) (bool, string, string,
 	// service the I/O
 	go func() {
 		defer func() {
-			panichandler.PanicHandler("conncontroller:cmd.Wait", recover())
+			panichandler.PanicHandler("wslconn:cmd.Wait", recover())
 		}()
 		// wait for termination, clear the controller
 		var waitErr error
@@ -358,25 +368,25 @@ func (conn *WslConn) StartConnServer(ctx context.Context) (bool, string, string,
 	}()
 	go func() {
 		defer func() {
-			panichandler.PanicHandler("conncontroller:sshSession-output", recover())
+			panichandler.PanicHandler("wslconn:wslCmd-output", recover())
 		}()
 		for output := range linesChan {
 			if output.Error != nil {
-				log.Printf("[conncontroller:%s:output] error: %v\n", conn.GetName(), output.Error)
+				log.Printf("[wslconn:%s:output] error: %v\n", conn.GetName(), output.Error)
 				continue
 			}
 			line := output.Line
 			if !strings.HasSuffix(line, "\n") {
 				line += "\n"
 			}
-			log.Printf("[conncontroller:%s:output] %s", conn.GetName(), line)
+			log.Printf("[wslconn:%s:output] %s", conn.GetName(), line)
 		}
 	}()
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("wsl:StartConnServer:handleStdIOClient", recover())
 		}()
-		logName := fmt.Sprintf("conncontroller:%s", conn.GetName())
+		logName := fmt.Sprintf("wslconn:%s", conn.GetName())
 		wshutil.HandleStdIOClient(logName, pipeRead, inputPipeWrite)
 	}()
 	conn.Infof(ctx, "connserver started, waiting for route to be registered\n")
