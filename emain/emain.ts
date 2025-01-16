@@ -121,19 +121,6 @@ function handleWSEvent(evtMsg: WSEventType) {
 // Listen for the open-external event from the renderer process
 electron.ipcMain.on("open-external", (event, url) => {
     if (url && typeof url === "string") {
-        if (unamePlatform === "linux") {
-            child_process.execFile("x-www-browser", [url], (error, stdout, stderr) => {
-                if (error) {
-                    console.error(
-                        `Failed to open URL ${url} with x-www-browser, falling back to xdg-open; err: ${error}`
-                    );
-                    electron.shell.openExternal(url).catch((err) => {
-                        console.error(`Failed to open URL ${url} with xdg-open:`, err);
-                    });
-                }
-            });
-            return;
-        }
         electron.shell.openExternal(url).catch((err) => {
             console.error(`Failed to open URL ${url}:`, err);
         });

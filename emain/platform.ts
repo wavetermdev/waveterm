@@ -194,6 +194,14 @@ ipcMain.on("get-config-dir", (event) => {
     event.returnValue = getWaveConfigDir();
 });
 
+function correctXDGCurrentDesktop() {
+    if (process.env.ORIGINAL_XDG_CURRENT_DESKTOP) {
+        process.env.XDG_CURRENT_DESKTOP = process.env.ORIGINAL_XDG_CURRENT_DESKTOP;
+    }
+}
+
+correctXDGCurrentDesktop();
+
 export {
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
