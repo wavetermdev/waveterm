@@ -877,8 +877,11 @@ func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
 			// for each host, find the first good alias
 			for _, hostPattern := range host.Patterns {
 				hostPatternStr := hostPattern.String()
+				if hostPatternStr == "" || strings.Contains(hostPatternStr, "*") || strings.Contains(hostPatternStr, "?") || strings.Contains(hostPatternStr, "!") {
+					continue
+				}
 				normalized := remote.NormalizeConfigPattern(hostPatternStr)
-				if !strings.Contains(hostPatternStr, "*") && !strings.Contains(hostPatternStr, "?") && !strings.Contains(hostPatternStr, "!") && !alreadyUsed[normalized] {
+				if !alreadyUsed[normalized] {
 					discoveredPatterns = append(discoveredPatterns, normalized)
 					alreadyUsed[normalized] = true
 					break

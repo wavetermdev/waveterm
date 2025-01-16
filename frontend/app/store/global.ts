@@ -168,7 +168,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     };
 }
 
-function initGlobalWaveEventSubs() {
+function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
     waveEventSubscribe(
         {
             eventType: "waveobj:update",
@@ -193,6 +193,7 @@ function initGlobalWaveEventSubs() {
                 const data: UserInputRequest = event.data;
                 modalsModel.pushModal("UserInputModal", { ...data });
             },
+            scope: initOpts.windowId,
         },
         {
             eventType: "blockfile",
