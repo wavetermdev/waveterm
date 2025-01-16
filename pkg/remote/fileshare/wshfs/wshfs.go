@@ -73,13 +73,17 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 	return fileData, nil
 }
 
-func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	byteRange := ""
 	if data.At != nil && data.At.Size > 0 {
 		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+data.At.Size)
 	}
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path, ByteRange: byteRange}
 	return wshclient.RemoteStreamFileCommand(wshclient.GetBareRpcClient(), streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+}
+
+func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+	return wshclient.RemoteTarStreamCommand(wshclient.GetBareRpcClient(), conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
@@ -95,7 +99,7 @@ func (c WshClient) ListEntries(ctx context.Context, conn *connparse.Connection, 
 	return entries, nil
 }
 
-func (c WshClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+func (c WshClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	return wshclient.RemoteListEntriesCommand(wshclient.GetBareRpcClient(), wshrpc.CommandRemoteListEntriesData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 

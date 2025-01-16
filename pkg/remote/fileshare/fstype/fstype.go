@@ -1,3 +1,6 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package fstype
 
 import (
@@ -13,11 +16,13 @@ type FileShareClient interface {
 	// Read returns the file info at the given path, if it's a directory, then the list of entries
 	Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error)
 	// ReadStream returns a stream of file data at the given path. If it's a directory, then the list of entries
-	ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData]
+	ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData]
+	// ReadTarStream returns a stream of tar data at the given path
+	ReadTarStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte]
 	// ListEntries returns the list of entries at the given path, or nothing if the path is a file
 	ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error)
 	// ListEntriesStream returns a stream of entries at the given path
-	ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]
+	ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]
 	// PutFile writes the given data to the file at the given path
 	PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error
 	// Mkdir creates a directory at the given path

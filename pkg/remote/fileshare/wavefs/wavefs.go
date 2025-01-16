@@ -28,7 +28,7 @@ func NewWaveClient() *WaveClient {
 	return &WaveClient{}
 }
 
-func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
 		defer close(ch)
@@ -90,7 +90,11 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil
 }
 
-func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+	return nil
+}
+
+func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 16)
 	go func() {
 		defer close(ch)

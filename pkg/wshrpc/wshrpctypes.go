@@ -76,6 +76,7 @@ const (
 	Command_SetConnectionsConfig = "connectionsconfig"
 	Command_GetFullConfig        = "getfullconfig"
 	Command_RemoteStreamFile     = "remotestreamfile"
+	Command_RemoteTarStream      = "remotetarstream"
 	Command_RemoteFileInfo       = "remotefileinfo"
 	Command_RemoteFileTouch      = "remotefiletouch"
 	Command_RemoteWriteFile      = "remotewritefile"
@@ -149,9 +150,10 @@ type WshRpcInterface interface {
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
+	FileStreamTarCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[[]byte]
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
-	FileListStreamCommand(ctx context.Context, data FileListData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
+	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -190,6 +192,7 @@ type WshRpcInterface interface {
 
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
+	RemoteTarStreamCommand(ctx context.Context, path string) <-chan RespOrErrorUnion[[]byte]
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error

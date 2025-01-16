@@ -4,6 +4,7 @@
 package wshremote
 
 import (
+	"archive/tar"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -16,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -39,10 +41,6 @@ func (impl *ServerImpl) Log(format string, args ...interface{}) {
 func (impl *ServerImpl) MessageCommand(ctx context.Context, data wshrpc.CommandMessageData) error {
 	impl.Log("[message] %q\n", data.Message)
 	return nil
-}
-
-func respErr[T any](err error) wshrpc.RespOrErrorUnion[T] {
-	return wshrpc.RespOrErrorUnion[T]{Error: err}
 }
 
 type ByteRangeType struct {
@@ -202,10 +200,55 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: resp}
 		})
 		if err != nil {
-			ch <- respErr[wshrpc.FileData](err)
+			ch <- wshutil.RespErr[wshrpc.FileData](err)
 		}
 	}()
 	return ch
+}
+
+func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, path string) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+	path, err := wavebase.ExpandHomeDir(path)
+	if err != nil {
+		return wshutil.SendErrCh[[]byte](fmt.Errorf("cannot expand path %q: %w", path, err))
+	}
+	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	finfo, err := os.Stat(cleanedPath)
+	if err != nil {
+		return wshutil.SendErrCh[[]byte](fmt.Errorf("cannot stat file %q: %w", path, err))
+	}
+	pipeReader, pipeWriter := io.Pipe()
+	tarWriter := tar.NewWriter(pipeWriter)
+	if finfo.IsDir() {
+		err := tarWriter.AddFS(os.DirFS(path))
+		if err != nil {
+			return wshutil.SendErrCh[[]byte](fmt.Errorf("cannot create tar stream for %q: %w", path, err))
+		}
+		rtn := iochan.ReaderChan(ctx, pipeReader, wshrpc.FileChunkSize, func() {
+			pipeWriter.Close()
+			tarWriter.Close()
+		})
+		return rtn
+	} else {
+		header, err := tar.FileInfoHeader(finfo, "")
+		if err != nil {
+			return wshutil.SendErrCh[[]byte](fmt.Errorf("cannot create tar header for %q: %w", path, err))
+		}
+		err = tarWriter.WriteHeader(header)
+		if err != nil {
+			return wshutil.SendErrCh[[]byte](fmt.Errorf("cannot write tar header for %q: %w", path, err))
+		}
+		file, err := os.Open(cleanedPath)
+		if err != nil {
+			return wshutil.SendErrCh[[]byte](fmt.Errorf("cannot open file %q: %w", path, err))
+		}
+		file.WriteTo(tarWriter)
+		rtn := iochan.ReaderChan(ctx, pipeReader, wshrpc.FileChunkSize, func() {
+			file.Close()
+			pipeWriter.Close()
+			tarWriter.Close()
+		})
+		return rtn
+	}
 }
 
 func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrpc.CommandRemoteListEntriesData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
@@ -214,7 +257,7 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 		defer close(ch)
 		path, err := wavebase.ExpandHomeDir(data.Path)
 		if err != nil {
-			ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](err)
+			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
 		}
 		innerFilesEntries := []os.DirEntry{}
@@ -245,14 +288,14 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 		} else {
 			innerFilesEntries, err = os.ReadDir(path)
 			if err != nil {
-				ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("cannot open dir %q: %w", path, err))
+				ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("cannot open dir %q: %w", path, err))
 				return
 			}
 		}
 		var fileInfoArr []*wshrpc.FileInfo
 		for _, innerFileEntry := range innerFilesEntries {
 			if ctx.Err() != nil {
-				ch <- respErr[wshrpc.CommandRemoteListEntriesRtnData](ctx.Err())
+				ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](ctx.Err())
 				return
 			}
 			innerFileInfoInt, err := innerFileEntry.Info()

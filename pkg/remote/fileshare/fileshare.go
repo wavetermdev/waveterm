@@ -62,16 +62,22 @@ func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
 	return client.Read(ctx, conn, data)
 }
 
-func ReadStream(ctx context.Context, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+func ReadStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	log.Printf("ReadStream: path=%s", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
-		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 1)
-		rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Error: fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Info.Path)}
-		close(rtn)
-		return rtn
+		return wshutil.SendErrCh[wshrpc.FileData](fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Info.Path))
 	}
 	return client.ReadStream(ctx, conn, data)
+}
+
+func ReadTarStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+	log.Printf("ReadTarStream: path=%s", data.Info.Path)
+	client, conn := CreateFileShareClient(ctx, data.Info.Path)
+	if conn == nil || client == nil {
+		return wshutil.SendErrCh[[]byte](fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Info.Path))
+	}
+	return client.ReadTarStream(ctx, conn, data)
 }
 
 func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
@@ -83,14 +89,11 @@ func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([
 	return client.ListEntries(ctx, conn, opts)
 }
 
-func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOpts) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	log.Printf("ListEntriesStream: path=%s", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
-		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 1)
-		rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Error: fmt.Errorf("error creating fileshare client, could not parse connection %s", path)}
-		close(rtn)
-		return rtn
+		return wshutil.SendErrCh[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("error creating fileshare client, could not parse connection %s", path))
 	}
 	return client.ListEntriesStream(ctx, conn, opts)
 }

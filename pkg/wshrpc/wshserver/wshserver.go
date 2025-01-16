@@ -307,7 +307,7 @@ func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.FileListDa
 	return fileshare.ListEntries(ctx, data.Path, data.Opts)
 }
 
-func (ws *WshServer) FileListStreamCommand(ctx context.Context, data wshrpc.FileListData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+func (ws *WshServer) FileListStreamCommand(ctx context.Context, data wshrpc.FileListData) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	return fileshare.ListEntriesStream(ctx, data.Path, data.Opts)
 }
 
@@ -317,6 +317,10 @@ func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.FileData)
 
 func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
 	return fileshare.Read(ctx, data)
+}
+
+func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+	return fileshare.ReadTarStream(ctx, data)
 }
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {

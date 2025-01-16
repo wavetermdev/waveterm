@@ -229,6 +229,11 @@ func FileReadCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOp
 	return resp, err
 }
 
+// command "filestreamtar", wshserver.FileStreamTarCommand
+func FileStreamTarCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[[]uint8] {
+	return sendRpcRequestResponseStreamHelper[[]uint8](w, "filestreamtar", data, opts)
+}
+
 // command "filewrite", wshserver.FileWriteCommand
 func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "filewrite", data, opts)
@@ -344,6 +349,11 @@ func RemoteStreamCpuDataCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) chan ws
 // command "remotestreamfile", wshserver.RemoteStreamFileCommand
 func RemoteStreamFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamFileData, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	return sendRpcRequestResponseStreamHelper[wshrpc.FileData](w, "remotestreamfile", data, opts)
+}
+
+// command "remotetarstream", wshserver.RemoteTarStreamCommand
+func RemoteTarStreamCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[[]uint8] {
+	return sendRpcRequestResponseStreamHelper[[]uint8](w, "remotetarstream", data, opts)
 }
 
 // command "remotewritefile", wshserver.RemoteWriteFileCommand

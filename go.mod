@@ -32,9 +32,8 @@ require (
 	golang.org/x/mod v0.22.0
 	golang.org/x/sys v0.29.0
 	golang.org/x/term v0.28.0
-	google.golang.org/api v0.216.0
-	gopkg.in/ini.v1 v1.67.0
 	google.golang.org/api v0.217.0
+	gopkg.in/ini.v1 v1.67.0
 )
 
 require (

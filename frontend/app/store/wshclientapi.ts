@@ -187,6 +187,11 @@ class RpcApiType {
         return client.wshRpcCall("fileread", data, opts);
     }
 
+    // command "filestreamtar" [responsestream]
+	FileStreamTarCommand(client: WshClient, data: FileData, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
+        return client.wshRpcStream("filestreamtar", data, opts);
+    }
+
     // command "filewrite" [call]
     FileWriteCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filewrite", data, opts);
@@ -285,6 +290,11 @@ class RpcApiType {
     // command "remotestreamfile" [responsestream]
 	RemoteStreamFileCommand(client: WshClient, data: CommandRemoteStreamFileData, opts?: RpcOpts): AsyncGenerator<FileData, void, boolean> {
         return client.wshRpcStream("remotestreamfile", data, opts);
+    }
+
+    // command "remotetarstream" [responsestream]
+	RemoteTarStreamCommand(client: WshClient, data: string, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
+        return client.wshRpcStream("remotetarstream", data, opts);
     }
 
     // command "remotewritefile" [call]
