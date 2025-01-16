@@ -579,12 +579,17 @@ func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeyword
 
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
-	conn, err := net.Dial("unix", utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
-	if err != nil {
-		log.Printf("Failed to open Identity Agent Socket: %v", err)
-	} else {
-		agentClient = agent.NewClient(conn)
-		authSockSigners, _ = agentClient.Signers()
+
+	// IdentitiesOnly indicates that only the keys listed in IdentityFile should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
+	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
+	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) {
+		conn, err := net.Dial("unix", utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
+		if err != nil {
+			log.Printf("Failed to open Identity Agent Socket: %v", err)
+		} else {
+			agentClient = agent.NewClient(conn)
+			authSockSigners, _ = agentClient.Signers()
+		}
 	}
 
 	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, authSockSigners, agentClient, debugInfo))
@@ -830,6 +835,12 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wshrpc.ConnKeyword
 	}
 	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(addKeysToAgentRaw)) == "yes")
 
+	identitiesOnly, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentitiesOnly")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(identitiesOnly)) == "yes")
+
 	identityAgentRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentityAgent")
 	if err != nil {
 		return nil, err
@@ -932,6 +943,9 @@ func mergeKeywords(oldKeywords *wshrpc.ConnKeywords, newKeywords *wshrpc.ConnKey
 	}
 	if newKeywords.SshIdentityAgent != nil {
 		outKeywords.SshIdentityAgent = newKeywords.SshIdentityAgent
+	}
+	if newKeywords.SshIdentitiesOnly != nil {
+		outKeywords.SshIdentitiesOnly = newKeywords.SshIdentitiesOnly
 	}
 	if newKeywords.SshProxyJump != nil {
 		outKeywords.SshProxyJump = newKeywords.SshProxyJump

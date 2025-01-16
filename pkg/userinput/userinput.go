@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 var MainUserInputHandler = UserInputHandler{Channels: make(map[string](chan *UserInputResponse), 1)}
@@ -61,10 +63,11 @@ func (ui *UserInputHandler) unregisterChannel(id string) {
 	delete(ui.Channels, id)
 }
 
-func (ui *UserInputHandler) sendRequestToFrontend(request *UserInputRequest) {
+func (ui *UserInputHandler) sendRequestToFrontend(request *UserInputRequest, windowId string) {
 	wps.Broker.Publish(wps.WaveEvent{
-		Event: wps.Event_UserInput,
-		Data:  request,
+		Event:  wps.Event_UserInput,
+		Data:   request,
+		Scopes: []string{windowId},
 	})
 }
 
@@ -74,10 +77,25 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 	request.RequestId = id
 	deadline, _ := ctx.Deadline()
 	request.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
-	MainUserInputHandler.sendRequestToFrontend(request)
+
+	connData := genconn.GetConnData(ctx)
+	// resolve windowId from blockId
+	tabId, err := wstore.DBFindTabForBlockId(ctx, connData.BlockId)
+	if err != nil {
+		return nil, fmt.Errorf("unabled to determine tab for route: %w", err)
+	}
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+	if err != nil {
+		return nil, fmt.Errorf("unabled to determine workspace for route: %w", err)
+	}
+	windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("unabled to determine window for route: %w", err)
+	}
+
+	MainUserInputHandler.sendRequestToFrontend(request, windowId)
 
 	var response *UserInputResponse
-	var err error
 	select {
 	case resp := <-uiCh:
 		log.Printf("checking received: %v", resp.RequestId)
