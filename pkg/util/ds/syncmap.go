@@ -10,7 +10,7 @@ type SyncMap[T any] struct {
 	m    map[string]T
 }
 
-func NewSyncMap[T any]() *SyncMap[T] {
+func MakeSyncMap[T any]() *SyncMap[T] {
 	return &SyncMap[T]{
 		lock: &sync.Mutex{},
 		m:    make(map[string]T),

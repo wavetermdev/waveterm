@@ -109,6 +109,13 @@ declare global {
     type CommandAuthenticateRtnData = {
         routeid: string;
         authtoken?: string;
+        env?: {[key: string]: string};
+        initscripttext?: string;
+    };
+
+    // wshrpc.CommandAuthenticateTokenData
+    type CommandAuthenticateTokenData = {
+        token: string;
     };
 
     // wshrpc.CommandBlockInputData

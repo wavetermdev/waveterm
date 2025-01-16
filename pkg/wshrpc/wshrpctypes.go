@@ -28,11 +28,13 @@ const (
 	RpcType_Complex          = "complex"          // streaming request/response
 )
 
+// TODO generate these constants from the interface
 const (
-	Command_Authenticate         = "authenticate"    // special
-	Command_Dispose              = "dispose"         // special (disposes of the route, for multiproxy only)
-	Command_RouteAnnounce        = "routeannounce"   // special (for routing)
-	Command_RouteUnannounce      = "routeunannounce" // special (for routing)
+	Command_Authenticate         = "authenticate"      // special
+	Command_AuthenticateToken    = "authenticatetoken" // special
+	Command_Dispose              = "dispose"           // special (disposes of the route, for multiproxy only)
+	Command_RouteAnnounce        = "routeannounce"     // special (for routing)
+	Command_RouteUnannounce      = "routeunannounce"   // special (for routing)
 	Command_Message              = "message"
 	Command_GetMeta              = "getmeta"
 	Command_SetMeta              = "setmeta"
@@ -110,6 +112,7 @@ type RespOrErrorUnion[T any] struct {
 
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
+	AuthenticateTokenCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error)
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
@@ -263,6 +266,14 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 type CommandAuthenticateRtnData struct {
 	RouteId   string `json:"routeid"`
 	AuthToken string `json:"authtoken,omitempty"`
+
+	// these fields are only set when doing a token swap
+	Env            map[string]string `json:"env,omitempty"`
+	InitScriptText string            `json:"initscripttext,omitempty"`
+}
+
+type CommandAuthenticateTokenData struct {
+	Token string `json:"token"`
 }
 
 type CommandDisposeData struct {

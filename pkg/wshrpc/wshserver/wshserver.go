@@ -715,7 +715,7 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 	}
 
 	log.Printf("checking wsh version for connection %s (current: %s)", connName, remoteInfo.ClientVersion)
-	upToDate, _, _, err := conncontroller.IsWshVersionUpToDate(remoteInfo.ClientVersion)
+	upToDate, _, _, err := conncontroller.IsWshVersionUpToDate(ctx, remoteInfo.ClientVersion)
 	if err != nil {
 		return false, fmt.Errorf("unable to compare wsh version: %w", err)
 	}
