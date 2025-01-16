@@ -308,12 +308,13 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	if err != nil {
 		return false, "", "", fmt.Errorf("unable to start conn controller command: %w", err)
 	}
-	linesChan := wshutil.StreamToLinesChan(pipeRead)
-	versionLine, err := wshutil.ReadLineWithTimeout(linesChan, 2*time.Second)
+	linesChan := utilfn.StreamToLinesChan(pipeRead)
+	versionLine, err := utilfn.ReadLineWithTimeout(linesChan, 2*time.Second)
 	if err != nil {
 		sshSession.Close()
 		return false, "", "", fmt.Errorf("error reading wsh version: %w", err)
 	}
+	conn.Infof(ctx, "actual connnserverversion: %q\n", versionLine)
 	conn.Infof(ctx, "got connserver version: %s\n", strings.TrimSpace(versionLine))
 	isUpToDate, clientVersion, osArchStr, err := IsWshVersionUpToDate(ctx, versionLine)
 	if err != nil {
@@ -329,7 +330,7 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		sshSession.Close()
 		return true, clientVersion, osArchStr, nil
 	}
-	jwtLine, err := wshutil.ReadLineWithTimeout(linesChan, 3*time.Second)
+	jwtLine, err := utilfn.ReadLineWithTimeout(linesChan, 3*time.Second)
 	if err != nil {
 		sshSession.Close()
 		return false, clientVersion, "", fmt.Errorf("error reading jwt status line: %w", err)

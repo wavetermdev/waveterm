@@ -285,8 +285,8 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	if err != nil {
 		return false, "", "", fmt.Errorf("unable to start conn controller cmd: %w", err)
 	}
-	linesChan := wshutil.StreamToLinesChan(pipeRead)
-	versionLine, err := wshutil.ReadLineWithTimeout(linesChan, 2*time.Second)
+	linesChan := utilfn.StreamToLinesChan(pipeRead)
+	versionLine, err := utilfn.ReadLineWithTimeout(linesChan, 2*time.Second)
 	if err != nil {
 		cancelFn()
 		return false, "", "", fmt.Errorf("error reading wsh version: %w", err)
@@ -306,7 +306,7 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		cancelFn()
 		return true, clientVersion, osArchStr, nil
 	}
-	jwtLine, err := wshutil.ReadLineWithTimeout(linesChan, 3*time.Second)
+	jwtLine, err := utilfn.ReadLineWithTimeout(linesChan, 3*time.Second)
 	if err != nil {
 		cancelFn()
 		return false, clientVersion, "", fmt.Errorf("error reading jwt status line: %w", err)
@@ -349,7 +349,7 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 			panichandler.PanicHandler("wsl:StartConnServer:handleStdIOClient", recover())
 		}()
 		logName := fmt.Sprintf("wslconn:%s", conn.GetName())
-		wshutil.HandleStdIOClient(logName, pipeRead, inputPipeWrite)
+		wshutil.HandleStdIOClient(logName, linesChan, inputPipeWrite)
 	}()
 	conn.Infof(ctx, "connserver started, waiting for route to be registered\n")
 	regCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)

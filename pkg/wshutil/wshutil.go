@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
@@ -418,10 +419,10 @@ type WriteFlusher interface {
 }
 
 // blocking, returns if there is an error, or on EOF of input
-func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
+func HandleStdIOClient(logName string, input chan utilfn.LineOutput, output io.Writer) {
 	proxy := MakeRpcMultiProxy()
 	rawCh := make(chan []byte, DefaultInputChSize)
-	go packetparser.Parse(input, proxy.FromRemoteRawCh, rawCh)
+	go packetparser.ParseWithLinesChan(input, proxy.FromRemoteRawCh, rawCh)
 	doneCh := make(chan struct{})
 	var doneOnce sync.Once
 	closeDoneCh := func() {
@@ -455,6 +456,9 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 		}()
 		defer closeDoneCh()
 		for msg := range rawCh {
+			if !bytes.HasSuffix(msg, []byte{'\n'}) {
+				msg = append(msg, '\n')
+			}
 			log.Printf("[%s:stdout] %s", logName, msg)
 		}
 	}()
