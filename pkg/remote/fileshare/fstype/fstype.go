@@ -10,8 +10,10 @@ import (
 type FileShareClient interface {
 	// Stat returns the file info at the given parsed connection path
 	Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error)
-	// Read returns the file info at the given path, if it's a dir, then the list of entries
+	// Read returns the file info at the given path, if it's a directory, then the list of entries
 	Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error)
+	// ReadStream returns a stream of file data at the given path. If it's a directory, then the list of entries
+	ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData]
 	// ListEntries returns the list of entries at the given path, or nothing if the path is a file
 	ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error)
 	// ListEntriesStream returns a stream of entries at the given path

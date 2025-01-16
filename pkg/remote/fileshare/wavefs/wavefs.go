@@ -19,14 +19,41 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const DirChunkSize = 128
-
 type WaveClient struct{}
 
 var _ fstype.FileShareClient = WaveClient{}
 
 func NewWaveClient() *WaveClient {
 	return &WaveClient{}
+}
+
+func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
+	go func() {
+		defer close(ch)
+		rtnData, err := c.Read(ctx, conn, data)
+		if err != nil {
+			ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Error: err}
+			return
+		}
+		for {
+			if ctx.Err() != nil {
+				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Error: ctx.Err()}
+			}
+			dataLen := len(rtnData.Data64)
+			if !rtnData.Info.IsDir {
+				for i := 0; i < dataLen; i += wshrpc.FileChunkSize {
+					dataEnd := min(i+wshrpc.FileChunkSize, dataLen)
+					ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: rtnData.Data64[i:dataEnd], Info: rtnData.Info, At: &wshrpc.FileDataAt{Offset: int64(i), Size: int64(dataEnd - i)}}}
+				}
+			} else {
+				for i := 0; i < len(rtnData.Entries); i += wshrpc.DirChunkSize {
+					ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: rtnData.Entries[i:min(i+wshrpc.DirChunkSize, len(rtnData.Entries))], Info: rtnData.Info}}
+				}
+			}
+		}
+	}()
+	return ch
 }
 
 func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
@@ -68,8 +95,8 @@ func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Conne
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Error: err}
 			return
 		}
-		for i := 0; i < len(list); i += DirChunkSize {
-			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: list[i:min(i+DirChunkSize, len(list))]}}
+		for i := 0; i < len(list); i += wshrpc.DirChunkSize {
+			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: list[i:min(i+wshrpc.DirChunkSize, len(list))]}}
 		}
 	}()
 	return ch

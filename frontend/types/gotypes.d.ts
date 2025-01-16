@@ -199,12 +199,6 @@ declare global {
         byterange?: string;
     };
 
-    // wshrpc.CommandRemoteStreamFileRtnData
-    type CommandRemoteStreamFileRtnData = {
-        fileinfo?: FileInfo[];
-        data64?: string;
-    };
-
     // wshrpc.CommandRemoteWriteFileData
     type CommandRemoteWriteFileData = {
         path: string;

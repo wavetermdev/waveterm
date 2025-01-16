@@ -19,6 +19,17 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
+const (
+	// MaxFileSize is the maximum file size that can be read
+	MaxFileSize = 50 * 1024 * 1024 // 10M
+	// MaxDirSize is the maximum number of entries that can be read in a directory
+	MaxDirSize = 1024
+	// FileChunkSize is the size of the file chunk to read
+	FileChunkSize = 16 * 1024
+	// DirChunkSize is the size of the directory chunk to read
+	DirChunkSize = 128
+)
+
 const LocalConnName = "local"
 
 const (
@@ -175,7 +186,7 @@ type WshRpcInterface interface {
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
 
 	// remotes
-	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[CommandRemoteStreamFileRtnData]
+	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
@@ -467,11 +478,6 @@ type CpuDataType struct {
 type CommandRemoteStreamFileData struct {
 	Path      string `json:"path"`
 	ByteRange string `json:"byterange,omitempty"`
-}
-
-type CommandRemoteStreamFileRtnData struct {
-	FileInfo []*FileInfo `json:"fileinfo,omitempty"`
-	Data64   string      `json:"data64,omitempty"`
 }
 
 type CommandRemoteListEntriesData struct {

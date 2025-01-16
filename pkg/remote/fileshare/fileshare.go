@@ -61,6 +61,17 @@ func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
 	return client.Read(ctx, conn, data)
 }
 
+func ReadStream(ctx context.Context, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	client, conn := CreateFileShareClient(ctx, data.Info.Path)
+	if conn == nil || client == nil {
+		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 1)
+		rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Error: fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Info.Path)}
+		close(rtn)
+		return rtn
+	}
+	return client.ReadStream(ctx, conn, data)
+}
+
 func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
 	log.Printf("ListEntries: path=%s", path)
 	client, conn := CreateFileShareClient(ctx, path)

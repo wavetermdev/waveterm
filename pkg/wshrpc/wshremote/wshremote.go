@@ -22,11 +22,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-const MaxFileSize = 50 * 1024 * 1024 // 10M
-const MaxDirSize = 1024
-const FileChunkSize = 16 * 1024
-const DirChunkSize = 128
-
 type ServerImpl struct {
 	LogWriter io.Writer
 }
@@ -71,14 +66,14 @@ func parseByteRange(rangeStr string) (ByteRangeType, error) {
 	return ByteRangeType{Start: start, End: end}, nil
 }
 
-func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte)) error {
+func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
 	innerFilesEntries, err := os.ReadDir(path)
 	if err != nil {
 		return fmt.Errorf("cannot open dir %q: %w", path, err)
 	}
 	if byteRange.All {
-		if len(innerFilesEntries) > MaxDirSize {
-			innerFilesEntries = innerFilesEntries[:MaxDirSize]
+		if len(innerFilesEntries) > wshrpc.MaxDirSize {
+			innerFilesEntries = innerFilesEntries[:wshrpc.MaxDirSize]
 		}
 	} else {
 		if byteRange.Start >= int64(len(innerFilesEntries)) {
@@ -108,19 +103,18 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 		}
 		innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt, false)
 		fileInfoArr = append(fileInfoArr, innerFileInfo)
-		if len(fileInfoArr) >= DirChunkSize {
-			dataCallback(fileInfoArr, nil)
+		if len(fileInfoArr) >= wshrpc.DirChunkSize {
+			dataCallback(fileInfoArr, nil, byteRange)
 			fileInfoArr = nil
 		}
 	}
 	if len(fileInfoArr) > 0 {
-		dataCallback(fileInfoArr, nil)
+		dataCallback(fileInfoArr, nil, byteRange)
 	}
 	return nil
 }
 
-// TODO make sure the read is in chunks of 3 bytes (so 4 bytes of base64) in order to make decoding more efficient
-func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte)) error {
+func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
 	fd, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
@@ -134,7 +128,7 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 		}
 		filePos = byteRange.Start
 	}
-	buf := make([]byte, FileChunkSize)
+	buf := make([]byte, wshrpc.FileChunkSize)
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -145,7 +139,7 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 				n = int(byteRange.End - filePos)
 			}
 			filePos += int64(n)
-			dataCallback(nil, buf[:n])
+			dataCallback(nil, buf[:n], byteRange)
 		}
 		if !byteRange.All && filePos >= byteRange.End {
 			break
@@ -160,7 +154,7 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 	return nil
 }
 
-func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte)) error {
+func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
 	byteRange, err := parseByteRange(data.ByteRange)
 	if err != nil {
 		return err
@@ -173,11 +167,11 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	if err != nil {
 		return fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
-	dataCallback([]*wshrpc.FileInfo{finfo}, nil)
+	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
 	if finfo.NotFound {
 		return nil
 	}
-	if finfo.Size > MaxFileSize {
+	if finfo.Size > wshrpc.MaxFileSize {
 		return fmt.Errorf("file %q is too large to read, use /wave/stream-file", path)
 	}
 	if finfo.IsDir {
@@ -187,21 +181,27 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	}
 }
 
-func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData] {
-	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData], 16)
+func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
 		defer close(ch)
-		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte) {
-			resp := wshrpc.CommandRemoteStreamFileRtnData{}
-			resp.FileInfo = fileInfo
+		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType) {
+			resp := wshrpc.FileData{}
+			fileInfoLen := len(fileInfo)
+			if fileInfoLen > 1 {
+				resp.Entries = fileInfo
+			} else if fileInfoLen == 1 {
+				resp.Info = fileInfo[0]
+			}
 			if len(data) > 0 {
 				resp.Data64 = base64.StdEncoding.EncodeToString(data)
+				resp.At = &wshrpc.FileDataAt{Offset: byteRange.Start, Size: int64(len(data))}
 			}
 			log.Printf("callback -- sending response %d\n", len(resp.Data64))
-			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData]{Response: resp}
+			ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: resp}
 		})
 		if err != nil {
-			ch <- respErr[wshrpc.CommandRemoteStreamFileRtnData](err)
+			ch <- respErr[wshrpc.FileData](err)
 		}
 	}()
 	return ch
@@ -219,7 +219,7 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 		innerFilesEntries := []os.DirEntry{}
 		seen := 0
 		if data.Opts.Limit == 0 {
-			data.Opts.Limit = MaxDirSize
+			data.Opts.Limit = wshrpc.MaxDirSize
 		}
 		if data.Opts.All {
 			fs.WalkDir(os.DirFS(path), ".", func(path string, d fs.DirEntry, err error) error {
@@ -261,7 +261,7 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 			}
 			innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt, false)
 			fileInfoArr = append(fileInfoArr, innerFileInfo)
-			if len(fileInfoArr) >= DirChunkSize {
+			if len(fileInfoArr) >= wshrpc.DirChunkSize {
 				resp := wshrpc.CommandRemoteListEntriesRtnData{FileInfo: fileInfoArr}
 				ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: resp}
 				fileInfoArr = nil

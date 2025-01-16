@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
@@ -27,19 +26,11 @@ func NewWshClient() *WshClient {
 }
 
 func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
-	client := wshclient.GetBareRpcClient()
-	byteRange := ""
-	if data.At != nil && data.At.Size > 0 {
-		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+data.At.Size)
-	}
-	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path, ByteRange: byteRange}
-	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
-	fullFile := &wshrpc.FileData{}
+	rtnCh := c.ReadStream(ctx, conn, data)
+	var fileData *wshrpc.FileData
 	firstPk := true
 	isDir := false
-	log.Printf("stream file: %s", conn.Path)
 	var fileBuf bytes.Buffer
-	var fileInfoArr []*wshrpc.FileInfo
 	for respUnion := range rtnCh {
 		if respUnion.Error != nil {
 			return nil, respUnion.Error
@@ -48,20 +39,20 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		if firstPk {
 			firstPk = false
 			// first packet has the fileinfo
-			if len(resp.FileInfo) != 1 {
-				return nil, fmt.Errorf("stream file protocol error, first pk fileinfo len=%d", len(resp.FileInfo))
+			if resp.Info == nil {
+				return nil, fmt.Errorf("stream file protocol error, first pk fileinfo is empty")
 			}
-			fullFile.Info = resp.FileInfo[0]
-			if fullFile.Info.IsDir {
+			fileData = &resp
+			if fileData.Info.IsDir {
 				isDir = true
 			}
 			continue
 		}
 		if isDir {
-			if len(resp.FileInfo) == 0 {
+			if len(resp.Entries) == 0 {
 				continue
 			}
-			fileInfoArr = append(fileInfoArr, resp.FileInfo...)
+			fileData.Entries = append(fileData.Entries, resp.Entries...)
 		} else {
 			if resp.Data64 == "" {
 				continue
@@ -73,76 +64,53 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 			}
 		}
 	}
-	if isDir {
-		entries, err := listEntriesInternal(client, conn, &wshrpc.FileListOpts{}, &wshrpc.FileData{Entries: fileInfoArr})
-		if err != nil {
-			return nil, fmt.Errorf("stream file, failed to list entries: %w", err)
-		}
-		fullFile.Entries = entries
-	} else {
-		// we can avoid this re-encoding if we ensure the remote side always encodes chunks of 3 bytes so we don't get padding chars
-		fullFile.Data64 = base64.StdEncoding.EncodeToString(fileBuf.Bytes())
+	if !isDir {
+		fileData.Data64 = base64.StdEncoding.EncodeToString(fileBuf.Bytes())
 	}
-	return fullFile, nil
+	return fileData, nil
+}
+
+func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	byteRange := ""
+	if data.At != nil && data.At.Size > 0 {
+		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+data.At.Size)
+	}
+	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path, ByteRange: byteRange}
+	return wshclient.RemoteStreamFileCommand(wshclient.GetBareRpcClient(), streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
-	return listEntriesInternal(wshclient.GetBareRpcClient(), conn, opts, nil)
-}
-
-func listEntriesInternal(client *wshutil.WshRpc, conn *connparse.Connection, opts *wshrpc.FileListOpts, data *wshrpc.FileData) ([]*wshrpc.FileInfo, error) {
 	var entries []*wshrpc.FileInfo
-	if opts.All || data == nil {
-		rtnCh := wshclient.RemoteListEntriesCommand(client, wshrpc.CommandRemoteListEntriesData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
-		for respUnion := range rtnCh {
-			if respUnion.Error != nil {
-				return nil, respUnion.Error
-			}
-			resp := respUnion.Response
-			entries = append(entries, resp.FileInfo...)
+	rtnCh := c.ListEntriesStream(ctx, conn, opts)
+	for respUnion := range rtnCh {
+		if respUnion.Error != nil {
+			return nil, respUnion.Error
 		}
-	} else {
-		entries = append(entries, data.Entries...)
-		if opts.Offset > 0 {
-			if opts.Offset >= len(entries) {
-				entries = nil
-			} else {
-				entries = entries[opts.Offset:]
-			}
-		}
-		if opts.Limit > 0 {
-			if opts.Limit < len(entries) {
-				entries = entries[:opts.Limit]
-			}
-		}
+		resp := respUnion.Response
+		entries = append(entries, resp.FileInfo...)
 	}
 	return entries, nil
 }
 
 func (c WshClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
-	client := wshclient.GetBareRpcClient()
-	return wshclient.RemoteListEntriesCommand(client, wshrpc.CommandRemoteListEntriesData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	return wshclient.RemoteListEntriesCommand(wshclient.GetBareRpcClient(), wshrpc.CommandRemoteListEntriesData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
-	client := wshclient.GetBareRpcClient()
-	return wshclient.RemoteFileInfoCommand(client, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	return wshclient.RemoteFileInfoCommand(wshclient.GetBareRpcClient(), conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
-	client := wshclient.GetBareRpcClient()
 	writeData := wshrpc.CommandRemoteWriteFileData{Path: conn.Path, Data64: data.Data64}
-	return wshclient.RemoteWriteFileCommand(client, writeData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	return wshclient.RemoteWriteFileCommand(wshclient.GetBareRpcClient(), writeData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) Mkdir(ctx context.Context, conn *connparse.Connection) error {
-	client := wshclient.GetBareRpcClient()
-	return wshclient.RemoteMkdirCommand(client, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	return wshclient.RemoteMkdirCommand(wshclient.GetBareRpcClient(), conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
-	client := wshclient.GetBareRpcClient()
-	return wshclient.RemoteFileRenameCommand(client, [2]string{srcConn.Path, destConn.Path}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
+	return wshclient.RemoteFileRenameCommand(wshclient.GetBareRpcClient(), [2]string{srcConn.Path, destConn.Path}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
 }
 
 func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
@@ -150,8 +118,7 @@ func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connec
 }
 
 func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection) error {
-	client := wshclient.GetBareRpcClient()
-	return wshclient.RemoteFileDeleteCommand(client, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	return wshclient.RemoteFileDeleteCommand(wshclient.GetBareRpcClient(), conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) GetConnectionType() string {
