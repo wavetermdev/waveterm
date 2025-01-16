@@ -28,6 +28,8 @@ type FileShareClient interface {
 	Copy(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error
 	// Delete deletes the entry at the given path
 	Delete(ctx context.Context, conn *connparse.Connection) error
+	// Join joins the given parts to the connection path
+	Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error)
 	// GetConnectionType returns the type of connection for the fileshare
 	GetConnectionType() string
 }

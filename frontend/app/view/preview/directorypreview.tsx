@@ -68,7 +68,7 @@ const displaySuffixes = {
 };
 
 function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): string {
-    if (bytes < 0) {
+    if (bytes === undefined || bytes < 0) {
         return "-";
     }
     const units = si ? ["kB", "MB", "GB", "TB"] : ["KiB", "MiB", "GiB", "TiB"];
@@ -720,7 +720,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 TabRpcClient,
                 {
                     info: {
-                        path: dirPath,
+                        path: await model.formatRemoteUri(dirPath),
                     },
                 },
                 null
@@ -731,13 +731,13 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     }, [conn, dirPath, refreshVersion]);
 
     useEffect(() => {
-        const filtered = unfilteredData.filter((fileInfo) => {
+        const filtered = unfilteredData?.filter((fileInfo) => {
             if (!showHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
                 return false;
             }
             return fileInfo.name.toLowerCase().includes(searchText);
         });
-        setFilteredData(filtered);
+        setFilteredData(filtered ?? []);
     }, [unfilteredData, showHiddenFiles, searchText]);
 
     useEffect(() => {
@@ -816,12 +816,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newFile: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
                     await RpcApi.FileCreateCommand(
                         TabRpcClient,
                         {
                             info: {
-                                path: `wsh://${connection}/${dirPath}/${newName}`,
+                                path: await model.formatRemoteUri(`${dirPath}/${newName}`),
                             },
                         },
                         null

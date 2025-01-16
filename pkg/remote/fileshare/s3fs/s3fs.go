@@ -65,6 +65,10 @@ func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection) error 
 	return nil
 }
 
+func (c S3Client) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error) {
+	return "", nil
+}
+
 func (c S3Client) GetConnectionType() string {
 	return connparse.ConnectionTypeS3
 }

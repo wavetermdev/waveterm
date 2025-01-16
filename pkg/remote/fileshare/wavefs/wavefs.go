@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/fs"
+	"path"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
@@ -61,7 +62,10 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 	if zoneId == "" {
 		return nil, fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := conn.Path
+	fileName, err := cleanPath(conn.Path)
+	if err != nil {
+		return nil, fmt.Errorf("error cleaning path: %w", err)
+	}
 	if data.At != nil {
 		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, data.At.Size)
 		if err == nil {
@@ -107,8 +111,10 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 	if zoneId == "" {
 		return nil, fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := conn.Path
-	prefix := fileName
+	prefix, err := cleanPath(conn.Path)
+	if err != nil {
+		return nil, fmt.Errorf("error cleaning path: %w", err)
+	}
 	fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
 	if err != nil {
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
@@ -174,7 +180,10 @@ func (c WaveClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshr
 	if zoneId == "" {
 		return nil, fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := conn.Path
+	fileName, err := cleanPath(conn.Path)
+	if err != nil {
+		return nil, fmt.Errorf("error cleaning path: %w", err)
+	}
 	fileInfo, err := filestore.WFS.Stat(ctx, zoneId, fileName)
 	if err != nil {
 		if err == fs.ErrNotExist {
@@ -194,7 +203,10 @@ func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, dat
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := conn.Path
+	fileName, err := cleanPath(conn.Path)
+	if err != nil {
+		return fmt.Errorf("error cleaning path: %w", err)
+	}
 	if data.At != nil {
 		err = filestore.WFS.WriteAt(ctx, zoneId, fileName, data.At.Offset, dataBuf)
 		if err == fs.ErrNotExist {
@@ -242,8 +254,11 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) erro
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
-	fileName := conn.Path
-	err := filestore.WFS.DeleteFile(ctx, zoneId, fileName)
+	fileName, err := cleanPath(conn.Path)
+	if err != nil {
+		return fmt.Errorf("error cleaning path: %w", err)
+	}
+	err = filestore.WFS.DeleteFile(ctx, zoneId, fileName)
 	if err != nil {
 		return fmt.Errorf("error deleting blockfile: %w", err)
 	}
@@ -257,6 +272,35 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) erro
 		},
 	})
 	return nil
+}
+
+func (c WaveClient) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error) {
+	newPath := path.Join(append([]string{conn.Path}, parts...)...)
+	newPath, err := cleanPath(newPath)
+	if err != nil {
+		return "", fmt.Errorf("error cleaning path: %w", err)
+	}
+	return newPath, nil
+}
+
+func cleanPath(path string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("path is empty")
+	}
+	if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "~") || strings.HasPrefix(path, ".") || strings.HasPrefix(path, "..") {
+		return "", fmt.Errorf("path cannot start with /, ~, ., or ..")
+	}
+	var newParts []string
+	for _, part := range strings.Split(path, "/") {
+		if part == ".." {
+			if len(newParts) > 0 {
+				newParts = newParts[:len(newParts)-1]
+			}
+		} else if part != "." {
+			newParts = append(newParts, part)
+		}
+	}
+	return strings.Join(newParts, "/"), nil
 }
 
 func (c WaveClient) GetConnectionType() string {

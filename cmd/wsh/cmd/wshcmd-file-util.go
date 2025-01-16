@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
@@ -215,7 +216,13 @@ func fixRelativePaths(path string) (string, error) {
 		return "", err
 	}
 	if conn.Scheme == connparse.ConnectionTypeWsh && conn.Host == connparse.ConnHostCurrent {
-		return fileutil.FixPath(conn.Path)
+		conn.Host = RpcContext.Conn
+		log.Printf("Fixing relative path to %s", conn.Host)
+		fixedPath, err := fileutil.FixPath(conn.Path)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("wsh://%s/%s", RpcContext.Conn, fixedPath), nil
 	}
 	return path, nil
 }

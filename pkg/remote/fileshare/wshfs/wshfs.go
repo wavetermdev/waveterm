@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
@@ -38,6 +39,7 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		resp := respUnion.Response
 		if firstPk {
 			firstPk = false
+			log.Printf("stream file, first pk: %v", resp)
 			// first packet has the fileinfo
 			if resp.Info == nil {
 				return nil, fmt.Errorf("stream file protocol error, first pk fileinfo is empty")
@@ -50,6 +52,7 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		}
 		if isDir {
 			if len(resp.Entries) == 0 {
+				log.Printf("stream dir, no entries")
 				continue
 			}
 			fileData.Entries = append(fileData.Entries, resp.Entries...)
@@ -119,6 +122,14 @@ func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connec
 
 func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection) error {
 	return wshclient.RemoteFileDeleteCommand(wshclient.GetBareRpcClient(), conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+}
+
+func (c WshClient) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error) {
+	finfo, err := wshclient.RemoteFileJoinCommand(wshclient.GetBareRpcClient(), append([]string{conn.Path}, parts...), &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	if err != nil {
+		return "", err
+	}
+	return finfo.Path, nil
 }
 
 func (c WshClient) GetConnectionType() string {

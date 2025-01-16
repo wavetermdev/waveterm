@@ -368,12 +368,12 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            const conn = (await get(this.connection)) ?? "";
             const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
                 info: {
-                    path: `wsh://${conn}/${fileName}`,
+                    path: await this.formatRemoteUri(fileName),
                 },
             });
+            console.log("stat file", statFile);
             return statFile;
         });
         this.fileMimeType = atom<Promise<string>>(async (get) => {
@@ -389,12 +389,12 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            const conn = (await get(this.connection)) ?? "";
             const file = await RpcApi.FileReadCommand(TabRpcClient, {
                 info: {
-                    path: `wsh://${conn}/${fileName}`,
+                    path: await this.formatRemoteUri(fileName),
                 },
             });
+            console.log("full file", file);
             return file;
         });
 
@@ -413,7 +413,7 @@ export class PreviewModel implements ViewModel {
                 const fullFile = await get(fullFileAtom);
                 return base64ToString(fullFile?.data64);
             },
-            (get, set, update: string) => {
+            (_, set, update: string) => {
                 set(this.fileContentSaved, update);
             }
         );
@@ -599,11 +599,10 @@ export class PreviewModel implements ViewModel {
             console.log("not saving file, newFileContent is null");
             return;
         }
-        const conn = (await globalStore.get(this.connection)) ?? "";
         try {
             await RpcApi.FileWriteCommand(TabRpcClient, {
                 info: {
-                    path: `wsh://${conn}/${filePath}`,
+                    path: await this.formatRemoteUri(filePath),
                 },
                 data64: stringToBase64(newFileContent),
             });
@@ -777,6 +776,11 @@ export class PreviewModel implements ViewModel {
             }
         }
         return false;
+    }
+
+    async formatRemoteUri(path: string): Promise<string> {
+        const conn = (await globalStore.get(this.connection)) ?? "local";
+        return `wsh://${conn}/${path}`;
     }
 }
 

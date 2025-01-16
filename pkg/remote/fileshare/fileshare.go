@@ -54,6 +54,7 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 }
 
 func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	log.Printf("Read: path=%s", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf("error creating fileshare client, could not parse connection %s", data.Info.Path)
@@ -62,6 +63,7 @@ func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
 }
 
 func ReadStream(ctx context.Context, data wshrpc.FileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	log.Printf("ReadStream: path=%s", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
 		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 1)
@@ -151,4 +153,13 @@ func Delete(ctx context.Context, path string) error {
 		return fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
 	}
 	return client.Delete(ctx, conn)
+}
+
+func Join(ctx context.Context, path string, parts ...string) (string, error) {
+	log.Printf("Join: path=%s, parts=%v", path, parts)
+	client, conn := CreateFileShareClient(ctx, path)
+	if conn == nil || client == nil {
+		return "", fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
+	}
+	return client.Join(ctx, conn, parts...)
 }
