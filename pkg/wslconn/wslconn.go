@@ -68,8 +68,7 @@ type WslConn struct {
 var ConnServerCmdTemplate = strings.TrimSpace(
 	strings.Join([]string{
 		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm);",
-		"read jwt_token;",
-		"WAVETERM_JWT=\"$jwt_token\" %s connserver --router",
+		"exec %s connserver --router",
 	}, "\n"))
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
@@ -280,12 +279,6 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	cmd.SetStdout(pipeWrite)
 	cmd.SetStderr(pipeWrite)
 	cmd.SetStdin(inputPipeRead)
-	/*
-		stdinPipe, err := cmd.StdinPipe()
-		if err != nil {
-			return false, "", "", fmt.Errorf("unable to get stdin pipe: %w", err)
-		}
-	*/
 	log.Printf("starting conn controller: %q\n", cmdStr)
 	blocklogger.Debugf(ctx, "[conndebug] wrapped command:\n%s\n", shWrappedCmdStr)
 	err = cmd.Start()
@@ -350,22 +343,6 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		})
 		waitErr = cmd.Wait()
 		log.Printf("conn controller (%q) terminated: %v", conn.GetName(), waitErr)
-	}()
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("wslconn:wslCmd-output", recover())
-		}()
-		for output := range linesChan {
-			if output.Error != nil {
-				log.Printf("[wslconn:%s:output] error: %v\n", conn.GetName(), output.Error)
-				continue
-			}
-			line := output.Line
-			if !strings.HasSuffix(line, "\n") {
-				line += "\n"
-			}
-			log.Printf("[wslconn:%s:output] %s", conn.GetName(), line)
-		}
 	}()
 	go func() {
 		defer func() {
