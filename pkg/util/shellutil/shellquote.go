@@ -15,9 +15,6 @@ func IsValidEnvVarName(name string) bool {
 	return envVarNamePattern.MatchString(name)
 }
 
-// TODO: fish quoting is slightly different
-// specifically \` will cause an inconsistency between fish and bash/zsh :/
-// might need a specific fish quoting function, and an explicit fish shell detection
 func HardQuote(s string) string {
 	if s == "" {
 		return "\"\""
@@ -45,6 +42,7 @@ func HardQuote(s string) string {
 	return string(buf)
 }
 
+// does not encode newlines or backticks
 func HardQuoteFish(s string) string {
 	if s == "" {
 		return "\"\""
@@ -59,7 +57,7 @@ func HardQuoteFish(s string) string {
 
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
-		case '"', '\\', '$': // Escape only these characters
+		case '"', '\\', '$':
 			buf = append(buf, '\\', s[i])
 		default:
 			buf = append(buf, s[i])
