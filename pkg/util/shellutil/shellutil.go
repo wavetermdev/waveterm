@@ -54,11 +54,10 @@ const (
 `
 
 	ZshStartup_Zshrc = `
-
 # add wsh to path, source dynamic script from wsh token
 WAVETERM_WSHBINDIR={{.WSHBINDIR}}
 export PATH="$WAVETERM_WSHBINDIR:$PATH"
-source <(wsh token $WAVETERM_SWAPTOKEN zsh 2>/dev/null)
+source <(wsh token "$WAVETERM_SWAPTOKEN" zsh 2>/dev/null)
 unset WAVETERM_SWAPTOKEN
 
 # Source the original zshrc only if ZDOTDIR has not been changed
@@ -102,6 +101,7 @@ fi
 `
 
 	BashStartup_Bashrc = `
+
 # Source /etc/profile if it exists
 if [ -f /etc/profile ]; then
     . /etc/profile
@@ -113,7 +113,7 @@ WAVETERM_WSHBINDIR={{.WSHBINDIR}}
 export PATH="$WAVETERM_WSHBINDIR:$PATH"
 
 # Source the dynamic script from wsh token
-source <(wsh token $WAVETERM_SWAPTOKEN bash 2>/dev/null)
+eval "$(wsh token "$WAVETERM_SWAPTOKEN" bash 2> /dev/null)"
 unset WAVETERM_SWAPTOKEN
 
 # Source the first of ~/.bash_profile, ~/.bash_login, or ~/.profile that exists
@@ -140,8 +140,8 @@ fi
 # Add Wave binary directory to PATH
 set -x PATH {{.WSHBINDIR}} $PATH
 
-# Source dynamic script from wsh token
-source (wsh token $WAVETERM_SWAPTOKEN fish 2>/dev/null)
+# Source dynamic script from wsh token (the echo is to prevent fish from complaining about empty input)
+wsh token "$WAVETERM_SWAPTOKEN" fish 2>/dev/null | source
 set -e WAVETERM_SWAPTOKEN
 
 # Load Wave completions

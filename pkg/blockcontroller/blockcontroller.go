@@ -304,7 +304,7 @@ func (bc *BlockController) makeSwapToken(ctx context.Context) *shellutil.TokenSw
 		if err != nil {
 			log.Printf("error finding workspace for tab: %v\n", err)
 		} else {
-			token.Env["WAVETERM_WSID"] = wsId
+			token.Env["WAVETERM_WORKSPACEID"] = wsId
 		}
 	}
 	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
@@ -433,10 +433,14 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	} else {
 		// local terminal
 		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
-			jwtStr, err := wshutil.MakeClientJWTToken(wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}, wavebase.GetDomainSocketName())
+			sockName := wavebase.GetDomainSocketName()
+			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
+			swapToken.SockName = sockName
+			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
@@ -453,7 +457,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 		if len(blockMeta.GetStringList(waveobj.MetaKey_TermLocalShellOpts)) > 0 {
 			cmdOpts.ShellOpts = append([]string{}, blockMeta.GetStringList(waveobj.MetaKey_TermLocalShellOpts)...)
 		}
-		shellProc, err = shellexec.StartLocalShellProc(rc.TermSize, cmdStr, cmdOpts)
+		shellProc, err = shellexec.StartLocalShellProc(logCtx, rc.TermSize, cmdStr, cmdOpts)
 		if err != nil {
 			return nil, err
 		}

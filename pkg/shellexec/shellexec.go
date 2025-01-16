@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -288,10 +289,6 @@ func StartRemoteShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, c
 }
 
 func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
-	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
-	if !ok {
-		return nil, fmt.Errorf("no jwt token provided to connection")
-	}
 	client := conn.GetClient()
 	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
 	rpcClient := wshclient.GetBareRpcClient()
@@ -403,12 +400,11 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 		conn.Infof(logCtx, "setting ZDOTDIR to %s\n", zshDir)
 		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
-	cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveJwtTokenVarName, jwtToken, cmdCombined)
 	packedToken, err := cmdOpts.SwapToken.PackForClient()
 	if err != nil {
 		conn.Infof(logCtx, "error packing swap token: %v", err)
 	} else {
-		conn.Infof(logCtx, "packed swaptoken %s\n", packedToken)
+		conn.Debugf(logCtx, "packed swaptoken %s\n", packedToken)
 		cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveSwapTokenVarName, packedToken, cmdCombined)
 	}
 	shellutil.AddTokenSwapEntry(cmdOpts.SwapToken)
@@ -440,7 +436,7 @@ func isFishShell(shellPath string) bool {
 	return strings.Contains(shellBase, "fish")
 }
 
-func StartLocalShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType) (*ShellProc, error) {
+func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType) (*ShellProc, error) {
 	shellutil.InitCustomShellStartupFiles()
 	var ecmd *exec.Cmd
 	var shellOpts []string
@@ -472,6 +468,7 @@ func StartLocalShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comma
 				shellOpts = append(shellOpts, "-i")
 			}
 		}
+		blocklogger.Debugf(logCtx, "[conndebug] shell:%s shellOpts:%v\n", shellPath, shellOpts)
 		ecmd = exec.Command(shellPath, shellOpts...)
 		ecmd.Env = os.Environ()
 		if shellType == shellutil.ShellType_zsh {
@@ -481,6 +478,14 @@ func StartLocalShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comma
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		ecmd = exec.Command(shellPath, shellOpts...)
 		ecmd.Env = os.Environ()
+	}
+
+	packedToken, err := cmdOpts.SwapToken.PackForClient()
+	if err != nil {
+		blocklogger.Infof(logCtx, "error packing swap token: %v", err)
+	} else {
+		blocklogger.Debugf(logCtx, "packed swaptoken %s\n", packedToken)
+		shellutil.UpdateCmdEnv(ecmd, map[string]string{wavebase.WaveSwapTokenVarName: packedToken})
 	}
 
 	/*
@@ -524,6 +529,7 @@ func StartLocalShellProc(termSize waveobj.TermSize, cmdStr string, cmdOpts Comma
 	if termSize.Rows <= 0 || termSize.Cols <= 0 {
 		return nil, fmt.Errorf("invalid term size: %v", termSize)
 	}
+	shellutil.AddTokenSwapEntry(cmdOpts.SwapToken)
 	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
 	if err != nil {
 		return nil, err

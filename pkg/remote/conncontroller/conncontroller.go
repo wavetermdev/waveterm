@@ -122,6 +122,10 @@ func (conn *SSHConn) Infof(ctx context.Context, format string, args ...any) {
 	blocklogger.Infof(ctx, "[conndebug] "+format, args...)
 }
 
+func (conn *SSHConn) Debugf(ctx context.Context, format string, args ...any) {
+	blocklogger.Debugf(ctx, "[conndebug] "+format, args...)
+}
+
 func (conn *SSHConn) FireConnChangeEvent() {
 	status := conn.DeriveConnStatus()
 	event := wps.WaveEvent{
@@ -229,7 +233,7 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 // expects the output of `wsh version` which looks like `wsh v0.10.4` or "not-installed [os] [arch]"
 // returns (up-to-date, semver, osArchStr, error)
 // if not up to date, or error, version might be ""
-func IsWshVersionUpToDate(logCtx context.Context, wshVersionLine string, afterUpdate bool) (bool, string, string, error) {
+func IsWshVersionUpToDate(logCtx context.Context, wshVersionLine string) (bool, string, string, error) {
 	wshVersionLine = strings.TrimSpace(wshVersionLine)
 	if strings.HasPrefix(wshVersionLine, "not-installed") {
 		return false, "not-installed", strings.TrimSpace(strings.TrimPrefix(wshVersionLine, "not-installed")), nil
@@ -241,10 +245,6 @@ func IsWshVersionUpToDate(logCtx context.Context, wshVersionLine string, afterUp
 	clientVersion := parts[1]
 	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
 	if semver.Compare(clientVersion, expectedVersion) < 0 {
-		return false, clientVersion, "", nil
-	}
-	if !afterUpdate && os.Getenv(wavebase.WaveWshForceUpdateVarName) != "" {
-		blocklogger.Infof(logCtx, "%s set, forcing wsh-update\n", wavebase.WaveWshForceUpdateVarName)
 		return false, clientVersion, "", nil
 	}
 	return true, clientVersion, "", nil
@@ -315,13 +315,18 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		return false, "", "", fmt.Errorf("error reading wsh version: %w", err)
 	}
 	conn.Infof(ctx, "got connserver version: %s\n", strings.TrimSpace(versionLine))
-	isUpToDate, clientVersion, osArchStr, err := IsWshVersionUpToDate(ctx, versionLine, afterUpdate)
+	isUpToDate, clientVersion, osArchStr, err := IsWshVersionUpToDate(ctx, versionLine)
 	if err != nil {
 		sshSession.Close()
 		return false, "", "", fmt.Errorf("error checking wsh version: %w", err)
 	}
+	if isUpToDate && !afterUpdate && os.Getenv(wavebase.WaveWshForceUpdateVarName) != "" {
+		isUpToDate = false
+		conn.Infof(ctx, "%s set, forcing wsh update\n", wavebase.WaveWshForceUpdateVarName)
+	}
 	conn.Infof(ctx, "connserver up-to-date: %v\n", isUpToDate)
 	if !isUpToDate {
+
 		sshSession.Close()
 		return true, clientVersion, osArchStr, nil
 	}
