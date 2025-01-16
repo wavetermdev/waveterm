@@ -4,6 +4,7 @@
 package genconn
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
@@ -44,7 +45,7 @@ func MakeWSLProcessController(distro *wsl.Distro, cmdSpec CommandSpec) (*WSLProc
 		return nil, fmt.Errorf("failed to build shell command: %w", err)
 	}
 
-	cmd := distro.WslCommand(nil, fullCmd)
+	cmd := distro.WslCommand(context.Background(), fullCmd)
 	if cmd == nil {
 		return nil, fmt.Errorf("failed to create WSL command")
 	}

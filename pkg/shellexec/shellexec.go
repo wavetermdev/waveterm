@@ -229,7 +229,6 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	}
 	conn.Infof(ctx, "starting shell, using command: %s\n", cmdCombined)
 	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProc)\n")
-	///////
 
 	if shellType == shellutil.ShellType_zsh {
 		zshDir := fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir)
@@ -243,10 +242,8 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	}
 	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
 
-	cmdCombined = fmt.Sprintf(`-d %s -- %s`, client.Name(), cmdCombined)
-
 	log.Printf("full combined command: %s", cmdCombined)
-	ecmd := exec.Command("wsl.exe", cmdCombined)
+	ecmd := exec.Command("wsl.exe", "~", "-d", client.Name(), "--", "sh", "-c", cmdCombined)
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
 		termSize.Cols = shellutil.DefaultTermCols
