@@ -36,8 +36,8 @@ func ParseWithLinesChan(input chan utilfn.LineOutput, packetCh chan []byte, rawC
 			continue
 		}
 		if bytes.HasPrefix([]byte(line.Line), []byte{'#', '#', 'N', '{'}) && bytes.HasSuffix([]byte(line.Line), []byte{'}'}) {
-			// strip off the leading "##" and trailing "\n" (single byte)
-			packetCh <- []byte(line.Line[3 : len(line.Line)-1])
+			// strip off the leading "##"
+			packetCh <- []byte(line.Line[3:len(line.Line)])
 		} else {
 			rawCh <- []byte(line.Line)
 		}
