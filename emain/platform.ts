@@ -194,13 +194,13 @@ ipcMain.on("get-config-dir", (event) => {
     event.returnValue = getWaveConfigDir();
 });
 
-function correctXDGCurrentDesktop() {
+function getXdgCurrentDesktop(): string {
     if (process.env.ORIGINAL_XDG_CURRENT_DESKTOP) {
-        process.env.XDG_CURRENT_DESKTOP = process.env.ORIGINAL_XDG_CURRENT_DESKTOP;
+        return process.env.ORIGINAL_XDG_CURRENT_DESKTOP;
+    } else {
+        return process.env.XDG_CURRENT_DESKTOP;
     }
 }
-
-correctXDGCurrentDesktop();
 
 export {
     getElectronAppBasePath,
@@ -209,6 +209,7 @@ export {
     getWaveDataDir,
     getWaveSrvCwd,
     getWaveSrvPath,
+    getXdgCurrentDesktop,
     isDev,
     isDevVite,
     unameArch,

@@ -52,6 +52,7 @@ import {
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
     getWaveDataDir,
+    getXdgCurrentDesktop,
     isDev,
     unameArch,
     unamePlatform,
@@ -121,8 +122,17 @@ function handleWSEvent(evtMsg: WSEventType) {
 // Listen for the open-external event from the renderer process
 electron.ipcMain.on("open-external", (event, url) => {
     if (url && typeof url === "string") {
-        electron.shell.openExternal(url).catch((err) => {
-            console.error(`Failed to open URL ${url}:`, err);
+        fireAndForget(async () => {
+            const curXdgCurrentDesktop = process.env.XDG_CURRENT_DESKTOP;
+            if (curXdgCurrentDesktop) {
+                process.env.XDG_CURRENT_DESKTOP = getXdgCurrentDesktop();
+            }
+            await electron.shell.openExternal(url).catch((err) => {
+                console.error(`Failed to open URL ${url}:`, err);
+            });
+            if (curXdgCurrentDesktop) {
+                process.env.XDG_CURRENT_DESKTOP = curXdgCurrentDesktop;
+            }
         });
     } else {
         console.error("Invalid URL received in open-external event:", url);
@@ -346,11 +356,18 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
 
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
-    fireAndForget(() =>
-        electron.shell.openPath(filePath).then((excuse) => {
+    fireAndForget(async () => {
+        const curXdgCurrentDesktop = process.env.XDG_CURRENT_DESKTOP;
+        if (curXdgCurrentDesktop) {
+            process.env.XDG_CURRENT_DESKTOP = getXdgCurrentDesktop();
+        }
+        await electron.shell.openPath(filePath).then((excuse) => {
             if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
-        })
-    );
+        });
+        if (curXdgCurrentDesktop) {
+            process.env.XDG_CURRENT_DESKTOP = curXdgCurrentDesktop;
+        }
+    });
 });
 
 electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-ready") => {
