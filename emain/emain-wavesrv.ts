@@ -14,6 +14,7 @@ import {
     getWaveDataDir,
     getWaveSrvCwd,
     getWaveSrvPath,
+    getXdgCurrentDesktop,
     WaveConfigHomeVarName,
     WaveDataHomeVarName,
 } from "./platform";
@@ -53,6 +54,10 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
         pReject = argReject;
     });
     const envCopy = { ...process.env };
+    const xdgCurrentDesktop = getXdgCurrentDesktop();
+    if (xdgCurrentDesktop != null) {
+        envCopy["XDG_CURRENT_DESKTOP"] = xdgCurrentDesktop;
+    }
     envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
     envCopy[WaveAuthKeyEnv] = AuthKey;
     envCopy[WaveDataHomeVarName] = getWaveDataDir();

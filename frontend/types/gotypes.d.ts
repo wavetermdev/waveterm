@@ -109,6 +109,13 @@ declare global {
     type CommandAuthenticateRtnData = {
         routeid: string;
         authtoken?: string;
+        env?: {[key: string]: string};
+        initscripttext?: string;
+    };
+
+    // wshrpc.CommandAuthenticateTokenData
+    type CommandAuthenticateTokenData = {
+        token: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -315,6 +322,7 @@ declare global {
         "ssh:hostname"?: string;
         "ssh:port"?: string;
         "ssh:identityfile"?: string[];
+        "ssh:identitiesonly"?: boolean;
         "ssh:batchmode"?: boolean;
         "ssh:pubkeyauthentication"?: boolean;
         "ssh:passwordauthentication"?: boolean;
