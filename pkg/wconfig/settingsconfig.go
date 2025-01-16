@@ -161,6 +161,7 @@ type ConnKeywords struct {
 	SshPreferredAuthentications     []string `json:"ssh:preferredauthentications,omitempty"`
 	SshAddKeysToAgent               *bool    `json:"ssh:addkeystoagent,omitempty"`
 	SshIdentityAgent                *string  `json:"ssh:identityagent,omitempty"`
+	SshIdentitiesOnly               *bool    `json:"ssh:identitiesonly,omitempty"`
 	SshProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
 	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
 	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`

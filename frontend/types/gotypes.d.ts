@@ -289,7 +289,6 @@ declare global {
         "ssh:hostname"?: string;
         "ssh:port"?: string;
         "ssh:identityfile"?: string[];
-        "ssh:identitiesonly"?: boolean;
         "ssh:batchmode"?: boolean;
         "ssh:pubkeyauthentication"?: boolean;
         "ssh:passwordauthentication"?: boolean;
@@ -297,6 +296,7 @@ declare global {
         "ssh:preferredauthentications"?: string[];
         "ssh:addkeystoagent"?: boolean;
         "ssh:identityagent"?: string;
+        "ssh:identitiesonly"?: boolean;
         "ssh:proxyjump"?: string[];
         "ssh:userknownhostsfile"?: string[];
         "ssh:globalknownhostsfile"?: string[];
