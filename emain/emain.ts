@@ -47,6 +47,7 @@ import { getLaunchSettings } from "./launchsettings";
 import { log } from "./log";
 import { makeAppMenu } from "./menu";
 import {
+    callWithOriginalXdgCurrentDesktopAsync,
     checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
@@ -121,9 +122,13 @@ function handleWSEvent(evtMsg: WSEventType) {
 // Listen for the open-external event from the renderer process
 electron.ipcMain.on("open-external", (event, url) => {
     if (url && typeof url === "string") {
-        electron.shell.openExternal(url).catch((err) => {
-            console.error(`Failed to open URL ${url}:`, err);
-        });
+        fireAndForget(() =>
+            callWithOriginalXdgCurrentDesktopAsync(() =>
+                electron.shell.openExternal(url).catch((err) => {
+                    console.error(`Failed to open URL ${url}:`, err);
+                })
+            )
+        );
     } else {
         console.error("Invalid URL received in open-external event:", url);
     }
@@ -347,9 +352,11 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
     fireAndForget(() =>
-        electron.shell.openPath(filePath).then((excuse) => {
-            if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
-        })
+        callWithOriginalXdgCurrentDesktopAsync(() =>
+            electron.shell.openPath(filePath).then((excuse) => {
+                if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
+            })
+        )
     );
 });
 
