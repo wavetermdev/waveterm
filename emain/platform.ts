@@ -194,15 +194,57 @@ ipcMain.on("get-config-dir", (event) => {
     event.returnValue = getWaveConfigDir();
 });
 
+/**
+ * Gets the value of the XDG_CURRENT_DESKTOP environment variable. If ORIGINAL_XDG_CURRENT_DESKTOP is set, it will be returned instead.
+ * This corrects for a strange behavior in Electron, where it sets its own value for XDG_CURRENT_DESKTOP to improve Chromium compatibility.
+ * @see https://www.electronjs.org/docs/latest/api/environment-variables#original_xdg_current_desktop
+ * @returns The value of the XDG_CURRENT_DESKTOP environment variable, or ORIGINAL_XDG_CURRENT_DESKTOP if set, or undefined if neither are set.
+ */
 function getXdgCurrentDesktop(): string {
     if (process.env.ORIGINAL_XDG_CURRENT_DESKTOP) {
         return process.env.ORIGINAL_XDG_CURRENT_DESKTOP;
-    } else {
+    } else if (process.env.XDG_CURRENT_DESKTOP) {
         return process.env.XDG_CURRENT_DESKTOP;
+    } else {
+        return undefined;
+    }
+}
+
+/**
+ * Calls the given callback with the value of the XDG_CURRENT_DESKTOP environment variable set to ORIGINAL_XDG_CURRENT_DESKTOP if it is set.
+ * @param callback The callback to call.
+ */
+function callWithOriginalXdgCurrentDesktop(callback: () => void) {
+    const currXdgCurrentDesktop = process.env.XDG_CURRENT_DESKTOP;
+    const originalXdgCurrentDesktop = getXdgCurrentDesktop();
+    if (currXdgCurrentDesktop) {
+        process.env.XDG_CURRENT_DESKTOP = originalXdgCurrentDesktop;
+    }
+    callback();
+    if (currXdgCurrentDesktop) {
+        process.env.XDG_CURRENT_DESKTOP = currXdgCurrentDesktop;
+    }
+}
+
+/**
+ * Calls the given async callback with the value of the XDG_CURRENT_DESKTOP environment variable set to ORIGINAL_XDG_CURRENT_DESKTOP if it is set.
+ * @param callback The async callback to call.
+ */
+async function callWithOriginalXdgCurrentDesktopAsync(callback: () => Promise<void>) {
+    const currXdgCurrentDesktop = process.env.XDG_CURRENT_DESKTOP;
+    const originalXdgCurrentDesktop = getXdgCurrentDesktop();
+    if (currXdgCurrentDesktop) {
+        process.env.XDG_CURRENT_DESKTOP = originalXdgCurrentDesktop;
+    }
+    await callback();
+    if (currXdgCurrentDesktop) {
+        process.env.XDG_CURRENT_DESKTOP = currXdgCurrentDesktop;
     }
 }
 
 export {
+    callWithOriginalXdgCurrentDesktop,
+    callWithOriginalXdgCurrentDesktopAsync,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
