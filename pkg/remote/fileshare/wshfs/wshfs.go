@@ -122,7 +122,7 @@ func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connec
 }
 
 func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return wshclient.RemoteFileCopyCommand(wshclient.GetBareRpcClient(), wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestPath: destConn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
+	return wshclient.RemoteFileCopyCommand(wshclient.GetBareRpcClient(), wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestPath: destConn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host)})
 }
 
 func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection) error {

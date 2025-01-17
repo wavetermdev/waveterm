@@ -4,10 +4,13 @@
 package connparse
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 const (
@@ -51,6 +54,27 @@ func (c *Connection) GetFullURI() string {
 	return c.Scheme + "://" + c.GetPathWithHost()
 }
 
+func ParseURIAndReplaceCurrentHost(ctx context.Context, uri string) (*Connection, error) {
+	conn, err := ParseURI(uri)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing connection: %v", err)
+	}
+	if conn.Host == ConnHostCurrent {
+		handler := wshutil.GetRpcResponseHandlerFromContext(context.Background())
+		if handler == nil {
+			return nil, fmt.Errorf("error getting rpc response handler from context")
+		}
+		source := handler.GetRpcContext().Conn
+
+		// RPC context connection is empty for local connections
+		if source == "" {
+			source = wshrpc.LocalConnName
+		}
+		conn.Host = source
+	}
+	return conn, nil
+}
+
 // ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
 func ParseURI(uri string) (*Connection, error) {
 	split := strings.SplitN(uri, "://", 2)
@@ -81,6 +105,7 @@ func ParseURI(uri string) (*Connection, error) {
 			host = wshrpc.LocalConnName
 			remotePath = rest
 		} else {
+			log.Printf("Fixing relative path to %s; %s", ConnHostCurrent, rest)
 			host = ConnHostCurrent
 			remotePath = rest
 		}
@@ -100,14 +125,16 @@ func ParseURI(uri string) (*Connection, error) {
 			host = wshrpc.LocalConnName
 		}
 		if strings.HasPrefix(remotePath, "/~") {
-			log.Printf("Fixing relative path to %s; %s", host, remotePath)
 			remotePath = strings.TrimPrefix(remotePath, "/")
+			log.Printf("Fixing relative path to %s; %s", host, remotePath)
 		}
 	}
 
-	return &Connection{
+	conn := &Connection{
 		Scheme: scheme,
 		Host:   host,
 		Path:   remotePath,
-	}, nil
+	}
+	log.Printf("Parsed connection: %v", conn)
+	return conn, nil
 }

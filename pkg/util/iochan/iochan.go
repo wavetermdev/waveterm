@@ -6,6 +6,7 @@ package iochan
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 
@@ -26,7 +27,7 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 			}
 			n, err := r.Read(buf)
 			if err != nil && err != io.EOF {
-				ch <- wshrpc.RespOrErrorUnion[[]byte]{Error: err}
+				ch <- wshrpc.RespOrErrorUnion[[]byte]{Error: fmt.Errorf("ReaderChan: read error: %v", err)}
 				callback()
 				return
 			}

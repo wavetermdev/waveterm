@@ -19,7 +19,7 @@ import (
 // Returns the client and the parsed connection
 func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileShareClient, *connparse.Connection) {
 	log.Printf("CreateFileShareClient: connection=%s", connection)
-	conn, err := parseConnUriAndReplaceCurrentHost(connection)
+	conn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, connection)
 	if err != nil {
 		log.Printf("error parsing connection: %v", err)
 		return nil, nil
@@ -131,7 +131,7 @@ func Move(ctx context.Context, srcPath, destPath string, recursive bool) error {
 
 func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	log.Printf("Copy: src=%s, dest=%s", data.SrcUri, data.DestUri)
-	srcConn, err := parseConnUriAndReplaceCurrentHost(data.SrcUri)
+	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, data.SrcUri)
 	if err != nil {
 		return fmt.Errorf("error parsing source connection %s: %v", data.SrcUri, err)
 	}
@@ -158,25 +158,4 @@ func Join(ctx context.Context, path string, parts ...string) (string, error) {
 		return "", fmt.Errorf("error creating fileshare client, could not parse connection %s", path)
 	}
 	return client.Join(ctx, conn, parts...)
-}
-
-func parseConnUriAndReplaceCurrentHost(uri string) (*connparse.Connection, error) {
-	conn, err := connparse.ParseURI(uri)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing connection: %v", err)
-	}
-	if conn.Host == connparse.ConnHostCurrent {
-		handler := wshutil.GetRpcResponseHandlerFromContext(context.Background())
-		if handler == nil {
-			return nil, fmt.Errorf("error getting rpc response handler from context")
-		}
-		source := handler.GetRpcContext().Conn
-
-		// RPC context connection is empty for local connections
-		if source == "" {
-			source = wshrpc.LocalConnName
-		}
-		conn.Host = source
-	}
-	return conn, nil
 }

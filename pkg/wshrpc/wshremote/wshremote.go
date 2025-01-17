@@ -15,14 +15,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+)
+
+const (
+	OneYear = int(time.Hour * 24 * 365)
 )
 
 type ServerImpl struct {
@@ -277,6 +282,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 }
 
 func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
+	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestPath)
 	opts := data.Opts
 	destPath := data.DestPath
 	srcUri := data.SrcUri
@@ -310,22 +316,35 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				}
 			}
 		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("cannot stat destination %q: %w", destPath, err)
 	}
-	ioch := wshclient.FileStreamTarCommand(wshclient.GetBareRpcClient(), wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts}, &wshrpc.RpcOpts{})
+	log.Printf("copying %q to %q\n", srcUri, destPath)
+	// conn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
+	// if err != nil {
+	// 	return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
+	// }
+	// rpcOpts := &wshrpc.RpcOpts{Timeout: OneYear, Route: wshutil.MakeConnectionRouteId(conn.Host)}
+	// ioch := wshclient.FileStreamTarCommand(wshclient.GetBareRpcClient(), wshrpc.CommandRemoteStreamTarData{Path: conn.Path, Opts: opts}, rpcOpts)
+	ioch := fileshare.ReadTarStream(ctx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
 	pipeReader, pipeWriter := io.Pipe()
 	tarReader := tar.NewReader(pipeReader)
 	ctx, cancel := context.WithCancel(ctx)
 	iochan.WriterChan(ctx, pipeWriter, ioch)
-	defer pipeWriter.Close()
-	defer pipeReader.Close()
-	defer cancel()
+	defer func() {
+		pipeWriter.Close()
+		pipeReader.Close()
+		cancel()
+		// rpcOpts.StreamCancelFn()
+	}()
 	for next, err := tarReader.Next(); err == nil; {
 		finfo := next.FileInfo()
-		nextPath := filepath.Clean(filepath.Join(destPathCleaned, next.Name))
+		nextPath := filepath.Join(destPathCleaned, next.Name)
 		destinfo, err = os.Stat(nextPath)
 		if err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("cannot stat file %q: %w", nextPath, err)
 		}
+		log.Printf("copying %q to %q\n", next.Name, nextPath)
 
 		if destinfo != nil {
 			if destinfo.IsDir() {
