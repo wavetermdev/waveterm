@@ -18,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 type WaveClient struct{}
@@ -34,12 +35,12 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 		defer close(ch)
 		rtnData, err := c.Read(ctx, conn, data)
 		if err != nil {
-			ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Error: err}
+			ch <- wshutil.RespErr[wshrpc.FileData](err)
 			return
 		}
 		for {
 			if ctx.Err() != nil {
-				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Error: ctx.Err()}
+				ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
 			}
 			dataLen := len(rtnData.Data64)
 			if !rtnData.Info.IsDir {
@@ -100,7 +101,7 @@ func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Conne
 		defer close(ch)
 		list, err := c.ListEntries(ctx, conn, opts)
 		if err != nil {
-			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Error: err}
+			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
 		}
 		for i := 0; i < len(list); i += wshrpc.DirChunkSize {
