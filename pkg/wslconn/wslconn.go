@@ -101,11 +101,14 @@ func (conn *WslConn) DeriveConnStatus() wshrpc.ConnStatus {
 	return wshrpc.ConnStatus{
 		Status:        conn.Status,
 		Connected:     conn.Status == Status_Connected,
-		WshEnabled:    true, // always use wsh for wsl connections (temporary)
+		WshEnabled:    conn.WshEnabled.Load(),
 		Connection:    conn.GetName(),
 		HasConnected:  (conn.LastConnectTime > 0),
 		ActiveConnNum: conn.ActiveConnNum,
 		Error:         conn.Error,
+		WshError:      conn.WshError,
+		NoWshReason:   conn.NoWshReason,
+		WshVersion:    conn.WshVersion,
 	}
 }
 
@@ -702,6 +705,9 @@ func (conn *WslConn) waitForDisconnect() {
 	log.Printf("wait for disconnect in %+#v", conn)
 	defer conn.FireConnChangeEvent()
 	defer conn.HasWaiter.Store(false)
+	if conn.ConnController == nil {
+		return
+	}
 	err := conn.ConnController.Wait()
 	conn.WithLock(func() {
 		// disconnects happen for a variety of reasons (like network, etc. and are typically transient)
