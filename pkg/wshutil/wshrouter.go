@@ -196,7 +196,7 @@ func (router *WshRouter) getAnnouncedRoute(routeId string) string {
 func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool {
 	rpc := router.GetRpc(routeId)
 	if rpc != nil {
-		log.Printf("[router] sending message to %q via rpc\n", routeId)
+		// log.Printf("[router] sending message to %q via rpc\n", routeId)
 		rpc.SendRpcMessage(msgBytes)
 		return true
 	}

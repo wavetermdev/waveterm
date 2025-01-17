@@ -5,13 +5,10 @@ package s3fs
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/aws/smithy-go"
+	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -60,7 +57,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 
 func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
 	if conn.Path == "" || conn.Path == "/" {
-		buckets, err := c.listBuckets(ctx)
+		buckets, err := awsconn.ListBuckets(ctx, c.client)
 		if err != nil {
 			return nil, err
 		}
@@ -74,28 +71,6 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 		return entries, nil
 	}
 	return nil, nil
-}
-
-func (c S3Client) listBuckets(ctx context.Context) ([]types.Bucket, error) {
-	var err error
-	var output *s3.ListBucketsOutput
-	var buckets []types.Bucket
-	bucketPaginator := s3.NewListBucketsPaginator(c.client, &s3.ListBucketsInput{})
-	for bucketPaginator.HasMorePages() {
-		output, err = bucketPaginator.NextPage(ctx)
-		if err != nil {
-			var apiErr smithy.APIError
-			if errors.As(err, &apiErr) && apiErr.ErrorCode() == "AccessDenied" {
-				fmt.Println("You don't have permission to list buckets for this account.")
-				err = apiErr
-			} else {
-				return nil, fmt.Errorf("Couldn't list buckets for your account. Here's why: %v\n", err)
-			}
-			break
-		}
-		buckets = append(buckets, output.Buckets...)
-	}
-	return buckets, nil
 }
 
 func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {

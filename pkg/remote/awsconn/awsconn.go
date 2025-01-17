@@ -3,6 +3,7 @@ package awsconn
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"gopkg.in/ini.v1"
 )
@@ -92,4 +96,26 @@ func ParseProfiles() map[string]struct{} {
 		profiles[ProfilePrefix+v.Name()] = struct{}{}
 	}
 	return profiles
+}
+
+func ListBuckets(ctx context.Context, client *s3.Client) ([]types.Bucket, error) {
+	var err error
+	var output *s3.ListBucketsOutput
+	var buckets []types.Bucket
+	bucketPaginator := s3.NewListBucketsPaginator(client, &s3.ListBucketsInput{})
+	for bucketPaginator.HasMorePages() {
+		output, err = bucketPaginator.NextPage(ctx)
+		if err != nil {
+			var apiErr smithy.APIError
+			if errors.As(err, &apiErr) && apiErr.ErrorCode() == "AccessDenied" {
+				fmt.Println("You don't have permission to list buckets for this account.")
+				err = apiErr
+			} else {
+				return nil, fmt.Errorf("Couldn't list buckets for your account. Here's why: %v\n", err)
+			}
+			break
+		}
+		buckets = append(buckets, output.Buckets...)
+	}
+	return buckets, nil
 }
