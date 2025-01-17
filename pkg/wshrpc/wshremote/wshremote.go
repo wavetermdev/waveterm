@@ -196,7 +196,6 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 			if len(data) > 0 {
 				resp.Data64 = base64.StdEncoding.EncodeToString(data)
 			}
-			log.Printf("callback -- sending response %d\n", len(resp.Data64))
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteStreamFileRtnData]{Response: resp}
 		})
 		if err != nil {

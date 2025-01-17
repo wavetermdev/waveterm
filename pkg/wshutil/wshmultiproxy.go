@@ -123,6 +123,7 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		DefaultRouter.RegisterRoute(routeId, routeInfo.Proxy, true)
 		return
 	}
+	// TODO implement authenticatetoken for multiproxy unauth message
 	if msg.AuthToken == "" {
 		p.sendResponseError(msg, fmt.Errorf("no auth token"))
 		return

@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -36,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -238,6 +240,7 @@ func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) 
 }
 
 func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.CommandControllerResyncData) error {
+	ctx = genconn.ContextWithConnData(ctx, data.BlockId)
 	ctx = termCtxWithLogBlockId(ctx, data.BlockId)
 	return blockcontroller.ResyncController(ctx, data.TabId, data.BlockId, data.RtOpts, data.ForceRestart)
 }
@@ -607,7 +610,7 @@ func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus
 }
 
 func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
-	rtn := wsl.GetAllConnStatus()
+	rtn := wslconn.GetAllConnStatus()
 	return rtn, nil
 }
 
@@ -627,10 +630,11 @@ func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Conte
 }
 
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
 	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
 	if strings.HasPrefix(data.ConnName, "wsl://") {
 		distroName := strings.TrimPrefix(data.ConnName, "wsl://")
-		return wsl.EnsureConnection(ctx, distroName)
+		return wslconn.EnsureConnection(ctx, distroName)
 	}
 	return conncontroller.EnsureConnection(ctx, data.ConnName)
 }
@@ -638,7 +642,7 @@ func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtD
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("distro not found: %s", connName)
 		}
@@ -648,7 +652,7 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(ctx, connOpts, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -656,11 +660,12 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
+	ctx = genconn.ContextWithConnData(ctx, connRequest.LogBlockId)
 	ctx = termCtxWithLogBlockId(ctx, connRequest.LogBlockId)
 	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
@@ -670,7 +675,7 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &connRequest.Keywords)
+	conn := conncontroller.GetConn(ctx, connOpts, &connRequest.Keywords)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -678,21 +683,22 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
 	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
 	connName := data.ConnName
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(ctx, distroName, false)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
-		return conn.CheckAndInstallWsh(ctx, connName, &wsl.WshInstallOpts{Force: true, NoUserPrompt: true})
+		return conn.InstallWsh(ctx, "")
 	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(ctx, connOpts, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -710,7 +716,7 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 	}
 
 	log.Printf("checking wsh version for connection %s (current: %s)", connName, remoteInfo.ClientVersion)
-	upToDate, _, _, err := conncontroller.IsWshVersionUpToDate(remoteInfo.ClientVersion)
+	upToDate, _, _, err := conncontroller.IsWshVersionUpToDate(ctx, remoteInfo.ClientVersion)
 	if err != nil {
 		return false, fmt.Errorf("unable to compare wsh version: %w", err)
 	}
@@ -729,7 +735,7 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 	if err != nil {
 		return false, fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(ctx, connOpts, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return false, fmt.Errorf("connection not found: %s", connName)
 	}
@@ -781,7 +787,7 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	if err != nil {
 		return err
 	}
-	conn := conncontroller.GetConn(ctx, opts, false, nil)
+	conn := conncontroller.GetConn(ctx, opts, nil)
 	if conn == nil {
 		return fmt.Errorf("connection %s not found", connName)
 	}
