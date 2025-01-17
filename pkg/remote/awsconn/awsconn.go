@@ -15,17 +15,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"gopkg.in/ini.v1"
 )
 
 const (
-	ProfileConfigKey = "profile:config"
-	ProfilePrefix    = "aws:"
-	TempFilePattern  = "waveterm-awsconfig-%s"
+	ProfileConfigKey      = "profile:config"
+	ProfileCredentialsKey = "profile:credentials"
+	ProfilePrefix         = "aws:"
+	TempFilePattern       = "waveterm-awsconfig-%s"
 )
 
-var connectionRe = regexp.MustCompile(`^aws:\/\/(.*)$`)
+var connectionRe = regexp.MustCompile(`^(.*):\w+:\/\/.*$`)
 
 var tempfiles map[string]string = make(map[string]string)
 
@@ -38,25 +40,23 @@ func GetConfig(ctx context.Context, profile string) (*aws.Config, error) {
 			return nil, fmt.Errorf("invalid connection string: %s)", profile)
 		}
 		profile = connMatch[1]
+		log.Printf("GetConfig: profile=%s", profile)
 		profiles, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ProfilesFile)
 		if len(cerrs) > 0 {
 			return nil, fmt.Errorf("error reading config file: %v", cerrs[0])
 		}
 		if profiles[profile] != nil {
-			connectionconfig := profiles.GetMap(profile)
-			if connectionconfig[ProfileConfigKey] != "" {
-				var tempfile string
-				if tempfiles[profile] != "" {
-					tempfile = tempfiles[profile]
-				} else {
-					awsConfig := connectionconfig.GetString(ProfileConfigKey, "")
-					tempfile, err := os.CreateTemp("", fmt.Sprintf(TempFilePattern, profile))
-					if err != nil {
-						return nil, fmt.Errorf("error creating temp file: %v", err)
-					}
-					tempfile.WriteString(awsConfig)
-				}
-				optfns = append(optfns, config.WithSharedCredentialsFiles([]string{tempfile}))
+			configfilepath, _ := getTempFileFromConfig(profiles, ProfileConfigKey, profile)
+			credentialsfilepath, _ := getTempFileFromConfig(profiles, ProfileCredentialsKey, profile)
+			if configfilepath != "" {
+				log.Printf("configfilepath: %s", configfilepath)
+				optfns = append(optfns, config.WithSharedConfigFiles([]string{configfilepath}))
+				tempfiles[profile] = configfilepath
+			}
+			if credentialsfilepath != "" {
+				log.Printf("credentialsfilepath: %s", credentialsfilepath)
+				optfns = append(optfns, config.WithSharedCredentialsFiles([]string{credentialsfilepath}))
+				tempfiles[profile] = credentialsfilepath
 			}
 		}
 		trimmedProfile := strings.TrimPrefix(profile, ProfilePrefix)
@@ -67,6 +67,22 @@ func GetConfig(ctx context.Context, profile string) (*aws.Config, error) {
 		return nil, fmt.Errorf("error loading config: %v", err)
 	}
 	return &cfg, nil
+}
+
+func getTempFileFromConfig(config waveobj.MetaMapType, key string, profile string) (string, error) {
+	connectionconfig := config.GetMap(profile)
+	if connectionconfig[key] != "" {
+		awsConfig := connectionconfig.GetString(key, "")
+		if awsConfig != "" {
+			tempfile, err := os.CreateTemp("", fmt.Sprintf(TempFilePattern, profile))
+			if err != nil {
+				return "", fmt.Errorf("error creating temp file: %v", err)
+			}
+			tempfile.WriteString(awsConfig)
+			return tempfile.Name(), nil
+		}
+	}
+	return "", nil
 }
 
 func ParseProfiles() map[string]struct{} {
@@ -102,9 +118,11 @@ func ListBuckets(ctx context.Context, client *s3.Client) ([]types.Bucket, error)
 	var err error
 	var output *s3.ListBucketsOutput
 	var buckets []types.Bucket
-	bucketPaginator := s3.NewListBucketsPaginator(client, &s3.ListBucketsInput{})
+	region := client.Options().Region
+	bucketPaginator := s3.NewListBucketsPaginator(client, &s3.ListBucketsInput{BucketRegion: &region})
 	for bucketPaginator.HasMorePages() {
 		output, err = bucketPaginator.NextPage(ctx)
+		log.Printf("output: %v", output)
 		if err != nil {
 			var apiErr smithy.APIError
 			if errors.As(err, &apiErr) && apiErr.ErrorCode() == "AccessDenied" {
@@ -113,6 +131,9 @@ func ListBuckets(ctx context.Context, client *s3.Client) ([]types.Bucket, error)
 			} else {
 				return nil, fmt.Errorf("Couldn't list buckets for your account. Here's why: %v\n", err)
 			}
+			break
+		}
+		if output == nil {
 			break
 		}
 		buckets = append(buckets, output.Buckets...)

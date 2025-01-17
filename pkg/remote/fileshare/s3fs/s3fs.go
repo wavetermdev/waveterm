@@ -5,6 +5,7 @@ package s3fs
 
 import (
 	"context"
+	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -48,6 +49,10 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
 		}
+		if list == nil {
+			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{}}
+			return
+		}
 		for i := 0; i < len(list); i += wshrpc.DirChunkSize {
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: list[i:min(i+wshrpc.DirChunkSize, len(list))]}}
 		}
@@ -63,6 +68,7 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 		}
 		var entries []*wshrpc.FileInfo
 		for _, bucket := range buckets {
+			log.Printf("bucket: %v", *bucket.Name)
 			entries = append(entries, &wshrpc.FileInfo{
 				Path:  *bucket.Name,
 				IsDir: true,
