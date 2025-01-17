@@ -783,6 +783,16 @@ func (ws *WshServer) WslDefaultDistroCommand(ctx context.Context) (string, error
  * Dismisses the WshFail Command in runtime memory on the backend
  */
 func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
+		conn := wslconn.GetWslConn(ctx, distroName, false)
+		if conn == nil {
+			return fmt.Errorf("connection not found: %s", connName)
+		}
+		conn.ClearWshError()
+		conn.FireConnChangeEvent()
+		return nil
+	}
 	opts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return err
