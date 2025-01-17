@@ -503,14 +503,6 @@ func (conn *SSHConn) GetClient() *ssh.Client {
 	return conn.Client
 }
 
-func (conn *SSHConn) Reconnect(ctx context.Context) error {
-	err := conn.Close()
-	if err != nil {
-		return err
-	}
-	return conn.Connect(ctx, &wshrpc.ConnKeywords{})
-}
-
 func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
 	for {
 		status := conn.DeriveConnStatus()
@@ -819,11 +811,9 @@ func getConnInternal(opts *remote.SSHOpts) *SSHConn {
 	return rtn
 }
 
-func GetConn(ctx context.Context, opts *remote.SSHOpts, shouldConnect bool, connFlags *wshrpc.ConnKeywords) *SSHConn {
+// does NOT connect, can return nil if connection does not exist
+func GetConn(ctx context.Context, opts *remote.SSHOpts, connFlags *wshrpc.ConnKeywords) *SSHConn {
 	conn := getConnInternal(opts)
-	if conn.Client == nil && shouldConnect {
-		conn.Connect(ctx, connFlags)
-	}
 	return conn
 }
 
@@ -836,7 +826,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	conn := GetConn(ctx, connOpts, &wshrpc.ConnKeywords{})
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
