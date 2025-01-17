@@ -24,7 +24,7 @@ jobs:
                     - platform: "linux"
                       runner: "ubuntu-latest"
                     - platform: "linux"
-                      runner: ubuntu-24.04-arm64-16core
+                      runner: ubuntu-24.04-arm
                     - platform: "windows"
                       runner: "windows-latest"
                     # - platform: "windows"
