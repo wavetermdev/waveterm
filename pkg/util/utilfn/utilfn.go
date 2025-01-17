@@ -617,26 +617,26 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 	}
 }
 
+const (
+	winFlagSoftlink = uint32(0x8000) // FILE_ATTRIBUTE_REPARSE_POINT
+	winFlagJunction = uint32(0x80)   // FILE_ATTRIBUTE_JUNCTION
+)
+
 func WinSymlinkDir(path string, bits os.FileMode) bool {
-	/* for the cursed softlink on windows
-	the compability fileInfo interface gives us no way to determine its pointing type  */
+	// Windows compatibility layer doesn't expose symlink target type through fileInfo
+	// so we need to check file attributes and extension patterns
 	isFileSymlink := func(filepath string) bool {
-		Length := len(filepath) - 1
-		maxFileDotExt := 4 // should cover most file extensions
-		for i := Length; i >= (Length - maxFileDotExt); i-- {
-			if filepath[i] == '.' {
-				return true
-			}
+		if len(filepath) == 0 {
+			return false
 		}
-		return false
+		return strings.LastIndex(filepath, ".") > strings.LastIndex(filepath, "/")
 	}
 
-	winSymlink_flags := uint32(bits >> 12)
-	FLAG_SOFTLINK, FLAG_JUNCTION := uint32(0x8000), uint32(0x80)
+	flags := uint32(bits >> 12)
 
-	if winSymlink_flags == FLAG_SOFTLINK {
+	if flags == winFlagSoftlink {
 		return !isFileSymlink(path)
-	} else if winSymlink_flags == FLAG_JUNCTION {
+	} else if flags == winFlagJunction {
 		return true
 	} else {
 		return false
