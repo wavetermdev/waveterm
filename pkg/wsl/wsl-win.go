@@ -18,6 +18,10 @@ import (
 var RegisteredDistros = gowsl.RegisteredDistros
 var DefaultDistro = gowsl.DefaultDistro
 
+type WslName struct {
+	Distro string `json:"distro"`
+}
+
 type Distro struct {
 	gowsl.Distro
 }
