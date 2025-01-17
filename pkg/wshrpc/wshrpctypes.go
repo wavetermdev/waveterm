@@ -150,7 +150,8 @@ type WshRpcInterface interface {
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
-	FileStreamTarCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[[]byte]
+	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[[]byte]
+	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
@@ -192,7 +193,8 @@ type WshRpcInterface interface {
 
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
-	RemoteTarStreamCommand(ctx context.Context, path string) <-chan RespOrErrorUnion[[]byte]
+	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[[]byte]
+	RemoteFileCopyCommand(ctx context.Context, data CommandRemoteFileCopyData) error
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
@@ -489,9 +491,27 @@ type CpuDataType struct {
 	Value float64 `json:"value"`
 }
 
-type FileRemoteStreamOpts struct {
-	UseTar      bool `json:"usetar,omitempty"`
-	DeleteAfter bool `json:"deleteafter,omitempty"`
+type CommandFileCopyData struct {
+	SrcUri  string        `json:"srcuri"`
+	DestUri string        `json:"desturi"`
+	Opts    *FileCopyOpts `json:"opts,omitempty"`
+}
+
+type CommandRemoteFileCopyData struct {
+	SrcUri   string        `json:"srcuri"`
+	DestPath string        `json:"destpath"`
+	Opts     *FileCopyOpts `json:"opts,omitempty"`
+}
+
+type CommandRemoteStreamTarData struct {
+	Path string        `json:"path"`
+	Opts *FileCopyOpts `json:"opts,omitempty"`
+}
+
+type FileCopyOpts struct {
+	Overwrite bool `json:"overwrite,omitempty"`
+	Recursive bool `json:"recursive,omitempty"`
+	Merge     bool `json:"merge,omitempty"`
 }
 
 type CommandRemoteStreamFileData struct {

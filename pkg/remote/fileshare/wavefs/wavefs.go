@@ -90,7 +90,7 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil
 }
 
-func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
 	return nil
 }
 
@@ -249,7 +249,7 @@ func (c WaveClient) Move(ctx context.Context, srcConn, destConn *connparse.Conne
 	return nil
 }
 
-func (c WaveClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
+func (c WaveClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
 	return nil
 }
 

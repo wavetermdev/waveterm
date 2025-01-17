@@ -33,7 +33,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 	return nil
 }
 
-func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
 	return nil
 }
 
@@ -61,7 +61,7 @@ func (c S3Client) Move(ctx context.Context, srcConn, destConn *connparse.Connect
 	return nil
 }
 
-func (c S3Client) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
+func (c S3Client) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
 	return nil
 }
 

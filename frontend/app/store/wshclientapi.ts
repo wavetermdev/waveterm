@@ -157,6 +157,11 @@ class RpcApiType {
         return client.wshRpcCall("fileappendijson", data, opts);
     }
 
+    // command "filecopy" [call]
+    FileCopyCommand(client: WshClient, data: CommandFileCopyData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("filecopy", data, opts);
+    }
+
     // command "filecreate" [call]
     FileCreateCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filecreate", data, opts);
@@ -188,7 +193,7 @@ class RpcApiType {
     }
 
     // command "filestreamtar" [responsestream]
-	FileStreamTarCommand(client: WshClient, data: FileData, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
+	FileStreamTarCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
         return client.wshRpcStream("filestreamtar", data, opts);
     }
 
@@ -235,6 +240,11 @@ class RpcApiType {
     // command "path" [call]
     PathCommand(client: WshClient, data: PathCommandData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("path", data, opts);
+    }
+
+    // command "remotefilecopy" [call]
+    RemoteFileCopyCommand(client: WshClient, data: CommandRemoteFileCopyData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotefilecopy", data, opts);
     }
 
     // command "remotefiledelete" [call]
@@ -293,7 +303,7 @@ class RpcApiType {
     }
 
     // command "remotetarstream" [responsestream]
-	RemoteTarStreamCommand(client: WshClient, data: string, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
+	RemoteTarStreamCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
         return client.wshRpcStream("remotetarstream", data, opts);
     }
 

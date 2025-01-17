@@ -319,7 +319,11 @@ func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) 
 	return fileshare.Read(ctx, data)
 }
 
-func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func (ws *WshServer) FileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
+	return fileshare.Copy(ctx, data)
+}
+
+func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
 	return fileshare.ReadTarStream(ctx, data)
 }
 

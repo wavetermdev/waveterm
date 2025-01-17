@@ -87,6 +87,9 @@ func init() {
 	fileCmd.AddCommand(fileRmCmd)
 	fileCmd.AddCommand(fileInfoCmd)
 	fileCmd.AddCommand(fileAppendCmd)
+	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
+	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
+	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
 	fileCmd.AddCommand(fileCpCmd)
 }
 
@@ -368,23 +371,34 @@ func getTargetPath(src, dst string) (string, error) {
 }
 
 func fileCpRun(cmd *cobra.Command, args []string) error {
-	src, origDst := args[0], args[1]
-	dst, err := getTargetPath(src, origDst)
+	src, dst := args[0], args[1]
+	recursive, err := cmd.Flags().GetBool("recursive")
 	if err != nil {
 		return err
 	}
-	srcIsWave := strings.HasPrefix(src, WaveFilePrefix)
-	dstIsWave := strings.HasPrefix(dst, WaveFilePrefix)
-
-	if srcIsWave == dstIsWave {
-		return fmt.Errorf("exactly one file must be a wavefile:// URL")
+	merge, err := cmd.Flags().GetBool("merge")
+	if err != nil {
+		return err
+	}
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
 	}
 
-	if srcIsWave {
-		return copyFromWaveToLocal(src, dst)
-	} else {
-		return copyFromLocalToWave(src, dst)
+	srcPath, err := fixRelativePaths(src)
+	if err != nil {
+		return fmt.Errorf("unable to parse src path: %w", err)
 	}
+	destPath, err := fixRelativePaths(dst)
+	if err != nil {
+		return fmt.Errorf("unable to parse dest path: %w", err)
+	}
+	log.Printf("Copying %s to %s; recursive: %v, merge: %v, force: %v", srcPath, destPath, recursive, merge, force)
+	err = wshclient.FileCopyCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Recursive: recursive, Merge: merge, Overwrite: force}}, &wshrpc.RpcOpts{Timeout: fileTimeout})
+	if err != nil {
+		return fmt.Errorf("copying file: %w", err)
+	}
+	return nil
 }
 
 func copyFromWaveToLocal(src, dst string) error {

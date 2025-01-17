@@ -79,6 +79,7 @@ func ParseURI(uri string) (*Connection, error) {
 			}
 		} else if strings.HasPrefix(rest, "/~") {
 			host = wshrpc.LocalConnName
+			remotePath = rest
 		} else {
 			host = ConnHostCurrent
 			remotePath = rest

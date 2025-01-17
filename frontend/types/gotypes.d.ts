@@ -178,6 +178,13 @@ declare global {
         maxitems: number;
     };
 
+    // wshrpc.CommandFileCopyData
+    type CommandFileCopyData = {
+        srcuri: string;
+        desturi: string;
+        opts?: FileCopyOpts;
+    };
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
@@ -187,6 +194,13 @@ declare global {
     type CommandMessageData = {
         oref: ORef;
         message: string;
+    };
+
+    // wshrpc.CommandRemoteFileCopyData
+    type CommandRemoteFileCopyData = {
+        srcuri: string;
+        destpath: string;
+        opts?: FileCopyOpts;
     };
 
     // wshrpc.CommandRemoteListEntriesData
@@ -204,6 +218,12 @@ declare global {
     type CommandRemoteStreamFileData = {
         path: string;
         byterange?: string;
+    };
+
+    // wshrpc.CommandRemoteStreamTarData
+    type CommandRemoteStreamTarData = {
+        path: string;
+        opts?: FileCopyOpts;
     };
 
     // wshrpc.CommandRemoteWriteFileData
@@ -344,6 +364,13 @@ declare global {
         bottom: number;
         width: number;
         height: number;
+    };
+
+    // wshrpc.FileCopyOpts
+    type FileCopyOpts = {
+        overwrite?: boolean;
+        recursive?: boolean;
+        merge?: boolean;
     };
 
     // wshrpc.FileData

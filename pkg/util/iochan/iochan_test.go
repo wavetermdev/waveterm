@@ -12,20 +12,20 @@ import (
 )
 
 func TestIochan_Basic(t *testing.T) {
-	pipeReader, pipeWriter := io.Pipe()
+	srcPipeReader, srcPipeWriter := io.Pipe()
 	packet := []byte("hello world")
 	go func() {
-		pipeWriter.Write(packet)
-		pipeWriter.Close()
+		srcPipeWriter.Write(packet)
+		srcPipeWriter.Close()
 	}()
 	destPipeReader, destPipeWriter := io.Pipe()
 	defer destPipeReader.Close()
 	defer destPipeWriter.Close()
-	ioch := iochan.ReaderChan(context.TODO(), pipeReader, 1024, func() {
-		pipeReader.Close()
-		pipeWriter.Close()
+	ioch := iochan.ReaderChan(context.TODO(), srcPipeReader, 1024, func() {
+		srcPipeReader.Close()
+		srcPipeWriter.Close()
 	})
-	iochan.WriterChan(destPipeWriter, ioch)
+	iochan.WriterChan(context.TODO(), destPipeWriter, ioch)
 	buf := make([]byte, 1024)
 	n, err := destPipeReader.Read(buf)
 	if err != nil {

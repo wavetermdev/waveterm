@@ -194,6 +194,12 @@ func FileAppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonDat
 	return err
 }
 
+// command "filecopy", wshserver.FileCopyCommand
+func FileCopyCommand(w *wshutil.WshRpc, data wshrpc.CommandFileCopyData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filecopy", data, opts)
+	return err
+}
+
 // command "filecreate", wshserver.FileCreateCommand
 func FileCreateCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "filecreate", data, opts)
@@ -230,7 +236,7 @@ func FileReadCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOp
 }
 
 // command "filestreamtar", wshserver.FileStreamTarCommand
-func FileStreamTarCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[[]uint8] {
+func FileStreamTarCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamTarData, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[[]uint8] {
 	return sendRpcRequestResponseStreamHelper[[]uint8](w, "filestreamtar", data, opts)
 }
 
@@ -286,6 +292,12 @@ func NotifyCommand(w *wshutil.WshRpc, data wshrpc.WaveNotificationOptions, opts 
 func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "path", data, opts)
 	return resp, err
+}
+
+// command "remotefilecopy", wshserver.RemoteFileCopyCommand
+func RemoteFileCopyCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteFileCopyData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remotefilecopy", data, opts)
+	return err
 }
 
 // command "remotefiledelete", wshserver.RemoteFileDeleteCommand
@@ -352,7 +364,7 @@ func RemoteStreamFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamF
 }
 
 // command "remotetarstream", wshserver.RemoteTarStreamCommand
-func RemoteTarStreamCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[[]uint8] {
+func RemoteTarStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamTarData, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[[]uint8] {
 	return sendRpcRequestResponseStreamHelper[[]uint8](w, "remotetarstream", data, opts)
 }
 

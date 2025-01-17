@@ -18,7 +18,7 @@ type FileShareClient interface {
 	// ReadStream returns a stream of file data at the given path. If it's a directory, then the list of entries
 	ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData]
 	// ReadTarStream returns a stream of tar data at the given path
-	ReadTarStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte]
+	ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte]
 	// ListEntries returns the list of entries at the given path, or nothing if the path is a file
 	ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error)
 	// ListEntriesStream returns a stream of entries at the given path
@@ -27,10 +27,10 @@ type FileShareClient interface {
 	PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error
 	// Mkdir creates a directory at the given path
 	Mkdir(ctx context.Context, conn *connparse.Connection) error
-	// Move moves the file from srcPath to destPath
+	// Copy copies the file from srcConn to destConn
 	Move(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error
-	// Copy copies the file from srcPath to destPath
-	Copy(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error
+	// Copy copies the file from srcConn to destConn
+	Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
 	// Delete deletes the entry at the given path
 	Delete(ctx context.Context, conn *connparse.Connection) error
 	// Join joins the given parts to the connection path

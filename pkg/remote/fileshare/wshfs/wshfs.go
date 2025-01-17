@@ -82,8 +82,9 @@ func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, d
 	return wshclient.RemoteStreamFileCommand(wshclient.GetBareRpcClient(), streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
-func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
-	return wshclient.RemoteTarStreamCommand(wshclient.GetBareRpcClient(), conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+	log.Print("ReadTarStream wshfs")
+	return wshclient.RemoteTarStreamCommand(wshclient.GetBareRpcClient(), wshrpc.CommandRemoteStreamTarData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
@@ -120,8 +121,8 @@ func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connec
 	return wshclient.RemoteFileRenameCommand(wshclient.GetBareRpcClient(), [2]string{srcConn.Path, destConn.Path}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
 }
 
-func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
-	return nil
+func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	return wshclient.RemoteFileCopyCommand(wshclient.GetBareRpcClient(), wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestPath: destConn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
 }
 
 func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection) error {

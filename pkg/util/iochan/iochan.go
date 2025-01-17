@@ -13,7 +13,7 @@ import (
 )
 
 // ReaderChan reads from an io.Reader and sends the data to a channel
-func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func()) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func()) chan wshrpc.RespOrErrorUnion[[]byte] {
 	ch := make(chan wshrpc.RespOrErrorUnion[[]byte], 16)
 	go func() {
 		defer close(ch)
@@ -39,7 +39,7 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 }
 
 // WriterChan reads from a channel and writes the data to an io.Writer
-func WriterChan(w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[[]byte]) {
+func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[[]byte]) {
 	go func() {
 		for resp := range ch {
 			if resp.Error != nil {
