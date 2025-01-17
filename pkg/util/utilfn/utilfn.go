@@ -617,15 +617,36 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 	}
 }
 
+func WinSymlinkDir(path string, bits os.FileMode) bool {
+	/* for the cursed softlink on windows
+	the compability fileInfo interface gives us no way to determine its pointing type  */
+	isFileSymlink := func(filepath string) bool {
+		Length := len(filepath) - 1
+		maxFileDotExt := 4 // should cover most file extensions
+		for i := Length; i >= (Length - maxFileDotExt); i-- {
+			if filepath[i] == '.' {
+				return true
+			}
+		}
+		return false
+	}
+
+	winSymlink_flags := uint32(bits >> 12)
+	FLAG_SOFTLINK, FLAG_JUNCTION := uint32(0x8000), uint32(0x80)
+
+	if winSymlink_flags == FLAG_SOFTLINK {
+		return !isFileSymlink(path)
+	} else if winSymlink_flags == FLAG_JUNCTION {
+		return true
+	} else {
+		return false
+	}
+}
+
 // on error just returns ""
 // does not return "application/octet-stream" as this is considered a detection failure
 // can pass an existing fileInfo to avoid re-statting the file
 // falls back to text/plain for 0 byte files
-
-func isWinSymlink(bits os.FileMode) bool {
-	WIN_SYMLINK := os.ModeSymlink
-	return (bits&WIN_SYMLINK > 0)
-}
 
 func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	if fileInfo == nil {
@@ -635,7 +656,8 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 		}
 		fileInfo = statRtn
 	}
-	if fileInfo.IsDir() || isWinSymlink(fileInfo.Mode()) {
+
+	if fileInfo.IsDir() || WinSymlinkDir(path, fileInfo.Mode()) {
 		return "directory"
 	}
 	if fileInfo.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
