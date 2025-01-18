@@ -413,7 +413,13 @@ func (w *WshRpc) unregisterRpc(reqId string, err error) {
 			ResId: reqId,
 			Error: err.Error(),
 		}
-		rd.ResCh <- errResp
+		// non-blocking send since we're about to close anyway
+		// likely the channel isn't being actively read
+		// this also prevents us from blocking the main loop (and holding the lock)
+		select {
+		case rd.ResCh <- errResp:
+		default:
+		}
 	}
 	delete(w.RpcMap, reqId)
 	close(rd.ResCh)
