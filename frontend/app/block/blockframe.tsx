@@ -422,21 +422,20 @@ const ConnStatusOverlay = React.memo(
             setShowWshError(showWshErrorTemp);
         }, [connStatus, wshConfigEnabled]);
 
-        const errorText = React.useMemo(() => {
-            const errTexts = [];
-            if (showError) {
-                errTexts.push(`error: ${connStatus.error}`);
-            }
-            if (showWshError) {
-                errTexts.push(`unable to use wsh: ${connStatus.error}`);
-            }
-            return errTexts.join("\n");
-        }, [showError, connStatus.error, showWshError, connStatus.wsherror]);
-
-        const handleCopy = async (e: React.MouseEvent) => {
-            let textToCopy = errorText;
-            await navigator.clipboard.writeText(textToCopy);
-        };
+        const handleCopy = React.useCallback(
+            async (e: React.MouseEvent) => {
+                const errTexts = [];
+                if (showError) {
+                    errTexts.push(`error: ${connStatus.error}`);
+                }
+                if (showWshError) {
+                    errTexts.push(`unable to use wsh: ${connStatus.wsherror}`);
+                }
+                const textToCopy = errTexts.join("\n");
+                await navigator.clipboard.writeText(textToCopy);
+            },
+            [showError, showWshError, connStatus.error, connStatus.wsherror]
+        );
 
         if (!showWshError && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
