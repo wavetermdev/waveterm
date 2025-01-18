@@ -429,7 +429,7 @@ const ConnStatusOverlay = React.memo(
                     errTexts.push(`error: ${connStatus.error}`);
                 }
                 if (showWshError) {
-                    errTexts.push(`unable to use wsh: ${connStatus.error}`);
+                    errTexts.push(`unable to use wsh: ${connStatus.wsherror}`);
                 }
                 const textToCopy = errTexts.join("\n");
                 await navigator.clipboard.writeText(textToCopy);
