@@ -228,13 +228,16 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	}
 	pipeReader, pipeWriter := io.Pipe()
 	tarWriter := tar.NewWriter(pipeWriter)
-	iochanCtx, cancel := context.WithCancel(ctx)
-	rtn := iochan.ReaderChan(iochanCtx, pipeReader, wshrpc.FileChunkSize, func() {
-		tarWriter.Close()
+	chanCtx, cancel := context.WithCancel(ctx)
+	rtn := iochan.ReaderChan(chanCtx, pipeReader, wshrpc.FileChunkSize, func() {
 		pipeReader.Close()
 		pipeWriter.Close()
 	})
 	go func() {
+		if ctx.Err() != nil {
+			return
+		}
+		defer tarWriter.Close()
 		defer cancel()
 		if finfo.IsDir() {
 			log.Printf("creating tar stream for directory %q\n", path)
@@ -243,7 +246,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			}
 		}
 		log.Printf("creating tar stream for %q\n", path)
-		filepath.Walk(path, func(file string, fi os.FileInfo, err error) error {
+		err := filepath.Walk(path, func(file string, fi os.FileInfo, err error) error {
 			// generate tar header
 			header, err := tar.FileInfoHeader(fi, file)
 			if err != nil {
@@ -252,7 +255,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 
 			header.Name = strings.TrimPrefix(file, path)
 			if header.Name == "" {
-				header.Name = filepath.Base(file)
+				return nil
 			}
 
 			// write header
@@ -273,6 +276,9 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			}
 			return nil
 		})
+		if err != nil {
+			rtn <- wshutil.RespErr[[]byte](fmt.Errorf("cannot create tar stream for %q: %w", path, err))
+		}
 		log.Printf("returning tar stream\n")
 	}()
 	log.Printf("returning channel\n")
@@ -306,14 +312,17 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	ioch := fileshare.ReadTarStream(ctx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
 	pipeReader, pipeWriter := io.Pipe()
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	iochan.WriterChan(ctx, pipeWriter, ioch, func() {
 		log.Printf("closing pipe writer\n")
 		pipeWriter.Close()
 		pipeReader.Close()
-		cancel()
 	})
 	tarReader := tar.NewReader(pipeReader)
 	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		next, err := tarReader.Next()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
