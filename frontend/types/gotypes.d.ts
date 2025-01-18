@@ -109,6 +109,13 @@ declare global {
     type CommandAuthenticateRtnData = {
         routeid: string;
         authtoken?: string;
+        env?: {[key: string]: string};
+        initscripttext?: string;
+    };
+
+    // wshrpc.CommandAuthenticateTokenData
+    type CommandAuthenticateTokenData = {
+        token: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -123,6 +130,12 @@ declare global {
     type CommandBlockSetViewData = {
         blockid: string;
         view: string;
+    };
+
+    // wshrpc.CommandControllerAppendOutputData
+    type CommandControllerAppendOutputData = {
+        blockid: string;
+        data64: string;
     };
 
     // wshrpc.CommandControllerResyncData
@@ -286,11 +299,19 @@ declare global {
         metamaptype: MetaType;
     };
 
+    // wshrpc.ConnExtData
+    type ConnExtData = {
+        connname: string;
+        logblockid?: string;
+    };
+
     // wshrpc.ConnKeywords
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:overrideconfig"?: boolean;
+        "conn:wshpath"?: string;
+        "conn:shellpath"?: string;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;
@@ -301,6 +322,7 @@ declare global {
         "ssh:hostname"?: string;
         "ssh:port"?: string;
         "ssh:identityfile"?: string[];
+        "ssh:identitiesonly"?: boolean;
         "ssh:batchmode"?: boolean;
         "ssh:pubkeyauthentication"?: boolean;
         "ssh:passwordauthentication"?: boolean;
@@ -317,6 +339,7 @@ declare global {
     type ConnRequest = {
         host: string;
         keywords?: ConnKeywords;
+        logblockid?: string;
     };
 
     // wshrpc.ConnStatus
@@ -329,6 +352,8 @@ declare global {
         activeconnnum: number;
         error?: string;
         wsherror?: string;
+        nowshreason?: string;
+        wshversion?: string;
     };
 
     // wshrpc.CpuDataRequest
@@ -494,6 +519,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
+        "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "markdown:fontsize"?: number;
@@ -534,6 +560,14 @@ declare global {
     type Point = {
         x: number;
         y: number;
+    };
+
+    // wshrpc.RemoteInfo
+    type RemoteInfo = {
+        clientarch: string;
+        clientos: string;
+        clientversion: string;
+        shell: string;
     };
 
     // wshutil.RpcMessage

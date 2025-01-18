@@ -309,7 +309,6 @@
                 width: 100%;
                 font: var(--base-font);
                 color: var(--secondary-text-color);
-                gap: 12px;
 
                 .connstatus-status-icon-wrapper {
                     display: flex;
@@ -338,7 +337,6 @@
                         width: 100%;
 
                         .connstatus-status-text {
-                            @include mixins.ellipsis();
                             max-width: 100%;
                             font-size: 11px;
                             font-style: normal;
@@ -349,13 +347,36 @@
                         }
 
                         .connstatus-error {
-                            @include mixins.ellipsis();
-                            width: 94%;
                             font-size: 11px;
                             font-style: normal;
                             font-weight: 400;
                             line-height: 15px;
                             letter-spacing: 0.11px;
+                            text-wrap: wrap;
+                            max-height: 80px;
+                            border-radius: 8px;
+                            padding: 5px;
+                            padding-left: 0;
+                            position: relative;
+
+                            .copy-button {
+                                visibility: hidden;
+                                display: flex;
+                                position: sticky;
+                                top: 0;
+                                right: 4px;
+                                float: right;
+                                border-radius: 4px;
+                                backdrop-filter: blur(8px);
+                                padding: 0.286em;
+                                align-items: center;
+                                justify-content: flex-end;
+                                gap: 0.286em;
+                            }
+
+                            &:hover .copy-button {
+                                visibility: visible;
+                            }
                         }
                     }
                 }

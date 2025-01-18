@@ -12,8 +12,35 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/syncbuf"
 )
+
+type connContextKeyType struct{}
+
+var connContextKey connContextKeyType
+
+type connData struct {
+	BlockId string
+}
+
+func ContextWithConnData(ctx context.Context, blockId string) context.Context {
+	if blockId == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, connContextKey, &connData{BlockId: blockId})
+}
+
+func GetConnData(ctx context.Context) *connData {
+	if ctx == nil {
+		return nil
+	}
+	dataPtr := ctx.Value(connContextKey)
+	if dataPtr == nil {
+		return nil
+	}
+	return dataPtr.(*connData)
+}
 
 type CommandSpec struct {
 	Cmd string
@@ -114,17 +141,17 @@ func BuildShellCommand(opts CommandSpec) (string, error) {
 		if !isValidEnvVarName(key) {
 			return "", fmt.Errorf("invalid environment variable name: %q", key)
 		}
-		envVars.WriteString(fmt.Sprintf("%s=%s ", key, HardQuote(value)))
+		envVars.WriteString(fmt.Sprintf("%s=%s ", key, shellutil.HardQuote(value)))
 	}
 
 	// Build the command
 	shellCmd := opts.Cmd
 	if opts.Cwd != "" {
-		shellCmd = fmt.Sprintf("cd %s && %s", HardQuote(opts.Cwd), shellCmd)
+		shellCmd = fmt.Sprintf("cd %s && %s", shellutil.HardQuote(opts.Cwd), shellCmd)
 	}
 
 	// Quote the command for `sh -c`
-	return fmt.Sprintf("sh -c %s", HardQuote(envVars.String()+shellCmd)), nil
+	return fmt.Sprintf("sh -c %s", shellutil.HardQuote(envVars.String()+shellCmd)), nil
 }
 
 func isValidEnvVarName(name string) bool {

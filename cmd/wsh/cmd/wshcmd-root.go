@@ -10,6 +10,7 @@ import (
 	"runtime/debug"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -81,7 +82,14 @@ func OutputHelpMessage(cmd *cobra.Command) {
 }
 
 func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
-	err := setupRpcClient(nil)
+	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
+	if jwtToken == "" {
+		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
+		UsingTermWshMode = true
+		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(nil)
+		return nil
+	}
+	err := setupRpcClient(nil, jwtToken)
 	if err != nil {
 		return err
 	}
@@ -127,15 +135,28 @@ func resolveBlockArg() (*waveobj.ORef, error) {
 	return fullORef, nil
 }
 
-// returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
-func setupRpcClient(serverImpl wshutil.ServerImpl) error {
-	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
-	if jwtToken == "" {
-		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
-		UsingTermWshMode = true
-		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(serverImpl)
-		return nil
+func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtnData, error) {
+	var rtn wshrpc.CommandAuthenticateRtnData
+	token, err := shellutil.UnpackSwapToken(swapTokenStr)
+	if err != nil {
+		return rtn, fmt.Errorf("error unpacking token: %w", err)
 	}
+	if token.SockName == "" {
+		return rtn, fmt.Errorf("no sockname in token")
+	}
+	if token.RpcContext == nil {
+		return rtn, fmt.Errorf("no rpccontext in token")
+	}
+	RpcContext = *token.RpcContext
+	RpcClient, err = wshutil.SetupDomainSocketRpcClient(token.SockName, nil)
+	if err != nil {
+		return rtn, fmt.Errorf("error setting up domain socket rpc client: %w", err)
+	}
+	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, nil)
+}
+
+// returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
+func setupRpcClient(serverImpl wshutil.ServerImpl, jwtToken string) error {
 	rpcCtx, err := wshutil.ExtractUnverifiedRpcContext(jwtToken)
 	if err != nil {
 		return fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)

@@ -128,7 +128,11 @@ func connReinstallRun(cmd *cobra.Command, args []string) error {
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	err := wshclient.ConnReinstallWshCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 60000})
+	data := wshrpc.ConnExtData{
+		ConnName:   connName,
+		LogBlockId: RpcContext.BlockId,
+	}
+	err := wshclient.ConnReinstallWshCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("reinstalling connection: %w", err)
 	}
@@ -173,7 +177,11 @@ func connConnectRun(cmd *cobra.Command, args []string) error {
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	err := wshclient.ConnConnectCommand(RpcClient, wshrpc.ConnRequest{Host: connName}, &wshrpc.RpcOpts{Timeout: 60000})
+	data := wshrpc.ConnRequest{
+		Host:       connName,
+		LogBlockId: RpcContext.BlockId,
+	}
+	err := wshclient.ConnConnectCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("connecting connection: %w", err)
 	}
@@ -186,7 +194,11 @@ func connEnsureRun(cmd *cobra.Command, args []string) error {
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	err := wshclient.ConnEnsureCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 60000})
+	data := wshrpc.ConnExtData{
+		ConnName:   connName,
+		LogBlockId: RpcContext.BlockId,
+	}
+	err := wshclient.ConnEnsureCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("ensuring connection: %w", err)
 	}

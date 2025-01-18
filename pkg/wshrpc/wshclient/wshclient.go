@@ -31,6 +31,12 @@ func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (
 	return resp, err
 }
 
+// command "authenticatetoken", wshserver.AuthenticateTokenCommand
+func AuthenticateTokenCommand(w *wshutil.WshRpc, data wshrpc.CommandAuthenticateTokenData, opts *wshrpc.RpcOpts) (wshrpc.CommandAuthenticateRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandAuthenticateRtnData](w, "authenticatetoken", data, opts)
+	return resp, err
+}
+
 // command "blockinfo", wshserver.BlockInfoCommand
 func BlockInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.BlockInfoData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.BlockInfoData](w, "blockinfo", data, opts)
@@ -50,7 +56,7 @@ func ConnDisconnectCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts)
 }
 
 // command "connensure", wshserver.ConnEnsureCommand
-func ConnEnsureCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+func ConnEnsureCommand(w *wshutil.WshRpc, data wshrpc.ConnExtData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connensure", data, opts)
 	return err
 }
@@ -62,7 +68,7 @@ func ConnListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) 
 }
 
 // command "connreinstallwsh", wshserver.ConnReinstallWshCommand
-func ConnReinstallWshCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+func ConnReinstallWshCommand(w *wshutil.WshRpc, data wshrpc.ConnExtData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connreinstallwsh", data, opts)
 	return err
 }
@@ -71,6 +77,18 @@ func ConnReinstallWshCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpt
 func ConnStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnStatus, error) {
 	resp, err := sendRpcRequestCallHelper[[]wshrpc.ConnStatus](w, "connstatus", nil, opts)
 	return resp, err
+}
+
+// command "connupdatewsh", wshserver.ConnUpdateWshCommand
+func ConnUpdateWshCommand(w *wshutil.WshRpc, data wshrpc.RemoteInfo, opts *wshrpc.RpcOpts) (bool, error) {
+	resp, err := sendRpcRequestCallHelper[bool](w, "connupdatewsh", data, opts)
+	return resp, err
+}
+
+// command "controllerappendoutput", wshserver.ControllerAppendOutputCommand
+func ControllerAppendOutputCommand(w *wshutil.WshRpc, data wshrpc.CommandControllerAppendOutputData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "controllerappendoutput", data, opts)
+	return err
 }
 
 // command "controllerinput", wshserver.ControllerInputCommand
@@ -280,6 +298,18 @@ func RemoteFileRenameCommand(w *wshutil.WshRpc, data [2]string, opts *wshrpc.Rpc
 // command "remotefiletouch", wshserver.RemoteFileTouchCommand
 func RemoteFileTouchCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotefiletouch", data, opts)
+	return err
+}
+
+// command "remotegetinfo", wshserver.RemoteGetInfoCommand
+func RemoteGetInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.RemoteInfo, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.RemoteInfo](w, "remotegetinfo", nil, opts)
+	return resp, err
+}
+
+// command "remoteinstallrcfiles", wshserver.RemoteInstallRcFilesCommand
+func RemoteInstallRcFilesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remoteinstallrcfiles", nil, opts)
 	return err
 }
 

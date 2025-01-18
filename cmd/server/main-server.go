@@ -17,6 +17,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -34,7 +35,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -144,7 +145,7 @@ func beforeSendActivityUpdate(ctx context.Context) {
 	activity.Blocks, _ = wstore.DBGetBlockViewCounts(ctx)
 	activity.NumWindows, _ = wstore.DBGetCount[*waveobj.Window](ctx)
 	activity.NumSSHConn = conncontroller.GetNumSSHHasConnected()
-	activity.NumWSLConn = wsl.GetNumWSLHasConnected()
+	activity.NumWSLConn = wslconn.GetNumWSLHasConnected()
 	activity.NumWSNamed, activity.NumWS, _ = wstore.DBGetWSCounts(ctx)
 	err := telemetry.UpdateActivity(ctx, activity)
 	if err != nil {
@@ -297,6 +298,7 @@ func main() {
 	go stdinReadWatch()
 	go telemetryLoop()
 	configWatcher()
+	blocklogger.InitBlockLogger()
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {
 		log.Printf("error creating web listener: %v\n", err)
