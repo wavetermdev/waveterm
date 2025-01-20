@@ -55,8 +55,8 @@ const DonutChart = ({
 }: {
     data: any[];
     config: ChartConfig;
-    innerLabel: string;
-    innerSubLabel: string;
+    innerLabel?: string;
+    innerSubLabel?: string;
     dataKey: string;
     nameKey: string;
 }) => {
