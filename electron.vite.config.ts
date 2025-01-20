@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import react from "@vitejs/plugin-react-swc";
+import autoprefixer from "autoprefixer";
 import { defineConfig } from "electron-vite";
 import flow from "rollup-plugin-flow";
+import tailwindcss from "tailwindcss";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
@@ -62,6 +64,16 @@ export default defineConfig({
         },
         server: {
             open: false,
+        },
+        css: {
+            preprocessorOptions: {
+                scss: {
+                    // your existing scss options if any
+                },
+            },
+            postcss: {
+                plugins: [tailwindcss as any, autoprefixer as any],
+            },
         },
         plugins: [
             ViteImageOptimizer(),
