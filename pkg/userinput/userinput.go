@@ -108,6 +108,7 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 			return nil, fmt.Errorf("unable to find windows for user input: %v", err)
 		}
 		scopes = allWindows
+		err = nil // reset this to not corrupt error check below
 	}
 
 	MainUserInputHandler.sendRequestToFrontend(request, scopes)
