@@ -5,6 +5,7 @@ package utilfn
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
@@ -1011,4 +1012,12 @@ func FilterValidArch(arch string) (string, error) {
 		return "arm64", nil
 	}
 	return "", fmt.Errorf("unknown architecture: %s", formatted)
+}
+
+func TimeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.Duration {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return defaultTimeout
+	}
+	return time.Until(deadline)
 }
