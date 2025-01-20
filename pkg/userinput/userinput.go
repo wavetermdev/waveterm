@@ -5,12 +5,14 @@ package userinput
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -100,12 +102,13 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 	deadline, _ := ctx.Deadline()
 	request.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
 
-	scopes, err := determineScopes(ctx)
-	if err != nil {
-		err = nil // reset this to not corrupt error check below
-		log.Printf("user input scopes could not be found: %v", err)
+	scopes, scopesErr := determineScopes(ctx)
+	if scopesErr != nil {
+		log.Printf("user input scopes could not be found: %v", scopesErr)
+		blocklogger.Infof(ctx, "user input scopes could not be found: %v", scopesErr)
 		allWindows, err := wstore.DBGetAllOIDsByType(ctx, "window")
 		if err != nil {
+			blocklogger.Infof(ctx, "unable to find windows for user input: %v", err)
 			return nil, fmt.Errorf("unable to find windows for user input: %v", err)
 		}
 		scopes = allWindows
@@ -114,6 +117,7 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 	MainUserInputHandler.sendRequestToFrontend(request, scopes)
 
 	var response *UserInputResponse
+	var err error
 	select {
 	case resp := <-uiCh:
 		log.Printf("checking received: %v", resp.RequestId)
@@ -123,7 +127,7 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 	}
 
 	if response.ErrorMsg != "" {
-		err = fmt.Errorf(response.ErrorMsg)
+		err = errors.New(response.ErrorMsg)
 	}
 
 	return response, err
