@@ -270,6 +270,7 @@ func (conn *SSHConn) GetConfigShellPath() string {
 // if wsh is not installed, the clientVersion will be "not-installed", and it will also return an osArchStr
 // if clientVersion is set, then no osArchStr will be returned
 func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (bool, string, string, error) {
+	return false, "", "", fmt.Errorf("aiosdnfasodf sdaoi dfnnsa dfnjnjs ffnjajkn fenjkwe fanjkjknfw njk f")
 	conn.Infof(ctx, "running StartConnServer...\n")
 	allowed := WithLockRtn(conn, func() bool {
 		return conn.Status == Status_Connecting

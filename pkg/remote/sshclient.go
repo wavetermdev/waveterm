@@ -332,7 +332,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 	return f.Close()
 }
 
-func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponse, error) {
+func createUnknownKeyVerifier(ctx context.Context, knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponse, error) {
 	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
 	queryText := fmt.Sprintf(
 		"The authenticity of host '%s (%s)' can't be established "+
@@ -349,7 +349,7 @@ func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote str
 		Title:        "Known Hosts Key Missing",
 	}
 	return func() (*userinput.UserInputResponse, error) {
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancelFn := context.WithTimeout(ctx, 60*time.Second)
 		defer cancelFn()
 		resp, err := userinput.GetUserInput(ctx, request)
 		if err != nil {
@@ -402,7 +402,7 @@ func lineContainsMatch(line []byte, matches [][]byte) bool {
 	return false
 }
 
-func createHostKeyCallback(sshKeywords *wshrpc.ConnKeywords) (ssh.HostKeyCallback, HostKeyAlgorithms, error) {
+func createHostKeyCallback(ctx context.Context, sshKeywords *wshrpc.ConnKeywords) (ssh.HostKeyCallback, HostKeyAlgorithms, error) {
 	globalKnownHostsFiles := sshKeywords.SshGlobalKnownHostsFile
 	userKnownHostsFiles := sshKeywords.SshUserKnownHostsFile
 
@@ -493,7 +493,7 @@ func createHostKeyCallback(sshKeywords *wshrpc.ConnKeywords) (ssh.HostKeyCallbac
 			err := fmt.Errorf("placeholder, should not be returned") // a null value here can cause problems with empty slice
 			for _, filename := range knownHostsFiles {
 				newLine := xknownhosts.Line([]string{xknownhosts.Normalize(hostname)}, key)
-				getUserVerification := createUnknownKeyVerifier(filename, hostname, remote.String(), key)
+				getUserVerification := createUnknownKeyVerifier(ctx, filename, hostname, remote.String(), key)
 				err = writeToKnownHosts(filename, newLine, getUserVerification)
 				if err == nil {
 					break
@@ -623,7 +623,7 @@ func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeyword
 		authMethods = append(authMethods, authMethod)
 	}
 
-	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(sshKeywords)
+	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(connCtx, sshKeywords)
 	if err != nil {
 		return nil, err
 	}
