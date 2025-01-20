@@ -1,5 +1,7 @@
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, TooltipProps } from "recharts";
-import { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/app/shadcn/chart";
+import { isBlank } from "@/util/util";
+import { Label, Pie, PieChart } from "recharts";
+import { ViewBox } from "recharts/types/util/types";
 
 const DEFAULT_COLORS = [
     "#3498db", // blue
@@ -14,60 +16,50 @@ const DEFAULT_COLORS = [
 
 const NO_DATA_COLOR = "#E0E0E0";
 
-const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
-    if (!active || !payload?.length) return null;
-
-    const data = payload[0].payload;
-
+const PieInnerLabel = ({
+    innerLabel,
+    innerSubLabel,
+    viewBox,
+}: {
+    innerLabel: string;
+    innerSubLabel: string;
+    viewBox: ViewBox;
+}) => {
+    if (isBlank(innerLabel)) {
+        return null;
+    }
+    if (!viewBox || !("cx" in viewBox) || !("cy" in viewBox)) {
+        return null;
+    }
     return (
-        <div className="rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm shadow-lg">
-            <div className="font-medium text-gray-900">{data.name}</div>
-            <div className="text-gray-600">
-                {data.displayValue} ({data.percentage}%)
-            </div>
-        </div>
+        <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+            <tspan x={viewBox.cx} y={viewBox.cy} fill="white" className="fill-foreground text-2xl font-bold">
+                {innerLabel}
+            </tspan>
+            {innerSubLabel && (
+                <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-muted-foreground">
+                    {innerSubLabel}
+                </tspan>
+            )}
+        </text>
     );
 };
 
 const DonutChart = ({
-    data = [],
-    valueKey = "value",
-    displayValueKey = "displayvalue",
-    labelKey = "label",
-    colors = DEFAULT_COLORS,
-    innerRadius = 60,
-    outerRadius = 80,
-    insideLabel = null,
-    bottomLabel = null,
+    data,
+    config,
+    innerLabel,
+    innerSubLabel,
+    dataKey,
+    nameKey,
+}: {
+    data: any[];
+    config: ChartConfig;
+    innerLabel: string;
+    innerSubLabel: string;
+    dataKey: string;
+    nameKey: string;
 }) => {
-    const validData: any[] = data.filter((item) => {
-        const value = item[valueKey];
-        return value != null && !Number.isNaN(value) && value > 0;
-    });
-
-    if (colors == null || colors.length === 0) {
-        colors = DEFAULT_COLORS;
-    }
-
-    if (validData.length == 0) {
-        colors = [NO_DATA_COLOR];
-        validData.push({
-            [valueKey]: 1,
-            [displayValueKey]: "No data",
-            [labelKey]: "No data",
-        });
-    }
-
-    const total = validData.reduce((sum, item) => sum + item[valueKey], 0);
-    const formattedData = validData.map((item) => ({
-        value: item[valueKey],
-        displayValue: item[displayValueKey] || String(item[valueKey]),
-        name: item[labelKey],
-        percentage: ((item[valueKey] / total) * 100).toFixed(1),
-    }));
-
-    const primaryItem = formattedData.reduce((max, item) => (item.value > max.value ? item : max), formattedData[0]);
-
     return (
         <div
             className="tw"
@@ -79,50 +71,29 @@ const DonutChart = ({
                 height: "100%",
             }}
         >
-            <ResponsiveContainer>
+            <ChartContainer config={config} className="mx-auto w-full h-full aspect-square max-h-[250px]">
                 <PieChart>
-                    <Tooltip content={<CustomTooltip />} cursor={false} />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
                     <Pie
-                        data={formattedData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={innerRadius}
-                        outerRadius={outerRadius}
-                        dataKey="value"
-                        nameKey="name"
-                        paddingAngle={0}
+                        data={data}
+                        dataKey={dataKey}
+                        nameKey={nameKey}
+                        innerRadius={60}
+                        strokeWidth={5}
+                        isAnimationActive={false}
                     >
-                        {formattedData.map((entry, index) => (
-                            <Cell
-                                key={`cell-${index}`}
-                                fill={colors[index % colors.length]}
-                                stroke="none"
-                                className="transition-all duration-200 hover:opacity-80"
-                            />
-                        ))}
+                        <Label
+                            content={({ viewBox }) => (
+                                <PieInnerLabel
+                                    innerLabel={innerLabel}
+                                    innerSubLabel={innerSubLabel}
+                                    viewBox={viewBox}
+                                />
+                            )}
+                        />
                     </Pie>
-                    {insideLabel && (
-                        <text
-                            x="50%"
-                            y="50%"
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            className="text-lg font-medium fill-white"
-                        >
-                            {insideLabel.split("\n").map((line, index, lines) => (
-                                <tspan
-                                    key={index}
-                                    x="50%" // Keep text horizontally centered
-                                    dy={`${index === 0 ? -((lines.length - 1) / 2) * 1.4 : 1.4}em`} // Adjust spacing with 1.4em
-                                >
-                                    {line}
-                                </tspan>
-                            ))}
-                        </text>
-                    )}
                 </PieChart>
-            </ResponsiveContainer>
-            {bottomLabel && <div className="mb-1 text-center text-sm font-medium text-white"> {bottomLabel}</div>}
+            </ChartContainer>
         </div>
     );
 };

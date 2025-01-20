@@ -19,24 +19,12 @@ const meta = {
                 "The data for the chart, where each item includes `label`, `value`, and optional `displayvalue`.",
             control: { type: "object" },
         },
-        colors: {
-            description: "An array of colors for chart segments.",
+        config: {
+            description: "config for the chart",
             control: { type: "object" },
         },
-        innerRadius: {
-            description: "Inner radius of the donut chart.",
-            control: { type: "number" },
-        },
-        outerRadius: {
-            description: "Outer radius of the donut chart.",
-            control: { type: "number" },
-        },
-        insideLabel: {
+        innerLabel: {
             description: "The label displayed inside the donut chart (e.g., percentages).",
-            control: { type: "text" },
-        },
-        bottomLabel: {
-            description: "The label displayed below the donut chart.",
             control: { type: "text" },
         },
     },
@@ -63,13 +51,24 @@ type Story = StoryObj<typeof DonutChart>;
 
 export const Default: Story = {
     args: {
+        config: {
+            chrome: { label: "Chrome", color: "#8884d8" },
+            safari: { label: "Safari", color: "#82ca9d" },
+            firefox: { label: "Firefox", color: "#ffc658" },
+            edge: { label: "Edge", color: "#ff8042" },
+            other: { label: "Other", color: "#8dd1e1" },
+        },
         data: [
-            { label: "Chrome", value: 275 },
-            { label: "Safari", value: 200 },
-            { label: "Firefox", value: 187 },
+            { label: "chrome", value: 275, fill: "#8884d8" }, // Purple
+            { label: "safari", value: 200, fill: "#82ca9d" }, // Green
+            { label: "firefox", value: 287, fill: "#ffc658" }, // Yellow
+            { label: "edge", value: 173, fill: "#ff8042" }, // Orange
+            { label: "other", value: 190, fill: "#8dd1e1" }, // Light Blue
         ],
-        insideLabel: "50%",
-        bottomLabel: "Browser Usage",
+        innerLabel: "50%",
+        innerSubLabel: "50/100",
+        dataKey: "value",
+        nameKey: "label",
     },
 };
 
@@ -80,7 +79,7 @@ export const WithDisplayValues: Story = {
             { label: "Safari", value: 200, displayvalue: "200 users" },
             { label: "Firefox", value: 187, displayvalue: "187 users" },
         ],
-        insideLabel: "75%",
+        innerLabel: "75%",
         bottomLabel: "Total Users",
     },
 };
@@ -97,7 +96,7 @@ export const CustomColors: Story = {
 export const EmptyData: Story = {
     args: {
         data: [],
-        insideLabel: "No Data",
+        innerLabel: "No Data",
         bottomLabel: "Empty Chart",
     },
 };
@@ -105,7 +104,7 @@ export const EmptyData: Story = {
 export const SingleValue: Story = {
     args: {
         data: [{ label: "Chrome", value: 275, displayvalue: "275 users" }],
-        insideLabel: "100%",
+        innerLabel: "100%",
         bottomLabel: "Single Value",
     },
 };
@@ -115,7 +114,7 @@ export const CustomRadii: Story = {
         ...Default.args,
         innerRadius: 50,
         outerRadius: 100,
-        insideLabel: "Custom",
+        innerLabel: "Custom",
         bottomLabel: "Radius",
     },
 };
