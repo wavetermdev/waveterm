@@ -215,8 +215,41 @@ func (bc *BlockController) resetTerminalState() {
 	}
 }
 
+func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName string) (map[string]string, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	_, envFileData, err := filestore.WFS.ReadFile(ctx, blockId, "env")
+	if err == fs.ErrNotExist {
+		err = nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error reading command env file: %w", err)
+	}
+	rtn := make(map[string]string)
+	if len(envFileData) > 0 {
+		envMap := envutil.EnvToMap(string(envFileData))
+		for k, v := range envMap {
+			rtn[k] = v
+		}
+	}
+	cmdEnv := blockMeta.GetMap(waveobj.MetaKey_CmdEnv)
+	for k, v := range cmdEnv {
+		if v == nil {
+			delete(rtn, k)
+			continue
+		}
+		if _, ok := v.(string); ok {
+			rtn[k] = v.(string)
+		}
+		if _, ok := v.(float64); ok {
+			rtn[k] = fmt.Sprintf("%v", v)
+		}
+	}
+	return rtn, nil
+}
+
 // for "cmd" type blocks
-func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType) (string, *shellexec.CommandOptsType, error) {
+func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType, connName string) (string, *shellexec.CommandOptsType, error) {
 	var cmdStr string
 	var cmdOpts shellexec.CommandOptsType
 	cmdOpts.Env = make(map[string]string)
@@ -244,33 +277,12 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType) (string,
 		}
 	}
 
-	// get the "env" file
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	_, envFileData, err := filestore.WFS.ReadFile(ctx, blockId, "env")
-	if err == fs.ErrNotExist {
-		err = nil
-	}
+	envMap, err := resolveEnvMap(blockId, blockMeta, connName)
 	if err != nil {
-		return "", nil, fmt.Errorf("error reading command env file: %w", err)
+		return "", nil, err
 	}
-	if len(envFileData) > 0 {
-		envMap := envutil.EnvToMap(string(envFileData))
-		for k, v := range envMap {
-			cmdOpts.Env[k] = v
-		}
-	}
-	cmdEnv := blockMeta.GetMap(waveobj.MetaKey_CmdEnv)
-	for k, v := range cmdEnv {
-		if v == nil {
-			continue
-		}
-		if _, ok := v.(string); ok {
-			cmdOpts.Env[k] = v.(string)
-		}
-		if _, ok := v.(float64); ok {
-			cmdOpts.Env[k] = fmt.Sprintf("%v", v)
-		}
+	for k, v := range envMap {
+		cmdOpts.Env[k] = v
 	}
 	return cmdStr, &cmdOpts, nil
 }
@@ -352,7 +364,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 		}
 	} else if bc.ControllerType == BlockController_Cmd {
 		var cmdOptsPtr *shellexec.CommandOptsType
-		cmdStr, cmdOptsPtr, err = createCmdStrAndOpts(bc.BlockId, blockMeta)
+		cmdStr, cmdOptsPtr, err = createCmdStrAndOpts(bc.BlockId, blockMeta, remoteName)
 		if err != nil {
 			return nil, err
 		}
