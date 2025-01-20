@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -99,8 +100,7 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 	id, uiCh := MainUserInputHandler.registerChannel()
 	defer MainUserInputHandler.unregisterChannel(id)
 	request.RequestId = id
-	deadline, _ := ctx.Deadline()
-	request.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
+	request.TimeoutMs = int(utilfn.TimeoutFromContext(ctx, 30*time.Second).Milliseconds())
 
 	scopes, scopesErr := determineScopes(ctx)
 	if scopesErr != nil {
