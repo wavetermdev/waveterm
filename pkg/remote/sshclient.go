@@ -491,7 +491,13 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wshrpc.ConnKeywords
 		}
 	}
 
-	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) (outErr error) {
+		defer func() {
+			panicErr := panichandler.PanicHandler("sshclient:wave-hostkey-callback", recover())
+			if panicErr != nil {
+				outErr = panicErr
+			}
+		}()
 		err := basicCallback(hostname, remote, key)
 		if err == nil {
 			// success
