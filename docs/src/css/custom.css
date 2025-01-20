@@ -81,6 +81,20 @@ body .markdown h2 {
     -webkit-mask: url(/img/workspace.svg) no-repeat center / contain;
 }
 
+.custom-icon-magnify-enabled:before {
+    content: "";
+    mask: url(/img/magnify-enabled.svg) no-repeat center / contain;
+    -webkit-mask: url(/img/magnify-enabled.svg) no-repeat center / contain;
+    margin-bottom: -2px;
+}
+
+.custom-icon-magnify-disabled:before {
+    content: "";
+    mask: url(/img/magnify-disabled.svg) no-repeat center / contain;
+    -webkit-mask: url(/img/magnify-disabled.svg) no-repeat center / contain;
+    margin-bottom: -2px;
+}
+
 img[src*="#left"] {
     float: left;
     margin: 0 10px 10px 0;
@@ -94,4 +108,8 @@ img[src*="#right"] {
 img[src*="#center"] {
     display: block;
     margin: auto;
+}
+
+.hidden {
+    display: none;
 }
