@@ -25,11 +25,13 @@
         "@mdx-js/react": "^3.0.0",
         "@waveterm/docusaurus-og": "https://github.com/wavetermdev/docusaurus-og",
         "clsx": "^2.1.1",
+        "docusaurus-plugin-sass": "^0.2.6",
         "prism-react-renderer": "^2.3.0",
         "react": "^18.0.0",
         "react-dom": "^18.0.0",
         "remark-gfm": "^4.0.0",
         "remark-typescript-code-import": "^1.0.1",
+        "sass": "^1.83.4",
         "ua-parser-js": "^2.0.0"
     },
     "devDependencies": {
