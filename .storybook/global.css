@@ -16,3 +16,9 @@ body {
         background-color: orange;
     }
 }
+
+.tw {
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+}
