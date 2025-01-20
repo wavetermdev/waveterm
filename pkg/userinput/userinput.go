@@ -5,13 +5,16 @@ package userinput
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -63,22 +66,19 @@ func (ui *UserInputHandler) unregisterChannel(id string) {
 	delete(ui.Channels, id)
 }
 
-func (ui *UserInputHandler) sendRequestToFrontend(request *UserInputRequest, windowId string) {
+func (ui *UserInputHandler) sendRequestToFrontend(request *UserInputRequest, scopes []string) {
 	wps.Broker.Publish(wps.WaveEvent{
 		Event:  wps.Event_UserInput,
 		Data:   request,
-		Scopes: []string{windowId},
+		Scopes: scopes,
 	})
 }
 
-func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputResponse, error) {
-	id, uiCh := MainUserInputHandler.registerChannel()
-	defer MainUserInputHandler.unregisterChannel(id)
-	request.RequestId = id
-	deadline, _ := ctx.Deadline()
-	request.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
-
+func determineScopes(ctx context.Context) ([]string, error) {
 	connData := genconn.GetConnData(ctx)
+	if connData == nil {
+		return nil, fmt.Errorf("context did not contain connection info")
+	}
 	// resolve windowId from blockId
 	tabId, err := wstore.DBFindTabForBlockId(ctx, connData.BlockId)
 	if err != nil {
@@ -93,9 +93,31 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 		return nil, fmt.Errorf("unabled to determine window for route: %w", err)
 	}
 
-	MainUserInputHandler.sendRequestToFrontend(request, windowId)
+	return []string{windowId}, nil
+}
+
+func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputResponse, error) {
+	id, uiCh := MainUserInputHandler.registerChannel()
+	defer MainUserInputHandler.unregisterChannel(id)
+	request.RequestId = id
+	request.TimeoutMs = int(utilfn.TimeoutFromContext(ctx, 30*time.Second).Milliseconds())
+
+	scopes, scopesErr := determineScopes(ctx)
+	if scopesErr != nil {
+		log.Printf("user input scopes could not be found: %v", scopesErr)
+		blocklogger.Infof(ctx, "user input scopes could not be found: %v", scopesErr)
+		allWindows, err := wstore.DBGetAllOIDsByType(ctx, "window")
+		if err != nil {
+			blocklogger.Infof(ctx, "unable to find windows for user input: %v", err)
+			return nil, fmt.Errorf("unable to find windows for user input: %v", err)
+		}
+		scopes = allWindows
+	}
+
+	MainUserInputHandler.sendRequestToFrontend(request, scopes)
 
 	var response *UserInputResponse
+	var err error
 	select {
 	case resp := <-uiCh:
 		log.Printf("checking received: %v", resp.RequestId)
@@ -105,7 +127,7 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 	}
 
 	if response.ErrorMsg != "" {
-		err = fmt.Errorf(response.ErrorMsg)
+		err = errors.New(response.ErrorMsg)
 	}
 
 	return response, err
