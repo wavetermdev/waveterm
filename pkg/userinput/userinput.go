@@ -102,13 +102,13 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 
 	scopes, err := determineScopes(ctx)
 	if err != nil {
+		err = nil // reset this to not corrupt error check below
 		log.Printf("user input scopes could not be found: %v", err)
 		allWindows, err := wstore.DBGetAllOIDsByType(ctx, "window")
 		if err != nil {
 			return nil, fmt.Errorf("unable to find windows for user input: %v", err)
 		}
 		scopes = allWindows
-		err = nil // reset this to not corrupt error check below
 	}
 
 	MainUserInputHandler.sendRequestToFrontend(request, scopes)
