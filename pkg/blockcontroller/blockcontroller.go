@@ -43,12 +43,6 @@ const (
 )
 
 const (
-	BlockFile_Term  = "term"            // used for main pty output
-	BlockFile_Cache = "cache:term:full" // for cached block
-	BlockFile_VDom  = "vdom"            // used for alt html layout
-)
-
-const (
 	Status_Running = "running"
 	Status_Done    = "done"
 	Status_Init    = "init"
@@ -146,14 +140,14 @@ func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
 func HandleTruncateBlockFile(blockId string) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	err := filestore.WFS.WriteFile(ctx, blockId, BlockFile_Term, nil)
+	err := filestore.WFS.WriteFile(ctx, blockId, wavebase.BlockFile_Term, nil)
 	if err == fs.ErrNotExist {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("error truncating blockfile: %w", err)
 	}
-	err = filestore.WFS.DeleteFile(ctx, blockId, BlockFile_Cache)
+	err = filestore.WFS.DeleteFile(ctx, blockId, wavebase.BlockFile_Cache)
 	if err == fs.ErrNotExist {
 		err = nil
 	}
@@ -165,7 +159,7 @@ func HandleTruncateBlockFile(blockId string) error {
 		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, blockId).String()},
 		Data: &wps.WSFileEventData{
 			ZoneId:   blockId,
-			FileName: BlockFile_Term,
+			FileName: wavebase.BlockFile_Term,
 			FileOp:   wps.FileOp_Truncate,
 		},
 	})
@@ -198,7 +192,7 @@ func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 func (bc *BlockController) resetTerminalState() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	wfile, statErr := filestore.WFS.Stat(ctx, bc.BlockId, BlockFile_Term)
+	wfile, statErr := filestore.WFS.Stat(ctx, bc.BlockId, wavebase.BlockFile_Term)
 	if statErr == fs.ErrNotExist || wfile.Size == 0 {
 		return
 	}
@@ -209,16 +203,50 @@ func (bc *BlockController) resetTerminalState() {
 	buf.WriteString("\x1b[?25h")   // show cursor
 	buf.WriteString("\x1b[?1000l") // disable mouse tracking
 	buf.WriteString("\r\n\r\n(restored terminal state)\r\n\r\n")
-	err := filestore.WFS.AppendData(ctx, bc.BlockId, BlockFile_Term, buf.Bytes())
+	err := filestore.WFS.AppendData(ctx, bc.BlockId, wavebase.BlockFile_Term, buf.Bytes())
 	if err != nil {
 		log.Printf("error appending to blockfile (terminal reset): %v\n", err)
 	}
 }
 
+func getCustomInitScriptKeyCascade(shellType string) []string {
+	if shellType == "bash" {
+		return []string{waveobj.MetaKey_CmdInitScriptBash, waveobj.MetaKey_CmdInitScriptSh, waveobj.MetaKey_CmdInitScript}
+	}
+	if shellType == "zsh" {
+		return []string{waveobj.MetaKey_CmdInitScriptZsh, waveobj.MetaKey_CmdInitScriptSh, waveobj.MetaKey_CmdInitScript}
+	}
+	if shellType == "pwsh" {
+		return []string{waveobj.MetaKey_CmdInitScriptPwsh, waveobj.MetaKey_CmdInitScript}
+	}
+	if shellType == "fish" {
+		return []string{waveobj.MetaKey_CmdInitScriptFish, waveobj.MetaKey_CmdInitScript}
+	}
+	return []string{waveobj.MetaKey_CmdInitScript}
+}
+
+func getCustomInitScript(meta waveobj.MetaMapType, connName string, shellType string) string {
+	keys := getCustomInitScriptKeyCascade(shellType)
+	connMeta := meta.GetConnectionOverride(connName)
+	if connMeta != nil {
+		for _, key := range keys {
+			if connMeta.HasKey(key) {
+				return connMeta.GetString(key, "")
+			}
+		}
+	}
+	for _, key := range keys {
+		if meta.HasKey(key) {
+			return meta.GetString(key, "")
+		}
+	}
+	return ""
+}
+
 func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName string) (map[string]string, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	_, envFileData, err := filestore.WFS.ReadFile(ctx, blockId, "env")
+	_, envFileData, err := filestore.WFS.ReadFile(ctx, blockId, wavebase.BlockFile_Env)
 	if err == fs.ErrNotExist {
 		err = nil
 	}
@@ -252,7 +280,6 @@ func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName strin
 func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType, connName string) (string, *shellexec.CommandOptsType, error) {
 	var cmdStr string
 	var cmdOpts shellexec.CommandOptsType
-	cmdOpts.Env = make(map[string]string)
 	cmdStr = blockMeta.GetString(waveobj.MetaKey_Cmd, "")
 	if cmdStr == "" {
 		return "", nil, fmt.Errorf("missing cmd in block meta")
@@ -276,14 +303,6 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType, connName
 			cmdStr = cmdStr + " " + utilfn.ShellQuote(arg, false, -1)
 		}
 	}
-
-	envMap, err := resolveEnvMap(blockId, blockMeta, connName)
-	if err != nil {
-		return "", nil, err
-	}
-	for k, v := range envMap {
-		cmdOpts.Env[k] = v
-	}
 	return cmdStr, &cmdOpts, nil
 }
 
@@ -295,7 +314,7 @@ func (bc *BlockController) DoRunShellCommand(logCtx context.Context, rc *RunShel
 	return bc.manageRunningShellProcess(shellProc, rc, blockMeta)
 }
 
-func (bc *BlockController) makeSwapToken(ctx context.Context, remoteName string) *shellutil.TokenSwapEntry {
+func (bc *BlockController) makeSwapToken(ctx context.Context, blockMeta waveobj.MetaMapType, remoteName string) *shellutil.TokenSwapEntry {
 	token := &shellutil.TokenSwapEntry{
 		Token: uuid.New().String(),
 		Env:   make(map[string]string),
@@ -326,6 +345,13 @@ func (bc *BlockController) makeSwapToken(ctx context.Context, remoteName string)
 		token.Env["WAVETERM_CLIENTID"] = clientData.OID
 	}
 	token.Env["WAVETERM_CONN"] = remoteName
+	envMap, err := resolveEnvMap(bc.BlockId, blockMeta, remoteName)
+	if err != nil {
+		log.Printf("error resolving env map: %v\n", err)
+	}
+	for k, v := range envMap {
+		token.Env[k] = v
+	}
 	return token
 }
 
@@ -333,7 +359,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, BlockFile_Term, nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
+	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, wavebase.BlockFile_Term, nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
 	if fsErr != nil && fsErr != fs.ErrExist {
 		return nil, fmt.Errorf("error creating blockfile: %w", fsErr)
 	}
@@ -351,7 +377,6 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	var cmdOpts shellexec.CommandOptsType
 	var err error
 	if bc.ControllerType == BlockController_Shell {
-		cmdOpts.Env = make(map[string]string)
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
 		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
@@ -373,7 +398,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 		return nil, fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	swapToken := bc.makeSwapToken(ctx, remoteName)
+	swapToken := bc.makeSwapToken(ctx, blockMeta, remoteName)
 	cmdOpts.SwapToken = swapToken
 	blocklogger.Infof(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
 	if strings.HasPrefix(remoteName, "wsl://") {
@@ -398,7 +423,6 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
-			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		if !wslConn.WshEnabled.Load() {
 			shellProc, err = shellexec.StartWslShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
@@ -441,7 +465,6 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
-			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		if !conn.WshEnabled.Load() {
 			shellProc, err = shellexec.StartRemoteShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
@@ -473,7 +496,6 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
-			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		settings := wconfig.GetWatcher().GetFullConfig().Settings
 		if settings.TermLocalShellPath != "" {
@@ -526,7 +548,7 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 			shellProc.Cmd.Wait()
 			exitCode := shellProc.Cmd.ExitCode()
 			termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
-			HandleAppendBlockFile(bc.BlockId, BlockFile_Term, []byte(termMsg))
+			HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, []byte(termMsg))
 			// to stop the inputCh loop
 			time.Sleep(100 * time.Millisecond)
 			close(shellInputCh) // don't use bc.ShellInputCh (it's nil)
@@ -535,7 +557,7 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		for {
 			nr, err := ptyBuffer.Read(buf)
 			if nr > 0 {
-				err := HandleAppendBlockFile(bc.BlockId, BlockFile_Term, buf[:nr])
+				err := HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, buf[:nr])
 				if err != nil {
 					log.Printf("error appending to blockfile: %v\n", err)
 				}

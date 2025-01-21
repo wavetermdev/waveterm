@@ -117,6 +117,10 @@ func (conn *WslConn) Infof(ctx context.Context, format string, args ...any) {
 	blocklogger.Infof(ctx, "[conndebug] "+format, args...)
 }
 
+func (conn *WslConn) Debugf(ctx context.Context, format string, args ...any) {
+	blocklogger.Infof(ctx, "[conndebug] "+format, args...)
+}
+
 func (conn *WslConn) FireConnChangeEvent() {
 	status := conn.DeriveConnStatus()
 	event := wps.WaveEvent{

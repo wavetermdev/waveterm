@@ -271,7 +271,7 @@ func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wsh
 	if err != nil {
 		return fmt.Errorf("error decoding output data: %w", err)
 	}
-	err = blockcontroller.HandleAppendBlockFile(data.BlockId, blockcontroller.BlockFile_Term, outputBuf[:nw])
+	err = blockcontroller.HandleAppendBlockFile(data.BlockId, wavebase.BlockFile_Term, outputBuf[:nw])
 	if err != nil {
 		return fmt.Errorf("error appending to block file: %w", err)
 	}
@@ -486,7 +486,7 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandF
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
-	if data.FileName == blockcontroller.BlockFile_VDom && tryCreate {
+	if data.FileName == wavebase.BlockFile_VDom && tryCreate {
 		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
 		if err != nil && err != fs.ErrExist {
 			return fmt.Errorf("error creating blockfile[vdom]: %w", err)

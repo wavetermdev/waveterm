@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -136,7 +137,7 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		BlockDef: &waveobj.BlockDef{
 			Meta: createMeta,
 			Files: map[string]*waveobj.FileDef{
-				"env": {
+				wavebase.BlockFile_Env: {
 					Content: envContent,
 				},
 			},
