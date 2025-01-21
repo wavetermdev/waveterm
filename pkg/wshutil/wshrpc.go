@@ -326,6 +326,9 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 }
 
 func (w *WshRpc) runServer() {
+	defer func() {
+		panichandler.PanicHandler("wshrpc.runServer", recover())
+	}()
 	defer close(w.OutputCh)
 	for msgBytes := range w.InputCh {
 		if w.Debug {
