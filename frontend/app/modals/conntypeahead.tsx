@@ -80,7 +80,7 @@ function createWslSuggestionItems(
     connStatusMap: Map<string, ConnStatus>
 ): Array<SuggestionConnectionItem> {
     return filteredList.map((connName) => {
-        const connStatus = connStatusMap.get(connName);
+        const connStatus = connStatusMap.get(`wsl://${connName}`);
         const connColorNum = computeConnColorNum(connStatus);
         const item: SuggestionConnectionItem = {
             status: "connected",
