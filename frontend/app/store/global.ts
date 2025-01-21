@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import {
@@ -23,7 +23,7 @@ let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
-const ConnStatusMap = new Map<string, PrimitiveAtom<ConnStatus>>();
+const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
 
 type GlobalInitOptions = {
     tabId: string;
@@ -135,7 +135,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const typeAheadModalAtom = atom({});
     const modalOpen = atom(false);
     const allConnStatusAtom = atom<ConnStatus[]>((get) => {
-        const connStatuses = Array.from(ConnStatusMap.values()).map((atom) => get(atom));
+        const connStatusMap = get(ConnStatusMapAtom);
+        const connStatuses = Array.from(connStatusMap.values()).map((atom) => get(atom));
         return connStatuses;
     });
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
@@ -164,10 +165,11 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
+        isTermMultiInput: atom(false),
     };
 }
 
-function initGlobalWaveEventSubs() {
+function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
     waveEventSubscribe(
         {
             eventType: "waveobj:update",
@@ -192,6 +194,7 @@ function initGlobalWaveEventSubs() {
                 const data: UserInputRequest = event.data;
                 modalsModel.pushModal("UserInputModal", { ...data });
             },
+            scope: initOpts.windowId,
         },
         {
             eventType: "blockfile",
@@ -496,6 +499,10 @@ function getBlockComponentModel(blockId: string): BlockComponentModel {
     return blockComponentModelMap.get(blockId);
 }
 
+function getAllBlockComponentModels(): BlockComponentModel[] {
+    return Array.from(blockComponentModelMap.values());
+}
+
 function getFocusedBlockId(): string {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedLayoutNode = globalStore.get(layoutModel.focusedNode);
@@ -573,7 +580,8 @@ function subscribeToConnEvents() {
 }
 
 function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
-    let rtn = ConnStatusMap.get(conn);
+    const connStatusMap = globalStore.get(ConnStatusMapAtom);
+    let rtn = connStatusMap.get(conn);
     if (rtn == null) {
         if (isBlank(conn)) {
             // create a fake "local" status atom that's always connected
@@ -599,7 +607,9 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
             };
             rtn = atom(connStatus);
         }
-        ConnStatusMap.set(conn, rtn);
+        const newConnStatusMap = new Map(connStatusMap);
+        newConnStatusMap.set(conn, rtn);
+        globalStore.set(ConnStatusMapAtom, newConnStatusMap);
     }
     return rtn;
 }
@@ -665,6 +675,7 @@ export {
     createBlock,
     createTab,
     fetchWaveFile,
+    getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,

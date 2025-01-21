@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { useCallback, useEffect, useRef } from "react";
@@ -38,7 +38,7 @@ export function useLongClick<T extends HTMLElement>(
 
         const startPressBound = startPress.bind(element);
         const stopPressBound = stopPress.bind(element);
-        const onClickBound = onClick.bind(element);
+        const onClickBound = onClick?.bind(element);
 
         element.addEventListener("pointerdown", startPressBound);
         element.addEventListener("pointerup", stopPressBound);

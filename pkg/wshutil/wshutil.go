@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshutil
@@ -12,6 +12,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -21,6 +24,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
@@ -42,7 +47,7 @@ const ESC = 0x1b
 const DefaultOutputChSize = 32
 const DefaultInputChSize = 32
 
-const WaveJwtTokenVarName = "WAVETERM_JWT"
+const WaveJwtTokenVarName = wavebase.WaveJwtTokenVarName
 
 // OSC escape types
 // OSC 23198 ; (JSON | base64-JSON) ST
@@ -414,10 +419,10 @@ type WriteFlusher interface {
 }
 
 // blocking, returns if there is an error, or on EOF of input
-func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
+func HandleStdIOClient(logName string, input chan utilfn.LineOutput, output io.Writer) {
 	proxy := MakeRpcMultiProxy()
 	rawCh := make(chan []byte, DefaultInputChSize)
-	go packetparser.Parse(input, proxy.FromRemoteRawCh, rawCh)
+	go packetparser.ParseWithLinesChan(input, proxy.FromRemoteRawCh, rawCh)
 	doneCh := make(chan struct{})
 	var doneOnce sync.Once
 	closeDoneCh := func() {
@@ -451,6 +456,9 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 		}()
 		defer closeDoneCh()
 		for msg := range rawCh {
+			if !bytes.HasSuffix(msg, []byte{'\n'}) {
+				msg = append(msg, '\n')
+			}
 			log.Printf("[%s:stdout] %s", logName, msg)
 		}
 	}()
@@ -535,4 +543,33 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	}
 	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	return sockName, nil
+}
+
+func getShell() string {
+	if runtime.GOOS == "darwin" {
+		return shellutil.GetMacUserShell()
+	}
+
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		return "/bin/bash"
+	}
+	return strings.TrimSpace(shell)
+}
+
+func GetInfo() wshrpc.RemoteInfo {
+	return wshrpc.RemoteInfo{
+		ClientArch:    runtime.GOARCH,
+		ClientOs:      runtime.GOOS,
+		ClientVersion: wavebase.WaveVersion,
+		Shell:         getShell(),
+	}
+
+}
+
+func InstallRcFiles() error {
+	home := wavebase.GetHomeDir()
+	waveDir := filepath.Join(home, wavebase.RemoteWaveHomeDirName)
+	wshBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
+	return shellutil.InitRcFiles(waveDir, wshBinDir)
 }

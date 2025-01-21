@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line
+// Copyright 2025, Command Line
 // SPDX-License-Identifier: Apache-2.0
 
 import { clsx } from "clsx";

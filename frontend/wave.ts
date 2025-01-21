@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { App } from "@/app/app";
@@ -163,7 +163,7 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
-    initGlobalWaveEventSubs();
+    initGlobalWaveEventSubs(initOpts);
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering

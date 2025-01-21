@@ -1,6 +1,6 @@
 //go:build windows
 
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wsl
@@ -17,6 +17,10 @@ import (
 
 var RegisteredDistros = gowsl.RegisteredDistros
 var DefaultDistro = gowsl.DefaultDistro
+
+type WslName struct {
+	Distro string `json:"distro"`
+}
 
 type Distro struct {
 	gowsl.Distro

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wconfig
@@ -51,16 +51,17 @@ type SettingsType struct {
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 
-	TermClear          bool     `json:"term:*,omitempty"`
-	TermFontSize       float64  `json:"term:fontsize,omitempty"`
-	TermFontFamily     string   `json:"term:fontfamily,omitempty"`
-	TermTheme          string   `json:"term:theme,omitempty"`
-	TermDisableWebGl   bool     `json:"term:disablewebgl,omitempty"`
-	TermLocalShellPath string   `json:"term:localshellpath,omitempty"`
-	TermLocalShellOpts []string `json:"term:localshellopts,omitempty"`
-	TermScrollback     *int64   `json:"term:scrollback,omitempty"`
-	TermCopyOnSelect   *bool    `json:"term:copyonselect,omitempty"`
-	TermTransparency   *float64 `json:"term:transparency,omitempty"`
+	TermClear               bool     `json:"term:*,omitempty"`
+	TermFontSize            float64  `json:"term:fontsize,omitempty"`
+	TermFontFamily          string   `json:"term:fontfamily,omitempty"`
+	TermTheme               string   `json:"term:theme,omitempty"`
+	TermDisableWebGl        bool     `json:"term:disablewebgl,omitempty"`
+	TermLocalShellPath      string   `json:"term:localshellpath,omitempty"`
+	TermLocalShellOpts      []string `json:"term:localshellopts,omitempty"`
+	TermScrollback          *int64   `json:"term:scrollback,omitempty"`
+	TermCopyOnSelect        *bool    `json:"term:copyonselect,omitempty"`
+	TermTransparency        *float64 `json:"term:transparency,omitempty"`
+	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
@@ -114,9 +115,9 @@ type SettingsType struct {
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
 
-	ConnClear               bool `json:"conn:*,omitempty"`
-	ConnAskBeforeWshInstall bool `json:"conn:askbeforewshinstall,omitempty"`
-	ConnWshEnabled          bool `json:"conn:wshenabled,omitempty"`
+	ConnClear               bool  `json:"conn:*,omitempty"`
+	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
+	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
 }
 
 type ConfigError struct {
@@ -133,6 +134,13 @@ type FullConfigType struct {
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
 	Connections    map[string]wshrpc.ConnKeywords `json:"connections"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
+}
+
+func DefaultBoolPtr(arg *bool, def bool) bool {
+	if arg == nil {
+		return def
+	}
+	return *arg
 }
 
 func goBackWS(barr []byte, offset int) int {
@@ -306,6 +314,8 @@ func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []C
 	return mergeMetaMap(rtn, homeConfigs, simpleMerge), allErrs
 }
 
+// this function should only be called by the wconfig code.
+// in golang code, the best way to get the current config is via the watcher -- wconfig.GetWatcher().GetFullConfig()
 func ReadFullConfig() FullConfigType {
 	var fullConfig FullConfigType
 	configRType := reflect.TypeOf(fullConfig)
@@ -538,6 +548,7 @@ type WidgetConfigType struct {
 	Color        string           `json:"color,omitempty"`
 	Label        string           `json:"label,omitempty"`
 	Description  string           `json:"description,omitempty"`
+	Magnified    bool             `json:"magnified,omitempty"`
 	BlockDef     waveobj.BlockDef `json:"blockdef"`
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
@@ -37,6 +37,15 @@ import "./preview.scss";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
+
+// TODO drive this using config
+const BOOKMARKS: { label: string; path: string }[] = [
+    { label: "Home", path: "~" },
+    { label: "Desktop", path: "~/Desktop" },
+    { label: "Downloads", path: "~/Downloads" },
+    { label: "Documents", path: "~/Documents" },
+    { label: "Root", path: "/" },
+];
 
 type SpecializedViewProps = {
     model: PreviewModel;
@@ -185,27 +194,10 @@ export class PreviewModel implements ViewModel {
                     elemtype: "iconbutton",
                     icon: "folder-open",
                     longClick: (e: React.MouseEvent<any>) => {
-                        const menuItems: ContextMenuItem[] = [];
-                        menuItems.push({
-                            label: "Go to Home",
-                            click: () => this.goHistory("~"),
-                        });
-                        menuItems.push({
-                            label: "Go to Desktop",
-                            click: () => this.goHistory("~/Desktop"),
-                        });
-                        menuItems.push({
-                            label: "Go to Downloads",
-                            click: () => this.goHistory("~/Downloads"),
-                        });
-                        menuItems.push({
-                            label: "Go to Documents",
-                            click: () => this.goHistory("~/Documents"),
-                        });
-                        menuItems.push({
-                            label: "Go to Root",
-                            click: () => this.goHistory("/"),
-                        });
+                        const menuItems: ContextMenuItem[] = BOOKMARKS.map((bookmark) => ({
+                            label: `Go to ${bookmark.label} (${bookmark.path})`,
+                            click: () => this.goHistory(bookmark.path),
+                        }));
                         ContextMenuModel.showContextMenu(menuItems, e);
                     },
                 };
@@ -364,7 +356,7 @@ export class PreviewModel implements ViewModel {
         this.connection = atom<Promise<string>>(async (get) => {
             const connName = get(this.blockAtom)?.meta?.connection;
             try {
-                await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
+                await RpcApi.ConnEnsureCommand(TabRpcClient, { connname: connName }, { timeout: 60000 });
                 globalStore.set(this.connectionError, "");
             } catch (e) {
                 globalStore.set(this.connectionError, e as string);

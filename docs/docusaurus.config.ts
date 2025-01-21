@@ -59,6 +59,8 @@ const config: Config = {
                 },
             },
         ],
+        "docusaurus-plugin-sass",
+        "@docusaurus/plugin-svgr",
     ].filter((v) => v),
     themes: [
         ["classic", { customCss: "src/css/custom.css" }],

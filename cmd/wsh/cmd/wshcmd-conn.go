@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -30,7 +30,6 @@ var connStatusCmd = &cobra.Command{
 var connReinstallCmd = &cobra.Command{
 	Use:     "reinstall CONNECTION",
 	Short:   "reinstall wsh on a connection",
-	Args:    cobra.ExactArgs(1),
 	RunE:    connReinstallRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -87,18 +86,26 @@ func validateConnectionName(name string) error {
 	return nil
 }
 
-func connStatusRun(cmd *cobra.Command, args []string) error {
+func getAllConnStatus() ([]wshrpc.ConnStatus, error) {
 	var allResp []wshrpc.ConnStatus
 	sshResp, err := wshclient.ConnStatusCommand(RpcClient, nil)
 	if err != nil {
-		return fmt.Errorf("getting ssh connection status: %w", err)
+		return nil, fmt.Errorf("getting ssh connection status: %w", err)
 	}
 	allResp = append(allResp, sshResp...)
 	wslResp, err := wshclient.WslStatusCommand(RpcClient, nil)
 	if err != nil {
-		return fmt.Errorf("getting wsl connection status: %w", err)
+		return nil, fmt.Errorf("getting wsl connection status: %w", err)
 	}
 	allResp = append(allResp, wslResp...)
+	return allResp, nil
+}
+
+func connStatusRun(cmd *cobra.Command, args []string) error {
+	allResp, err := getAllConnStatus()
+	if err != nil {
+		return err
+	}
 	if len(allResp) == 0 {
 		WriteStdout("no connections\n")
 		return nil
@@ -116,11 +123,21 @@ func connStatusRun(cmd *cobra.Command, args []string) error {
 }
 
 func connReinstallRun(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
+		if RpcContext.Conn == "" {
+			return fmt.Errorf("no connection specified")
+		}
+		args = []string{RpcContext.Conn}
+	}
 	connName := args[0]
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	err := wshclient.ConnReinstallWshCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 60000})
+	data := wshrpc.ConnExtData{
+		ConnName:   connName,
+		LogBlockId: RpcContext.BlockId,
+	}
+	err := wshclient.ConnReinstallWshCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("reinstalling connection: %w", err)
 	}
@@ -142,21 +159,19 @@ func connDisconnectRun(cmd *cobra.Command, args []string) error {
 }
 
 func connDisconnectAllRun(cmd *cobra.Command, args []string) error {
-	resp, err := wshclient.ConnStatusCommand(RpcClient, nil)
+	allConns, err := getAllConnStatus()
 	if err != nil {
-		return fmt.Errorf("getting connection status: %w", err)
+		return err
 	}
-	if len(resp) == 0 {
-		return nil
-	}
-	for _, conn := range resp {
-		if conn.Status == "connected" {
-			err := wshclient.ConnDisconnectCommand(RpcClient, conn.Connection, &wshrpc.RpcOpts{Timeout: 10000})
-			if err != nil {
-				WriteStdout("error disconnecting %q: %v\n", conn.Connection, err)
-			} else {
-				WriteStdout("disconnected %q\n", conn.Connection)
-			}
+	for _, conn := range allConns {
+		if conn.Status != "connected" {
+			continue
+		}
+		err := wshclient.ConnDisconnectCommand(RpcClient, conn.Connection, &wshrpc.RpcOpts{Timeout: 10000})
+		if err != nil {
+			WriteStdout("error disconnecting %q: %v\n", conn.Connection, err)
+		} else {
+			WriteStdout("disconnected %q\n", conn.Connection)
 		}
 	}
 	return nil
@@ -167,7 +182,11 @@ func connConnectRun(cmd *cobra.Command, args []string) error {
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	err := wshclient.ConnConnectCommand(RpcClient, wshrpc.ConnRequest{Host: connName}, &wshrpc.RpcOpts{Timeout: 60000})
+	data := wshrpc.ConnRequest{
+		Host:       connName,
+		LogBlockId: RpcContext.BlockId,
+	}
+	err := wshclient.ConnConnectCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("connecting connection: %w", err)
 	}
@@ -180,7 +199,11 @@ func connEnsureRun(cmd *cobra.Command, args []string) error {
 	if err := validateConnectionName(connName); err != nil {
 		return err
 	}
-	err := wshclient.ConnEnsureCommand(RpcClient, connName, &wshrpc.RpcOpts{Timeout: 60000})
+	data := wshrpc.ConnExtData{
+		ConnName:   connName,
+		LogBlockId: RpcContext.BlockId,
+	}
+	err := wshclient.ConnEnsureCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("ensuring connection: %w", err)
 	}

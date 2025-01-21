@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import {
@@ -23,10 +23,10 @@ import {
     getSettingsKeyAtom,
     getUserName,
     globalStore,
-    refocusNode,
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
+import { globalRefocusWithTimeout } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -38,8 +38,10 @@ import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 import { JSX } from "react";
+import { CopyButton } from "../element/copybutton";
 import { BlockFrameProps } from "./blocktypes";
 
 const NumActiveConnColors = 8;
@@ -293,7 +295,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
         );
     } else if (elem.elemtype == "textbutton") {
         return (
-            <Button className={elem.className} onClick={(e) => elem.onClick(e)}>
+            <Button className={elem.className} onClick={(e) => elem.onClick(e)} title={elem.title}>
                 {elem.text}
             </Button>
         );
@@ -357,7 +359,11 @@ const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(TabRpcClient, { host: connName }, { timeout: 60000 });
+            const prtn = RpcApi.ConnConnectCommand(
+                TabRpcClient,
+                { host: connName, logblockid: nodeModel.blockId },
+                { timeout: 60000 }
+            );
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName]);
 
@@ -417,6 +423,21 @@ const ConnStatusOverlay = React.memo(
             setShowWshError(showWshErrorTemp);
         }, [connStatus, wshConfigEnabled]);
 
+        const handleCopy = React.useCallback(
+            async (e: React.MouseEvent) => {
+                const errTexts = [];
+                if (showError) {
+                    errTexts.push(`error: ${connStatus.error}`);
+                }
+                if (showWshError) {
+                    errTexts.push(`unable to use wsh: ${connStatus.wsherror}`);
+                }
+                const textToCopy = errTexts.join("\n");
+                await navigator.clipboard.writeText(textToCopy);
+            },
+            [showError, showWshError, connStatus.error, connStatus.wsherror]
+        );
+
         if (!showWshError && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
@@ -428,10 +449,16 @@ const ConnStatusOverlay = React.memo(
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
                         <div className="connstatus-status">
                             <div className="connstatus-status-text">{statusText}</div>
-                            {showError ? <div className="connstatus-error">error: {connStatus.error}</div> : null}
-                            {showWshError ? (
-                                <div className="connstatus-error">unable to use wsh: {connStatus.wsherror}</div>
-                            ) : null}
+                            {(showError || showWshError) && (
+                                <OverlayScrollbarsComponent
+                                    className="connstatus-error"
+                                    options={{ scrollbars: { autoHide: "leave" } }}
+                                >
+                                    <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
+                                    {showError ? <div>error: {connStatus.error}</div> : null}
+                                    {showWshError ? <div>unable to use wsh: {connStatus.wsherror}</div> : null}
+                                </OverlayScrollbarsComponent>
+                            )}
                             {showWshError && (
                                 <Button className={reconClassName} onClick={handleDisableWsh}>
                                     always disable wsh
@@ -542,7 +569,11 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         const connName = blockData?.meta?.connection;
         if (!util.isBlank(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
-            RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 }).catch((e) => {
+            RpcApi.ConnEnsureCommand(
+                TabRpcClient,
+                { connname: connName, logblockid: nodeModel.blockId },
+                { timeout: 60000 }
+            ).catch((e) => {
                 console.log("error ensuring connection", nodeModel.blockId, connName, e);
             });
         }
@@ -692,7 +723,11 @@ const ChangeConnectionBlockModal = React.memo(
                     meta: { connection: connName, file: newCwd },
                 });
                 try {
-                    await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
+                    await RpcApi.ConnEnsureCommand(
+                        TabRpcClient,
+                        { connname: connName, logblockid: blockId },
+                        { timeout: 60000 }
+                    );
                 } catch (e) {
                     console.log("error connecting", blockId, connName, e);
                 }
@@ -757,7 +792,7 @@ const ChangeConnectionBlockModal = React.memo(
             onSelect: async (_: string) => {
                 const prtn = RpcApi.ConnConnectCommand(
                     TabRpcClient,
-                    { host: connStatus.connection },
+                    { host: connStatus.connection, logblockid: blockId },
                     { timeout: 60000 }
                 );
                 prtn.catch((e) => console.log("error reconnecting", connStatus.connection, e));
@@ -880,12 +915,13 @@ const ChangeConnectionBlockModal = React.memo(
                     } else {
                         changeConnection(rowItem.value);
                         globalStore.set(changeConnModalAtom, false);
+                        globalRefocusWithTimeout(10);
                     }
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                     globalStore.set(changeConnModalAtom, false);
                     setConnSelected("");
-                    refocusNode(blockId);
+                    globalRefocusWithTimeout(10);
                     return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
@@ -917,6 +953,7 @@ const ChangeConnectionBlockModal = React.memo(
                 onSelect={(selected: string) => {
                     changeConnection(selected);
                     globalStore.set(changeConnModalAtom, false);
+                    globalRefocusWithTimeout(10);
                 }}
                 selectIndex={rowIndex}
                 autoFocus={isNodeFocused}

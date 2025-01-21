@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -34,6 +34,7 @@ const (
 	ConfigKey_TermScrollback                 = "term:scrollback"
 	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
 	ConfigKey_TermTransparency               = "term:transparency"
+	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

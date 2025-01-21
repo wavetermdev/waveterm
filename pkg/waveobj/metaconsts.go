@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -94,6 +94,8 @@ const (
 	MetaKey_TermVDomSubBlockId               = "term:vdomblockid"
 	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
 	MetaKey_TermTransparency                 = "term:transparency"
+	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
+	MetaKey_TermConnDebug                    = "term:conndebug"
 
 	MetaKey_WebZoom                          = "web:zoom"
 	MetaKey_WebHideNav                       = "web:hidenav"

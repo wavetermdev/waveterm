@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -162,7 +162,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		if err != nil {
 			return fmt.Errorf("error formatting metadata: %v", err)
 		}
-		WriteStdout(string(jsonBytes) + "\n")
+		WriteStdout("%s\n", string(jsonBytes))
 		return nil
 	}
 

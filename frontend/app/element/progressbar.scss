@@ -2,25 +2,28 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .progress-bar-container {
-    position: relative;
     width: 100%;
-    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: space-between;
 
+    --progress-bar-radius: 9px;
+
     .outer {
+        position: relative;
         border: 1px solid rgb(from var(--main-text-color) r g b / 15%);
-        border-radius: 40px;
-        padding: 4px;
+        border-radius: var(--progress-bar-radius);
         background-color: var(--main-bg-color);
         flex-grow: 1;
-
+        height: 10px;
         .progress-bar-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
             height: 100%;
             transition: width 0.3s ease-in-out;
-            background-color: var(--success-color);
-            border-radius: 9px;
+            background-color: var(--accent-color);
+            border-radius: var(--progress-bar-radius);
             width: 100%;
         }
     }

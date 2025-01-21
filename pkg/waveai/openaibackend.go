@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -29,7 +29,7 @@ func defaultAzureMapperFn(model string) string {
 
 func setApiType(opts *wshrpc.WaveAIOptsType, clientConfig *openaiapi.ClientConfig) error {
 	ourApiType := strings.ToLower(opts.APIType)
-	if ourApiType == "" || ourApiType == strings.ToLower(string(openaiapi.APITypeOpenAI)) {
+	if ourApiType == "" || ourApiType == APIType_OpenAI || ourApiType == strings.ToLower(string(openaiapi.APITypeOpenAI)) {
 		clientConfig.APIType = openaiapi.APITypeOpenAI
 		return nil
 	} else if ourApiType == strings.ToLower(string(openaiapi.APITypeAzure)) {
