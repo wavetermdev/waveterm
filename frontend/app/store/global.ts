@@ -23,7 +23,7 @@ let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
-const ConnStatusMap = new Map<string, PrimitiveAtom<ConnStatus>>();
+const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
 
 type GlobalInitOptions = {
     tabId: string;
@@ -135,7 +135,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const typeAheadModalAtom = atom({});
     const modalOpen = atom(false);
     const allConnStatusAtom = atom<ConnStatus[]>((get) => {
-        const connStatuses = Array.from(ConnStatusMap.values()).map((atom) => get(atom));
+        const connStatusMap = get(ConnStatusMapAtom);
+        const connStatuses = Array.from(connStatusMap.values()).map((atom) => get(atom));
         return connStatuses;
     });
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
@@ -579,7 +580,8 @@ function subscribeToConnEvents() {
 }
 
 function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
-    let rtn = ConnStatusMap.get(conn);
+    const connStatusMap = globalStore.get(ConnStatusMapAtom);
+    let rtn = connStatusMap.get(conn);
     if (rtn == null) {
         if (isBlank(conn)) {
             // create a fake "local" status atom that's always connected
@@ -605,7 +607,9 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
             };
             rtn = atom(connStatus);
         }
-        ConnStatusMap.set(conn, rtn);
+        const newConnStatusMap = new Map(connStatusMap);
+        newConnStatusMap.set(conn, rtn);
+        globalStore.set(ConnStatusMapAtom, newConnStatusMap);
     }
     return rtn;
 }
