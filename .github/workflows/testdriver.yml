@@ -11,10 +11,8 @@ env:
     NODE_VERSION: 22
 
 permissions:
-    contents: read
-    pull-requests: write
-    checks: write
-    actions: read
+  contents: read
+  statuses: write
 
 jobs:
     context:
