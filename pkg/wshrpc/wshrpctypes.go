@@ -512,6 +512,7 @@ type FileCopyOpts struct {
 	Overwrite bool `json:"overwrite,omitempty"`
 	Recursive bool `json:"recursive,omitempty"`
 	Merge     bool `json:"merge,omitempty"`
+	Timeout   int  `json:"timeout,omitempty"`
 }
 
 type CommandRemoteStreamFileData struct {

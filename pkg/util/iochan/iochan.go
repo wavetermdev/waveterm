@@ -6,42 +6,46 @@ package iochan
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 // ReaderChan reads from an io.Reader and sends the data to a channel
 func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func()) chan wshrpc.RespOrErrorUnion[[]byte] {
-	ch := make(chan wshrpc.RespOrErrorUnion[[]byte], 16)
+	ch := make(chan wshrpc.RespOrErrorUnion[[]byte], 32)
 	go func() {
 		defer func() {
 			log.Printf("ReaderChan: closing channel")
-			callback()
 			close(ch)
+			callback()
 		}()
 		buf := make([]byte, chunkSize)
 		for {
-			if ctx.Err() != nil {
+			select {
+			case <-ctx.Done():
 				if ctx.Err() == context.Canceled {
 					return
 				}
 				log.Printf("ReaderChan: context error: %v", ctx.Err())
 				return
-			}
-
-			if n, err := r.Read(buf); err != nil && err != io.EOF {
-				ch <- wshrpc.RespOrErrorUnion[[]byte]{Error: fmt.Errorf("ReaderChan: read error: %v", err)}
-				log.Printf("ReaderChan: read error: %v", err)
-				return
-			} else if err == io.EOF {
-				log.Printf("ReaderChan: EOF")
-				return
-			} else if n > 0 {
-				// log.Printf("ReaderChan: read %d bytes", n)
-				ch <- wshrpc.RespOrErrorUnion[[]byte]{Response: buf[:n]}
+			default:
+				if n, err := r.Read(buf); err != nil {
+					if errors.Is(err, io.EOF) {
+						log.Printf("ReaderChan: EOF")
+						return
+					}
+					ch <- wshutil.RespErr[[]byte](fmt.Errorf("ReaderChan: read error: %v", err))
+					log.Printf("ReaderChan: read error: %v", err)
+					return
+				} else if n > 0 {
+					// log.Printf("ReaderChan: read %d bytes", n)
+					ch <- wshrpc.RespOrErrorUnion[[]byte]{Response: buf[:n]}
+				}
 			}
 		}
 	}()

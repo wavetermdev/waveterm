@@ -33,6 +33,7 @@ const (
 	WaveFilePrefix = "wavefile://"
 
 	DefaultFileTimeout = 5000
+	TimeoutYear        = int(365 * 24 * time.Hour) // 1 year
 
 	UriHelpText = `
 
@@ -394,83 +395,11 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to parse dest path: %w", err)
 	}
 	log.Printf("Copying %s to %s; recursive: %v, merge: %v, force: %v", srcPath, destPath, recursive, merge, force)
-	err = wshclient.FileCopyCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Recursive: recursive, Merge: merge, Overwrite: force}}, &wshrpc.RpcOpts{Timeout: fileTimeout})
+	rpcOpts := &wshrpc.RpcOpts{Timeout: TimeoutYear}
+	err = wshclient.FileCopyCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Recursive: recursive, Merge: merge, Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("copying file: %w", err)
 	}
-	return nil
-}
-
-func copyFromWaveToLocal(src, dst string) error {
-	path, err := fixRelativePaths(src)
-	if err != nil {
-		return err
-	}
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path}}
-
-	// Get file info first to check existence and get size
-	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
-	err = convertNotFoundErr(err)
-	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", src)
-	}
-	if err != nil {
-		return fmt.Errorf("getting file info: %w", err)
-	}
-
-	// Create the destination file
-	f, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("creating local file: %w", err)
-	}
-	defer f.Close()
-
-	err = streamReadFromFile(fileData, info.Size, f)
-	if err != nil {
-		return fmt.Errorf("reading wave file: %w", err)
-	}
-
-	return nil
-}
-
-func copyFromLocalToWave(src, dst string) error {
-	path, err := fixRelativePaths(dst)
-	if err != nil {
-		return err
-	}
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path}}
-
-	// stat local file
-	stat, err := os.Stat(src)
-	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", src)
-	}
-	if err != nil {
-		return fmt.Errorf("stat local file: %w", err)
-	}
-	if stat.IsDir() {
-		return fmt.Errorf("%s: is a directory", src)
-	}
-	_, err = ensureFile(dst, fileData)
-	if err != nil {
-		return err
-	}
-
-	file, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("opening local file: %w", err)
-	}
-	defer file.Close()
-
-	err = streamWriteToFile(fileData, file)
-	if err != nil {
-		return fmt.Errorf("writing wave file: %w", err)
-	}
-
 	return nil
 }
 

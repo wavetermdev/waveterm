@@ -10,12 +10,17 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+)
+
+const (
+	ThirtySeconds = int(30 * time.Second)
 )
 
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver
@@ -87,7 +92,11 @@ func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, d
 
 func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
 	log.Print("ReadTarStream wshfs")
-	return wshclient.RemoteTarStreamCommand(RpcClient, wshrpc.CommandRemoteStreamTarData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	timeout := opts.Timeout
+	if timeout == 0 {
+		timeout = ThirtySeconds
+	}
+	return wshclient.RemoteTarStreamCommand(RpcClient, wshrpc.CommandRemoteStreamTarData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host), Timeout: timeout})
 }
 
 func (c WshClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
@@ -125,7 +134,11 @@ func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connec
 }
 
 func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestPath: destConn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host)})
+	timeout := opts.Timeout
+	if timeout == 0 {
+		timeout = ThirtySeconds
+	}
+	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestPath: destConn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
 
 func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection) error {

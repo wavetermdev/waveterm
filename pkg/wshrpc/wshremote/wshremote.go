@@ -228,7 +228,11 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	}
 	pipeReader, pipeWriter := io.Pipe()
 	tarWriter := tar.NewWriter(pipeWriter)
-	readerCtx, _ := context.WithTimeout(context.Background(), time.Second*30)
+	timeout := time.Millisecond * 100
+	if opts.Timeout > 0 {
+		timeout = time.Duration(opts.Timeout)
+	}
+	readerCtx, _ := context.WithTimeout(context.Background(), timeout)
 	rtn := iochan.ReaderChan(readerCtx, pipeReader, wshrpc.FileChunkSize, func() {
 		pipeReader.Close()
 		pipeWriter.Close()
@@ -318,7 +322,11 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		return fmt.Errorf("cannot stat destination %q: %w", destPath, err)
 	}
 	log.Printf("copying %q to %q\n", srcUri, destPath)
-	readCtx, _ := context.WithTimeout(ctx, time.Second*30)
+	timeout := time.Millisecond * 100
+	if opts.Timeout > 0 {
+		timeout = time.Duration(opts.Timeout)
+	}
+	readCtx, _ := context.WithTimeout(ctx, timeout)
 	readCtx, cancel := context.WithCancelCause(readCtx)
 	ioch := fileshare.ReadTarStream(readCtx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
 	pipeReader, pipeWriter := io.Pipe()

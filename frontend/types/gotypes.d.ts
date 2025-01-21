@@ -371,6 +371,7 @@ declare global {
         overwrite?: boolean;
         recursive?: boolean;
         merge?: boolean;
+        timeout?: number;
     };
 
     // wshrpc.FileData
