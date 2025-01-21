@@ -43,6 +43,12 @@ const (
 )
 
 const (
+	ConnType_Local = "local"
+	ConnType_Wsl   = "wsl"
+	ConnType_Ssh   = "ssh"
+)
+
+const (
 	Status_Running = "running"
 	Status_Done    = "done"
 	Status_Init    = "init"
@@ -355,6 +361,49 @@ func (bc *BlockController) makeSwapToken(ctx context.Context, blockMeta waveobj.
 	return token
 }
 
+type ConnUnion struct {
+	SshConn    *conncontroller.SSHConn
+	WslConn    *wslconn.WslConn
+	WshEnabled bool
+}
+
+func (bc *BlockController) getConnAndType(logCtx context.Context, remoteName string, blockMeta waveobj.MetaMapType) (string, ConnUnion, error) {
+	wshEnabled := !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false)
+	if strings.HasPrefix(remoteName, "wsl://") {
+		wslName := strings.TrimPrefix(remoteName, "wsl://")
+		wslConn := wslconn.GetWslConn(wslName)
+		if wslConn == nil {
+			return "", ConnUnion{}, fmt.Errorf("wsl connection not found: %s", remoteName)
+		}
+		connStatus := wslConn.DeriveConnStatus()
+		if connStatus.Status != conncontroller.Status_Connected {
+			return "", ConnUnion{}, fmt.Errorf("wsl connection %s not connected, cannot start shellproc", remoteName)
+		}
+		union := ConnUnion{WslConn: wslConn}
+		union.WshEnabled = wshEnabled && wslConn.WshEnabled.Load()
+		return ConnType_Wsl, union, nil
+	} else if remoteName != "" {
+		opts, err := remote.ParseOpts(remoteName)
+		if err != nil {
+			return "", ConnUnion{}, fmt.Errorf("invalid ssh remote name (%s): %w", remoteName, err)
+		}
+		conn := conncontroller.GetConn(opts)
+		if conn == nil {
+			return "", ConnUnion{}, fmt.Errorf("ssh connection not found: %s", remoteName)
+		}
+		connStatus := conn.DeriveConnStatus()
+		if connStatus.Status != conncontroller.Status_Connected {
+			return "", ConnUnion{}, fmt.Errorf("ssh connection %s not connected, cannot start shellproc", remoteName)
+		}
+		union := ConnUnion{SshConn: conn}
+		union.WshEnabled = wshEnabled && conn.WshEnabled.Load()
+		return ConnType_Ssh, union, nil
+	} else {
+		return ConnType_Local, ConnUnion{WshEnabled: wshEnabled}, nil
+	}
+
+}
+
 func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc *RunShellOpts, blockMeta waveobj.MetaMapType) (*shellexec.ShellProc, error) {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
@@ -373,9 +422,12 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	}
 	// TODO better sync here (don't let two starts happen at the same times)
 	remoteName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
+	connType, connUnion, err := bc.getConnAndType(logCtx, remoteName, blockMeta)
+	if err != nil {
+		return nil, err
+	}
 	var cmdStr string
 	var cmdOpts shellexec.CommandOptsType
-	var err error
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
@@ -401,19 +453,14 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	swapToken := bc.makeSwapToken(ctx, blockMeta, remoteName)
 	cmdOpts.SwapToken = swapToken
 	blocklogger.Infof(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
-	if strings.HasPrefix(remoteName, "wsl://") {
-		wslName := strings.TrimPrefix(remoteName, "wsl://")
-		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancelFunc()
-
-		wslConn := wslconn.GetWslConn(credentialCtx, wslName, false)
-		connStatus := wslConn.DeriveConnStatus()
-		if connStatus.Status != conncontroller.Status_Connected {
-			return nil, fmt.Errorf("not connected, cannot start shellproc")
-		}
-
-		// create jwt
-		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
+	if connType == ConnType_Wsl {
+		wslConn := connUnion.WslConn
+		if !connUnion.WshEnabled {
+			shellProc, err = shellexec.StartWslShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
+			if err != nil {
+				return nil, err
+			}
+		} else {
 			sockName := wslConn.GetDomainSocketName()
 			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
@@ -423,13 +470,6 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
-		}
-		if !wslConn.WshEnabled.Load() {
-			shellProc, err = shellexec.StartWslShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
-			if err != nil {
-				return nil, err
-			}
-		} else {
 			shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
 			if err != nil {
 				wslConn.SetWshError(err)
@@ -442,20 +482,14 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 				}
 			}
 		}
-	} else if remoteName != "" {
-		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancelFunc()
-
-		opts, err := remote.ParseOpts(remoteName)
-		if err != nil {
-			return nil, err
-		}
-		conn := conncontroller.GetConn(credentialCtx, opts, &wshrpc.ConnKeywords{})
-		connStatus := conn.DeriveConnStatus()
-		if connStatus.Status != conncontroller.Status_Connected {
-			return nil, fmt.Errorf("not connected, cannot start shellproc")
-		}
-		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
+	} else if connType == ConnType_Ssh {
+		conn := connUnion.SshConn
+		if !conn.WshEnabled.Load() {
+			shellProc, err = shellexec.StartRemoteShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
+			if err != nil {
+				return nil, err
+			}
+		} else {
 			sockName := conn.GetDomainSocketName()
 			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
@@ -465,13 +499,6 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
-		}
-		if !conn.WshEnabled.Load() {
-			shellProc, err = shellexec.StartRemoteShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
-			if err != nil {
-				return nil, err
-			}
-		} else {
 			shellProc, err = shellexec.StartRemoteShellProc(ctx, logCtx, rc.TermSize, cmdStr, cmdOpts, conn)
 			if err != nil {
 				conn.SetWshError(err)
@@ -484,9 +511,8 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 				}
 			}
 		}
-	} else {
-		// local terminal
-		if !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false) {
+	} else if connType == ConnType_Local {
+		if connUnion.WshEnabled {
 			sockName := wavebase.GetDomainSocketName()
 			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
@@ -514,6 +540,8 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		return nil, fmt.Errorf("unknown connection type for conn %q: %s", remoteName, connType)
 	}
 	bc.UpdateControllerAndSendUpdate(func() bool {
 		bc.ShellProc = shellProc
@@ -799,7 +827,7 @@ func CheckConnStatus(blockId string) error {
 	}
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wslconn.GetWslConn(context.Background(), distroName, false)
+		conn := wslconn.GetWslConn(distroName)
 		connStatus := conn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {
 			return fmt.Errorf("not connected: %s", connStatus.Status)
@@ -810,7 +838,7 @@ func CheckConnStatus(blockId string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(context.Background(), opts, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(opts)
 	connStatus := conn.DeriveConnStatus()
 	if connStatus.Status != conncontroller.Status_Connected {
 		return fmt.Errorf("not connected: %s", connStatus.Status)

@@ -755,11 +755,8 @@ func getConnInternal(name string) *WslConn {
 	return rtn
 }
 
-func GetWslConn(ctx context.Context, name string, shouldConnect bool) *WslConn {
+func GetWslConn(name string) *WslConn {
 	conn := getConnInternal(name)
-	if conn.Client == nil && shouldConnect {
-		conn.Connect(ctx)
-	}
 	return conn
 }
 
@@ -768,7 +765,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	if connName == "" {
 		return nil
 	}
-	conn := GetWslConn(ctx, connName, false)
+	conn := GetWslConn(connName)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
