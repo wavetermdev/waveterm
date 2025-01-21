@@ -35,7 +35,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -145,7 +145,7 @@ func beforeSendActivityUpdate(ctx context.Context) {
 	activity.Blocks, _ = wstore.DBGetBlockViewCounts(ctx)
 	activity.NumWindows, _ = wstore.DBGetCount[*waveobj.Window](ctx)
 	activity.NumSSHConn = conncontroller.GetNumSSHHasConnected()
-	activity.NumWSLConn = wsl.GetNumWSLHasConnected()
+	activity.NumWSLConn = wslconn.GetNumWSLHasConnected()
 	activity.NumWSNamed, activity.NumWS, _ = wstore.DBGetWSCounts(ctx)
 	err := telemetry.UpdateActivity(ctx, activity)
 	if err != nil {

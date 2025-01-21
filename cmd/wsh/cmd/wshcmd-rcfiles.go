@@ -19,7 +19,7 @@ var rcfilesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := wshutil.InstallRcFiles()
 		if err != nil {
-			WriteStderr(err.Error())
+			WriteStderr("%s\n", err.Error())
 			return
 		}
 	},

@@ -5,6 +5,7 @@ package utilfn
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
@@ -617,10 +618,37 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 	}
 }
 
+const (
+	winFlagSoftlink = uint32(0x8000) // FILE_ATTRIBUTE_REPARSE_POINT
+	winFlagJunction = uint32(0x80)   // FILE_ATTRIBUTE_JUNCTION
+)
+
+func WinSymlinkDir(path string, bits os.FileMode) bool {
+	// Windows compatibility layer doesn't expose symlink target type through fileInfo
+	// so we need to check file attributes and extension patterns
+	isFileSymlink := func(filepath string) bool {
+		if len(filepath) == 0 {
+			return false
+		}
+		return strings.LastIndex(filepath, ".") > strings.LastIndex(filepath, "/")
+	}
+
+	flags := uint32(bits >> 12)
+
+	if flags == winFlagSoftlink {
+		return !isFileSymlink(path)
+	} else if flags == winFlagJunction {
+		return true
+	} else {
+		return false
+	}
+}
+
 // on error just returns ""
 // does not return "application/octet-stream" as this is considered a detection failure
 // can pass an existing fileInfo to avoid re-statting the file
 // falls back to text/plain for 0 byte files
+
 func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	if fileInfo == nil {
 		statRtn, err := os.Stat(path)
@@ -629,7 +657,8 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 		}
 		fileInfo = statRtn
 	}
-	if fileInfo.IsDir() {
+
+	if fileInfo.IsDir() || WinSymlinkDir(path, fileInfo.Mode()) {
 		return "directory"
 	}
 	if fileInfo.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
@@ -983,4 +1012,12 @@ func FilterValidArch(arch string) (string, error) {
 		return "arm64", nil
 	}
 	return "", fmt.Errorf("unknown architecture: %s", formatted)
+}
+
+func TimeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.Duration {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return defaultTimeout
+	}
+	return time.Until(deadline)
 }

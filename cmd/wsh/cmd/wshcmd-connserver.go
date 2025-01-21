@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -124,14 +125,10 @@ func runListener(listener net.Listener, router *wshutil.WshRouter) {
 	}
 }
 
-func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.WshRpc, error) {
-	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
-	if jwtToken == "" {
-		return nil, fmt.Errorf("no jwt token found for connserver")
-	}
+func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, jwtToken string) (*wshutil.WshRpc, error) {
 	rpcCtx, err := wshutil.ExtractUnverifiedRpcContext(jwtToken)
 	if err != nil {
-		return nil, fmt.Errorf("error extracting rpc context from %s: %v", wshutil.WaveJwtTokenVarName, err)
+		return nil, fmt.Errorf("error extracting rpc context from JWT token: %v", err)
 	}
 	authRtn, err := router.HandleProxyAuth(jwtToken)
 	if err != nil {
@@ -146,7 +143,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.Wsh
 	return connServerClient, nil
 }
 
-func serverRunRouter() error {
+func serverRunRouter(jwtToken string) error {
 	router := wshutil.NewWshRouter()
 	termProxy := wshutil.MakeRpcProxy()
 	rawCh := make(chan []byte, wshutil.DefaultOutputChSize)
@@ -179,7 +176,7 @@ func serverRunRouter() error {
 	if err != nil {
 		return fmt.Errorf("cannot create unix listener: %v", err)
 	}
-	client, err := setupConnServerRpcClientWithRouter(router)
+	client, err := setupConnServerRpcClientWithRouter(router, jwtToken)
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
@@ -207,8 +204,8 @@ func checkForUpdate() error {
 	return nil
 }
 
-func serverRunSingle() error {
-	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout})
+func serverRunSingle(jwtToken string) error {
+	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout}, jwtToken)
 	if err != nil {
 		return err
 	}
@@ -222,8 +219,8 @@ func serverRunSingle() error {
 	select {} // run forever
 }
 
-func serverRunNormal() error {
-	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout})
+func serverRunNormal(jwtToken string) error {
+	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout}, jwtToken)
 	if err != nil {
 		return err
 	}
@@ -232,12 +229,40 @@ func serverRunNormal() error {
 	select {} // run forever
 }
 
+func askForJwtToken() (string, error) {
+	// if it already exists in the environment, great, use it
+	jwtToken := os.Getenv(wavebase.WaveJwtTokenVarName)
+	if jwtToken != "" {
+		fmt.Printf("HAVE-JWT\n")
+		return jwtToken, nil
+	}
+
+	// otherwise, ask for it
+	fmt.Printf("%s\n", wavebase.NeedJwtConst)
+
+	// read a single line from stdin
+	var line string
+	_, err := fmt.Fscanln(os.Stdin, &line)
+	if err != nil {
+		return "", fmt.Errorf("failed to read JWT token from stdin: %w", err)
+	}
+	return strings.TrimSpace(line), nil
+}
+
 func serverRun(cmd *cobra.Command, args []string) error {
+	installErr := wshutil.InstallRcFiles()
+	if installErr != nil {
+		log.Printf("error installing rc files: %v", installErr)
+	}
+	jwtToken, err := askForJwtToken()
+	if err != nil {
+		return err
+	}
 	if singleServerRouter {
-		return serverRunSingle()
+		return serverRunSingle(jwtToken)
 	} else if connServerRouter {
-		return serverRunRouter()
+		return serverRunRouter(jwtToken)
 	} else {
-		return serverRunNormal()
+		return serverRunNormal(jwtToken)
 	}
 }

@@ -28,11 +28,13 @@ const (
 	RpcType_Complex          = "complex"          // streaming request/response
 )
 
+// TODO generate these constants from the interface
 const (
-	Command_Authenticate         = "authenticate"    // special
-	Command_Dispose              = "dispose"         // special (disposes of the route, for multiproxy only)
-	Command_RouteAnnounce        = "routeannounce"   // special (for routing)
-	Command_RouteUnannounce      = "routeunannounce" // special (for routing)
+	Command_Authenticate         = "authenticate"      // special
+	Command_AuthenticateToken    = "authenticatetoken" // special
+	Command_Dispose              = "dispose"           // special (disposes of the route, for multiproxy only)
+	Command_RouteAnnounce        = "routeannounce"     // special (for routing)
+	Command_RouteUnannounce      = "routeunannounce"   // special (for routing)
 	Command_Message              = "message"
 	Command_GetMeta              = "getmeta"
 	Command_SetMeta              = "setmeta"
@@ -110,6 +112,7 @@ type RespOrErrorUnion[T any] struct {
 
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
+	AuthenticateTokenCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error)
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
@@ -263,6 +266,14 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 type CommandAuthenticateRtnData struct {
 	RouteId   string `json:"routeid"`
 	AuthToken string `json:"authtoken,omitempty"`
+
+	// these fields are only set when doing a token swap
+	Env            map[string]string `json:"env,omitempty"`
+	InitScriptText string            `json:"initscripttext,omitempty"`
+}
+
+type CommandAuthenticateTokenData struct {
+	Token string `json:"token"`
 }
 
 type CommandDisposeData struct {
@@ -475,6 +486,7 @@ type ConnKeywords struct {
 	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
 	ConnOverrideConfig      bool   `json:"conn:overrideconfig,omitempty"`
 	ConnWshPath             string `json:"conn:wshpath,omitempty"`
+	ConnShellPath           string `json:"conn:shellpath,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`
@@ -488,6 +500,7 @@ type ConnKeywords struct {
 	SshHostName                     *string  `json:"ssh:hostname,omitempty"`
 	SshPort                         *string  `json:"ssh:port,omitempty"`
 	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
+	SshIdentitiesOnly               *bool    `json:"ssh:identitiesonly,omitempty"`
 	SshBatchMode                    *bool    `json:"ssh:batchmode,omitempty"`
 	SshPubkeyAuthentication         *bool    `json:"ssh:pubkeyauthentication,omitempty"`
 	SshPasswordAuthentication       *bool    `json:"ssh:passwordauthentication,omitempty"`

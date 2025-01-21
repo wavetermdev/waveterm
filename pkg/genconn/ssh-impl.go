@@ -6,6 +6,7 @@ package genconn
 import (
 	"fmt"
 	"io"
+	"log"
 	"sync"
 
 	"golang.org/x/crypto/ssh"
@@ -41,6 +42,7 @@ type SSHProcessController struct {
 
 // MakeSSHCmdClient creates a new instance of SSHCmdClient
 func MakeSSHCmdClient(client *ssh.Client, cmdSpec CommandSpec) (*SSHProcessController, error) {
+	log.Printf("SSH-NEWSESSION (cmdclient)\n")
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SSH session: %w", err)

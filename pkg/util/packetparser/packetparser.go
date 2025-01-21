@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
+
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 type PacketParser struct {
@@ -15,11 +18,38 @@ type PacketParser struct {
 	Ch     chan []byte
 }
 
+func ParseWithLinesChan(input chan utilfn.LineOutput, packetCh chan []byte, rawCh chan []byte) {
+	defer close(packetCh)
+	defer close(rawCh)
+	for {
+		// note this line doesn't have a trailing newline
+		line, ok := <-input
+		if !ok {
+			return
+		}
+		if line.Error != nil {
+			log.Printf("ParseWithLinesChan: error reading line: %v", line.Error)
+			return
+		}
+		if len(line.Line) <= 1 {
+			// just a blank line
+			continue
+		}
+		if bytes.HasPrefix([]byte(line.Line), []byte{'#', '#', 'N', '{'}) && bytes.HasSuffix([]byte(line.Line), []byte{'}'}) {
+			// strip off the leading "##"
+			packetCh <- []byte(line.Line[3:len(line.Line)])
+		} else {
+			rawCh <- []byte(line.Line)
+		}
+	}
+}
+
 func Parse(input io.Reader, packetCh chan []byte, rawCh chan []byte) error {
 	bufReader := bufio.NewReader(input)
 	defer close(packetCh)
 	defer close(rawCh)
 	for {
+		// note this line does have a trailing newline
 		line, err := bufReader.ReadBytes('\n')
 		if err == io.EOF {
 			return nil

@@ -25,7 +25,9 @@ import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
+import { CopyButton } from "../element/copybutton";
 import { BlockFrameProps } from "./blocktypes";
 
 const NumActiveConnColors = 8;
@@ -407,6 +409,21 @@ const ConnStatusOverlay = React.memo(
             setShowWshError(showWshErrorTemp);
         }, [connStatus, wshConfigEnabled]);
 
+        const handleCopy = React.useCallback(
+            async (e: React.MouseEvent) => {
+                const errTexts = [];
+                if (showError) {
+                    errTexts.push(`error: ${connStatus.error}`);
+                }
+                if (showWshError) {
+                    errTexts.push(`unable to use wsh: ${connStatus.wsherror}`);
+                }
+                const textToCopy = errTexts.join("\n");
+                await navigator.clipboard.writeText(textToCopy);
+            },
+            [showError, showWshError, connStatus.error, connStatus.wsherror]
+        );
+
         if (!showWshError && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
@@ -418,10 +435,16 @@ const ConnStatusOverlay = React.memo(
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
                         <div className="connstatus-status">
                             <div className="connstatus-status-text">{statusText}</div>
-                            {showError ? <div className="connstatus-error">error: {connStatus.error}</div> : null}
-                            {showWshError ? (
-                                <div className="connstatus-error">unable to use wsh: {connStatus.wsherror}</div>
-                            ) : null}
+                            {(showError || showWshError) && (
+                                <OverlayScrollbarsComponent
+                                    className="connstatus-error"
+                                    options={{ scrollbars: { autoHide: "leave" } }}
+                                >
+                                    <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
+                                    {showError ? <div>error: {connStatus.error}</div> : null}
+                                    {showWshError ? <div>unable to use wsh: {connStatus.wsherror}</div> : null}
+                                </OverlayScrollbarsComponent>
+                            )}
                             {showWshError && (
                                 <Button className={reconClassName} onClick={handleDisableWsh}>
                                     always disable wsh
