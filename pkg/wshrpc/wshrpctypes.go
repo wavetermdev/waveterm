@@ -486,7 +486,7 @@ type ConnKeywords struct {
 	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
 	ConnWshPath             string `json:"conn:wshpath,omitempty"`
 	ConnShellPath           string `json:"conn:shellpath,omitempty"`
-	ConnIgnoreConfig        *bool  `json:"conn:ingoreconfig,omitempty"`
+	ConnIgnoreConfig        *bool  `json:"conn:ignoreconfig,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`
