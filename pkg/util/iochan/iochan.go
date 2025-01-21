@@ -25,6 +25,9 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 		buf := make([]byte, chunkSize)
 		for {
 			if ctx.Err() != nil {
+				if ctx.Err() == context.Canceled {
+					return
+				}
 				log.Printf("ReaderChan: context error: %v", ctx.Err())
 				return
 			}
@@ -37,7 +40,7 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 				log.Printf("ReaderChan: EOF")
 				return
 			} else if n > 0 {
-				log.Printf("ReaderChan: read %d bytes", n)
+				// log.Printf("ReaderChan: read %d bytes", n)
 				ch <- wshrpc.RespOrErrorUnion[[]byte]{Response: buf[:n]}
 			}
 		}
@@ -46,25 +49,33 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 }
 
 // WriterChan reads from a channel and writes the data to an io.Writer
-func WriterChan(w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[[]byte], callback func(), errCallback func(error)) {
+func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[[]byte], callback func(), errCallback func(error)) {
 	go func() {
 		defer func() {
 			log.Printf("WriterChan: closing channel")
 			callback()
 			drainChannel(ch)
 		}()
-		for resp := range ch {
-			if resp.Error != nil {
-				log.Printf("WriterChan: error: %v", resp.Error)
-				errCallback(resp.Error)
+		for {
+			select {
+			case <-ctx.Done():
 				return
-			}
-			if n, err := w.Write(resp.Response); err != nil {
-				log.Printf("WriterChan: write error: %v", err)
-				errCallback(resp.Error)
-				return
-			} else {
-				log.Printf("WriterChan: wrote %d bytes", n)
+			case resp, ok := <-ch:
+				if !ok {
+					return
+				}
+				if resp.Error != nil {
+					log.Printf("WriterChan: error: %v", resp.Error)
+					errCallback(resp.Error)
+					return
+				}
+				if _, err := w.Write(resp.Response); err != nil {
+					log.Printf("WriterChan: write error: %v", err)
+					errCallback(resp.Error)
+					return
+				} else {
+					// log.Printf("WriterChan: wrote %d bytes", n)
+				}
 			}
 		}
 	}()

@@ -233,8 +233,15 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 		pipeReader.Close()
 		pipeWriter.Close()
 	})
+
+	var pathPrefix string
+	if finfo.IsDir() && strings.HasSuffix(cleanedPath, "/") {
+		pathPrefix = cleanedPath
+	} else {
+		pathPrefix = filepath.Dir(cleanedPath)
+	}
 	go func() {
-		if ctx.Err() != nil {
+		if readerCtx.Err() != nil {
 			return
 		}
 		defer tarWriter.Close()
@@ -253,7 +260,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 				return err
 			}
 
-			header.Name = strings.TrimPrefix(file, path)
+			header.Name = strings.TrimPrefix(file, pathPrefix)
 			if header.Name == "" {
 				return nil
 			}
@@ -269,6 +276,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 					return err
 				}
 				if n, err := io.Copy(tarWriter, data); err != nil {
+					log.Printf("error copying file %q: %v\n", file, err)
 					return err
 				} else {
 					log.Printf("wrote %d bytes to tar stream\n", n)
@@ -314,11 +322,12 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	readCtx, cancel := context.WithCancelCause(readCtx)
 	ioch := fileshare.ReadTarStream(readCtx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
 	pipeReader, pipeWriter := io.Pipe()
-	iochan.WriterChan(pipeWriter, ioch, func() {
+	iochan.WriterChan(readCtx, pipeWriter, ioch, func() {
 		log.Printf("closing pipe writer\n")
 		pipeWriter.Close()
 		pipeReader.Close()
 	}, cancel)
+	defer cancel(nil)
 	tarReader := tar.NewReader(pipeReader)
 	for {
 		select {

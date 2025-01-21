@@ -43,7 +43,7 @@ func TestIochan_Basic(t *testing.T) {
 		writerChanCallbackCalled = true
 	}
 	defer writerChanCallback() // Ensure the callback is called
-	iochan.WriterChan(destPipeWriter, ioch, writerChanCallback, func(err error) {})
+	iochan.WriterChan(context.TODO(), destPipeWriter, ioch, writerChanCallback, func(err error) {})
 
 	// Read the packet from the destination pipe and compare it to the original packet
 	buf := make([]byte, buflen)
