@@ -388,9 +388,23 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			cmdOpts.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
-		shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
-		if err != nil {
-			return nil, err
+		if !wslConn.WshEnabled.Load() {
+			shellProc, err = shellexec.StartWslShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
+			if err != nil {
+				wslConn.SetWshError(err)
+				wslConn.WshEnabled.Store(false)
+				log.Printf("error starting wsl shell proc with wsh: %v", err)
+				log.Print("attempting install without wsh")
+				shellProc, err = shellexec.StartWslShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 	} else if remoteName != "" {
 		credentialCtx, cancelFunc := context.WithTimeout(context.Background(), 60*time.Second)

@@ -150,6 +150,27 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 	return pp.Write([]byte(s))
 }
 
+func StartWslShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wslconn.WslConn) (*ShellProc, error) {
+	client := conn.GetClient()
+	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProcNoWsh)")
+
+	ecmd := exec.Command("wsl.exe", "~", "-d", client.Name())
+
+	if termSize.Rows == 0 || termSize.Cols == 0 {
+		termSize.Rows = shellutil.DefaultTermRows
+		termSize.Cols = shellutil.DefaultTermCols
+	}
+	if termSize.Rows <= 0 || termSize.Cols <= 0 {
+		return nil, fmt.Errorf("invalid term size: %v", termSize)
+	}
+	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
+	if err != nil {
+		return nil, err
+	}
+	cmdWrap := MakeCmdWrap(ecmd, cmdPty)
+	return &ShellProc{Cmd: cmdWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+}
+
 func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wslconn.WslConn) (*ShellProc, error) {
 	client := conn.GetClient()
 	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProc)")
