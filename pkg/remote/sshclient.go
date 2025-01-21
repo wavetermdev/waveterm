@@ -908,6 +908,31 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wshrpc.ConnKeyword
 	return sshKeywords, nil
 }
 
+func findSshDefaults(hostPattern string) (connKeywords *wshrpc.ConnKeywords, outErr error) {
+	sshKeywords := &wshrpc.ConnKeywords{}
+
+	userDetails, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.SshUser = &userDetails.Username
+	sshKeywords.SshHostName = &hostPattern
+	sshKeywords.SshPort = utilfn.Ptr(ssh_config.Default("Port"))
+	sshKeywords.SshIdentityFile = ssh_config.DefaultAll("IdentityFile", hostPattern, ssh_config.DefaultUserSettings) // use the sshconfig here. should be different later
+	sshKeywords.SshBatchMode = utilfn.Ptr(false)
+	sshKeywords.SshPubkeyAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshPasswordAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshKbdInteractiveAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshPreferredAuthentications = strings.Split(ssh_config.Default("PreferredAuthentications"), ",")
+	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(false)
+	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(false)
+	sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
+	sshKeywords.SshProxyJump = strings.Split(ssh_config.Default("ProxyJump"), ",")
+	sshKeywords.SshUserKnownHostsFile = strings.Fields(ssh_config.Default("UserKnownHostsFile"))
+	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(ssh_config.Default("GlobalKnownHostsFile"))
+	return sshKeywords, nil
+}
+
 type SSHOpts struct {
 	SSHHost string `json:"sshhost"`
 	SSHUser string `json:"sshuser"`
