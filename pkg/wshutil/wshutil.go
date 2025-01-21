@@ -549,7 +549,6 @@ func getShell() string {
 	if runtime.GOOS == "darwin" {
 		return shellutil.GetMacUserShell()
 	}
-
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		return "/bin/bash"
