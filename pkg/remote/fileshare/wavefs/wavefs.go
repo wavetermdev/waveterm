@@ -46,7 +46,7 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 			if !rtnData.Info.IsDir {
 				for i := 0; i < dataLen; i += wshrpc.FileChunkSize {
 					dataEnd := min(i+wshrpc.FileChunkSize, dataLen)
-					ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: rtnData.Data64[i:dataEnd], Info: rtnData.Info, At: &wshrpc.FileDataAt{Offset: int64(i), Size: int64(dataEnd - i)}}}
+					ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: rtnData.Data64[i:dataEnd], Info: rtnData.Info, At: &wshrpc.FileDataAt{Offset: int64(i), Size: dataEnd - i}}}
 				}
 			} else {
 				for i := 0; i < len(rtnData.Entries); i += wshrpc.DirChunkSize {
@@ -68,7 +68,7 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 		return nil, fmt.Errorf("error cleaning path: %w", err)
 	}
 	if data.At != nil {
-		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, data.At.Size)
+		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, int64(data.At.Size))
 		if err == nil {
 			return &wshrpc.FileData{Info: data.Info, Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
 		} else if err == fs.ErrNotExist {

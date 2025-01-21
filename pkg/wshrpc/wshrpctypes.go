@@ -200,7 +200,7 @@ type WshRpcInterface interface {
 	RemoteFileTouchCommand(ctx context.Context, path string) error
 	RemoteFileRenameCommand(ctx context.Context, pathTuple [2]string) error
 	RemoteFileDeleteCommand(ctx context.Context, path string) error
-	RemoteWriteFileCommand(ctx context.Context, data CommandRemoteWriteFileData) error
+	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteMkdirCommand(ctx context.Context, path string) error
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
@@ -363,7 +363,7 @@ type CommandBlockInputData struct {
 
 type FileDataAt struct {
 	Offset int64 `json:"offset"`
-	Size   int64 `json:"size,omitempty"`
+	Size   int   `json:"size,omitempty"`
 }
 
 type FileData struct {
@@ -527,12 +527,6 @@ type CommandRemoteListEntriesData struct {
 
 type CommandRemoteListEntriesRtnData struct {
 	FileInfo []*FileInfo `json:"fileinfo,omitempty"`
-}
-
-type CommandRemoteWriteFileData struct {
-	Path       string      `json:"path"`
-	Data64     string      `json:"data64"`
-	CreateMode os.FileMode `json:"createmode,omitempty"`
 }
 
 type ConnRequest struct {

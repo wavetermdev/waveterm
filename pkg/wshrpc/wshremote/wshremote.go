@@ -200,7 +200,7 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 			}
 			if len(data) > 0 {
 				resp.Data64 = base64.StdEncoding.EncodeToString(data)
-				resp.At = &wshrpc.FileDataAt{Offset: byteRange.Start, Size: int64(len(data))}
+				resp.At = &wshrpc.FileDataAt{Offset: byteRange.Start, Size: len(data)}
 			}
 			log.Printf("callback -- sending response %d\n", len(resp.Data64))
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: resp}
@@ -648,25 +648,50 @@ func (impl *ServerImpl) RemoteMkdirCommand(ctx context.Context, path string) err
 	return nil
 }
 
-func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.CommandRemoteWriteFileData) error {
-	path, err := wavebase.ExpandHomeDir(data.Path)
+func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileData) error {
+	path, err := wavebase.ExpandHomeDir(data.Info.Path)
 	if err != nil {
 		return err
 	}
-	createMode := data.CreateMode
+	createMode := data.Info.Mode
 	if createMode == 0 {
 		createMode = 0644
 	}
 	dataSize := base64.StdEncoding.DecodedLen(len(data.Data64))
 	dataBytes := make([]byte, dataSize)
-	n, err := base64.StdEncoding.Decode(dataBytes, []byte(data.Data64))
+	decodedLen, err := base64.StdEncoding.Decode(dataBytes, []byte(data.Data64))
 	if err != nil {
 		return fmt.Errorf("cannot decode base64 data: %w", err)
 	}
-	err = os.WriteFile(path, dataBytes[:n], createMode)
-	if err != nil {
-		return fmt.Errorf("cannot write file %q: %w", path, err)
+	finfo, err := os.Stat(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
+	fileSize := int64(0)
+	if finfo != nil {
+		fileSize = finfo.Size()
+	}
+	offset := fileSize
+	size := decodedLen
+	if data.At != nil {
+		if data.At.Offset > 0 {
+			offset = min(data.At.Offset, fileSize)
+		}
+		if data.At.Size > 0 {
+			size = min(data.At.Size, decodedLen)
+		}
+	}
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, createMode)
+	if err != nil {
+		return fmt.Errorf("cannot open file %q: %w", path, err)
+	}
+	offsetWriter := io.NewOffsetWriter(file, offset)
+	n, err := offsetWriter.Write(dataBytes[:size])
+	if err != nil {
+		return fmt.Errorf("cannot write to file %q: %w", path, err)
+	}
+	log.Printf("wrote %d bytes to file %q at offset %q\n", n, path, offset)
 	return nil
 }
 

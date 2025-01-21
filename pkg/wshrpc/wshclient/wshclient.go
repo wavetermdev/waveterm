@@ -369,7 +369,7 @@ func RemoteTarStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamTa
 }
 
 // command "remotewritefile", wshserver.RemoteWriteFileCommand
-func RemoteWriteFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteWriteFileData, opts *wshrpc.RpcOpts) error {
+func RemoteWriteFileCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotewritefile", data, opts)
 	return err
 }

@@ -102,7 +102,7 @@ func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) 
 		// Set up the ReadAt request
 		fileData.At = &wshrpc.FileDataAt{
 			Offset: offset,
-			Size:   int64(length),
+			Size:   length,
 		}
 
 		// Read the chunk

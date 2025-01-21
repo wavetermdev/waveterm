@@ -328,6 +328,10 @@ func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.Comma
 	return fileshare.ReadTarStream(ctx, data)
 }
 
+func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.FileData) error {
+	return fileshare.Append(ctx, data)
+}
+
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
 	if data.FileName == blockcontroller.BlockFile_VDom && tryCreate {

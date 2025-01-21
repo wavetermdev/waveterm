@@ -88,10 +88,10 @@ func init() {
 	fileCmd.AddCommand(fileRmCmd)
 	fileCmd.AddCommand(fileInfoCmd)
 	fileCmd.AddCommand(fileAppendCmd)
-	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
-	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
-	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
-	fileCmd.AddCommand(fileCpCmd)
+	// fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
+	// fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
+	// fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
+	// fileCmd.AddCommand(fileCpCmd)
 }
 
 type waveFileRef struct {

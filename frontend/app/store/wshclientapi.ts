@@ -308,7 +308,7 @@ class RpcApiType {
     }
 
     // command "remotewritefile" [call]
-    RemoteWriteFileCommand(client: WshClient, data: CommandRemoteWriteFileData, opts?: RpcOpts): Promise<void> {
+    RemoteWriteFileCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotewritefile", data, opts);
     }
 

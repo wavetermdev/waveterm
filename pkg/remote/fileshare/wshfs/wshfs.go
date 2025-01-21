@@ -84,7 +84,7 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	byteRange := ""
 	if data.At != nil && data.At.Size > 0 {
-		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+data.At.Size)
+		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+int64(data.At.Size))
 	}
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path, ByteRange: byteRange}
 	return wshclient.RemoteStreamFileCommand(RpcClient, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
@@ -121,8 +121,7 @@ func (c WshClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshrp
 }
 
 func (c WshClient) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
-	writeData := wshrpc.CommandRemoteWriteFileData{Path: conn.Path, Data64: data.Data64}
-	return wshclient.RemoteWriteFileCommand(RpcClient, writeData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	return wshclient.RemoteWriteFileCommand(RpcClient, data, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) Mkdir(ctx context.Context, conn *connparse.Connection) error {

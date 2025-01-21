@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/s3fs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -31,16 +29,21 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	conntype := conn.GetType()
 	log.Printf("CreateFileShareClient: conntype=%s", conntype)
 	if conntype == connparse.ConnectionTypeS3 {
-		config, err := awsconn.GetConfig(ctx, connection)
-		if err != nil {
-			log.Printf("error getting aws config: %v", err)
-			return nil, nil
-		}
-		return s3fs.NewS3Client(config), conn
+		// TODO: enable s3fs
+		return nil, nil
+		// config, err := awsconn.GetConfig(ctx, connection)
+		// if err != nil {
+		// 	log.Printf("error getting aws config: %v", err)
+		// 	return nil, nil
+		// }
+		// return s3fs.NewS3Client(config), conn
 	} else if conntype == connparse.ConnectionTypeWave {
 		return wavefs.NewWaveClient(), conn
-	} else {
+	} else if conntype == connparse.ConnectionTypeWsh {
 		return wshfs.NewWshClient(), conn
+	} else {
+		log.Printf("unsupported connection type: %s", conntype)
+		return nil, nil
 	}
 }
 
@@ -163,4 +166,22 @@ func Join(ctx context.Context, path string, parts ...string) (string, error) {
 		return "", fmt.Errorf(ErrorParsingConnection, path)
 	}
 	return client.Join(ctx, conn, parts...)
+}
+
+func Append(ctx context.Context, data wshrpc.FileData) error {
+	path := data.Info.Path
+	log.Printf("Append: path=%s", path)
+	client, conn := CreateFileShareClient(ctx, path)
+	if conn == nil || client == nil {
+		return fmt.Errorf(ErrorParsingConnection, path)
+	}
+	fdata, err := client.Read(ctx, conn, data)
+	if err != nil {
+		return err
+	}
+	data.Info = fdata.Info
+	data.At = &wshrpc.FileDataAt{
+		Offset: fdata.Info.Size,
+	}
+	return client.PutFile(ctx, conn, data)
 }

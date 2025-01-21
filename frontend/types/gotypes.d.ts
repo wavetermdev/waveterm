@@ -226,13 +226,6 @@ declare global {
         opts?: FileCopyOpts;
     };
 
-    // wshrpc.CommandRemoteWriteFileData
-    type CommandRemoteWriteFileData = {
-        path: string;
-        data64: string;
-        createmode?: number;
-    };
-
     // wshrpc.CommandResolveIdsData
     type CommandResolveIdsData = {
         blockid: string;
