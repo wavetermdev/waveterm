@@ -228,8 +228,8 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	}
 	pipeReader, pipeWriter := io.Pipe()
 	tarWriter := tar.NewWriter(pipeWriter)
-	chanCtx, cancel := context.WithCancel(ctx)
-	rtn := iochan.ReaderChan(chanCtx, pipeReader, wshrpc.FileChunkSize, func() {
+	readerCtx, _ := context.WithTimeout(context.Background(), time.Second*30)
+	rtn := iochan.ReaderChan(readerCtx, pipeReader, wshrpc.FileChunkSize, func() {
 		pipeReader.Close()
 		pipeWriter.Close()
 	})
@@ -238,14 +238,14 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			return
 		}
 		defer tarWriter.Close()
-		defer cancel()
+		log.Printf("creating tar stream for %q\n", path)
 		if finfo.IsDir() {
-			log.Printf("creating tar stream for directory %q\n", path)
+			log.Printf("%q is a directory, recursive: %v\n", path, recursive)
 			if !recursive {
 				rtn <- wshutil.RespErr[[]byte](fmt.Errorf("cannot create tar stream for %q: %w", path, errors.New("directory copy requires recursive option")))
+				return
 			}
 		}
-		log.Printf("creating tar stream for %q\n", path)
 		err := filepath.Walk(path, func(file string, fi os.FileInfo, err error) error {
 			// generate tar header
 			header, err := tar.FileInfoHeader(fi, file)
@@ -274,6 +274,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 					log.Printf("wrote %d bytes to tar stream\n", n)
 				}
 			}
+			time.Sleep(time.Millisecond * 10)
 			return nil
 		})
 		if err != nil {
@@ -309,99 +310,107 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		return fmt.Errorf("cannot stat destination %q: %w", destPath, err)
 	}
 	log.Printf("copying %q to %q\n", srcUri, destPath)
-	ioch := fileshare.ReadTarStream(ctx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
+	readCtx, _ := context.WithTimeout(ctx, time.Second*30)
+	readCtx, cancel := context.WithCancelCause(readCtx)
+	ioch := fileshare.ReadTarStream(readCtx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
 	pipeReader, pipeWriter := io.Pipe()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	iochan.WriterChan(ctx, pipeWriter, ioch, func() {
+	iochan.WriterChan(pipeWriter, ioch, func() {
 		log.Printf("closing pipe writer\n")
 		pipeWriter.Close()
 		pipeReader.Close()
-	})
+	}, cancel)
 	tarReader := tar.NewReader(pipeReader)
 	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		next, err := tarReader.Next()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
+		select {
+		case <-readCtx.Done():
+			if readCtx.Err() != nil {
+				return context.Cause(readCtx)
 			}
-			return fmt.Errorf("cannot read tar stream: %w", err)
-		}
-		finfo := next.FileInfo()
-		nextPath := filepath.Join(destPathCleaned, next.Name)
-		destinfo, err = os.Stat(nextPath)
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("cannot stat file %q: %w", nextPath, err)
-		}
-		log.Printf("new file: name %q; dest %q\n", next.Name, nextPath)
+			return nil
+		default:
+			next, err := tarReader.Next()
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					// Do one more check for context error before returning
+					if readCtx.Err() != nil {
+						return context.Cause(readCtx)
+					}
+					return nil
+				}
+				return fmt.Errorf("cannot read tar stream: %w", err)
+			}
+			finfo := next.FileInfo()
+			nextPath := filepath.Join(destPathCleaned, next.Name)
+			destinfo, err = os.Stat(nextPath)
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return fmt.Errorf("cannot stat file %q: %w", nextPath, err)
+			}
+			log.Printf("new file: name %q; dest %q\n", next.Name, nextPath)
 
-		if destinfo != nil {
-			if destinfo.IsDir() {
-				if !finfo.IsDir() {
-					if !overwrite {
-						return fmt.Errorf("cannot create directory %q, file exists at path, overwrite not specified", nextPath)
+			if destinfo != nil {
+				if destinfo.IsDir() {
+					if !finfo.IsDir() {
+						if !overwrite {
+							return fmt.Errorf("cannot create directory %q, file exists at path, overwrite not specified", nextPath)
+						} else {
+							err := os.Remove(nextPath)
+							if err != nil {
+								return fmt.Errorf("cannot remove file %q: %w", nextPath, err)
+							}
+						}
+					} else if !merge && !overwrite {
+						return fmt.Errorf("cannot create directory %q, directory exists at path, neither overwrite nor merge specified", nextPath)
+					} else if overwrite {
+						err := os.RemoveAll(nextPath)
+						if err != nil {
+							return fmt.Errorf("cannot remove directory %q: %w", nextPath, err)
+						}
+					}
+				} else {
+					if finfo.IsDir() {
+						if !overwrite {
+							return fmt.Errorf("cannot create file %q, directory exists at path, overwrite not specified", nextPath)
+						} else {
+							err := os.RemoveAll(nextPath)
+							if err != nil {
+								return fmt.Errorf("cannot remove directory %q: %w", nextPath, err)
+							}
+						}
+					} else if !overwrite {
+						return fmt.Errorf("cannot create file %q, file exists at path, overwrite not specified", nextPath)
 					} else {
 						err := os.Remove(nextPath)
 						if err != nil {
 							return fmt.Errorf("cannot remove file %q: %w", nextPath, err)
 						}
 					}
-				} else if !merge && !overwrite {
-					return fmt.Errorf("cannot create directory %q, directory exists at path, neither overwrite nor merge specified", nextPath)
-				} else if overwrite {
-					err := os.RemoveAll(nextPath)
-					if err != nil {
-						return fmt.Errorf("cannot remove directory %q: %w", nextPath, err)
-					}
 				}
 			} else {
 				if finfo.IsDir() {
-					if !overwrite {
-						return fmt.Errorf("cannot create file %q, directory exists at path, overwrite not specified", nextPath)
-					} else {
-						err := os.RemoveAll(nextPath)
-						if err != nil {
-							return fmt.Errorf("cannot remove directory %q: %w", nextPath, err)
-						}
-					}
-				} else if !overwrite {
-					return fmt.Errorf("cannot create file %q, file exists at path, overwrite not specified", nextPath)
-				} else {
-					err := os.Remove(nextPath)
+					log.Printf("creating directory %q\n", nextPath)
+					err := os.MkdirAll(nextPath, finfo.Mode())
 					if err != nil {
-						return fmt.Errorf("cannot remove file %q: %w", nextPath, err)
+						return fmt.Errorf("cannot create directory %q: %w", nextPath, err)
 					}
+				} else {
+					err := os.MkdirAll(filepath.Dir(nextPath), 0755)
+					if err != nil {
+						return fmt.Errorf("cannot create parent directory %q: %w", filepath.Dir(nextPath), err)
+					}
+					file, err := os.Create(nextPath)
+					if err != nil {
+						return fmt.Errorf("cannot create new file %q: %w", nextPath, err)
+					}
+					_, err = io.Copy(file, tarReader)
+					if err != nil {
+						return fmt.Errorf("cannot write file %q: %w", nextPath, err)
+					}
+					file.Chmod(finfo.Mode())
+					file.Close()
 				}
-			}
-		} else {
-			if finfo.IsDir() {
-				err := os.MkdirAll(nextPath, finfo.Mode())
-				if err != nil {
-					return fmt.Errorf("cannot create directory %q: %w", nextPath, err)
-				}
-			} else {
-				err := os.MkdirAll(filepath.Dir(nextPath), 0755)
-				if err != nil {
-					return fmt.Errorf("cannot create parent directory %q: %w", filepath.Dir(nextPath), err)
-				}
-				file, err := os.Create(nextPath)
-				if err != nil {
-					return fmt.Errorf("cannot create new file %q: %w", nextPath, err)
-				}
-				_, err = io.Copy(file, tarReader)
-				if err != nil {
-					return fmt.Errorf("cannot write file %q: %w", nextPath, err)
-				}
-				file.Chmod(finfo.Mode())
-				file.Close()
 			}
 		}
 	}
-	log.Printf("copy complete\n")
-	return nil
 }
 
 func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrpc.CommandRemoteListEntriesData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {

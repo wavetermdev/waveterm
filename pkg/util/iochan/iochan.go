@@ -17,19 +17,21 @@ import (
 func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func()) chan wshrpc.RespOrErrorUnion[[]byte] {
 	ch := make(chan wshrpc.RespOrErrorUnion[[]byte], 16)
 	go func() {
-		defer close(ch)
+		defer func() {
+			log.Printf("ReaderChan: closing channel")
+			callback()
+			close(ch)
+		}()
 		buf := make([]byte, chunkSize)
 		for {
 			if ctx.Err() != nil {
 				log.Printf("ReaderChan: context error: %v", ctx.Err())
-				callback()
 				return
 			}
 
 			if n, err := r.Read(buf); err != nil && err != io.EOF {
 				ch <- wshrpc.RespOrErrorUnion[[]byte]{Error: fmt.Errorf("ReaderChan: read error: %v", err)}
 				log.Printf("ReaderChan: read error: %v", err)
-				callback()
 				return
 			} else if err == io.EOF {
 				log.Printf("ReaderChan: EOF")
@@ -37,9 +39,6 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 			} else if n > 0 {
 				log.Printf("ReaderChan: read %d bytes", n)
 				ch <- wshrpc.RespOrErrorUnion[[]byte]{Response: buf[:n]}
-			} else {
-				log.Printf("ReaderChan: no data")
-				return
 			}
 		}
 	}()
@@ -47,36 +46,32 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 }
 
 // WriterChan reads from a channel and writes the data to an io.Writer
-func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[[]byte], callback func()) {
+func WriterChan(w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[[]byte], callback func(), errCallback func(error)) {
 	go func() {
 		defer func() {
 			log.Printf("WriterChan: closing channel")
 			callback()
+			drainChannel(ch)
 		}()
-		for {
-			if ctx.Err() != nil {
-				log.Printf("WriterChan: context error: %v", ctx.Err())
+		for resp := range ch {
+			if resp.Error != nil {
+				log.Printf("WriterChan: error: %v", resp.Error)
+				errCallback(resp.Error)
 				return
 			}
-			select {
-			case <-ctx.Done():
+			if n, err := w.Write(resp.Response); err != nil {
+				log.Printf("WriterChan: write error: %v", err)
+				errCallback(resp.Error)
 				return
-			case resp, ok := <-ch:
-				if !ok {
-					log.Printf("WriterChan: channel closed")
-					return
-				}
-				if resp.Error != nil {
-					log.Printf("WriterChan: error: %v", resp.Error)
-					return
-				}
-				if n, err := w.Write(resp.Response); err != nil {
-					log.Printf("WriterChan: write error: %v", err)
-					return
-				} else {
-					log.Printf("WriterChan: wrote %d bytes", n)
-				}
+			} else {
+				log.Printf("WriterChan: wrote %d bytes", n)
 			}
 		}
 	}()
+}
+
+func drainChannel(ch <-chan wshrpc.RespOrErrorUnion[[]byte]) {
+	for range ch {
+		<-ch
+	}
 }
