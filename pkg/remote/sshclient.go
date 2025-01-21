@@ -699,10 +699,29 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if jumpNum > SshProxyJumpMaxDepth {
 		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: fmt.Errorf("ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
 	}
-	// todo print final warning if logging gets turned off
-	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
-	if err != nil {
-		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+
+	rawName := opts.String()
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	internalSshConfigKeywords, ok := fullConfig.Connections[rawName]
+	if !ok {
+		internalSshConfigKeywords = wshrpc.ConnKeywords{}
+	}
+
+	var sshConfigKeywords *wshrpc.ConnKeywords
+	if utilfn.SafeDeref(internalSshConfigKeywords.ConnIgnoreConfig) {
+		var err error
+		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
+		if err != nil {
+			err = fmt.Errorf("cannot determine default config keywords: %w", err)
+			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		}
+	} else {
+		var err error
+		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
+		if err != nil {
+			err = fmt.Errorf("cannot determine config keywords: %w", err)
+			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		}
 	}
 
 	parsedKeywords := &wshrpc.ConnKeywords{}
@@ -711,13 +730,6 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	}
 	if opts.SSHPort != "" {
 		parsedKeywords.SshPort = &opts.SSHPort
-	}
-
-	rawName := opts.String()
-	fullConfig := wconfig.GetWatcher().GetFullConfig()
-	internalSshConfigKeywords, ok := fullConfig.Connections[rawName]
-	if !ok {
-		internalSshConfigKeywords = wshrpc.ConnKeywords{}
 	}
 
 	// cascade order:
