@@ -309,7 +309,6 @@ declare global {
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
-        "conn:overrideconfig"?: boolean;
         "conn:wshpath"?: string;
         "conn:shellpath"?: string;
         "display:hidden"?: boolean;

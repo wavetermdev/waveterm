@@ -723,9 +723,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	// cascade order:
 	//   ssh config -> (optional) internal config -> specified flag keywords -> parsed keywords
 	partialMerged := sshConfigKeywords
-	if internalSshConfigKeywords.ConnOverrideConfig {
-		partialMerged = mergeKeywords(partialMerged, &internalSshConfigKeywords)
-	}
+	partialMerged = mergeKeywords(partialMerged, &internalSshConfigKeywords)
 	partialMerged = mergeKeywords(partialMerged, connFlags)
 	sshKeywords := mergeKeywords(partialMerged, parsedKeywords)
 
