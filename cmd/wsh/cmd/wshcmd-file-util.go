@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/fs"
 	"strings"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
@@ -81,7 +80,7 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 		appendData := fileData
 		appendData.Data64 = base64.StdEncoding.EncodeToString(chunk)
 
-		err = wshclient.FileAppendCommand(RpcClient, appendData, &wshrpc.RpcOpts{Timeout: time.Duration(fileTimeout)})
+		err = wshclient.FileAppendCommand(RpcClient, appendData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 		if err != nil {
 			return fmt.Errorf("appending chunk to file: %w", err)
 		}
@@ -106,7 +105,7 @@ func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) 
 		}
 
 		// Read the chunk
-		data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: time.Duration(fileTimeout)})
+		data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 		if err != nil {
 			return fmt.Errorf("reading chunk at offset %d: %w", offset, err)
 		}

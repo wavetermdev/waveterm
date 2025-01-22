@@ -110,18 +110,18 @@ func (w *WshRpc) RecvRpcMessage() ([]byte, bool) {
 }
 
 type RpcMessage struct {
-	Command   string        `json:"command,omitempty"`
-	ReqId     string        `json:"reqid,omitempty"`
-	ResId     string        `json:"resid,omitempty"`
-	Timeout   time.Duration `json:"timeout,omitempty"`
-	Route     string        `json:"route,omitempty"`     // to route/forward requests to alternate servers
-	AuthToken string        `json:"authtoken,omitempty"` // needed for routing unauthenticated requests (WshRpcMultiProxy)
-	Source    string        `json:"source,omitempty"`    // source route id
-	Cont      bool          `json:"cont,omitempty"`      // flag if additional requests/responses are forthcoming
-	Cancel    bool          `json:"cancel,omitempty"`    // used to cancel a streaming request or response (sent from the side that is not streaming)
-	Error     string        `json:"error,omitempty"`
-	DataType  string        `json:"datatype,omitempty"`
-	Data      any           `json:"data,omitempty"`
+	Command   string `json:"command,omitempty"`
+	ReqId     string `json:"reqid,omitempty"`
+	ResId     string `json:"resid,omitempty"`
+	Timeout   int    `json:"timeout,omitempty"`
+	Route     string `json:"route,omitempty"`     // to route/forward requests to alternate servers
+	AuthToken string `json:"authtoken,omitempty"` // needed for routing unauthenticated requests (WshRpcMultiProxy)
+	Source    string `json:"source,omitempty"`    // source route id
+	Cont      bool   `json:"cont,omitempty"`      // flag if additional requests/responses are forthcoming
+	Cancel    bool   `json:"cancel,omitempty"`    // used to cancel a streaming request or response (sent from the side that is not streaming)
+	Error     string `json:"error,omitempty"`
+	DataType  string `json:"datatype,omitempty"`
+	Data      any    `json:"data,omitempty"`
 }
 
 func (r *RpcMessage) IsRpcRequest() bool {

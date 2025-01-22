@@ -72,7 +72,7 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 		return nil, fmt.Errorf("error cleaning path: %w", err)
 	}
 	if data.At != nil {
-		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, data.At.Size)
+		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, int64(data.At.Size))
 		if err == nil {
 			return &wshrpc.FileData{Info: data.Info, Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
 		} else if errors.Is(err, fs.ErrNotExist) {

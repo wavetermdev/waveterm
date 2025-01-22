@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"math"
 	"sync"
 	"time"
 )
@@ -145,7 +144,7 @@ func withLockRtn[T any](s *FileStore, zoneId string, name string, fn func(*Cache
 }
 
 func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) (int64, *DataCacheEntry) {
-	leftInPart := int64(partDataSize) - offset
+	leftInPart := partDataSize - offset
 	toWrite := int64(len(data))
 	if toWrite > leftInPart {
 		toWrite = leftInPart
@@ -162,7 +161,7 @@ func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
 		entry.File.Size = 0
 	}
 	if entry.File.Opts.Circular {
-		startCirFileOffset := entry.File.Size - int64(entry.File.Opts.MaxSize)
+		startCirFileOffset := entry.File.Size - entry.File.Opts.MaxSize
 		if offset+int64(len(data)) <= startCirFileOffset {
 			// write is before the start of the circular file
 			return
@@ -173,12 +172,11 @@ func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
 			data = data[truncateAmt:]
 			offset += truncateAmt
 		}
-		dataLen := int64(len(data))
-		if dataLen > entry.File.Opts.MaxSize {
+		if int64(len(data)) > entry.File.Opts.MaxSize {
 			// truncate data (from the front), update offset
-			truncateAmt := int(max(dataLen-entry.File.Opts.MaxSize, 0))
+			truncateAmt := int64(len(data)) - entry.File.Opts.MaxSize
 			data = data[truncateAmt:]
-			offset += int64(truncateAmt)
+			offset += truncateAmt
 		}
 	}
 	endWriteOffset := offset + int64(len(data))
@@ -186,19 +184,14 @@ func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
 		entry.DataEntries = make(map[int]*DataCacheEntry)
 	}
 	for len(data) > 0 {
-		partIdxI64 := offset / int64(partDataSize)
-		if partIdxI64 > math.MaxInt {
-			// too big
-			return
-		}
-		partIdx := int(partIdxI64)
+		partIdx := int(offset / partDataSize)
 		if entry.File.Opts.Circular {
-			maxPart := int(min(entry.File.Opts.MaxSize/int64(partDataSize), math.MaxInt))
+			maxPart := int(entry.File.Opts.MaxSize / partDataSize)
 			partIdx = partIdx % maxPart
 		}
-		partOffset := int(offset % int64(partDataSize))
+		partOffset := offset % partDataSize
 		partData := entry.getOrCreateDataCacheEntry(partIdx)
-		nw, newDce := partData.writeToPart(int64(partOffset), data)
+		nw, newDce := partData.writeToPart(partOffset, data)
 		entry.DataEntries[partIdx] = newDce
 		data = data[nw:]
 		offset += nw
@@ -210,7 +203,7 @@ func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
 }
 
 // returns (realOffset, data, error)
-func (entry *CacheEntry) readAt(ctx context.Context, offset int64, size int, readFull bool) (int64, []byte, error) {
+func (entry *CacheEntry) readAt(ctx context.Context, offset int64, size int64, readFull bool) (int64, []byte, error) {
 	if offset < 0 {
 		return 0, nil, fmt.Errorf("offset cannot be negative")
 	}
@@ -219,20 +212,20 @@ func (entry *CacheEntry) readAt(ctx context.Context, offset int64, size int, rea
 		return 0, nil, err
 	}
 	if readFull {
-		size = int(min(file.Size-offset, math.MaxInt))
+		size = file.Size - offset
 	}
-	if offset+int64(size) > file.Size {
-		size = int(min(file.Size-offset, math.MaxInt))
+	if offset+size > file.Size {
+		size = file.Size - offset
 	}
 	if file.Opts.Circular {
 		realDataOffset := int64(0)
-		if file.Size > int64(file.Opts.MaxSize) {
-			realDataOffset = file.Size - int64(file.Opts.MaxSize)
+		if file.Size > file.Opts.MaxSize {
+			realDataOffset = file.Size - file.Opts.MaxSize
 		}
 		if offset < realDataOffset {
 			truncateAmt := realDataOffset - offset
 			offset += truncateAmt
-			size = int(max(int64(size)-truncateAmt, 0))
+			size -= truncateAmt
 		}
 		if size <= 0 {
 			return realDataOffset, nil, nil
@@ -257,11 +250,11 @@ func (entry *CacheEntry) readAt(ctx context.Context, offset int64, size int, rea
 		} else {
 			partData = partDataEntry.Data[0:partDataSize]
 		}
-		partOffset := int(curReadOffset % int64(partDataSize))
-		amtToRead := min(partDataSize-partOffset, amtLeftToRead)
+		partOffset := curReadOffset % partDataSize
+		amtToRead := minInt64(partDataSize-partOffset, amtLeftToRead)
 		rtnData = append(rtnData, partData[partOffset:partOffset+amtToRead]...)
 		amtLeftToRead -= amtToRead
-		curReadOffset += int64(amtToRead)
+		curReadOffset += amtToRead
 	}
 	return offset, rtnData, nil
 }

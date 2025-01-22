@@ -226,7 +226,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	tarWriter := tar.NewWriter(pipeWriter)
 	timeout := time.Millisecond * 100
 	if opts.Timeout > 0 {
-		timeout = opts.Timeout
+		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	readerCtx, _ := context.WithTimeout(context.Background(), timeout)
 	rtn := iochan.ReaderChan(readerCtx, pipeReader, wshrpc.FileChunkSize, func() {
@@ -320,7 +320,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	log.Printf("copying %q to %q\n", srcUri, destPath)
 	timeout := time.Millisecond * 100
 	if opts.Timeout > 0 {
-		timeout = opts.Timeout
+		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	readCtx, _ := context.WithTimeout(ctx, timeout)
 	readCtx, cancel := context.WithCancelCause(readCtx)

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
@@ -20,7 +19,7 @@ import (
 )
 
 const (
-	ThirtySeconds = 30 * time.Second
+	ThirtySeconds = 30 * 1000
 )
 
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver
