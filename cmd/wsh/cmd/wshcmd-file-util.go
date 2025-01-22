@@ -215,10 +215,9 @@ func fixRelativePaths(path string) (string, error) {
 		return "", err
 	}
 	if conn.Scheme == connparse.ConnectionTypeWsh {
-		fixedPath := conn.Path
 		if conn.Host == connparse.ConnHostCurrent {
 			conn.Host = RpcContext.Conn
-			fixedPath, err = fileutil.FixPath(conn.Path)
+			fixedPath, err := fileutil.FixPath(conn.Path)
 			if err != nil {
 				return "", err
 			}
