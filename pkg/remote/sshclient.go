@@ -699,10 +699,29 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if jumpNum > SshProxyJumpMaxDepth {
 		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: fmt.Errorf("ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
 	}
-	// todo print final warning if logging gets turned off
-	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
-	if err != nil {
-		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+
+	rawName := opts.String()
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	internalSshConfigKeywords, ok := fullConfig.Connections[rawName]
+	if !ok {
+		internalSshConfigKeywords = wshrpc.ConnKeywords{}
+	}
+
+	var sshConfigKeywords *wshrpc.ConnKeywords
+	if utilfn.SafeDeref(internalSshConfigKeywords.ConnIgnoreSshConfig) {
+		var err error
+		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
+		if err != nil {
+			err = fmt.Errorf("cannot determine default config keywords: %w", err)
+			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		}
+	} else {
+		var err error
+		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
+		if err != nil {
+			err = fmt.Errorf("cannot determine config keywords: %w", err)
+			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		}
 	}
 
 	parsedKeywords := &wshrpc.ConnKeywords{}
@@ -713,19 +732,10 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		parsedKeywords.SshPort = &opts.SSHPort
 	}
 
-	rawName := opts.String()
-	fullConfig := wconfig.GetWatcher().GetFullConfig()
-	internalSshConfigKeywords, ok := fullConfig.Connections[rawName]
-	if !ok {
-		internalSshConfigKeywords = wshrpc.ConnKeywords{}
-	}
-
 	// cascade order:
 	//   ssh config -> (optional) internal config -> specified flag keywords -> parsed keywords
 	partialMerged := sshConfigKeywords
-	if internalSshConfigKeywords.ConnOverrideConfig {
-		partialMerged = mergeKeywords(partialMerged, &internalSshConfigKeywords)
-	}
+	partialMerged = mergeKeywords(partialMerged, &internalSshConfigKeywords)
 	partialMerged = mergeKeywords(partialMerged, connFlags)
 	sshKeywords := mergeKeywords(partialMerged, parsedKeywords)
 
@@ -907,6 +917,31 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wshrpc.ConnKeyword
 	rawGlobalKnownHostsFile, _ := WaveSshConfigUserSettings().GetStrict(hostPattern, "GlobalKnownHostsFile")
 	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(rawGlobalKnownHostsFile) // TODO - smarter splitting escaped spaces and quotes
 
+	return sshKeywords, nil
+}
+
+func findSshDefaults(hostPattern string) (connKeywords *wshrpc.ConnKeywords, outErr error) {
+	sshKeywords := &wshrpc.ConnKeywords{}
+
+	userDetails, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.SshUser = &userDetails.Username
+	sshKeywords.SshHostName = &hostPattern
+	sshKeywords.SshPort = utilfn.Ptr(ssh_config.Default("Port"))
+	sshKeywords.SshIdentityFile = ssh_config.DefaultAll("IdentityFile", hostPattern, ssh_config.DefaultUserSettings) // use the sshconfig here. should be different later
+	sshKeywords.SshBatchMode = utilfn.Ptr(false)
+	sshKeywords.SshPubkeyAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshPasswordAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshKbdInteractiveAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshPreferredAuthentications = strings.Split(ssh_config.Default("PreferredAuthentications"), ",")
+	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(false)
+	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(false)
+	sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
+	sshKeywords.SshProxyJump = []string{}
+	sshKeywords.SshUserKnownHostsFile = strings.Fields(ssh_config.Default("UserKnownHostsFile"))
+	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(ssh_config.Default("GlobalKnownHostsFile"))
 	return sshKeywords, nil
 }
 
