@@ -195,21 +195,22 @@ func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 	return nil
 }
 
-func (bc *BlockController) resetTerminalState() {
+func (bc *BlockController) resetTerminalState(logCtx context.Context) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	wfile, statErr := filestore.WFS.Stat(ctx, bc.BlockId, wavebase.BlockFile_Term)
 	if statErr == fs.ErrNotExist || wfile.Size == 0 {
 		return
 	}
+	blocklogger.Debugf(logCtx, "[conndebug] resetTerminalState: resetting terminal state\n")
 	// controller type = "shell"
 	var buf bytes.Buffer
 	// buf.WriteString("\x1b[?1049l") // disable alternative buffer
 	buf.WriteString("\x1b[0m")     // reset attributes
 	buf.WriteString("\x1b[?25h")   // show cursor
 	buf.WriteString("\x1b[?1000l") // disable mouse tracking
-	buf.WriteString("\r\n\r\n(restored terminal state)\r\n\r\n")
-	err := filestore.WFS.AppendData(ctx, bc.BlockId, wavebase.BlockFile_Term, buf.Bytes())
+	buf.WriteString("\r\n\r\n")
+	err := HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, buf.Bytes())
 	if err != nil {
 		log.Printf("error appending to blockfile (terminal reset): %v\n", err)
 	}
@@ -313,6 +314,7 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType, connName
 }
 
 func (bc *BlockController) DoRunShellCommand(logCtx context.Context, rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
+	blocklogger.Debugf(logCtx, "[conndebug] DoRunShellCommand\n")
 	shellProc, err := bc.setupAndStartShellProcess(logCtx, rc, blockMeta)
 	if err != nil {
 		return err
@@ -470,7 +472,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	}
 	if fsErr == fs.ErrExist {
 		// reset the terminal state
-		bc.resetTerminalState()
+		bc.resetTerminalState(logCtx)
 	}
 	bcInitStatus := bc.GetRuntimeStatus()
 	if bcInitStatus.ShellProcStatus == Status_Running {
@@ -597,6 +599,17 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	return shellProc, nil
 }
 
+func (bc *BlockController) getBlockData_noErr() *waveobj.Block {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	blockData, err := wstore.DBGet[*waveobj.Block](ctx, bc.BlockId)
+	if err != nil {
+		log.Printf("error getting block data (getBlockData_noErr): %v\n", err)
+		return nil
+	}
+	return blockData
+}
+
 func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellProc, rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
@@ -621,8 +634,11 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 			})
 			shellProc.Cmd.Wait()
 			exitCode := shellProc.Cmd.ExitCode()
-			termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
-			HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, []byte(termMsg))
+			blockData := bc.getBlockData_noErr()
+			if blockData != nil && blockData.Meta.GetString(waveobj.MetaKey_Controller, "") == BlockController_Cmd {
+				termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
+				HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, []byte(termMsg))
+			}
 			// to stop the inputCh loop
 			time.Sleep(100 * time.Millisecond)
 			close(shellInputCh) // don't use bc.ShellInputCh (it's nil)
@@ -791,6 +807,7 @@ func (bc *BlockController) UnlockRunLock() {
 }
 
 func (bc *BlockController) run(logCtx context.Context, bdata *waveobj.Block, blockMeta map[string]any, rtOpts *waveobj.RuntimeOpts, force bool) {
+	blocklogger.Debugf(logCtx, "[conndebug] BlockController.run() %q\n", bc.BlockId)
 	runningShellCommand := false
 	ok := bc.LockRunLock()
 	if !ok {
