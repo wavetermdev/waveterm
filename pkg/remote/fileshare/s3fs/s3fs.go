@@ -69,10 +69,12 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 		var entries []*wshrpc.FileInfo
 		for _, bucket := range buckets {
 			log.Printf("bucket: %v", *bucket.Name)
-			entries = append(entries, &wshrpc.FileInfo{
-				Path:  *bucket.Name,
-				IsDir: true,
-			})
+			if bucket.Name != nil {
+				entries = append(entries, &wshrpc.FileInfo{
+					Path:  *bucket.Name,
+					IsDir: true,
+				})
+			}
 		}
 		return entries, nil
 	}
