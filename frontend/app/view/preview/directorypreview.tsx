@@ -6,9 +6,11 @@ import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { FileService } from "@/app/store/services";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank, makeNativeLabel } from "@/util/util";
+import { base64ToString, fireAndForget, isBlank, makeConnRoute, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -501,7 +503,7 @@ function TableBody({
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
-        (e: any, finfo: FileInfo) => {
+        async (e: any, finfo: FileInfo) => {
             e.preventDefault();
             e.stopPropagation();
             if (finfo == null) {
@@ -509,6 +511,15 @@ function TableBody({
             }
             const normPath = getNormFilePath(finfo);
             const fileName = finfo.path.split("/").pop();
+            let parentFileInfo: FileInfo;
+            try {
+                parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [normPath, ".."], {
+                    route: makeConnRoute(conn),
+                });
+            } catch (e) {
+                console.log("could not get parent file info. using child file info as fallback");
+                parentFileInfo = finfo;
+            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -569,7 +580,7 @@ function TableBody({
                 {
                     label: makeNativeLabel(PLATFORM, true, true),
                     click: () => {
-                        getApi().openNativePath(finfo.dir);
+                        getApi().openNativePath(parentFileInfo.dir);
                     },
                 },
                 {
