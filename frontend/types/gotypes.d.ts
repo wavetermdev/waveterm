@@ -74,7 +74,7 @@ declare global {
         tabid: string;
         workspaceid: string;
         block: Block;
-        files: WaveFile[];
+        files: FileInfo[];
     };
 
     // webcmd.BlockInputWSCommand
@@ -178,35 +178,11 @@ declare global {
         maxitems: number;
     };
 
-    // wshrpc.CommandFileCreateData
-    type CommandFileCreateData = {
-        zoneid: string;
-        filename: string;
-        meta?: {[key: string]: any};
-        opts?: FileOptsType;
-    };
-
-    // wshrpc.CommandFileData
-    type CommandFileData = {
-        zoneid: string;
-        filename: string;
-        data64?: string;
-        at?: CommandFileDataAt;
-    };
-
-    // wshrpc.CommandFileDataAt
-    type CommandFileDataAt = {
-        offset: number;
-        size?: number;
-    };
-
-    // wshrpc.CommandFileListData
-    type CommandFileListData = {
-        zoneid: string;
-        prefix?: string;
-        all?: boolean;
-        offset?: number;
-        limit?: number;
+    // wshrpc.CommandFileCopyData
+    type CommandFileCopyData = {
+        srcuri: string;
+        desturi: string;
+        opts?: FileCopyOpts;
     };
 
     // wshrpc.CommandGetMetaData
@@ -220,23 +196,34 @@ declare global {
         message: string;
     };
 
+    // wshrpc.CommandRemoteFileCopyData
+    type CommandRemoteFileCopyData = {
+        srcuri: string;
+        desturi: string;
+        opts?: FileCopyOpts;
+    };
+
+    // wshrpc.CommandRemoteListEntriesData
+    type CommandRemoteListEntriesData = {
+        path: string;
+        opts?: FileListOpts;
+    };
+
+    // wshrpc.CommandRemoteListEntriesRtnData
+    type CommandRemoteListEntriesRtnData = {
+        fileinfo?: FileInfo[];
+    };
+
     // wshrpc.CommandRemoteStreamFileData
     type CommandRemoteStreamFileData = {
         path: string;
         byterange?: string;
     };
 
-    // wshrpc.CommandRemoteStreamFileRtnData
-    type CommandRemoteStreamFileRtnData = {
-        fileinfo?: FileInfo[];
-        data64?: string;
-    };
-
-    // wshrpc.CommandRemoteWriteFileData
-    type CommandRemoteWriteFileData = {
+    // wshrpc.CommandRemoteStreamTarData
+    type CommandRemoteStreamTarData = {
         path: string;
-        data64: string;
-        createmode?: number;
+        opts?: FileCopyOpts;
     };
 
     // wshrpc.CommandResolveIdsData
@@ -305,10 +292,11 @@ declare global {
         logblockid?: string;
     };
 
-    // wshrpc.ConnKeywords
+    // wconfig.ConnKeywords
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
+        "conn:overrideconfig"?: boolean;
         "conn:wshpath"?: string;
         "conn:shellpath"?: string;
         "conn:ignoresshconfig"?: boolean;
@@ -322,7 +310,6 @@ declare global {
         "ssh:hostname"?: string;
         "ssh:port"?: string;
         "ssh:identityfile"?: string[];
-        "ssh:identitiesonly"?: boolean;
         "ssh:batchmode"?: boolean;
         "ssh:pubkeyauthentication"?: boolean;
         "ssh:passwordauthentication"?: boolean;
@@ -330,6 +317,7 @@ declare global {
         "ssh:preferredauthentications"?: string[];
         "ssh:addkeystoagent"?: boolean;
         "ssh:identityagent"?: string;
+        "ssh:identitiesonly"?: boolean;
         "ssh:proxyjump"?: string[];
         "ssh:userknownhostsfile"?: string[];
         "ssh:globalknownhostsfile"?: string[];
@@ -372,6 +360,28 @@ declare global {
         height: number;
     };
 
+    // wshrpc.FileCopyOpts
+    type FileCopyOpts = {
+        overwrite?: boolean;
+        recursive?: boolean;
+        merge?: boolean;
+        timeout?: number;
+    };
+
+    // wshrpc.FileData
+    type FileData = {
+        info?: FileInfo;
+        data64?: string;
+        entries?: FileInfo[];
+        at?: FileDataAt;
+    };
+
+    // wshrpc.FileDataAt
+    type FileDataAt = {
+        offset: number;
+        size?: number;
+    };
+
     // waveobj.FileDef
     type FileDef = {
         content?: string;
@@ -381,24 +391,42 @@ declare global {
     // wshrpc.FileInfo
     type FileInfo = {
         path: string;
-        dir: string;
-        name: string;
+        dir?: string;
+        name?: string;
         notfound?: boolean;
-        size: number;
-        mode: number;
-        modestr: string;
-        modtime: number;
+        opts?: FileOpts;
+        size?: number;
+        meta?: {[key: string]: any};
+        mode?: number;
+        modestr?: string;
+        modtime?: number;
         isdir?: boolean;
+        supportsmkdir?: boolean;
         mimetype?: string;
         readonly?: boolean;
     };
 
-    // filestore.FileOptsType
-    type FileOptsType = {
+    // wshrpc.FileListData
+    type FileListData = {
+        path: string;
+        opts?: FileListOpts;
+    };
+
+    // wshrpc.FileListOpts
+    type FileListOpts = {
+        all?: boolean;
+        offset?: number;
+        limit?: number;
+    };
+
+    // wshrpc.FileOpts
+    type FileOpts = {
         maxsize?: number;
         circular?: boolean;
         ijson?: boolean;
         ijsonbudget?: number;
+        truncate?: boolean;
+        append?: boolean;
     };
 
     // wconfig.FullConfigType
@@ -411,12 +439,6 @@ declare global {
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         configerrors: ConfigError[];
-    };
-
-    // fileservice.FullFile
-    type FullFile = {
-        info: FileInfo;
-        data64: string;
     };
 
     // waveobj.LayoutActionData
@@ -1069,23 +1091,11 @@ declare global {
     type WaveFile = {
         zoneid: string;
         name: string;
-        opts: FileOptsType;
+        opts: FileOpts;
         createdts: number;
         size: number;
         modts: number;
         meta: {[key: string]: any};
-    };
-
-    // wshrpc.WaveFileInfo
-    type WaveFileInfo = {
-        zoneid: string;
-        name: string;
-        opts?: FileOptsType;
-        size?: number;
-        createdts?: number;
-        modts?: number;
-        meta?: {[key: string]: any};
-        isdir?: boolean;
     };
 
     // wshrpc.WaveInfoData

@@ -18,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -180,6 +181,7 @@ func serverRunRouter(jwtToken string) error {
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
+	wshfs.RpcClient = client
 	go runListener(unixListener, router)
 	// run the sysinfo loop
 	wshremote.RunSysInfoLoop(client, client.GetRpcContext().Conn)
@@ -224,6 +226,7 @@ func serverRunNormal(jwtToken string) error {
 	if err != nil {
 		return err
 	}
+	wshfs.RpcClient = RpcClient
 	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
 	go wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
 	select {} // run forever

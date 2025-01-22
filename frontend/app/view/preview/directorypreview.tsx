@@ -4,11 +4,12 @@
 import { Button } from "@/app/element/button";
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
-import { FileService } from "@/app/store/services";
+import { PLATFORM, atoms, createBlock, getApi } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank } from "@/util/util";
+import { fireAndForget, isBlank } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -67,7 +68,7 @@ const displaySuffixes = {
 };
 
 function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): string {
-    if (bytes < 0) {
+    if (bytes === undefined || bytes < 0) {
         return "-";
     }
     const units = si ? ["kB", "MB", "GB", "TB"] : ["KiB", "MiB", "GiB", "TiB"];
@@ -290,11 +291,17 @@ function DirectoryTable({
             onSave: (newName: string) => {
                 let newPath: string;
                 if (newName !== fileName) {
-                    newPath = path.replace(fileName, newName);
+                    const lastInstance = path.lastIndexOf(fileName);
+                    newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
-                        const connection = await globalStore.get(model.connection);
-                        await FileService.Rename(connection, path, newPath);
+                        await RpcApi.FileMoveCommand(TabRpcClient, {
+                            srcuri: await model.formatRemoteUri(path),
+                            desturi: await model.formatRemoteUri(newPath),
+                            opts: {
+                                recursive: true,
+                            },
+                        });
                         model.refreshCallback();
                     });
                 }
@@ -603,7 +610,7 @@ function TableBody({
                                 meta: {
                                     controller: "shell",
                                     view: "term",
-                                    "cmd:cwd": finfo.path,
+                                    "cmd:cwd": await model.formatRemoteUri(finfo.path),
                                 },
                             };
                             await createBlock(termBlockDef);
@@ -618,7 +625,11 @@ function TableBody({
                     label: "Delete",
                     click: () => {
                         fireAndForget(async () => {
-                            await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
+                            await RpcApi.FileDeleteCommand(TabRpcClient, {
+                                info: {
+                                    path: await model.formatRemoteUri(finfo.path),
+                                },
+                            }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);
                         });
                     },
@@ -711,22 +722,28 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await FileService.ReadFile(conn, dirPath);
-            const serializedContent = base64ToString(file?.data64);
-            const content: FileInfo[] = JSON.parse(serializedContent);
-            setUnfilteredData(content);
+            const file = await RpcApi.FileReadCommand(
+                TabRpcClient,
+                {
+                    info: {
+                        path: await model.formatRemoteUri(dirPath),
+                    },
+                },
+                null
+            );
+            setUnfilteredData(file.entries);
         };
         getContent();
     }, [conn, dirPath, refreshVersion]);
 
     useEffect(() => {
-        const filtered = unfilteredData.filter((fileInfo) => {
+        const filtered = unfilteredData?.filter((fileInfo) => {
             if (!showHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
                 return false;
             }
             return fileInfo.name.toLowerCase().includes(searchText);
         });
-        setFilteredData(filtered);
+        setFilteredData(filtered ?? []);
     }, [unfilteredData, showHiddenFiles, searchText]);
 
     useEffect(() => {
@@ -765,7 +782,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 !blockData?.meta?.connection
             ) {
                 getApi().onQuicklook(selectedPath);
-                console.log(selectedPath);
                 return true;
             }
             if (isCharacterKeyEvent(waveEvent)) {
@@ -805,8 +821,15 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newFile: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
-                    await FileService.TouchFile(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileCreateCommand(
+                        TabRpcClient,
+                        {
+                            info: {
+                                path: await model.formatRemoteUri(`${dirPath}/${newName}`),
+                            },
+                        },
+                        null
+                    );
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
@@ -819,8 +842,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newDirectory: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
-                    await FileService.Mkdir(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileMkdirCommand(TabRpcClient, {
+                        info: {
+                            path: await model.formatRemoteUri(`${dirPath}/${newName}`),
+                        },
+                    });
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);

@@ -321,7 +321,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, BlockFile_Term, nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
+	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, BlockFile_Term, nil, wshrpc.FileOpts{MaxSize: DefaultTermMaxFileSize, Circular: true})
 	if fsErr != nil && fsErr != fs.ErrExist {
 		return nil, fmt.Errorf("error creating blockfile: %w", fsErr)
 	}
@@ -414,7 +414,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 		if err != nil {
 			return nil, err
 		}
-		conn := conncontroller.GetConn(credentialCtx, opts, &wshrpc.ConnKeywords{})
+		conn := conncontroller.GetConn(credentialCtx, opts, &wconfig.ConnKeywords{})
 		connStatus := conn.DeriveConnStatus()
 		if connStatus.Status != conncontroller.Status_Connected {
 			return nil, fmt.Errorf("not connected, cannot start shellproc")
@@ -776,7 +776,7 @@ func CheckConnStatus(blockId string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(context.Background(), opts, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(context.Background(), opts, &wconfig.ConnKeywords{})
 	connStatus := conn.DeriveConnStatus()
 	if connStatus.Status != conncontroller.Status_Connected {
 		return fmt.Errorf("not connected: %s", connStatus.Status)

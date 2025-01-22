@@ -641,11 +641,11 @@ func (conn *WslConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 	}
 }
 
-func (conn *WslConn) getConnectionConfig() (wshrpc.ConnKeywords, bool) {
+func (conn *WslConn) getConnectionConfig() (wconfig.ConnKeywords, bool) {
 	config := wconfig.GetWatcher().GetFullConfig()
 	connSettings, ok := config.Connections[conn.GetName()]
 	if !ok {
-		return wshrpc.ConnKeywords{}, false
+		return wconfig.ConnKeywords{}, false
 	}
 	return connSettings, true
 }
