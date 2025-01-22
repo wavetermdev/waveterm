@@ -113,7 +113,7 @@ type RpcMessage struct {
 	Command   string `json:"command,omitempty"`
 	ReqId     string `json:"reqid,omitempty"`
 	ResId     string `json:"resid,omitempty"`
-	Timeout   int    `json:"timeout,omitempty"`
+	Timeout   int64  `json:"timeout,omitempty"`
 	Route     string `json:"route,omitempty"`     // to route/forward requests to alternate servers
 	AuthToken string `json:"authtoken,omitempty"` // needed for routing unauthenticated requests (WshRpcMultiProxy)
 	Source    string `json:"source,omitempty"`    // source route id

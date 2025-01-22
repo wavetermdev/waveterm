@@ -235,7 +235,7 @@ type WshServerCommandMeta struct {
 }
 
 type RpcOpts struct {
-	Timeout    int    `json:"timeout,omitempty"`
+	Timeout    int64  `json:"timeout,omitempty"`
 	NoResponse bool   `json:"noresponse,omitempty"`
 	Route      string `json:"route,omitempty"`
 
@@ -510,10 +510,10 @@ type CommandRemoteStreamTarData struct {
 }
 
 type FileCopyOpts struct {
-	Overwrite bool `json:"overwrite,omitempty"`
-	Recursive bool `json:"recursive,omitempty"`
-	Merge     bool `json:"merge,omitempty"`
-	Timeout   int  `json:"timeout,omitempty"`
+	Overwrite bool  `json:"overwrite,omitempty"`
+	Recursive bool  `json:"recursive,omitempty"`
+	Merge     bool  `json:"merge,omitempty"`
+	Timeout   int64 `json:"timeout,omitempty"`
 }
 
 type CommandRemoteStreamFileData struct {
