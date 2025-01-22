@@ -26,6 +26,12 @@ import * as jotai from "jotai";
 const simpleControlShiftAtom = jotai.atom(false);
 const globalKeyMap = new Map<string, (waveEvent: WaveKeyboardEvent) => boolean>();
 
+export function keyboardMouseDownHandler(e: MouseEvent) {
+    if (!e.ctrlKey || !e.shiftKey) {
+        unsetControlShift();
+    }
+}
+
 function getFocusedBlockInStaticTab() {
     const tabId = globalStore.get(atoms.staticTabId);
     const layoutModel = getLayoutModelForTabById(tabId);
