@@ -146,6 +146,9 @@ func (c WshClient) Mkdir(ctx context.Context, conn *connparse.Connection) error 
 }
 
 func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
 	timeout := opts.Timeout
 	if timeout == 0 {
 		timeout = ThirtySeconds
@@ -154,6 +157,9 @@ func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connec
 }
 
 func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
 	timeout := opts.Timeout
 	if timeout == 0 {
 		timeout = ThirtySeconds
