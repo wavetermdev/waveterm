@@ -1,7 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0s
 
-import { PLATFORM } from "@/app/store/global";
 import base64 from "base64-js";
 import clsx from "clsx";
 import { Atom, atom, Getter, SetStateAction, Setter, useAtomValue } from "jotai";
@@ -303,13 +302,13 @@ function makeConnRoute(conn: string): string {
     return "conn:" + conn;
 }
 
-function makeNativeLabel(isDirectory: boolean, isParent: boolean) {
+function makeNativeLabel(platform: string, isDirectory: boolean, isParent: boolean) {
     let managerName: string;
     if (!isDirectory && !isParent) {
         managerName = "Default Application";
-    } else if (PLATFORM == "darwin") {
+    } else if (platform == "darwin") {
         managerName = "Finder";
-    } else if (PLATFORM == "win32") {
+    } else if (platform == "win32") {
         managerName = "Explorer";
     } else {
         managerName = "File Manager";
