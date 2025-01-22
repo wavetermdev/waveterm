@@ -939,7 +939,7 @@ func findSshDefaults(hostPattern string) (connKeywords *wshrpc.ConnKeywords, out
 	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(false)
 	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(false)
 	sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
-	sshKeywords.SshProxyJump = strings.Split(ssh_config.Default("ProxyJump"), ",")
+	sshKeywords.SshProxyJump = []string{}
 	sshKeywords.SshUserKnownHostsFile = strings.Fields(ssh_config.Default("UserKnownHostsFile"))
 	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(ssh_config.Default("GlobalKnownHostsFile"))
 	return sshKeywords, nil
