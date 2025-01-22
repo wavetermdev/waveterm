@@ -91,6 +91,9 @@ func init() {
 	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
 	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
 	fileCmd.AddCommand(fileCpCmd)
+	fileMvCmd.Flags().BoolP("recursive", "r", false, "move directories recursively")
+	fileMvCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
+	fileCmd.AddCommand(fileMvCmd)
 }
 
 var fileListCmd = &cobra.Command{
