@@ -776,7 +776,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 !blockData?.meta?.connection
             ) {
                 getApi().onQuicklook(selectedPath);
-                console.log(selectedPath);
                 return true;
             }
             if (isCharacterKeyEvent(waveEvent)) {

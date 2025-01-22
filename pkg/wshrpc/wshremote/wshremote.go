@@ -76,14 +76,15 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 			innerFilesEntries = innerFilesEntries[:wshrpc.MaxDirSize]
 		}
 	} else {
-		if byteRange.Start >= int64(len(innerFilesEntries)) {
-			return nil
+		if byteRange.Start < int64(len(innerFilesEntries)) {
+			realEnd := byteRange.End
+			if realEnd > int64(len(innerFilesEntries)) {
+				realEnd = int64(len(innerFilesEntries))
+			}
+			innerFilesEntries = innerFilesEntries[byteRange.Start:realEnd]
+		} else {
+			innerFilesEntries = []os.DirEntry{}
 		}
-		realEnd := byteRange.End
-		if realEnd > int64(len(innerFilesEntries)) {
-			realEnd = int64(len(innerFilesEntries))
-		}
-		innerFilesEntries = innerFilesEntries[byteRange.Start:realEnd]
 	}
 	var fileInfoArr []*wshrpc.FileInfo
 	parent := filepath.Dir(path)
@@ -104,11 +105,13 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 		innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt, false)
 		fileInfoArr = append(fileInfoArr, innerFileInfo)
 		if len(fileInfoArr) >= wshrpc.DirChunkSize {
+			log.Printf("sending %d entries\n", len(fileInfoArr))
 			dataCallback(fileInfoArr, nil, byteRange)
 			fileInfoArr = nil
 		}
 	}
 	if len(fileInfoArr) > 0 {
+		log.Printf("sending %d entries\n", len(fileInfoArr))
 		dataCallback(fileInfoArr, nil, byteRange)
 	}
 	return nil
@@ -185,14 +188,17 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
 		defer close(ch)
+		firstPk := true
 		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType) {
 			resp := wshrpc.FileData{}
 			fileInfoLen := len(fileInfo)
-			if fileInfoLen > 1 {
-				resp.Info = fileInfo[0]
+			if fileInfoLen > 1 || !firstPk {
 				resp.Entries = fileInfo
 			} else if fileInfoLen == 1 {
 				resp.Info = fileInfo[0]
+			}
+			if firstPk {
+				firstPk = false
 			}
 			if len(data) > 0 {
 				resp.Data64 = base64.StdEncoding.EncodeToString(data)
