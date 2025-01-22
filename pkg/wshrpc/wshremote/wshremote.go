@@ -320,7 +320,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	log.Printf("copying %q to %q\n", srcUri, destPath)
 	timeout := time.Millisecond * 100
 	if opts.Timeout > 0 {
-		timeout = time.Duration(opts.Timeout)
+		timeout = opts.Timeout
 	}
 	readCtx, _ := context.WithTimeout(ctx, timeout)
 	readCtx, cancel := context.WithCancelCause(readCtx)
