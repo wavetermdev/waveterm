@@ -106,6 +106,9 @@ func ParseProfiles() map[string]struct{} {
 	f, err = ini.Load(fname)
 	if err != nil {
 		log.Printf("error reading aws credentials file: %v", err)
+		if profiles == nil {
+			profiles = make(map[string]struct{})
+		}
 		return profiles
 	}
 	for _, v := range f.Sections() {
