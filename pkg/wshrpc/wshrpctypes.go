@@ -63,6 +63,8 @@ const (
 	Command_DeleteBlock          = "deleteblock"
 	Command_FileWrite            = "filewrite"
 	Command_FileRead             = "fileread"
+	Command_FileMove             = "filemove"
+	Command_FileCopy             = "filecopy"
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
 	Command_EventSub             = "eventsub"
@@ -81,6 +83,7 @@ const (
 	Command_RemoteFileInfo       = "remotefileinfo"
 	Command_RemoteFileTouch      = "remotefiletouch"
 	Command_RemoteWriteFile      = "remotewritefile"
+
 	Command_RemoteFileDelete     = "remotefiledelete"
 	Command_RemoteFileJoin       = "remotefilejoin"
 	Command_WaveInfo             = "waveinfo"
@@ -153,6 +156,7 @@ type WshRpcInterface interface {
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
 	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[[]byte]
+	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
@@ -200,7 +204,7 @@ type WshRpcInterface interface {
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
-	RemoteFileRenameCommand(ctx context.Context, pathTuple [2]string) error
+	RemoteFileMoveCommand(ctx context.Context, data CommandRemoteFileCopyData) error
 	RemoteFileDeleteCommand(ctx context.Context, path string) error
 	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
@@ -376,27 +380,29 @@ type FileData struct {
 }
 
 type FileInfo struct {
-	Path          string        `json:"path"`          // cleaned path (may have "~")
-	Dir           string        `json:"dir,omitempty"` // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
-	Name          string        `json:"name,omitempty"`
-	NotFound      bool          `json:"notfound,omitempty"`
-	Opts          *FileOptsType `json:"opts,omitempty"`
-	Size          int64         `json:"size,omitempty"`
-	Meta          *FileMeta     `json:"meta,omitempty"`
-	Mode          os.FileMode   `json:"mode,omitempty"`
-	ModeStr       string        `json:"modestr,omitempty"`
-	ModTime       int64         `json:"modtime,omitempty"`
-	IsDir         bool          `json:"isdir,omitempty"`
-	SupportsMkdir bool          `json:"supportsmkdir,omitempty"`
-	MimeType      string        `json:"mimetype,omitempty"`
-	ReadOnly      bool          `json:"readonly,omitempty"` // this is not set for fileinfo's returned from directory listings
+	Path          string      `json:"path"`          // cleaned path (may have "~")
+	Dir           string      `json:"dir,omitempty"` // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
+	Name          string      `json:"name,omitempty"`
+	NotFound      bool        `json:"notfound,omitempty"`
+	Opts          *FileOpts   `json:"opts,omitempty"`
+	Size          int64       `json:"size,omitempty"`
+	Meta          *FileMeta   `json:"meta,omitempty"`
+	Mode          os.FileMode `json:"mode,omitempty"`
+	ModeStr       string      `json:"modestr,omitempty"`
+	ModTime       int64       `json:"modtime,omitempty"`
+	IsDir         bool        `json:"isdir,omitempty"`
+	SupportsMkdir bool        `json:"supportsmkdir,omitempty"`
+	MimeType      string      `json:"mimetype,omitempty"`
+	ReadOnly      bool        `json:"readonly,omitempty"` // this is not set for fileinfo's returned from directory listings
 }
 
-type FileOptsType struct {
+type FileOpts struct {
 	MaxSize     int64 `json:"maxsize,omitempty"`
 	Circular    bool  `json:"circular,omitempty"`
 	IJson       bool  `json:"ijson,omitempty"`
 	IJsonBudget int   `json:"ijsonbudget,omitempty"`
+	Truncate    bool  `json:"truncate,omitempty"`
+	Append      bool  `json:"append,omitempty"`
 }
 
 type FileMeta = map[string]any
@@ -417,7 +423,7 @@ type FileListOpts struct {
 type FileCreateData struct {
 	Path string         `json:"path"`
 	Meta map[string]any `json:"meta,omitempty"`
-	Opts *FileOptsType  `json:"opts,omitempty"`
+	Opts *FileOpts      `json:"opts,omitempty"`
 }
 
 type CommandAppendIJsonData struct {
@@ -499,9 +505,9 @@ type CommandFileCopyData struct {
 }
 
 type CommandRemoteFileCopyData struct {
-	SrcUri   string        `json:"srcuri"`
-	DestPath string        `json:"destpath"`
-	Opts     *FileCopyOpts `json:"opts,omitempty"`
+	SrcUri  string        `json:"srcuri"`
+	DestUri string        `json:"desturi"`
+	Opts    *FileCopyOpts `json:"opts,omitempty"`
 }
 
 type CommandRemoteStreamTarData struct {

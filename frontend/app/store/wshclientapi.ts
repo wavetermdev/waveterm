@@ -192,6 +192,11 @@ class RpcApiType {
         return client.wshRpcCall("filemkdir", data, opts);
     }
 
+    // command "filemove" [call]
+    FileMoveCommand(client: WshClient, data: CommandFileCopyData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("filemove", data, opts);
+    }
+
     // command "fileread" [call]
     FileReadCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<FileData> {
         return client.wshRpcCall("fileread", data, opts);
@@ -267,9 +272,9 @@ class RpcApiType {
         return client.wshRpcCall("remotefilejoin", data, opts);
     }
 
-    // command "remotefilerename" [call]
-    RemoteFileRenameCommand(client: WshClient, data: string[], opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("remotefilerename", data, opts);
+    // command "remotefilemove" [call]
+    RemoteFileMoveCommand(client: WshClient, data: CommandRemoteFileCopyData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotefilemove", data, opts);
     }
 
     // command "remotefiletouch" [call]

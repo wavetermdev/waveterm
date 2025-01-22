@@ -199,7 +199,7 @@ declare global {
     // wshrpc.CommandRemoteFileCopyData
     type CommandRemoteFileCopyData = {
         srcuri: string;
-        destpath: string;
+        desturi: string;
         opts?: FileCopyOpts;
     };
 
@@ -393,7 +393,7 @@ declare global {
         dir?: string;
         name?: string;
         notfound?: boolean;
-        opts?: FileOptsType;
+        opts?: FileOpts;
         size?: number;
         meta?: {[key: string]: any};
         mode?: number;
@@ -418,12 +418,14 @@ declare global {
         limit?: number;
     };
 
-    // wshrpc.FileOptsType
-    type FileOptsType = {
+    // wshrpc.FileOpts
+    type FileOpts = {
         maxsize?: number;
         circular?: boolean;
         ijson?: boolean;
         ijsonbudget?: number;
+        truncate?: boolean;
+        append?: boolean;
     };
 
     // wconfig.FullConfigType
@@ -1088,7 +1090,7 @@ declare global {
     type WaveFile = {
         zoneid: string;
         name: string;
-        opts: FileOptsType;
+        opts: FileOpts;
         createdts: number;
         size: number;
         modts: number;

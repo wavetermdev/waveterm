@@ -235,6 +235,12 @@ func FileMkdirCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcO
 	return err
 }
 
+// command "filemove", wshserver.FileMoveCommand
+func FileMoveCommand(w *wshutil.WshRpc, data wshrpc.CommandFileCopyData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filemove", data, opts)
+	return err
+}
+
 // command "fileread", wshserver.FileReadCommand
 func FileReadCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) (*wshrpc.FileData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.FileData](w, "fileread", data, opts)
@@ -324,9 +330,9 @@ func RemoteFileJoinCommand(w *wshutil.WshRpc, data []string, opts *wshrpc.RpcOpt
 	return resp, err
 }
 
-// command "remotefilerename", wshserver.RemoteFileRenameCommand
-func RemoteFileRenameCommand(w *wshutil.WshRpc, data [2]string, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "remotefilerename", data, opts)
+// command "remotefilemove", wshserver.RemoteFileMoveCommand
+func RemoteFileMoveCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteFileCopyData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remotefilemove", data, opts)
 	return err
 }
 

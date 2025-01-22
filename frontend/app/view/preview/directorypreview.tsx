@@ -4,7 +4,7 @@
 import { Button } from "@/app/element/button";
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
+import { PLATFORM, atoms, createBlock, getApi } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
@@ -291,11 +291,17 @@ function DirectoryTable({
             onSave: (newName: string) => {
                 let newPath: string;
                 if (newName !== fileName) {
-                    newPath = path.replace(fileName, newName);
+                    const lastInstance = path.lastIndexOf(fileName);
+                    newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
-                        const connection = await globalStore.get(model.connection);
-                        // await FileService.Rename(connection, path, newPath);
+                        await RpcApi.FileMoveCommand(TabRpcClient, {
+                            srcuri: await model.formatRemoteUri(path),
+                            desturi: await model.formatRemoteUri(newPath),
+                            opts: {
+                                recursive: true,
+                            },
+                        });
                         model.refreshCallback();
                     });
                 }
@@ -604,7 +610,7 @@ function TableBody({
                                 meta: {
                                     controller: "shell",
                                     view: "term",
-                                    "cmd:cwd": finfo.path,
+                                    "cmd:cwd": await model.formatRemoteUri(finfo.path),
                                 },
                             };
                             await createBlock(termBlockDef);
@@ -621,7 +627,7 @@ function TableBody({
                         fireAndForget(async () => {
                             await RpcApi.FileDeleteCommand(TabRpcClient, {
                                 info: {
-                                    path: finfo.path,
+                                    path: await model.formatRemoteUri(finfo.path),
                                 },
                             }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);

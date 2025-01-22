@@ -89,11 +89,15 @@ func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data 
 	return nil
 }
 
+func (c S3Client) AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
+	return nil
+}
+
 func (c S3Client) Mkdir(ctx context.Context, conn *connparse.Connection) error {
 	return nil
 }
 
-func (c S3Client) Move(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
+func (c S3Client) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
 	return nil
 }
 

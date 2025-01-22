@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -301,29 +301,49 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 }
 
 func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
-	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestPath)
+	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
 	opts := data.Opts
-	destPath := data.DestPath
+	destUri := data.DestUri
 	srcUri := data.SrcUri
-	merge := opts != nil && opts.Merge
+	// merge := opts != nil && opts.Merge
 	overwrite := opts != nil && opts.Overwrite
-	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destPath))
+
+	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
+	if err != nil {
+		return fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
+	}
+	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
 	destinfo, err := os.Stat(destPathCleaned)
 	if err == nil {
 		if !destinfo.IsDir() {
 			if !overwrite {
-				return fmt.Errorf("destination %q already exists, use overwrite option", destPath)
+				return fmt.Errorf("destination %q already exists, use overwrite option", destPathCleaned)
 			} else {
 				err := os.Remove(destPathCleaned)
 				if err != nil {
-					return fmt.Errorf("cannot remove file %q: %w", destPath, err)
+					return fmt.Errorf("cannot remove file %q: %w", destPathCleaned, err)
 				}
 			}
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("cannot stat destination %q: %w", destPath, err)
+		return fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
 	}
-	log.Printf("copying %q to %q\n", srcUri, destPath)
+	log.Printf("copying %q to %q\n", srcUri, destUri)
+	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
+	if err != nil {
+		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
+	}
+	if srcConn.Host == destConn.Host {
+		log.Printf("same host, copying file\n")
+		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
+		err := os.Rename(srcPathCleaned, destPathCleaned)
+		if err != nil {
+			return fmt.Errorf("cannot copy file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
+		}
+	} else {
+		return fmt.Errorf("cannot copy file %q to %q: source and destination must be on the same host", srcUri, destPathCleaned)
+	}
+	/* TODO: uncomment once ready for cross-connection copy
 	timeout := time.Millisecond * 100
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
@@ -434,7 +454,8 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				}
 			}
 		}
-	}
+	}*/
+	return nil
 }
 
 func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrpc.CommandRemoteListEntriesData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
@@ -626,16 +647,49 @@ func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string)
 	return nil
 }
 
-func (impl *ServerImpl) RemoteFileRenameCommand(ctx context.Context, pathTuple [2]string) error {
-	path := pathTuple[0]
-	newPath := pathTuple[1]
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
-	cleanedNewPath := filepath.Clean(wavebase.ExpandHomeDirSafe(newPath))
-	if _, err := os.Stat(cleanedNewPath); err == nil {
-		return fmt.Errorf("destination file path %q already exists", path)
+func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
+	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
+	opts := data.Opts
+	destUri := data.DestUri
+	srcUri := data.SrcUri
+	overwrite := opts != nil && opts.Overwrite
+
+	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
+	if err != nil {
+		return fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
 	}
-	if err := os.Rename(cleanedPath, cleanedNewPath); err != nil {
-		return fmt.Errorf("cannot rename file %q to %q: %w", cleanedPath, cleanedNewPath, err)
+	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
+	destinfo, err := os.Stat(destPathCleaned)
+	if err == nil {
+		if !destinfo.IsDir() {
+			if !overwrite {
+				return fmt.Errorf("destination %q already exists, use overwrite option", destUri)
+			} else {
+				err := os.Remove(destPathCleaned)
+				if err != nil {
+					return fmt.Errorf("cannot remove file %q: %w", destUri, err)
+				}
+			}
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("cannot stat destination %q: %w", destUri, err)
+	}
+	log.Printf("moving %q to %q\n", srcUri, destUri)
+	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
+	if err != nil {
+		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
+	}
+	log.Printf("source host: %q, destination host: %q\n", srcConn.Host, destConn.Host)
+	if srcConn.Host == destConn.Host {
+		log.Printf("moving file on same host\n")
+		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
+		log.Printf("moving %q to %q\n", srcPathCleaned, destPathCleaned)
+		err := os.Rename(srcPathCleaned, destPathCleaned)
+		if err != nil {
+			return fmt.Errorf("cannot move file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
+		}
+	} else {
+		return fmt.Errorf("cannot move file %q to %q: source and destination must be on the same host", srcUri, destUri)
 	}
 	return nil
 }
@@ -685,12 +739,23 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 		}
 	}
 
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, createMode)
+	openFlags := os.O_CREATE | os.O_WRONLY
+	if data.Info.Opts.Truncate {
+		openFlags |= os.O_TRUNC
+	}
+	if data.Info.Opts.Append {
+		openFlags |= os.O_APPEND
+	}
+
+	file, err := os.OpenFile(path, openFlags, createMode)
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
 	}
-	offsetWriter := io.NewOffsetWriter(file, offset)
-	n, err = offsetWriter.Write(dataBytes[:n])
+	if offset > 0 && !data.Info.Opts.Append {
+		n, err = file.WriteAt(dataBytes[:n], offset)
+	} else {
+		n, err = file.Write(dataBytes[:n])
+	}
 	if err != nil {
 		return fmt.Errorf("cannot write to file %q: %w", path, err)
 	}

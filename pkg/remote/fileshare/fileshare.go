@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/s3fs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -29,14 +31,12 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	conntype := conn.GetType()
 	log.Printf("CreateFileShareClient: conntype=%s", conntype)
 	if conntype == connparse.ConnectionTypeS3 {
-		// TODO: enable s3fs
-		return nil, nil
-		// config, err := awsconn.GetConfig(ctx, connection)
-		// if err != nil {
-		// 	log.Printf("error getting aws config: %v", err)
-		// 	return nil, nil
-		// }
-		// return s3fs.NewS3Client(config), conn
+		config, err := awsconn.GetConfig(ctx, connection)
+		if err != nil {
+			log.Printf("error getting aws config: %v", err)
+			return nil, nil
+		}
+		return s3fs.NewS3Client(config), conn
 	} else if conntype == connparse.ConnectionTypeWave {
 		return wavefs.NewWaveClient(), conn
 	} else if conntype == connparse.ConnectionTypeWsh {
@@ -119,18 +119,17 @@ func Mkdir(ctx context.Context, path string) error {
 	return client.Mkdir(ctx, conn)
 }
 
-// TODO: Implement move across different fileshare types
-func Move(ctx context.Context, srcPath, destPath string, recursive bool) error {
-	log.Printf("Move: src=%s, dest=%s", srcPath, destPath)
-	srcClient, srcConn := CreateFileShareClient(ctx, srcPath)
-	if srcConn == nil || srcClient == nil {
-		return fmt.Errorf("error creating fileshare client, could not parse connection %s or %s", srcPath, destPath)
-	}
-	destConn, err := connparse.ParseURI(destPath)
+func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
+	log.Printf("Move: src=%s, dest=%s", data.SrcUri, data.DestUri)
+	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, data.SrcUri)
 	if err != nil {
-		return fmt.Errorf("error parsing destination connection %s: %v", destPath, err)
+		return fmt.Errorf("error parsing source connection %s: %v", data.SrcUri, err)
 	}
-	return srcClient.Move(ctx, srcConn, destConn, recursive)
+	destClient, destConn := CreateFileShareClient(ctx, data.DestUri)
+	if destConn == nil || destClient == nil {
+		return fmt.Errorf("error creating fileshare client, could not parse connection %s or %s", data.SrcUri, data.DestUri)
+	}
+	return destClient.Move(ctx, srcConn, destConn, data.Opts)
 }
 
 func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
@@ -165,20 +164,10 @@ func Join(ctx context.Context, path string, parts ...string) (string, error) {
 }
 
 func Append(ctx context.Context, data wshrpc.FileData) error {
-	path := data.Info.Path
-	log.Printf("Append: path=%s", path)
-	client, conn := CreateFileShareClient(ctx, path)
+	log.Printf("Append: path=%s", data.Info.Path)
+	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
-		return fmt.Errorf(ErrorParsingConnection, path)
+		return fmt.Errorf(ErrorParsingConnection, data.Info.Path)
 	}
-	finfo, err := client.Stat(ctx, conn)
-	if err != nil {
-		return err
-	}
-	data.Info = finfo
-	data.At = &wshrpc.FileDataAt{
-		Offset: finfo.Size,
-	}
-	log.Printf("Append: offset=%d", data.At.Offset)
-	return client.PutFile(ctx, conn, data)
+	return client.AppendFile(ctx, conn, data)
 }

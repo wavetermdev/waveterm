@@ -95,7 +95,7 @@ func MakePlotData(ctx context.Context, blockId string) error {
 	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
-	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, wshrpc.FileOptsType{})
+	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, wshrpc.FileOpts{})
 }
 
 func SavePlotData(ctx context.Context, blockId string, history string) error {
@@ -321,6 +321,10 @@ func (ws *WshServer) FileCopyCommand(ctx context.Context, data wshrpc.CommandFil
 	return fileshare.Copy(ctx, data)
 }
 
+func (ws *WshServer) FileMoveCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
+	return fileshare.Move(ctx, data)
+}
+
 func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
 	return fileshare.ReadTarStream(ctx, data)
 }
@@ -332,7 +336,7 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.FileData
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
 	if data.FileName == blockcontroller.BlockFile_VDom && tryCreate {
-		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
+		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOpts{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
 		if err != nil && err != fs.ErrExist {
 			return fmt.Errorf("error creating blockfile[vdom]: %w", err)
 		}
@@ -762,7 +766,7 @@ func (ws *WshServer) SetVarCommand(ctx context.Context, data wshrpc.CommandVarDa
 	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
 	if err == fs.ErrNotExist {
 		fileData = []byte{}
-		err = filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOptsType{})
+		err = filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOpts{})
 		if err != nil {
 			return fmt.Errorf("error creating blockfile: %w", err)
 		}

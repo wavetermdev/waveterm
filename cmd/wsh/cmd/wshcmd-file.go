@@ -21,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/util/colprint"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"golang.org/x/term"
@@ -88,19 +87,10 @@ func init() {
 	fileCmd.AddCommand(fileRmCmd)
 	fileCmd.AddCommand(fileInfoCmd)
 	fileCmd.AddCommand(fileAppendCmd)
-	// fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
-	// fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
-	// fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
-	// fileCmd.AddCommand(fileCpCmd)
-}
-
-type waveFileRef struct {
-	zoneId   string
-	fileName string
-}
-
-func resolveWaveFile(ref *waveFileRef) (*waveobj.ORef, error) {
-	return resolveSimpleId(ref.zoneId)
+	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
+	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
+	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
+	fileCmd.AddCommand(fileCpCmd)
 }
 
 var fileListCmd = &cobra.Command{
@@ -165,11 +155,23 @@ var fileAppendCmd = &cobra.Command{
 
 var fileCpCmd = &cobra.Command{
 	Use:     "cp [source-uri] [destination-uri]" + UriHelpText,
+	Aliases: []string{"copy"},
 	Short:   "copy files between storage systems",
 	Long:    "Copy files between different storage systems." + UriHelpText,
 	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt\n  wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
 	Args:    cobra.ExactArgs(2),
 	RunE:    activityWrap("file", fileCpRun),
+	PreRunE: preRunSetupRpcClient,
+}
+
+var fileMvCmd = &cobra.Command{
+	Use:     "mv [source-uri] [destination-uri]" + UriHelpText,
+	Aliases: []string{"move"},
+	Short:   "move files between storage systems",
+	Long:    "Move files between different storage systems. The source file will be deleted once the operation completes successfully." + UriHelpText,
+	Example: "  wsh file mv wavefile://block/config.txt ./local-config.txt\n  wsh file mv ./local-config.txt wavefile://block/config.txt\n  wsh file mv wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
+	Args:    cobra.ExactArgs(2),
+	RunE:    activityWrap("file", fileMvRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -399,6 +401,34 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 	err = wshclient.FileCopyCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Recursive: recursive, Merge: merge, Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("copying file: %w", err)
+	}
+	return nil
+}
+
+func fileMvRun(cmd *cobra.Command, args []string) error {
+	src, dst := args[0], args[1]
+	recursive, err := cmd.Flags().GetBool("recursive")
+	if err != nil {
+		return err
+	}
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	srcPath, err := fixRelativePaths(src)
+	if err != nil {
+		return fmt.Errorf("unable to parse src path: %w", err)
+	}
+	destPath, err := fixRelativePaths(dst)
+	if err != nil {
+		return fmt.Errorf("unable to parse dest path: %w", err)
+	}
+	log.Printf("Moving %s to %s; recursive: %v, force: %v", srcPath, destPath, recursive, force)
+	rpcOpts := &wshrpc.RpcOpts{Timeout: TimeoutYear}
+	err = wshclient.FileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Recursive: recursive, Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
+	if err != nil {
+		return fmt.Errorf("moving file: %w", err)
 	}
 	return nil
 }

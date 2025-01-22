@@ -25,10 +25,12 @@ type FileShareClient interface {
 	ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]
 	// PutFile writes the given data to the file at the given path
 	PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error
+	// AppendFile appends the given data to the file at the given path
+	AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error
 	// Mkdir creates a directory at the given path
 	Mkdir(ctx context.Context, conn *connparse.Connection) error
-	// Copy copies the file from srcConn to destConn
-	Move(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error
+	// Move moves the file from srcConn to destConn
+	Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
 	// Copy copies the file from srcConn to destConn
 	Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
 	// Delete deletes the entry at the given path

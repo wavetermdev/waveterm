@@ -53,10 +53,10 @@ var WFS *FileStore = &FileStore{
 
 type WaveFile struct {
 	// these fields are static (not updated)
-	ZoneId    string              `json:"zoneid"`
-	Name      string              `json:"name"`
-	Opts      wshrpc.FileOptsType `json:"opts"`
-	CreatedTs int64               `json:"createdts"`
+	ZoneId    string          `json:"zoneid"`
+	Name      string          `json:"name"`
+	Opts      wshrpc.FileOpts `json:"opts"`
+	CreatedTs int64           `json:"createdts"`
 
 	//  these fields are mutable
 	Size  int64           `json:"size"`
@@ -112,7 +112,7 @@ type FileData struct {
 func (FileData) UseDBMap() {}
 
 // synchronous (does not interact with the cache)
-func (s *FileStore) MakeFile(ctx context.Context, zoneId string, name string, meta wshrpc.FileMeta, opts wshrpc.FileOptsType) error {
+func (s *FileStore) MakeFile(ctx context.Context, zoneId string, name string, meta wshrpc.FileMeta, opts wshrpc.FileOpts) error {
 	if opts.MaxSize < 0 {
 		return fmt.Errorf("max size must be non-negative")
 	}

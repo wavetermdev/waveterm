@@ -59,11 +59,10 @@ func ParseURIAndReplaceCurrentHost(ctx context.Context, uri string) (*Connection
 		return nil, fmt.Errorf("error parsing connection: %v", err)
 	}
 	if conn.Host == ConnHostCurrent {
-		handler := wshutil.GetRpcResponseHandlerFromContext(context.Background())
-		if handler == nil {
-			return nil, fmt.Errorf("error getting rpc response handler from context")
+		source, err := GetConnNameFromContext(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting connection name from context: %v", err)
 		}
-		source := handler.GetRpcContext().Conn
 
 		// RPC context connection is empty for local connections
 		if source == "" {
@@ -72,6 +71,14 @@ func ParseURIAndReplaceCurrentHost(ctx context.Context, uri string) (*Connection
 		conn.Host = source
 	}
 	return conn, nil
+}
+
+func GetConnNameFromContext(ctx context.Context) (string, error) {
+	handler := wshutil.GetRpcResponseHandlerFromContext(ctx)
+	if handler == nil {
+		return "", fmt.Errorf("error getting rpc response handler from context")
+	}
+	return handler.GetRpcContext().Conn, nil
 }
 
 // ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
