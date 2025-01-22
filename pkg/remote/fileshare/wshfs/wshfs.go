@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
@@ -46,7 +45,6 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		resp := respUnion.Response
 		if firstPk {
 			firstPk = false
-			log.Printf("stream file, first pk: %v", resp)
 			// first packet has the fileinfo
 			if resp.Info == nil {
 				return nil, fmt.Errorf("stream file protocol error, first pk fileinfo is empty")
@@ -59,7 +57,6 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		}
 		if isDir {
 			if len(resp.Entries) == 0 {
-				// log.Printf("stream dir, no entries")
 				continue
 			}
 			fileData.Entries = append(fileData.Entries, resp.Entries...)
@@ -90,7 +87,6 @@ func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, d
 }
 
 func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
-	log.Print("ReadTarStream wshfs")
 	timeout := opts.Timeout
 	if timeout == 0 {
 		timeout = ThirtySeconds

@@ -508,7 +508,11 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	filesChan := wshclient.FileListStreamCommand(RpcClient, wshrpc.FileListData{Path: path, Opts: &wshrpc.FileListOpts{All: recursive}}, &wshrpc.RpcOpts{Timeout: 2000})
-
+	// Drain the channel when done
+	defer func() {
+		for range filesChan {
+		}
+	}()
 	if longForm {
 		return filePrintLong(filesChan)
 	}
