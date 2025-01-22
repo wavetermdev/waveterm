@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0s
 
+import { PLATFORM } from "@/app/store/global";
 import base64 from "base64-js";
 import clsx from "clsx";
 import { Atom, atom, Getter, SetStateAction, Setter, useAtomValue } from "jotai";
@@ -302,6 +303,29 @@ function makeConnRoute(conn: string): string {
     return "conn:" + conn;
 }
 
+function makeNativeLabel(isDirectory: boolean, isParent: boolean) {
+    let managerName: string;
+    if (!isDirectory && !isParent) {
+        managerName = "Default Application";
+    } else if (PLATFORM == "darwin") {
+        managerName = "Finder";
+    } else if (PLATFORM == "win32") {
+        managerName = "Explorer";
+    } else {
+        managerName = "File Manager";
+    }
+
+    let fileType: string;
+    if (isParent) {
+        fileType = "Parent Directory";
+    } else if (isDirectory) {
+        fileType = "Directory";
+    } else {
+        fileType = "File";
+    }
+    return `Reveal ${fileType} in ${managerName}`;
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -321,6 +345,7 @@ export {
     makeConnRoute,
     makeExternLink,
     makeIconClass,
+    makeNativeLabel,
     stringToBase64,
     useAtomValueSafe,
 };

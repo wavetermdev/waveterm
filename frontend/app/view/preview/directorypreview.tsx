@@ -8,7 +8,7 @@ import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/g
 import { FileService } from "@/app/store/services";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank } from "@/util/util";
+import { base64ToString, fireAndForget, isBlank, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -509,17 +509,6 @@ function TableBody({
             }
             const normPath = getNormFilePath(finfo);
             const fileName = finfo.path.split("/").pop();
-            let openNativeLabel = "Open File";
-            if (finfo.isdir) {
-                openNativeLabel = "Open Directory in File Manager";
-                if (PLATFORM == "darwin") {
-                    openNativeLabel = "Open Directory in Finder";
-                } else if (PLATFORM == "win32") {
-                    openNativeLabel = "Open Directory in Explorer";
-                }
-            } else {
-                openNativeLabel = "Open File in Default Application";
-            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -572,9 +561,15 @@ function TableBody({
                 },
                 // TODO: Only show this option for local files, resolve correct host path if connection is WSL
                 {
-                    label: openNativeLabel,
+                    label: makeNativeLabel(finfo.isdir, false),
                     click: () => {
                         getApi().openNativePath(normPath);
+                    },
+                },
+                {
+                    label: makeNativeLabel(true, true),
+                    click: () => {
+                        getApi().openNativePath(finfo.dir);
                     },
                 },
                 {
@@ -856,9 +851,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 },
                 // TODO: Only show this option for local files, resolve correct host path if connection is WSL
                 {
-                    label: openNativeLabel,
+                    label: makeNativeLabel(true, true),
                     click: () => {
-                        console.log(`opening ${dirPath}`);
                         getApi().openNativePath(dirPath);
                     },
                 },
