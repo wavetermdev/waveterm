@@ -356,6 +356,11 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				}
 				return fmt.Errorf("cannot read tar stream: %w", err)
 			}
+			// Check for directory traversal
+			if strings.Contains(next.Name, "..") {
+				log.Printf("skipping file with unsafe path: %q\n", next.Name)
+				continue
+			}
 			finfo := next.FileInfo()
 			nextPath := filepath.Join(destPathCleaned, next.Name)
 			destinfo, err = os.Stat(nextPath)
