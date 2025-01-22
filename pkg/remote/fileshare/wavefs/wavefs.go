@@ -39,18 +39,22 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 			ch <- wshutil.RespErr[wshrpc.FileData](err)
 			return
 		}
-		if ctx.Err() != nil {
-			ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
-			return
-		}
 		dataLen := len(rtnData.Data64)
 		if !rtnData.Info.IsDir {
 			for i := 0; i < dataLen; i += wshrpc.FileChunkSize {
+				if ctx.Err() != nil {
+					ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					return
+				}
 				dataEnd := min(i+wshrpc.FileChunkSize, dataLen)
 				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: rtnData.Data64[i:dataEnd], Info: rtnData.Info, At: &wshrpc.FileDataAt{Offset: int64(i), Size: dataEnd - i}}}
 			}
 		} else {
 			for i := 0; i < len(rtnData.Entries); i += wshrpc.DirChunkSize {
+				if ctx.Err() != nil {
+					ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					return
+				}
 				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: rtnData.Entries[i:min(i+wshrpc.DirChunkSize, len(rtnData.Entries))], Info: rtnData.Info}}
 			}
 		}
