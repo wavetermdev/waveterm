@@ -51,12 +51,12 @@ func GetConfig(ctx context.Context, profile string) (*aws.Config, error) {
 			if configfilepath != "" {
 				log.Printf("configfilepath: %s", configfilepath)
 				optfns = append(optfns, config.WithSharedConfigFiles([]string{configfilepath}))
-				tempfiles[profile] = configfilepath
+				tempfiles[profile+"_config"] = configfilepath
 			}
 			if credentialsfilepath != "" {
 				log.Printf("credentialsfilepath: %s", credentialsfilepath)
 				optfns = append(optfns, config.WithSharedCredentialsFiles([]string{credentialsfilepath}))
-				tempfiles[profile] = credentialsfilepath
+				tempfiles[profile+"_credentials"] = credentialsfilepath
 			}
 		}
 		trimmedProfile := strings.TrimPrefix(profile, ProfilePrefix)
