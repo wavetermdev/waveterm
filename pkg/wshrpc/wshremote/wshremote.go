@@ -217,7 +217,10 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
 	path := data.Path
 	opts := data.Opts
-	recursive := opts != nil && opts.Recursive
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
+	recursive := opts.Recursive
 	log.Printf("RemoteTarStreamCommand: path=%s\n", path)
 	path, err := wavebase.ExpandHomeDir(path)
 	if err != nil {
@@ -303,10 +306,13 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
 	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
 	opts := data.Opts
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
 	destUri := data.DestUri
 	srcUri := data.SrcUri
-	// merge := opts != nil && opts.Merge
-	overwrite := opts != nil && opts.Overwrite
+	// merge :=  opts.Merge
+	overwrite := opts.Overwrite
 
 	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
 	if err != nil {
