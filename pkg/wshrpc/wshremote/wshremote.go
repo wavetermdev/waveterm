@@ -226,7 +226,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	tarWriter := tar.NewWriter(pipeWriter)
 	timeout := time.Millisecond * 100
 	if opts.Timeout > 0 {
-		timeout = time.Duration(opts.Timeout)
+		timeout = opts.Timeout
 	}
 	readerCtx, _ := context.WithTimeout(context.Background(), timeout)
 	rtn := iochan.ReaderChan(readerCtx, pipeReader, wshrpc.FileChunkSize, func() {
