@@ -141,6 +141,7 @@ type ConnKeywords struct {
 	ConnOverrideConfig      bool   `json:"conn:overrideconfig,omitempty"`
 	ConnWshPath             string `json:"conn:wshpath,omitempty"`
 	ConnShellPath           string `json:"conn:shellpath,omitempty"`
+	ConnIgnoreSshConfig     *bool  `json:"conn:ignoresshconfig,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`

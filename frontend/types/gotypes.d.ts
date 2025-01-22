@@ -299,6 +299,7 @@ declare global {
         "conn:overrideconfig"?: boolean;
         "conn:wshpath"?: string;
         "conn:shellpath"?: string;
+        "conn:ignoresshconfig"?: boolean;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;
