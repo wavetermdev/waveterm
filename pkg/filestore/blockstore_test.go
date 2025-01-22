@@ -306,7 +306,7 @@ func checkFileByteCount(t *testing.T, ctx context.Context, zoneId string, name s
 }
 
 func checkFileDataAt(t *testing.T, ctx context.Context, zoneId string, name string, offset int64, data string) {
-	_, rdata, err := WFS.ReadAt(ctx, zoneId, name, offset, int64(len(data)))
+	_, rdata, err := WFS.ReadAt(ctx, zoneId, name, offset, len(data))
 	if err != nil {
 		t.Errorf("error reading data for file %q: %v", name, err)
 		return
