@@ -67,7 +67,7 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(resp.Data64)))
 			_, err := io.Copy(&fileBuf, decoder)
 			if err != nil {
-				return nil, fmt.Errorf("stream file, failed to decode base64 data %q: %w", resp.Data64, err)
+				return nil, fmt.Errorf("stream file, failed to decode base64 data: %w", err)
 			}
 		}
 	}
