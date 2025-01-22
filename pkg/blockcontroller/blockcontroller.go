@@ -466,7 +466,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, wavebase.BlockFile_Term, nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
+	fsErr := filestore.WFS.MakeFile(ctx, bc.BlockId, wavebase.BlockFile_Term, nil, wshrpc.FileOpts{MaxSize: DefaultTermMaxFileSize, Circular: true})
 	if fsErr != nil && fsErr != fs.ErrExist {
 		return nil, fmt.Errorf("error creating blockfile: %w", fsErr)
 	}
@@ -543,7 +543,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 		}
 	} else if connUnion.ConnType == ConnType_Ssh {
 		conn := connUnion.SshConn
-		if !conn.WshEnabled.Load() {
+		if !connUnion.WshEnabled {
 			shellProc, err = shellexec.StartRemoteShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
 			if err != nil {
 				return nil, err

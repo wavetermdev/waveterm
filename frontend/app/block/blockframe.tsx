@@ -448,14 +448,16 @@ const ConnStatusOverlay = React.memo(
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
                         <div className="connstatus-status">
                             <div className="connstatus-status-text">{statusText}</div>
-                            <OverlayScrollbarsComponent
-                                className="connstatus-error"
-                                options={{ scrollbars: { autoHide: "leave" } }}
-                            >
-                                <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
-                                {showError ? <div>error: {connStatus.error}</div> : null}
-                                {showWshError ? <div>unable to use wsh: {connStatus.wsherror}</div> : null}
-                            </OverlayScrollbarsComponent>
+                            {(showError || showWshError) && (
+                                <OverlayScrollbarsComponent
+                                    className="connstatus-error"
+                                    options={{ scrollbars: { autoHide: "leave" } }}
+                                >
+                                    <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
+                                    {showError ? <div>error: {connStatus.error}</div> : null}
+                                    {showWshError ? <div>unable to use wsh: {connStatus.wsherror}</div> : null}
+                                </OverlayScrollbarsComponent>
+                            )}
                             {showWshError && (
                                 <Button className={reconClassName} onClick={handleDisableWsh}>
                                     always disable wsh

@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -175,6 +176,7 @@ func shutdownActivityUpdate() {
 
 func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
+	wshfs.RpcClient = rpc
 	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
 	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{})

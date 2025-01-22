@@ -1,7 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ClientService, FileService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
+import { ClientService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { fireAndForget } from "@/util/util";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
 import path from "path";
@@ -15,6 +16,7 @@ import {
 } from "./emain-activity";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
 import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-util";
+import { ElectronWshClient } from "./emain-wsh";
 import { log } from "./log";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
@@ -255,7 +257,7 @@ export class WaveBrowserWindow extends BaseWindow {
             e.preventDefault();
             fireAndForget(async () => {
                 const numWindows = waveWindowMap.size;
-                const fullConfig = await FileService.GetFullConfig();
+                const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
                 if (numWindows > 1 || !fullConfig.settings["window:savelastwindow"]) {
                     console.log("numWindows > 1 or user does not want last window saved", numWindows);
                     if (fullConfig.settings["window:confirmclose"]) {
@@ -621,7 +623,7 @@ export async function createWindowForWorkspace(workspaceId: string) {
     if (!newWin) {
         console.log("error creating new window", this.waveWindowId);
     }
-    const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), {
+    const newBwin = await createBrowserWindow(newWin, await RpcApi.GetFullConfigCommand(ElectronWshClient), {
         unamePlatform,
     });
     newBwin.show();
@@ -743,7 +745,7 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
 export async function createNewWaveWindow() {
     log("createNewWaveWindow");
     const clientData = await ClientService.GetClientData();
-    const fullConfig = await FileService.GetFullConfig();
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     let recreatedWindow = false;
     const allWindows = getAllWaveWindows();
     if (allWindows.length === 0 && clientData?.windowids?.length >= 1) {
@@ -780,7 +782,7 @@ export async function relaunchBrowserWindows() {
     setGlobalIsRelaunching(false);
 
     const clientData = await ClientService.GetClientData();
-    const fullConfig = await FileService.GetFullConfig();
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     const wins: WaveBrowserWindow[] = [];
     for (const windowId of clientData.windowids.slice().reverse()) {
         const windowData: WaveWindow = await WindowService.GetWindow(windowId);

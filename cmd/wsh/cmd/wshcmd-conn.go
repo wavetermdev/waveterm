@@ -30,7 +30,6 @@ var connStatusCmd = &cobra.Command{
 var connReinstallCmd = &cobra.Command{
 	Use:     "reinstall CONNECTION",
 	Short:   "reinstall wsh on a connection",
-	Args:    cobra.ExactArgs(1),
 	RunE:    connReinstallRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -124,6 +123,12 @@ func connStatusRun(cmd *cobra.Command, args []string) error {
 }
 
 func connReinstallRun(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
+		if RpcContext.Conn == "" {
+			return fmt.Errorf("no connection specified")
+		}
+		args = []string{RpcContext.Conn}
+	}
 	connName := args[0]
 	if err := validateConnectionName(connName); err != nil {
 		return err

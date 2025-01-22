@@ -528,7 +528,7 @@ func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
 }
 
 // does not return an error since that error is stored inside of SSHConn
-func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
+func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
 	blocklogger.Infof(ctx, "\n")
 	var connectAllowed bool
 	conn.WithLock(func() {
@@ -698,11 +698,11 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 	}
 }
 
-func (conn *SSHConn) getConnectionConfig() (wshrpc.ConnKeywords, bool) {
+func (conn *SSHConn) getConnectionConfig() (wconfig.ConnKeywords, bool) {
 	config := wconfig.GetWatcher().GetFullConfig()
 	connSettings, ok := config.Connections[conn.GetName()]
 	if !ok {
-		return wshrpc.ConnKeywords{}, false
+		return wconfig.ConnKeywords{}, false
 	}
 	return connSettings, true
 }
@@ -729,7 +729,7 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 }
 
 // returns (connect-error)
-func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
+func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
 	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
 	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
@@ -837,7 +837,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	case Status_Connecting:
 		return conn.WaitForConnect(ctx)
 	case Status_Init, Status_Disconnected:
-		return conn.Connect(ctx, &wshrpc.ConnKeywords{})
+		return conn.Connect(ctx, &wconfig.ConnKeywords{})
 	case Status_Error:
 		return fmt.Errorf("connection error: %s", connStatus.Error)
 	default:
