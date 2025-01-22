@@ -57,6 +57,7 @@ const (
 	Command_ControllerResync     = "controllerresync"
 	Command_FileAppend           = "fileappend"
 	Command_FileAppendIJson      = "fileappendijson"
+	Command_Mkdir                = "mkdir"
 	Command_ResolveIds           = "resolveids"
 	Command_BlockInfo            = "blockinfo"
 	Command_CreateBlock          = "createblock"
@@ -145,6 +146,7 @@ type WshRpcInterface interface {
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
+	FileMkdirCommand(ctx context.Context, data FileData) error
 	FileCreateCommand(ctx context.Context, data FileData) error
 	FileDeleteCommand(ctx context.Context, data FileData) error
 	FileAppendCommand(ctx context.Context, data FileData) error

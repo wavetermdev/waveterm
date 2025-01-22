@@ -837,8 +837,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newDirectory: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
-                    // await FileService.Mkdir(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileMkdirCommand(TabRpcClient, {
+                        info: {
+                            path: await model.formatRemoteUri(`${dirPath}/${newName}`),
+                        },
+                    });
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);

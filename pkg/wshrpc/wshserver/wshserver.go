@@ -289,6 +289,10 @@ func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileData
 	return nil
 }
 
+func (ws *WshServer) FileMkdirCommand(ctx context.Context, data wshrpc.FileData) error {
+	return fileshare.Mkdir(ctx, data.Info.Path)
+}
+
 func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.FileData) error {
 	return fileshare.Delete(ctx, data.Info.Path)
 }

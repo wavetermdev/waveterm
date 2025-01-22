@@ -523,6 +523,7 @@ export class PreviewModel implements ViewModel {
             const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
+            console.log("parent file info", parentFileInfo);
             return parentFileInfo;
         } catch {
             return undefined;

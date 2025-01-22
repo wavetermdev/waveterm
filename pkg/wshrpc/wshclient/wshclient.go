@@ -229,6 +229,12 @@ func FileListStreamCommand(w *wshutil.WshRpc, data wshrpc.FileListData, opts *ws
 	return sendRpcRequestResponseStreamHelper[wshrpc.CommandRemoteListEntriesRtnData](w, "fileliststream", data, opts)
 }
 
+// command "filemkdir", wshserver.FileMkdirCommand
+func FileMkdirCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filemkdir", data, opts)
+	return err
+}
+
 // command "fileread", wshserver.FileReadCommand
 func FileReadCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) (*wshrpc.FileData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.FileData](w, "fileread", data, opts)

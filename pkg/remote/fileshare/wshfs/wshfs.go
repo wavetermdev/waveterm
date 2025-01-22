@@ -60,7 +60,7 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		}
 		if isDir {
 			if len(resp.Entries) == 0 {
-				log.Printf("stream dir, no entries")
+				// log.Printf("stream dir, no entries")
 				continue
 			}
 			fileData.Entries = append(fileData.Entries, resp.Entries...)

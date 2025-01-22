@@ -187,6 +187,11 @@ class RpcApiType {
         return client.wshRpcStream("fileliststream", data, opts);
     }
 
+    // command "filemkdir" [call]
+    FileMkdirCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("filemkdir", data, opts);
+    }
+
     // command "fileread" [call]
     FileReadCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<FileData> {
         return client.wshRpcCall("fileread", data, opts);
