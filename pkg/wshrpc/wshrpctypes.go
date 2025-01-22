@@ -367,11 +367,10 @@ type FileDataAt struct {
 }
 
 type FileData struct {
-	Info    *FileInfo     `json:"info,omitempty"`
-	Data64  string        `json:"data64,omitempty"`
-	Entries []*FileInfo   `json:"entries,omitempty"`
-	Opts    *FileOptsType `json:"opts,omitempty"`
-	At      *FileDataAt   `json:"at,omitempty"` // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
+	Info    *FileInfo   `json:"info,omitempty"`
+	Data64  string      `json:"data64,omitempty"`
+	Entries []*FileInfo `json:"entries,omitempty"`
+	At      *FileDataAt `json:"at,omitempty"` // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
 }
 
 type FileInfo struct {

@@ -6,6 +6,7 @@ package wavefs
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -71,7 +72,7 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, int64(data.At.Size))
 		if err == nil {
 			return &wshrpc.FileData{Info: data.Info, Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
-		} else if err == fs.ErrNotExist {
+		} else if errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("NOTFOUND: %w", err)
 		} else {
 			return nil, fmt.Errorf("error reading blockfile: %w", err)
@@ -80,7 +81,7 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 		_, dataBuf, err := filestore.WFS.ReadFile(ctx, zoneId, fileName)
 		if err == nil {
 			return &wshrpc.FileData{Info: data.Info, Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
-		} else if err != fs.ErrNotExist {
+		} else if !errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("error reading blockfile: %w", err)
 		}
 	}
@@ -191,7 +192,7 @@ func (c WaveClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshr
 	}
 	fileInfo, err := filestore.WFS.Stat(ctx, zoneId, fileName)
 	if err != nil {
-		if err == fs.ErrNotExist {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("NOTFOUND: %w", err)
 		}
 		return nil, fmt.Errorf("error getting file info: %w", err)
@@ -212,9 +213,29 @@ func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, dat
 	if err != nil {
 		return fmt.Errorf("error cleaning path: %w", err)
 	}
-	if data.At != nil {
+	_, err = filestore.WFS.Stat(ctx, zoneId, fileName)
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("error getting blockfile info: %w", err)
+		}
+		var opts wshrpc.FileOptsType
+		var meta wshrpc.FileMeta
+		if data.Info != nil {
+			if data.Info.Opts != nil {
+				opts = *data.Info.Opts
+			}
+			if data.Info.Meta != nil {
+				meta = *data.Info.Meta
+			}
+		}
+		err := filestore.WFS.MakeFile(ctx, zoneId, fileName, meta, opts)
+		if err != nil {
+			return fmt.Errorf("error making blockfile: %w", err)
+		}
+	}
+	if data.At != nil && data.At.Offset >= 0 {
 		err = filestore.WFS.WriteAt(ctx, zoneId, fileName, data.At.Offset, dataBuf)
-		if err == fs.ErrNotExist {
+		if errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("NOTFOUND: %w", err)
 		}
 		if err != nil {
@@ -222,7 +243,7 @@ func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, dat
 		}
 	} else {
 		err = filestore.WFS.WriteFile(ctx, zoneId, fileName, dataBuf)
-		if err == fs.ErrNotExist {
+		if errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("NOTFOUND: %w", err)
 		}
 		if err != nil {
@@ -292,8 +313,11 @@ func cleanPath(path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("path is empty")
 	}
-	if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "~") || strings.HasPrefix(path, ".") || strings.HasPrefix(path, "..") {
-		return "", fmt.Errorf("path cannot start with /, ~, ., or ..")
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+	if strings.HasPrefix(path, "~") || strings.HasPrefix(path, ".") || strings.HasPrefix(path, "..") {
+		return "", fmt.Errorf("wavefile path cannot start with ~, ., or ..")
 	}
 	var newParts []string
 	for _, part := range strings.Split(path, "/") {

@@ -107,11 +107,7 @@ func PutFile(ctx context.Context, data wshrpc.FileData) error {
 	if conn == nil || client == nil {
 		return fmt.Errorf(ErrorParsingConnection, data.Info.Path)
 	}
-	return client.PutFile(ctx, conn, wshrpc.FileData{
-		Data64: data.Data64,
-		Opts:   data.Opts,
-		At:     data.At,
-	})
+	return client.PutFile(ctx, conn, data)
 }
 
 func Mkdir(ctx context.Context, path string) error {
@@ -175,13 +171,14 @@ func Append(ctx context.Context, data wshrpc.FileData) error {
 	if conn == nil || client == nil {
 		return fmt.Errorf(ErrorParsingConnection, path)
 	}
-	fdata, err := client.Read(ctx, conn, data)
+	finfo, err := client.Stat(ctx, conn)
 	if err != nil {
 		return err
 	}
-	data.Info = fdata.Info
+	data.Info = finfo
 	data.At = &wshrpc.FileDataAt{
-		Offset: fdata.Info.Size,
+		Offset: finfo.Size,
 	}
+	log.Printf("Append: offset=%d", data.At.Offset)
 	return client.PutFile(ctx, conn, data)
 }

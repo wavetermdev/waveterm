@@ -280,16 +280,9 @@ func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wsh
 	return nil
 }
 
-func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileCreateData) error {
-	var fileOpts wshrpc.FileOptsType
-	if data.Opts != nil {
-		fileOpts = *data.Opts
-	}
-	err := fileshare.PutFile(ctx, wshrpc.FileData{
-		Info:   &wshrpc.FileInfo{Path: data.Path},
-		Data64: "",
-		Opts:   &fileOpts,
-	})
+func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileData) error {
+	data.Data64 = ""
+	err := fileshare.PutFile(ctx, data)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}

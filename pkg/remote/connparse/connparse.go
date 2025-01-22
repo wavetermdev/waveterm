@@ -6,7 +6,6 @@ package connparse
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -105,7 +104,6 @@ func ParseURI(uri string) (*Connection, error) {
 			host = wshrpc.LocalConnName
 			remotePath = rest
 		} else {
-			log.Printf("Fixing relative path to %s; %s", ConnHostCurrent, rest)
 			host = ConnHostCurrent
 			remotePath = rest
 		}
@@ -126,7 +124,6 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 		if strings.HasPrefix(remotePath, "/~") {
 			remotePath = strings.TrimPrefix(remotePath, "/")
-			log.Printf("Fixing relative path to %s; %s", host, remotePath)
 		}
 	}
 
@@ -135,6 +132,5 @@ func ParseURI(uri string) (*Connection, error) {
 		Host:   host,
 		Path:   remotePath,
 	}
-	log.Printf("Parsed connection: %v", conn)
 	return conn, nil
 }

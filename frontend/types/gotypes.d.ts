@@ -372,7 +372,6 @@ declare global {
         info?: FileInfo;
         data64?: string;
         entries?: FileInfo[];
-        opts?: FileOptsType;
         at?: FileDataAt;
     };
 
