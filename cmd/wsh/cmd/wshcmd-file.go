@@ -40,20 +40,30 @@ URI format: [profile]:[uri-scheme]://[connection]/[path]
 
 Supported URI schemes:
   wsh:
-    Used to access files on remote hosts over SSH via the WSH helper. Allows for file streaming to Wave and other remotes.
-    Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
-    If a profile is provided, it must be defined in "profiles.json" in the Wave configuration directory.
+    Used to access files on remote hosts over SSH via the WSH helper. Allows
+    for file streaming to Wave and other remotes.
+
+    Profiles are optional for WSH URIs, provided that you have configured the
+    remote host in your "connections.json" or "~/.ssh/config" file.
+
+    If a profile is provided, it must be defined in "profiles.json" in the Wave
+    configuration directory.
 
     Format: wsh://[remote]/[path]
 
     Shorthands can be used for the current remote and your local computer:
       [path]              a relative or absolute path on the current remote
       //[remote]/[path]   a path on a remote
-      /~/[path]           a path relative to your home directory on your local computer
+      /~/[path]           a path relative to the home directory on your local
+                          computer
   s3:
     Used to access files on S3-compatible systems.
-    Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
-    If no profile is provided, the default from your AWS CLI configuration will be used. Profiles from the AWS CLI must be prefixed with "aws:".
+
+    Requires S3 credentials to be set up, either in the AWS CLI configuration
+    files, or in "profiles.json" in the Wave configuration directory.
+
+    If no profile is provided, the default from your AWS CLI configuration will
+    be used. Profiles from the AWS CLI must be prefixed with "aws:".
 
     Format: s3://[bucket]/[path]
             aws:[profile]:s3://[bucket]/[path]
@@ -67,7 +77,11 @@ Supported URI schemes:
 var fileCmd = &cobra.Command{
 	Use:   "file",
 	Short: "manage files across different storage systems",
-	Long:  "Manage files across different storage systems.\n\nWave Terminal is capable of managing files from remote SSH hosts, S3-compatible systems, and the internal Wave filesystem.\nFiles are addressed via URIs, which vary depending on the storage system." + UriHelpText}
+	Long: `Manage files across different storage systems.
+    
+Wave Terminal is capable of managing files from remote SSH hosts, S3-compatible
+systems, and the internal Wave filesystem. Files are addressed via URIs, which
+vary depending on the storage system.` + UriHelpText}
 
 var fileTimeout int
 
@@ -139,7 +153,7 @@ var fileRmCmd = &cobra.Command{
 var fileWriteCmd = &cobra.Command{
 	Use:     "write [uri]",
 	Short:   "write stdin into a file (up to 10MB)",
-	Long:    "Write stdin into a file, buffering input and respecting 10MB total file size limit." + UriHelpText,
+	Long:    "Write stdin into a file, buffering input (10MB total file size limit)." + UriHelpText,
 	Example: "  echo 'hello' | wsh file write wavefile://block/greeting.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileWriteRun),
@@ -149,7 +163,7 @@ var fileWriteCmd = &cobra.Command{
 var fileAppendCmd = &cobra.Command{
 	Use:     "append [uri]",
 	Short:   "append stdin to a file",
-	Long:    "Append stdin to a file, buffering input and respecting 10MB total file size limit." + UriHelpText,
+	Long:    "Append stdin to a file, buffering input (10MB total file size limit)." + UriHelpText,
 	Example: "  tail -f log.txt | wsh file append wavefile://block/app.log",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileAppendRun),
