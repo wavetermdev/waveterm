@@ -39,20 +39,19 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 			ch <- wshutil.RespErr[wshrpc.FileData](err)
 			return
 		}
-		for {
-			if ctx.Err() != nil {
-				ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+		if ctx.Err() != nil {
+			ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+			return
+		}
+		dataLen := len(rtnData.Data64)
+		if !rtnData.Info.IsDir {
+			for i := 0; i < dataLen; i += wshrpc.FileChunkSize {
+				dataEnd := min(i+wshrpc.FileChunkSize, dataLen)
+				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: rtnData.Data64[i:dataEnd], Info: rtnData.Info, At: &wshrpc.FileDataAt{Offset: int64(i), Size: dataEnd - i}}}
 			}
-			dataLen := len(rtnData.Data64)
-			if !rtnData.Info.IsDir {
-				for i := 0; i < dataLen; i += wshrpc.FileChunkSize {
-					dataEnd := min(i+wshrpc.FileChunkSize, dataLen)
-					ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: rtnData.Data64[i:dataEnd], Info: rtnData.Info, At: &wshrpc.FileDataAt{Offset: int64(i), Size: dataEnd - i}}}
-				}
-			} else {
-				for i := 0; i < len(rtnData.Entries); i += wshrpc.DirChunkSize {
-					ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: rtnData.Entries[i:min(i+wshrpc.DirChunkSize, len(rtnData.Entries))], Info: rtnData.Info}}
-				}
+		} else {
+			for i := 0; i < len(rtnData.Entries); i += wshrpc.DirChunkSize {
+				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: rtnData.Entries[i:min(i+wshrpc.DirChunkSize, len(rtnData.Entries))], Info: rtnData.Info}}
 			}
 		}
 	}()
