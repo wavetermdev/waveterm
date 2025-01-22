@@ -314,15 +314,15 @@ function makeNativeLabel(platform: string, isDirectory: boolean, isParent: boole
         managerName = "File Manager";
     }
 
-    let fileType: string;
+    let fileAction: string;
     if (isParent) {
-        fileType = "Parent Directory";
+        fileAction = "Reveal";
     } else if (isDirectory) {
-        fileType = "Directory";
+        fileAction = "Open Directory";
     } else {
-        fileType = "File";
+        fileAction = "Open File";
     }
-    return `Reveal ${fileType} in ${managerName}`;
+    return `${fileAction} in ${managerName}`;
 }
 
 export {
