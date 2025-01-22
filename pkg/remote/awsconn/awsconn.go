@@ -78,7 +78,10 @@ func getTempFileFromConfig(config waveobj.MetaMapType, key string, profile strin
 			if err != nil {
 				return "", fmt.Errorf("error creating temp file: %v", err)
 			}
-			tempfile.WriteString(awsConfig)
+			_, err = tempfile.WriteString(awsConfig)
+			if err != nil {
+				return "", fmt.Errorf("error writing to temp file: %v", err)
+			}
 			return tempfile.Name(), nil
 		}
 	}
